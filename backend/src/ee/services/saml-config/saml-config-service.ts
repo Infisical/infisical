@@ -380,6 +380,21 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      const plan = await licenseService.getPlan(orgId);
+      if (plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
+        // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
+        throw new BadRequestError({
+          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
+        });
+      }
+
+      if (plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+        throw new BadRequestError({
+          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
+        });
+      }
+
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         if (serverCfg.trustSamlEmails) {

@@ -4,8 +4,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useDeleteIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -17,10 +22,10 @@ import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthC
 
 export const IdentitySection = withPermission(
   () => {
+    const { subscription } = useSubscription();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
@@ -30,6 +35,10 @@ export const IdentitySection = withPermission(
       "deleteUniversalAuthClientSecret",
       "upgradePlan"
     ] as const);
+
+    const isMoreIdentitiesAllowed = subscription?.identityLimit
+      ? subscription.identitiesUsed < subscription.identityLimit
+      : true;
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
       try {
@@ -81,7 +90,15 @@ export const IdentitySection = withPermission(
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("identity")}
+                onClick={() => {
+                  if (!isMoreIdentitiesAllowed) {
+                    handlePopUpOpen("upgradePlan", {
+                      description: "You can add more identities if you upgrade your Infisical plan."
+                    });
+                    return;
+                  }
+                  handlePopUpOpen("identity");
+                }}
                 isDisabled={!isAllowed}
               >
                 Create identity
@@ -117,6 +134,11 @@ export const IdentitySection = withPermission(
               (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
             )
           }
+        />
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={(popUp.upgradePlan?.data as { description: string })?.description}
         />
       </div>
     );
