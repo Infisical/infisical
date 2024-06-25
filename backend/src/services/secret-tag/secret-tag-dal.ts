@@ -13,7 +13,7 @@ export const secretTagDALFactory = (db: TDbClient) => {
 
   const findManyTagsById = async (projectId: string, ids: string[], tx?: Knex) => {
     try {
-      const tags = await (tx || db)(TableName.SecretTag).where({ projectId }).whereIn("id", ids);
+      const tags = await (tx || db.replicaNode())(TableName.SecretTag).where({ projectId }).whereIn("id", ids);
       return tags;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all by ids" });

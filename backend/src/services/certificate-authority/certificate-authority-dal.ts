@@ -16,6 +16,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         parentCaId?: string;
         encryptedCertificate: Buffer;
       }[] = await db
+        .replicaNode()
         .withRecursive("cte", (cte) => {
           void cte
             .select("ca.id as caId", "ca.parentCaId", "cert.encryptedCertificate")

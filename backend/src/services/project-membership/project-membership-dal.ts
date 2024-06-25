@@ -13,7 +13,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   // special query
   const findAllProjectMembers = async (projectId: string, filter: { usernames?: string[]; username?: string } = {}) => {
     try {
-      const docs = await db(TableName.ProjectMembership)
+      const docs = await db
+        .replicaNode()(TableName.ProjectMembership)
         .where({ [`${TableName.ProjectMembership}.projectId` as "projectId"]: projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
@@ -108,7 +109,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
   const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await (tx || db)(TableName.ProjectMembership)
+      const ghostUser = await (tx || db.replicaNode())(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
@@ -123,7 +124,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
   const findMembershipsByUsername = async (projectId: string, usernames: string[]) => {
     try {
-      const members = await db(TableName.ProjectMembership)
+      const members = await db
+        .replicaNode()(TableName.ProjectMembership)
         .where({ projectId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .join<TUserEncryptionKeys>(
@@ -149,7 +151,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
   const findProjectMembershipsByUserId = async (orgId: string, userId: string) => {
     try {
-      const memberships = await db(TableName.ProjectMembership)
+      const memberships = await db
+        .replicaNode()(TableName.ProjectMembership)
         .where({ userId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where({ [`${TableName.Project}.orgId` as "orgId"]: orgId })

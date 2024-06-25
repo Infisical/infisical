@@ -16,7 +16,7 @@ export const incidentContactDALFactory = (db: TDbClient) => {
 
   const findByOrgId = async (orgId: string) => {
     try {
-      const incidentContacts = await db(TableName.IncidentContact).where({ orgId });
+      const incidentContacts = await db.replicaNode()(TableName.IncidentContact).where({ orgId });
       return incidentContacts;
     } catch (error) {
       throw new DatabaseError({ name: "Incident contact list", error });
@@ -25,7 +25,8 @@ export const incidentContactDALFactory = (db: TDbClient) => {
 
   const findOne = async (orgId: string, data: Partial<TIncidentContacts>) => {
     try {
-      const incidentContacts = await db(TableName.IncidentContact)
+      const incidentContacts = await db
+        .replicaNode()(TableName.IncidentContact)
         .where({ orgId, ...data })
         .first();
       return incidentContacts;

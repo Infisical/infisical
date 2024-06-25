@@ -9,7 +9,7 @@ export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;
 export const licenseDALFactory = (db: TDbClient) => {
   const countOfOrgMembers = async (orgId: string | null, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.OrgMembership)
+      const doc = await (tx || db.replicaNode())(TableName.OrgMembership)
         .where({ status: OrgMembershipStatus.Accepted })
         .andWhere((bd) => {
           if (orgId) {

@@ -32,7 +32,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await accessApprovalPolicyFindQuery(tx || db, {
+      const doc = await accessApprovalPolicyFindQuery(tx || db.replicaNode(), {
         [`${TableName.AccessApprovalPolicy}.id` as "id"]: id
       });
       const formatedDoc = mergeOneToManyRelation(
@@ -54,7 +54,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const find = async (filter: TFindFilter<TAccessApprovalPolicies & { projectId: string }>, tx?: Knex) => {
     try {
-      const docs = await accessApprovalPolicyFindQuery(tx || db, filter);
+      const docs = await accessApprovalPolicyFindQuery(tx || db.replicaNode(), filter);
       const formatedDoc = mergeOneToManyRelation(
         docs,
         "id",

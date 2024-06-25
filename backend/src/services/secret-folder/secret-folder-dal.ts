@@ -211,7 +211,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   const findBySecretPath = async (projectId: string, environment: string, path: string, tx?: Knex) => {
     try {
-      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, removeTrailingSlash(path))
+      const folder = await sqlFindFolderByPathQuery(
+        tx || db.replicaNode(),
+        projectId,
+        environment,
+        removeTrailingSlash(path)
+      )
         .orderBy("depth", "desc")
         .first();
       if (folder && folder.path !== removeTrailingSlash(path)) {
@@ -230,7 +235,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   // it will stop automatically at /path2
   const findClosestFolder = async (projectId: string, environment: string, path: string, tx?: Knex) => {
     try {
-      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, removeTrailingSlash(path))
+      const folder = await sqlFindFolderByPathQuery(
+        tx || db.replicaNode(),
+        projectId,
+        environment,
+        removeTrailingSlash(path)
+      )
         .orderBy("depth", "desc")
         .first();
       if (!folder) return;
@@ -247,7 +257,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         envId,
         secretPath: removeTrailingSlash(secretPath)
       }));
-      const folders = await sqlFindMultipleFolderByEnvPathQuery(tx || db, formatedQuery);
+      const folders = await sqlFindMultipleFolderByEnvPathQuery(tx || db.replicaNode(), formatedQuery);
       return formatedQuery.map(({ envId, secretPath }) =>
         folders.find(({ path: targetPath, envId: targetEnvId }) => targetPath === secretPath && targetEnvId === envId)
       );
@@ -260,7 +270,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   // that is instances in which for a given folderid find the secret path
   const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
     try {
-      const folders = await sqlFindSecretPathByFolderId(tx || db, projectId, folderIds);
+      const folders = await sqlFindSecretPathByFolderId(tx || db.replicaNode(), projectId, folderIds);
 
       //  travelling all the way from leaf node to root contains real path
       const rootFolders = groupBy(
@@ -299,7 +309,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const folder = await (tx || db)(TableName.SecretFolder)
+      const folder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .where({ [`${TableName.SecretFolder}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
