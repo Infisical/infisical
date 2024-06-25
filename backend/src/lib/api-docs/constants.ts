@@ -42,6 +42,13 @@ export const IDENTITIES = {
   },
   DELETE: {
     identityId: "The ID of the identity to delete."
+  },
+  GET_BY_ID: {
+    identityId: "The ID of the identity to get details.",
+    orgId: "The ID of the org of the identity"
+  },
+  LIST: {
+    orgId: "The ID of the organization to list identities."
   }
 } as const;
 
@@ -65,6 +72,9 @@ export const UNIVERSAL_AUTH = {
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve."
   },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  },
   UPDATE: {
     identityId: "The ID of the identity to update.",
     clientSecretTrustedIps: "The new list of IPs or CIDR ranges that the Client Secret can be used from.",
@@ -82,6 +92,10 @@ export const UNIVERSAL_AUTH = {
   },
   LIST_CLIENT_SECRETS: {
     identityId: "The ID of the identity to list client secrets for."
+  },
+  GET_CLIENT_SECRET: {
+    identityId: "The ID of the identity to get the client secret from.",
+    clientSecretId: "The ID of the client secret to get details."
   },
   REVOKE_CLIENT_SECRET: {
     identityId: "The ID of the identity to revoke the client secret from.",
@@ -104,6 +118,27 @@ export const AWS_AUTH = {
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
+export const AZURE_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
+export const GCP_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
+export const KUBERNETES_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
   }
 } as const;
 

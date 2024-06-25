@@ -59,3 +59,7 @@ export type TCreateTokenReviewResponse = {
   };
   status: TCreateTokenReviewSuccessResponse | TCreateTokenReviewErrorResponse;
 };
+
+export type TRevokeKubernetesAuthDTO = {
+  identityId: string;
+} & Omit<TProjectPermission, "projectId">;

@@ -65,25 +65,31 @@ export enum EventType {
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
+  REVOKE_IDENTITY_UNIVERSAL_AUTH = "revoke-identity-universal-auth",
   LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
   ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
   UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
   GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
+  REVOKE_IDENTITY_KUBERNETES_AUTH = "revoke-identity-kubernetes-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
   LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
   ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
   UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
+  REVOKE_IDENTITY_GCP_AUTH = "revoke-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
+  REVOKE_IDENTITY_AWS_AUTH = "revoke-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
   LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
   ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
   UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
   GET_IDENTITY_AZURE_AUTH = "get-identity-azure-auth",
+  REVOKE_IDENTITY_AZURE_AUTH = "revoke-identity-azure-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -434,6 +440,13 @@ interface GetIdentityUniversalAuthEvent {
   };
 }
 
+interface DeleteIdentityUniversalAuthEvent {
+  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface LoginIdentityKubernetesAuthEvent {
   type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH;
   metadata: {
@@ -454,6 +467,13 @@ interface AddIdentityKubernetesAuthEvent {
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
     accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityKubernetesAuthEvent {
+  type: EventType.REVOKE_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -493,6 +513,14 @@ interface GetIdentityUniversalAuthClientSecretsEvent {
   };
 }
 
+interface GetIdentityUniversalAuthClientSecretByIdEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
+}
+
 interface RevokeIdentityUniversalAuthClientSecretEvent {
   type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
@@ -522,6 +550,13 @@ interface AddIdentityGcpAuthEvent {
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
     accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityGcpAuthEvent {
+  type: EventType.REVOKE_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -570,6 +605,13 @@ interface AddIdentityAwsAuthEvent {
   };
 }
 
+interface DeleteIdentityAwsAuthEvent {
+  type: EventType.REVOKE_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface UpdateIdentityAwsAuthEvent {
   type: EventType.UPDATE_IDENTITY_AWS_AUTH;
   metadata: {
@@ -610,6 +652,13 @@ interface AddIdentityAzureAuthEvent {
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
     accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityAzureAuthEvent {
+  type: EventType.REVOKE_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -1003,24 +1052,30 @@ export type Event =
   | LoginIdentityUniversalAuthEvent
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
+  | DeleteIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
   | LoginIdentityKubernetesAuthEvent
+  | DeleteIdentityKubernetesAuthEvent
   | AddIdentityKubernetesAuthEvent
   | UpdateIdentityKubernetesAuthEvent
   | GetIdentityKubernetesAuthEvent
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
+  | GetIdentityUniversalAuthClientSecretByIdEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
   | LoginIdentityGcpAuthEvent
   | AddIdentityGcpAuthEvent
+  | DeleteIdentityGcpAuthEvent
   | UpdateIdentityGcpAuthEvent
   | GetIdentityGcpAuthEvent
   | LoginIdentityAwsAuthEvent
   | AddIdentityAwsAuthEvent
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
+  | DeleteIdentityAwsAuthEvent
   | LoginIdentityAzureAuthEvent
   | AddIdentityAzureAuthEvent
+  | DeleteIdentityAzureAuthEvent
   | UpdateIdentityAzureAuthEvent
   | GetIdentityAzureAuthEvent
   | CreateEnvironmentEvent

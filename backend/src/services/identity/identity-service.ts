@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
+import { OrgMembershipRole, TableName, TOrgRoles } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -10,7 +10,7 @@ import { TOrgPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
-import { TCreateIdentityDTO, TDeleteIdentityDTO, TUpdateIdentityDTO } from "./identity-types";
+import { TCreateIdentityDTO, TDeleteIdentityDTO, TGetIdentityByIdDTO, TUpdateIdentityDTO } from "./identity-types";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
@@ -126,6 +126,24 @@ export const identityServiceFactory = ({
     return { ...identity, orgId: identityOrgMembership.orgId };
   };
 
+  const getIdentityById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TGetIdentityByIdDTO) => {
+    const doc = await identityOrgMembershipDAL.find({
+      [`${TableName.IdentityOrgMembership}.identityId` as "identityId"]: id
+    });
+    const identity = doc[0];
+    if (!identity) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identity.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+    return identity;
+  };
+
   const deleteIdentity = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
@@ -157,7 +175,9 @@ export const identityServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberships = await identityOrgMembershipDAL.findByOrgId(orgId);
+    const identityMemberships = await identityOrgMembershipDAL.find({
+      [`${TableName.IdentityOrgMembership}.orgId` as "orgId"]: orgId
+    });
     return identityMemberships;
   };
 
@@ -165,6 +185,7 @@ export const identityServiceFactory = ({
     createIdentity,
     updateIdentity,
     deleteIdentity,
-    listOrgIdentities
+    listOrgIdentities,
+    getIdentityById
   };
 };

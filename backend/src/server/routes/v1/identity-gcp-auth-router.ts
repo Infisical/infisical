@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -256,6 +257,53 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         orgId: identityGcpAuth.orgId,
         event: {
           type: EventType.GET_IDENTITY_GCP_AUTH,
+          metadata: {
+            identityId: identityGcpAuth.identityId
+          }
+        }
+      });
+
+      return { identityGcpAuth };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/gcp-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete GCP Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(GCP_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityGcpAuth: IdentityGcpAuthsSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityGcpAuth = await server.services.identityGcpAuth.revokeIdentityGcpAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityGcpAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_GCP_AUTH,
           metadata: {
             identityId: identityGcpAuth.identityId
           }

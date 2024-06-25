@@ -5,11 +5,12 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
@@ -20,11 +21,15 @@ import {
   TAttachAzureAuthDTO,
   TGetAzureAuthDTO,
   TLoginAzureAuthDTO,
+  TRevokeAzureAuthDTO,
   TUpdateAzureAuthDTO
 } from "./identity-azure-auth-types";
 
 type TIdentityAzureAuthServiceFactoryDep = {
-  identityAzureAuthDAL: Pick<TIdentityAzureAuthDALFactory, "findOne" | "transaction" | "create" | "updateById">;
+  identityAzureAuthDAL: Pick<
+    TIdentityAzureAuthDALFactory,
+    "findOne" | "transaction" | "create" | "updateById" | "delete"
+  >;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
@@ -277,10 +282,54 @@ export const identityAzureAuthServiceFactory = ({
     return { ...identityAzureAuth, orgId: identityMembershipOrg.orgId };
   };
 
+  const revokeIdentityAzureAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeAzureAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
+      throw new BadRequestError({
+        message: "The identity does not have azure auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to revoke azure auth of identity with more privileged role"
+      });
+
+    const revokedIdentityAzureAuth = await identityAzureAuthDAL.transaction(async (tx) => {
+      const deletedAzureAuth = await identityAzureAuthDAL.delete({ identityId }, tx);
+      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      return { ...deletedAzureAuth?.[0], orgId: identityMembershipOrg.orgId };
+    });
+    return revokedIdentityAzureAuth;
+  };
+
   return {
     login,
     attachAzureAuth,
     updateAzureAuth,
-    getAzureAuth
+    getAzureAuth,
+    revokeIdentityAzureAuth
   };
 };

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentityAzureAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AZURE_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -250,6 +251,53 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         orgId: identityAzureAuth.orgId,
         event: {
           type: EventType.GET_IDENTITY_AZURE_AUTH,
+          metadata: {
+            identityId: identityAzureAuth.identityId
+          }
+        }
+      });
+
+      return { identityAzureAuth };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/azure-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete Azure Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(AZURE_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityAzureAuth: IdentityAzureAuthsSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityAzureAuth = await server.services.identityAzureAuth.revokeIdentityAzureAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityAzureAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_AZURE_AUTH,
           metadata: {
             identityId: identityAzureAuth.identityId
           }
