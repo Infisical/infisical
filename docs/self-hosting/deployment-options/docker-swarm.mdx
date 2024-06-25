@@ -82,6 +82,13 @@ The [Docker stack file](https://github.com/Infisical/infisical/tree/main/docker-
 ## Deployment instructions
 
 <Steps>
+  <Step title="Install Docker on nodes">
+    Run the following on each node to install the Docker engine.
+
+    ```
+   curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh 
+   ```
+  </Step>
   <Step title="Initialize Docker Swarm on one of the VMs by running the following command">
     ```
    docker swarm init 
@@ -161,7 +168,12 @@ The [Docker stack file](https://github.com/Infisical/infisical/tree/main/docker-
   <Step title="Run schema migrations">
     Run the schema migration to initialize the database. Follow the [guide here](/self-hosting/configuration/schema-migrations) to learn how. 
 
-    To connect to the Postgres database, use the following default credentials defined in the Docker swarm: username: `postgres`,  password: `postgres` and database: `postgres`. 
+    To run the migrations, you'll need to connect to the Postgres instance deployed on your Docker swarm. The default Postgres user credentials are defined in the Docker swarm: username: `postgres`,  password: `postgres` and database: `postgres`.
+    We recommend you change these credentials when deploying to production and creating a separate DB for Infisical. 
+
+    <Info>
+      After running the schema migrations, be sure to update the `.env` file to have the correct `DB_CONNECTION_URI`.
+    </Info> 
   </Step>
 
   <Step title="View service status">
