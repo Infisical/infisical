@@ -404,7 +404,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        message: "Successfull changed project audit log retention",
+        message: "Successfully updated project's audit logs retention period",
         workspace
       };
     }
