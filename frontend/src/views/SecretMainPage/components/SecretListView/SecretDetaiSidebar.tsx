@@ -7,6 +7,7 @@ import {
   faCircleDot,
   faClock,
   faPlus,
+  faShare,
   faTag
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -57,6 +58,7 @@ type Props = {
   ) => Promise<void>;
   tags: WsTag[];
   onCreateTag: () => void;
+  handleSecretShare: (value: string) => void;
 };
 
 export const SecretDetailSidebar = ({
@@ -69,7 +71,8 @@ export const SecretDetailSidebar = ({
   tags,
   onCreateTag,
   environment,
-  secretPath
+  secretPath,
+  handleSecretShare
 }: Props) => {
   const {
     register,
@@ -381,7 +384,7 @@ export const SecretDetailSidebar = ({
                   rows={5}
                 />
               </FormControl>
-              <div className="my-2 mb-6 border-b border-mineshaft-600 pb-4">
+              <div className="my-2 mb-4 border-b border-mineshaft-600 pb-4">
                 <Controller
                   control={control}
                   name="skipMultilineEncoding"
@@ -412,7 +415,17 @@ export const SecretDetailSidebar = ({
                   )}
                 />
               </div>
-              <div className="dark mb-4 flex-grow text-sm text-bunker-300">
+              <div className="ml-1 flex items-center space-x-2">
+                <Button
+                  className="px-2 py-1"
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faShare} />}
+                  onClick={() => handleSecretShare(secret.valueOverride ?? secret.value)}
+                >
+                  Share Secret
+                </Button>
+              </div>
+              <div className="dark mt-4 mb-4 flex-grow text-sm text-bunker-300">
                 <div className="mb-2">Version History</div>
                 <div className="flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
                   {secretVersion?.map(({ createdAt, value, id }, i) => (

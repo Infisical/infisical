@@ -398,6 +398,7 @@ export const SecretListView = ({
         onSaveSecret={handleSaveSecret}
         tags={wsTags}
         onCreateTag={() => handlePopUpOpen("createTag")}
+        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
       />
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
