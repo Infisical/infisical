@@ -257,14 +257,27 @@ const syncSecretsGCPSecretManager = async ({
 const syncSecretsAzureKeyVault = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  createManySecretsRawFn,
+  updateManySecretsRawFn
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
 }) => {
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
+    value: string;
     attributes: {
       enabled: true;
       created: number;
@@ -361,6 +374,83 @@ const syncSecretsAzureKeyVault = async ({
     }
   });
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+  const secretKeysToRemoveFromDelete = new Set<string>();
+
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  if (!integration.lastUsed) {
+    Object.keys(res).forEach((key) => {
+      // first time using integration
+      const underscoredKey = key.replace(/-/g, "_");
+
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
+            setSecrets.push({
+              key,
+              value: res[key].value
+            });
+          } else if (secrets[underscoredKey]?.value !== res[key].value) {
+            secretsToUpdate[underscoredKey] = res[key].value;
+            const toEditSecretIndex = setSecrets.findIndex((secret) => secret.key === key);
+            if (toEditSecretIndex >= 0) {
+              setSecrets[toEditSecretIndex].value = res[key].value;
+            }
+          }
+
+          secretKeysToRemoveFromDelete.add(key);
+
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
+            setSecrets.push({
+              key,
+              value: res[key].value
+            });
+          }
+
+          secretKeysToRemoveFromDelete.add(key);
+          break;
+        }
+        default:
+          break;
+      }
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
   const setSecretAzureKeyVault = async ({
     key,
     value,
@@ -428,7 +518,7 @@ const syncSecretsAzureKeyVault = async ({
     });
   }
 
-  for await (const deleteSecret of deleteSecrets) {
+  for await (const deleteSecret of deleteSecrets.filter((secret) => !secretKeysToRemoveFromDelete.has(secret.key))) {
     const { key } = deleteSecret;
     await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
       headers: {
@@ -3512,7 +3602,9 @@ export const syncIntegrationSecrets = async ({
       await syncSecretsAzureKeyVault({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        createManySecretsRawFn,
+        updateManySecretsRawFn
       });
       break;
     case Integrations.AWS_PARAMETER_STORE:
