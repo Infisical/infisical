@@ -45,18 +45,29 @@ export const auditLogQueueServiceFactory = ({
     const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
     let { orgId } = job.data;
     const MS_IN_DAY = 24 * 60 * 60 * 1000;
+    let project;
 
     if (!orgId) {
       // it will never be undefined for both org and project id
       // TODO(akhilmhdh): use caching here in dal to avoid db calls
-      const project = await projectDAL.findById(projectId as string);
+      project = await projectDAL.findById(projectId as string);
       orgId = project.orgId;
     }
 
     const plan = await licenseService.getPlan(orgId);
-    const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
-    // skip inserting if audit log retention is 0 meaning its not supported
-    if (ttl === 0) return;
+    if (plan.auditLogsRetentionDays === 0) {
+      // skip inserting if audit log retention is 0 meaning its not supported
+      return;
+    }
+
+    // For project actions, set TTL to project-level audit log retention config
+    // This condition ensures that the plan's audit log retention days cannot be bypassed
+    const ttlInDays =
+      project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
+        ? project.auditLogsRetentionDays
+        : plan.auditLogsRetentionDays;
+
+    const ttl = ttlInDays * MS_IN_DAY;
 
     const auditLog = await auditLogDAL.create({
       actor: actor.type,

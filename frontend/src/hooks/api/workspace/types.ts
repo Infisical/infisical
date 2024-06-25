@@ -18,6 +18,7 @@ export type Workspace = {
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
   pitVersionLimit: number;
+  auditLogsRetentionDays: number;
   slug: string;
 };
 
@@ -51,6 +52,7 @@ export type CreateWorkspaceDTO = {
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
+export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
 
 export type DeleteWorkspaceDTO = { workspaceID: string };

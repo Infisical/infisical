@@ -49,6 +49,11 @@ export type TUpdateProjectVersionLimitDTO = {
   workspaceSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TUpdateAuditLogsRetentionDTO = {
+  auditLogsRetentionDays: number;
+  workspaceSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateProjectNameDTO = {
   name: string;
 } & TProjectPermission;
