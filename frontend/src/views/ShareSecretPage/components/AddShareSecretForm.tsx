@@ -6,14 +6,7 @@ import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 
 const schema = yup.object({
@@ -31,7 +24,8 @@ export const AddShareSecretForm = ({
   handleSubmit,
   control,
   isSubmitting,
-  setNewSharedSecret
+  setNewSharedSecret,
+  isInputDisabled
 }: {
   isPublic: boolean;
   inModal: boolean;
@@ -39,6 +33,7 @@ export const AddShareSecretForm = ({
   control: any;
   isSubmitting: boolean;
   setNewSharedSecret: (value: string) => void;
+  isInputDisabled?: boolean;
 }) => {
   const publicSharedSecretCreator = useCreatePublicSharedSecret();
   const privateSharedSecretCreator = useCreateSharedSecret();
@@ -124,12 +119,13 @@ export const AddShareSecretForm = ({
   };
   return (
     <form className="flex w-full flex-col items-center" onSubmit={handleSubmit(onFormSubmit)}>
-      <div className={`${!inModal && "border border-mineshaft-600 bg-mineshaft-800 rounded-md p-6"}`}>
+      <div
+        className={`${!inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"}`}
+      >
         <div className="mb-4">
           <Controller
             control={control}
             name="value"
-            defaultValue=""
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Shared Secret"
@@ -137,16 +133,17 @@ export const AddShareSecretForm = ({
                 errorText={error?.message}
               >
                 <textarea
+                  disabled={isInputDisabled}
                   placeholder="Enter sensitive data to share via an encrypted link..."
                   {...field}
-                  className="py-1.5 w-full h-40 placeholder:text-mineshaft-400 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/30 focus:border-primary-400/50 outline-none border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[70px]"
+                  className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 py-1.5 px-2 text-bunker-300 outline-none transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50 group-hover:mr-2"
                 />
               </FormControl>
             )}
           />
         </div>
         <div className="flex w-full flex-row justify-center">
-          <div className="hidden sm:block sm:w-2/6 flex">
+          <div className="flex hidden sm:block sm:w-2/6">
             <Controller
               control={control}
               name="expiresAfterViews"
@@ -163,12 +160,12 @@ export const AddShareSecretForm = ({
               )}
             />
           </div>
-          <div className="hidden sm:flex sm:w-1/7 items-center justify-center px-2 mx-auto">
+          <div className="sm:w-1/7 mx-auto hidden items-center justify-center px-2 sm:flex">
             <p className="px-4 text-sm text-gray-400">OR</p>
           </div>
-          <div className="w-full sm:w-3/6 flex justify-end">
+          <div className="flex w-full justify-end sm:w-3/6">
             <div className="flex justify-start">
-              <div className="flex w-full pr-2 justify-center">
+              <div className="flex w-full justify-center pr-2">
                 <Controller
                   control={control}
                   name="expiresInValue"

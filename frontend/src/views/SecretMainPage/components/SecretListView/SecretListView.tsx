@@ -13,6 +13,7 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
@@ -95,7 +96,8 @@ export const SecretListView = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag"
+    "createTag",
+    "createSharedSecret"
   ] as const);
 
   // strip of side effect queries
@@ -365,6 +367,11 @@ export const SecretListView = ({
                   onDeleteSecret={onDeleteSecret}
                   onDetailViewSecret={onDetailViewSecret}
                   onCreateTag={onCreateTag}
+                  handleSecretShare={() =>
+                    handlePopUpOpen("createSharedSecret", {
+                      value: secret.valueOverride ?? secret.value
+                    })
+                  }
                 />
               ))}
             </div>
@@ -391,10 +398,17 @@ export const SecretListView = ({
         onSaveSecret={handleSaveSecret}
         tags={wsTags}
         onCreateTag={() => handlePopUpOpen("createTag")}
+        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
       />
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
+      />
+      <AddShareSecretModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        isPublic={false}
+        inModal
       />
     </>
   );

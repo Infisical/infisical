@@ -34,6 +34,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
     control,
     reset,
     handleSubmit,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: yupResolver(schema)
@@ -45,6 +46,8 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
     initialState: false
   });
 
+  const [isSecretInputDisabled, setIsSecretInputDisabled] = useState(false);
+
   const copyUrlToClipboard = () => {
     navigator.clipboard.writeText(newSharedSecret);
     setIsUrlCopied(true);
@@ -55,6 +58,13 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
     }
   }, [isUrlCopied]);
 
+  useEffect(() => {
+    if (popUp.createSharedSecret.data) {
+      setValue("value", (popUp.createSharedSecret.data as { value: string }).value);
+      setIsSecretInputDisabled(true);
+    }
+  }, [popUp.createSharedSecret.data]);
+
   // eslint-disable-next-line no-nested-ternary
   return inModal ? (
     <Modal
@@ -63,6 +73,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
         handlePopUpToggle("createSharedSecret", open);
         reset();
         setNewSharedSecret("");
+        setIsSecretInputDisabled(false);
       }}
     >
       <ModalContent
@@ -77,6 +88,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
             handleSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             setNewSharedSecret={setNewSharedSecret}
+            isInputDisabled={isSecretInputDisabled}
           />
         ) : (
           <ViewAndCopySharedSecret
@@ -96,6 +108,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle, isPublic, inModa
       handleSubmit={handleSubmit}
       isSubmitting={isSubmitting}
       setNewSharedSecret={setNewSharedSecret}
+      isInputDisabled={isSecretInputDisabled}
     />
   ) : (
     <ViewAndCopySharedSecret
