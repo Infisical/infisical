@@ -7,11 +7,12 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
@@ -24,12 +25,13 @@ import {
   TGetAwsAuthDTO,
   TGetCallerIdentityResponse,
   TLoginAwsAuthDTO,
+  TRevokeAwsAuthDTO,
   TUpdateAwsAuthDTO
 } from "./identity-aws-auth-types";
 
 type TIdentityAwsAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
-  identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById">;
+  identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -301,10 +303,54 @@ export const identityAwsAuthServiceFactory = ({
     return { ...awsIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
 
+  const revokeIdentityAwsAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeAwsAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
+      throw new BadRequestError({
+        message: "The identity does not have aws auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to revoke aws auth of identity with more privileged role"
+      });
+
+    const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
+      const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
+      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
+    });
+    return revokedIdentityAwsAuth;
+  };
+
   return {
     login,
     attachAwsAuth,
     updateAwsAuth,
-    getAwsAuth
+    getAwsAuth,
+    revokeIdentityAwsAuth
   };
 };

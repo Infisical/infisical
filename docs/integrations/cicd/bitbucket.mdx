@@ -7,26 +7,62 @@ Prerequisites:
 
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-<Steps>
-  <Step title="Authorize Infisical for Bitbucket">
-    Navigate to your project's integrations tab in Infisical.
+<AccordionGroup>
+  <Accordion title="Push secrets to Bitbucket from Infisical">
+    <Steps>
+      <Step title="Authorize Infisical for Bitbucket">
+        Navigate to your project's integrations tab in Infisical.
 
-    ![integrations](../../images/integrations.png)
+        ![integrations](../../images/integrations.png)
 
-    Press on the Bitbucket tile and grant Infisical access to your Bitbucket account.
+        Press on the Bitbucket tile and grant Infisical access to your Bitbucket account.
 
-    ![integrations bitbucket authorization](../../images/integrations/bitbucket/integrations-bitbucket-auth.png)
+        ![integrations bitbucket authorization](../../images/integrations/bitbucket/integrations-bitbucket-auth.png)
 
-    <Info>
-      If this is your project's first cloud integration, then you'll have to grant
-      Infisical access to your project's environment variables. Although this step
-      breaks E2EE, it's necessary for Infisical to sync the environment variables to
-      the cloud platform.
-    </Info>
-  </Step>
-  <Step title="Start integration">
-    Select which Infisical environment secrets you want to sync to which Bitbucket repo and press start integration to start syncing secrets to the repo.
+      </Step>
+      <Step title="Start integration">
+        Select which Infisical environment secrets you want to sync to which Bitbucket repo and press start integration to start syncing secrets to the repo.
 
-    ![integrations bitbucket](../../images/integrations/bitbucket/integrations-bitbucket.png)
-  </Step>
-</Steps>
+        ![integrations bitbucket](../../images/integrations/bitbucket/integrations-bitbucket.png)
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="Pull secrets in Bitbucket pipelines from Infisical">
+    <Steps>
+      <Step title="Configure Infisical Access">
+        Configure a [Machine Identity](https://infisical.com/docs/documentation/platform/identities/universal-auth) for your project and give it permissions to read secrets from your desired Infisical projects and environments.
+      </Step>
+      <Step title="Initialize Bitbucket variables">
+      Create Bitbucket variables (can be either workspace, repository, or deployment-level) to store Machine Identity Client ID and Client Secret.
+      
+      ![integrations bitbucket](../../images/integrations/bitbucket/integrations-bitbucket-env.png)
+      </Step>
+      <Step title="Integrate Infisical secrets into the pipeline">
+        Edit your Bitbucket pipeline YAML file to include the use of the Infisical CLI to fetch and inject secrets into any script or command within the pipeline.
+        
+        #### Example
+
+        ```yaml
+        image: atlassian/default-image:3
+
+        pipelines:
+          default:
+            - step:
+                name: Build application with secrets from Infisical
+                script:
+                  - apt update && apt install -y curl
+                  - curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash
+                  - apt-get update && apt-get install -y infisical
+                  - export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_CLIENT_ID --client-secret=$INFISICAL_CLIENT_SECRET --silent --plain)
+                  - infisical run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build
+        ```
+
+      <Tip>
+        Set the values of `projectId` and `env` flags in the `infisical run` command to your intended source path. For more options, refer to the CLI command reference [here](https://infisical.com/docs/cli/commands/run).
+      </Tip>
+      </Step>
+    </Steps>
+
+  </Accordion>
+</AccordionGroup>

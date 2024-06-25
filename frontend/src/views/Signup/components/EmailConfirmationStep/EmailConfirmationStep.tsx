@@ -92,6 +92,10 @@ export const EmailConfirmationStep = ({
           router.push(`/login/ldap?organizationSlug=${organizationSlug}`);
           break;
         }
+        case UserAliasType.OIDC: {
+          router.push(`/api/v1/sso/oidc/login?orgSlug=${organizationSlug}`);
+          break;
+        }
         default: {
           setStep(1);
           break;

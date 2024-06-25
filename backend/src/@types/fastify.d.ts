@@ -13,6 +13,7 @@ import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
@@ -102,6 +103,7 @@ declare module "fastify" {
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       orgRole: TOrgRoleServiceFactory;
+      oidc: TOidcConfigServiceFactory;
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
       group: TGroupServiceFactory;

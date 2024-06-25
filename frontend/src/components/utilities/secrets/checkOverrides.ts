@@ -1,5 +1,7 @@
 import { SecretDataProps } from "public/data/frequentInterfaces";
 
+import { SecretType } from "@app/hooks/api/types";
+
 /**
  * This function downloads the secrets as a .env file
  * @param {object} obj
@@ -10,8 +12,8 @@ const checkOverrides = async ({ data }: { data: SecretDataProps[] }) => {
   let secrets: SecretDataProps[] = data!.map((secret) => Object.create(secret));
   const overridenSecrets = data!.filter((secret) =>
     secret.valueOverride === undefined || secret?.value !== secret?.valueOverride
-      ? "shared"
-      : "personal"
+      ? SecretType.Shared
+      : SecretType.Personal
   );
   if (overridenSecrets.length) {
     overridenSecrets.forEach((secret) => {

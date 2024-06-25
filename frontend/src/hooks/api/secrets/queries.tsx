@@ -14,6 +14,7 @@ import {
   EncryptedSecret,
   EncryptedSecretVersion,
   GetSecretVersionsDTO,
+  SecretType,
   TGetProjectSecretsAllEnvDTO,
   TGetProjectSecretsDTO,
   TGetProjectSecretsKey
@@ -77,7 +78,7 @@ export const decryptSecrets = (
       skipMultilineEncoding: encSecret.skipMultilineEncoding
     };
 
-    if (encSecret.type === "personal") {
+    if (encSecret.type === SecretType.Personal) {
       personalSecrets[decryptedSecret.key] = {
         id: encSecret.id,
         value: secretValue

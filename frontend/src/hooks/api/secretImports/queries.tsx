@@ -279,7 +279,28 @@ export const useGetImportedSecretsAllEnvs = ({
     [(secretImports || []).map((response) => response.data)]
   );
 
-  return { secretImports, isImportedSecretPresentInEnv };
+  const getImportedSecretByKey = useCallback(
+    (envSlug: string, secretName: string) => {
+      const selectedEnvIndex = environments.indexOf(envSlug);
+
+      if (selectedEnvIndex !== -1) {
+        const secret = secretImports?.[selectedEnvIndex]?.data?.find(({ secrets }) =>
+          secrets.find((s) => s.key === secretName)
+        );
+
+        if (!secret) return undefined;
+
+        return {
+          secret: secret?.secrets.find((s) => s.key === secretName),
+          environmentInfo: secret?.environmentInfo
+        };
+      }
+      return undefined;
+    },
+    [(secretImports || []).map((response) => response.data)]
+  );
+
+  return { secretImports, isImportedSecretPresentInEnv, getImportedSecretByKey };
 };
 
 export const useGetImportedFoldersByEnv = ({

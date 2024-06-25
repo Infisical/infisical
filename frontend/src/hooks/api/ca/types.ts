@@ -81,6 +81,7 @@ export type TCreateCertificateDTO = {
   caId: string;
   friendlyName?: string;
   commonName: string;
+  altNames: string; // sans
   ttl: string; // string compatible with ms
   notBefore?: string;
   notAfter?: string;

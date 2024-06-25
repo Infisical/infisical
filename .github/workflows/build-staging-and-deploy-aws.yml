@@ -50,6 +50,13 @@ jobs:
     environment:
       name: Gamma
     steps:
+      - uses: twingate/github-action@v1
+        with:
+          # The Twingate Service Key used to connect Twingate to the proper service
+          # Learn more about [Twingate Services](https://docs.twingate.com/docs/services)
+          #
+          # Required
+          service-key: ${{ secrets.TWINGATE_GAMMA_SERVICE_KEY }}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Setup Node.js environment
@@ -74,21 +81,21 @@ jobs:
         uses: pr-mpt/actions-commit-hash@v2
       - name: Download task definition
         run: |
-          aws ecs describe-task-definition --task-definition infisical-core-platform --query taskDefinition > task-definition.json
+          aws ecs describe-task-definition --task-definition infisical-core-gamma-stage --query taskDefinition > task-definition.json
       - name: Render Amazon ECS task definition
         id: render-web-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: infisical-core-platform
+          container-name: infisical-core
           image: infisical/staging_infisical:${{ steps.commit.outputs.short }}
           environment-variables: "LOG_LEVEL=info"
       - name: Deploy to Amazon ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
-          service: infisical-core-platform
-          cluster: infisical-core-platform
+          service: infisical-core-gamma-stage
+          cluster: infisical-gamma-stage
           wait-for-service-stability: true
 
   production-postgres-deployment:

@@ -134,7 +134,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityUniversalAuth = await server.services.identityUa.attachUa({
+      const identityUniversalAuth = await server.services.identityUa.attachUniversalAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -219,7 +219,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityUniversalAuth = await server.services.identityUa.updateUa({
+      const identityUniversalAuth = await server.services.identityUa.updateUniversalAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -272,7 +272,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityUniversalAuth = await server.services.identityUa.getIdentityUa({
+      const identityUniversalAuth = await server.services.identityUa.getIdentityUniversalAuth({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -285,6 +285,53 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         orgId: identityUniversalAuth.orgId,
         event: {
           type: EventType.GET_IDENTITY_UNIVERSAL_AUTH,
+          metadata: {
+            identityId: identityUniversalAuth.identityId
+          }
+        }
+      });
+
+      return { identityUniversalAuth };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/universal-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete Universal Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(UNIVERSAL_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityUniversalAuth: IdentityUniversalAuthsSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityUniversalAuth = await server.services.identityUa.revokeIdentityUniversalAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityUniversalAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH,
           metadata: {
             identityId: identityUniversalAuth.identityId
           }
@@ -325,14 +372,15 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { clientSecret, clientSecretData, orgId } = await server.services.identityUa.createUaClientSecret({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId,
-        ...req.body
-      });
+      const { clientSecret, clientSecretData, orgId } =
+        await server.services.identityUa.createUniversalAuthClientSecret({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          identityId: req.params.identityId,
+          ...req.body
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -374,13 +422,15 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { clientSecrets: clientSecretData, orgId } = await server.services.identityUa.getUaClientSecrets({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
-      });
+      const { clientSecrets: clientSecretData, orgId } = await server.services.identityUa.getUniversalAuthClientSecrets(
+        {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          identityId: req.params.identityId
+        }
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -392,6 +442,56 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+      return { clientSecretData };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/universal-auth/identities/:identityId/client-secrets/:clientSecretId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get Universal Auth Client Secret for identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(UNIVERSAL_AUTH.GET_CLIENT_SECRET.identityId),
+        clientSecretId: z.string().describe(UNIVERSAL_AUTH.GET_CLIENT_SECRET.clientSecretId)
+      }),
+      response: {
+        200: z.object({
+          clientSecretData: sanitizedClientSecretSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const clientSecretData = await server.services.identityUa.getUniversalAuthClientSecretById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId,
+        clientSecretId: req.params.clientSecretId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: clientSecretData.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET,
+          metadata: {
+            identityId: clientSecretData.identityId,
+            clientSecretId: clientSecretData.id
+          }
+        }
+      });
+
       return { clientSecretData };
     }
   });
@@ -421,7 +521,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const clientSecretData = await server.services.identityUa.revokeUaClientSecret({
+      const clientSecretData = await server.services.identityUa.revokeUniversalAuthClientSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

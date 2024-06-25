@@ -9,6 +9,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TTokenDALFactory } from "../auth-token/auth-token-dal";
@@ -201,7 +202,10 @@ export const authLoginServiceFactory = ({
       const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
       authMethod = decodedProviderToken.authMethod;
-      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId) {
+      if (
+        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+        decodedProviderToken.orgId
+      ) {
         organizationId = decodedProviderToken.orgId;
       }
     }
@@ -258,7 +262,13 @@ export const authLoginServiceFactory = ({
     });
     // from password decrypt the private key
     if (password) {
-      const privateKey = await getUserPrivateKey(password, userEnc);
+      const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
+        logger.error(
+          err,
+          `loginExchangeClientProof: private key generation failed for [userId=${user.id}] and [email=${user.email}] `
+        );
+        return "";
+      });
       const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
       const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
@@ -344,9 +354,12 @@ export const authLoginServiceFactory = ({
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
     const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId);
+    const selectedOrg = await orgDAL.findById(organizationId);
 
     if (!hasOrganizationMembership) {
-      throw new UnauthorizedError({ message: "User does not have access to the organization" });
+      throw new UnauthorizedError({
+        message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
     }
 
     await tokenDAL.incrementTokenSessionVersion(user.id, decodedToken.tokenVersionId);
@@ -571,7 +584,8 @@ export const authLoginServiceFactory = ({
     const { authMethod, userName } = decodedProviderToken;
     if (!userName) throw new BadRequestError({ message: "Missing user name" });
     const organizationId =
-      (isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId
+      (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+      decodedProviderToken.orgId
         ? decodedProviderToken.orgId
         : undefined;
 

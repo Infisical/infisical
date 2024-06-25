@@ -7,6 +7,7 @@ import { IdentityAuthMethod, SecretKeyEncoding, TIdentityKubernetesAuthsUpdate }
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import {
   decryptSymmetric,
@@ -16,11 +17,11 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 
-import { AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
@@ -32,13 +33,14 @@ import {
   TCreateTokenReviewResponse,
   TGetKubernetesAuthDTO,
   TLoginKubernetesAuthDTO,
+  TRevokeKubernetesAuthDTO,
   TUpdateKubernetesAuthDTO
 } from "./identity-kubernetes-auth-types";
 
 type TIdentityKubernetesAuthServiceFactoryDep = {
   identityKubernetesAuthDAL: Pick<
     TIdentityKubernetesAuthDALFactory,
-    "create" | "findOne" | "transaction" | "updateById"
+    "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "findById">;
@@ -533,10 +535,54 @@ export const identityKubernetesAuthServiceFactory = ({
     return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.orgId };
   };
 
+  const revokeIdentityKubernetesAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeKubernetesAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
+      throw new BadRequestError({
+        message: "The identity does not have kubenetes auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to revoke kubenetes auth of identity with more privileged role"
+      });
+
+    const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
+      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
+    });
+    return revokedIdentityKubernetesAuth;
+  };
+
   return {
     login,
     attachKubernetesAuth,
     updateKubernetesAuth,
-    getKubernetesAuth
+    getKubernetesAuth,
+    revokeIdentityKubernetesAuth
   };
 };

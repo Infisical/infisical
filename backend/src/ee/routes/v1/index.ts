@@ -8,6 +8,7 @@ import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
+import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
@@ -64,7 +65,14 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/pki" }
   );
 
-  await server.register(registerSamlRouter, { prefix: "/sso" });
+  await server.register(
+    async (ssoRouter) => {
+      await ssoRouter.register(registerSamlRouter);
+      await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
+    },
+    { prefix: "/sso" }
+  );
+
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });

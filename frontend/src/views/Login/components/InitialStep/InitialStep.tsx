@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -16,7 +16,7 @@ import { Button, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 
-import { navigateUserToSelectOrg } from "../../Login.utils";
+import { useNavigateToSelectOrganization } from "../../Login.utils";
 
 type Props = {
   setStep: (step: number) => void;
@@ -39,13 +39,27 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const captchaRef = useRef<HCaptcha>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
+  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
+
+  const redirectToSaml = (orgSlug: string) => {
+    const callbackPort = queryParams.get("callback_port");
+    const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
+      callbackPort ? `?callback_port=${callbackPort}` : ""
+    }`;
+    router.push(redirectUrl);
+  };
+
   useEffect(() => {
-      if (serverDetails?.samlDefaultOrgSlug){
-        const callbackPort = queryParams.get("callback_port");
-        const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${serverDetails?.samlDefaultOrgSlug}${callbackPort ? `?callback_port=${callbackPort}` : ""}`
-        router.push(redirectUrl);
-      }
+    if (serverDetails?.samlDefaultOrgSlug) redirectToSaml(serverDetails.samlDefaultOrgSlug);
   }, [serverDetails?.samlDefaultOrgSlug]);
+
+  const handleSaml = useCallback((step: number) => {
+    if (config.defaultAuthOrgSlug) {
+      redirectToSaml(config.defaultAuthOrgSlug);
+    } else {
+      setStep(step);
+    }
+  }, []);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -73,7 +87,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             return;
           }
 
-          navigateUserToSelectOrg(router, callbackPort!);
+          navigateToSelectOrganization(callbackPort!);
         } else {
           setLoginError(true);
           createNotification({
@@ -98,7 +112,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             return;
           }
 
-          navigateUserToSelectOrg(router);
+          navigateToSelectOrganization();
 
           // case: login does not require MFA step
           createNotification({
@@ -209,12 +223,25 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           colorSchema="primary"
           variant="outline_bg"
           onClick={() => {
-            setStep(2);
+            handleSaml(2);
           }}
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
           className="mx-0 h-10 w-full"
         >
           Continue with SAML
+        </Button>
+      </div>
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <Button
+          colorSchema="primary"
+          variant="outline_bg"
+          onClick={() => {
+            setStep(3);
+          }}
+          leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+          className="mx-0 h-10 w-full"
+        >
+          Continue with OIDC
         </Button>
       </div>
       <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">

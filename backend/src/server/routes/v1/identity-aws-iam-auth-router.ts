@@ -266,4 +266,51 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       return { identityAwsAuth };
     }
   });
+
+  server.route({
+    method: "DELETE",
+    url: "/aws-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete AWS Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(AWS_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityAwsAuth: IdentityAwsAuthsSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityAwsAuth = await server.services.identityAwsAuth.revokeIdentityAwsAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityAwsAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_AWS_AUTH,
+          metadata: {
+            identityId: identityAwsAuth.identityId
+          }
+        }
+      });
+
+      return { identityAwsAuth };
+    }
+  });
 };

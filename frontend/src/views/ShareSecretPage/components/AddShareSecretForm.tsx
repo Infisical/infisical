@@ -6,15 +6,7 @@ import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 
 const schema = yup.object({
@@ -32,7 +24,8 @@ export const AddShareSecretForm = ({
   handleSubmit,
   control,
   isSubmitting,
-  setNewSharedSecret
+  setNewSharedSecret,
+  isInputDisabled
 }: {
   isPublic: boolean;
   inModal: boolean;
@@ -40,6 +33,7 @@ export const AddShareSecretForm = ({
   control: any;
   isSubmitting: boolean;
   setNewSharedSecret: (value: string) => void;
+  isInputDisabled?: boolean;
 }) => {
   const publicSharedSecretCreator = useCreatePublicSharedSecret();
   const privateSharedSecretCreator = useCreateSharedSecret();
@@ -125,37 +119,39 @@ export const AddShareSecretForm = ({
   };
   return (
     <form className="flex w-full flex-col items-center" onSubmit={handleSubmit(onFormSubmit)}>
-      <div className={`${!inModal && "border border-mineshaft-600 bg-mineshaft-800 p-4"}`}>
+      <div
+        className={`${!inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"}`}
+      >
         <div className="mb-4">
           <Controller
             control={control}
             name="value"
-            defaultValue=""
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Shared Secret"
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <SecretInput
-                  isVisible
+                <textarea
+                  disabled={isInputDisabled}
+                  placeholder="Enter sensitive data to share via an encrypted link..."
                   {...field}
-                  containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2 text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 min-h-[70px]"
+                  className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 py-1.5 px-2 text-bunker-300 outline-none transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50 group-hover:mr-2"
                 />
               </FormControl>
             )}
           />
         </div>
         <div className="flex w-full flex-row justify-center">
-          <div className="w-2/7 flex">
+          <div className="flex hidden sm:block sm:w-2/6">
             <Controller
               control={control}
               name="expiresAfterViews"
-              defaultValue={6}
+              defaultValue={1}
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   className="mb-4 w-full"
-                  label="Expires After Views"
+                  label="Expires after Views"
                   isError={Boolean(error)}
                   errorText="Please enter a valid number of views"
                 >
@@ -164,16 +160,16 @@ export const AddShareSecretForm = ({
               )}
             />
           </div>
-          <div className="w-1/7 flex items-center justify-center px-2">
+          <div className="sm:w-1/7 mx-auto hidden items-center justify-center px-2 sm:flex">
             <p className="px-4 text-sm text-gray-400">OR</p>
           </div>
-          <div className="w-4/7 flex">
-            <div className="flex w-full">
-              <div className="flex w-2/5 w-full justify-center">
+          <div className="flex w-full justify-end sm:w-3/6">
+            <div className="flex justify-start">
+              <div className="flex w-full justify-center pr-2">
                 <Controller
                   control={control}
                   name="expiresInValue"
-                  defaultValue={6}
+                  defaultValue={10}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Expires after Time"
@@ -185,7 +181,7 @@ export const AddShareSecretForm = ({
                   )}
                 />
               </div>
-              <div className="flex w-3/5 w-full justify-center">
+              <div className="flex justify-center">
                 <Controller
                   control={control}
                   name="expiresInUnit"
@@ -196,7 +192,7 @@ export const AddShareSecretForm = ({
                         defaultValue={field.value}
                         {...field}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full"
+                        className="w-full border border-mineshaft-600"
                       >
                         {expirationUnitsAndActions.map(({ unit }) => (
                           <SelectItem value={unit} key={unit}>
@@ -211,7 +207,7 @@ export const AddShareSecretForm = ({
             </div>
           </div>
         </div>
-        <div className={`flex items-center ${!inModal && "justify-left pt-1"}`}>
+        <div className={`flex items-center ${!inModal && "justify-left pt-2"}`}>
           <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
             {inModal ? "Create" : "Share Secret"}
           </Button>

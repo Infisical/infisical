@@ -23,6 +23,8 @@ import {
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -30,6 +32,7 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
@@ -84,6 +87,8 @@ type TLdapConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -103,7 +108,9 @@ export const ldapConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   permissionService,
-  licenseService
+  licenseService,
+  tokenService,
+  smtpService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -509,7 +516,7 @@ export const ldapConfigServiceFactory = ({
         if (!orgMembership) {
           await orgMembershipDAL.create(
             {
-              userId: userAlias.userId,
+              userId: newUser.id,
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
@@ -641,6 +648,22 @@ export const ldapConfigServiceFactory = ({
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
     );
+
+    if (user.email && !user.isEmailVerified) {
+      const token = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: user.id
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [user.email],
+        substitutions: {
+          code: token
+        }
+      });
+    }
 
     return { isUserCompleted, providerAuthToken };
   };

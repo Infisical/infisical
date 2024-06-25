@@ -9,7 +9,7 @@ import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
 import { registerIdentityRouter } from "./identity-router";
-import { registerIdentityUaRouter } from "./identity-ua";
+import { registerIdentityUaRouter } from "./identity-universal-auth-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";

@@ -5,9 +5,10 @@ import { Button, Input } from "@app/components/v2";
 
 type Props = {
   setStep: (step: number) => void;
+  type: "SAML" | "OIDC";
 };
 
-export const SAMLSSOStep = ({ setStep }: Props) => {
+export const SSOStep = ({ setStep, type }: Props) => {
   const [ssoIdentifier, setSSOIdentifier] = useState("");
   const { t } = useTranslation();
 
@@ -16,21 +17,30 @@ export const SAMLSSOStep = ({ setStep }: Props) => {
   const handleSubmission = (e: React.FormEvent) => {
     e.preventDefault();
     const callbackPort = queryParams.get("callback_port");
-    window.open(
-      `/api/v1/sso/redirect/saml2/organizations/${ssoIdentifier}${
-        callbackPort ? `?callback_port=${callbackPort}` : ""
-      }`
-    );
+    if (type === "SAML") {
+      window.open(
+        `/api/v1/sso/redirect/saml2/organizations/${ssoIdentifier}${
+          callbackPort ? `?callback_port=${callbackPort}` : ""
+        }`
+      );
+    } else {
+      window.open(
+        `/api/v1/sso/oidc/login?orgSlug=${ssoIdentifier}${
+          callbackPort ? `&callbackPort=${callbackPort}` : ""
+        }`
+      );
+    }
+
     window.close();
   };
 
   return (
     <div className="mx-auto w-full max-w-md md:px-6">
-      <p className="mx-auto mb-6 mb-8 flex w-max justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <p className="mx-auto mb-8 flex w-max justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         What&apos;s your organization slug?
       </p>
       <form onSubmit={handleSubmission}>
-        <div className="relative mx-auto flex max-h-24 w-1/4 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
+        <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
           <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
             <Input
               value={ssoIdentifier}
@@ -44,7 +54,7 @@ export const SAMLSSOStep = ({ setStep }: Props) => {
             />
           </div>
         </div>
-        <div className="mx-auto mt-4 flex w-1/4 w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-[22rem] lg:w-1/6">
+        <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-[22rem] lg:w-1/6">
           <Button
             type="submit"
             colorSchema="primary"
@@ -52,7 +62,7 @@ export const SAMLSSOStep = ({ setStep }: Props) => {
             isFullWidth
             className="h-14"
           >
-            Continue with SAML
+            Continue with {type}
           </Button>
         </div>
       </form>

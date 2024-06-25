@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 
 import { isLoggedIn } from "@app/reactQuery";
 
-import { InitialStep, MFAStep, SAMLSSOStep } from "./components";
-import { navigateUserToSelectOrg } from "./Login.utils";
+import { InitialStep, MFAStep, SSOStep } from "./components";
+import { useNavigateToSelectOrganization } from "./Login.utils";
 
 export const Login = () => {
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
 
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -21,10 +20,10 @@ export const Login = () => {
         const callbackPort = queryParams?.get("callback_port");
         // case: a callback port is set, meaning it's a cli login request: redirect to select org with callback port
         if (callbackPort) {
-          navigateUserToSelectOrg(router, callbackPort);
+          navigateToSelectOrganization(callbackPort);
         } else {
           // case: no callback port, meaning it's a regular login request: redirect to select org
-          navigateUserToSelectOrg(router);
+          navigateToSelectOrganization();
         }
       } catch (error) {
         console.log("Error - Not logged in yet");
@@ -57,7 +56,9 @@ export const Login = () => {
           />
         );
       case 2:
-        return <SAMLSSOStep setStep={setStep} />;
+        return <SSOStep setStep={setStep} type="SAML" />;
+      case 3:
+        return <SSOStep setStep={setStep} type="OIDC" />;
       default:
         return <div />;
     }

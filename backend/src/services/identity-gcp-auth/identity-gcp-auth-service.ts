@@ -5,11 +5,12 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
@@ -21,11 +22,12 @@ import {
   TGcpIdentityDetails,
   TGetGcpAuthDTO,
   TLoginGcpAuthDTO,
+  TRevokeGcpAuthDTO,
   TUpdateGcpAuthDTO
 } from "./identity-gcp-auth-types";
 
 type TIdentityGcpAuthServiceFactoryDep = {
-  identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById">;
+  identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
@@ -315,10 +317,54 @@ export const identityGcpAuthServiceFactory = ({
     return { ...identityGcpAuth, orgId: identityMembershipOrg.orgId };
   };
 
+  const revokeIdentityGcpAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeGcpAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
+      throw new BadRequestError({
+        message: "The identity does not have gcp auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to revoke gcp auth of identity with more privileged role"
+      });
+
+    const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
+      const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
+      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.orgId };
+    });
+    return revokedIdentityGcpAuth;
+  };
+
   return {
     login,
     attachGcpAuth,
     updateGcpAuth,
-    getGcpAuth
+    getGcpAuth,
+    revokeIdentityGcpAuth
   };
 };

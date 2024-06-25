@@ -25,6 +25,10 @@ Used to configure platform-specific security and operational settings
   https://app.infisical.com).
 </ParamField>
 
+<ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
+  Telemetry helps us improve Infisical but if you want to dsiable it you may set this to `false`.
+</ParamField>
+
 ## Data Layer
 
 The platform utilizes Postgres to persist all of its data and Redis for caching and backgroud tasks

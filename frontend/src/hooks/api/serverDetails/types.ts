@@ -4,5 +4,5 @@ export type ServerStatus = {
   emailConfigured: boolean;
   secretScanningConfigured: boolean;
   redisConfigured: boolean;
-  samlDefaultOrgSlug: boolean
+  samlDefaultOrgSlug: string;
 };

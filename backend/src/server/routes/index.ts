@@ -32,6 +32,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -250,6 +252,7 @@ export const registerRoutes = async (
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
 
+  const oidcConfigDAL = oidcConfigDALFactory(db);
   const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
   const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
@@ -392,7 +395,9 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     permissionService,
-    licenseService
+    licenseService,
+    tokenService,
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory({
@@ -904,6 +909,19 @@ export const registerRoutes = async (
     secretSharingDAL
   });
 
+  const oidcService = oidcConfigServiceFactory({
+    orgDAL,
+    orgMembershipDAL,
+    userDAL,
+    userAliasDAL,
+    licenseService,
+    tokenService,
+    smtpService,
+    orgBotDAL,
+    permissionService,
+    oidcConfigDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -924,6 +942,7 @@ export const registerRoutes = async (
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,
+    oidc: oidcService,
     apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,

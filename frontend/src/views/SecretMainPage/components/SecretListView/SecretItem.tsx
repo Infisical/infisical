@@ -61,6 +61,7 @@ type Props = {
   onCreateTag: () => void;
   environment: string;
   secretPath: string;
+  handleSecretShare: () => void;
 };
 
 export const SecretItem = memo(
@@ -75,7 +76,8 @@ export const SecretItem = memo(
     onCreateTag,
     onToggleSecretSelect,
     environment,
-    secretPath
+    secretPath,
+    handleSecretShare
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
@@ -420,8 +422,9 @@ export const SecretItem = memo(
                       <Tooltip
                         content={
                           secretReminderRepeatDays && secretReminderRepeatDays > 0
-                            ? `Every ${secretReminderRepeatDays} day${Number(secretReminderRepeatDays) > 1 ? "s" : ""
-                            }
+                            ? `Every ${secretReminderRepeatDays} day${
+                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                              }
                           `
                             : "Reminder"
                         }
@@ -461,6 +464,20 @@ export const SecretItem = memo(
                         </PopoverTrigger>
                       )}
                     </ProjectPermissionCan>
+                    <IconButton
+                      className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
+                      variant="plain"
+                      size="md"
+                      ariaLabel="share-secret"
+                      onClick={handleSecretShare}
+                    >
+                      <Tooltip content="Share Secret">
+                        <FontAwesomeSymbol
+                          className="h-3.5 w-3.5"
+                          symbolName={FontAwesomeSpriteName.ShareSecret}
+                        />
+                      </Tooltip>
+                    </IconButton>
                     <PopoverContent
                       className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
                       sticky="always"

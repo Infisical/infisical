@@ -165,7 +165,8 @@ export const authSignupServiceFactory = ({
       protectedKeyTag,
       encryptedPrivateKey,
       iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag
+      tag: encryptedPrivateKeyTag,
+      encryptionVersion: 2
     });
     const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
@@ -192,7 +193,10 @@ export const authSignupServiceFactory = ({
         tx
       );
       // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
-      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && organizationId) {
+      if (
+        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod as AuthMethod)) &&
+        organizationId
+      ) {
         const [pendingOrgMembership] = await orgDAL.findMembership({
           [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
           status: OrgMembershipStatus.Invited,
@@ -325,7 +329,8 @@ export const authSignupServiceFactory = ({
       protectedKeyTag,
       encryptedPrivateKey,
       iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag
+      tag: encryptedPrivateKeyTag,
+      encryptionVersion: 2
     });
     const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
