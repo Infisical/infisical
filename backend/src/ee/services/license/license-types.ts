@@ -31,8 +31,6 @@ export type TFeatureSet = {
   dynamicSecret: false;
   memberLimit: null;
   membersUsed: 0;
-  identityLimit: null;
-  identitiesUsed: 0;
   environmentLimit: null;
   environmentsUsed: 0;
   secretVersioning: true;
