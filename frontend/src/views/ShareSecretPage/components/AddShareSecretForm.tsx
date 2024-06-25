@@ -98,7 +98,7 @@ export const AddShareSecretForm = ({
       );
 
       createNotification({
-        text: "Successfully created a shared secret",
+        text: "Successfully shared selected secret",
         type: "success"
       });
     } catch (err) {
