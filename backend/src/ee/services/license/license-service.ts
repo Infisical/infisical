@@ -155,7 +155,6 @@ export const licenseServiceFactory = ({
           LICENSE_SERVER_CLOUD_PLAN_TTL,
           JSON.stringify(currentPlan)
         );
-
         return currentPlan;
       }
     } catch (error) {
@@ -205,22 +204,16 @@ export const licenseServiceFactory = ({
       const org = await orgDAL.findOrgById(orgId);
       if (!org) throw new BadRequestError({ message: "Org not found" });
 
-      const quantity = await licenseDAL.countOfOrgMembers(orgId);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId);
+      const count = await licenseDAL.countOfOrgMembers(orgId);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity,
-          quantityIdentities
+          quantity: count
         });
       }
       await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null);
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
-      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-        usedSeats,
-        usedIdentitySeats
-      });
+      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
     }
     await refreshPlan(orgId);
   };
