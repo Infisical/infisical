@@ -8,7 +8,7 @@ Prerequisites:
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
 <AccordionGroup>
-  <Accordion title="Standard">
+  <Accordion title="Push secrets to Bitbucket from Infisical">
     <Steps>
       <Step title="Authorize Infisical for Bitbucket">
         Navigate to your project's integrations tab in Infisical.
@@ -19,12 +19,6 @@ Prerequisites:
 
         ![integrations bitbucket authorization](../../images/integrations/bitbucket/integrations-bitbucket-auth.png)
 
-        <Info>
-          If this is your project's first cloud integration, then you'll have to grant
-          Infisical access to your project's environment variables. Although this step
-          breaks E2EE, it's necessary for Infisical to sync the environment variables to
-          the cloud platform.
-        </Info>
       </Step>
       <Step title="Start integration">
         Select which Infisical environment secrets you want to sync to which Bitbucket repo and press start integration to start syncing secrets to the repo.
@@ -34,16 +28,10 @@ Prerequisites:
     </Steps>
 
   </Accordion>
-  <Accordion title="Pipeline">
+  <Accordion title="Pull secrets in Bitbucket pipelines from Infisical">
     <Steps>
       <Step title="Configure Infisical Access">
         Configure a [Machine Identity](https://infisical.com/docs/documentation/platform/identities/universal-auth) for your project and give it permissions to read secrets from your desired Infisical projects and environments.
-        <Info>
-          If this is your project's first cloud integration, then you'll have to grant
-          Infisical access to your project's environment variables. Although this step
-          breaks E2EE, it's necessary for Infisical to sync the environment variables to
-          the cloud platform.
-        </Info>
       </Step>
       <Step title="Initialize Bitbucket variables">
       Create Bitbucket variables (can be either workspace, repository, or deployment-level) to store Machine Identity Client ID and Client Secret.
