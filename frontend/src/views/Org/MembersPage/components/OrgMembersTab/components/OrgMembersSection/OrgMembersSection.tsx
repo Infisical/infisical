@@ -23,7 +23,6 @@ import { AddOrgMemberModal } from "./AddOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
-  
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
@@ -39,9 +38,13 @@ export const OrgMembersSection = () => {
 
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
 
-  const isMoreUsersNotAllowed = subscription?.memberLimit
-    ? subscription.membersUsed >= subscription.memberLimit
-    : false;
+  const isMoreUsersAllowed = subscription?.memberLimit
+    ? subscription.membersUsed < subscription.memberLimit
+    : true;
+
+  const isMoreIdentitiesAllowed = subscription?.identityLimit
+    ? subscription.identitiesUsed < subscription.identityLimit
+    : true;
 
   const handleAddMemberModal = () => {
     if (currentOrg?.authEnforced) {
@@ -52,13 +55,14 @@ export const OrgMembersSection = () => {
       return;
     }
 
-    if (isMoreUsersNotAllowed) {
+    if (!isMoreUsersAllowed || !isMoreIdentitiesAllowed) {
       handlePopUpOpen("upgradePlan", {
         description: "You can add more members if you upgrade your Infisical plan."
       });
-    } else {
-      handlePopUpOpen("addMember");
+      return;
     }
+
+    handlePopUpOpen("addMember");
   };
 
   const onRemoveMemberSubmit = async (orgMembershipId: string) => {
