@@ -24,10 +24,12 @@ import {
 import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
+import { AuthPanel } from "./AuthPanel";
 import { RateLimitPanel } from "./RateLimitPanel";
 
 enum TabSections {
   Settings = "settings",
+  Auth = "auth",
   RateLimit = "rate-limit"
 }
 
@@ -131,6 +133,7 @@ export const AdminDashboardPage = () => {
             <TabList>
               <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
+                <Tab value={TabSections.Auth}>Auth</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
               </div>
             </TabList>
@@ -203,7 +206,8 @@ export const AdminDashboardPage = () => {
                     Default organization
                   </div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
-                    Select the default organization you want to set for SAML/LDAP based logins. When selected, user logins will be automatically scoped to the selected organization.
+                    Select the default organization you want to set for SAML/LDAP based logins. When
+                    selected, user logins will be automatically scoped to the selected organization.
                   </div>
                   <Controller
                     control={control}
@@ -309,6 +313,9 @@ export const AdminDashboardPage = () => {
                   Save
                 </Button>
               </form>
+            </TabPanel>
+            <TabPanel value={TabSections.Auth}>
+              <AuthPanel />
             </TabPanel>
             <TabPanel value={TabSections.RateLimit}>
               <RateLimitPanel />
