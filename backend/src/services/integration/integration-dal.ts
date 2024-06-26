@@ -120,7 +120,10 @@ export const integrationDALFactory = (db: TDbClient) => {
         db.ref("accessExpiresAt").withSchema(TableName.IntegrationAuth).as("accessExpiresAtAu"),
         db.ref("metadata").withSchema(TableName.IntegrationAuth).as("metadataAu"),
         db.ref("algorithm").withSchema(TableName.IntegrationAuth).as("algorithmAu"),
-        db.ref("keyEncoding").withSchema(TableName.IntegrationAuth).as("keyEncodingAu")
+        db.ref("keyEncoding").withSchema(TableName.IntegrationAuth).as("keyEncodingAu"),
+        db.ref("awsAssumeIamRoleArnCipherText").withSchema(TableName.IntegrationAuth),
+        db.ref("awsAssumeIamRoleArnIV").withSchema(TableName.IntegrationAuth),
+        db.ref("awsAssumeIamRoleArnTag").withSchema(TableName.IntegrationAuth)
       );
     return docs.map(
       ({
@@ -146,6 +149,9 @@ export const integrationDALFactory = (db: TDbClient) => {
         algorithmAu: algorithm,
         keyEncodingAu: keyEncoding,
         accessExpiresAtAu: accessExpiresAt,
+        awsAssumeIamRoleArnIV,
+        awsAssumeIamRoleArnCipherText,
+        awsAssumeIamRoleArnTag,
         ...el
       }) => ({
         ...el,
@@ -174,7 +180,10 @@ export const integrationDALFactory = (db: TDbClient) => {
           metadata,
           algorithm,
           keyEncoding,
-          accessExpiresAt
+          accessExpiresAt,
+          awsAssumeIamRoleArnIV,
+          awsAssumeIamRoleArnCipherText,
+          awsAssumeIamRoleArnTag
         }
       })
     );

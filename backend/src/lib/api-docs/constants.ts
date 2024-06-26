@@ -692,6 +692,7 @@ export const INTEGRATION_AUTH = {
     integration: "The slug of integration for the auth object.",
     accessId: "The unique authorized access id of the external integration provider.",
     accessToken: "The unique authorized access token of the external integration provider.",
+    awsAssumeIamRoleArn: "The AWS IAM Role to be assumed by Infisical",
     url: "",
     namespace: "",
     refreshToken: "The refresh token for integration authorization."

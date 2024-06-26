@@ -29,7 +29,10 @@ export const IntegrationAuthsSchema = z.object({
   keyEncoding: z.string(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  awsAssumeIamRoleArnCipherText: z.string().nullable().optional(),
+  awsAssumeIamRoleArnIV: z.string().nullable().optional(),
+  awsAssumeIamRoleArnTag: z.string().nullable().optional()
 });
 
 export type TIntegrationAuths = z.infer<typeof IntegrationAuthsSchema>;

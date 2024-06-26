@@ -240,6 +240,12 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         integration: z.string().trim().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.integration),
         accessId: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessId),
         accessToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.accessToken),
+        awsAssumeIamRoleArn: z
+          .string()
+          .url()
+          .trim()
+          .optional()
+          .describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.awsAssumeIamRoleArn),
         url: z.string().url().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.url),
         namespace: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.namespace),
         refreshToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.refreshToken)
