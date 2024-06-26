@@ -20,6 +20,7 @@ const LDAPFormSchema = z.object({
   bindPass: z.string().default(""),
   searchBase: z.string().default(""),
   searchFilter: z.string().default(""),
+  uniqueUserAttribute: z.string().default(""),
   groupSearchBase: z.string().default(""),
   groupSearchFilter: z.string().default(""),
   caCert: z.string().optional()
@@ -53,6 +54,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
   const watchGroupSearchBase = watch("groupSearchBase");
   const watchGroupSearchFilter = watch("groupSearchFilter");
   const watchCaCert = watch("caCert");
+  const watchUniqueUserAttribute = watch("uniqueUserAttribute");
 
   useEffect(() => {
     if (data) {
@@ -64,7 +66,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         searchFilter: data?.searchFilter ?? "",
         groupSearchBase: data?.groupSearchBase ?? "",
         groupSearchFilter: data?.groupSearchFilter ?? "",
-        caCert: data?.caCert ?? ""
+        caCert: data?.caCert ?? "",
+        uniqueUserAttribute: data?.uniqueUserAttribute ?? ""
       });
     }
   }, [data]);
@@ -73,6 +76,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
     url,
     bindDN,
     bindPass,
+    uniqueUserAttribute,
     searchBase,
     searchFilter,
     groupSearchBase,
@@ -92,6 +96,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindPass,
           searchBase,
           searchFilter,
+          uniqueUserAttribute,
           groupSearchBase,
           groupSearchFilter,
           caCert
@@ -105,6 +110,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
           bindPass,
           searchBase,
           searchFilter,
+          uniqueUserAttribute,
           groupSearchBase,
           groupSearchFilter,
           caCert
@@ -138,6 +144,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
         searchFilter: watchSearchFilter,
         groupSearchBase: watchGroupSearchBase,
         groupSearchFilter: watchGroupSearchFilter,
+        uniqueUserAttribute: watchUniqueUserAttribute,
         caCert: watchCaCert,
         shouldCloseModal: false
       });
@@ -214,6 +221,19 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
                 isError={Boolean(error)}
               >
                 <Input {...field} placeholder="ou=people,dc=acme,dc=com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="uniqueUserAttribute"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Unique User Attribute (Optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input {...field} placeholder="uidNumber" />
               </FormControl>
             )}
           />
