@@ -75,7 +75,7 @@ export const useUpdateLDAPConfig = () => {
       url?: string;
       bindDN?: string;
       bindPass?: string;
-      uniqueUserAttribute: string;
+      uniqueUserAttribute?: string;
       searchBase?: string;
       searchFilter?: string;
       groupSearchBase?: string;

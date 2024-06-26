@@ -67,6 +67,7 @@ export const OrgLDAPSection = (): JSX.Element => {
             url: "",
             bindDN: "",
             bindPass: "",
+            uniqueUserAttribute: "",
             searchBase: "",
             searchFilter: "",
             groupSearchBase: "",
