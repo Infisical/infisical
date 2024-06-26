@@ -94,7 +94,6 @@ export const OrgLDAPSection = (): JSX.Element => {
 
   return (
     <>
-      <hr className="border-mineshaft-600" />
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">LDAP</h2>
@@ -151,6 +150,7 @@ export const OrgLDAPSection = (): JSX.Element => {
           </p>
         </div>
       )}
+      <hr className="border-mineshaft-600" />
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
