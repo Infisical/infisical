@@ -73,6 +73,14 @@ export const AuditLogsRetentionSection = () => {
     }
   };
 
+  // render only for dedicated/self-hosted instances of Infisical
+  if (
+    window.location.origin.includes("https://app.infisical.com") ||
+    window.location.origin.includes("https://gamma.infisical.com")
+  ) {
+    return null;
+  }
+
   const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
   return (
     <>
