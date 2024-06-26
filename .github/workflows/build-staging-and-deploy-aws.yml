@@ -56,7 +56,7 @@ jobs:
           # Learn more about [Twingate Services](https://docs.twingate.com/docs/services)
           #
           # Required
-          service-key: ${{ secrets.TWINGATE_GAMMA_SERVICE_KEY }}
+          service-key: ${{ secrets.TWINGATE_SERVICE_KEY }}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Setup Node.js environment
