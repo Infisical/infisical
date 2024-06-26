@@ -222,7 +222,8 @@
           "group": "Guides",
           "pages": [
             "self-hosting/configuration/schema-migrations",
-            "self-hosting/guides/mongo-to-postgres"
+            "self-hosting/guides/mongo-to-postgres",
+            "self-hosting/guides/custom-certificates"
           ]
         },
         {
