@@ -299,6 +299,7 @@
           "pages": [
             "integrations/cloud/aws-parameter-store",
             "integrations/cloud/aws-secret-manager",
+            "integrations/cloud/aws-secret-manager-assume-role",
             "integrations/cloud/aws-amplify"
           ]
         },
