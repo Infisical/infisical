@@ -11,7 +11,7 @@ import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -41,6 +41,7 @@ import {
   TListProjectCasDTO,
   TListProjectCertsDTO,
   TToggleProjectAutoCapitalizationDTO,
+  TUpdateAuditLogsRetentionDTO,
   TUpdateProjectDTO,
   TUpdateProjectNameDTO,
   TUpdateProjectVersionLimitDTO,
@@ -446,6 +447,43 @@ export const projectServiceFactory = ({
     return projectDAL.updateById(project.id, { pitVersionLimit });
   };
 
+  const updateAuditLogsRetention = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    auditLogsRetentionDays,
+    workspaceSlug
+  }: TUpdateAuditLogsRetentionDTO) => {
+    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found."
+      });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!hasRole(ProjectMembershipRole.Admin)) {
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+    }
+
+    const plan = await licenseService.getPlan(project.orgId);
+    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+      throw new BadRequestError({
+        message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
+      });
+    }
+
+    return projectDAL.updateById(project.id, { auditLogsRetentionDays });
+  };
+
   const updateName = async ({
     projectId,
     actor,
@@ -621,6 +659,7 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
-    updateVersionLimit
+    updateVersionLimit,
+    updateAuditLogsRetention
   };
 };

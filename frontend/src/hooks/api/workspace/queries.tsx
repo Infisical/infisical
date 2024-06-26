@@ -22,6 +22,7 @@ import {
   ToggleAutoCapitalizationDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
+  UpdateAuditLogsRetentionDTO,
   UpdateEnvironmentDTO,
   UpdatePitVersionLimitDTO,
   Workspace
@@ -276,6 +277,21 @@ export const useUpdateWorkspaceVersionLimit = () => {
     mutationFn: ({ projectSlug, pitVersionLimit }) => {
       return apiRequest.put(`/api/v1/workspace/${projectSlug}/version-limit`, {
         pitVersionLimit
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
+export const useUpdateWorkspaceAuditLogsRetention = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, UpdateAuditLogsRetentionDTO>({
+    mutationFn: ({ projectSlug, auditLogsRetentionDays }) => {
+      return apiRequest.put(`/api/v1/workspace/${projectSlug}/audit-logs-retention`, {
+        auditLogsRetentionDays
       });
     },
     onSuccess: () => {

@@ -1,3 +1,4 @@
+import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
 import { AutoCapitalizationSection } from "../AutoCapitalizationSection";
 import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
@@ -17,6 +18,7 @@ export const ProjectGeneralTab = () => {
       <AutoCapitalizationSection />
       <E2EESection />
       <PointInTimeVersionLimitSection />
+      <AuditLogsRetentionSection />
       <BackfillSecretReferenceSecretion />
       <RebuildSecretIndicesSection />
       <DeleteProjectSection />
