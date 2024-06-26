@@ -62,6 +62,12 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     }
   }, []);
 
+  const shouldDisplayLoginMethod = useCallback(
+    (method: LoginMethod) =>
+      !config.enabledLoginMethods || config.enabledLoginMethods.includes(method),
+    [config]
+  );
+
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -163,188 +169,173 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       <h1 className="mb-8 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Login to Infisical
       </h1>
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.GOOGLE) && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
+      {shouldDisplayLoginMethod(LoginMethod.GOOGLE) && (
+        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              const callbackPort = queryParams.get("callback_port");
 
-                window.open(
-                  `/api/v1/sso/redirect/google${
-                    callbackPort ? `?callback_port=${callbackPort}` : ""
-                  }`
-                );
-                window.close();
-              }}
-              leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              {t("login.continue-with-google")}
-            </Button>
-          </div>
-        ))}
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.GITHUB) && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
+              window.open(
+                `/api/v1/sso/redirect/google${callbackPort ? `?callback_port=${callbackPort}` : ""}`
+              );
+              window.close();
+            }}
+            leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            {t("login.continue-with-google")}
+          </Button>
+        </div>
+      )}
+      {shouldDisplayLoginMethod(LoginMethod.GITHUB) && (
+        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              const callbackPort = queryParams.get("callback_port");
 
-                window.open(
-                  `/api/v1/sso/redirect/github${
-                    callbackPort ? `?callback_port=${callbackPort}` : ""
-                  }`
-                );
+              window.open(
+                `/api/v1/sso/redirect/github${callbackPort ? `?callback_port=${callbackPort}` : ""}`
+              );
 
-                window.close();
-              }}
-              leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with GitHub
-            </Button>
-          </div>
-        ))}
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.GITLAB) && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
+              window.close();
+            }}
+            leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with GitHub
+          </Button>
+        </div>
+      )}
+      {shouldDisplayLoginMethod(LoginMethod.GITLAB) && (
+        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              const callbackPort = queryParams.get("callback_port");
 
-                window.open(
-                  `/api/v1/sso/redirect/gitlab${
-                    callbackPort ? `?callback_port=${callbackPort}` : ""
-                  }`
-                );
+              window.open(
+                `/api/v1/sso/redirect/gitlab${callbackPort ? `?callback_port=${callbackPort}` : ""}`
+              );
 
-                window.close();
-              }}
-              leftIcon={<FontAwesomeIcon icon={faGitlab} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with GitLab
-            </Button>
-          </div>
-        ))}
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.SAML) && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                handleSaml(2);
-              }}
-              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with SAML
-            </Button>
-          </div>
-        ))}
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.OIDC) && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                setStep(3);
-              }}
-              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with OIDC
-            </Button>
-          </div>
-        ))}
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.LDAP) && (
-          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-            <Button
-              colorSchema="primary"
-              variant="outline_bg"
-              onClick={() => {
-                router.push("/login/ldap");
-              }}
-              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-              className="mx-0 h-10 w-full"
-            >
-              Continue with LDAP
-            </Button>
-          </div>
-        ))}
+              window.close();
+            }}
+            leftIcon={<FontAwesomeIcon icon={faGitlab} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with GitLab
+          </Button>
+        </div>
+      )}
+      {shouldDisplayLoginMethod(LoginMethod.SAML) && (
+        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              handleSaml(2);
+            }}
+            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with SAML
+          </Button>
+        </div>
+      )}
+      {shouldDisplayLoginMethod(LoginMethod.OIDC) && (
+        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              setStep(3);
+            }}
+            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with OIDC
+          </Button>
+        </div>
+      )}
+      {shouldDisplayLoginMethod(LoginMethod.LDAP) && (
+        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            onClick={() => {
+              router.push("/login/ldap");
+            }}
+            leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+            className="mx-0 h-10 w-full"
+          >
+            Continue with LDAP
+          </Button>
+        </div>
+      )}
 
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.length > 1 &&
-          config.enabledLoginMethods.includes(LoginMethod.EMAIL) && (
-            <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">
-              <div className="w-full border-t border-mineshaft-400/60" />
-              <span className="mx-2 text-xs text-mineshaft-200">or</span>
-              <div className="w-full border-t border-mineshaft-400/60" />
-            </div>
-          ))}
-      {!config.enabledLoginMethods ||
-        (config.enabledLoginMethods.includes(LoginMethod.EMAIL) && (
-          <>
-            <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-              <Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="Enter your email..."
-                isRequired
-                autoComplete="username"
-                className="h-10"
+      {shouldDisplayLoginMethod(LoginMethod.EMAIL) && config.enabledLoginMethods.length > 1 && (
+        <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">
+          <div className="w-full border-t border-mineshaft-400/60" />
+          <span className="mx-2 text-xs text-mineshaft-200">or</span>
+          <div className="w-full border-t border-mineshaft-400/60" />
+        </div>
+      )}
+      {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
+        <>
+          <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="Enter your email..."
+              isRequired
+              autoComplete="username"
+              className="h-10"
+            />
+          </div>
+          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="Enter your password..."
+              isRequired
+              autoComplete="current-password"
+              id="current-password"
+              className="select:-webkit-autofill:focus h-10"
+            />
+          </div>
+          {shouldShowCaptcha && (
+            <div className="mt-4">
+              <HCaptcha
+                theme="dark"
+                sitekey={CAPTCHA_SITE_KEY}
+                onVerify={(token) => setCaptchaToken(token)}
+                ref={captchaRef}
               />
             </div>
-            <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-              <Input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="Enter your password..."
-                isRequired
-                autoComplete="current-password"
-                id="current-password"
-                className="select:-webkit-autofill:focus h-10"
-              />
-            </div>
-            {shouldShowCaptcha && (
-              <div className="mt-4">
-                <HCaptcha
-                  theme="dark"
-                  sitekey={CAPTCHA_SITE_KEY}
-                  onVerify={(token) => setCaptchaToken(token)}
-                  ref={captchaRef}
-                />
-              </div>
-            )}
-            <div className="mt-3 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-              <Button
-                disabled={shouldShowCaptcha && captchaToken === ""}
-                type="submit"
-                size="sm"
-                isFullWidth
-                className="h-10"
-                colorSchema="primary"
-                variant="solid"
-                isLoading={isLoading}
-              >
-                {" "}
-                Continue with Email{" "}
-              </Button>
-            </div>
-          </>
-        ))}
+          )}
+          <div className="mt-3 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+            <Button
+              disabled={shouldShowCaptcha && captchaToken === ""}
+              type="submit"
+              size="sm"
+              isFullWidth
+              className="h-10"
+              colorSchema="primary"
+              variant="solid"
+              isLoading={isLoading}
+            >
+              {" "}
+              Continue with Email{" "}
+            </Button>
+          </div>
+        </>
+      )}
       {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
       {config.allowSignUp ? (
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
