@@ -383,7 +383,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceSlug: z.string().trim()
       }),
       body: z.object({
-        auditLogsRetentionDays: z.number().min(1).max(100)
+        auditLogsRetentionDays: z.number().min(0)
       }),
       response: {
         200: z.object({
