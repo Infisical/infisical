@@ -122,6 +122,7 @@ export const ldapConfigServiceFactory = ({
     url,
     bindDN,
     bindPass,
+    uniqueUserAttribute,
     searchBase,
     searchFilter,
     groupSearchBase,
@@ -200,6 +201,7 @@ export const ldapConfigServiceFactory = ({
       encryptedBindPass,
       bindPassIV,
       bindPassTag,
+      uniqueUserAttribute,
       searchBase,
       searchFilter,
       groupSearchBase,
@@ -222,6 +224,7 @@ export const ldapConfigServiceFactory = ({
     url,
     bindDN,
     bindPass,
+    uniqueUserAttribute,
     searchBase,
     searchFilter,
     groupSearchBase,
@@ -244,7 +247,8 @@ export const ldapConfigServiceFactory = ({
       searchBase,
       searchFilter,
       groupSearchBase,
-      groupSearchFilter
+      groupSearchFilter,
+      uniqueUserAttribute
     };
 
     const orgBot = await orgBotDAL.findOne({ orgId });
@@ -345,6 +349,7 @@ export const ldapConfigServiceFactory = ({
       url: ldapConfig.url,
       bindDN,
       bindPass,
+      uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
       searchBase: ldapConfig.searchBase,
       searchFilter: ldapConfig.searchFilter,
       groupSearchBase: ldapConfig.groupSearchBase,
@@ -381,6 +386,7 @@ export const ldapConfigServiceFactory = ({
         url: ldapConfig.url,
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
+        uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
         searchBase: ldapConfig.searchBase,
         searchFilter: ldapConfig.searchFilter || "(uid={{username}})",
         // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
