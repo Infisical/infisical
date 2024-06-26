@@ -17,6 +17,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
 import {
@@ -506,6 +507,40 @@ export const authLoginServiceFactory = ({
   const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
     let user = await userDAL.findUserByUsername(email);
     const serverCfg = await getServerCfg();
+
+    if (serverCfg.enabledLoginMethods) {
+      switch (authMethod) {
+        case AuthMethod.GITHUB: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
+            throw new BadRequestError({
+              message: "Login with Github is disabled.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        case AuthMethod.GOOGLE: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
+            throw new BadRequestError({
+              message: "Login with Google is disabled.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        case AuthMethod.GITLAB: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
+            throw new BadRequestError({
+              message: "Login with Gitlab is disabled.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
 
     const appCfg = getConfig();
 

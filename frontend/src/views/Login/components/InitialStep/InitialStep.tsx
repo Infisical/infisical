@@ -276,8 +276,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           </Button>
         </div>
       )}
-
-      {shouldDisplayLoginMethod(LoginMethod.EMAIL) && config.enabledLoginMethods.length > 1 && (
+      {(!config.enabledLoginMethods ||
+        (shouldDisplayLoginMethod(LoginMethod.EMAIL) && config.enabledLoginMethods.length > 1)) && (
         <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">
           <div className="w-full border-t border-mineshaft-400/60" />
           <span className="mx-2 text-xs text-mineshaft-200">or</span>
