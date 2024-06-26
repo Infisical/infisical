@@ -1,0 +1,24 @@
+---
+title: "Adding Custom Certificates"
+description: "Learn how to Configure Infisical with Custom Certificates"
+---
+
+Follow these steps to configure trust for custom certificates. This is helpful for connecting Infisical with self-hosted services like GitLab.
+
+## Prerequisites
+
+- Docker
+- Standalone Infisical image
+- Certificate public key `.pem` files
+
+## Setup
+
+1. Place all your public key `.pem` files in a single directory.
+2. Mount the directory containing the `.pem` files to the `usr/local/share/ca-certificates/` path in the Infisical container.
+3. Add the following environment variable to the Infisical container's configuration:
+   ```
+   NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+   ```
+4. Start the Infisical container.
+
+By following these steps, your Infisical container will trust the specified certificates, allowing you to securely connect Infisical to your other services.
