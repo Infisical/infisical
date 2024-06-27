@@ -30,7 +30,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await sapFindQuery(tx || db, {
+      const doc = await sapFindQuery(tx || db.replicaNode(), {
         [`${TableName.SecretApprovalPolicy}.id` as "id"]: id
       });
       const formatedDoc = mergeOneToManyRelation(
@@ -52,7 +52,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const find = async (filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>, tx?: Knex) => {
     try {
-      const docs = await sapFindQuery(tx || db, filter);
+      const docs = await sapFindQuery(tx || db.replicaNode(), filter);
       const formatedDoc = mergeOneToManyRelation(
         docs,
         "id",

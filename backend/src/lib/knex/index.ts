@@ -50,7 +50,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
     }),
   findById: async (id: string, tx?: Knex) => {
     try {
-      const result = await (tx || db)(tableName)
+      const result = await (tx || db.replicaNode())(tableName)
         .where({ id } as never)
         .first("*");
       return result;
@@ -60,7 +60,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
   },
   findOne: async (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => {
     try {
-      const res = await (tx || db)(tableName).where(filter).first("*");
+      const res = await (tx || db.replicaNode())(tableName).where(filter).first("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
@@ -71,7 +71,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
     { offset, limit, sort, tx }: TFindOpt<Tables[Tname]["base"]> = {}
   ) => {
     try {
-      const query = (tx || db)(tableName).where(buildFindFilter(filter));
+      const query = (tx || db.replicaNode())(tableName).where(buildFindFilter(filter));
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {

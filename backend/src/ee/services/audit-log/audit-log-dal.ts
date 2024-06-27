@@ -27,7 +27,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const sqlQuery = (tx || db)(TableName.AuditLog)
+      const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
         .where(
           stripUndefinedInWhere({
             projectId,

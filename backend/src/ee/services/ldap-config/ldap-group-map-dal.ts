@@ -10,7 +10,8 @@ export const ldapGroupMapDALFactory = (db: TDbClient) => {
 
   const findLdapGroupMapsByLdapConfigId = async (ldapConfigId: string) => {
     try {
-      const docs = await db(TableName.LdapGroupMap)
+      const docs = await db
+        .replicaNode()(TableName.LdapGroupMap)
         .where(`${TableName.LdapGroupMap}.ldapConfigId`, ldapConfigId)
         .join(TableName.Groups, `${TableName.LdapGroupMap}.groupId`, `${TableName.Groups}.id`)
         .select(selectAllTableCols(TableName.LdapGroupMap))

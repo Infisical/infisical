@@ -10,7 +10,8 @@ export type TPermissionDALFactory = ReturnType<typeof permissionDALFactory>;
 export const permissionDALFactory = (db: TDbClient) => {
   const getOrgPermission = async (userId: string, orgId: string) => {
     try {
-      const membership = await db(TableName.OrgMembership)
+      const membership = await db
+        .replicaNode()(TableName.OrgMembership)
         .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
         .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
         .where("userId", userId)
@@ -28,7 +29,8 @@ export const permissionDALFactory = (db: TDbClient) => {
 
   const getOrgIdentityPermission = async (identityId: string, orgId: string) => {
     try {
-      const membership = await db(TableName.IdentityOrgMembership)
+      const membership = await db
+        .replicaNode()(TableName.IdentityOrgMembership)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
         .join(TableName.Organization, `${TableName.IdentityOrgMembership}.orgId`, `${TableName.Organization}.id`)
         .where("identityId", identityId)
@@ -45,11 +47,13 @@ export const permissionDALFactory = (db: TDbClient) => {
 
   const getProjectPermission = async (userId: string, projectId: string) => {
     try {
-      const groups: string[] = await db(TableName.GroupProjectMembership)
+      const groups: string[] = await db
+        .replicaNode()(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .pluck(`${TableName.GroupProjectMembership}.groupId`);
 
-      const groupDocs = await db(TableName.UserGroupMembership)
+      const groupDocs = await db
+        .replicaNode()(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
         .whereIn(`${TableName.UserGroupMembership}.groupId`, groups)
         .join(
@@ -231,7 +235,8 @@ export const permissionDALFactory = (db: TDbClient) => {
 
   const getProjectIdentityPermission = async (identityId: string, projectId: string) => {
     try {
-      const docs = await db(TableName.IdentityProjectMembership)
+      const docs = await db
+        .replicaNode()(TableName.IdentityProjectMembership)
         .join(
           TableName.IdentityProjectMembershipRole,
           `${TableName.IdentityProjectMembershipRole}.projectMembershipId`,

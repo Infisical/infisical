@@ -51,7 +51,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
   const find = async (filter: Partial<TSecretImports & { projectId: string }>, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretImport)
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .where(filter)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
         .select(
@@ -72,7 +72,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
   const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretImport)
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .whereIn("folderId", folderIds)
         .where("isReplication", false)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)

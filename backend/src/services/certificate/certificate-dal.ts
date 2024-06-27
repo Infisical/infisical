@@ -14,7 +14,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         count: string;
       }
 
-      const count = await db(TableName.Certificate)
+      const count = await db
+        .replicaNode()(TableName.Certificate)
         .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.id`, projectId)

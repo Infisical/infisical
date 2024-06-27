@@ -14,7 +14,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findRequestsWithPrivilegeByPolicyIds = async (policyIds: string[]) => {
     try {
-      const docs = await db(TableName.AccessApprovalRequest)
+      const docs = await db
+        .replicaNode()(TableName.AccessApprovalRequest)
         .whereIn(`${TableName.AccessApprovalRequest}.policyId`, policyIds)
 
         .leftJoin(
@@ -170,7 +171,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const sql = findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db);
+      const sql = findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
       const docs = await sql;
       const formatedDoc = sqlNestRelationships({
         data: docs,
@@ -207,7 +208,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
   const getCount = async ({ projectId }: { projectId: string }) => {
     try {
-      const accessRequests = await db(TableName.AccessApprovalRequest)
+      const accessRequests = await db
+        .replicaNode()(TableName.AccessApprovalRequest)
         .leftJoin(
           TableName.AccessApprovalPolicy,
           `${TableName.AccessApprovalRequest}.policyId`,

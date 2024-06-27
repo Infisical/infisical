@@ -114,7 +114,7 @@ export const secretDALFactory = (db: TDbClient) => {
         userId = undefined;
       }
 
-      const secs = await (tx || db)(TableName.Secret)
+      const secs = await (tx || db.replicaNode())(TableName.Secret)
         .where({ folderId })
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
@@ -152,7 +152,7 @@ export const secretDALFactory = (db: TDbClient) => {
 
   const getSecretTags = async (secretId: string, tx?: Knex) => {
     try {
-      const tags = await (tx || db)(TableName.JnSecretTag)
+      const tags = await (tx || db.replicaNode())(TableName.JnSecretTag)
         .join(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
         .where({ [`${TableName.Secret}Id` as const]: secretId })
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
@@ -179,7 +179,7 @@ export const secretDALFactory = (db: TDbClient) => {
         userId = undefined;
       }
 
-      const secs = await (tx || db)(TableName.Secret)
+      const secs = await (tx || db.replicaNode())(TableName.Secret)
         .whereIn("folderId", folderIds)
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
@@ -223,7 +223,7 @@ export const secretDALFactory = (db: TDbClient) => {
   ) => {
     if (!blindIndexes.length) return [];
     try {
-      const secrets = await (tx || db)(TableName.Secret)
+      const secrets = await (tx || db.replicaNode())(TableName.Secret)
         .where({ folderId })
         .where((bd) => {
           blindIndexes.forEach((el) => {
@@ -278,7 +278,7 @@ export const secretDALFactory = (db: TDbClient) => {
 
   const findReferencedSecretReferences = async (projectId: string, envSlug: string, secretPath: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretReference)
+      const docs = await (tx || db.replicaNode())(TableName.SecretReference)
         .where({
           secretPath,
           environment: envSlug
@@ -298,7 +298,7 @@ export const secretDALFactory = (db: TDbClient) => {
   // special query to backfill secret value
   const findAllProjectSecretValues = async (projectId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.Secret)
+      const docs = await (tx || db.replicaNode())(TableName.Secret)
         .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
@@ -313,7 +313,7 @@ export const secretDALFactory = (db: TDbClient) => {
 
   const findOneWithTags = async (filter: Partial<TSecrets>, tx?: Knex) => {
     try {
-      const rawDocs = await (tx || db)(TableName.Secret)
+      const rawDocs = await (tx || db.replicaNode())(TableName.Secret)
         .where(filter)
         .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
         .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)

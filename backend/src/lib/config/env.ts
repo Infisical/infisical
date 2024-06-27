@@ -10,6 +10,14 @@ const zodStrBool = z
   .optional()
   .transform((val) => val === "true");
 
+const databaseReadReplicaSchema = z
+  .object({
+    DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
+    DB_ROOT_CERT: zpStr(z.string().optional().describe("Postgres read replica database certificate string"))
+  })
+  .array()
+  .optional();
+
 const envSchema = z
   .object({
     PORT: z.coerce.number().default(4000),
@@ -29,6 +37,7 @@ const envSchema = z
     DB_USER: zpStr(z.string().describe("Postgres database username").optional()),
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
+    DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
     BCRYPT_SALT_ROUND: z.number().default(12),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
@@ -127,6 +136,9 @@ const envSchema = z
   })
   .transform((data) => ({
     ...data,
+    DB_READ_REPLICAS: data.DB_READ_REPLICAS
+      ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
+      : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),

@@ -62,7 +62,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db);
+      const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
       const docs = await sql;
       const formatedDoc = sqlNestRelationships({
         data: docs,
@@ -102,7 +102,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       const docs = await (tx || db)
         .with(
           "temp",
-          (tx || db)(TableName.SecretApprovalRequest)
+          (tx || db.replicaNode())(TableName.SecretApprovalRequest)
             .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
             .join(
@@ -148,7 +148,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
-      const query = (tx || db)(TableName.SecretApprovalRequest)
+      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(

@@ -12,7 +12,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
   const findOne = async (filter: Partial<TIdentityOrgMemberships>, tx?: Knex) => {
     try {
-      const [data] = await (tx || db)(TableName.IdentityOrgMembership)
+      const [data] = await (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
@@ -29,7 +29,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
   const find = async (filter: Partial<TIdentityOrgMemberships>, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.IdentityOrgMembership)
+      const docs = await (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
