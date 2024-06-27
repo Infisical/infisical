@@ -22,7 +22,7 @@ import { DecryptedSecret, SecretType, UserWsKeyPair } from "@app/hooks/api/types
 
 const typeSchema = z
   .object({
-    key: z.string().min(1, "Key is required"),
+    key: z.string().trim().min(1, "Key is required"),
     value: z.string().optional(),
     environments: z.record(z.boolean().optional())
   })
