@@ -31,6 +31,7 @@ export const AuthPanel = () => {
     formState: { isSubmitting, isDirty }
   } = useForm<TAuthForm>({
     resolver: zodResolver(formSchema),
+    // if not yet explicitly defined by the admin, all login methods should be enabled by default
     values: enabledLoginMethods
       ? {
           isEmailEnabled: enabledLoginMethods.includes(LoginMethod.EMAIL),
