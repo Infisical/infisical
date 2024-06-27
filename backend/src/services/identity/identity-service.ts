@@ -115,7 +115,7 @@ export const identityServiceFactory = ({
           { identityId: id },
           {
             role: customRole ? OrgMembershipRole.Custom : role,
-            roleId: customRole?.id
+            roleId: customRole?.id || null
           },
           tx
         );
