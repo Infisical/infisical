@@ -720,15 +720,15 @@ const syncSecretsAWSSecretManager = async ({
   let secretAccessKey = "";
   let sessionToken;
   if (awsAssumeRoleArn) {
-    if (!appCfg.CLIENT_ID_AWS_INTEGRATION || !appCfg.CLIENT_SECRET_AWS_INTEGRATION)
-      throw new Error("Missing AWS Credentials for Assuming Role. Contact server admin.");
-
     const client = new STSClient({
       region: integration.region as string,
-      credentials: {
-        accessKeyId: appCfg.CLIENT_ID_AWS_INTEGRATION,
-        secretAccessKey: appCfg.CLIENT_SECRET_AWS_INTEGRATION
-      }
+      credentials:
+        appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
+          ? {
+              accessKeyId: appCfg.CLIENT_ID_AWS_INTEGRATION,
+              secretAccessKey: appCfg.CLIENT_SECRET_AWS_INTEGRATION
+            }
+          : undefined
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsAssumeRoleArn,
