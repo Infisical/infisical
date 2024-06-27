@@ -13,7 +13,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { ScimTokenModal } from "./ScimTokenModal";
 
 export const OrgScimSection = () => {
-  
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -59,7 +58,6 @@ export const OrgScimSection = () => {
 
   return (
     <>
-      <hr className="border-mineshaft-600" />
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">SCIM</h2>
