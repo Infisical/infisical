@@ -159,9 +159,22 @@ export const authLoginServiceFactory = ({
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
     });
+    const serverCfg = await getServerCfg();
+
+    if (
+      serverCfg.enabledLoginMethods &&
+      !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
+      !providerAuthToken
+    ) {
+      throw new BadRequestError({
+        message: "Login with email is disabled."
+      });
+    }
+
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find user");
     }
+
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
       validateProviderAuthToken(providerAuthToken as string, email);
     }
