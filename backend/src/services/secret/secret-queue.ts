@@ -525,6 +525,18 @@ export const secretQueueFactory = ({
 
       const botKey = await projectBotService.getBotKey(projectId);
       const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(integrationAuth, botKey);
+      const awsAssumeRoleArn =
+        integrationAuth.awsAssumeIamRoleArnTag &&
+        integrationAuth.awsAssumeIamRoleArnIV &&
+        integrationAuth.awsAssumeIamRoleArnCipherText
+          ? decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
+              iv: integrationAuth.awsAssumeIamRoleArnIV,
+              tag: integrationAuth.awsAssumeIamRoleArnTag,
+              key: botKey
+            })
+          : null;
+
       const secrets = await getIntegrationSecrets({
         environment,
         projectId,
@@ -544,6 +556,8 @@ export const secretQueueFactory = ({
       }
 
       try {
+        // akhilmhdh: this needs to changed later to be more easier to use
+        // at present this is not at all extendable like to add a new parameter for just one integration need to modify multiple places
         const response = await syncIntegrationSecrets({
           createManySecretsRawFn,
           updateManySecretsRawFn,
@@ -552,7 +566,9 @@ export const secretQueueFactory = ({
           integrationAuth,
           secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
           accessId: accessId as string,
+          awsAssumeRoleArn,
           accessToken,
+          projectId,
           appendices: {
             prefix: metadata?.secretPrefix || "",
             suffix: metadata?.secretSuffix || ""

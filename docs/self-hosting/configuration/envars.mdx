@@ -464,6 +464,16 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
   </ParamField>
 </Accordion>
 
+<Accordion title="AWS">
+  <ParamField query="CLIENT_ID_AWS_INTEGRATION" type="string" default="none" optional>
+	  The AWS IAM User access key for assuming roles.
+  </ParamField>
+
+  <ParamField query="CLIENT_SECRET_AWS_INTEGRATION" type="string" default="none" optional>
+	  The AWS IAM User secret key for assuming roles.
+  </ParamField>
+</Accordion>
+
 <Accordion title="Azure">
   <ParamField query="CLIENT_ID_AZURE" type="string" default="none" optional>
     OAuth2 client id for Azure integration

@@ -110,6 +110,9 @@ const envSchema = z
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
+    // aws
+    CLIENT_ID_AWS_INTEGRATION: zpStr(z.string().optional()),
+    CLIENT_SECRET_AWS_INTEGRATION: zpStr(z.string().optional()),
     // gitlab
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),

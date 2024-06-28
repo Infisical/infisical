@@ -1,54 +1,70 @@
-import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
+import {
+  Button,
+  Card,
+  CardBody,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
-import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
+enum AwsAuthType {
+  AccessKey = "access-key",
+  AssumeRole = "assume-role"
+}
+
+const formSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(AwsAuthType.AccessKey),
+    accessKey: z.string().min(1),
+    accessSecretKey: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal(AwsAuthType.AssumeRole),
+    iamRoleArn: z.string().min(1)
+  })
+]);
+
+type TForm = z.infer<typeof formSchema>;
 
 export default function AWSSecretManagerCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
-  const [isLoading, setIsLoading] = useState(false);
+  const { control, handleSubmit, formState, watch } = useForm<TForm>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      type: AwsAuthType.AccessKey
+    }
+  });
+  const formAwsAuthTypeField = watch("type");
 
-  const [accessKey, setAccessKey] = useState("");
-  const [accessKeyErrorText, setAccessKeyErrorText] = useState("");
-  const [accessSecretKey, setAccessSecretKey] = useState("");
-  const [accessSecretKeyErrorText, setAccessSecretKeyErrorText] = useState("");
-
-  const handleButtonClick = async () => {
+  const handleFormSubmit = async (data: TForm) => {
     try {
-      setAccessKeyErrorText("");
-      setAccessSecretKeyErrorText("");
-
-      if (accessKey.length === 0) {
-        setAccessKeyErrorText("Access key cannot be blank");
-        return;
-      }
-
-      if (accessSecretKey.length === 0) {
-        setAccessSecretKeyErrorText("Secret access key cannot be blank");
-        return;
-      }
-
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "aws-secret-manager",
-        accessId: accessKey,
-        accessToken: accessSecretKey
+        ...(data.type === AwsAuthType.AssumeRole
+          ? {
+            awsAssumeIamRoleArn: data.iamRoleArn
+          }
+          : {
+            accessId: data.accessKey,
+            accessToken: data.accessSecretKey
+          })
       });
-
-      setAccessKey("");
-      setAccessSecretKey("");
-      setIsLoading(false);
-
       router.push(
         `/integrations/aws-secret-manager/create?integrationAuthId=${integrationAuth.id}`
       );
@@ -69,7 +85,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
           subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center">
+            <div className="flex items-center">
               <Image
                 src="/images/integrations/Amazon Web Services.png"
                 height={35}
@@ -92,37 +108,90 @@ export default function AWSSecretManagerCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl
-          label="Access Key ID"
-          errorText={accessKeyErrorText}
-          isError={accessKeyErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input placeholder="" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
-        </FormControl>
-        <FormControl
-          label="Secret Access Key"
-          errorText={accessSecretKeyErrorText}
-          isError={accessSecretKeyErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder=""
-            type="password"
-            autoComplete="new-password"
-            value={accessSecretKey}
-            onChange={(e) => setAccessSecretKey(e.target.value)}
-          />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6 w-min"
-          isLoading={isLoading}
-        >
-          Connect to AWS Secrets Manager
-        </Button>
+        <CardBody>
+          <form onSubmit={handleSubmit(handleFormSubmit)}>
+            <Controller
+              control={control}
+              name="type"
+              defaultValue={AwsAuthType.AccessKey}
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Authentication Mode"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                  >
+                    <SelectItem value={AwsAuthType.AccessKey}>Access Key</SelectItem>
+                    <SelectItem value={AwsAuthType.AssumeRole}>AWS Assume Role</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+            {formAwsAuthTypeField === AwsAuthType.AccessKey ? (
+              <>
+                <Controller
+                  control={control}
+                  name="accessKey"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Access Key ID"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Input placeholder="" {...field} />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="accessSecretKey"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Secret Access Key"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder=""
+                        {...field}
+                      />
+                    </FormControl>
+                  )}
+                />
+              </>
+            ) : (
+              <Controller
+                control={control}
+                name="iamRoleArn"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="IAM Role ARN For Role Assumption"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Input placeholder="" {...field} />
+                  </FormControl>
+                )}
+              />
+            )}
+            <Button
+              type="submit"
+              colorSchema="primary"
+              variant="outline_bg"
+              className="mb-6 mt-2 ml-auto mr-6 w-min"
+              isLoading={formState.isSubmitting}
+            >
+              Connect to AWS Secrets Manager
+            </Button>
+          </form>
+        </CardBody>
       </Card>
     </div>
   );
