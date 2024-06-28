@@ -22,11 +22,7 @@ jobs:
                         "node18-alpine-x64",
                         "node18-alpine-x86",
                         "node18-alpine-armv7",
-                        "node18-alpine-arm64",
-                        "node18-linuxstatic-x64",
-                        "node18-linuxstatic-x86",
-                        "node18-linuxstatic-armv7",
-                        "node18-linuxstatic-arm64"
+                        "node18-alpine-arm64"
                     ]
 
         defaults:
@@ -64,7 +60,15 @@ jobs:
         runs-on: macos-latest
         strategy:
             matrix:
-                target: ["node18-macos-x64", "node18-macos-arm64"]
+                target:
+                    [
+                        "node18-macos-x64",
+                        "node18-macos-arm64",
+                        "node18-linuxstatic-x64",
+                        "node18-linuxstatic-x86",
+                        "node18-linuxstatic-armv7",
+                        "node18-linuxstatic-arm64"
+                    ]
 
         defaults:
             run:
