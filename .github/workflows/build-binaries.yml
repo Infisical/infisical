@@ -15,23 +15,25 @@ jobs:
             matrix:
                 target:
                     [
-                        "node18-linux-x86",
+                        "node18-alpine-x64",
+                        "node18-alpine-x86",
+                        "node18-alpine-armv7",
+                        "node18-alpine-arm64",
+                        "node18-freebsd-x64",
+                        "node18-freebsd-x86",
+                        "node18-freebsd-armv7",
                         "node18-linux-x64",
-                        "node18-linux-armv6",
+                        "node18-linux-x86",
+                        "node18-linux-armv7",
                         "node18-linux-arm64",
+                        "node18-linuxstatic-x64",
+                        "node18-linuxstatic-x86",
+                        "node18-linuxstatic-armv7",
+                        "node18-linuxstatic-arm64",
                         "node18-macos-x64",
                         "node18-macos-arm64",
-                        "node18-win-x86",
                         "node18-win-x64",
-                        "node18-freebsd-x86",
-                        "node18-freebsd-x64",
-                        "node18-freebsd-arm64",
-                        "node18-netbsd-x86",
-                        "node18-netbsd-x64",
-                        "node18-netbsd-arm64",
-                        "node18-openbsd-x86",
-                        "node18-openbsd-x64",
-                        "node18-openbsd-arm64"
+                        "node18-win-x86"
                     ]
 
         defaults:
