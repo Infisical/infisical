@@ -13,7 +13,7 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                target: ["node18-linux-x64", "node18-linux-x86", "node18-linux-armv7", "node18-linux-arm64"]
+                target: ["node16-linux-x64", "node16-linux-x86", "node16-linux-armv7", "node16-linux-arm64"]
 
         defaults:
             run:
@@ -52,7 +52,7 @@ jobs:
             image: node:18-alpine
         strategy:
             matrix:
-                target: ["node18-alpine-x64", "node18-alpine-x86", "node18-alpine-armv7", "node18-alpine-arm64"]
+                target: ["node16-alpine-x64", "node16-alpine-x86", "node16-alpine-armv7", "node16-alpine-arm64"]
 
         defaults:
             run:
@@ -86,12 +86,12 @@ jobs:
             matrix:
                 target:
                     [
-                        "node18-macos-x64",
-                        "node18-macos-arm64",
-                        "node18-linuxstatic-x64",
-                        "node18-linuxstatic-x86",
-                        "node18-linuxstatic-armv7",
-                        "node18-linuxstatic-arm64"
+                        "node16-macos-x64",
+                        "node16-macos-arm64",
+                        "node16-linuxstatic-x64",
+                        "node16-linuxstatic-x86",
+                        "node16-linuxstatic-armv7",
+                        "node16-linuxstatic-arm64"
                     ]
 
         defaults:
@@ -129,7 +129,7 @@ jobs:
         runs-on: windows-latest
         strategy:
             matrix:
-                target: ["node18-win-x64", "node18-win-x86"]
+                target: ["node16-win-x64", "node16-win-x86"]
 
         defaults:
             run:
