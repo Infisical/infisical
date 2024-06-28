@@ -415,7 +415,7 @@ export const ldapConfigServiceFactory = ({
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
       throw new BadRequestError({
-        message: "Login with LDAP is disabled."
+        message: "Login with LDAP is disabled by administrator."
       });
     }
 

@@ -161,7 +161,7 @@ export const oidcConfigServiceFactory = ({
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
       throw new BadRequestError({
-        message: "Login with OIDC is disabled."
+        message: "Login with OIDC is disabled by administrator."
       });
     }
 

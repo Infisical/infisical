@@ -339,7 +339,7 @@ export const samlConfigServiceFactory = ({
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.SAML)) {
       throw new BadRequestError({
-        message: "Login with SAML is disabled."
+        message: "Login with SAML is disabled by administrator."
       });
     }
 

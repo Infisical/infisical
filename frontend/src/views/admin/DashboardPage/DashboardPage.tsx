@@ -122,7 +122,7 @@ export const AdminDashboardPage = () => {
       <div className="mx-auto mb-6 w-full max-w-7xl pt-6">
         <div className="mb-8 flex flex-col items-start justify-between text-xl">
           <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-          <p className="text-base text-bunker-300">Manage your Infisical instance.</p>
+          <p className="text-base text-bunker-300">Manage your instance level configurations.</p>
         </div>
       </div>
       {isUserLoading || isNotAllowed ? (
@@ -133,7 +133,7 @@ export const AdminDashboardPage = () => {
             <TabList>
               <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
-                <Tab value={TabSections.Auth}>Auth</Tab>
+                <Tab value={TabSections.Auth}>Authentication</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
               </div>
             </TabList>

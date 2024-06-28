@@ -167,7 +167,7 @@ export const authLoginServiceFactory = ({
       !providerAuthToken
     ) {
       throw new BadRequestError({
-        message: "Login with email is disabled."
+        message: "Login with email is disabled by administrator."
       });
     }
 
@@ -526,7 +526,7 @@ export const authLoginServiceFactory = ({
         case AuthMethod.GITHUB: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
             throw new BadRequestError({
-              message: "Login with Github is disabled.",
+              message: "Login with Github is disabled by administrator.",
               name: "Oauth 2 login"
             });
           }
@@ -535,7 +535,7 @@ export const authLoginServiceFactory = ({
         case AuthMethod.GOOGLE: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
             throw new BadRequestError({
-              message: "Login with Google is disabled.",
+              message: "Login with Google is disabled by administrator.",
               name: "Oauth 2 login"
             });
           }
@@ -544,7 +544,7 @@ export const authLoginServiceFactory = ({
         case AuthMethod.GITLAB: {
           if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
             throw new BadRequestError({
-              message: "Login with Gitlab is disabled.",
+              message: "Login with Gitlab is disabled by administrator.",
               name: "Oauth 2 login"
             });
           }
