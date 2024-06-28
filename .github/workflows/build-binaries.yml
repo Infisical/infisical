@@ -13,17 +13,7 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                target:
-                    [
-                        "node18-linux-x64",
-                        "node18-linux-x86",
-                        "node18-linux-armv7",
-                        "node18-linux-arm64",
-                        "node18-alpine-x64",
-                        "node18-alpine-x86",
-                        "node18-alpine-armv7",
-                        "node18-alpine-arm64"
-                    ]
+                target: ["node18-linux-x64", "node18-linux-x86", "node18-linux-armv7", "node18-linux-arm64"]
 
         defaults:
             run:
