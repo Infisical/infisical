@@ -22,11 +22,13 @@ export const userKeys = {
   getUser: ["user"] as const,
   getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
+  userProjectFavorites: ["user-project-favorites"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
+
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
 
@@ -72,6 +74,14 @@ export const fetchUserAction = async (action: string) => {
     }
   });
   return data.userAction || "";
+};
+
+export const fetchUserProjectFavorites = async (orgId: string) => {
+  const { data } = await apiRequest.get<{ projectFavorites: string[] }>(
+    `/api/v1/user/me/project-favorites?orgId=${orgId}`
+  );
+
+  return data.projectFavorites;
 };
 
 export const useRenameUser = () => {
@@ -121,6 +131,12 @@ export const fetchOrgUsers = async (orgId: string) => {
 
   return data.users;
 };
+
+export const useGetUserProjectFavorites = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.userProjectFavorites,
+    queryFn: () => fetchUserProjectFavorites(orgId)
+  });
 
 export const useGetOrgUsers = (orgId: string) =>
   useQuery({
