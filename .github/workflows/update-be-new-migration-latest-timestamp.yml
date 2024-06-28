@@ -19,18 +19,16 @@ jobs:
 
       - name: Get list of newly added files in migration folder
         run: |
-          git diff --name-status HEAD^ HEAD backend/src/db/migrations | grep '^A' | cut -f2 | xargs -n1 basename > added_files.txt
+          git diff --name-status HEAD^ HEAD backend/src/db/migrations | grep '^A' || true | cut -f2 | xargs -r -n1 basename > added_files.txt
           if [ ! -s added_files.txt ]; then
             echo "No new files added. Skipping"
-            echo "SKIP_RENAME=true" >> $GITHUB_ENV
+            exit 0
           fi
 
       - name: Script to rename migrations
-        if: env.SKIP_RENAME != 'true'
         run: python .github/resources/rename_migration_files.py
 
       - name: Commit and push changes
-        if: env.SKIP_RENAME != 'true'
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
