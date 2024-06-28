@@ -20,7 +20,7 @@ const databaseReadReplicaSchema = z
 
 const envSchema = z
   .object({
-    PORT: z.coerce.number().default(4000),
+    PORT: z.coerce.number().default(process?.pkg ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
       .default("false")
