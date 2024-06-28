@@ -619,7 +619,7 @@ const OrganizationPage = withPermission(
           {isFavorite ? (
             <FontAwesomeIcon
               icon={faSolidStar}
-              className="text-sm text-mineshaft-300"
+              className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
               onClick={(e) => {
                 e.stopPropagation();
                 removeProjectFromFavorites(workspace.id);
@@ -628,7 +628,7 @@ const OrganizationPage = withPermission(
           ) : (
             <FontAwesomeIcon
               icon={faStar}
-              className="text-sm text-mineshaft-400"
+              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
               onClick={(e) => {
                 e.stopPropagation();
                 addProjectToFavorites(workspace.id);
@@ -648,6 +648,49 @@ const OrganizationPage = withPermission(
             />
           </div>
         </button>
+      </div>
+    );
+
+    const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+      <div
+        onClick={() => {
+          router.push(`/project/${workspace.id}/secrets/overview`);
+          localStorage.setItem("projectData.id", workspace.id);
+        }}
+        key={workspace.id}
+        className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+          index === 0 && "rounded-t-md"
+        } ${index === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
+      >
+        <div className="flex items-center sm:col-span-3 lg:col-span-4">
+          <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
+          <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+        </div>
+        <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+          <div className="text-center text-sm text-mineshaft-300">
+            {workspace.environments?.length || 0} environments
+          </div>
+          {isFavorite ? (
+            <FontAwesomeIcon
+              icon={faSolidStar}
+              className="ml-6 text-sm text-mineshaft-300 hover:text-mineshaft-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeProjectFromFavorites(workspace.id);
+              }}
+            />
+          ) : (
+            <FontAwesomeIcon
+              icon={faStar}
+              className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                addProjectToFavorites(workspace.id);
+              }}
+            />
+          )}
+        </div>
       </div>
     );
 
@@ -701,29 +744,13 @@ const OrganizationPage = withPermission(
               <Skeleton className="w-full bg-mineshaft-600" />
             </div>
           ))}
-        {filteredWorkspaces.map((workspace, ind) => (
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-          <div
-            onClick={() => {
-              router.push(`/project/${workspace.id}/secrets/overview`);
-              localStorage.setItem("projectData.id", workspace.id);
-            }}
-            key={workspace.id}
-            className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-              ind === 0 && "rounded-t-md"
-            } ${ind === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
-          >
-            <div className="flex items-center sm:col-span-3 lg:col-span-4">
-              <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
-              <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
-            </div>
-            <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
-              <div className="text-center text-sm text-mineshaft-300">
-                {workspace.environments?.length || 0} environments
-              </div>
-            </div>
-          </div>
-        ))}
+        {[...favoriteWorkspaces, ...nonFavoriteWorkspaces].map((workspace, ind) =>
+          renderProjectListItem(
+            workspace,
+            favoriteWorkspaces.some((w) => w.id === workspace.id),
+            ind
+          )
+        )}
       </div>
     );
 
