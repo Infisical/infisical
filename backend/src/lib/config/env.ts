@@ -131,7 +131,7 @@ const envSchema = z
     // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
-      .transform((val) => val === "true")
+      .transform((val) => val === "true" || process?.pkg === true)
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
@@ -148,7 +148,7 @@ const envSchema = z
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
-    isProductionMode: data.NODE_ENV === "production",
+    isProductionMode: data.NODE_ENV === "production" || process?.pkg === true,
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
