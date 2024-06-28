@@ -12,7 +12,7 @@ import { AuthMethod } from "../auth/auth-type";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { TAdminSignUpDTO } from "./super-admin-types";
+import { LoginMethod, TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
@@ -79,7 +79,38 @@ export const superAdminServiceFactory = ({
     return newCfg;
   };
 
-  const updateServerCfg = async (data: TSuperAdminUpdate) => {
+  const updateServerCfg = async (data: TSuperAdminUpdate, userId: string) => {
+    if (data.enabledLoginMethods) {
+      const superAdminUser = await userDAL.findById(userId);
+      const loginMethodToAuthMethod = {
+        [LoginMethod.EMAIL]: [AuthMethod.EMAIL],
+        [LoginMethod.GOOGLE]: [AuthMethod.GOOGLE],
+        [LoginMethod.GITLAB]: [AuthMethod.GITLAB],
+        [LoginMethod.GITHUB]: [AuthMethod.GITHUB],
+        [LoginMethod.LDAP]: [AuthMethod.LDAP],
+        [LoginMethod.OIDC]: [AuthMethod.OIDC],
+        [LoginMethod.SAML]: [
+          AuthMethod.AZURE_SAML,
+          AuthMethod.GOOGLE_SAML,
+          AuthMethod.JUMPCLOUD_SAML,
+          AuthMethod.KEYCLOAK_SAML,
+          AuthMethod.OKTA_SAML
+        ]
+      };
+
+      if (
+        !data.enabledLoginMethods.some((loginMethod) =>
+          loginMethodToAuthMethod[loginMethod as LoginMethod].some(
+            (authMethod) => superAdminUser.authMethods?.includes(authMethod)
+          )
+        )
+      ) {
+        throw new BadRequestError({
+          message:
+            "Admin has insufficient authentication methods for update operation to complete without getting locked out."
+        });
+      }
+    }
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
 
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
@@ -167,7 +198,7 @@ export const superAdminServiceFactory = ({
       orgName: initialOrganizationName
     });
 
-    await updateServerCfg({ initialized: true });
+    await updateServerCfg({ initialized: true }, userInfo.user.id);
     const token = await authService.generateUserTokens({
       user: userInfo.user,
       authMethod: AuthMethod.EMAIL,

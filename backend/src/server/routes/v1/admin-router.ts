@@ -78,7 +78,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const config = await server.services.superAdmin.updateServerCfg(req.body);
+      const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
       return { config };
     }
   });
