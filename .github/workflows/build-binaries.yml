@@ -56,6 +56,40 @@ jobs:
                   name: binaries-${{ matrix.target }}
                   path: ./backend/binary/
 
+    build-alpine:
+        runs-on: ubuntu-latest
+        container:
+            image: node:18-alpine
+        strategy:
+            matrix:
+                target: ["node18-alpine-x64", "node18-alpine-x86", "node18-alpine-armv7", "node18-alpine-arm64"]
+
+        defaults:
+            run:
+                working-directory: ./backend
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Install dependencies (backend)
+              run: npm install
+
+            - name: Install dependencies (frontend)
+              run: npm install --prefix ../frontend
+
+            - name: Prerequisites for pkg
+              run: npm run binary:build
+
+            - name: Build binary
+              run: npx pkg --no-bytecode --public-packages "*" --targets ${{matrix.target}} .
+
+            - name: Upload binaries
+              uses: actions/upload-artifact@v3
+              with:
+                  name: binaries-${{ matrix.target }}
+                  path: ./backend/binary/
+
     build-macos:
         runs-on: macos-latest
         strategy:
