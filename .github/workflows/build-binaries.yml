@@ -47,10 +47,10 @@ jobs:
               with:
                   node-version: 18.x
 
-            - name: Install dependencies for backend
+            - name: Install dependencies (backend)
               run: npm install
 
-            - name: Install dependencies for frontend
+            - name: Install dependencies (frontend)
               run: npm install --prefix ../frontend
 
             - name: Prerequisites for pkg
