@@ -25,8 +25,8 @@
     "outputPath": "binary"
   },
   "scripts": {
-    "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend && npm run binary:babel-backend && npm run binary:rename-imports && npm run binary:package",
-    "binary:package": "pkg --no-bytecode --public-packages \"*\" --compress=Brotli --public --target node18-macos-arm64 .",
+    "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend && npm run binary:babel-backend && npm run binary:rename-imports",
+    "binary:package": "pkg --no-bytecode --public-packages \"*\" --public --target node18-macos-arm64 .",
     "binary:babel-backend": " babel ./dist -d ./dist",
     "binary:babel-frontend": "babel --copy-files ../frontend/.next/server -d ../frontend/.next/server",
 
