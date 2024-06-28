@@ -13,8 +13,6 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                os: [ubuntu-latest, macos-latest, windows-latest]
-                node-version: [18.x]
                 target:
                     [
                         "node18-linux-x86",
@@ -36,6 +34,10 @@ jobs:
                         "node18-openbsd-arm64"
                     ]
 
+        defaults:
+            run:
+                working-directory: ./backend
+
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
@@ -43,15 +45,15 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: ${{ matrix.node-version }}
+                  node-version: 18.x
 
-            - name: Install dependencies (backend)
+            - name: Install dependencies for backend
               run: npm install
 
-            - name: Install dependencies (frontend)
+            - name: Install dependencies for frontend
               run: npm install --prefix ../frontend
 
-            - name: Prerequisites
+            - name: Prerequisites for pkg
               run: npm run binary:build
 
             - name: Build binary
@@ -60,5 +62,5 @@ jobs:
             - name: Upload binaries
               uses: actions/upload-artifact@v3
               with:
-                  name: binaries-${{ matrix.os }}-${{ matrix.target }}
-                  path: ./binary/
+                  name: binaries-${{ matrix.target }}
+                  path: ./backend/binary/
