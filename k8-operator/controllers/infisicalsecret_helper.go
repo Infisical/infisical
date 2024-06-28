@@ -267,6 +267,11 @@ func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context
 		plainProcessedSecrets[secret.Key] = []byte(secret.Value)
 	}
 
+	// Initialize the Annotations map if it's nil
+	if managedKubeSecret.ObjectMeta.Annotations == nil {
+		managedKubeSecret.ObjectMeta.Annotations = make(map[string]string)
+	}
+
 	managedKubeSecret.Data = plainProcessedSecrets
 	managedKubeSecret.ObjectMeta.Annotations[SECRET_VERSION_ANNOTATION] = ETag
 
