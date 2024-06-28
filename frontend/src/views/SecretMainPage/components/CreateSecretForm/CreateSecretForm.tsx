@@ -11,7 +11,7 @@ import { SecretType, UserWsKeyPair } from "@app/hooks/api/types";
 import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
-  key: z.string(),
+  key: z.string().trim().min(1, { message: "Secret key is required" }),
   value: z.string().optional()
 });
 
