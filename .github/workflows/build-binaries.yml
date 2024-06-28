@@ -1,0 +1,64 @@
+name: Build Binaries
+
+on:
+    push:
+        branches:
+            - daniel/infisical-binary
+    pull_request:
+        branches:
+            - daniel/infisical-binary
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest, windows-latest]
+                node-version: [18.x]
+                target:
+                    [
+                        "node18-linux-x86",
+                        "node18-linux-x64",
+                        "node18-linux-armv6",
+                        "node18-linux-arm64",
+                        "node18-macos-x64",
+                        "node18-macos-arm64",
+                        "node18-win-x86",
+                        "node18-win-x64",
+                        "node18-freebsd-x86",
+                        "node18-freebsd-x64",
+                        "node18-freebsd-arm64",
+                        "node18-netbsd-x86",
+                        "node18-netbsd-x64",
+                        "node18-netbsd-arm64",
+                        "node18-openbsd-x86",
+                        "node18-openbsd-x64",
+                        "node18-openbsd-arm64"
+                    ]
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+
+            - name: Install dependencies (backend)
+              run: npm install
+
+            - name: Install dependencies (frontend)
+              run: npm install --prefix ../frontend
+
+            - name: Prerequisites
+              run: npm run binary:build
+
+            - name: Build binary
+              run: npx pkg --no-bytecode --public-packages \"*\" --public --targets ${{matrix.target}} .
+
+            - name: Upload binaries
+              uses: actions/upload-artifact@v3
+              with:
+                  name: binaries-${{ matrix.os }}-${{ matrix.target }}
+                  path: ./binary/
