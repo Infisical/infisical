@@ -64,5 +64,10 @@
   ],
   "integrations": {
     "intercom": "hsg644ru"
+  },
+  "analytics": {
+    "koala": {
+      "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
+    }
   }
 }
