@@ -50,7 +50,7 @@ jobs:
               with:
                   entrypoint: backend/dist/main.js
                   arch: ${{ matrix.arch }}
-                  node-version: ${{ matrix.node-version }}
+                  node-version: node${{ matrix.node-version }}
                   os: ${{ matrix.os }}
                   upload: false
 
