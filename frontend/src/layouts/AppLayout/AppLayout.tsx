@@ -129,13 +129,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
-  const nonFavoriteWorkspaces = useMemo(
-    () => workspaces.filter((w) => !projectFavorites?.includes(w.id)),
-    [workspaces, projectFavorites]
-  );
-
-  const favoriteWorkspaces = useMemo(
-    () => workspaces.filter((w) => projectFavorites?.includes(w.id)),
+  const workspaceList = useMemo(
+    () => [
+      ...workspaces.filter((w) => projectFavorites?.includes(w.id)),
+      ...workspaces.filter((w) => !projectFavorites?.includes(w.id))
+    ],
     [workspaces, projectFavorites]
   );
 
@@ -500,7 +498,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
-                          {[...favoriteWorkspaces, ...nonFavoriteWorkspaces]
+                          {workspaceList
                             .filter((ws) => ws.orgId === currentOrg?.id)
                             .map(({ id, name }) => (
                               <div
