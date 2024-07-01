@@ -36,6 +36,9 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
 
+            - name: Install pkg
+              run: npm install -g pkg
+
             - name: Install dependencies (backend)
               run: npm install
 
