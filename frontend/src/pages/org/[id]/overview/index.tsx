@@ -588,15 +588,8 @@ const OrganizationPage = withPermission(
       [filteredWorkspaces, projectFavorites]
     );
 
-    const favoriteWorkspaces = useMemo(
-      () => workspacesWithFaveProp.filter((w) => w.isFavorite),
-      [workspacesWithFaveProp]
-    );
-
-    const nonFavoriteWorkspaces = useMemo(
-      () => workspacesWithFaveProp.filter((w) => !w.isFavorite),
-      [workspacesWithFaveProp]
-    );
+    const favoriteWorkspaces = workspacesWithFaveProp.filter((w) => w.isFavorite);
+    const nonFavoriteWorkspaces = workspacesWithFaveProp.filter((w) => !w.isFavorite);
 
     const addProjectToFavorites = async (projectId: string) => {
       try {
