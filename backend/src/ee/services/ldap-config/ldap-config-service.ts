@@ -53,7 +53,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { testLDAPConfig } from "./ldap-fns";
+import { searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -286,7 +286,7 @@ export const ldapConfigServiceFactory = ({
     return ldapConfig;
   };
 
-  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean }) => {
+  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }) => {
     const ldapConfig = await ldapConfigDAL.findOne(filter);
     if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
 
@@ -716,11 +716,25 @@ export const ldapConfigServiceFactory = ({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
       });
 
-    const ldapConfig = await ldapConfigDAL.findOne({
-      id: ldapConfigId,
-      orgId
+    const ldapConfig = await getLdapCfg({
+      orgId,
+      id: ldapConfigId
     });
-    if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
+
+    if (!ldapConfig.groupSearchBase) {
+      throw new BadRequestError({
+        message: "Configure a group search base in your LDAP configuration in order to proceed."
+      });
+    }
+
+    const groupSearchFilter = `(cn=${ldapGroupCN})`;
+    const groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
+
+    if (!groups.some((g) => g.cn === ldapGroupCN)) {
+      throw new BadRequestError({
+        message: "Failed to find LDAP Group CN"
+      });
+    }
 
     const group = await groupDAL.findOne({ slug: groupSlug, orgId });
     if (!group) throw new BadRequestError({ message: "Failed to find group" });
