@@ -107,8 +107,8 @@ export const useUpdateUserProjectFavorites = () => {
 
       return {};
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.userProjectFavorites);
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(userKeys.userProjectFavorites(orgId));
     }
   });
 };
