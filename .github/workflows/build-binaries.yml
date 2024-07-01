@@ -9,12 +9,19 @@ on:
             - daniel/infisical-binary
 
 jobs:
-    build-linux:
-        runs-on: ubuntu-latest
+    build-and-release:
+        runs-on: ubuntu-20.04
         strategy:
             matrix:
-                target: ["node16-linux-x64", "node16-linux-x86", "node16-linux-armv7", "node16-linux-arm64"]
-
+                arch:
+                    - x64
+                    - arm64
+                node-version:
+                    - 18
+                os:
+                    - linux
+                    - macos
+                    - win
         defaults:
             run:
                 working-directory: ./backend
@@ -26,7 +33,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: 18.x
+                  node-version: ${{ matrix.node-version }}
 
             - name: Install dependencies (backend)
               run: npm install
@@ -37,127 +44,19 @@ jobs:
             - name: Prerequisites for pkg
               run: npm run binary:build
 
-            - name: Build binary
-              run: npx pkg --no-bytecode --public-packages "*" --targets ${{matrix.target}} .
+            - name: Package into node binary
+              uses: lando/pkg-action@v2
+              id: pkg
+              with:
+                  entrypoint: dist/main.js
+                  arch: ${{ matrix.arch }}
+                  node-version: ${{ matrix.node-version }}
+                  os: ${{ matrix.os }}
+                  upload: false
+                  pkg: "pkg@5.8.1"
 
-            - name: Upload binaries
+            - name: Upload artifact
               uses: actions/upload-artifact@v3
               with:
-                  name: binaries-${{ matrix.target }}
-                  path: ./backend/binary/
-
-    build-alpine:
-        runs-on: ubuntu-latest
-        container:
-            image: node:18-alpine
-        strategy:
-            matrix:
-                target: ["node16-alpine-x64", "node16-alpine-x86", "node16-alpine-armv7", "node16-alpine-arm64"]
-
-        defaults:
-            run:
-                working-directory: ./backend
-
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v3
-
-            - name: Install dependencies (backend)
-              run: npm install
-
-            - name: Install dependencies (frontend)
-              run: npm install --prefix ../frontend
-
-            - name: Prerequisites for pkg
-              run: npm run binary:build
-
-            - name: Build binary
-              run: npx pkg --no-bytecode --public-packages "*" --targets ${{matrix.target}} .
-
-            - name: Upload binaries
-              uses: actions/upload-artifact@v3
-              with:
-                  name: binaries-${{ matrix.target }}
-                  path: ./backend/binary/
-
-    build-macos:
-        runs-on: macos-latest
-        strategy:
-            matrix:
-                target:
-                    [
-                        "node16-macos-x64",
-                        "node16-macos-arm64",
-                        "node16-linuxstatic-x64",
-                        "node16-linuxstatic-x86",
-                        "node16-linuxstatic-armv7",
-                        "node16-linuxstatic-arm64"
-                    ]
-
-        defaults:
-            run:
-                working-directory: ./backend
-
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v3
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18.x
-
-            - name: Install dependencies (backend)
-              run: npm install
-
-            - name: Install dependencies (frontend)
-              run: npm install --prefix ../frontend
-
-            - name: Prerequisites for pkg
-              run: npm run binary:build
-
-            - name: Build binary
-              run: npx pkg --no-bytecode --public-packages "*" --targets ${{matrix.target}} .
-
-            - name: Upload binaries
-              uses: actions/upload-artifact@v3
-              with:
-                  name: binaries-${{ matrix.target }}
-                  path: ./backend/binary/
-
-    build-windows:
-        runs-on: windows-latest
-        strategy:
-            matrix:
-                target: ["node16-win-x64", "node16-win-x86"]
-
-        defaults:
-            run:
-                working-directory: ./backend
-
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v3
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18.x
-
-            - name: Install dependencies (backend)
-              run: npm install
-
-            - name: Install dependencies (frontend)
-              run: npm install --prefix ../frontend
-
-            - name: Prerequisites for pkg
-              run: npm run binary:build
-
-            - name: Build binary
-              run: npx pkg --no-bytecode --public-packages "*" --targets ${{matrix.target}} .
-
-            - name: Upload binaries
-              uses: actions/upload-artifact@v3
-              with:
-                  name: binaries-${{ matrix.target }}
-                  path: ./backend/binary/
+                  name: ${{ steps.pkg.outputs.artifact-key }}
+                  path: ${{ steps.pkg.outputs.file }}
