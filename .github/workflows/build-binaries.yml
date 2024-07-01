@@ -46,7 +46,7 @@ jobs:
               run: npm run binary:build
 
             - name: Package into node binary
-              run: pkg --no-bytecode --public-packages \"*\" --public --target host
+              run: pkg --no-bytecode --public-packages \"*\" --public --target host --debug .
 
             # - name: Upload artifact
             # uses: actions/upload-artifact@v3
