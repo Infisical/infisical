@@ -8,6 +8,10 @@ on:
         branches:
             - daniel/infisical-binary
 
+defaults:
+    run:
+        working-directory: ./backend
+
 jobs:
     build-and-release:
         runs-on: ubuntu-20.04
@@ -22,9 +26,6 @@ jobs:
                     - linux
                     - macos
                     - win
-        defaults:
-            run:
-                working-directory: ./backend
 
         steps:
             - name: Checkout code
@@ -50,6 +51,7 @@ jobs:
               with:
                   entrypoint: backend/dist/main.js
                   arch: ${{ matrix.arch }}
+                  options: "--no-bytecode"
                   node-version: node${{ matrix.node-version }}
                   os: ${{ matrix.os }}
                   upload: false
