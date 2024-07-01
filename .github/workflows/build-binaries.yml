@@ -21,34 +21,39 @@ jobs:
                 os: [linux, macos, win]
                 include:
                     - os: linux
-                      docker-image: node:18-buster
+                      target: node18-linux
                     - os: macos
-                      docker-image: node:18-buster
+                      target: node18-macos
                     - os: win
-                      docker-image: node:18-buster
+                      target: node18-win
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v1
-
-            - name: 🐋 Login to Docker Hub
-              uses: docker/login-action@v2
+            - name: Set up Node.js
+              uses: actions/setup-node@v3
               with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+                  node-version: 18
 
-            - name: Build with Docker
-              run: |
-                  docker run --rm \
-                  --platform=${{ matrix.os }} \
-                  -v ${{ github.workspace }}/backend:/workspace/backend \
-                  -v ${{ github.workspace }}/frontend:/workspace/frontend \
-                  -w /workspace/backend \
-                  ${{ matrix.docker-image }} \
-                  bash -c "npm install -g pkg && npm install && npm install --prefix ../frontend && npm run binary:build && pkg --no-bytecode --public-packages \"*\" --public --target node18-${{ matrix.os }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} ."
+            - name: Install pkg
+              run: npm install -g pkg
+
+            - name: Install dependencies (backend)
+              run: npm install
+              working-directory: ./backend
+
+            - name: Install dependencies (frontend)
+              run: npm install --prefix ../frontend
+              working-directory: ./backend
+
+            - name: Prerequisites for pkg
+              run: npm run binary:build
+              working-directory: ./backend
+
+            - name: Package into node binary
+              run: pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
+              working-directory: ./backend
 
             - name: List files
               run: ls -la ./binary
