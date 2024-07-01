@@ -1,6 +1,6 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
@@ -489,7 +489,8 @@ const OrganizationPage = withPermission(
     const { currentOrg } = useOrganization();
     const routerOrgId = String(router.query.id);
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
-    const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
+    const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
+      useGetUserProjectFavorites(currentOrg?.id!);
     const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
     const addUsersToProject = useAddUserToWsNonE2EE();
@@ -575,34 +576,59 @@ const OrganizationPage = withPermission(
     const filteredWorkspaces = orgWorkspaces.filter((ws) =>
       ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
     );
-    const favoriteWorkspaces = filteredWorkspaces.filter((ws) => projectFavorites?.includes(ws.id));
-    const nonFavoriteWorkspaces = filteredWorkspaces.filter((ws) =>
-      favoriteWorkspaces.every((entry) => entry.id !== ws.id)
+
+    const workspacesWithFaveProp = useMemo(
+      () =>
+        filteredWorkspaces
+          .map((w): Workspace & { isFavorite: boolean } => ({
+            ...w,
+            isFavorite: Boolean(projectFavorites?.includes(w.id))
+          }))
+          .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
+      [filteredWorkspaces, projectFavorites]
     );
 
-    const addProjectToFavorites = useCallback(
-      (projectId: string) => {
+    const favoriteWorkspaces = useMemo(
+      () => workspacesWithFaveProp.filter((w) => w.isFavorite),
+      [workspacesWithFaveProp]
+    );
+
+    const nonFavoriteWorkspaces = useMemo(
+      () => workspacesWithFaveProp.filter((w) => !w.isFavorite),
+      [workspacesWithFaveProp]
+    );
+
+    const addProjectToFavorites = async (projectId: string) => {
+      try {
         if (currentOrg?.id) {
-          updateUserProjectFavorites({
+          await updateUserProjectFavorites({
             orgId: currentOrg?.id,
             projectFavorites: [...(projectFavorites || []), projectId]
           });
         }
-      },
-      [currentOrg, projectFavorites]
-    );
+      } catch (err) {
+        createNotification({
+          text: "Failed to add project to favorites.",
+          type: "error"
+        });
+      }
+    };
 
-    const removeProjectFromFavorites = useCallback(
-      (projectId: string) => {
+    const removeProjectFromFavorites = async (projectId: string) => {
+      try {
         if (currentOrg?.id) {
-          updateUserProjectFavorites({
+          await updateUserProjectFavorites({
             orgId: currentOrg?.id,
             projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
           });
         }
-      },
-      [currentOrg, projectFavorites]
-    );
+      } catch (err) {
+        createNotification({
+          text: "Failed to remove project from favorites.",
+          type: "error"
+        });
+      }
+    };
 
     const renderProjectGridItem = (workspace: Workspace, isFavorite: boolean) => (
       // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
@@ -709,7 +735,7 @@ const OrganizationPage = withPermission(
           </>
         )}
         <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {isWorkspaceLoading &&
+          {(isWorkspaceLoading || isProjectFavoritesLoading) &&
             Array.apply(0, Array(3)).map((_x, i) => (
               <div
                 key={`workspace-cards-loading-${i + 1}`}
@@ -726,14 +752,16 @@ const OrganizationPage = withPermission(
                 </div>
               </div>
             ))}
-          {nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
+          {!isProjectFavoritesLoading &&
+            !isWorkspaceLoading &&
+            nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
         </div>
       </>
     );
 
     const projectsListView = (
       <div className="mt-4 w-full rounded-md">
-        {isWorkspaceLoading &&
+        {(isWorkspaceLoading || isProjectFavoritesLoading) &&
           Array.apply(0, Array(3)).map((_x, i) => (
             <div
               key={`workspace-cards-loading-${i + 1}`}
@@ -744,13 +772,11 @@ const OrganizationPage = withPermission(
               <Skeleton className="w-full bg-mineshaft-600" />
             </div>
           ))}
-        {[...favoriteWorkspaces, ...nonFavoriteWorkspaces].map((workspace, ind) =>
-          renderProjectListItem(
-            workspace,
-            favoriteWorkspaces.some((w) => w.id === workspace.id),
-            ind
-          )
-        )}
+        {!isProjectFavoritesLoading &&
+          !isWorkspaceLoading &&
+          workspacesWithFaveProp.map((workspace, ind) =>
+            renderProjectListItem(workspace, workspace.isFavorite, ind)
+          )}
       </div>
     );
 

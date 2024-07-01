@@ -5,7 +5,7 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
@@ -128,8 +128,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
-  const nonFavoriteWorkspaces = workspaces.filter((w) => !projectFavorites?.includes(w.id));
-  const favoriteWorkspaces = workspaces.filter((w) => projectFavorites?.includes(w.id));
+
+  const nonFavoriteWorkspaces = useMemo(
+    () => workspaces.filter((w) => !projectFavorites?.includes(w.id)),
+    [workspaces, projectFavorites]
+  );
+
+  const favoriteWorkspaces = useMemo(
+    () => workspaces.filter((w) => projectFavorites?.includes(w.id)),
+    [workspaces, projectFavorites]
+  );
 
   const { user } = useUser();
   const { subscription } = useSubscription();
@@ -280,29 +288,37 @@ export const AppLayout = ({ children }: LayoutProps) => {
     }
   };
 
-  const addProjectToFavorites = useCallback(
-    (projectId: string) => {
+  const addProjectToFavorites = async (projectId: string) => {
+    try {
       if (currentOrg?.id) {
-        updateUserProjectFavorites({
+        await updateUserProjectFavorites({
           orgId: currentOrg?.id,
           projectFavorites: [...(projectFavorites || []), projectId]
         });
       }
-    },
-    [currentOrg, projectFavorites]
-  );
+    } catch (err) {
+      createNotification({
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
+    }
+  };
 
-  const removeProjectFromFavorites = useCallback(
-    (projectId: string) => {
+  const removeProjectFromFavorites = async (projectId: string) => {
+    try {
       if (currentOrg?.id) {
-        updateUserProjectFavorites({
+        await updateUserProjectFavorites({
           orgId: currentOrg?.id,
           projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
         });
       }
-    },
-    [currentOrg, projectFavorites]
-  );
+    } catch (err) {
+      createNotification({
+        text: "Failed to remove project from favorites.",
+        type: "error"
+      });
+    }
+  };
 
   return (
     <>
