@@ -277,14 +277,16 @@ export const userServiceFactory = ({
       });
     }
 
-    const memberProjectFavorites = (
-      await projectMembershipDAL.find({
-        userId,
-        $in: {
-          projectId: projectIds
-        }
-      })
-    ).map((projectMembership) => projectMembership.projectId);
+    const matchingUserProjectMemberships = await projectMembershipDAL.find({
+      userId,
+      $in: {
+        projectId: projectIds
+      }
+    });
+
+    const memberProjectFavorites = matchingUserProjectMemberships.map(
+      (projectMembership) => projectMembership.projectId
+    );
 
     const updatedOrgMembership = await orgMembershipDAL.updateById(orgMembership.id, {
       projectFavorites: memberProjectFavorites
