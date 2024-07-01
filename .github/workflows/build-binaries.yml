@@ -46,18 +46,10 @@ jobs:
               run: npm run binary:build
 
             - name: Package into node binary
-              uses: lando/pkg-action@v2
-              id: pkg
-              with:
-                  entrypoint: backend/dist/main.js
-                  arch: ${{ matrix.arch }}
-                  options: "--no-bytecode"
-                  node-version: node${{ matrix.node-version }}
-                  os: ${{ matrix.os }}
-                  upload: false
+              run: pkg --no-bytecode --public-packages \"*\" --public --target host
 
-            - name: Upload artifact
-              uses: actions/upload-artifact@v3
-              with:
-                  name: ${{ steps.pkg.outputs.artifact-key }}
-                  path: ${{ steps.pkg.outputs.file }}
+            # - name: Upload artifact
+            # uses: actions/upload-artifact@v3
+            # with:
+            # name: ${{ steps.pkg.outputs.artifact-key }}
+            # path: ${{ steps.pkg.outputs.file }}
