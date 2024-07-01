@@ -1,6 +1,6 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faFolderOpen } from "@fortawesome/free-regular-svg-icons";
+import { faFolderOpen, faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRight,
   faArrowUpRightFromSquare,
@@ -24,6 +24,7 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
+  faStar as faSolidStar,
   faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -62,6 +63,9 @@ import {
 } from "@app/hooks/api";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { Workspace } from "@app/hooks/api/types";
+import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
+import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const features = [
@@ -485,7 +489,11 @@ const OrganizationPage = withPermission(
     const { currentOrg } = useOrganization();
     const routerOrgId = String(router.query.id);
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
+    const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
+      useGetUserProjectFavorites(currentOrg?.id!);
+    const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
+    const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
     const addUsersToProject = useAddUserToWsNonE2EE();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -570,56 +578,187 @@ const OrganizationPage = withPermission(
       ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
     );
 
-    const projectsGridView = (
-      <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {isWorkspaceLoading &&
-          Array.apply(0, Array(3)).map((_x, i) => (
-            <div
-              key={`workspace-cards-loading-${i + 1}`}
-              className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-            >
-              <div className="mt-0 text-lg text-mineshaft-100">
-                <Skeleton className="w-3/4 bg-mineshaft-600" />
-              </div>
-              <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-                <Skeleton className="w-1/2 bg-mineshaft-600" />
-              </div>
-              <div className="flex justify-end">
-                <Skeleton className="w-1/2 bg-mineshaft-600" />
-              </div>
-            </div>
-          ))}
-        {filteredWorkspaces.map((workspace) => (
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-          <div
-            onClick={() => {
-              router.push(`/project/${workspace.id}/secrets/overview`);
-              localStorage.setItem("projectData.id", workspace.id);
-            }}
-            key={workspace.id}
-            className="min-w-72 group flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-          >
-            <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
-            <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-              {workspace.environments?.length || 0} environments
-            </div>
-            <button type="button">
-              <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all group-hover:border-primary-500/80 group-hover:bg-primary-800/20 group-hover:text-mineshaft-200">
-                Explore{" "}
-                <FontAwesomeIcon
-                  icon={faArrowRight}
-                  className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
-                />
-              </div>
-            </button>
+    const { workspacesWithFaveProp, favoriteWorkspaces, nonFavoriteWorkspaces } = useMemo(() => {
+      const workspacesWithFav = filteredWorkspaces
+        .map((w): Workspace & { isFavorite: boolean } => ({
+          ...w,
+          isFavorite: Boolean(projectFavorites?.includes(w.id))
+        }))
+        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
+
+      const favWorkspaces = workspacesWithFav.filter((w) => w.isFavorite);
+      const nonFavWorkspaces = workspacesWithFav.filter((w) => !w.isFavorite);
+
+      return {
+        workspacesWithFaveProp: workspacesWithFav,
+        favoriteWorkspaces: favWorkspaces,
+        nonFavoriteWorkspaces: nonFavWorkspaces
+      };
+    }, [filteredWorkspaces, projectFavorites]);
+
+    const addProjectToFavorites = async (projectId: string) => {
+      try {
+        if (currentOrg?.id) {
+          await updateUserProjectFavorites({
+            orgId: currentOrg?.id,
+            projectFavorites: [...(projectFavorites || []), projectId]
+          });
+        }
+      } catch (err) {
+        createNotification({
+          text: "Failed to add project to favorites.",
+          type: "error"
+        });
+      }
+    };
+
+    const removeProjectFromFavorites = async (projectId: string) => {
+      try {
+        if (currentOrg?.id) {
+          await updateUserProjectFavorites({
+            orgId: currentOrg?.id,
+            projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+          });
+        }
+      } catch (err) {
+        createNotification({
+          text: "Failed to remove project from favorites.",
+          type: "error"
+        });
+      }
+    };
+
+    const renderProjectGridItem = (workspace: Workspace, isFavorite: boolean) => (
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+      <div
+        onClick={() => {
+          router.push(`/project/${workspace.id}/secrets/overview`);
+          localStorage.setItem("projectData.id", workspace.id);
+        }}
+        key={workspace.id}
+        className="min-w-72 flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+      >
+        <div className="flex flex-row justify-between">
+          <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
+          {isFavorite ? (
+            <FontAwesomeIcon
+              icon={faSolidStar}
+              className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeProjectFromFavorites(workspace.id);
+              }}
+            />
+          ) : (
+            <FontAwesomeIcon
+              icon={faStar}
+              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                addProjectToFavorites(workspace.id);
+              }}
+            />
+          )}
+        </div>
+        <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+          {workspace.environments?.length || 0} environments
+        </div>
+        <button type="button">
+          <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+            Explore{" "}
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
+            />
           </div>
-        ))}
+        </button>
       </div>
+    );
+
+    const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+      <div
+        onClick={() => {
+          router.push(`/project/${workspace.id}/secrets/overview`);
+          localStorage.setItem("projectData.id", workspace.id);
+        }}
+        key={workspace.id}
+        className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+          index === 0 && "rounded-t-md"
+        } ${index === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
+      >
+        <div className="flex items-center sm:col-span-3 lg:col-span-4">
+          <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
+          <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+        </div>
+        <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+          <div className="text-center text-sm text-mineshaft-300">
+            {workspace.environments?.length || 0} environments
+          </div>
+          {isFavorite ? (
+            <FontAwesomeIcon
+              icon={faSolidStar}
+              className="ml-6 text-sm text-mineshaft-300 hover:text-mineshaft-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeProjectFromFavorites(workspace.id);
+              }}
+            />
+          ) : (
+            <FontAwesomeIcon
+              icon={faStar}
+              className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                addProjectToFavorites(workspace.id);
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+
+    const projectsGridView = (
+      <>
+        {favoriteWorkspaces.length > 0 && (
+          <>
+            <p className="mt-6 text-xl font-semibold text-white">Favorites</p>
+            <div
+              className={`b grid w-full grid-cols-1 gap-4 ${
+                nonFavoriteWorkspaces.length > 0 && "border-b border-mineshaft-600"
+              } py-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
+            >
+              {favoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, true))}
+            </div>
+          </>
+        )}
+        <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {isProjectViewLoading &&
+            Array.apply(0, Array(3)).map((_x, i) => (
+              <div
+                key={`workspace-cards-loading-${i + 1}`}
+                className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+              >
+                <div className="mt-0 text-lg text-mineshaft-100">
+                  <Skeleton className="w-3/4 bg-mineshaft-600" />
+                </div>
+                <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+                  <Skeleton className="w-1/2 bg-mineshaft-600" />
+                </div>
+                <div className="flex justify-end">
+                  <Skeleton className="w-1/2 bg-mineshaft-600" />
+                </div>
+              </div>
+            ))}
+          {!isProjectViewLoading &&
+            nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
+        </div>
+      </>
     );
 
     const projectsListView = (
       <div className="mt-4 w-full rounded-md">
-        {isWorkspaceLoading &&
+        {isProjectViewLoading &&
           Array.apply(0, Array(3)).map((_x, i) => (
             <div
               key={`workspace-cards-loading-${i + 1}`}
@@ -630,29 +769,10 @@ const OrganizationPage = withPermission(
               <Skeleton className="w-full bg-mineshaft-600" />
             </div>
           ))}
-        {filteredWorkspaces.map((workspace, ind) => (
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-          <div
-            onClick={() => {
-              router.push(`/project/${workspace.id}/secrets/overview`);
-              localStorage.setItem("projectData.id", workspace.id);
-            }}
-            key={workspace.id}
-            className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-              ind === 0 && "rounded-t-md"
-            } ${ind === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
-          >
-            <div className="flex items-center sm:col-span-3 lg:col-span-4">
-              <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
-              <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
-            </div>
-            <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
-              <div className="text-center text-sm text-mineshaft-300">
-                {workspace.environments?.length || 0} environments
-              </div>
-            </div>
-          </div>
-        ))}
+        {!isProjectViewLoading &&
+          workspacesWithFaveProp.map((workspace, ind) =>
+            renderProjectListItem(workspace, workspace.isFavorite, ind)
+          )}
       </div>
     );
 

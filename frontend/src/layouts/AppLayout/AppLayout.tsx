@@ -12,6 +12,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowLeft,
@@ -23,7 +24,8 @@ import {
   faInfo,
   faMobile,
   faPlus,
-  faQuestion
+  faQuestion,
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -72,6 +74,9 @@ import {
   useRegisterUserAction,
   useSelectOrganization
 } from "@app/hooks/api";
+import { Workspace } from "@app/hooks/api/types";
+import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
+import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { CreateOrgModal } from "@app/views/Org/components";
 
@@ -121,6 +126,20 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
+
+  const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
+  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+
+  const workspacesWithFaveProp = useMemo(
+    () =>
+      workspaces
+        .map((w): Workspace & { isFavorite: boolean } => ({
+          ...w,
+          isFavorite: Boolean(projectFavorites?.includes(w.id))
+        }))
+        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
+    [workspaces, projectFavorites]
+  );
 
   const { user } = useUser();
   const { subscription } = useSubscription();
@@ -268,6 +287,38 @@ export const AppLayout = ({ children }: LayoutProps) => {
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });
+    }
+  };
+
+  const addProjectToFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []), projectId]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
+    }
+  };
+
+  const removeProjectFromFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to remove project from favorites.",
+        type: "error"
+      });
     }
   };
 
@@ -451,19 +502,47 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
-                          {workspaces
+                          {workspacesWithFaveProp
                             .filter((ws) => ws.orgId === currentOrg?.id)
-                            .map(({ id, name }) => (
-                              <SelectItem
-                                key={`ws-layout-list-${id}`}
-                                value={id}
+                            .map(({ id, name, isFavorite }) => (
+                              <div
                                 className={twMerge(
-                                  currentWorkspace?.id === id && "bg-mineshaft-600",
-                                  "truncate"
+                                  "mb-1 grid grid-cols-7 rounded-md hover:bg-mineshaft-500",
+                                  id === currentWorkspace?.id && "bg-mineshaft-500"
                                 )}
+                                key={id}
                               >
-                                {name}
-                              </SelectItem>
+                                <div className="col-span-6">
+                                  <SelectItem
+                                    key={`ws-layout-list-${id}`}
+                                    value={id}
+                                    className="transition-none data-[highlighted]:bg-mineshaft-500"
+                                  >
+                                    {name}
+                                  </SelectItem>
+                                </div>
+                                <div className="col-span-1 flex items-center">
+                                  {isFavorite ? (
+                                    <FontAwesomeIcon
+                                      icon={faSolidStar}
+                                      className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeProjectFromFavorites(id);
+                                      }}
+                                    />
+                                  ) : (
+                                    <FontAwesomeIcon
+                                      icon={faStar}
+                                      className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        addProjectToFavorites(id);
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
                             ))}
                         </div>
                         <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />

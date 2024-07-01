@@ -8,6 +8,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserDALFactory } from "./user-dal";
 
 type TUserServiceFactoryDep = {
@@ -26,8 +27,9 @@ type TUserServiceFactoryDep = {
     | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -37,6 +39,7 @@ export const userServiceFactory = ({
   userDAL,
   userAliasDAL,
   orgMembershipDAL,
+  projectMembershipDAL,
   tokenService,
   smtpService
 }: TUserServiceFactoryDep) => {
@@ -247,6 +250,51 @@ export const userServiceFactory = ({
     return privateKey;
   };
 
+  const getUserProjectFavorites = async (userId: string, orgId: string) => {
+    const orgMembership = await orgMembershipDAL.findOne({
+      userId,
+      orgId
+    });
+
+    if (!orgMembership) {
+      throw new BadRequestError({
+        message: "User does not belong in the organization."
+      });
+    }
+
+    return { projectFavorites: orgMembership.projectFavorites || [] };
+  };
+
+  const updateUserProjectFavorites = async (userId: string, orgId: string, projectIds: string[]) => {
+    const orgMembership = await orgMembershipDAL.findOne({
+      userId,
+      orgId
+    });
+
+    if (!orgMembership) {
+      throw new BadRequestError({
+        message: "User does not belong in the organization."
+      });
+    }
+
+    const matchingUserProjectMemberships = await projectMembershipDAL.find({
+      userId,
+      $in: {
+        projectId: projectIds
+      }
+    });
+
+    const memberProjectFavorites = matchingUserProjectMemberships.map(
+      (projectMembership) => projectMembership.projectId
+    );
+
+    const updatedOrgMembership = await orgMembershipDAL.updateById(orgMembership.id, {
+      projectFavorites: memberProjectFavorites
+    });
+
+    return updatedOrgMembership.projectFavorites;
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
@@ -258,6 +306,8 @@ export const userServiceFactory = ({
     createUserAction,
     getUserAction,
     unlockUser,
-    getUserPrivateKey
+    getUserPrivateKey,
+    getUserProjectFavorites,
+    updateUserProjectFavorites
   };
 };
