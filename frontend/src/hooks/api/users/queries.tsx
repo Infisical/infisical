@@ -22,7 +22,7 @@ export const userKeys = {
   getUser: ["user"] as const,
   getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
-  userProjectFavorites: ["user-project-favorites"] as const,
+  userProjectFavorites: (orgId: string) => [{ orgId }, "user-project-favorites"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
@@ -134,7 +134,7 @@ export const fetchOrgUsers = async (orgId: string) => {
 
 export const useGetUserProjectFavorites = (orgId: string) =>
   useQuery({
-    queryKey: userKeys.userProjectFavorites,
+    queryKey: userKeys.userProjectFavorites(orgId),
     queryFn: () => fetchUserProjectFavorites(orgId)
   });
 
