@@ -286,11 +286,11 @@ export const userServiceFactory = ({
       })
     ).map((projectMembership) => projectMembership.projectId);
 
-    return (
-      await orgMembershipDAL.updateById(orgMembership.id, {
-        projectFavorites: memberProjectFavorites
-      })
-    ).projectFavorites;
+    const updatedOrgMembership = await orgMembershipDAL.updateById(orgMembership.id, {
+      projectFavorites: memberProjectFavorites
+    });
+
+    return updatedOrgMembership.projectFavorites;
   };
 
   return {
