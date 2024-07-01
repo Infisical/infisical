@@ -50,6 +50,15 @@ postgresql:
     username: infisical
     password: root
     database: infisicalDB
+  useExistingPostgres:
+    # -- When this is enabled, postgresql.enabled needs to be false
+    enabled: false
+    # -- The name from where to get the existing postgresql connection URI
+    existingUriSecret:
+      # -- The name of the secret that contains the uri
+      name: ""
+      # -- Secret key name that contains the uri
+      key: ""
 
 redis:
   enabled: true
