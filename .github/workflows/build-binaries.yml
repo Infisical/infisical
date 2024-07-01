@@ -48,7 +48,7 @@ jobs:
               uses: lando/pkg-action@v2
               id: pkg
               with:
-                  entrypoint: dist/main.js
+                  entrypoint: backend/dist/main.js
                   arch: ${{ matrix.arch }}
                   node-version: ${{ matrix.node-version }}
                   os: ${{ matrix.os }}
