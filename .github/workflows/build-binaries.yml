@@ -49,10 +49,10 @@ jobs:
               run: npm run binary:build
 
             - name: Package into node binary
-              run: pkg --no-bytecode --public-packages \"*\" --public --target host --debug .
+              run: pkg --no-bytecode --public-packages \"*\" --public --target host --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
 
-            # - name: Upload artifact
-            # uses: actions/upload-artifact@v3
-            # with:
-            # name: ${{ steps.pkg.outputs.artifact-key }}
-            # path: ${{ steps.pkg.outputs.file }}
+            - name: Upload artifact
+              uses: actions/upload-artifact@v3
+              with:
+                  name: infisical-${{ matrix.os }}-${{ matrix.arch }}
+                  path: ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}
