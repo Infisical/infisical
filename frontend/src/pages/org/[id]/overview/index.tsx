@@ -493,6 +493,7 @@ const OrganizationPage = withPermission(
       useGetUserProjectFavorites(currentOrg?.id!);
     const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
+    const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
     const addUsersToProject = useAddUserToWsNonE2EE();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -577,19 +578,23 @@ const OrganizationPage = withPermission(
       ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
     );
 
-    const workspacesWithFaveProp = useMemo(
-      () =>
-        filteredWorkspaces
-          .map((w): Workspace & { isFavorite: boolean } => ({
-            ...w,
-            isFavorite: Boolean(projectFavorites?.includes(w.id))
-          }))
-          .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
-      [filteredWorkspaces, projectFavorites]
-    );
+    const { workspacesWithFaveProp, favoriteWorkspaces, nonFavoriteWorkspaces } = useMemo(() => {
+      const workspacesWithFav = filteredWorkspaces
+        .map((w): Workspace & { isFavorite: boolean } => ({
+          ...w,
+          isFavorite: Boolean(projectFavorites?.includes(w.id))
+        }))
+        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
-    const favoriteWorkspaces = workspacesWithFaveProp.filter((w) => w.isFavorite);
-    const nonFavoriteWorkspaces = workspacesWithFaveProp.filter((w) => !w.isFavorite);
+      const favWorkspaces = workspacesWithFav.filter((w) => w.isFavorite);
+      const nonFavWorkspaces = workspacesWithFav.filter((w) => !w.isFavorite);
+
+      return {
+        workspacesWithFaveProp: workspacesWithFav,
+        favoriteWorkspaces: favWorkspaces,
+        nonFavoriteWorkspaces: nonFavWorkspaces
+      };
+    }, [filteredWorkspaces, projectFavorites]);
 
     const addProjectToFavorites = async (projectId: string) => {
       try {
@@ -728,7 +733,7 @@ const OrganizationPage = withPermission(
           </>
         )}
         <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {(isWorkspaceLoading || isProjectFavoritesLoading) &&
+          {isProjectViewLoading &&
             Array.apply(0, Array(3)).map((_x, i) => (
               <div
                 key={`workspace-cards-loading-${i + 1}`}
@@ -745,8 +750,7 @@ const OrganizationPage = withPermission(
                 </div>
               </div>
             ))}
-          {!isProjectFavoritesLoading &&
-            !isWorkspaceLoading &&
+          {!isProjectViewLoading &&
             nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
         </div>
       </>
@@ -754,7 +758,7 @@ const OrganizationPage = withPermission(
 
     const projectsListView = (
       <div className="mt-4 w-full rounded-md">
-        {(isWorkspaceLoading || isProjectFavoritesLoading) &&
+        {isProjectViewLoading &&
           Array.apply(0, Array(3)).map((_x, i) => (
             <div
               key={`workspace-cards-loading-${i + 1}`}
@@ -765,8 +769,7 @@ const OrganizationPage = withPermission(
               <Skeleton className="w-full bg-mineshaft-600" />
             </div>
           ))}
-        {!isProjectFavoritesLoading &&
-          !isWorkspaceLoading &&
+        {!isProjectViewLoading &&
           workspacesWithFaveProp.map((workspace, ind) =>
             renderProjectListItem(workspace, workspace.isFavorite, ind)
           )}

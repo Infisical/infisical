@@ -74,6 +74,7 @@ import {
   useRegisterUserAction,
   useSelectOrganization
 } from "@app/hooks/api";
+import { Workspace } from "@app/hooks/api/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
@@ -129,11 +130,14 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
-  const workspaceList = useMemo(
-    () => [
-      ...workspaces.filter((w) => projectFavorites?.includes(w.id)),
-      ...workspaces.filter((w) => !projectFavorites?.includes(w.id))
-    ],
+  const workspacesWithFaveProp = useMemo(
+    () =>
+      workspaces
+        .map((w): Workspace & { isFavorite: boolean } => ({
+          ...w,
+          isFavorite: Boolean(projectFavorites?.includes(w.id))
+        }))
+        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
     [workspaces, projectFavorites]
   );
 
@@ -498,9 +502,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
-                          {workspaceList
+                          {workspacesWithFaveProp
                             .filter((ws) => ws.orgId === currentOrg?.id)
-                            .map(({ id, name }) => (
+                            .map(({ id, name, isFavorite }) => (
                               <div
                                 className={twMerge(
                                   "mb-1 grid grid-cols-7 rounded-md hover:bg-mineshaft-500",
@@ -518,7 +522,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                                   </SelectItem>
                                 </div>
                                 <div className="col-span-1 flex items-center">
-                                  {projectFavorites?.includes(id) ? (
+                                  {isFavorite ? (
                                     <FontAwesomeIcon
                                       icon={faSolidStar}
                                       className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
