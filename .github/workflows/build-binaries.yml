@@ -51,8 +51,11 @@ jobs:
             - name: Package into node binary
               run: pkg --no-bytecode --public-packages \"*\" --public --target host --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
 
+            - name: List files
+              run: ls -la ./binary
+
             - name: Upload artifact
               uses: actions/upload-artifact@v3
               with:
                   name: infisical-${{ matrix.os }}-${{ matrix.arch }}
-                  path: ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}
+                  path: backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}
