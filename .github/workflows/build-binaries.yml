@@ -80,12 +80,12 @@ jobs:
 
             - name: Publish to Cloudsmith (Linux)
               if: matrix.os == 'linux'
-              run: cloudsmith push npm infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}  --republish --no-wait-for-sync --version 0.0.3 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}  --republish --no-wait-for-sync --version 0.0.3 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
               env:
                   CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
 
             - name: Publish to Cloudsmith (Windows)
               if: matrix.os == 'win'
-              run: cloudsmith push npm infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 0.0.3 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 0.0.3 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
               env:
                   CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
