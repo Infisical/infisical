@@ -54,6 +54,7 @@ spec:
           periodSeconds: 5
         ports: 
         - containerPort: 8080
+          protocol: TCP
         env:
         {{- if .Values.postgresql.enabled }}
         - name: DB_CONNECTION_URI
