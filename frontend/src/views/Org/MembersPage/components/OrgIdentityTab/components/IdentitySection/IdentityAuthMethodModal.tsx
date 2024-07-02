@@ -18,6 +18,7 @@ import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
+import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
@@ -30,6 +31,7 @@ type Props = {
 };
 
 const identityAuthMethods = [
+  { label: "Token Auth", value: IdentityAuthMethod.TOKEN_AUTH },
   { label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH },
   { label: "Kubernetes Auth", value: IdentityAuthMethod.KUBERNETES_AUTH },
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
@@ -117,6 +119,16 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
           />
         );
       }
+      case IdentityAuthMethod.TOKEN_AUTH: {
+        return (
+          <IdentityTokenAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+          />
+        );
+      }
+
       default: {
         return <div />;
       }

@@ -9,11 +9,14 @@ import {
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
   AddIdentityKubernetesAuthDTO,
+  AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
   CreateIdentityUniversalAuthClientSecretDTO,
   CreateIdentityUniversalAuthClientSecretRes,
+  CreateTokenIdentityTokenAuthDTO,
+  CreateTokenIdentityTokenAuthRes,
   DeleteIdentityDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   Identity,
@@ -21,14 +24,15 @@ import {
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityKubernetesAuth,
+  IdentityTokenAuth,
   IdentityUniversalAuth,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
-  UpdateIdentityUniversalAuthDTO
-} from "./types";
+  UpdateIdentityTokenAuthDTO,
+  UpdateIdentityUniversalAuthDTO} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -479,6 +483,82 @@ export const useUpdateIdentityKubernetesAuth = () => {
       );
 
       return identityKubernetesAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useAddIdentityTokenAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTokenAuth, {}, AddIdentityTokenAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityTokenAuth }
+      } = await apiRequest.post<{ identityTokenAuth: IdentityTokenAuth }>(
+        `/api/v1/auth/token-auth/identities/${identityId}`,
+        {
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityTokenAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityTokenAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTokenAuth, {}, UpdateIdentityTokenAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityTokenAuth }
+      } = await apiRequest.patch<{ identityTokenAuth: IdentityTokenAuth }>(
+        `/api/v1/auth/token-auth/identities/${identityId}`,
+        {
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityTokenAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useCreateTokenIdentityTokenAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CreateTokenIdentityTokenAuthRes, {}, CreateTokenIdentityTokenAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const { data } = await apiRequest.post<CreateTokenIdentityTokenAuthRes>(
+        `/api/v1/auth/token-auth/identities/${identityId}/token`
+      );
+
+      return data;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));

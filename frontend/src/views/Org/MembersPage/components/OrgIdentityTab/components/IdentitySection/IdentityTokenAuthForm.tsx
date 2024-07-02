@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,25 +5,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, TextArea } from "@app/components/v2";
+import { Button, FormControl, IconButton, Input } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
-  useAddIdentityKubernetesAuth,
-  useGetIdentityKubernetesAuth,
-  useUpdateIdentityKubernetesAuth
+  useAddIdentityTokenAuth,
+  useGetIdentityTokenAuth,
+  useUpdateIdentityTokenAuth
 } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    kubernetesHost: z.string(),
-    tokenReviewerJwt: z.string(),
-    allowedNames: z.string(),
-    allowedNamespaces: z.string(),
-    allowedAudience: z.string(),
-    caCert: z.string(),
     accessTokenTTL: z.string(),
     accessTokenMaxTTL: z.string(),
     accessTokenNumUsesLimit: z.string(),
@@ -53,7 +45,7 @@ type Props = {
   };
 };
 
-export const IdentityKubernetesAuthForm = ({
+export const IdentityTokenAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
   identityAuthMethodData
@@ -62,10 +54,10 @@ export const IdentityKubernetesAuthForm = ({
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
 
-  const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
+  const { mutateAsync: addMutateAsync } = useAddIdentityTokenAuth();
+  const { mutateAsync: updateMutateAsync } = useUpdateIdentityTokenAuth();
 
-  const { data } = useGetIdentityKubernetesAuth(identityAuthMethodData?.identityId ?? "");
+  const { data } = useGetIdentityTokenAuth(identityAuthMethodData?.identityId ?? "");
 
   const {
     control,
@@ -75,12 +67,6 @@ export const IdentityKubernetesAuthForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      kubernetesHost: "",
-      tokenReviewerJwt: "",
-      allowedNames: "",
-      allowedNamespaces: "",
-      allowedAudience: "",
-      caCert: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
@@ -94,49 +80,7 @@ export const IdentityKubernetesAuthForm = ({
     remove: removeAccessTokenTrustedIp
   } = useFieldArray({ control, name: "accessTokenTrustedIps" });
 
-  useEffect(() => {
-    if (data) {
-      reset({
-        kubernetesHost: data.kubernetesHost,
-        tokenReviewerJwt: data.tokenReviewerJwt,
-        allowedNames: data.allowedNames,
-        allowedNamespaces: data.allowedNamespaces,
-        allowedAudience: data.allowedAudience,
-        caCert: data.caCert,
-        accessTokenTTL: String(data.accessTokenTTL),
-        accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
-        accessTokenTrustedIps: data.accessTokenTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        )
-      });
-    } else {
-      reset({
-        kubernetesHost: "",
-        tokenReviewerJwt: "",
-        allowedNames: "",
-        allowedNamespaces: "",
-        allowedAudience: "",
-        caCert: "",
-        accessTokenTTL: "2592000",
-        accessTokenMaxTTL: "2592000",
-        accessTokenNumUsesLimit: "0",
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
-      });
-    }
-  }, [data]);
-
   const onFormSubmit = async ({
-    kubernetesHost,
-    tokenReviewerJwt,
-    allowedNames,
-    allowedNamespaces,
-    allowedAudience,
-    caCert,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -148,12 +92,6 @@ export const IdentityKubernetesAuthForm = ({
       if (data) {
         await updateMutateAsync({
           organizationId: orgId,
-          kubernetesHost,
-          tokenReviewerJwt,
-          allowedNames,
-          allowedNamespaces,
-          allowedAudience,
-          caCert,
           identityId: identityAuthMethodData.identityId,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -164,12 +102,6 @@ export const IdentityKubernetesAuthForm = ({
         await addMutateAsync({
           organizationId: orgId,
           identityId: identityAuthMethodData.identityId,
-          kubernetesHost: kubernetesHost || "",
-          tokenReviewerJwt,
-          allowedNames: allowedNames || "",
-          allowedNamespaces: allowedNamespaces || "",
-          allowedAudience: allowedAudience || "",
-          caCert: caCert || "",
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -197,81 +129,6 @@ export const IdentityKubernetesAuthForm = ({
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="kubernetesHost"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Kubernetes Host / Base Kubernetes API URL "
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="tokenReviewerJwt"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Token Reviewer JWT"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="" type="password" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="allowedNames"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Service Account Names"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="allowedNamespaces"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Namespaces"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="allowedAudience"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Allowed Audience" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="" type="text" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="caCert"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="CA Certificate" errorText={error?.message} isError={Boolean(error)}>
-            <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-          </FormControl>
-        )}
-      />
       <Controller
         control={control}
         defaultValue="2592000"

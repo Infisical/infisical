@@ -32,14 +32,24 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import {
+  useCreateTokenIdentityTokenAuth,
+  useGetIdentityMembershipOrgs,
+  useGetOrgRoles,
+  useUpdateIdentity} from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["deleteIdentity", "identity", "universalAuthClientSecret", "identityAuthMethod"]
+      [
+        "deleteIdentity",
+        "identity",
+        "universalAuthClientSecret",
+        "identityAuthMethod",
+        "tokenAuthToken"
+      ]
     >,
     data?: {
       identityId?: string;
@@ -50,6 +60,7 @@ type Props = {
         name: string;
         slug: string;
       };
+      accessToken?: string;
     }
   ) => void;
 };
@@ -59,6 +70,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
+  const { mutateAsync: createToken } = useCreateTokenIdentityTokenAuth();
   const { data, isLoading } = useGetIdentityMembershipOrgs(orgId);
 
   const { data: roles } = useGetOrgRoles(orgId);
@@ -139,6 +151,28 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   <Td>{authMethod ? identityAuthToNameMap[authMethod] : "Not configured"}</Td>
                   <Td>
                     <div className="flex items-center justify-end space-x-4">
+                      {authMethod === IdentityAuthMethod.TOKEN_AUTH && (
+                        <Tooltip content="Create access token">
+                          <IconButton
+                            onClick={async () => {
+                              const newTokenData = await createToken({
+                                identityId: id,
+                                organizationId: orgId
+                              });
+
+                              handlePopUpOpen("tokenAuthToken", {
+                                accessToken: newTokenData.accessToken
+                              });
+                            }}
+                            size="lg"
+                            colorSchema="primary"
+                            variant="plain"
+                            ariaLabel="update"
+                          >
+                            <FontAwesomeIcon icon={faKey} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {authMethod === IdentityAuthMethod.UNIVERSAL_AUTH && (
                         <Tooltip content="Manage client ID/secrets">
                           <IconButton

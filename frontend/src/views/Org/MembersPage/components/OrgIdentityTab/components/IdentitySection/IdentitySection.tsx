@@ -18,6 +18,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
 import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
+import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthClientSecretModal";
 
 export const IdentitySection = withPermission(
@@ -33,7 +34,8 @@ export const IdentitySection = withPermission(
       "deleteIdentity",
       "universalAuthClientSecret",
       "deleteUniversalAuthClientSecret",
-      "upgradePlan"
+      "upgradePlan",
+      "tokenAuthToken"
     ] as const);
 
     const isMoreIdentitiesAllowed = subscription?.identityLimit
@@ -118,6 +120,11 @@ export const IdentitySection = withPermission(
           handlePopUpToggle={handlePopUpToggle}
         />
         <IdentityUniversalAuthClientSecretModal
+          popUp={popUp}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+        <IdentityTokenAuthTokenModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}

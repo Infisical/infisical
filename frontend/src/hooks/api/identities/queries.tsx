@@ -8,6 +8,7 @@ import {
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityKubernetesAuth,
+  IdentityTokenAuth,
   IdentityUniversalAuth} from "./types";
 
 export const identitiesKeys = {
@@ -19,7 +20,8 @@ export const identitiesKeys = {
     [{ identityId }, "identity-kubernetes-auth"] as const,
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
-  getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const
+  getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const,
+  getIdentityTokenAuth: (identityId: string) => [{ identityId }, "identity-token-auth"] as const
 };
 
 export const useGetIdentityUniversalAuth = (identityId: string) => {
@@ -108,6 +110,21 @@ export const useGetIdentityKubernetesAuth = (identityId: string) => {
         `/api/v1/auth/kubernetes-auth/identities/${identityId}`
       );
       return identityKubernetesAuth;
+    }
+  });
+};
+
+export const useGetIdentityTokenAuth = (identityId: string) => {
+  return useQuery({
+    enabled: Boolean(identityId),
+    queryKey: identitiesKeys.getIdentityTokenAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityTokenAuth }
+      } = await apiRequest.get<{ identityTokenAuth: IdentityTokenAuth }>(
+        `/api/v1/auth/token-auth/identities/${identityId}`
+      );
+      return identityTokenAuth;
     }
   });
 };

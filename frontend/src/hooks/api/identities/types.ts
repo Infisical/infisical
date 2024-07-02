@@ -311,3 +311,45 @@ export type DeleteIdentityUniversalAuthClientSecretDTO = {
   identityId: string;
   clientSecretId: string;
 };
+
+export type IdentityTokenAuth = {
+  identityId: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityTokenAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityTokenAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type CreateTokenIdentityTokenAuthDTO = {
+  identityId: string;
+  organizationId: string;
+};
+
+export type CreateTokenIdentityTokenAuthRes = {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  accessTokenMaxTTL: number;
+};
