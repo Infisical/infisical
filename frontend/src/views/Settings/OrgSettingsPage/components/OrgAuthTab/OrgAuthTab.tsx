@@ -1,5 +1,6 @@
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useServerConfig } from "@app/context";
 import { withPermission } from "@app/hoc";
+import { LoginMethod } from "@app/hooks/api/admin/types";
 
 import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
 import { OrgLDAPSection } from "./OrgLDAPSection";
@@ -9,12 +10,23 @@ import { OrgSSOSection } from "./OrgSSOSection";
 
 export const OrgAuthTab = withPermission(
   () => {
+    const {
+      config: { enabledLoginMethods }
+    } = useServerConfig();
+
+    const shouldDisplaySection = (method: LoginMethod) =>
+      !enabledLoginMethods || enabledLoginMethods.includes(method);
+
     return (
       <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-        <OrgGeneralAuthSection />
-        <OrgSSOSection />
-        <OrgOIDCSection />
-        <OrgLDAPSection />
+        {shouldDisplaySection(LoginMethod.SAML) && (
+          <>
+            <OrgGeneralAuthSection />
+            <OrgSSOSection />
+          </>
+        )}
+        {shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}
+        {shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
         <OrgScimSection />
       </div>
     );
