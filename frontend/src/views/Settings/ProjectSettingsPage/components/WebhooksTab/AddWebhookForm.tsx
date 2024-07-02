@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import z from "zod";
 
 import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
@@ -15,14 +15,30 @@ import {
   SelectItem
 } from "@app/components/v2";
 
-const formSchema = yup.object({
-  environment: yup.string().required().trim().label("Environment"),
-  webhookUrl: yup.string().url().required().trim().label("Webhook URL"),
-  webhookSecretKey: yup.string().trim().label("Secret Key"),
-  secretPath: yup.string().required().trim().label("Secret Path")
-});
+enum WebhookType {
+  GENERAL = "general",
+  SLACK = "slack"
+}
 
-export type TFormSchema = yup.InferType<typeof formSchema>;
+const formSchema = z
+  .object({
+    environment: z.string().trim().describe("Environment"),
+    webhookUrl: z.string().url().trim().describe("Webhook URL"),
+    webhookSecretKey: z.string().trim().optional().describe("Secret Key"),
+    secretPath: z.string().trim().describe("Secret Path"),
+    type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL)
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Incoming Webhook URL is invalid.",
+        path: ["webhookUrl"]
+      });
+    }
+  });
+
+type TFormSchema = z.infer<typeof formSchema>;
 
 type Props = {
   isOpen: boolean;
@@ -42,10 +58,16 @@ export const AddWebhookForm = ({
     handleSubmit,
     register,
     reset,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm<TFormSchema>({
-    resolver: yupResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      type: WebhookType.GENERAL
+    }
   });
+
+  const webhookType = watch("type");
 
   useEffect(() => {
     if (!isOpen) {
@@ -58,6 +80,33 @@ export const AddWebhookForm = ({
       <ModalContent title="Create a new webhook">
         <form onSubmit={handleSubmit(onCreateWebhook)}>
           <div>
+            <Controller
+              control={control}
+              name="type"
+              defaultValue={WebhookType.GENERAL}
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Type"
+                  isRequired
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    defaultValue={field.value}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                  >
+                    <SelectItem value={WebhookType.GENERAL} key={WebhookType.GENERAL}>
+                      General
+                    </SelectItem>
+                    <SelectItem value={WebhookType.SLACK} key={WebhookType.SLACK}>
+                      Slack
+                    </SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
             <Controller
               control={control}
               name="environment"
@@ -97,19 +146,21 @@ export const AddWebhookForm = ({
                 {...register("secretPath")}
               />
             </FormControl>
+            {webhookType === WebhookType.GENERAL && (
+              <FormControl
+                label="Secret Key"
+                isError={Boolean(errors?.webhookSecretKey)}
+                errorText={errors?.webhookSecretKey?.message}
+                helperText="To generate webhook signature for verification"
+              >
+                <Input
+                  placeholder="Provided during webhook setup"
+                  {...register("webhookSecretKey")}
+                />
+              </FormControl>
+            )}
             <FormControl
-              label="Secret Key"
-              isError={Boolean(errors?.webhookSecretKey)}
-              errorText={errors?.webhookSecretKey?.message}
-              helperText="To generate webhook signature for verification"
-            >
-              <Input
-                placeholder="Provided during webhook setup"
-                {...register("webhookSecretKey")}
-              />
-            </FormControl>
-            <FormControl
-              label="Webhook URL"
+              label={webhookType === WebhookType.SLACK ? "Incoming Webhook URL" : "Webhook URL"}
               isRequired
               isError={Boolean(errors?.webhookUrl)}
               errorText={errors?.webhookUrl?.message}

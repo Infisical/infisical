@@ -5,6 +5,7 @@ export type TCreateWebhookDTO = {
   secretPath?: string;
   webhookUrl: string;
   webhookSecretKey?: string;
+  type: string;
 } & TProjectPermission;
 
 export type TUpdateWebhookDTO = {
@@ -24,3 +25,8 @@ export type TListWebhookDTO = {
   environment?: string;
   secretPath?: string;
 } & TProjectPermission;
+
+export enum WebhookType {
+  GENERAL = "general",
+  SLACK = "slack"
+}
