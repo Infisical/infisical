@@ -69,6 +69,38 @@ export const AddWebhookForm = ({
 
   const webhookType = watch("type");
 
+  const generalFormFields = (
+    <>
+      <FormControl
+        label="Secret Key"
+        isError={Boolean(errors?.webhookSecretKey)}
+        errorText={errors?.webhookSecretKey?.message}
+        helperText="To generate webhook signature for verification"
+      >
+        <Input placeholder="Provided during webhook setup" {...register("webhookSecretKey")} />
+      </FormControl>
+      <FormControl
+        label="Webhook URL"
+        isRequired
+        isError={Boolean(errors?.webhookUrl)}
+        errorText={errors?.webhookUrl?.message}
+      >
+        <Input {...register("webhookUrl")} />
+      </FormControl>
+    </>
+  );
+
+  const slackFormFields = (
+    <FormControl
+      label="Incoming Webhook URL"
+      isRequired
+      isError={Boolean(errors?.webhookUrl)}
+      errorText={errors?.webhookUrl?.message}
+    >
+      <Input placeholder="https://hooks.slack.com/services/..." {...register("webhookUrl")} />
+    </FormControl>
+  );
+
   useEffect(() => {
     if (!isOpen) {
       reset();
@@ -146,32 +178,7 @@ export const AddWebhookForm = ({
                 {...register("secretPath")}
               />
             </FormControl>
-            {webhookType === WebhookType.GENERAL && (
-              <FormControl
-                label="Secret Key"
-                isError={Boolean(errors?.webhookSecretKey)}
-                errorText={errors?.webhookSecretKey?.message}
-                helperText="To generate webhook signature for verification"
-              >
-                <Input
-                  placeholder="Provided during webhook setup"
-                  {...register("webhookSecretKey")}
-                />
-              </FormControl>
-            )}
-            <FormControl
-              label={webhookType === WebhookType.SLACK ? "Incoming Webhook URL" : "Webhook URL"}
-              isRequired
-              isError={Boolean(errors?.webhookUrl)}
-              errorText={errors?.webhookUrl?.message}
-            >
-              <Input
-                placeholder={
-                  webhookType === WebhookType.SLACK ? "https://hooks.slack.com/services/..." : ""
-                }
-                {...register("webhookUrl")}
-              />
-            </FormControl>
+            {webhookType === WebhookType.SLACK ? slackFormFields : generalFormFields}
           </div>
           <div className="mt-8 flex items-center">
             <Button
