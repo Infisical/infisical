@@ -26,6 +26,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -157,6 +158,13 @@ export const oidcConfigServiceFactory = ({
 
   const oidcLogin = async ({ externalId, email, firstName, lastName, orgId, callbackPort }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
+
+    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
+      throw new BadRequestError({
+        message: "Login with OIDC is disabled by administrator."
+      });
+    }
+
     const appCfg = getConfig();
     const userAlias = await userAliasDAL.findOne({
       externalId,

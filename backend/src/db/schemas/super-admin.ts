@@ -18,7 +18,8 @@ export const SuperAdminSchema = z.object({
   trustSamlEmails: z.boolean().default(false).nullable().optional(),
   trustLdapEmails: z.boolean().default(false).nullable().optional(),
   trustOidcEmails: z.boolean().default(false).nullable().optional(),
-  defaultAuthOrgId: z.string().uuid().nullable().optional()
+  defaultAuthOrgId: z.string().uuid().nullable().optional(),
+  enabledLoginMethods: z.string().array().nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;

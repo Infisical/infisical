@@ -8,23 +8,24 @@ import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import { Switch } from "@app/components/v2";
-import { useUser } from "@app/context";
+import { useServerConfig, useUser } from "@app/context";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
+import { LoginMethod } from "@app/hooks/api/admin/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
 interface AuthMethodOption {
   label: string;
   value: AuthMethod;
   icon: IconDefinition;
+  loginMethod: LoginMethod;
 }
 
 const authMethodOpts: AuthMethodOption[] = [
-  { label: "Email", value: AuthMethod.EMAIL, icon: faEnvelope },
-  { label: "Google", value: AuthMethod.GOOGLE, icon: faGoogle },
-  { label: "GitHub", value: AuthMethod.GITHUB, icon: faGithub },
-  { label: "GitLab", value: AuthMethod.GITLAB, icon: faGitlab }
+  { label: "Email", value: AuthMethod.EMAIL, icon: faEnvelope, loginMethod: LoginMethod.EMAIL },
+  { label: "Google", value: AuthMethod.GOOGLE, icon: faGoogle, loginMethod: LoginMethod.GOOGLE },
+  { label: "GitHub", value: AuthMethod.GITHUB, icon: faGithub, loginMethod: LoginMethod.GITHUB },
+  { label: "GitLab", value: AuthMethod.GITLAB, icon: faGitlab, loginMethod: LoginMethod.GITLAB }
 ];
-
 const schema = yup.object({
   authMethods: yup.array().required("Auth method is required")
 });
@@ -32,8 +33,8 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 export const AuthMethodSection = () => {
-  
   const { user } = useUser();
+  const { config } = useServerConfig();
   const { mutateAsync } = useUpdateUserAuthMethods();
 
   const { reset, setValue, watch } = useForm<FormData>({
@@ -102,6 +103,14 @@ export const AuthMethodSection = () => {
       <div className="mb-4">
         {user &&
           authMethodOpts.map((authMethodOpt) => {
+            // only filter when enabledLoginMethods is explicitly configured by admin
+            if (
+              config.enabledLoginMethods &&
+              !config.enabledLoginMethods.includes(authMethodOpt.loginMethod)
+            ) {
+              return null;
+            }
+
             return (
               <div className="flex items-center p-4" key={`auth-method-${authMethodOpt.value}`}>
                 <div className="flex items-center">

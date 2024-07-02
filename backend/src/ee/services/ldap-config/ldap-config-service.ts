@@ -34,6 +34,7 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -417,6 +418,13 @@ export const ldapConfigServiceFactory = ({
   }: TLdapLoginDTO) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
+
+    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
+      throw new BadRequestError({
+        message: "Login with LDAP is disabled by administrator."
+      });
+    }
+
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,

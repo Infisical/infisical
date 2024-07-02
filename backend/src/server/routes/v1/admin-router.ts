@@ -8,6 +8,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
@@ -54,7 +55,14 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
         trustOidcEmails: z.boolean().optional(),
-        defaultAuthOrgId: z.string().optional().nullable()
+        defaultAuthOrgId: z.string().optional().nullable(),
+        enabledLoginMethods: z
+          .nativeEnum(LoginMethod)
+          .array()
+          .optional()
+          .refine((methods) => !methods || methods.length > 0, {
+            message: "At least one login method should be enabled."
+          })
       }),
       response: {
         200: z.object({
@@ -70,7 +78,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const config = await server.services.superAdmin.updateServerCfg(req.body);
+      const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
       return { config };
     }
   });
