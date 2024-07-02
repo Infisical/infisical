@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
@@ -18,11 +17,8 @@ export default function InitialSignupStep({
   const { t } = useTranslation();
   const { config } = useServerConfig();
 
-  const shouldDisplaySignupMethod = useCallback(
-    (method: LoginMethod) =>
-      !config.enabledLoginMethods || config.enabledLoginMethods.includes(method),
-    [config]
-  );
+  const shouldDisplaySignupMethod = (method: LoginMethod) =>
+    !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">

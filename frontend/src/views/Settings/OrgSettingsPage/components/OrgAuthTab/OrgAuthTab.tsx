@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-
 import { OrgPermissionActions, OrgPermissionSubjects, useServerConfig } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -16,10 +14,8 @@ export const OrgAuthTab = withPermission(
       config: { enabledLoginMethods }
     } = useServerConfig();
 
-    const shouldDisplaySection = useCallback(
-      (method: LoginMethod) => !enabledLoginMethods || enabledLoginMethods.includes(method),
-      [enabledLoginMethods]
-    );
+    const shouldDisplaySection = (method: LoginMethod) =>
+      !enabledLoginMethods || enabledLoginMethods.includes(method);
 
     return (
       <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">

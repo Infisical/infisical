@@ -62,11 +62,8 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     }
   }, []);
 
-  const shouldDisplayLoginMethod = useCallback(
-    (method: LoginMethod) =>
-      !config.enabledLoginMethods || config.enabledLoginMethods.includes(method),
-    [config]
-  );
+  const shouldDisplayLoginMethod = (method: LoginMethod) =>
+    !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
