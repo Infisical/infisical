@@ -15,7 +15,7 @@ import { Knex } from "knex";
 import { Logger } from "pino";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -80,8 +80,8 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {
-        standaloneMode: appCfg.STANDALONE_MODE || process?.pkg,
-        dir: path.join(__dirname, process?.pkg ? "../../../" : "../../"),
+        standaloneMode: appCfg.STANDALONE_MODE,
+        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../"),
         port: appCfg.PORT
       });
     }
