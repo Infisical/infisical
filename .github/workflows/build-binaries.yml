@@ -3,8 +3,15 @@ name: Build Binaries
 on:
     workflow_dispatch:
 
+    pull_request:
+        branches:
+            - daniel/infisical-binary
+
     push:
-        # run for standalone releases
+        branches:
+            - daniel/infisical-binary
+
+            # run for standalone releases
         tags:
             - "infisical-standalone/v*.*.*"
 
@@ -29,28 +36,25 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v3
 
-            - name: Extract version from tag
-              id: extract_version
-              run: |
-                  # Get the tag name
-                  TAG_NAME=$(git describe --tags)
-                  # Extract the version part
-                  VERSION=${TAG_NAME#infisical-standalone/v}
-                  echo "Extracted version is $VERSION"
-                  # Set the version as an output
-                  echo "::set-output name=version::$VERSION"
+            # - name: Extract version from tag
+            #   id: extract_version
+            #   run: |
+            #       # Get the tag name
+            #       TAG_NAME=$(git describe --tags)
+            #       # Extract the version part
+            #       VERSION=${TAG_NAME#infisical-standalone/v}
+            #       echo "Extracted version is $VERSION"
+            #       # Set the version as an output
+            #       echo "::set-output name=version::$VERSION"
 
-            - name: Version extration test
-              run: |
-                  echo "The extracted version is ${{ steps.extract_version.outputs.version }}"
+            # - name: Version extration test
+            #   run: |
+            #       echo "The extracted version is ${{ steps.extract_version.outputs.version }}"
 
             - name: Set up Node.js
               uses: actions/setup-node@v3
               with:
                   node-version: 18
-
-            - name: Install pkg
-              run: npm install -g pkg
 
             - name: Install dependencies (backend)
               run: npm install
@@ -76,12 +80,12 @@ jobs:
 
             - name: Publish to Cloudsmith (Linux)
               if: matrix.os == 'linux'
-              run: cloudsmith push npm infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}  --republish --no-wait-for-sync --version ${{ steps.extract_version.outputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push npm infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}  --republish --no-wait-for-sync --version 0.0.3 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
               env:
                   CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
 
             - name: Publish to Cloudsmith (Windows)
               if: matrix.os == 'win'
-              run: cloudsmith push npm infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ steps.extract_version.outputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push npm infisical/infisical-standalone backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 0.0.3 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
               env:
                   CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
