@@ -106,8 +106,7 @@ export const superAdminServiceFactory = ({
         )
       ) {
         throw new BadRequestError({
-          message:
-            "Admin has insufficient authentication methods for update operation to complete without getting locked out."
+          message: "You must configure at least one auth method to prevent account lockout"
         });
       }
     }
