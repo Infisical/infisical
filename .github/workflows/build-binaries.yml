@@ -18,12 +18,10 @@ jobs:
         strategy:
             matrix:
                 arch: [x64, arm64]
-                os: [linux, macos, win]
+                os: [linux, win]
                 include:
                     - os: linux
                       target: node18-linux
-                    - os: macos
-                      target: node18-macos
                     - os: win
                       target: node18-win
 
@@ -62,4 +60,4 @@ jobs:
               uses: actions/upload-artifact@v3
               with:
                   name: infisical-${{ matrix.os }}-${{ matrix.arch }}
-                  path: backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}
+                  path: ${{ format('backend/binary/infisical-{}-{}{}', matrix.os, matrix.arch, matrix.os == 'windows-latest' && '.exe' || '') }}
