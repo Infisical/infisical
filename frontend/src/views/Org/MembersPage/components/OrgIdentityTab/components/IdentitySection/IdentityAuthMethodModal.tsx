@@ -18,6 +18,7 @@ import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
+import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
@@ -34,7 +35,8 @@ const identityAuthMethods = [
   { label: "Kubernetes Auth", value: IdentityAuthMethod.KUBERNETES_AUTH },
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
-  { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH }
+  { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
+  { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH }
 ];
 
 const schema = yup
@@ -111,6 +113,15 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
       case IdentityAuthMethod.UNIVERSAL_AUTH: {
         return (
           <IdentityUniversalAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+          />
+        );
+      }
+      case IdentityAuthMethod.OIDC_AUTH: {
+        return (
+          <IdentityOidcAuthForm
             handlePopUpOpen={handlePopUpOpen}
             handlePopUpToggle={handlePopUpToggle}
             identityAuthMethodData={identityAuthMethodData}

@@ -59,6 +59,7 @@ export enum TableName {
   IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
+  IdentityOidcAuth = "identity_oidc_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
