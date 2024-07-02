@@ -124,11 +124,7 @@ export const IdentitySection = withPermission(
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
-        <IdentityTokenAuthTokenModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
+        <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure want to delete ${

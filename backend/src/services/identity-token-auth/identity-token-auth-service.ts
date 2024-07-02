@@ -25,7 +25,10 @@ import {
 } from "./identity-token-auth-types";
 
 type TIdentityTokenAuthServiceFactoryDep = {
-  identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
+  identityTokenAuthDAL: Pick<
+    TIdentityTokenAuthDALFactory,
+    "transaction" | "create" | "findOne" | "updateById" | "delete"
+  >;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
