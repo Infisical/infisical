@@ -3,7 +3,6 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 
-import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
   Button,
   FormControl,
@@ -14,6 +13,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 
 enum WebhookType {
   GENERAL = "general",
@@ -67,7 +67,8 @@ export const AddWebhookForm = ({
     }
   });
 
-  const webhookType = watch("type");
+  const selectedWebhookType = watch("type");
+  const selectedEnvironment = watch("environment");
 
   const generalFormFields = (
     <>
@@ -165,20 +166,22 @@ export const AddWebhookForm = ({
                 </FormControl>
               )}
             />
-            <FormControl
-              label="Secret Path"
-              icon={<GlobPatternExamples />}
-              isRequired
-              isError={Boolean(errors?.secretPath)}
-              errorText={errors?.secretPath?.message}
-              helperText="Glob patterns are used to match multiple files or directories"
-            >
-              <Input
-                placeholder="glob pattern / or /**/* or /{dir1,dir2}"
-                {...register("secretPath")}
-              />
-            </FormControl>
-            {webhookType === WebhookType.SLACK ? slackFormFields : generalFormFields}
+            <Controller
+              control={control}
+              defaultValue=""
+              name="secretPath"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Secret Path"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <SecretPathInput {...field} environment={selectedEnvironment} placeholder="/" />
+                </FormControl>
+              )}
+            />
+            {selectedWebhookType === WebhookType.SLACK ? slackFormFields : generalFormFields}
           </div>
           <div className="mt-8 flex items-center">
             <Button

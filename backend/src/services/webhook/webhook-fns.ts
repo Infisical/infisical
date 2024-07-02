@@ -101,7 +101,7 @@ export const getWebhookPayload = (
   switch (type) {
     case WebhookType.SLACK:
       return {
-        text: "A secret value has been updated",
+        text: "A secret value has been added or modified.",
         attachments: [
           {
             color: "#E7F256",
