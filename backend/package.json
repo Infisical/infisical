@@ -29,7 +29,6 @@
     "binary:package": "pkg --no-bytecode --public-packages \"*\" --public --target host .",
     "binary:babel-frontend": "babel --copy-files ../frontend/.next/server -d ../frontend/.next/server",
     "binary:clean": "rm -rf ./dist && rm -rf ./binary",
-
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch --clear-screen=false ./src/main.ts  | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "nodemon",
@@ -80,6 +79,7 @@
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
+    "@yao-pkg/pkg": "^5.12.0",
     "babel-plugin-transform-import-meta": "^2.2.1",
     "eslint": "^8.56.0",
     "eslint-config-airbnb-base": "^15.0.0",

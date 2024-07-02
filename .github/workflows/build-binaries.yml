@@ -56,6 +56,9 @@ jobs:
               with:
                   node-version: 18
 
+            - name: Install pkg
+              run: npm install -g @yao-pkg/pkg
+
             - name: Install dependencies (backend)
               run: npm install
               working-directory: ./backend
