@@ -76,7 +76,7 @@ jobs:
               working-directory: ./backend
 
             - name: List files
-              run: ls -la ./binary
+              run: ls -la ./binary //
 
             - uses: actions/setup-python@v4
             - run: pip install --upgrade cloudsmith-cli
