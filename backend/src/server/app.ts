@@ -80,7 +80,7 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {
-        standaloneMode: appCfg.STANDALONE_MODE,
+        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
         dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../"),
         port: appCfg.PORT
       });

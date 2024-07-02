@@ -6,7 +6,7 @@ import { zpStr } from "../zod";
 export const GITLAB_URL = "https://gitlab.com";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- If `process.pkg` is set, and it's true, then it means that the app is currently running in a packaged environment (a binary)
-export const IS_PACKAGED = (process as any)?.pkg === true;
+export const IS_PACKAGED = (process as any)?.pkg !== undefined;
 
 const zodStrBool = z
   .enum(["true", "false"])

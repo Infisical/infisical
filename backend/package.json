@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "./dist/main.js",
+  "main": "./dist/main.mjs",
   "bin": "dist/main.js",
   "pkg": {
     "scripts": [
@@ -25,16 +25,19 @@
     "outputPath": "binary"
   },
   "scripts": {
-    "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend",
+    "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend && npm run binary:babel-backend && npm run binary:rename-imports",
     "binary:package": "pkg --no-bytecode --public-packages \"*\" --public --target host .",
+    "binary:babel-backend": " babel ./dist -d ./dist",
     "binary:babel-frontend": "babel --copy-files ../frontend/.next/server -d ../frontend/.next/server",
     "binary:clean": "rm -rf ./dist && rm -rf ./binary",
+    "binary:rename-imports": "ts-node ./scripts/rename-mjs.ts",
+
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch --clear-screen=false ./src/main.ts  | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "nodemon",
     "build": "tsup",
     "build:frontend": "npm run build --prefix ../frontend",
-    "start": "node dist/main.js",
+    "start": "node dist/main.mjs",
     "type:check": "tsc --noEmit",
     "lint:fix": "eslint --fix --ext js,ts ./src",
     "lint": "eslint 'src/**/*.ts'",
