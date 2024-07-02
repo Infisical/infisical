@@ -19,7 +19,7 @@ jobs:
         run: |
           git diff --name-status HEAD^ HEAD backend/src/db/migrations | grep '^M\|^R\|^C' || true | cut -f2 | xargs -r -n1 basename > edited_files.txt
           if [ -s edited_files.txt ]; then
-            echo "Migration files has been edited"
+            echo "Exiting migration files cannot be modified."
             cat edited_files.txt
             exit 1
           fi
