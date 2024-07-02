@@ -50,7 +50,7 @@ jobs:
               working-directory: ./backend
 
             - name: Package into node binary
-              run: pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
+              run: pkg --no-bytecode --public-packages "*" --public --compress=Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
               working-directory: ./backend
 
             - name: List files
