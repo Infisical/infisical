@@ -56,8 +56,16 @@ jobs:
             - name: List files
               run: ls -la ./binary
 
-            - name: Upload artifact
+            - name: Upload artifact (Linux)
+              if: matrix.os == 'linux'
               uses: actions/upload-artifact@v3
               with:
                   name: infisical-${{ matrix.os }}-${{ matrix.arch }}
-                  path: ${{ format('backend/binary/infisical-{}-{}{}', matrix.os, matrix.arch, matrix.os == 'windows-latest' && '.exe' || '') }}
+                  path: backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}
+
+            - name: Upload artifact (Windows)
+              if: matrix.os == 'win'
+              uses: actions/upload-artifact@v3
+              with:
+                  name: infisical-${{ matrix.os }}-${{ matrix.arch }}
+                  path: backend/binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe
