@@ -1,8 +1,9 @@
 // this plugins allows to run infisical in standalone mode
 // standalone mode = infisical backend and nextjs frontend in one server
 // this way users don't need to deploy two things
-
 import path from "node:path";
+
+import { IS_PACKAGED } from "@app/lib/config/env";
 
 // to enabled this u need to set standalone mode to true
 export const registerExternalNextjs = async (
@@ -18,7 +19,7 @@ export const registerExternalNextjs = async (
   }
 ) => {
   if (standaloneMode) {
-    const frontendName = process?.pkg ? "frontend" : "frontend-build";
+    const frontendName = IS_PACKAGED ? "frontend" : "frontend-build";
 
     const nextJsBuildPath = path.join(dir, frontendName);
 
@@ -33,7 +34,7 @@ export const registerExternalNextjs = async (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let NextServer: any;
 
-    if (!process?.pkg) {
+    if (!IS_PACKAGED) {
       /* eslint-disable */
       const { default: nextServer } = (
         await import(path.join(dir, `${frontendName}/node_modules/next/dist/server/next-server.js`))
