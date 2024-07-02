@@ -165,7 +165,12 @@ export const AddWebhookForm = ({
               isError={Boolean(errors?.webhookUrl)}
               errorText={errors?.webhookUrl?.message}
             >
-              <Input {...register("webhookUrl")} />
+              <Input
+                placeholder={
+                  webhookType === WebhookType.SLACK ? "https://hooks.slack.com/services/..." : ""
+                }
+                {...register("webhookUrl")}
+              />
             </FormControl>
           </div>
           <div className="mt-8 flex items-center">
