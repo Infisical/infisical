@@ -17,8 +17,7 @@ export default defineConfig({
   clean: true,
   minify: false,
   keepNames: true,
-  splitting: false,
-  format: "esm",
+  splitting: true,
   // copy the files to output
   loader: {
     ".handlebars": "copy",
@@ -32,37 +31,7 @@ export default defineConfig({
   entry: ["./src"],
   sourceMap: true,
   skipNodeModulesBundle: true,
-  esbuildPlugins: [
-    {
-      // esm directory import are not allowed
-      // /folder1 should be explicitly imported as /folder1/index.ts
-      // this plugin will append it automatically on build time to all imports
-      name: "commonjs-esm-directory-import",
-      setup(build) {
-        build.onResolve({ filter: /.*/ }, async (args) => {
-          if (args.importer) {
-            if (args.kind === "import-statement") {
-              const isRelativePath = args.path.startsWith(".");
-              const absPath = isRelativePath
-                ? path.join(args.resolveDir, args.path)
-                : path.join(args.path.replace("@app", "./src"));
 
-              const isFile = await fs
-                .stat(`${absPath}.ts`)
-                .then((el) => el.isFile)
-                .catch((err) => err.code === "ENOTDIR");
-
-              return {
-                path: isFile ? `${args.path}.mjs` : `${args.path}/index.mjs`,
-                external: true
-              };
-            }
-          }
-          return undefined;
-        });
-      }
-    }
-  ],
   async onSuccess() {
     // this will replace all tsconfig paths
     await replaceTscAliasPaths({
