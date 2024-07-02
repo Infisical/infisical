@@ -85,10 +85,29 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 
 	if infisicalToken == "" { // If no flag is passed, we first check for the universal auth access token env variable.
 		infisicalToken = os.Getenv(INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME)
+	}
 
-		if infisicalToken == "" { // If it's still empty after the first env check, we check for the service token env variable.
-			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+	if infisicalToken == "" { // If it's still empty after the first env check, we check for the service token env variable.
+		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+	}
+
+	if infisicalToken == "" { // If it's still empty after the second env check, we try to login with universal auth.
+		clientId := os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
+		if clientId == "" {
+			PrintErrorMessageAndExit("Please provide client-id")
 		}
+		clientSecret := os.Getenv(INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
+		if clientSecret == "" {
+			PrintErrorMessageAndExit("Please provide client-secret")
+		}
+
+		res, err := UniversalAuthLogin(clientId, clientSecret)
+
+		if err != nil {
+			HandleError(err)
+		}
+
+		infisicalToken = res.AccessToken
 	}
 
 	if infisicalToken == "" { // If it's empty, we return nothing at all.
