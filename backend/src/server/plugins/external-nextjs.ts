@@ -20,7 +20,6 @@ export const registerExternalNextjs = async (
 ) => {
   if (standaloneMode) {
     const frontendName = IS_PACKAGED ? "frontend" : "frontend-build";
-
     const nextJsBuildPath = path.join(dir, frontendName);
 
     const { default: conf } = (await import(
