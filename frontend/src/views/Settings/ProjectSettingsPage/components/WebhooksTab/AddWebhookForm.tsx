@@ -38,7 +38,7 @@ const formSchema = z
     }
   });
 
-type TFormSchema = z.infer<typeof formSchema>;
+export type TFormSchema = z.infer<typeof formSchema>;
 
 type Props = {
   isOpen: boolean;
