@@ -86,6 +86,14 @@ const getSqlStatements = (provider: SqlProviders) => {
         'REVOKE CONNECT FROM "{{username}}";\nREVOKE CREATE SESSION FROM "{{username}}";\nDROP USER "{{username}}";'
     };
   }
+  if (provider === SqlProviders.MsSQL) {
+    return {
+      creationStatement:
+        "CREATE LOGIN [{{username}}] WITH PASSWORD =  '{{password}}';\nCREATE USER [{{username}}] FOR LOGIN [{{username}}];\nGRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [{{username}}];",
+      renewStatement: "",
+      revocationStatement: "DROP USER [{{username}}];\nDROP LOGIN [{{username}}];"
+    };
+  }
 
   return {
     creationStatement:
@@ -94,6 +102,19 @@ const getSqlStatements = (provider: SqlProviders) => {
     revocationStatement:
       'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";\nDROP ROLE "{{username}}";'
   };
+};
+
+const getDefaultPort = (provider: SqlProviders) => {
+  switch (provider) {
+    case SqlProviders.MySql:
+      return 3306;
+    case SqlProviders.Oracle:
+      return 1521;
+    case SqlProviders.MsSQL:
+      return 1433;
+    default:
+      return 5432;
+  }
 };
 
 export const SqlDatabaseInputForm = ({
@@ -139,6 +160,14 @@ export const SqlDatabaseInputForm = ({
     }
   };
 
+  const handleDatabaseChange = (type: SqlProviders) => {
+    const sqlStatment = getSqlStatements(type);
+    setValue("provider.creationStatement", sqlStatment.creationStatement);
+    setValue("provider.renewStatement", sqlStatment.renewStatement);
+    setValue("provider.revocationStatement", sqlStatment.revocationStatement);
+    setValue("provider.port", getDefaultPort(type));
+  };
+
   return (
     <div>
       <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
@@ -155,7 +184,7 @@ export const SqlDatabaseInputForm = ({
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Input {...field} placeholder="dynamic-postgres" />
+                    <Input {...field} placeholder="dynamic-secret" />
                   </FormControl>
                 )}
               />
@@ -209,16 +238,14 @@ export const SqlDatabaseInputForm = ({
                       value={value}
                       onValueChange={(val) => {
                         onChange(val);
-                        const sqlStatment = getSqlStatements(val as SqlProviders);
-                        setValue("provider.creationStatement", sqlStatment.creationStatement);
-                        setValue("provider.renewStatement", sqlStatment.renewStatement);
-                        setValue("provider.revocationStatement", sqlStatment.revocationStatement);
+                        handleDatabaseChange(val as SqlProviders);
                       }}
                       className="w-full border border-mineshaft-500"
                     >
                       <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
                       <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
                       <SelectItem value={SqlProviders.Oracle}>Oracle</SelectItem>
+                      <SelectItem value={SqlProviders.MsSQL}>MS SQL</SelectItem>
                     </Select>
                   </FormControl>
                 )}

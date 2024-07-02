@@ -134,6 +134,7 @@
     "posthog-node": "^3.6.2",
     "probot": "^13.0.0",
     "smee-client": "^2.0.0",
+    "tedious": "^18.2.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^9.0.1",

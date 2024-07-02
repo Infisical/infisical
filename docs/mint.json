@@ -148,6 +148,7 @@
             "documentation/platform/dynamic-secrets/overview",
             "documentation/platform/dynamic-secrets/postgresql",
             "documentation/platform/dynamic-secrets/mysql",
+            "documentation/platform/dynamic-secrets/mssql",
             "documentation/platform/dynamic-secrets/oracle",
             "documentation/platform/dynamic-secrets/cassandra",
             "documentation/platform/dynamic-secrets/aws-iam"
