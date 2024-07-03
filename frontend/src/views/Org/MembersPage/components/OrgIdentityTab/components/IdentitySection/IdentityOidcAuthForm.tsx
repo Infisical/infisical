@@ -6,9 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input } from "@app/components/v2";
+import { Button, FormControl, IconButton, Input, TextArea } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
+import {
+  useAddIdentityOidcAuth,
+  useUpdateIdentityOidcAuth
+} from "@app/hooks/api/identities/mutations";
+import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -60,10 +65,10 @@ export const IdentityOidcAuthForm = ({
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
 
-  // const { mutateAsync: addMutateAsync } = useAddIdentityGcpAuth();
-  // const { mutateAsync: updateMutateAsync } = useUpdateIdentityGcpAuth();
+  const { mutateAsync: addMutateAsync } = useAddIdentityOidcAuth();
+  const { mutateAsync: updateMutateAsync } = useUpdateIdentityOidcAuth();
 
-  // const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "");
+  const { data } = useGetIdentityOidcAuth(identityAuthMethodData?.identityId ?? "");
 
   const {
     control,
@@ -95,78 +100,93 @@ export const IdentityOidcAuthForm = ({
     remove: removeAccessTokenTrustedIp
   } = useFieldArray({ control, name: "accessTokenTrustedIps" });
 
-  // useEffect(() => {
-  //   if (data) {
-  //     reset({
-  //       type: data.type,
-  //       allowedServiceAccounts: data.allowedServiceAccounts,
-  //       allowedProjects: data.allowedProjects,
-  //       allowedZones: data.allowedZones,
-  //       accessTokenTTL: String(data.accessTokenTTL),
-  //       accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-  //       accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
-  //       accessTokenTrustedIps: data.accessTokenTrustedIps.map(
-  //         ({ ipAddress, prefix }: IdentityTrustedIp) => {
-  //           return {
-  //             ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-  //           };
-  //         }
-  //       )
-  //     });
-  //   } else {
-  //     reset({
-  //       type: "iam",
-  //       allowedServiceAccounts: "",
-  //       allowedProjects: "",
-  //       allowedZones: "",
-  //       accessTokenTTL: "2592000",
-  //       accessTokenMaxTTL: "2592000",
-  //       accessTokenNumUsesLimit: "0",
-  //       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
-  //     });
-  //   }
-  // }, [data]);
+  useEffect(() => {
+    if (data) {
+      reset({
+        oidcDiscoveryUrl: data.oidcDiscoveryUrl,
+        caCert: data.caCert,
+        boundIssuer: data.boundIssuer,
+        boundAudiences: data.boundAudiences,
+        boundClaims: Object.entries(data.boundClaims).map(([key, value]) => ({
+          key,
+          value
+        })),
+        boundSubject: data.boundSubject,
+        accessTokenTTL: String(data.accessTokenTTL),
+        accessTokenMaxTTL: String(data.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
+        accessTokenTrustedIps: data.accessTokenTrustedIps.map(
+          ({ ipAddress, prefix }: IdentityTrustedIp) => {
+            return {
+              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
+            };
+          }
+        )
+      });
+    } else {
+      reset({
+        oidcDiscoveryUrl: "",
+        caCert: "",
+        boundIssuer: "",
+        boundAudiences: "",
+        boundClaims: [],
+        boundSubject: "",
+        accessTokenTTL: "2592000",
+        accessTokenMaxTTL: "2592000",
+        accessTokenNumUsesLimit: "0",
+        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+      });
+    }
+  }, [data]);
 
   const onFormSubmit = async ({
-    type,
-    allowedServiceAccounts,
-    allowedProjects,
-    allowedZones,
+    accessTokenTrustedIps,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
-    accessTokenTrustedIps
+    oidcDiscoveryUrl,
+    caCert,
+    boundIssuer,
+    boundAudiences,
+    boundClaims,
+    boundSubject
   }: FormData) => {
     try {
-      if (!identityAuthMethodData) return;
+      if (!identityAuthMethodData) {
+        return;
+      }
 
-      // if (data) {
-      //   await updateMutateAsync({
-      //     identityId: identityAuthMethodData.identityId,
-      //     organizationId: orgId,
-      //     type,
-      //     allowedServiceAccounts,
-      //     allowedProjects,
-      //     allowedZones,
-      //     accessTokenTTL: Number(accessTokenTTL),
-      //     accessTokenMaxTTL: Number(accessTokenMaxTTL),
-      //     accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-      //     accessTokenTrustedIps
-      //   });
-      // } else {
-      //   await addMutateAsync({
-      //     identityId: identityAuthMethodData.identityId,
-      //     organizationId: orgId,
-      //     type,
-      //     allowedServiceAccounts: allowedServiceAccounts || "",
-      //     allowedProjects: allowedProjects || "",
-      //     allowedZones: allowedZones || "",
-      //     accessTokenTTL: Number(accessTokenTTL),
-      //     accessTokenMaxTTL: Number(accessTokenMaxTTL),
-      //     accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-      //     accessTokenTrustedIps
-      //   });
-      // }
+      if (data) {
+        await updateMutateAsync({
+          identityId: identityAuthMethodData.identityId,
+          organizationId: orgId,
+          oidcDiscoveryUrl,
+          caCert,
+          boundIssuer,
+          boundAudiences,
+          boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+          boundSubject,
+          accessTokenTTL: Number(accessTokenTTL),
+          accessTokenMaxTTL: Number(accessTokenMaxTTL),
+          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+          accessTokenTrustedIps
+        });
+      } else {
+        await addMutateAsync({
+          identityId: identityAuthMethodData.identityId,
+          oidcDiscoveryUrl,
+          caCert,
+          boundIssuer,
+          boundAudiences,
+          boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+          boundSubject,
+          organizationId: orgId,
+          accessTokenTTL: Number(accessTokenTTL),
+          accessTokenMaxTTL: Number(accessTokenMaxTTL),
+          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+          accessTokenTrustedIps
+        });
+      }
 
       handlePopUpToggle("identityAuthMethod", false);
 
@@ -198,11 +218,7 @@ export const IdentityOidcAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input
-              {...field}
-              placeholder="https://accounts.google.com/.well-known/openid-configuration"
-              type="text"
-            />
+            <Input {...field} placeholder="https://accounts.google.com" type="text" />
           </FormControl>
         )}
       />
@@ -216,7 +232,16 @@ export const IdentityOidcAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} type="text" />
+            <Input {...field} type="text" placeholder="https://accounts.google.com" />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="caCert"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl label="CA Certificate" errorText={error?.message} isError={Boolean(error)}>
+            <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
           </FormControl>
         )}
       />

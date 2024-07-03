@@ -9,6 +9,7 @@ import {
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
   AddIdentityKubernetesAuthDTO,
+  AddIdentityOidcAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -21,12 +22,14 @@ import {
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityKubernetesAuth,
+  IdentityOidcAuth,
   IdentityUniversalAuth,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentityOidcAuthDTO,
   UpdateIdentityUniversalAuthDTO
 } from "./types";
 
@@ -323,6 +326,90 @@ export const useUpdateIdentityAwsAuth = () => {
       );
 
       return identityAwsAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useUpdateIdentityOidcAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOidcAuth, {}, UpdateIdentityOidcAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      oidcDiscoveryUrl,
+      caCert,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject
+    }) => {
+      const {
+        data: { identityOidcAuth }
+      } = await apiRequest.patch<{ identityOidcAuth: IdentityOidcAuth }>(
+        `/api/v1/auth/oidc-auth/identities/${identityId}`,
+        {
+          oidcDiscoveryUrl,
+          caCert,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOidcAuth;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+    }
+  });
+};
+
+export const useAddIdentityOidcAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOidcAuth, {}, AddIdentityOidcAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      oidcDiscoveryUrl,
+      caCert,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityOidcAuth }
+      } = await apiRequest.post<{ identityOidcAuth: IdentityOidcAuth }>(
+        `/api/v1/auth/oidc-auth/identities/${identityId}`,
+        {
+          oidcDiscoveryUrl,
+          caCert,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOidcAuth;
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
