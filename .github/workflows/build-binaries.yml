@@ -56,14 +56,32 @@ jobs:
             - name: Package into node binary
               run: pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
 
+            - name: Set up .deb package structure
+              if: matrix.os == 'linux'
+              run: |
+                  mkdir -p infisical-standalone/DEBIAN
+                  mkdir -p infisical-standalone/usr/local/bin
+                  cp ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} infisical-standalone/usr/local/bin/
+                  chmod +x infisical-standalone/usr/local/bin/infisical-${{ matrix.os }}-${{ matrix.arch }}
+
+            - name: Create control file
+              if: matrix.os == 'linux'
+              run: | # Version: Is hardcoded to 3.0.0 (should be steps.extract_version.outputs.versio)
+                  cat <<EOF > infisical-standalone/DEBIAN/control
+                  Package: infisical-standalone
+                  Version: 3.0.0
+                  Section: base
+                  Priority: optional
+                  Architecture: ${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}
+                  Maintainer: Infisical <daniel@infisical.com>
+                  Description: Infisical standalone executable (app.infisical.com)
+                  EOF
+
             - name: Build .deb package
               if: matrix.os == 'linux'
-              uses: ./.github/workflows/build-deb.yml
-              with:
-                  os: ${{ matrix.os }}
-                  arch: ${{ matrix.arch }}
-                  version: ${{ steps.extract_version.outputs.version }}
-                  executable_path: ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}
+              run: |
+                  dpkg-deb --build infisical-standalone
+                  mv infisical-standalone.deb infisical-linux-${{ matrix.arch }}.deb
 
             - name: Upload to Cloudsmith
               if: matrix.os == 'linux'
@@ -77,4 +95,4 @@ jobs:
                   distro: "any-distro"
                   release: "any-release"
                   republish: "true"
-                  file: ${{ steps.build-deb.outputs.deb_path }}
+                  file: infisical-linux-${{ matrix.arch }}.deb
