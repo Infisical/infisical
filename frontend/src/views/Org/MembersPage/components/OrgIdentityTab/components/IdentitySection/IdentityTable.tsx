@@ -13,6 +13,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,14 +30,14 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  Tr} from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
   useCreateTokenIdentityTokenAuth,
   useGetIdentityMembershipOrgs,
   useGetOrgRoles,
-  useUpdateIdentity} from "@app/hooks/api";
+  useUpdateIdentity
+} from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -46,6 +47,7 @@ type Props = {
       [
         "deleteIdentity",
         "identity",
+        "identityModalV2",
         "universalAuthClientSecret",
         "identityAuthMethod",
         "tokenAuthToken"
@@ -118,7 +120,20 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             data.map(({ identity: { id, name, authMethod }, role, customRole }) => {
               return (
                 <Tr className="h-10" key={`identity-${id}`}>
-                  <Td>{name}</Td>
+                  <Td>
+                    <Button
+                      variant="link"
+                      onClick={() => {
+                        handlePopUpOpen("identityModalV2", {
+                          identityId: id,
+                          name,
+                          authMethod
+                        });
+                      }}
+                    >
+                      {name}
+                    </Button>
+                  </Td>
                   <Td>
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
