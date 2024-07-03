@@ -23,7 +23,7 @@ jobs:
         strategy:
             matrix:
                 arch: [x64, arm64]
-                os: [linux, win]
+                os: [linux, alphine, win]
                 include:
                     - os: linux
                       target: node18-linux
