@@ -29,8 +29,8 @@ jobs:
                 include:
                     - os: linux
                       target: node18-linux
-                    - os: win
-                      target: node18-win
+                    # - os: win
+                    #   target: node18-win
 
         steps:
             - name: Checkout code
