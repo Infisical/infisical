@@ -34,20 +34,20 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v3
 
-            - name: Extract version from tag
-              id: extract_version
-              run: |
-                  # Get the tag name
-                  TAG_NAME=$(git describe --tags)
-                  # Extract the version part
-                  VERSION=${TAG_NAME#infisical-standalone/v}
-                  echo "Extracted version is $VERSION"
-                  # Set the version as an output
-                  echo "::set-output name=version::$VERSION"
+            # - name: Extract version from tag
+            #   id: extract_version
+            #   run: |
+            #       # Get the tag name
+            #       TAG_NAME=$(git describe --tags)
+            #       # Extract the version part
+            #       VERSION=${TAG_NAME#infisical-standalone/v}
+            #       echo "Extracted version is $VERSION"
+            #       # Set the version as an output
+            #       echo "::set-output name=version::$VERSION"
 
-            - name: Version extration test
-              run: |
-                  echo "The extracted version is ${{ steps.extract_version.outputs.version }}"
+            # - name: Version extration test
+            #   run: |
+            #       echo "The extracted version is ${{ steps.extract_version.outputs.version }}"
 
             - name: Set up Node.js
               uses: actions/setup-node@v3
@@ -82,9 +82,9 @@ jobs:
             - name: Publish to Cloudsmith (Linux)
               working-directory: ./backend
               if: matrix.os == 'linux'
-              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}  --republish --no-wait-for-sync --version ${{ steps.extract_version.outputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}  --republish --no-wait-for-sync --version 3.0.0 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
 
             - name: Publish to Cloudsmith (Windows)
               working-directory: ./backend
               if: matrix.os == 'win'
-              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ steps.extract_version.outputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 3.0.0 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
