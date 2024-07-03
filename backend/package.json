@@ -112,6 +112,7 @@
     "jmespath": "^0.16.0",
     "jsonwebtoken": "^9.0.2",
     "jsrp": "^0.2.4",
+    "jwks-rsa": "^3.1.0",
     "knex": "^3.0.1",
     "ldapjs": "^3.0.7",
     "libsodium-wrappers": "^0.7.13",

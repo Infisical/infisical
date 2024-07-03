@@ -1,9 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
+import axios from "axios";
+import https from "https";
+import jwt from "jsonwebtoken";
+import { JwksClient } from "jwks-rsa";
 
 import { IdentityAuthMethod, SecretKeyEncoding, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import {
   decryptSymmetric,
@@ -12,15 +17,17 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
+import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TOrgBotDALFactory } from "../org/org-bot-dal";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
-import { TAttachOidcAuthDTO, TGetOidcAuthDTO, TUpdateOidcAuthDTO } from "./identity-oidc-auth-types";
+import { TAttachOidcAuthDTO, TGetOidcAuthDTO, TLoginOidcAuthDTO, TUpdateOidcAuthDTO } from "./identity-oidc-auth-types";
 
 type TIdentityOidcAuthServiceFactoryDep = {
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
@@ -40,8 +47,130 @@ export const identityOidcAuthServiceFactory = ({
   identityDAL,
   permissionService,
   licenseService,
+  identityAccessTokenDAL,
   orgBotDAL
 }: TIdentityOidcAuthServiceFactoryDep) => {
+  const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
+    const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
+    if (!identityOidcAuth) {
+      throw new UnauthorizedError();
+    }
+
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
+      identityId: identityOidcAuth.identityId
+    });
+    if (!identityMembershipOrg) {
+      throw new BadRequestError({ message: "Failed to find identity" });
+    }
+
+    const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
+    if (!orgBot) {
+      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+    }
+
+    const key = infisicalSymmetricDecrypt({
+      ciphertext: orgBot.encryptedSymmetricKey,
+      iv: orgBot.symmetricKeyIV,
+      tag: orgBot.symmetricKeyTag,
+      keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
+    });
+
+    const { encryptedCaCert, caCertIV, caCertTag } = identityOidcAuth;
+
+    let caCert = "";
+    if (encryptedCaCert && caCertIV && caCertTag) {
+      caCert = decryptSymmetric({
+        ciphertext: encryptedCaCert,
+        iv: caCertIV,
+        tag: caCertTag,
+        key
+      });
+    }
+
+    const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
+    const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
+      `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
+      {
+        httpsAgent: requestAgent
+      }
+    );
+    const jwksUri = discoveryDoc.jwks_uri;
+
+    const decodedToken = jwt.decode(oidcJwt, { complete: true });
+    if (!decodedToken) {
+      throw new BadRequestError({
+        message: "Invalid JWT"
+      });
+    }
+
+    const client = new JwksClient({
+      jwksUri,
+      requestAgent
+    });
+
+    const { kid } = decodedToken.header;
+    const oidcSigningKey = await client.getSigningKey(kid);
+
+    const tokenData = jwt.verify(oidcJwt, oidcSigningKey.getPublicKey(), {
+      issuer: identityOidcAuth.boundIssuer
+    }) as Record<string, string>;
+
+    if (identityOidcAuth.boundSubject) {
+      if (tokenData.sub !== identityOidcAuth.boundSubject) {
+        throw new UnauthorizedError();
+      }
+    }
+
+    if (identityOidcAuth.boundAudiences) {
+      if (!identityOidcAuth.boundAudiences.split(", ").includes(tokenData.aud)) {
+        throw new UnauthorizedError();
+      }
+    }
+
+    if (identityOidcAuth.boundClaims) {
+      Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
+        const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
+        // handle both single and multi-valued claims
+        if (!claimValue.split(", ").some((claimEntry) => tokenData[claimKey] === claimEntry)) {
+          throw new UnauthorizedError();
+        }
+      });
+    }
+
+    const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
+      const newToken = await identityAccessTokenDAL.create(
+        {
+          identityId: identityOidcAuth.identityId,
+          isAccessTokenRevoked: false,
+          accessTokenTTL: identityOidcAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
+          accessTokenNumUses: 0,
+          accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit
+        },
+        tx
+      );
+      return newToken;
+    });
+
+    const appCfg = getConfig();
+    const accessToken = jwt.sign(
+      {
+        identityId: identityOidcAuth.identityId,
+        identityAccessTokenId: identityAccessToken.id,
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+      } as TIdentityAccessTokenJwtPayload,
+      appCfg.AUTH_SECRET,
+      {
+        expiresIn:
+          Number(identityAccessToken.accessTokenMaxTTL) === 0
+            ? undefined
+            : Number(identityAccessToken.accessTokenMaxTTL)
+      }
+    );
+
+    return { accessToken, identityOidcAuth, identityAccessToken, identityMembershipOrg };
+  };
+
   const attachOidcAuth = async ({
     identityId,
     oidcDiscoveryUrl,
@@ -345,6 +474,7 @@ export const identityOidcAuthServiceFactory = ({
   return {
     attachOidcAuth,
     updateOidcAuth,
-    getOidcAuth
+    getOidcAuth,
+    login
   };
 };

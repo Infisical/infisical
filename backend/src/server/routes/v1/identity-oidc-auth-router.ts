@@ -6,7 +6,10 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
-import { validateOidcAuthAudiencesField } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
+import {
+  validateOidcAuthAudiencesField,
+  validateOidcBoundClaimsField
+} from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 
 const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
   encryptedCaCert: true,
@@ -17,6 +20,55 @@ const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
 });
 
 export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    url: "/oidc-auth/login",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Login with OIDC Auth",
+      body: z.object({
+        identityId: z.string().trim(),
+        jwt: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          accessToken: z.string(),
+          expiresIn: z.coerce.number(),
+          accessTokenMaxTTL: z.coerce.number(),
+          tokenType: z.literal("Bearer")
+        })
+      }
+    },
+    handler: async (req) => {
+      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+        await server.services.identityOidcAuth.login({
+          identityId: req.body.identityId,
+          jwt: req.body.jwt
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityMembershipOrg?.orgId,
+        event: {
+          type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
+          metadata: {
+            identityId: identityOidcAuth.identityId,
+            identityAccessTokenId: identityAccessToken.id,
+            identityOidcAuthId: identityOidcAuth.id
+          }
+        }
+      });
+      return {
+        accessToken,
+        tokenType: "Bearer" as const,
+        expiresIn: identityOidcAuth.accessTokenTTL,
+        accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL
+      };
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/oidc-auth/identities/:identityId",
@@ -62,7 +114,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         caCert: z.string().trim().default(""),
         boundIssuer: z.string().min(1),
         boundAudiences: validateOidcAuthAudiencesField,
-        boundClaims: z.record(z.string()),
+        boundClaims: validateOidcBoundClaimsField,
         boundSubject: z.string().optional().default("")
       }),
       response: {
@@ -154,7 +206,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           caCert: z.string().trim().default(""),
           boundIssuer: z.string().min(1),
           boundAudiences: validateOidcAuthAudiencesField,
-          boundClaims: z.record(z.string()),
+          boundClaims: validateOidcBoundClaimsField,
           boundSubject: z.string().optional().default("")
         })
         .partial(),

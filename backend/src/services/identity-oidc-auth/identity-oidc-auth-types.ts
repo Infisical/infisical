@@ -31,3 +31,8 @@ export type TUpdateOidcAuthDTO = {
 export type TGetOidcAuthDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TLoginOidcAuthDTO = {
+  identityId: string;
+  jwt: string;
+};

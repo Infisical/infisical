@@ -8,11 +8,8 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, TextArea } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
-import {
-  useAddIdentityOidcAuth,
-  useUpdateIdentityOidcAuth
-} from "@app/hooks/api/identities/mutations";
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -218,7 +215,11 @@ export const IdentityOidcAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="https://accounts.google.com" type="text" />
+            <Input
+              {...field}
+              placeholder="https://token.actions.githubusercontent.com"
+              type="text"
+            />
           </FormControl>
         )}
       />
@@ -232,7 +233,11 @@ export const IdentityOidcAuthForm = ({
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} type="text" placeholder="https://accounts.google.com" />
+            <Input
+              {...field}
+              type="text"
+              placeholder="https://token.actions.githubusercontent.com"
+            />
           </FormControl>
         )}
       />
