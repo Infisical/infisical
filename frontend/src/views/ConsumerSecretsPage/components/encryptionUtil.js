@@ -1,6 +1,6 @@
 import CryptoJS from "crypto-js";
 
-const encryptionKey = process.env.ENCRYPTION_KEY;
+const encryptionKey = `${process.env.ENCRYPTION_KEY  }=`;
 
 export const encryptData = (data) => {
   return CryptoJS.AES.encrypt(data, encryptionKey).toString();
