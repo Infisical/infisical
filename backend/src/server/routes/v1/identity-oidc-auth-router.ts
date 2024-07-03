@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { IdentityOidcAuthsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateOidcAuthAudiencesField } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 
 const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
@@ -79,6 +81,27 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         identityId: req.params.identityId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityOidcAuth.orgId,
+        event: {
+          type: EventType.ADD_IDENTITY_OIDC_AUTH,
+          metadata: {
+            identityId: identityOidcAuth.identityId,
+            oidcDiscoveryUrl: identityOidcAuth.oidcDiscoveryUrl,
+            caCert: identityOidcAuth.caCert,
+            boundIssuer: identityOidcAuth.boundIssuer,
+            boundAudiences: identityOidcAuth.boundAudiences,
+            boundClaims: identityOidcAuth.boundClaims as Record<string, string>,
+            boundSubject: identityOidcAuth.boundSubject as string,
+            accessTokenTTL: identityOidcAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityOidcAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit
+          }
+        }
+      });
+
       return {
         identityOidcAuth
       };
@@ -151,6 +174,27 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         identityId: req.params.identityId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityOidcAuth.orgId,
+        event: {
+          type: EventType.UPDATE_IDENTITY_OIDC_AUTH,
+          metadata: {
+            identityId: identityOidcAuth.identityId,
+            oidcDiscoveryUrl: identityOidcAuth.oidcDiscoveryUrl,
+            caCert: identityOidcAuth.caCert,
+            boundIssuer: identityOidcAuth.boundIssuer,
+            boundAudiences: identityOidcAuth.boundAudiences,
+            boundClaims: identityOidcAuth.boundClaims as Record<string, string>,
+            boundSubject: identityOidcAuth.boundSubject as string,
+            accessTokenTTL: identityOidcAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps: identityOidcAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit
+          }
+        }
+      });
+
       return { identityOidcAuth };
     }
   });
@@ -185,6 +229,17 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityOidcAuth.orgId,
+        event: {
+          type: EventType.GET_IDENTITY_OIDC_AUTH,
+          metadata: {
+            identityId: identityOidcAuth.identityId
+          }
+        }
       });
 
       return { identityOidcAuth };
