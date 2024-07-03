@@ -36,6 +36,7 @@ const run = async () => {
       logger.info("Postgres migrations completed");
     } catch (err) {
       logger.error(err, "Failed to run migrations");
+      process.exit(1);
     }
 
     process.exit(0);
