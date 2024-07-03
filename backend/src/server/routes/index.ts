@@ -319,7 +319,6 @@ export const registerRoutes = async (
     auditLogStreamDAL
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
-    projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
@@ -768,7 +767,6 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    projectMembershipDAL,
     projectBotService
   });
   const secretRotationQueue = secretRotationQueueFactory({

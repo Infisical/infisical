@@ -11,7 +11,6 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
@@ -46,7 +45,6 @@ type TSecretReplicationServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecret" | "deleteTagsManySecret" | "find">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findOne">;
   secretApprovalRequestSecretDAL: Pick<
     TSecretApprovalRequestSecretDALFactory,
     "insertMany" | "insertApprovalSecretTags"
@@ -92,7 +90,6 @@ export const secretReplicationServiceFactory = ({
   secretApprovalRequestSecretDAL,
   secretApprovalRequestDAL,
   secretQueueService,
-  projectMembershipDAL,
   projectBotService
 }: TSecretReplicationServiceFactoryDep) => {
   const getReplicatedSecrets = (
@@ -297,12 +294,6 @@ export const secretReplicationServiceFactory = ({
           );
           // this means it should be a approval request rather than direct replication
           if (policy && actor === ActorType.USER) {
-            const membership = await projectMembershipDAL.findOne({ projectId, userId: actorId });
-            if (!membership) {
-              logger.error("Project membership not found in %s for user %s", projectId, actorId);
-              return;
-            }
-
             const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
             const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
               destinationReplicationFolderId,
@@ -316,7 +307,7 @@ export const secretReplicationServiceFactory = ({
                   policyId: policy.id,
                   status: "open",
                   hasMerged: false,
-                  committerId: membership.id,
+                  committerUserId: actorId,
                   isReplicated: true
                 },
                 tx

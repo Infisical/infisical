@@ -4,7 +4,7 @@ export type TCreateSapDTO = {
   approvals: number;
   secretPath?: string | null;
   environment: string;
-  approvers: string[];
+  approverUserIds: string[];
   projectId: string;
   name: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -13,7 +13,7 @@ export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
   secretPath?: string | null;
-  approvers: string[];
+  approverUserIds: string[];
   name?: string;
 } & Omit<TProjectPermission, "projectId">;
 
