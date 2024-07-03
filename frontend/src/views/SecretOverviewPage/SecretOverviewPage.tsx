@@ -425,7 +425,8 @@ export const SecretOverviewPage = () => {
         });
       }
     }
-    const query: Record<string, string> = { ...router.query, env: slug };
+
+    const query: Record<string, string> = { ...router.query, env: slug, searchFilter };
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       router.push({

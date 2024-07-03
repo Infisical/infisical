@@ -250,7 +250,7 @@ export const SecretItem = memo(
                 />
               </div>
               <div
-                className="flex flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
+                className="flex w-80 flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
                 tabIndex={0}
                 role="button"
               >
@@ -498,7 +498,7 @@ export const SecretItem = memo(
                 {!isDirty ? (
                   <motion.div
                     key="options"
-                    className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
+                    className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
