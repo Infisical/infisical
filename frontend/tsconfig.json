@@ -23,7 +23,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "incremental": true
   },
   "include": [
     "next-i18next.config.js",
@@ -31,7 +32,7 @@
     "./src/**/*.ts",
     "./src/**/*.tsx",
     "./.eslintrc.js"
-  ],
+, "src/views/ConsumerSecretsPage/components/encryptionUtil.js"  ],
   "exclude": [
     "node_modules"
   ]

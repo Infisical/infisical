@@ -86,6 +86,8 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { consumerSecretsDALFactory } from "@app/services/consumer-secret/consumer-secret-dal";
+import { consumerSecretsServiceFactory } from "@app/services/consumer-secret/consumer-secret-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -277,6 +279,7 @@ export const registerRoutes = async (
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
+  const consumerSecretsDAL = consumerSecretsDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -714,6 +717,11 @@ export const registerRoutes = async (
     secretSharingDAL
   });
 
+  const consumerSecretService = consumerSecretsServiceFactory({
+    permissionService,
+    consumerSecretsDAL
+  });
+
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     permissionService,
     projectBotService,
@@ -995,7 +1003,8 @@ export const registerRoutes = async (
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
-    secretSharing: secretSharingService
+    secretSharing: secretSharingService,
+    consumerSecret: consumerSecretService
   });
 
   const cronJobs: CronJob[] = [];

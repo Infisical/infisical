@@ -15,6 +15,7 @@ export * from "./certificate-authority-secret";
 export * from "./certificate-bodies";
 export * from "./certificate-secrets";
 export * from "./certificates";
+export * from "./consumer-secrets";
 export * from "./dynamic-secret-leases";
 export * from "./dynamic-secrets";
 export * from "./git-app-install-sessions";
