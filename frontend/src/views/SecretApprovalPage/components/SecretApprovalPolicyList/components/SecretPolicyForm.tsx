@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,8 +14,6 @@ import {
   DropdownMenuTrigger,
   FormControl,
   Input,
-  Modal,
-  ModalContent,
   Select,
   SelectItem
 } from "@app/components/v2";
@@ -40,9 +37,9 @@ const formSchema = z
     name: z.string().optional(),
     secretPath: z.string().optional().nullable(),
     approvals: z.number().min(1),
-    approvers: z.string().array().min(1)
+    approverUserIds: z.string().array().min(1)
   })
-  .refine((data) => data.approvals <= data.approvers.length, {
+  .refine((data) => data.approvals <= data.approverUserIds.length, {
     path: ["approvals"],
     message: "The number of approvals should be lower than the number of approvers."
   });
@@ -50,7 +47,6 @@ const formSchema = z
 type TFormSchema = z.infer<typeof formSchema>;
 
 export const SecretPolicyForm = ({
-  isOpen,
   onToggle,
   members = [],
   workspaceId,
@@ -59,20 +55,22 @@ export const SecretPolicyForm = ({
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: editValues ? { ...editValues, environment: editValues.environment.slug } : undefined
+    values: editValues
+      ? {
+        ...editValues,
+        approverUserIds: editValues.userApprovers.map(({ userId }) => userId),
+        environment: editValues.environment.slug
+      }
+      : undefined
   });
   const { currentWorkspace } = useWorkspace();
   const selectedEnvironment = watch("environment");
 
   const environments = currentWorkspace?.environments || [];
-  useEffect(() => {
-    if (!isOpen) reset({});
-  }, [isOpen]);
 
   const isEditMode = Boolean(editValues);
 
@@ -131,8 +129,6 @@ export const SecretPolicyForm = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onToggle}>
-      <ModalContent title={isEditMode ? "Edit policy" : "Create policy"}>
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <Controller
             control={control}
@@ -155,6 +151,7 @@ export const SecretPolicyForm = ({
                 errorText={error?.message}
               >
                 <Select
+                  isDisabled={isEditMode}
                   value={value}
                   onValueChange={(val) => onChange(val)}
                   className="w-full border border-mineshaft-500"
@@ -186,7 +183,7 @@ export const SecretPolicyForm = ({
           />
           <Controller
             control={control}
-            name="approvers"
+            name="approverUserIds"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
                 label="Approvers Required"
@@ -208,17 +205,19 @@ export const SecretPolicyForm = ({
                     <DropdownMenuLabel>
                       Select members that are allowed to approve changes
                     </DropdownMenuLabel>
-                    {members.map(({ id, user }) => {
-                      const isChecked = value?.includes(id);
+                    {members.map(({ user }) => {
+                      const isChecked = value?.includes(user.id);
                       return (
                         <DropdownMenuItem
                           onClick={(evt) => {
                             evt.preventDefault();
                             onChange(
-                              isChecked ? value?.filter((el) => el !== id) : [...(value || []), id]
+                              isChecked
+                                ? value?.filter((el) => el !== user.id)
+                                : [...(value || []), user.id]
                             );
                           }}
-                          key={`create-policy-members-${id}`}
+                          key={`create-policy-members-${user.id}`}
                           iconPos="right"
                           icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                         >
@@ -258,7 +257,6 @@ export const SecretPolicyForm = ({
             </Button>
           </div>
         </form>
-      </ModalContent>
-    </Modal>
+ 
   );
 };
