@@ -8,6 +8,7 @@ import { IdentityAuthMethod, SecretKeyEncoding, TIdentityOidcAuthsUpdate } from 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import {
@@ -17,17 +18,23 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TOrgBotDALFactory } from "../org/org-bot-dal";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
-import { TAttachOidcAuthDTO, TGetOidcAuthDTO, TLoginOidcAuthDTO, TUpdateOidcAuthDTO } from "./identity-oidc-auth-types";
+import {
+  TAttachOidcAuthDTO,
+  TGetOidcAuthDTO,
+  TLoginOidcAuthDTO,
+  TRevokeOidcAuthDTO,
+  TUpdateOidcAuthDTO
+} from "./identity-oidc-auth-types";
 
 type TIdentityOidcAuthServiceFactoryDep = {
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
@@ -471,10 +478,57 @@ export const identityOidcAuthServiceFactory = ({
     return { ...identityOidcAuth, orgId: identityMembershipOrg.orgId, caCert };
   };
 
+  const revokeOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TRevokeOidcAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) {
+      throw new BadRequestError({ message: "Failed to find identity" });
+    }
+
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
+      throw new BadRequestError({
+        message: "The identity does not have OIDC auth"
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge) {
+      throw new ForbiddenRequestError({
+        message: "Failed to revoke OIDC auth of identity with more privileged role"
+      });
+    }
+
+    const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
+      const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
+      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.orgId };
+    });
+
+    return revokedIdentityOidcAuth;
+  };
+
   return {
     attachOidcAuth,
     updateOidcAuth,
     getOidcAuth,
+    revokeOidcAuth,
     login
   };
 };
