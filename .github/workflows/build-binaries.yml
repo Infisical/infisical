@@ -6,8 +6,8 @@ on:
     # - daniel/infisical-binary
 
     push:
-        # branches:
-        # - daniel/infisical-binary
+        branches:
+            - daniel/infisical-binary
 
         # run for standalone releases
         tags:
@@ -52,7 +52,7 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: 18
+                  node-version: 20
 
             - name: Install pkg
               run: npm install -g @yao-pkg/pkg
@@ -69,8 +69,8 @@ jobs:
               run: npm run binary:build
               working-directory: ./backend
 
-            - name: Package into node binary
-              run: pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
+            - name: Package into node binary # --compress Brotli (Re-add before merging to main!)
+              run: pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
               working-directory: ./backend
 
             - name: List files
