@@ -6,7 +6,6 @@ export const validateOidcAuthAudiencesField = z
   .default("")
   .transform((data) => {
     if (data === "") return "";
-    // Trim each ID and join with ', ' to ensure formatting
     return data
       .split(",")
       .map((id) => id.trim())
