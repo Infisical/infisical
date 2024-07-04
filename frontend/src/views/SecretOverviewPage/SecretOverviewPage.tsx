@@ -81,6 +81,16 @@ export enum EntryType {
   SECRET = "secret"
 }
 
+export type SecretBulkUpdate = {
+  env: string,
+  key: string,
+  value: string,
+  type: SecretType.Shared,
+  secretId?: string
+}
+
+
+
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
 
@@ -106,6 +116,7 @@ export const SecretOverviewPage = () => {
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
+  const [bulkSecretUpdateContent,setBulkSecretUpdateContent] = useState<SecretBulkUpdate[]>([])
 
   const [selectedEntries, setSelectedEntries] = useState<{
     [EntryType.FOLDER]: Record<string, boolean>;
@@ -375,6 +386,22 @@ export const SecretOverviewPage = () => {
     }
   };
 
+  const handleBulkSecretUpdate = async() => {
+    try{
+      console.log(bulkSecretUpdateContent)
+      createNotification({
+        type: "success",
+        text: "Successfully updated secrets"
+      });
+    }catch(error){
+      console.log(error)
+      createNotification({
+        type: "error",
+        text: "Failed to update secrets"
+      });
+    }
+  }
+
   const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
     try {
       await deleteSecretV3({
@@ -603,15 +630,25 @@ export const SecretOverviewPage = () => {
                     a={subject(ProjectPermissionSub.Secrets, { secretPath })}
                   >
                     {(isAllowed) => (
-                      <Button
-                        variant="outline_bg"
-                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                        className="h-10 rounded-r-none"
-                        isDisabled={!isAllowed}
-                      >
-                        Add Secret
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline_bg"
+                          onClick={() => handleBulkSecretUpdate()}
+                          className="h-10 rounded-r-none"
+                          isDisabled={!isAllowed}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          variant="outline_bg"
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                          className="h-10 rounded-r-none"
+                          isDisabled={!isAllowed}
+                        >
+                          Add Secret
+                        </Button>
+                      </div>
                     )}
                   </ProjectPermissionCan>
                   <DropdownMenu
@@ -823,6 +860,7 @@ export const SecretOverviewPage = () => {
                       secretKey={key}
                       getSecretByKey={getSecretByKey}
                       expandableColWidth={expandableTableWidth}
+                      setBulkSecretUpdateContent={setBulkSecretUpdateContent}
                     />
                   ))}
               </TBody>

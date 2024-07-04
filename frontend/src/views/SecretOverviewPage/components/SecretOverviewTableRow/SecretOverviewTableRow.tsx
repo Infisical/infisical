@@ -55,7 +55,8 @@ export const SecretOverviewTableRow = ({
   getImportedSecretByKey,
   expandableColWidth,
   onToggleSecretSelect,
-  isSelected
+  isSelected,
+  setBulkSecretUpdateContent
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
@@ -233,6 +234,7 @@ export const SecretOverviewTableRow = ({
                               onSecretCreate={onSecretCreate}
                               onSecretUpdate={onSecretUpdate}
                               environment={slug}
+                              setBulkSecretUpdateContent={setBulkSecretUpdateContent}
                             />
                           </td>
                         </tr>

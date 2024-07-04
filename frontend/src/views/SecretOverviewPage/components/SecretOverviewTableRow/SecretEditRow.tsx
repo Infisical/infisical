@@ -29,7 +29,8 @@ type Props = {
     value: string,
     type?: SecretType,
     secretId?: string
-  ) => Promise<void>;
+  ) => Promise<void>;,
+  setBulkSecretUpdateContent: 
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
@@ -45,7 +46,8 @@ export const SecretEditRow = ({
   environment,
   secretPath,
   isVisible,
-  secretId
+  secretId,
+  setBulkSecretUpdateContent
 }: Props) => {
   const {
     handleSubmit,
