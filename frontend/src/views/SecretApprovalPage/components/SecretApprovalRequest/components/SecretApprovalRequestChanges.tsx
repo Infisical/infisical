@@ -19,7 +19,7 @@ import {
   useGetUserWsKey,
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
-import { ApprovalStatus, CommitType, TWorkspaceUser } from "@app/hooks/api/types";
+import { ApprovalStatus, CommitType } from "@app/hooks/api/types";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
@@ -73,18 +73,14 @@ type Props = {
   workspaceId: string;
   approvalRequestId: string;
   onGoBack: () => void;
-  committer?: TWorkspaceUser;
-  members?: Record<string, TWorkspaceUser>;
 };
 
 export const SecretApprovalRequestChanges = ({
   approvalRequestId,
   onGoBack,
-  committer,
-  workspaceId,
-  members = {}
+  workspaceId
 }: Props) => {
-  const { user } = useUser();
+  const { user: userSession } = useUser();
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
   const {
     data: secretApprovalRequestDetails,
@@ -105,22 +101,20 @@ export const SecretApprovalRequestChanges = ({
   const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
 
   // membership of present user
-  const myMembership = Object.values(members).find(
-    ({ user: membershipUser }) => membershipUser.email === user.email
+  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.some(
+    ({ userId }) => userId === userSession.id
   );
-  const myMembershipId = myMembership?.id || "";
-  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.includes(myMembershipId);
-  const reviewedMembers = secretApprovalRequestDetails?.reviewers?.reduce<
+  const reviewedUsers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<string, ApprovalStatus>
   >(
     (prev, curr) => ({
       ...prev,
-      [curr.member]: curr.status
+      [curr.userId]: curr.status
     }),
     {}
   );
-  const hasApproved = reviewedMembers?.[myMembershipId] === ApprovalStatus.APPROVED;
-  const hasRejected = reviewedMembers?.[myMembershipId] === ApprovalStatus.REJECTED;
+  const hasApproved = reviewedUsers?.[userSession.id] === ApprovalStatus.APPROVED;
+  const hasRejected = reviewedUsers?.[userSession.id] === ApprovalStatus.REJECTED;
 
   const handleSecretApprovalStatusUpdate = async (status: ApprovalStatus) => {
     try {
@@ -159,7 +153,7 @@ export const SecretApprovalRequestChanges = ({
   const isMergable =
     secretApprovalRequestDetails?.policy?.approvals <=
     secretApprovalRequestDetails?.policy?.approvers?.filter(
-      (approverId) => reviewedMembers?.[approverId] === ApprovalStatus.APPROVED
+      ({ userId }) => reviewedUsers?.[userId] === ApprovalStatus.APPROVED
     ).length;
   const hasMerged = secretApprovalRequestDetails?.hasMerged;
 
@@ -191,8 +185,9 @@ export const SecretApprovalRequestChanges = ({
               )}
             </div>
             <div className="flex items-center text-sm text-bunker-300">
-              {committer?.user?.firstName}
-              {committer?.user?.lastName} ({committer?.user?.email}) wants to change{" "}
+              {secretApprovalRequestDetails?.committerUser?.firstName || ""}
+              {secretApprovalRequestDetails?.committerUser?.lastName || ""} (
+              {secretApprovalRequestDetails?.committerUser?.email}) wants to change{" "}
               {secretApprovalRequestDetails.commits.length} secret values in
               <span className="mx-1 rounded bg-primary-600/60 px-1 text-primary-300">
                 {secretApprovalRequestDetails.environment}
@@ -256,9 +251,7 @@ export const SecretApprovalRequestChanges = ({
             approvals={secretApprovalRequestDetails.policy.approvals || 0}
             status={secretApprovalRequestDetails.status}
             isMergable={isMergable}
-            statusChangeByEmail={
-              members[secretApprovalRequestDetails?.statusChangeBy || ""]?.user?.email || ""
-            }
+            statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
             workspaceId={workspaceId}
           />
         </div>
@@ -266,17 +259,19 @@ export const SecretApprovalRequestChanges = ({
       <div className="sticky top-0 w-1/5 pt-4" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
-          {secretApprovalRequestDetails?.policy?.approvers.map((requiredApproverId) => {
-            const userDetails = members?.[requiredApproverId]?.user;
-            const status = reviewedMembers?.[requiredApproverId];
+          {secretApprovalRequestDetails?.policy?.approvers.map((requiredApprover) => {
+            const status = reviewedUsers?.[requiredApprover.userId];
             return (
               <div
                 className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
-                key={`required-approver-${requiredApproverId}`}
+                key={`required-approver-${requiredApprover.userId}`}
               >
                 <div className="flex-grow text-sm">
-                  <Tooltip content={`${userDetails.firstName} ${userDetails.lastName}`}>
-                    <span>{userDetails?.email} </span>
+                  <Tooltip
+                    content={`${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""
+                      }`}
+                  >
+                    <span>{requiredApprover?.email} </span>
                   </Tooltip>
                   <span className="text-red">*</span>
                 </div>
@@ -290,19 +285,21 @@ export const SecretApprovalRequestChanges = ({
           })}
           {secretApprovalRequestDetails?.reviewers
             .filter(
-              ({ member }) => !secretApprovalRequestDetails?.policy?.approvers?.includes(member)
+              (reviewer) =>
+                !secretApprovalRequestDetails?.policy?.approvers?.some(
+                  ({ userId }) => userId === reviewer.userId
+                )
             )
             .map((reviewer) => {
-              const userDetails = members?.[reviewer.member]?.user;
-              const status = reviewedMembers?.[reviewer.status];
+              const status = reviewedUsers?.[reviewer.userId];
               return (
                 <div
                   className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
-                  key={`required-approver-${reviewer.member}`}
+                  key={`required-approver-${reviewer.userId}`}
                 >
                   <div className="flex-grow text-sm">
-                    <Tooltip content={`${userDetails.firstName} ${userDetails.lastName}`}>
-                      <span>{userDetails?.email} </span>
+                    <Tooltip content={`${reviewer.firstName || ""} ${reviewer.lastName || ""}`}>
+                      <span>{reviewer?.email} </span>
                     </Tooltip>
                     <span className="text-red">*</span>
                   </div>

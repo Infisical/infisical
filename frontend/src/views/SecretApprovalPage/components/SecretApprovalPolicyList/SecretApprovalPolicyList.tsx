@@ -7,6 +7,8 @@ import {
   Button,
   DeleteActionModal,
   EmptyState,
+  Modal,
+  ModalContent,
   Table,
   TableContainer,
   TableSkeleton,
@@ -145,13 +147,20 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
           </TBody>
         </Table>
       </TableContainer>
-      <SecretPolicyForm
-        workspaceId={workspaceId}
+      <Modal
         isOpen={popUp.secretPolicyForm.isOpen}
-        onToggle={(isOpen) => handlePopUpToggle("secretPolicyForm", isOpen)}
-        members={members}
-        editValues={popUp.secretPolicyForm.data as TSecretApprovalPolicy}
-      />
+        onOpenChange={(isOpen) => handlePopUpToggle("secretPolicyForm", isOpen)}
+      >
+        <ModalContent title={popUp.secretPolicyForm.data ? "Edit policy" : "Create policy"}>
+          <SecretPolicyForm
+            workspaceId={workspaceId}
+            isOpen={popUp.secretPolicyForm.isOpen}
+            onToggle={(isOpen) => handlePopUpToggle("secretPolicyForm", isOpen)}
+            members={members}
+            editValues={popUp.secretPolicyForm.data as TSecretApprovalPolicy}
+          />
+        </ModalContent>
+      </Modal>
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="remove"
