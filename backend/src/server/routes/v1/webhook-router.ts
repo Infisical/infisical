@@ -81,8 +81,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             environment: webhook.environment.slug,
             webhookId: webhook.id,
             isDisabled: webhook.isDisabled,
-            secretPath: webhook.secretPath,
-            webhookUrl: webhook.url
+            secretPath: webhook.secretPath
           }
         }
       });
@@ -131,8 +130,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             environment: webhook.environment.slug,
             webhookId: webhook.id,
             isDisabled: webhook.isDisabled,
-            secretPath: webhook.secretPath,
-            webhookUrl: webhook.url
+            secretPath: webhook.secretPath
           }
         }
       });
@@ -171,8 +169,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             environment: webhook.environment.slug,
             webhookId: webhook.id,
             isDisabled: webhook.isDisabled,
-            secretPath: webhook.secretPath,
-            webhookUrl: webhook.url
+            secretPath: webhook.secretPath
           }
         }
       });

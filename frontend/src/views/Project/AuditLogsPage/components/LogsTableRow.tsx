@@ -243,7 +243,6 @@ export const LogsTableRow = ({ auditLog }: Props) => {
           <Td>
             <p>{`Environment: ${event.metadata.environment}`}</p>
             <p>{`Secret path: ${event.metadata.secretPath}`}</p>
-            <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
             <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
           </Td>
         );
@@ -252,7 +251,6 @@ export const LogsTableRow = ({ auditLog }: Props) => {
           <Td>
             <p>{`Environment: ${event.metadata.environment}`}</p>
             <p>{`Secret path: ${event.metadata.secretPath}`}</p>
-            <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
             <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
           </Td>
         );
@@ -261,7 +259,6 @@ export const LogsTableRow = ({ auditLog }: Props) => {
           <Td>
             <p>{`Environment: ${event.metadata.environment}`}</p>
             <p>{`Secret path: ${event.metadata.secretPath}`}</p>
-            <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
             <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
           </Td>
         );
