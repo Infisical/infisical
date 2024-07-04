@@ -1,9 +1,1 @@
-export const isMigrationMode = () => {
-  const args = process.argv.slice(2);
-  const migrationMode = args.find((arg) => arg === "migration:latest");
-
-  if (migrationMode) {
-    return true;
-  }
-  return false;
-};
+export const isMigrationMode = () => !!process.argv.slice(2).find((arg) => arg === "migration:latest"); // example -> ./binary migration:latest
