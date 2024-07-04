@@ -277,7 +277,10 @@ import {
   TUsersUpdate,
   TWebhooks,
   TWebhooksInsert,
-  TWebhooksUpdate
+  TWebhooksUpdate,
+  TWebLogins,
+  TWebLoginsInsert,
+  TWebLoginsUpdate
 } from "@app/db/schemas";
 
 declare module "knex" {
@@ -646,5 +649,6 @@ declare module "knex/types/tables" {
       TKmsKeyVersionsInsert,
       TKmsKeyVersionsUpdate
     >;
+    [TableName.WebLogin]: KnexOriginal.CompositeTableType<TWebLogins, TWebLoginsInsert, TWebLoginsUpdate>;
   }
 }

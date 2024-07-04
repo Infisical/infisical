@@ -94,7 +94,9 @@ export enum TableName {
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
-  KmsKeyVersion = "kms_key_versions"
+  KmsKeyVersion = "kms_key_versions",
+  // Consumer Secrets
+  WebLogin = "web_logins"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

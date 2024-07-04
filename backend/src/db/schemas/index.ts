@@ -90,4 +90,5 @@ export * from "./user-aliases";
 export * from "./user-encryption-keys";
 export * from "./user-group-membership";
 export * from "./users";
+export * from "./web-logins";
 export * from "./webhooks";
