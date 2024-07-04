@@ -22,7 +22,7 @@ export const WebhooksSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   envId: z.string().uuid(),
-  encryptedUrl: z.string().nullable().optional(),
+  urlCipherText: z.string().nullable().optional(),
   urlIV: z.string().nullable().optional(),
   urlTag: z.string().nullable().optional(),
   type: z.string().default("general").nullable().optional()

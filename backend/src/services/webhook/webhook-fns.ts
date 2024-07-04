@@ -4,9 +4,8 @@ import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { decryptSymmetric, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -17,53 +16,27 @@ import { WebhookType } from "./webhook-types";
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 
 export const decryptWebhookDetails = (webhook: TWebhooks) => {
-  const appCfg = getConfig();
-  const { keyEncoding, iv, encryptedSecretKey, tag, encryptedUrl, urlIV, urlTag, url } = webhook;
-
-  const encryptionKey = appCfg.ENCRYPTION_KEY;
-  const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
+  const { keyEncoding, iv, encryptedSecretKey, tag, urlCipherText, urlIV, urlTag, url } = webhook;
 
   let decryptedSecretKey = "";
   let decryptedUrl = url;
 
-  if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
-    // case: encoding scheme is base64
-    if (encryptedSecretKey) {
-      decryptedSecretKey = decryptSymmetric({
-        ciphertext: encryptedSecretKey,
-        iv: iv as string,
-        tag: tag as string,
-        key: rootEncryptionKey
-      });
-    }
+  if (encryptedSecretKey) {
+    decryptedSecretKey = infisicalSymmetricDecrypt({
+      keyEncoding: keyEncoding as SecretKeyEncoding,
+      ciphertext: encryptedSecretKey,
+      iv: iv as string,
+      tag: tag as string
+    });
+  }
 
-    if (encryptedUrl) {
-      decryptedUrl = decryptSymmetric({
-        ciphertext: encryptedUrl,
-        iv: urlIV as string,
-        tag: urlTag as string,
-        key: rootEncryptionKey
-      });
-    }
-  } else if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
-    // case: encoding scheme is utf8
-    if (encryptedSecretKey) {
-      decryptedSecretKey = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: encryptedSecretKey,
-        iv: iv as string,
-        tag: tag as string,
-        key: encryptionKey
-      });
-    }
-
-    if (encryptedUrl) {
-      decryptedUrl = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: encryptedUrl,
-        iv: urlIV as string,
-        tag: urlTag as string,
-        key: encryptionKey
-      });
-    }
+  if (urlCipherText) {
+    decryptedUrl = infisicalSymmetricDecrypt({
+      keyEncoding: keyEncoding as SecretKeyEncoding,
+      ciphertext: urlCipherText,
+      iv: urlIV as string,
+      tag: urlTag as string
+    });
   }
 
   return {
@@ -109,17 +82,17 @@ export const getWebhookPayload = (
               {
                 title: "Workspace ID",
                 value: workspaceId,
-                short: true
+                short: false
               },
               {
                 title: "Environment",
                 value: environment,
-                short: true
+                short: false
               },
               {
                 title: "Secret Path",
                 value: secretPath,
-                short: true
+                short: false
               }
             ]
           }

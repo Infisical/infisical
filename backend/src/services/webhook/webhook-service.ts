@@ -1,10 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, TWebhooksInsert } from "@app/db/schemas";
+import { TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import { encryptSymmetric, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -39,10 +38,6 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     webhookSecretKey,
     type
   }: TCreateWebhookDTO) => {
-    const appCfg = getConfig();
-    const encryptionKey = appCfg.ENCRYPTION_KEY;
-    const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
-
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -63,37 +58,21 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     };
 
     if (webhookSecretKey) {
-      if (rootEncryptionKey) {
-        const { ciphertext, iv, tag } = encryptSymmetric(webhookSecretKey, rootEncryptionKey);
-        insertDoc.encryptedSecretKey = ciphertext;
-        insertDoc.iv = iv;
-        insertDoc.tag = tag;
-        insertDoc.algorithm = SecretEncryptionAlgo.AES_256_GCM;
-        insertDoc.keyEncoding = SecretKeyEncoding.BASE64;
-      } else if (encryptionKey) {
-        const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8(webhookSecretKey, encryptionKey);
-        insertDoc.encryptedSecretKey = ciphertext;
-        insertDoc.iv = iv;
-        insertDoc.tag = tag;
-        insertDoc.algorithm = SecretEncryptionAlgo.AES_256_GCM;
-        insertDoc.keyEncoding = SecretKeyEncoding.UTF8;
-      }
+      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookSecretKey);
+      insertDoc.encryptedSecretKey = ciphertext;
+      insertDoc.iv = iv;
+      insertDoc.tag = tag;
+      insertDoc.algorithm = algorithm;
+      insertDoc.keyEncoding = encoding;
     }
 
-    if (rootEncryptionKey) {
-      const { ciphertext, iv, tag } = encryptSymmetric(webhookUrl, rootEncryptionKey);
-      insertDoc.encryptedUrl = ciphertext;
+    if (webhookUrl) {
+      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookUrl);
+      insertDoc.urlCipherText = ciphertext;
       insertDoc.urlIV = iv;
       insertDoc.urlTag = tag;
-      insertDoc.algorithm = SecretEncryptionAlgo.AES_256_GCM;
-      insertDoc.keyEncoding = SecretKeyEncoding.BASE64;
-    } else if (encryptionKey) {
-      const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8(webhookUrl, encryptionKey);
-      insertDoc.encryptedUrl = ciphertext;
-      insertDoc.urlIV = iv;
-      insertDoc.urlTag = tag;
-      insertDoc.algorithm = SecretEncryptionAlgo.AES_256_GCM;
-      insertDoc.keyEncoding = SecretKeyEncoding.UTF8;
+      insertDoc.algorithm = algorithm;
+      insertDoc.keyEncoding = encoding;
     }
 
     const webhook = await webhookDAL.create(insertDoc);

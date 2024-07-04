@@ -14,11 +14,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-
-enum WebhookType {
-  GENERAL = "general",
-  SLACK = "slack"
-}
+import { WebhookType } from "@app/hooks/api/webhooks/types";
 
 const formSchema = z
   .object({
@@ -116,7 +112,6 @@ export const AddWebhookForm = ({
             <Controller
               control={control}
               name="type"
-              defaultValue={WebhookType.GENERAL}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
                   label="Type"

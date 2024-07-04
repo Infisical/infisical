@@ -14,7 +14,7 @@ export const sanitizedWebhookSchema = WebhooksSchema.omit({
   tag: true,
   algorithm: true,
   keyEncoding: true,
-  encryptedUrl: true,
+  urlCipherText: true,
   urlIV: true,
   urlTag: true
 }).merge(
