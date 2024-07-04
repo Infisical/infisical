@@ -8,10 +8,9 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, faRocketchat, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
@@ -48,8 +47,12 @@ import {
   MenuItem,
   Modal,
   ModalContent,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectItem,
+  TextArea,
   UpgradePlanModal
 } from "@app/components/v2";
 import { UpgradeOverlay } from "@app/components/v2/UpgradeOverlay";
@@ -69,9 +72,7 @@ import {
   useGetAccessRequestsCount,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
-  useGetUserAction,
   useLogoutUser,
-  useRegisterUserAction,
   useSelectOrganization
 } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/types";
@@ -145,7 +146,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
-  const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
@@ -179,12 +179,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { t } = useTranslation();
 
-  const registerUserAction = useRegisterUserAction();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
-
-  const closeUpdate = async () => {
-    await registerUserAction.mutateAsync("december_update_closed");
-  };
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -769,45 +764,35 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
-                <div
-                  className={`${
-                    !updateClosed ? "block" : "hidden"
-                  } relative z-10 mb-6 flex h-64 w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3`}
-                >
-                  <div className="text-md mt-2 w-full font-semibold text-mineshaft-100">
-                    Infisical December update
-                  </div>
-                  <div className="mt-1 mb-1 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300">
-                    Infisical Agent, new SDKs, Machine Identities, and more!
-                  </div>
-                  <div className="mt-2 h-[6.77rem] w-full rounded-md border border-mineshaft-700">
-                    <Image
-                      src="/images/infisical-update-december-2023.png"
-                      height={319}
-                      width={539}
-                      alt="kubernetes image"
-                      className="rounded-sm"
-                    />
-                  </div>
-                  <div className="mt-3 flex w-full items-center justify-between px-0.5">
-                    <button
-                      type="button"
-                      onClick={() => closeUpdate()}
-                      className="text-mineshaft-400 duration-200 hover:text-mineshaft-100"
-                    >
-                      Close
-                    </button>
-                    <a
-                      href="https://infisical.com/blog/infisical-update-december-2023"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-normal leading-[1.2rem] text-mineshaft-400 duration-200 hover:text-mineshaft-100"
-                    >
-                      Learn More{" "}
-                      <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-0.5 text-xs" />
-                    </a>
-                  </div>
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="mb-3 w-full pl-5 duration-200 hover:text-mineshaft-200">
+                      <FontAwesomeIcon icon={faRocketchat} className="mr-3" />
+                      Make a wish
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    hideCloseBtn
+                    className="ml-2 w-auto border border-mineshaft-600 bg-mineshaft-800 p-3 drop-shadow-2xl"
+                    sticky="always"
+                  >
+                    <FormControl className="mb-0">
+                      <TextArea
+                        className="border border-mineshaft-600 text-sm"
+                        placeholder="Wish for anything! Help us improve the platform"
+                        reSize="none"
+                        rows={8}
+                        cols={30}
+                      />
+                    </FormControl>
+                    <div className="mt-2 flex justify-between">
+                      <Button className="ml-2 w-min">Send</Button>
+                      <Button className="mr-2 w-min" colorSchema="secondary">
+                        Cancel
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 {router.asPath.includes("org") && (
                   <div
                     onKeyDown={() => null}
