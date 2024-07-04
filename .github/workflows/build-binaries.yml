@@ -2,10 +2,6 @@ name: Build Binaries and Deploy
 
 on:
     push:
-        branches:
-            - daniel/infisical-binary
-        tags:
-            - "infisical-standalone/v*.*.*"
 
 defaults:
     run:
@@ -16,11 +12,13 @@ jobs:
         runs-on: ubuntu-20.04
         strategy:
             matrix:
-                arch: [x64]
-                os: [linux]
+                arch: [x64, arm64]
+                os: [linux, win]
                 include:
                     - os: linux
                       target: node18-linux
+                    - os: win
+                      target: node18-win
 
         steps:
             - name: Checkout code
@@ -54,15 +52,16 @@ jobs:
               run: npm run binary:build
 
             - name: Package into node binary
-              run: pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} .
+              run: pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone .
 
+            # Set up .deb package structure (Debian/Ubuntu only)
             - name: Set up .deb package structure
               if: matrix.os == 'linux'
               run: |
                   mkdir -p infisical-standalone/DEBIAN
                   mkdir -p infisical-standalone/usr/local/bin
-                  cp ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }} infisical-standalone/usr/local/bin/
-                  chmod +x infisical-standalone/usr/local/bin/infisical-${{ matrix.os }}-${{ matrix.arch }}
+                  cp ./binary/infisical-standalone infisical-standalone/usr/local/bin/
+                  chmod +x infisical-standalone/usr/local/bin/infisical-standalone
 
             - name: Create control file
               if: matrix.os == 'linux'
@@ -77,16 +76,24 @@ jobs:
                   Description: Infisical standalone executable (app.infisical.com)
                   EOF
 
+            # Build .deb file (Debian/Ubunutu only)
             - name: Build .deb package
               if: matrix.os == 'linux'
               run: |
                   dpkg-deb --build infisical-standalone
-                  mv infisical-standalone.deb infisical-linux-${{ matrix.arch }}.deb
+                  mv infisical-standalone.deb ./binary/infisical-standalone-${{matrix.arch}}.deb
 
             - uses: actions/setup-python@v4
             - run: pip install --upgrade cloudsmith-cli
 
+            # Publish .deb file to Cloudsmith (Debian/Ubuntu only)
             - name: Publish to Cloudsmith (Linux)
-              working-directory: ./backend
               if: matrix.os == 'linux'
-              run: cloudsmith push deb infisical/infisical-standalone/any-distro/any-version infisical-linux-${{ matrix.arch }}.deb --republish --no-wait-for-sync --version 3.0.0 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              working-directory: ./backend
+              run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-standalone/any-distro/any-version ./binary/infisical-standalone-${{ matrix.arch }}.deb
+
+            # Publish .exe file to Cloudsmith (Windows only)
+            - name: Publish to Cloudsmith (Windows)
+              if: matrix.os == 'win'
+              working-directory: ./backend
+              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 3.0.0 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
