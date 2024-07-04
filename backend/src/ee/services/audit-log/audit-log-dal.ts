@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, stripUndefinedInWhere } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
 
 export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
 
@@ -55,13 +56,30 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
   // delete all audit log that have expired
   const pruneAuditLog = async (tx?: Knex) => {
-    try {
-      const today = new Date();
-      const docs = await (tx || db)(TableName.AuditLog).where("expiresAt", "<", today).del();
-      return docs;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "PruneAuditLog" });
-    }
+    const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
+    const MAX_RETRY_ON_FAILURE = 3;
+
+    const today = new Date();
+    let deletedAuditLogIds: { id: string }[] = [];
+    let numberOfRetryOnFailure = 0;
+
+    do {
+      try {
+        const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
+          .where("expiresAt", "<", today)
+          .select("id")
+          .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
+        // eslint-disable-next-line no-await-in-loop
+        deletedAuditLogIds = await (tx || db)(TableName.AuditLog)
+          .whereIn("id", findExpiredLogSubQuery)
+          .del()
+          .returning("id");
+        numberOfRetryOnFailure = 0; // reset
+      } catch (error) {
+        numberOfRetryOnFailure += 1;
+        logger.error(error, "Failed to delete audit log on pruning");
+      }
+    } while (deletedAuditLogIds.length > 0 && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
   };
 
   return { ...auditLogOrm, pruneAuditLog, find };
