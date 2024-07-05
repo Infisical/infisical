@@ -5,6 +5,9 @@ import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- If `process.pkg` is set, and it's true, then it means that the app is currently running in a packaged environment (a binary)
+export const IS_PACKAGED = (process as any)?.pkg !== undefined;
+
 const zodStrBool = z
   .enum(["true", "false"])
   .optional()
@@ -20,7 +23,7 @@ const databaseReadReplicaSchema = z
 
 const envSchema = z
   .object({
-    PORT: z.coerce.number().default(4000),
+    PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
       .default("false")
@@ -131,7 +134,7 @@ const envSchema = z
     // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
-      .transform((val) => val === "true")
+      .transform((val) => val === "true" || IS_PACKAGED)
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
@@ -148,7 +151,7 @@ const envSchema = z
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
-    isProductionMode: data.NODE_ENV === "production",
+    isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
