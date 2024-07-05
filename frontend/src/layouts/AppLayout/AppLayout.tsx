@@ -10,7 +10,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faGithub, faRocketchat, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
@@ -47,12 +47,8 @@ import {
   MenuItem,
   Modal,
   ModalContent,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Select,
   SelectItem,
-  TextArea,
   UpgradePlanModal
 } from "@app/components/v2";
 import { UpgradeOverlay } from "@app/components/v2/UpgradeOverlay";
@@ -80,6 +76,8 @@ import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { CreateOrgModal } from "@app/views/Org/components";
+
+import { WishForm } from "./components/WishForm/WishForm";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -764,35 +762,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <div className="mb-3 w-full pl-5 duration-200 hover:text-mineshaft-200">
-                      <FontAwesomeIcon icon={faRocketchat} className="mr-3" />
-                      Make a wish
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    hideCloseBtn
-                    className="ml-2 w-auto border border-mineshaft-600 bg-mineshaft-800 p-3 drop-shadow-2xl"
-                    sticky="always"
-                  >
-                    <FormControl className="mb-0">
-                      <TextArea
-                        className="border border-mineshaft-600 text-sm"
-                        placeholder="Wish for anything! Help us improve the platform"
-                        reSize="none"
-                        rows={8}
-                        cols={30}
-                      />
-                    </FormControl>
-                    <div className="mt-2 flex justify-between">
-                      <Button className="ml-2 w-min">Send</Button>
-                      <Button className="mr-2 w-min" colorSchema="secondary">
-                        Cancel
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <WishForm />
                 {router.asPath.includes("org") && (
                   <div
                     onKeyDown={() => null}

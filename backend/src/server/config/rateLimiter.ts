@@ -82,3 +82,9 @@ export const publicSecretShareCreationLimit: RateLimitOptions = {
   max: 5,
   keyGenerator: (req) => req.realIp
 };
+
+export const userEngagementLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.realIp
+};
