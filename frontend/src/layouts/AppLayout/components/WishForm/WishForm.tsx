@@ -71,7 +71,9 @@ export const WishForm = () => {
       </PopoverTrigger>
       <PopoverContent
         hideCloseBtn
-        className="ml-2 mb-2 w-auto border border-mineshaft-600 bg-mineshaft-900 p-4 drop-shadow-2xl"
+        align="start"
+        alignOffset={25}
+        className="mb-1 w-auto border border-mineshaft-600 bg-mineshaft-900 p-4 drop-shadow-2xl"
         sticky="always"
       >
         <form onSubmit={handleSubmit(createWish)}>
@@ -91,7 +93,7 @@ export const WishForm = () => {
             />
           </FormControl>
           <div className="mt-2 flex justify-between border-t border-mineshaft-500 pt-4">
-            <PopoverPrimitive.Close>
+            <PopoverPrimitive.Close asChild>
               <Button className="mr-2 w-min" colorSchema="secondary">
                 Cancel
               </Button>
