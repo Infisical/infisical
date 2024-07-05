@@ -94,7 +94,7 @@ export const OrgLDAPSection = (): JSX.Element => {
   };
 
   return (
-    <>
+    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">LDAP</h2>
@@ -151,7 +151,6 @@ export const OrgLDAPSection = (): JSX.Element => {
           </p>
         </div>
       )}
-      <hr className="border-mineshaft-600" />
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
@@ -167,6 +166,6 @@ export const OrgLDAPSection = (): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use LDAP authentication if you switch to Infisical's Enterprise plan."
       />
-    </>
+    </div>
   );
 };
