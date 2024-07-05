@@ -2,7 +2,6 @@ import { useForm } from "react-hook-form";
 import { faRocketchat } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -72,7 +71,7 @@ export const WishForm = () => {
       <PopoverContent
         hideCloseBtn
         align="start"
-        alignOffset={25}
+        alignOffset={20}
         className="mb-1 w-auto border border-mineshaft-600 bg-mineshaft-900 p-4 drop-shadow-2xl"
         sticky="always"
       >
@@ -83,23 +82,19 @@ export const WishForm = () => {
             errorText={errors?.text?.message}
           >
             <TextArea
-              className="border border-mineshaft-600 text-sm focus:ring-0"
-              variant="plain"
-              placeholder="Wish for anything! Help us improve the platform"
+              className="border border-mineshaft-600 bg-black/10 text-sm focus:ring-0"
+              variant="outline"
+              placeholder="Wish for anything! Help us improve the platform."
               reSize="none"
               rows={6}
               cols={40}
               {...register("text")}
             />
           </FormControl>
-          <div className="mt-2 flex justify-between border-t border-mineshaft-500 pt-4">
-            <PopoverPrimitive.Close asChild>
-              <Button className="mr-2 w-min" colorSchema="secondary">
-                Cancel
-              </Button>
-            </PopoverPrimitive.Close>
+          <div className="flex justify-end pt-2">
             <Button
               className="w-min"
+              colorSchema="secondary"
               type="submit"
               isLoading={isSubmitting}
               disabled={isSubmitting}
