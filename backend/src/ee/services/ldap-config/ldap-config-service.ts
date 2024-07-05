@@ -481,7 +481,7 @@ export const ldapConfigServiceFactory = ({
 
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
-        if (serverCfg.trustSamlEmails) {
+        if (serverCfg.trustLdapEmails) {
           newUser = await userDAL.findOne(
             {
               email,
