@@ -1,7 +1,12 @@
 name: Build Binaries and Deploy
 
 on:
-    push:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version number"
+                required: true
+                type: string
 
 defaults:
     run:
@@ -16,23 +21,13 @@ jobs:
                 os: [linux, win]
                 include:
                     - os: linux
-                      target: node18-linux
+                      target: node20-linux
                     - os: win
-                      target: node18-win
+                      target: node20-win
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
-
-            - name: Extract version from tag
-              id: extract_version
-              run: |
-                  if [[ $GITHUB_REF == refs/tags/* ]]; then
-                    VERSION=${GITHUB_REF#refs/tags/infisical-standalone/v}
-                  else
-                    VERSION=$(git rev-parse --short HEAD)
-                  fi
-                  echo "version=$VERSION" >> $GITHUB_OUTPUT
 
             - name: Set up Node.js
               uses: actions/setup-node@v3
@@ -54,9 +49,9 @@ jobs:
             - name: Package into node binary
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone .
+                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone .
                   fi
 
             # Set up .deb package structure (Debian/Ubuntu only)
@@ -70,10 +65,10 @@ jobs:
 
             - name: Create control file
               if: matrix.os == 'linux'
-              run: | # Version: Is hardcoded to 3.0.0 (should be steps.extract_version.outputs.versio)
+              run: |
                   cat <<EOF > infisical-standalone/DEBIAN/control
                   Package: infisical-standalone
-                  Version: 3.0.0
+                  Version: ${{ github.event.inputs.version }}
                   Section: base
                   Priority: optional
                   Architecture: ${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}
@@ -92,7 +87,7 @@ jobs:
             - run: pip install --upgrade cloudsmith-cli
 
             # Publish .deb file to Cloudsmith (Debian/Ubuntu only)
-            - name: Publish to Cloudsmith (Linux)
+            - name: Publish to Cloudsmith (Debian/Ubuntu)
               if: matrix.os == 'linux'
               working-directory: ./backend
               run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-standalone/any-distro/any-version ./binary/infisical-standalone-${{ matrix.arch }}.deb
@@ -101,4 +96,4 @@ jobs:
             - name: Publish to Cloudsmith (Windows)
               if: matrix.os == 'win'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-standalone-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 3.0.0 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-standalone-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
