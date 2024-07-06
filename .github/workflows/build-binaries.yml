@@ -49,39 +49,39 @@ jobs:
             - name: Package into node binary
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-standalone .
+                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   fi
 
             # Set up .deb package structure (Debian/Ubuntu only)
             - name: Set up .deb package structure
               if: matrix.os == 'linux'
               run: |
-                  mkdir -p infisical-standalone/DEBIAN
-                  mkdir -p infisical-standalone/usr/local/bin
-                  cp ./binary/infisical-standalone infisical-standalone/usr/local/bin/
-                  chmod +x infisical-standalone/usr/local/bin/infisical-standalone
+                  mkdir -p infisical-core/DEBIAN
+                  mkdir -p infisical-core/usr/local/bin
+                  cp ./binary/infisical-core infisical-core/usr/local/bin/
+                  chmod +x infisical-core/usr/local/bin/infisical-core
 
             - name: Create control file
               if: matrix.os == 'linux'
               run: |
-                  cat <<EOF > infisical-standalone/DEBIAN/control
-                  Package: infisical-standalone
+                  cat <<EOF > infisical-core/DEBIAN/control
+                  Package: infisical-core
                   Version: ${{ github.event.inputs.version }}
                   Section: base
                   Priority: optional
                   Architecture: ${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}
                   Maintainer: Infisical <daniel@infisical.com>
-                  Description: Infisical standalone executable (app.infisical.com)
+                  Description: Infisical Core standalone executable (app.infisical.com)
                   EOF
 
             # Build .deb file (Debian/Ubunutu only)
             - name: Build .deb package
               if: matrix.os == 'linux'
               run: |
-                  dpkg-deb --build infisical-standalone
-                  mv infisical-standalone.deb ./binary/infisical-standalone-${{matrix.arch}}.deb
+                  dpkg-deb --build infisical-core
+                  mv infisical-core.deb ./binary/infisical-core-${{matrix.arch}}.deb
 
             - uses: actions/setup-python@v4
             - run: pip install --upgrade cloudsmith-cli
@@ -90,10 +90,10 @@ jobs:
             - name: Publish to Cloudsmith (Debian/Ubuntu)
               if: matrix.os == 'linux'
               working-directory: ./backend
-              run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-standalone/any-distro/any-version ./binary/infisical-standalone-${{ matrix.arch }}.deb
+              run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
 
             # Publish .exe file to Cloudsmith (Windows only)
             - name: Publish to Cloudsmith (Windows)
               if: matrix.os == 'win'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-standalone ./binary/infisical-standalone-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
