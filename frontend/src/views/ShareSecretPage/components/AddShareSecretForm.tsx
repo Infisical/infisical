@@ -6,12 +6,12 @@ import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
-import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
+import { Button, Checkbox, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 
 const schema = yup.object({
   value: yup.string().max(10000).required().label("Shared Secret Value"),
-  expiresAfterViews: yup.number().min(1).required().label("Expires After Views"),
+  expiresAfterSingleView: yup.boolean().required().label("Expires After Views"),
   expiresInValue: yup.number().min(1).required().label("Expiration Value"),
   expiresInUnit: yup.string().required().label("Expiration Unit")
 });
@@ -65,7 +65,7 @@ export const AddShareSecretForm = ({
     value,
     expiresInValue,
     expiresInUnit,
-    expiresAfterViews
+    expiresAfterSingleView
   }: FormData) => {
     try {
       const key = crypto.randomBytes(16).toString("hex");
@@ -89,7 +89,7 @@ export const AddShareSecretForm = ({
         tag,
         hashedHex,
         expiresAt,
-        expiresAfterViews
+        expiresAfterViews: expiresAfterSingleView ? 1 : 1000
       });
       setNewSharedSecret(
         `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
@@ -120,9 +120,9 @@ export const AddShareSecretForm = ({
   return (
     <form className="flex w-full flex-col items-center" onSubmit={handleSubmit(onFormSubmit)}>
       <div
-        className={`${!inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"}`}
+        className={`w-full ${!inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"}`}
       >
-        <div className="mb-4">
+        <div>
           <Controller
             control={control}
             name="value"
@@ -131,6 +131,7 @@ export const AddShareSecretForm = ({
                 label="Shared Secret"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                className="mb-2"
               >
                 <textarea
                   disabled={isInputDisabled}
@@ -142,39 +143,20 @@ export const AddShareSecretForm = ({
             )}
           />
         </div>
-        <div className="flex w-full flex-row justify-center">
-          <div className="flex hidden sm:block sm:w-2/6">
-            <Controller
-              control={control}
-              name="expiresAfterViews"
-              defaultValue={1}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="mb-4 w-full"
-                  label="Expires after Views"
-                  isError={Boolean(error)}
-                  errorText="Please enter a valid number of views"
-                >
-                  <Input {...field} type="number" min={1} />
-                </FormControl>
-              )}
-            />
-          </div>
-          <div className="sm:w-1/7 mx-auto hidden items-center justify-center px-2 sm:flex">
-            <p className="px-4 text-sm text-gray-400">OR</p>
-          </div>
-          <div className="flex w-full justify-end sm:w-3/6">
+        <div className="flex w-full flex-row justify-start">
+          <div className="flex justify-start">
             <div className="flex justify-start">
               <div className="flex w-full justify-center pr-2">
                 <Controller
                   control={control}
                   name="expiresInValue"
-                  defaultValue={10}
+                  defaultValue={1}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Expires after Time"
                       isError={Boolean(error)}
                       errorText="Please enter a valid time duration"
+                      className="w-32"
                     >
                       <Input {...field} type="number" min={0} />
                     </FormControl>
@@ -185,7 +167,7 @@ export const AddShareSecretForm = ({
                 <Controller
                   control={control}
                   name="expiresInUnit"
-                  defaultValue={expirationUnitsAndActions[0].unit}
+                  defaultValue={expirationUnitsAndActions[1].unit}
                   render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                     <FormControl label="Unit" errorText={error?.message} isError={Boolean(error)}>
                       <Select
@@ -206,9 +188,47 @@ export const AddShareSecretForm = ({
               </div>
             </div>
           </div>
+          <div className="sm:w-1/7 mx-auto hidden items-center justify-center px-6 sm:flex">
+            <p className="px-4 mt-2 text-sm text-gray-400">AND</p>
+          </div>
+          <div className="flex items-center pt-2">
+            <Controller
+              control={control}
+              name="expiresAfterViews"
+              defaultValue={1}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="mb-4 w-full hidden"
+                  label="Expires after Views"
+                  isError={Boolean(error)}
+                  errorText="Please enter a valid number of views"
+                >
+                  <Input {...field} type="number" min={1} />
+                </FormControl>
+              )}
+            />
+            <div className="bg-mineshaft-900 py-2 h-max rounded-md border border-mineshaft-600 px-4">
+              <Controller
+                control={control}
+                name="expiresAfterSingleView"
+                defaultValue={false}
+                render={({ field: { onBlur, value, onChange } }) => (
+                  <Checkbox
+                    id="is-single-view"
+                    isChecked={value}
+                    onCheckedChange={onChange}
+                    isDisabled={false}
+                    onBlur={onBlur}
+                  >
+                    Can be viewed only 1 time
+                  </Checkbox>
+                )}
+              />
+            </div>
+          </div>
         </div>
-        <div className={`flex items-center ${!inModal && "justify-left pt-2"}`}>
-          <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
+        <div className={`flex items-center ${!inModal && "justify-start pt-2"}`}>
+          <Button className="mr-0" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
             {inModal ? "Create" : "Share Secret"}
           </Button>
           {inModal && (
