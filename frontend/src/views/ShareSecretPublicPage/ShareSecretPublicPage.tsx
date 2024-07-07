@@ -125,7 +125,7 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
           <div className="m-auto my-6 flex w-full max-w-xl justify-center px-8 px-4 sm:my-8">
             <div className="w-full border-t border-mineshaft-600" />
           </div>
-          <div className="flex flex-col justify-center items-center m-auto max-w-2xl px-6">
+          <div className="flex flex-col justify-center items-center m-auto max-w-2xl px-4 sm:px-6">
             <div className="m-auto mb-12 flex flex max-w-2xl w-full flex-col justify-center rounded-md border border-primary-500/30 bg-primary/5 p-6 pt-5">
               <p className="pb-2 font-semibold text-mineshaft-100 md:pb-3 text-lg md:text-xl w-full">
                 Open source <span className="bg-clip-text text-transparent bg-gradient-to-tr from-yellow-500 to-primary-500">secret management</span> for developers

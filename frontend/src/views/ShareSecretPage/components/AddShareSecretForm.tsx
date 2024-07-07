@@ -118,7 +118,7 @@ export const AddShareSecretForm = ({
     }
   };
   return (
-    <form className="flex w-full flex-col items-center" onSubmit={handleSubmit(onFormSubmit)}>
+    <form className="flex w-full flex-col items-center px-4 sm:px-0" onSubmit={handleSubmit(onFormSubmit)}>
       <div
         className={`w-full ${!inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"}`}
       >
@@ -143,7 +143,7 @@ export const AddShareSecretForm = ({
             )}
           />
         </div>
-        <div className="flex w-full flex-row justify-start">
+        <div className="flex w-full flex-col md:flex-row justify-start">
           <div className="flex justify-start">
             <div className="flex justify-start">
               <div className="flex w-full justify-center pr-2">
@@ -188,10 +188,10 @@ export const AddShareSecretForm = ({
               </div>
             </div>
           </div>
-          <div className="sm:w-1/7 mx-auto hidden items-center justify-center px-6 sm:flex">
+          <div className="sm:w-1/7 mx-auto items-center justify-center px-6 hidden md:flex">
             <p className="px-4 mt-2 text-sm text-gray-400">AND</p>
           </div>
-          <div className="flex items-center pt-2">
+          <div className="items-center pb-4 md:pb-0 md:pt-2 flex">
             <Controller
               control={control}
               name="expiresAfterViews"
