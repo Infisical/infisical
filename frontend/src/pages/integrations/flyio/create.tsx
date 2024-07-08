@@ -15,6 +15,8 @@ import queryString from "query-string";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardTitle,
@@ -40,7 +42,7 @@ export default function FlyioCreateIntegrationPage() {
   const { data: integrationAuth, isLoading: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+  const { data: integrationAuthApps = [], isLoading: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
@@ -130,6 +132,14 @@ export default function FlyioCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
+        <div className="px-6 pb-4">
+          <Alert hideTitle variant="warning">
+            <AlertDescription>
+              All existing secrets of your connected flyio project will be permanently removed upon
+              integration.
+            </AlertDescription>
+          </Alert>
+        </div>
         <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
