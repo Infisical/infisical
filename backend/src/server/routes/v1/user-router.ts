@@ -4,6 +4,7 @@ import { UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -88,6 +89,75 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         logger.error(err);
       }
       return res.redirect(`${appCfg.SITE_URL}/login`);
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/list",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const users = await server.services.user.listUsers();
+
+      return {
+        users
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:userId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userId: z.string()
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.user.deleteUser(req.params.userId);
+
+      return {
+        users
+      };
     }
   });
 

@@ -1,6 +1,7 @@
 export {
   useAddUserToWsE2EE,
   useAddUserToWsNonE2EE,
+  useDeleteUser,
   useSendEmailVerificationCode,
   useVerifyEmailVerificationCode
 } from "./mutation";
@@ -10,7 +11,6 @@ export {
   useCreateAPIKey,
   useDeleteAPIKey,
   useDeleteOrgMembership,
-  useDeleteUser,
   useGetMyAPIKeys,
   useGetMyAPIKeysV2,
   useGetMyIp,
@@ -19,6 +19,7 @@ export {
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
+  useListUsers,
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,

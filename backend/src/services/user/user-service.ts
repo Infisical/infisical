@@ -201,7 +201,7 @@ export const userServiceFactory = ({
     return user;
   };
 
-  const deleteMe = async (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);
     return user;
   };
@@ -295,19 +295,24 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
+  const listUsers = async () => {
+    return userDAL.find({});
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,
-    deleteMe,
+    deleteUser,
     getMe,
     createUserAction,
     getUserAction,
     unlockUser,
     getUserPrivateKey,
     getUserProjectFavorites,
-    updateUserProjectFavorites
+    updateUserProjectFavorites,
+    listUsers
   };
 };

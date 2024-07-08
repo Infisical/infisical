@@ -28,6 +28,7 @@ export const userKeys = {
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
+  listUsers: ["user-list"] as const,
 
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
@@ -39,6 +40,14 @@ export const fetchUserDetails = async () => {
 };
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
+
+export const fetchUsersList = async () => {
+  const { data } = await apiRequest.get<{ users: User[] }>("/api/v1/user/list");
+
+  return data.users;
+};
+
+export const useListUsers = () => useQuery(userKeys.listUsers, fetchUsersList);
 
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();

@@ -112,3 +112,17 @@ export const useUpdateUserProjectFavorites = () => {
     }
   });
 };
+
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest.delete(`/api/v1/user/${userId}`);
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.listUsers);
+    }
+  });
+};
