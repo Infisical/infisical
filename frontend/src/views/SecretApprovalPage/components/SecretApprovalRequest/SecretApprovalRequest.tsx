@@ -31,7 +31,7 @@ import {
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ApprovalStatus, TSecretApprovalRequest, TWorkspaceUser } from "@app/hooks/api/types";
+import { ApprovalStatus, TSecretApprovalRequest } from "@app/hooks/api/types";
 
 import {
   generateCommitText,
@@ -63,14 +63,9 @@ export const SecretApprovalRequest = () => {
   });
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
     useGetSecretApprovalRequestCount({ workspaceId });
-  const { user: presentUser } = useUser();
+  const { user: userSession } = useUser();
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
-  const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
-    (prev, curr) => ({ ...prev, [curr.id]: curr }),
-    {}
-  );
-  const myMembershipId = members?.find(({ user }) => user.id === presentUser?.id)?.id;
   const isSecretApprovalScreen = Boolean(selectedApproval);
 
   const handleGoBackSecretRequestDetail = () => {
@@ -93,10 +88,8 @@ export const SecretApprovalRequest = () => {
         >
           <SecretApprovalRequestChanges
             workspaceId={workspaceId}
-            members={membersGroupById}
             approvalRequestId={selectedApproval?.id || ""}
             onGoBack={handleGoBackSecretRequestDetail}
-            committer={membersGroupById?.[selectedApproval?.committerId || ""]}
           />
         </motion.div>
       ) : (
@@ -182,10 +175,12 @@ export const SecretApprovalRequest = () => {
                     {members?.map(({ user, id }) => (
                       <DropdownMenuItem
                         onClick={() =>
-                          setCommitterFilter((state) => (state === id ? undefined : id))
+                          setCommitterFilter((state) => (state === user.id ? undefined : user.id))
                         }
                         key={`request-filter-member-${id}`}
-                        icon={committerFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
+                        icon={
+                          committerFilter === user.id && <FontAwesomeIcon icon={faCheckCircle} />
+                        }
                         iconPos="right"
                       >
                         {user.username}
@@ -208,19 +203,16 @@ export const SecretApprovalRequest = () => {
                   const {
                     id: reqId,
                     commits,
-                    committerId,
                     createdAt,
-                    policy,
                     reviewers,
                     status,
+                    committerUser,
                     isReplicated: isReplication
                   } = secretApproval;
-                  const isApprover = policy?.approvers?.indexOf(myMembershipId || "") !== -1;
-                  const isReviewed =
-                    reviewers.findIndex(
-                      ({ member, status: reviewStatus }) =>
-                        member === myMembershipId && reviewStatus === ApprovalStatus.APPROVED
-                    ) !== -1;
+                  const isReviewed = reviewers.some(
+                    ({ status: reviewStatus, userId }) =>
+                      userId === userSession.id && reviewStatus === ApprovalStatus.APPROVED
+                  );
                   return (
                     <div
                       key={reqId}
@@ -239,11 +231,9 @@ export const SecretApprovalRequest = () => {
                       </div>
                       <span className="text-xs text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                        {membersGroupById?.[committerId]?.user?.firstName}{" "}
-                        {membersGroupById?.[committerId]?.user?.lastName} (
-                        {membersGroupById?.[committerId]?.user?.email})
-                        {isReplication && " via replication"}
-                        {isApprover && !isReviewed && status === "open" && " - Review required"}
+                        {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
+                        {committerUser?.email}){isReplication && " via replication"}
+                        {!isReviewed && status === "open" && " - Review required"}
                       </span>
                     </div>
                   );

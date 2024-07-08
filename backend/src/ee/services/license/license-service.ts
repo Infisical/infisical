@@ -5,6 +5,7 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -200,13 +201,13 @@ export const licenseServiceFactory = ({
     await licenseServerCloudApi.request.delete(`/api/license-server/v1/customers/${customerId}`);
   };
 
-  const updateSubscriptionOrgMemberCount = async (orgId: string) => {
+  const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
     if (instanceType === InstanceType.Cloud) {
       const org = await orgDAL.findOrgById(orgId);
       if (!org) throw new BadRequestError({ message: "Org not found" });
 
-      const quantity = await licenseDAL.countOfOrgMembers(orgId);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId);
+      const quantity = await licenseDAL.countOfOrgMembers(orgId, tx);
+      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
           quantity,
@@ -215,8 +216,8 @@ export const licenseServiceFactory = ({
       }
       await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null);
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
+      const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
+      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
       await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
         usedSeats,
         usedIdentitySeats

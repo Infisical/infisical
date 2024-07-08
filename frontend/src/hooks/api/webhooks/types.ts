@@ -1,5 +1,11 @@
+export enum WebhookType {
+  GENERAL = "general",
+  SLACK = "slack"
+}
+
 export type TWebhook = {
   id: string;
+  type: WebhookType;
   projectId: string;
   environment: {
     slug: string;
@@ -22,6 +28,7 @@ export type TCreateWebhookDto = {
   webhookUrl: string;
   webhookSecretKey?: string;
   secretPath: string;
+  type: WebhookType;
 };
 
 export type TUpdateWebhookDto = {

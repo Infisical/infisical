@@ -61,7 +61,6 @@ export const OrgOIDCSection = (): JSX.Element => {
 
   return (
     <>
-      <hr className="border-mineshaft-600" />
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">OIDC</h2>
@@ -103,6 +102,7 @@ export const OrgOIDCSection = (): JSX.Element => {
           </p>
         </div>
       )}
+      <hr className="border-mineshaft-600" />
       <OIDCModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

@@ -334,7 +334,7 @@ export const ActionBar = ({
                 className="h-10"
                 isDisabled={!isAllowed}
               >
-                {`${snapshotCount} ${snapshotCount === 1 ? "Commit" : "Commits"}`}
+                {`${snapshotCount} ${snapshotCount === 1 ? "Snapshot" : "Snapshots"}`}
               </Button>
             )}
           </ProjectPermissionCan>

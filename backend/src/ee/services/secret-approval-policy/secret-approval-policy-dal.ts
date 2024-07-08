@@ -1,49 +1,59 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretApprovalPolicies } from "@app/db/schemas";
+import { SecretApprovalPoliciesSchema, TableName, TSecretApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, mergeOneToManyRelation, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
 export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPolicyDALFactory>;
 
 export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
   const secretApprovalPolicyOrm = ormify(db, TableName.SecretApprovalPolicy);
 
-  const sapFindQuery = (tx: Knex, filter: TFindFilter<TSecretApprovalPolicies>) =>
+  const secretApprovalPolicyFindQuery = (tx: Knex, filter: TFindFilter<TSecretApprovalPolicies>) =>
     tx(TableName.SecretApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
       .join(TableName.Environment, `${TableName.SecretApprovalPolicy}.envId`, `${TableName.Environment}.id`)
-      .join(
+      .leftJoin(
         TableName.SecretApprovalPolicyApprover,
         `${TableName.SecretApprovalPolicy}.id`,
         `${TableName.SecretApprovalPolicyApprover}.policyId`
       )
-      .select(tx.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover))
-      .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
-      .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
-      .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
-      .select(tx.ref("projectId").withSchema(TableName.Environment))
+      .select(tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover))
+      .select(
+        tx.ref("name").withSchema(TableName.Environment).as("envName"),
+        tx.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+        tx.ref("id").withSchema(TableName.Environment).as("envId"),
+        tx.ref("projectId").withSchema(TableName.Environment)
+      )
       .select(selectAllTableCols(TableName.SecretApprovalPolicy))
       .orderBy("createdAt", "asc");
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await sapFindQuery(tx || db.replicaNode(), {
+      const doc = await secretApprovalPolicyFindQuery(tx || db.replicaNode(), {
         [`${TableName.SecretApprovalPolicy}.id` as "id"]: id
       });
-      const formatedDoc = mergeOneToManyRelation(
-        doc,
-        "id",
-        ({ approverId, envId, envName: name, envSlug: slug, ...el }) => ({
-          ...el,
-          envId,
-          environment: { id: envId, name, slug }
+      const formatedDoc = sqlNestRelationships({
+        data: doc,
+        key: "id",
+        parentMapper: (data) => ({
+          environment: { id: data.envId, name: data.envName, slug: data.envSlug },
+          projectId: data.projectId,
+          ...SecretApprovalPoliciesSchema.parse(data)
         }),
-        ({ approverId }) => approverId,
-        "approvers"
-      );
+        childrenMapper: [
+          {
+            key: "approverUserId",
+            label: "userApprovers" as const,
+            mapper: ({ approverUserId }) => ({
+              userId: approverUserId
+            })
+          }
+        ]
+      });
+
       return formatedDoc?.[0];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });
@@ -52,18 +62,25 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const find = async (filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>, tx?: Knex) => {
     try {
-      const docs = await sapFindQuery(tx || db.replicaNode(), filter);
-      const formatedDoc = mergeOneToManyRelation(
-        docs,
-        "id",
-        ({ approverId, envId, envName: name, envSlug: slug, ...el }) => ({
-          ...el,
-          envId,
-          environment: { id: envId, name, slug }
+      const docs = await secretApprovalPolicyFindQuery(tx || db.replicaNode(), filter);
+      const formatedDoc = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (data) => ({
+          environment: { id: data.envId, name: data.envName, slug: data.envSlug },
+          projectId: data.projectId,
+          ...SecretApprovalPoliciesSchema.parse(data)
         }),
-        ({ approverId }) => approverId,
-        "approvers"
-      );
+        childrenMapper: [
+          {
+            key: "approverUserId",
+            label: "userApprovers" as const,
+            mapper: ({ approverUserId }) => ({
+              userId: approverUserId
+            })
+          }
+        ]
+      });
       return formatedDoc;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find" });

@@ -166,6 +166,7 @@ import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-servi
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
@@ -322,7 +323,6 @@ export const registerRoutes = async (
     auditLogStreamDAL
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
-    projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
@@ -771,7 +771,6 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    projectMembershipDAL,
     projectBotService
   });
   const secretRotationQueue = secretRotationQueueFactory({
@@ -937,6 +936,10 @@ export const registerRoutes = async (
     oidcConfigDAL
   });
 
+  const userEngagementService = userEngagementServiceFactory({
+    userDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1009,7 +1012,8 @@ export const registerRoutes = async (
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
-    secretSharing: secretSharingService
+    secretSharing: secretSharingService,
+    userEngagement: userEngagementService
   });
 
   const cronJobs: CronJob[] = [];

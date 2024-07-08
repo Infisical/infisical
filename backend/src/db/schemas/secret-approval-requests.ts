@@ -15,11 +15,11 @@ export const SecretApprovalRequestsSchema = z.object({
   conflicts: z.unknown().nullable().optional(),
   slug: z.string(),
   folderId: z.string().uuid(),
-  statusChangeBy: z.string().uuid().nullable().optional(),
-  committerId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isReplicated: z.boolean().nullable().optional()
+  isReplicated: z.boolean().nullable().optional(),
+  committerUserId: z.string().uuid(),
+  statusChangedByUserId: z.string().uuid().nullable().optional()
 });
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;

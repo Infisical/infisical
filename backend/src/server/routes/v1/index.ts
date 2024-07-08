@@ -26,6 +26,7 @@ import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
+import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 
@@ -79,4 +80,5 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
   await server.register(registerSecretSharingRouter, { prefix: "/secret-sharing" });
+  await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
 };

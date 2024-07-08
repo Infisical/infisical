@@ -26,7 +26,7 @@ export const SecretTable = ({
       </Tr>
     )}
     {!isLoading && decryptedSecret && (
-      <div className="dark relative flex h-full w-full items-center overflow-y-auto border border-mineshaft-700 bg-mineshaft-900 p-2">
+      <div className="dark relative flex h-full w-full items-center overflow-y-auto border border-mineshaft-700 bg-mineshaft-900 rounded-md p-2 md:p-3 pr-2">
         <div className="thin-scrollbar flex h-full max-h-44 w-full flex-1 overflow-y-scroll break-words pr-4 dark:[color-scheme:dark]">
           <div className="align-center flex w-full min-w-full whitespace-pre-line">
             {decryptedSecret}

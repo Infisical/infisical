@@ -362,7 +362,6 @@ interface CreateWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -373,7 +372,6 @@ interface UpdateWebhookStatusEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -384,7 +382,6 @@ interface DeleteWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
