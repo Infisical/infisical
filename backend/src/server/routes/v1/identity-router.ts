@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  IdentityOrgMembershipsSchema,
+  OrgMembershipRole,
+  OrgRolesSchema,
+  ProjectsSchema
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { IDENTITIES } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -258,6 +264,65 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       });
 
       return { identities };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:identityId/identity-memberships",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "List project memberships that identity with id is part of",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(IDENTITIES.GET_BY_ID.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityMemberships: z.array(
+            z.object({
+              id: z.string(),
+              identityId: z.string(),
+              createdAt: z.date(),
+              updatedAt: z.date(),
+              roles: z.array(
+                z.object({
+                  id: z.string(),
+                  role: z.string(),
+                  customRoleId: z.string().optional().nullable(),
+                  customRoleName: z.string().optional().nullable(),
+                  customRoleSlug: z.string().optional().nullable(),
+                  isTemporary: z.boolean(),
+                  temporaryMode: z.string().optional().nullable(),
+                  temporaryRange: z.string().nullable().optional(),
+                  temporaryAccessStartTime: z.date().nullable().optional(),
+                  temporaryAccessEndTime: z.date().nullable().optional()
+                })
+              ),
+              identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
+              project: ProjectsSchema.pick({ name: true, id: true })
+            })
+          )
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityMemberships = await server.services.identity.listProjectIdentitiesByIdentityId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      return { identityMemberships };
     }
   });
 };

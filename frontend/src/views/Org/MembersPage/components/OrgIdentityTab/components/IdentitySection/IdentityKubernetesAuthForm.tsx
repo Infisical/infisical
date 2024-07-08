@@ -10,9 +10,9 @@ import { Button, FormControl, IconButton, Input, TextArea } from "@app/component
 import { useOrganization, useSubscription } from "@app/context";
 import {
   useAddIdentityKubernetesAuth,
+  useDeleteIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
-  useUpdateIdentityKubernetesAuth
-} from "@app/hooks/api";
+  useUpdateIdentityKubernetesAuth} from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -64,6 +64,7 @@ export const IdentityKubernetesAuthForm = ({
 
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
+  const { mutateAsync: deleteMutateAsync } = useDeleteIdentityKubernetesAuth();
 
   const { data } = useGetIdentityKubernetesAuth(identityAuthMethodData?.identityId ?? "");
 
@@ -382,23 +383,43 @@ export const IdentityKubernetesAuthForm = ({
           Add IP Address
         </Button>
       </div>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
-        </Button>
+      <div className="flex justify-between">
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
+          </Button>
+          <Button
+            colorSchema="secondary"
+            variant="plain"
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
+          </Button>
+        </div>
+        {identityAuthMethodData?.authMethod && (
+          <Button
+            size="sm"
+            colorSchema="danger"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+            onClick={async () => {
+              await deleteMutateAsync({
+                identityId: identityAuthMethodData.identityId,
+                organizationId: orgId
+              });
+
+              handlePopUpToggle("identityAuthMethod", false);
+            }}
+          >
+            Remove Auth Method
+          </Button>
+        )}
       </div>
     </form>
   );

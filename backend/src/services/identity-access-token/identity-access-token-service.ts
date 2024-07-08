@@ -1,6 +1,9 @@
+import { ForbiddenError } from "@casl/ability";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
@@ -8,18 +11,24 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
+import {
+  TIdentityAccessTokenJwtPayload,
+  TRenewAccessTokenDTO,
+  TRevokeAccessTokenByIdDTO
+} from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
-  identityOrgMembershipDAL
+  identityOrgMembershipDAL,
+  permissionService
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
@@ -131,7 +140,47 @@ export const identityAccessTokenServiceFactory = ({
     });
     if (!identityAccessToken) throw new UnauthorizedError();
 
-    const revokedToken = await identityAccessTokenDAL.deleteById(identityAccessToken.id);
+    const revokedToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      isAccessTokenRevoked: true
+    });
+
+    return { revokedToken };
+  };
+
+  const revokeAccessTokenById = async ({
+    tokenId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeAccessTokenByIdDTO) => {
+    const identityAccessToken = await identityAccessTokenDAL.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
+      isAccessTokenRevoked: false
+    });
+    if (!identityAccessToken) throw new UnauthorizedError();
+
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({
+      identityId: identityAccessToken.identityId
+    });
+
+    if (!identityOrgMembership) {
+      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityOrgMembership.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const revokedToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      isAccessTokenRevoked: true
+    });
+
     return { revokedToken };
   };
 
@@ -141,6 +190,10 @@ export const identityAccessTokenServiceFactory = ({
       isAccessTokenRevoked: false
     });
     if (!identityAccessToken) throw new UnauthorizedError();
+    if (identityAccessToken.isAccessTokenRevoked)
+      throw new UnauthorizedError({
+        message: "Failed to authorize revoked access token"
+      });
 
     if (ipAddress && identityAccessToken) {
       checkIPAgainstBlocklist({
@@ -168,5 +221,5 @@ export const identityAccessTokenServiceFactory = ({
     return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
   };
 
-  return { renewAccessToken, revokeAccessToken, fnValidateIdentityAccessToken };
+  return { renewAccessToken, revokeAccessToken, revokeAccessTokenById, fnValidateIdentityAccessToken };
 };

@@ -26,4 +26,17 @@ export type TRevokeTokenAuthDTO = {
 
 export type TCreateTokenTokenAuthDTO = {
   identityId: string;
+  name?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetTokensTokenAuthDTO = {
+  identityId: string;
+  offset: number;
+  limit: number;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateTokenTokenAuthDTO = {
+  identityId: string;
+  tokenId: string;
+  name?: string;
 } & Omit<TProjectPermission, "projectId">;

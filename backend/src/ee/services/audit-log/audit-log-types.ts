@@ -67,6 +67,8 @@ export enum EventType {
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
   REVOKE_IDENTITY_UNIVERSAL_AUTH = "revoke-identity-universal-auth",
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
+  UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
+  GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
   GET_IDENTITY_TOKEN_AUTH = "get-identity-token-auth",
@@ -457,6 +459,22 @@ interface CreateTokenIdentityTokenAuthEvent {
   metadata: {
     identityId: string;
     identityAccessTokenId: string;
+  };
+}
+
+interface UpdateTokenIdentityTokenAuthEvent {
+  type: EventType.UPDATE_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    tokenId: string;
+    name?: string;
+  };
+}
+
+interface GetTokensIdentityTokenAuthEvent {
+  type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -1104,6 +1122,8 @@ export type Event =
   | DeleteIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
   | CreateTokenIdentityTokenAuthEvent
+  | UpdateTokenIdentityTokenAuthEvent
+  | GetTokensIdentityTokenAuthEvent
   | AddIdentityTokenAuthEvent
   | UpdateIdentityTokenAuthEvent
   | GetIdentityTokenAuthEvent

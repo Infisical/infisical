@@ -16,6 +16,22 @@ export type Identity = {
   updatedAt: string;
 };
 
+export type IdentityAccessToken = {
+  id: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUses: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenLastUsedAt: string | null;
+  accessTokenLastRenewedAt: string | null;
+  isAccessTokenRevoked: boolean;
+  identityUAClientSecretId: string | null;
+  identityId: string;
+  createdAt: string;
+  updatedAt: string;
+  name: string | null;
+};
+
 export type IdentityMembershipOrg = {
   id: string;
   identity: Identity;
@@ -113,6 +129,11 @@ export type UpdateIdentityUniversalAuthDTO = {
   }[];
 };
 
+export type DeleteIdentityUniversalAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityGcpAuth = {
   identityId: string;
   type: "iam" | "gce";
@@ -155,6 +176,11 @@ export type UpdateIdentityGcpAuthDTO = {
   }[];
 };
 
+export type DeleteIdentityGcpAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityAwsAuth = {
   identityId: string;
   type: "iam";
@@ -195,6 +221,11 @@ export type UpdateIdentityAwsAuthDTO = {
   }[];
 };
 
+export type DeleteIdentityAwsAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityAzureAuth = {
   identityId: string;
   tenantId: string;
@@ -232,6 +263,11 @@ export type UpdateIdentityAzureAuthDTO = {
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];
+};
+
+export type DeleteIdentityAzureAuthDTO = {
+  organizationId: string;
+  identityId: string;
 };
 
 export type IdentityKubernetesAuth = {
@@ -280,6 +316,11 @@ export type UpdateIdentityKubernetesAuthDTO = {
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];
+};
+
+export type DeleteIdentityKubernetesAuthDTO = {
+  organizationId: string;
+  identityId: string;
 };
 
 export type CreateIdentityUniversalAuthClientSecretDTO = {
@@ -342,9 +383,14 @@ export type UpdateIdentityTokenAuthDTO = {
   }[];
 };
 
+export type DeleteIdentityTokenAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type CreateTokenIdentityTokenAuthDTO = {
   identityId: string;
-  organizationId: string;
+  name: string;
 };
 
 export type CreateTokenIdentityTokenAuthRes = {
@@ -352,4 +398,19 @@ export type CreateTokenIdentityTokenAuthRes = {
   tokenType: string;
   expiresIn: number;
   accessTokenMaxTTL: number;
+};
+
+export type UpdateTokenIdentityTokenAuthDTO = {
+  identityId: string;
+  tokenId: string;
+  name?: string;
+};
+
+export type RevokeTokenDTO = {
+  identityId: string;
+  tokenId: string;
+};
+
+export type RevokeTokenRes = {
+  message: string;
 };

@@ -17,11 +17,9 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
 import { IdentityModal } from "./IdentityModal";
-// new
-import { IdentityModalV2 } from "./IdentityModalV2";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
-import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthClientSecretModal";
+// import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthClientSecretModal";
 
 export const IdentitySection = withPermission(
   () => {
@@ -32,7 +30,6 @@ export const IdentitySection = withPermission(
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
-      "identityModalV2", // TODO: update
       "identityAuthMethod",
       "deleteIdentity",
       "universalAuthClientSecret",
@@ -111,27 +108,18 @@ export const IdentitySection = withPermission(
             )}
           </OrgPermissionCan>
         </div>
-        <IdentityTable handlePopUpOpen={handlePopUpOpen} />
-        <IdentityModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
-        <IdentityModalV2
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
+        <IdentityTable />
+        <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityAuthMethodModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
         />
-        <IdentityUniversalAuthClientSecretModal
+        {/* <IdentityUniversalAuthClientSecretModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
-        />
+        /> */}
         <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}

@@ -20,8 +20,10 @@ import {
   TAttachTokenAuthDTO,
   TCreateTokenTokenAuthDTO,
   TGetTokenAuthDTO,
+  TGetTokensTokenAuthDTO,
   TRevokeTokenAuthDTO,
-  TUpdateTokenAuthDTO
+  TUpdateTokenAuthDTO,
+  TUpdateTokenTokenAuthDTO
 } from "./identity-token-auth-types";
 
 type TIdentityTokenAuthServiceFactoryDep = {
@@ -31,7 +33,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   identityDAL: Pick<TIdentityDALFactory, "updateById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "find" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -258,7 +260,8 @@ export const identityTokenAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    name
   }: TCreateTokenTokenAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
@@ -285,7 +288,7 @@ export const identityTokenAuthServiceFactory = ({
     const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
     if (!hasPriviledge)
       throw new ForbiddenRequestError({
-        message: "Failed to revoke Token Auth of identity with more privileged role"
+        message: "Failed to create token for identity with more privileged role"
       });
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
@@ -298,7 +301,8 @@ export const identityTokenAuthServiceFactory = ({
           accessTokenTTL: identityTokenAuth.accessTokenTTL,
           accessTokenMaxTTL: identityTokenAuth.accessTokenMaxTTL,
           accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityTokenAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityTokenAuth.accessTokenNumUsesLimit,
+          name
         },
         tx
       );
@@ -324,11 +328,110 @@ export const identityTokenAuthServiceFactory = ({
     return { accessToken, identityTokenAuth, identityAccessToken, identityMembershipOrg };
   };
 
+  const getTokensTokenAuth = async ({
+    identityId,
+    offset = 0,
+    limit = 20,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetTokensTokenAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
+      throw new BadRequestError({
+        message: "The identity does not have Token Auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to get tokens for identity with more privileged role"
+      });
+
+    const tokens = await identityAccessTokenDAL.find(
+      {
+        identityId
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
+
+    return { tokens, identityMembershipOrg };
+  };
+
+  const updateTokenTokenAuth = async ({
+    identityId,
+    tokenId,
+    name,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateTokenTokenAuthDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
+      throw new BadRequestError({
+        message: "The identity does not have Token Auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to update token for identity with more privileged role"
+      });
+
+    const [token] = await identityAccessTokenDAL.update(
+      {
+        identityId,
+        id: tokenId
+      },
+      {
+        name
+      }
+    );
+
+    return { token, identityMembershipOrg };
+  };
+
   return {
     attachTokenAuth,
     updateTokenAuth,
     getTokenAuth,
     revokeIdentityTokenAuth,
-    createTokenTokenAuth
+    createTokenTokenAuth,
+    getTokensTokenAuth,
+    updateTokenTokenAuth
   };
 };

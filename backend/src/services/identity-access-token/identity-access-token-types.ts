@@ -1,3 +1,5 @@
+import { TProjectPermission } from "@app/lib/types";
+
 export type TRenewAccessTokenDTO = {
   accessToken: string;
 };
@@ -8,3 +10,7 @@ export type TIdentityAccessTokenJwtPayload = {
   identityAccessTokenId: string;
   authTokenType: string;
 };
+
+export type TRevokeAccessTokenByIdDTO = {
+  tokenId: string;
+} & Omit<TProjectPermission, "projectId">;

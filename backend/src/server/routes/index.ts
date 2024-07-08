@@ -812,11 +812,13 @@ export const registerRoutes = async (
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
+    identityProjectDAL,
     licenseService
   });
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
-    identityOrgMembershipDAL
+    identityOrgMembershipDAL,
+    permissionService
   });
   const identityProjectService = identityProjectServiceFactory({
     permissionService,

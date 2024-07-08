@@ -7,15 +7,23 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TOrgPermission } from "@app/lib/types";
+import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
-import { TCreateIdentityDTO, TDeleteIdentityDTO, TGetIdentityByIdDTO, TUpdateIdentityDTO } from "./identity-types";
+import {
+  TCreateIdentityDTO,
+  TDeleteIdentityDTO,
+  TGetIdentityByIdDTO,
+  TListProjectIdentitiesByIdentityIdDTO,
+  TUpdateIdentityDTO
+} from "./identity-types";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
 };
@@ -25,6 +33,7 @@ export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 export const identityServiceFactory = ({
   identityDAL,
   identityOrgMembershipDAL,
+  identityProjectDAL,
   permissionService,
   licenseService
 }: TIdentityServiceFactoryDep) => {
@@ -196,11 +205,35 @@ export const identityServiceFactory = ({
     return identityMemberships;
   };
 
+  const listProjectIdentitiesByIdentityId = async ({
+    identityId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectIdentitiesByIdentityIdDTO) => {
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityOrgMembership.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+
+    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId);
+    return identityMemberships;
+  };
+
   return {
     createIdentity,
     updateIdentity,
     deleteIdentity,
     listOrgIdentities,
-    getIdentityById
+    getIdentityById,
+    listProjectIdentitiesByIdentityId
   };
 };

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityTokenAuthsSchema } from "@app/db/schemas";
+import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -255,7 +255,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "POST",
-    url: "/token-auth/identities/:identityId/token",
+    url: "/token-auth/identities/:identityId/tokens",
     config: {
       rateLimit: writeLimit
     },
@@ -269,6 +269,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       ],
       params: z.object({
         identityId: z.string()
+      }),
+      body: z.object({
+        name: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -286,7 +289,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          identityId: req.params.identityId
+          identityId: req.params.identityId,
+          ...req.body
         });
 
       await server.services.auditLog.createAuditLog({
@@ -307,6 +311,113 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         expiresIn: identityTokenAuth.accessTokenTTL,
         accessTokenMaxTTL: identityTokenAuth.accessTokenMaxTTL
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/token-auth/identities/:identityId/tokens",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get tokens for identity with Token Auth configured",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string()
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).max(100).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          tokens: IdentityAccessTokensSchema.array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { tokens, identityMembershipOrg } = await server.services.identityTokenAuth.getTokensTokenAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId,
+        ...req.query
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityMembershipOrg.orgId,
+        event: {
+          type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH,
+          metadata: {
+            identityId: req.params.identityId
+          }
+        }
+      });
+
+      return { tokens };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/token-auth/identities/:identityId/tokens/:tokenId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Update token for identity with Token Auth configured",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string(),
+        tokenId: z.string()
+      }),
+      body: z.object({
+        name: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          token: IdentityAccessTokensSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { token, identityMembershipOrg } = await server.services.identityTokenAuth.updateTokenTokenAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId,
+        tokenId: req.params.tokenId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityMembershipOrg.orgId,
+        event: {
+          type: EventType.UPDATE_TOKEN_IDENTITY_TOKEN_AUTH,
+          metadata: {
+            identityId: req.params.identityId,
+            tokenId: token.id,
+            name: req.body.name
+          }
+        }
+      });
+
+      return { token };
     }
   });
 };
