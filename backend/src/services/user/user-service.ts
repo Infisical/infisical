@@ -295,10 +295,6 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
-  const listUsers = async () => {
-    return userDAL.find({});
-  };
-
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
@@ -312,7 +308,6 @@ export const userServiceFactory = ({
     unlockUser,
     getUserPrivateKey,
     getUserProjectFavorites,
-    updateUserProjectFavorites,
-    listUsers
+    updateUserProjectFavorites
   };
 };

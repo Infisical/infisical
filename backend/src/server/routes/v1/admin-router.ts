@@ -84,6 +84,82 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/user-management/users",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().default(20)
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.superAdmin.getUsers({
+        ...req.query
+      });
+
+      return {
+        users
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/user-management/users/:userId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userId: z.string()
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.superAdmin.deleteUser(req.params.userId);
+
+      return {
+        users
+      };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/signup",
     config: {

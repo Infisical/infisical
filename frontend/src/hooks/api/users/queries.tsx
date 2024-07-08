@@ -41,14 +41,6 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-export const fetchUsersList = async () => {
-  const { data } = await apiRequest.get<{ users: User[] }>("/api/v1/user/list");
-
-  return data.users;
-};
-
-export const useListUsers = () => useQuery(userKeys.listUsers, fetchUsersList);
-
 export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 

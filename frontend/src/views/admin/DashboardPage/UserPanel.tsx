@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { faMagnifyingGlass, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Button,
   DeleteActionModal,
   EmptyState,
   IconButton,
@@ -18,31 +19,103 @@ import {
   Tr
 } from "@app/components/v2";
 import { useUser } from "@app/context";
-import { usePopUp } from "@app/hooks";
-import { useDeleteUser, useListUsers } from "@app/hooks/api";
+import { useDebounce, usePopUp } from "@app/hooks";
+import { useAdminGetUsers, useDeleteUser } from "@app/hooks/api";
+import { UsePopUpState } from "@app/hooks/usePopUp";
+
+const UserPanelTable = ({
+  searchUserFilter,
+  handlePopUpOpen
+}: {
+  searchUserFilter: string;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["removeUser"]>,
+    data: {
+      username: string;
+      id: string;
+    }
+  ) => void;
+}) => {
+  const { user } = useUser();
+  const userId = user?.id || "";
+  const debounedSearchTerm = useDebounce(searchUserFilter, 500);
+
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetUsers({
+    limit: 20,
+    searchTerm: debounedSearchTerm
+  });
+
+  const isEmpty = !isLoading && !data?.pages?.[0].length;
+  return (
+    <div className="mt-4">
+      <TableContainer>
+        <Table>
+          <THead>
+            <Tr>
+              <Th className="w-5/12">Name</Th>
+              <Th className="w-5/12">Username</Th>
+              <Th className="w-5" />
+            </Tr>
+          </THead>
+          <TBody>
+            {isLoading && <TableSkeleton columns={4} innerKey="users" />}
+            {!isLoading &&
+              data?.pages?.map((users) =>
+                users.map(({ username, email, firstName, lastName, id }) => {
+                  const name = firstName || lastName ? `${firstName} ${lastName}` : "-";
+
+                  return (
+                    <Tr key={`user-${id}`} className="w-full">
+                      <Td className="w-5/12">{name}</Td>
+                      <Td className="w-5/12">{email}</Td>
+                      <Td>
+                        {userId !== id && (
+                          <div className="flex justify-end">
+                            <IconButton
+                              size="lg"
+                              colorSchema="danger"
+                              variant="plain"
+                              ariaLabel="update"
+                              isDisabled={userId === id}
+                              onClick={() => handlePopUpOpen("removeUser", { username, id })}
+                            >
+                              <FontAwesomeIcon icon={faXmark} />
+                            </IconButton>
+                          </div>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })
+              )}
+          </TBody>
+        </Table>
+        {!isLoading && isEmpty && <EmptyState title="No users found" icon={faUsers} />}
+      </TableContainer>
+      {!isEmpty && (
+        <Button
+          className="mt-4 py-3 text-sm"
+          isFullWidth
+          variant="star"
+          isLoading={isFetchingNextPage}
+          isDisabled={isFetchingNextPage || !hasNextPage}
+          onClick={() => fetchNextPage()}
+        >
+          {hasNextPage ? "Load More" : "End of list"}
+        </Button>
+      )}
+    </div>
+  );
+};
 
 export const UserPanel = () => {
-  const [searchUserFilter, setSearchUserFilter] = useState("");
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeUser"
   ] as const);
 
-  const { user } = useUser();
-  const userId = user?.id || "";
-  const { data: users, isLoading } = useListUsers();
-  const { mutateAsync: deleteUser } = useDeleteUser();
+  const [searchUserFilter, setSearchUserFilter] = useState("");
 
-  const filterdUsers = useMemo(
-    () =>
-      users?.filter(
-        ({ firstName, lastName, username, email }) =>
-          firstName?.toLowerCase().includes(searchUserFilter.toLowerCase()) ||
-          lastName?.toLowerCase().includes(searchUserFilter.toLowerCase()) ||
-          username?.toLowerCase().includes(searchUserFilter.toLowerCase()) ||
-          email?.toLowerCase().includes(searchUserFilter.toLowerCase())
-      ),
-    [users, searchUserFilter]
-  );
+  const { mutateAsync: deleteUser } = useDeleteUser();
 
   const handleRemoveUser = async () => {
     const { id } = popUp?.removeUser?.data as { id: string; username: string };
@@ -74,54 +147,7 @@ export const UserPanel = () => {
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search users..."
       />
-
-      <div className="mt-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Username</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isLoading && <TableSkeleton columns={4} innerKey="users" />}
-              {!isLoading &&
-                filterdUsers?.map(({ username, email, firstName, lastName, id }) => {
-                  const name = firstName || lastName ? `${firstName} ${lastName}` : "-";
-
-                  return (
-                    <Tr key={`user-${id}`} className="w-full">
-                      <Td>{name}</Td>
-                      <Td>{email}</Td>
-                      <Td>
-                        {userId !== id && (
-                          <div className="flex items-center space-x-2">
-                            <IconButton
-                              size="lg"
-                              colorSchema="danger"
-                              variant="plain"
-                              ariaLabel="update"
-                              className="ml-4"
-                              isDisabled={userId === id}
-                              onClick={() => handlePopUpOpen("removeUser", { username, id })}
-                            >
-                              <FontAwesomeIcon icon={faXmark} />
-                            </IconButton>
-                          </div>
-                        )}
-                      </Td>
-                    </Tr>
-                  );
-                })}
-            </TBody>
-          </Table>
-          {!isLoading && filterdUsers?.length === 0 && (
-            <EmptyState title="No users found" icon={faUsers} />
-          )}
-        </TableContainer>
-      </div>
+      <UserPanelTable searchUserFilter={searchUserFilter} handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeUser.isOpen}
         deleteKey="remove"
