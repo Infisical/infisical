@@ -44,7 +44,7 @@ export const useUpdateServerConfig = () => {
   });
 };
 
-export const useDeleteUser = () => {
+export const useAdminDeleteUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (userId: string) => {

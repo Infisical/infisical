@@ -20,7 +20,7 @@ import {
 } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
-import { useAdminGetUsers, useDeleteUser } from "@app/hooks/api";
+import { useAdminDeleteUser, useAdminGetUsers } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const UserPanelTable = ({
@@ -115,7 +115,7 @@ export const UserPanel = () => {
 
   const [searchUserFilter, setSearchUserFilter] = useState("");
 
-  const { mutateAsync: deleteUser } = useDeleteUser();
+  const { mutateAsync: deleteUser } = useAdminDeleteUser();
 
   const handleRemoveUser = async () => {
     const { id } = popUp?.removeUser?.data as { id: string; username: string };
