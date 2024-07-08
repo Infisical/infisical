@@ -24,10 +24,8 @@ import { useAdminDeleteUser, useAdminGetUsers } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const UserPanelTable = ({
-  searchUserFilter,
   handlePopUpOpen
 }: {
-  searchUserFilter: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeUser"]>,
     data: {
@@ -36,6 +34,7 @@ const UserPanelTable = ({
     }
   ) => void;
 }) => {
+  const [searchUserFilter, setSearchUserFilter] = useState("");
   const { user } = useUser();
   const userId = user?.id || "";
   const debounedSearchTerm = useDebounce(searchUserFilter, 500);
@@ -47,64 +46,72 @@ const UserPanelTable = ({
 
   const isEmpty = !isLoading && !data?.pages?.[0].length;
   return (
-    <div className="mt-4">
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-5/12">Name</Th>
-              <Th className="w-5/12">Username</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={4} innerKey="users" />}
-            {!isLoading &&
-              data?.pages?.map((users) =>
-                users.map(({ username, email, firstName, lastName, id }) => {
-                  const name = firstName || lastName ? `${firstName} ${lastName}` : "-";
+    <>
+      <Input
+        value={searchUserFilter}
+        onChange={(e) => setSearchUserFilter(e.target.value)}
+        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+        placeholder="Search users..."
+      />
+      <div className="mt-4">
+        <TableContainer>
+          <Table>
+            <THead>
+              <Tr>
+                <Th className="w-5/12">Name</Th>
+                <Th className="w-5/12">Username</Th>
+                <Th className="w-5" />
+              </Tr>
+            </THead>
+            <TBody>
+              {isLoading && <TableSkeleton columns={4} innerKey="users" />}
+              {!isLoading &&
+                data?.pages?.map((users) =>
+                  users.map(({ username, email, firstName, lastName, id }) => {
+                    const name = firstName || lastName ? `${firstName} ${lastName}` : "-";
 
-                  return (
-                    <Tr key={`user-${id}`} className="w-full">
-                      <Td className="w-5/12">{name}</Td>
-                      <Td className="w-5/12">{email}</Td>
-                      <Td>
-                        {userId !== id && (
-                          <div className="flex justify-end">
-                            <IconButton
-                              size="lg"
-                              colorSchema="danger"
-                              variant="plain"
-                              ariaLabel="update"
-                              isDisabled={userId === id}
-                              onClick={() => handlePopUpOpen("removeUser", { username, id })}
-                            >
-                              <FontAwesomeIcon icon={faXmark} />
-                            </IconButton>
-                          </div>
-                        )}
-                      </Td>
-                    </Tr>
-                  );
-                })
-              )}
-          </TBody>
-        </Table>
-        {!isLoading && isEmpty && <EmptyState title="No users found" icon={faUsers} />}
-      </TableContainer>
-      {!isEmpty && (
-        <Button
-          className="mt-4 py-3 text-sm"
-          isFullWidth
-          variant="star"
-          isLoading={isFetchingNextPage}
-          isDisabled={isFetchingNextPage || !hasNextPage}
-          onClick={() => fetchNextPage()}
-        >
-          {hasNextPage ? "Load More" : "End of list"}
-        </Button>
-      )}
-    </div>
+                    return (
+                      <Tr key={`user-${id}`} className="w-full">
+                        <Td className="w-5/12">{name}</Td>
+                        <Td className="w-5/12">{email}</Td>
+                        <Td>
+                          {userId !== id && (
+                            <div className="flex justify-end">
+                              <IconButton
+                                size="lg"
+                                colorSchema="danger"
+                                variant="plain"
+                                ariaLabel="update"
+                                isDisabled={userId === id}
+                                onClick={() => handlePopUpOpen("removeUser", { username, id })}
+                              >
+                                <FontAwesomeIcon icon={faXmark} />
+                              </IconButton>
+                            </div>
+                          )}
+                        </Td>
+                      </Tr>
+                    );
+                  })
+                )}
+            </TBody>
+          </Table>
+          {!isLoading && isEmpty && <EmptyState title="No users found" icon={faUsers} />}
+        </TableContainer>
+        {!isEmpty && (
+          <Button
+            className="mt-4 py-3 text-sm"
+            isFullWidth
+            variant="star"
+            isLoading={isFetchingNextPage}
+            isDisabled={isFetchingNextPage || !hasNextPage}
+            onClick={() => fetchNextPage()}
+          >
+            {hasNextPage ? "Load More" : "End of list"}
+          </Button>
+        )}
+      </div>
+    </>
   );
 };
 
@@ -112,8 +119,6 @@ export const UserPanel = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeUser"
   ] as const);
-
-  const [searchUserFilter, setSearchUserFilter] = useState("");
 
   const { mutateAsync: deleteUser } = useAdminDeleteUser();
 
@@ -141,13 +146,7 @@ export const UserPanel = () => {
       <div className="mb-4">
         <p className="text-xl font-semibold text-mineshaft-100">Users</p>
       </div>
-      <Input
-        value={searchUserFilter}
-        onChange={(e) => setSearchUserFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search users..."
-      />
-      <UserPanelTable searchUserFilter={searchUserFilter} handlePopUpOpen={handlePopUpOpen} />
+      <UserPanelTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeUser.isOpen}
         deleteKey="remove"
