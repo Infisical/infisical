@@ -7,7 +7,8 @@ import {
   TUserActionsUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
-  TUserEncryptionKeysUpdate
+  TUserEncryptionKeysUpdate,
+  TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -21,11 +22,13 @@ export const userDALFactory = (db: TDbClient) => {
   const getUsersByFilter = async ({
     limit,
     offset,
-    searchTerm
+    searchTerm,
+    sortBy
   }: {
     limit: number;
     offset: number;
     searchTerm: string;
+    sortBy?: keyof TUsers;
   }) => {
     try {
       let query = db.replicaNode()(TableName.Users).where("isGhost", "=", false);
@@ -38,6 +41,11 @@ export const userDALFactory = (db: TDbClient) => {
             .orWhereLike("username", `%${searchTerm}%`);
         });
       }
+
+      if (sortBy) {
+        query = query.orderBy(sortBy);
+      }
+
       return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get users by filter" });

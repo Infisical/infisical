@@ -213,7 +213,8 @@ export const superAdminServiceFactory = ({
     return userDAL.getUsersByFilter({
       limit,
       offset,
-      searchTerm
+      searchTerm,
+      sortBy: "username"
     });
   };
 
