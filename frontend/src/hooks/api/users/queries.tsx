@@ -49,7 +49,7 @@ export const fetchUsersList = async () => {
 
 export const useListUsers = () => useQuery(userKeys.listUsers, fetchUsersList);
 
-export const useDeleteUser = () => {
+export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

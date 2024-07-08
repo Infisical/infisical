@@ -2,17 +2,17 @@ import { useRouter } from "next/router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { useDeleteUser } from "@app/hooks/api";
+import { useDeleteMe } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const DeleteAccountSection = () => {
   const router = useRouter();
-  
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteAccount"
   ] as const);
 
-  const { mutateAsync: deleteUserMutateAsync, isLoading } = useDeleteUser();
+  const { mutateAsync: deleteUserMutateAsync, isLoading } = useDeleteMe();
 
   const handleDeleteAccountSubmit = async () => {
     try {

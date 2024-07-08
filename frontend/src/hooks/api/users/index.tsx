@@ -10,6 +10,7 @@ export {
   useAddUserToOrg,
   useCreateAPIKey,
   useDeleteAPIKey,
+  useDeleteMe,
   useDeleteOrgMembership,
   useGetMyAPIKeys,
   useGetMyAPIKeysV2,
