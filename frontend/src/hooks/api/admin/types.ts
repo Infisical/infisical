@@ -37,3 +37,8 @@ export type TCreateAdminUserDTO = {
   verifier: string;
   salt: string;
 };
+
+export type AdminGetUsersFilters = {
+  limit: number;
+  searchTerm: string;
+};

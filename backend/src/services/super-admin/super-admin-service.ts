@@ -12,7 +12,7 @@ import { AuthMethod } from "../auth/auth-type";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { LoginMethod, TAdminSignUpDTO } from "./super-admin-types";
+import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
@@ -209,9 +209,25 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
+  const getUsers = ({ offset, limit, searchTerm }: TAdminGetUsersDTO) => {
+    return userDAL.getUsersByFilter({
+      limit,
+      offset,
+      searchTerm,
+      sortBy: "username"
+    });
+  };
+
+  const deleteUser = async (userId: string) => {
+    const user = await userDAL.deleteById(userId);
+    return user;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
-    adminSignUp
+    adminSignUp,
+    getUsers,
+    deleteUser
   };
 };
