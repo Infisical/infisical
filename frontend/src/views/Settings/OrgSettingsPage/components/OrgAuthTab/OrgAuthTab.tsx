@@ -43,8 +43,10 @@ export const OrgAuthTab = withPermission(
     const { data: samlConfig, isLoading: isLoadingSamlConfig } = useGetSSOConfig(
       currentOrg?.id ?? ""
     );
-    const { data: ldapConfig, isLoading: isLdapConfig } = useGetLDAPConfig(currentOrg?.id ?? "");
-    const areConfigsLoading = isLoadingOidcConfig || isLoadingSamlConfig || isLdapConfig;
+    const { data: ldapConfig, isLoading: isLoadingLdapConfig } = useGetLDAPConfig(
+      currentOrg?.id ?? ""
+    );
+    const areConfigsLoading = isLoadingOidcConfig || isLoadingSamlConfig || isLoadingLdapConfig;
 
     const shouldDisplaySection = (method: LoginMethod) =>
       !enabledLoginMethods || enabledLoginMethods.includes(method);

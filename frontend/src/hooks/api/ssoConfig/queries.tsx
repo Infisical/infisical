@@ -11,9 +11,15 @@ export const useGetSSOConfig = (organizationId: string) => {
   return useQuery({
     queryKey: ssoConfigKeys.getSSOConfig(organizationId),
     queryFn: async () => {
-      const { data } = await apiRequest.get(`/api/v1/sso/config?organizationId=${organizationId}`);
+      try {
+        const { data } = await apiRequest.get(
+          `/api/v1/sso/config?organizationId=${organizationId}`
+        );
 
-      return data;
+        return data;
+      } catch (err) {
+        return null;
+      }
     },
     enabled: true
   });

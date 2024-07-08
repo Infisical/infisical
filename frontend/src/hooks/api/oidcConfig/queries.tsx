@@ -12,11 +12,15 @@ export const useGetOIDCConfig = (orgSlug: string) => {
   return useQuery({
     queryKey: oidcConfigKeys.getOIDCConfig(orgSlug),
     queryFn: async () => {
-      const { data } = await apiRequest.get<OIDCConfigData>(
-        `/api/v1/sso/oidc/config?orgSlug=${orgSlug}`
-      );
+      try {
+        const { data } = await apiRequest.get<OIDCConfigData>(
+          `/api/v1/sso/oidc/config?orgSlug=${orgSlug}`
+        );
 
-      return data;
+        return data;
+      } catch (err) {
+        return null;
+      }
     },
     enabled: true
   });

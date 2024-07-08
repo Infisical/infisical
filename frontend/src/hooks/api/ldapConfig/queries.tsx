@@ -13,9 +13,15 @@ export const useGetLDAPConfig = (organizationId: string) => {
   return useQuery({
     queryKey: ldapConfigKeys.getLDAPConfig(organizationId),
     queryFn: async () => {
-      const { data } = await apiRequest.get(`/api/v1/ldap/config?organizationId=${organizationId}`);
+      try {
+        const { data } = await apiRequest.get(
+          `/api/v1/ldap/config?organizationId=${organizationId}`
+        );
 
-      return data;
+        return data;
+      } catch (err) {
+        return null;
+      }
     },
     enabled: true
   });
