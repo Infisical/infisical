@@ -135,8 +135,7 @@ export default function FlyioCreateIntegrationPage() {
         <div className="px-6 pb-4">
           <Alert hideTitle variant="warning">
             <AlertDescription>
-              All existing secrets of your connected flyio project will be permanently removed upon
-              integration.
+              All current secrets linked to the related Fly.io project will be deleted before Infisical secrets are pushed to your Fly.io project.
             </AlertDescription>
           </Alert>
         </div>
