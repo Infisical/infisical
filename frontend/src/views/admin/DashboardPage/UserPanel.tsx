@@ -22,7 +22,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteUser, useListUsers } from "@app/hooks/api";
 
 export const UserPanel = () => {
-  const [searchMemberFilter, setSearchMemberFilter] = useState("");
+  const [searchUserFilter, setSearchUserFilter] = useState("");
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeUser"
   ] as const);
@@ -36,12 +36,12 @@ export const UserPanel = () => {
     () =>
       users?.filter(
         ({ firstName, lastName, username, email }) =>
-          firstName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          lastName?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          username?.toLowerCase().includes(searchMemberFilter.toLowerCase()) ||
-          email?.toLowerCase().includes(searchMemberFilter.toLowerCase())
+          firstName?.toLowerCase().includes(searchUserFilter.toLowerCase()) ||
+          lastName?.toLowerCase().includes(searchUserFilter.toLowerCase()) ||
+          username?.toLowerCase().includes(searchUserFilter.toLowerCase()) ||
+          email?.toLowerCase().includes(searchUserFilter.toLowerCase())
       ),
-    [users, searchMemberFilter]
+    [users, searchUserFilter]
   );
 
   const handleRemoveUser = async () => {
@@ -69,10 +69,10 @@ export const UserPanel = () => {
         <p className="text-xl font-semibold text-mineshaft-100">Users</p>
       </div>
       <Input
-        value={searchMemberFilter}
-        onChange={(e) => setSearchMemberFilter(e.target.value)}
+        value={searchUserFilter}
+        onChange={(e) => setSearchUserFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
+        placeholder="Search users..."
       />
 
       <div className="mt-4">
