@@ -1847,7 +1847,7 @@ export const secretServiceFactory = ({
 
       if (isEmpty) {
         throw new BadRequestError({
-          message: "No changes were detected between the source and destination."
+          message: "No changes were made. Secrets already exist in the destination."
         });
       }
 

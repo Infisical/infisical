@@ -17,6 +17,7 @@ import {
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
+  TMoveSecretsDTO,
   TUpdateSecretBatchDTO,
   TUpdateSecretsV3DTO
 } from "./types";
@@ -87,11 +88,11 @@ export const useCreateSecretV3 = ({
 
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-          ciphertext: latestFileKey.encryptedKey,
-          nonce: latestFileKey.nonce,
-          publicKey: latestFileKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        })
+            ciphertext: latestFileKey.encryptedKey,
+            nonce: latestFileKey.nonce,
+            publicKey: latestFileKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -148,11 +149,11 @@ export const useUpdateSecretV3 = ({
 
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-          ciphertext: latestFileKey.encryptedKey,
-          nonce: latestFileKey.nonce,
-          publicKey: latestFileKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        })
+            ciphertext: latestFileKey.encryptedKey,
+            nonce: latestFileKey.nonce,
+            publicKey: latestFileKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -244,11 +245,11 @@ export const useCreateSecretBatch = ({
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-          ciphertext: latestFileKey.encryptedKey,
-          nonce: latestFileKey.nonce,
-          publicKey: latestFileKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        })
+            ciphertext: latestFileKey.encryptedKey,
+            nonce: latestFileKey.nonce,
+            publicKey: latestFileKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -297,11 +298,11 @@ export const useUpdateSecretBatch = ({
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const randomBytes = latestFileKey
         ? decryptAssymmetric({
-          ciphertext: latestFileKey.encryptedKey,
-          nonce: latestFileKey.nonce,
-          publicKey: latestFileKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        })
+            ciphertext: latestFileKey.encryptedKey,
+            nonce: latestFileKey.nonce,
+            publicKey: latestFileKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          })
         : crypto.randomBytes(16).toString("hex");
 
       const reqBody = {
@@ -370,6 +371,61 @@ export const useDeleteSecretBatch = ({
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
       queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
+    },
+    ...options
+  });
+};
+
+export const useMoveSecrets = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TMoveSecretsDTO>, "mutationFn">;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, TMoveSecretsDTO>({
+    mutationFn: async ({
+      sourceEnvironment,
+      sourceSecretPath,
+      projectSlug,
+      destinationEnvironment,
+      destinationSecretPath,
+      secretIds
+    }) => {
+      const { data } = await apiRequest.post("/api/v3/secrets/move", {
+        sourceEnvironment,
+        sourceSecretPath,
+        projectSlug,
+        destinationEnvironment,
+        destinationSecretPath,
+        secretIds
+      });
+
+      return data;
+    },
+    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret({
+          workspaceId: projectId,
+          environment: sourceEnvironment,
+          secretPath: sourceSecretPath
+        })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({
+          environment: sourceEnvironment,
+          workspaceId: projectId,
+          directory: sourceSecretPath
+        })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({
+          environment: sourceEnvironment,
+          workspaceId: projectId,
+          directory: sourceSecretPath
+        })
+      );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId: projectId }));
     },
     ...options
   });

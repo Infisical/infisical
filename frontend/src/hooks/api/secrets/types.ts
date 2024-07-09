@@ -177,6 +177,16 @@ export type TDeleteSecretBatchDTO = {
   }>;
 };
 
+export type TMoveSecretsDTO = {
+  projectSlug: string;
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+};
+
 export type CreateSecretDTO = {
   workspaceId: string;
   environment: string;
