@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { organizationKeys } from "../organization/queries";
 import { User } from "../users/types";
-import { adminQueryKeys } from "./queries";
+import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import { TCreateAdminUserDTO, TServerConfig } from "./types";
 
 export const useCreateAdminUser = () => {
@@ -40,6 +40,22 @@ export const useUpdateServerConfig = () => {
       queryClient.setQueryData(adminQueryKeys.serverConfig(), data);
       queryClient.invalidateQueries(adminQueryKeys.serverConfig());
       queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+    }
+  });
+};
+
+export const useAdminDeleteUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest.delete(`/api/v1/admin/user-management/users/${userId}`);
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getUsers]
+      });
     }
   });
 };

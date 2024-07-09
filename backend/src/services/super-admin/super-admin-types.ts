@@ -16,6 +16,12 @@ export type TAdminSignUpDTO = {
   userAgent: string;
 };
 
+export type TAdminGetUsersDTO = {
+  offset: number;
+  limit: number;
+  searchTerm: string;
+};
+
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",

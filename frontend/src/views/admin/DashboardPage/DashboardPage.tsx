@@ -26,11 +26,13 @@ import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
 import { AuthPanel } from "./AuthPanel";
 import { RateLimitPanel } from "./RateLimitPanel";
+import { UserPanel } from "./UserPanel";
 
 enum TabSections {
   Settings = "settings",
   Auth = "auth",
-  RateLimit = "rate-limit"
+  RateLimit = "rate-limit",
+  Users = "users"
 }
 
 enum SignUpModes {
@@ -135,6 +137,7 @@ export const AdminDashboardPage = () => {
                 <Tab value={TabSections.Settings}>General</Tab>
                 <Tab value={TabSections.Auth}>Authentication</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
+                <Tab value={TabSections.Users}>Users</Tab>
               </div>
             </TabList>
             <TabPanel value={TabSections.Settings}>
@@ -319,6 +322,9 @@ export const AdminDashboardPage = () => {
             </TabPanel>
             <TabPanel value={TabSections.RateLimit}>
               <RateLimitPanel />
+            </TabPanel>
+            <TabPanel value={TabSections.Users}>
+              <UserPanel />
             </TabPanel>
           </Tabs>
         </div>

@@ -43,6 +43,8 @@ controllerManager:
   replicas: 1
   serviceAccount:
     annotations: {}
+  nodeSelector: {}
+  tolerations: []
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:

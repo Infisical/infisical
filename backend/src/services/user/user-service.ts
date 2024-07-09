@@ -201,7 +201,7 @@ export const userServiceFactory = ({
     return user;
   };
 
-  const deleteMe = async (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);
     return user;
   };
@@ -301,7 +301,7 @@ export const userServiceFactory = ({
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,
-    deleteMe,
+    deleteUser,
     getMe,
     createUserAction,
     getUserAction,
