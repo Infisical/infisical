@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
@@ -259,30 +260,30 @@ export const ActionBar = ({
         secretIds: secretsToMove.map((sec) => sec.id)
       });
 
-      let successMessage = "";
+      let notificationMessage = "";
+      let notificationType: TypeOptions = "info";
+
       if (isDestinationUpdated && isSourceUpdated) {
-        successMessage = "Successfully moved selected secrets";
+        notificationMessage = "Successfully moved selected secrets";
+        notificationType = "success";
       } else if (isDestinationUpdated) {
-        successMessage =
+        notificationMessage =
           "Successfully created secrets in destination. A secret approval request has been generated for the source.";
       } else if (isSourceUpdated) {
-        successMessage = "A secret approval request has been generated in the destination";
+        notificationMessage = "A secret approval request has been generated in the destination";
       } else {
-        successMessage =
+        notificationMessage =
           "A secret approval request has been generated in both the source and the destination.";
       }
 
       createNotification({
-        type: "success",
-        text: successMessage
+        type: notificationType,
+        text: notificationMessage
       });
 
       resetSelectedSecret();
     } catch (error) {
-      createNotification({
-        type: "error",
-        text: "Error moving selected secrets"
-      });
+      console.error(error);
     }
   };
 
