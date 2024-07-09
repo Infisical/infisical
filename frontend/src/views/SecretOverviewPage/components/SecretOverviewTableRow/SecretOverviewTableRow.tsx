@@ -13,7 +13,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
+import { DecryptedSecret, SecretType, SecretBulkUpdate } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretEditRow } from "./SecretEditRow";
@@ -41,6 +41,7 @@ type Props = {
     env: string,
     secretName: string
   ) => { secret?: DecryptedSecret; environmentInfo?: WorkspaceEnv } | undefined;
+  setBulkSecretUpdateContent: (content: SecretBulkUpdate) => void;
 };
 
 export const SecretOverviewTableRow = ({

@@ -54,6 +54,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
+  handleSecretInputChange?: (val: string) => void;
 };
 
 type ReferenceItem = {
@@ -70,6 +71,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       containerClassName,
       secretPath: propSecretPath,
       environment: propEnvironment,
+      handleSecretInputChange,
       ...props
     },
     ref
@@ -282,7 +284,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
                 setIsFocused.off();
             }}
-            onChange={(e) => onChange?.(e.target.value)}
+            onChange={(e) => {
+              handleSecretInputChange?.(e.target.value);
+              onChange?.(e.target.value)
+            }}
             containerClassName={containerClassName}
           />
         </Popover.Trigger>

@@ -64,7 +64,7 @@ import {
 } from "@app/hooks/api";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { SecretType, TSecretFolder } from "@app/hooks/api/types";
+import { SecretType, TSecretFolder, SecretBulkUpdate } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -80,15 +80,6 @@ export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret"
 }
-
-export type SecretBulkUpdate = {
-  env: string,
-  key: string,
-  value: string,
-  type: SecretType.Shared,
-  secretId?: string
-}
-
 
 
 export const SecretOverviewPage = () => {
@@ -388,7 +379,23 @@ export const SecretOverviewPage = () => {
 
   const handleBulkSecretUpdate = async() => {
     try{
-      console.log(bulkSecretUpdateContent)
+      bulkSecretUpdateContent.map(async(secretContent: SecretBulkUpdate)=>{
+        if(secretContent?.isCreatable){
+          await handleSecretCreate(secretContent.env,secretContent.key,secretContent.value)
+        }
+        else{
+          let secretId =  secretContent.secretId;
+          let type = secretContent.type
+          await handleSecretUpdate(
+            secretContent.env,
+            secretContent.key,
+            secretContent?.value,
+            type,
+            secretId
+          );
+        }
+        
+      })
       createNotification({
         type: "success",
         text: "Successfully updated secrets"
