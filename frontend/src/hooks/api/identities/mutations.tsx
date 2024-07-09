@@ -42,7 +42,8 @@ import {
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityTokenAuthDTO,
   UpdateIdentityUniversalAuthDTO,
-  UpdateTokenIdentityTokenAuthDTO} from "./types";
+  UpdateTokenIdentityTokenAuthDTO
+} from "./types";
 
 export const useCreateIdentity = () => {
   const queryClient = useQueryClient();
@@ -706,14 +707,14 @@ export const useCreateTokenIdentityTokenAuth = () => {
   });
 };
 
-export const useUpdateTokenIdentityTokenAuth = () => {
+export const useUpdateIdentityTokenAuthToken = () => {
   const queryClient = useQueryClient();
   return useMutation<IdentityAccessToken, {}, UpdateTokenIdentityTokenAuthDTO>({
-    mutationFn: async ({ identityId, tokenId, name }) => {
+    mutationFn: async ({ tokenId, name }) => {
       const {
         data: { token }
       } = await apiRequest.patch<{ token: IdentityAccessToken }>(
-        `/api/v1/auth/token-auth/identities/${identityId}/tokens/${tokenId}`,
+        `/api/v1/auth/token-auth/tokens/${tokenId}`,
         {
           name
         }
@@ -727,13 +728,13 @@ export const useUpdateTokenIdentityTokenAuth = () => {
   });
 };
 
-export const useRevokeToken = () => {
+export const useRevokeIdentityTokenAuthToken = () => {
   const queryClient = useQueryClient();
   return useMutation<RevokeTokenRes, {}, RevokeTokenDTO>({
     mutationFn: async ({ tokenId }) => {
-      const { data } = await apiRequest.post<RevokeTokenRes>("/api/v1/auth/token/revoke-by-id", {
-        tokenId
-      });
+      const { data } = await apiRequest.post<RevokeTokenRes>(
+        `/api/v1/auth/token-auth/tokens/${tokenId}/revoke`
+      );
 
       return data;
     },

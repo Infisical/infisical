@@ -10,9 +10,9 @@ import { Button, FormControl, IconButton, Input, TextArea } from "@app/component
 import { useOrganization, useSubscription } from "@app/context";
 import {
   useAddIdentityKubernetesAuth,
-  useDeleteIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
-  useUpdateIdentityKubernetesAuth} from "@app/hooks/api";
+  useUpdateIdentityKubernetesAuth
+} from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -43,7 +43,7 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
@@ -64,7 +64,6 @@ export const IdentityKubernetesAuthForm = ({
 
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
-  const { mutateAsync: deleteMutateAsync } = useDeleteIdentityKubernetesAuth();
 
   const { data } = useGetIdentityKubernetesAuth(identityAuthMethodData?.identityId ?? "");
 
@@ -399,7 +398,7 @@ export const IdentityKubernetesAuthForm = ({
             variant="plain"
             onClick={() => handlePopUpToggle("identityAuthMethod", false)}
           >
-            {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
+            Cancel
           </Button>
         </div>
         {identityAuthMethodData?.authMethod && (
@@ -408,14 +407,7 @@ export const IdentityKubernetesAuthForm = ({
             colorSchema="danger"
             isLoading={isSubmitting}
             isDisabled={isSubmitting}
-            onClick={async () => {
-              await deleteMutateAsync({
-                identityId: identityAuthMethodData.identityId,
-                organizationId: orgId
-              });
-
-              handlePopUpToggle("identityAuthMethod", false);
-            }}
+            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
           >
             Remove Auth Method
           </Button>

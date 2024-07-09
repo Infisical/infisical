@@ -66,18 +66,6 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
       <div className="py-4">
         <div className="flex justify-between">
           <p className="text-sm font-semibold text-mineshaft-300">Auth Method</p>
-          {/* <Button
-            variant="link"
-            onClick={() => {
-              handlePopUpOpen("identityAuthMethod", {
-                identityId,
-                name: data.identity.name,
-                authMethod: data.identity.authMethod
-              });
-            }}
-          >
-            Manage
-          </Button> */}
         </div>
         <p className="text-sm text-mineshaft-300">
           {data.identity.authMethod

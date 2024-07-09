@@ -5,7 +5,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TOrgPermission } from "@app/lib/types";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
@@ -213,7 +213,7 @@ export const identityServiceFactory = ({
     actorOrgId
   }: TListProjectIdentitiesByIdentityIdDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,

@@ -17,16 +17,16 @@ export {
   useDeleteIdentityKubernetesAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth,
+  useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret,
-  useRevokeToken,
   useUpdateIdentity,
   useUpdateIdentityAwsAuth,
   useUpdateIdentityAzureAuth,
   useUpdateIdentityGcpAuth,
   useUpdateIdentityKubernetesAuth,
   useUpdateIdentityTokenAuth,
-  useUpdateIdentityUniversalAuth,
-  useUpdateTokenIdentityTokenAuth} from "./mutations";
+  useUpdateIdentityTokenAuthToken,
+  useUpdateIdentityUniversalAuth} from "./mutations";
 export {
   useGetIdentityAwsAuth,
   useGetIdentityAzureAuth,
@@ -37,4 +37,5 @@ export {
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets} from "./queries";
+  useGetIdentityUniversalAuthClientSecrets
+} from "./queries";

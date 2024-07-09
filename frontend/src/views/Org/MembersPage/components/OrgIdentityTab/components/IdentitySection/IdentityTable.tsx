@@ -69,11 +69,13 @@ export const IdentityTable = () => {
         <TBody>
           {isLoading && <TableSkeleton columns={4} innerKey="org-identities" />}
           {!isLoading &&
-            data &&
-            data.length > 0 &&
-            data.map(({ identity: { id, name }, role, customRole }) => {
+            data?.map(({ identity: { id, name }, role, customRole }) => {
               return (
-                <Tr className="h-10" key={`identity-${id}`}>
+                <Tr
+                  className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                  key={`identity-${id}`}
+                  onClick={() => router.push(`/org/${orgId}/identities/${id}`)}
+                >
                   <Td>
                     <Link href={`/org/${orgId}/identities/${id}`}>{name}</Link>
                   </Td>

@@ -15,7 +15,7 @@ import { withPermission } from "@app/hoc";
 import { useDeleteIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
+// import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
 import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
@@ -110,11 +110,11 @@ export const IdentitySection = withPermission(
         </div>
         <IdentityTable />
         <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <IdentityAuthMethodModal
+        {/* <IdentityAuthMethodModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
-        />
+        /> */}
         {/* <IdentityUniversalAuthClientSecretModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}

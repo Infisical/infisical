@@ -1,9 +1,10 @@
-import { faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faCheck,faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { IconButton,Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useTimedReset } from "@app/hooks";
 import { useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -16,6 +17,10 @@ type Props = {
 };
 
 export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) => {
+  const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
+    initialState: "Copy ID to clipboard"
+  });
+
   const { data } = useGetIdentityById(identityId);
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -49,7 +54,22 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
       <div className="pt-4">
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">ID</p>
-          <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
+          <div className="flex align-top">
+            <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
+            <Tooltip content={copyTextId}>
+              <IconButton
+                ariaLabel="copy icon"
+                variant="plain"
+                className="group relative ml-2"
+                onClick={() => {
+                  navigator.clipboard.writeText(data.identity.id);
+                  setCopyTextId("Copied");
+                }}
+              >
+                <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
+              </IconButton>
+            </Tooltip>
+          </div>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>

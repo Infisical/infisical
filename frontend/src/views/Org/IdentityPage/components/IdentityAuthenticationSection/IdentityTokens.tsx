@@ -86,17 +86,19 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
                 >
                   Edit Token
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    handlePopUpOpen("revokeToken", {
-                      identityId,
-                      tokenId: token.id,
-                      name: token.name
-                    });
-                  }}
-                >
-                  Revoke Token
-                </DropdownMenuItem>
+                {!token.isAccessTokenRevoked && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      handlePopUpOpen("revokeToken", {
+                        identityId,
+                        tokenId: token.id,
+                        name: token.name
+                      });
+                    }}
+                  >
+                    Revoke Token
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

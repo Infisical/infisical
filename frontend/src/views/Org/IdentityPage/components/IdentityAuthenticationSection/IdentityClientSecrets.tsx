@@ -1,10 +1,11 @@
-import { faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy,faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useTimedReset } from "@app/hooks";
 import {
   useGetIdentityById,
   useGetIdentityUniversalAuth,
@@ -25,6 +26,10 @@ type Props = {
 const SHOW_LIMIT = 3;
 
 export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) => {
+  const [copyTextClientId, isCopyingClientId, setCopyTextClientId] = useTimedReset<string>({
+    initialState: "Copy Client ID to clipboard"
+  });
+
   const { data } = useGetIdentityById(identityId);
   const { data: identityUniversalAuth } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets } = useGetIdentityUniversalAuthClientSecrets(identityId);
@@ -32,7 +37,22 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
     <div>
       <div className="mb-4">
         <p className="text-sm font-semibold text-mineshaft-300">Client ID</p>
-        <p className="text-sm text-mineshaft-300">{identityUniversalAuth?.clientId ?? ""}</p>
+        <div className="flex align-top">
+          <p className="text-sm text-mineshaft-300">{identityUniversalAuth?.clientId ?? ""}</p>
+          <Tooltip content={copyTextClientId}>
+            <IconButton
+              ariaLabel="copy icon"
+              variant="plain"
+              className="group relative ml-2"
+              onClick={() => {
+                navigator.clipboard.writeText(identityUniversalAuth?.clientId ?? "");
+                setCopyTextClientId("Copied");
+              }}
+            >
+              <FontAwesomeIcon icon={isCopyingClientId ? faCheck : faCopy} />
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
       {clientSecrets?.length ? (
         <div className="flex justify-between">

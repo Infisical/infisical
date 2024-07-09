@@ -253,6 +253,15 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     }
   });
 
+  // proposed
+  // update token by id: PATCH /token-auth/tokens/:tokenId
+  // revoke token by id: POST /token-auth/tokens/:tokenId/revoke
+
+  // current
+  // revoke token by id: POST /token/revoke-by-id
+
+  // token-auth/identities/:identityId/tokens
+
   server.route({
     method: "POST",
     url: "/token-auth/identities/:identityId/tokens",
@@ -284,7 +293,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { identityTokenAuth, accessToken, identityAccessToken, identityMembershipOrg } =
-        await server.services.identityTokenAuth.createTokenTokenAuth({
+        await server.services.identityTokenAuth.createTokenAuthToken({
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -342,7 +351,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { tokens, identityMembershipOrg } = await server.services.identityTokenAuth.getTokensTokenAuth({
+      const { tokens, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokens({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -368,7 +377,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "PATCH",
-    url: "/token-auth/identities/:identityId/tokens/:tokenId",
+    url: "/token-auth/tokens/:tokenId",
     config: {
       rateLimit: writeLimit
     },
@@ -381,7 +390,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        identityId: z.string(),
         tokenId: z.string()
       }),
       body: z.object({
@@ -394,12 +402,11 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { token, identityMembershipOrg } = await server.services.identityTokenAuth.updateTokenTokenAuth({
+      const { token, identityMembershipOrg } = await server.services.identityTokenAuth.updateTokenAuthToken({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId,
         tokenId: req.params.tokenId,
         ...req.body
       });
@@ -410,7 +417,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         event: {
           type: EventType.UPDATE_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {
-            identityId: req.params.identityId,
+            identityId: token.identityId,
             tokenId: token.id,
             name: req.body.name
           }
@@ -418,6 +425,44 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       });
 
       return { token };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/token-auth/tokens/:tokenId/revoke",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Revoke token for identity with Token Auth configured",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        tokenId: z.string()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.identityTokenAuth.revokeTokenAuthToken({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        tokenId: req.params.tokenId
+      });
+
+      return {
+        message: "Successfully revoked access token"
+      };
     }
   });
 };

@@ -21,9 +21,8 @@ import { withPermission } from "@app/hoc";
 import {
   useDeleteIdentity,
   useGetIdentityById,
-  useRevokeIdentityUniversalAuthClientSecret,
-  useRevokeToken
-} from "@app/hooks/api";
+  useRevokeIdentityTokenAuthToken,
+  useRevokeIdentityUniversalAuthClientSecret} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthMethodModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
@@ -35,7 +34,8 @@ import {
   IdentityDetailsSection,
   IdentityProjectsSection,
   IdentityTokenListModal,
-  IdentityTokenModal} from "./components";
+  IdentityTokenModal
+} from "./components";
 
 export const IdentityPage = withPermission(
   () => {
@@ -45,13 +45,14 @@ export const IdentityPage = withPermission(
     const orgId = currentOrg?.id || "";
     const { data } = useGetIdentityById(identityId);
     const { mutateAsync: deleteIdentity } = useDeleteIdentity();
-    const { mutateAsync: revokeToken } = useRevokeToken();
+    const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
     const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
       "deleteIdentity",
       "identityAuthMethod",
+      "revokeAuthMethod",
       "token",
       "tokenList",
       "revokeToken",

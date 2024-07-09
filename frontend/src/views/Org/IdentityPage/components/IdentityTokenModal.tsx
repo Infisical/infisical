@@ -16,7 +16,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
-import { useCreateTokenIdentityTokenAuth, useUpdateTokenIdentityTokenAuth } from "@app/hooks/api";
+import { useCreateTokenIdentityTokenAuth, useUpdateIdentityTokenAuthToken } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -34,7 +34,7 @@ type Props = {
 
 export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { mutateAsync: createToken } = useCreateTokenIdentityTokenAuth();
-  const { mutateAsync: updateToken } = useUpdateTokenIdentityTokenAuth();
+  const { mutateAsync: updateToken } = useUpdateIdentityTokenAuthToken();
   const [token, setToken] = useState("");
   const [copyTextToken, isCopyingToken, setCopyTextToken] = useTimedReset<string>({
     initialState: "Copy to clipboard"
