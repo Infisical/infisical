@@ -1338,12 +1338,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         sourceSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         destinationEnvironment: z.string().trim(),
         destinationSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        secrets: z
-          .object({
-            id: z.string()
-          })
-          .array()
-          .min(1)
+        secretIds: z.string().array()
       }),
       response: {
         200: z.union([

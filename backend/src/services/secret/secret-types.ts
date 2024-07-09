@@ -404,7 +404,5 @@ export type TMoveSecretsDTO = {
   sourceSecretPath: string;
   destinationEnvironment: string;
   destinationSecretPath: string;
-  secrets: {
-    id: string;
-  }[];
+  secretIds: string[];
 } & Omit<TProjectPermission, "projectId">;

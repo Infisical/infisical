@@ -1703,7 +1703,7 @@ export const secretServiceFactory = ({
     sourceSecretPath,
     destinationEnvironment,
     destinationSecretPath,
-    secrets,
+    secretIds,
     projectSlug,
     actor,
     actorId,
@@ -1767,11 +1767,11 @@ export const secretServiceFactory = ({
     const sourceSecrets = await secretDAL.find({
       type: SecretType.Shared,
       $in: {
-        id: secrets.map((secret) => secret.id)
+        id: secretIds
       }
     });
 
-    if (sourceSecrets.length !== secrets.length) {
+    if (sourceSecrets.length !== secretIds.length) {
       throw new BadRequestError({
         message: "Invalid secrets"
       });
@@ -1793,69 +1793,79 @@ export const secretServiceFactory = ({
       })
     }));
 
+    let isSourceFolderUpdated = false;
+    let isDestinationFolderUpdated = false;
+
     // Moving secrets is a two-step process.
-    // First step is to create/update the secret in the destination:
-    const destinationSecretsFromDB = await secretDAL.find({
-      folderId: destinationFolder.id
-    });
+    await secretDAL.transaction(async (tx) => {
+      // First step is to create/update the secret in the destination:
+      const destinationSecretsFromDB = await secretDAL.find(
+        {
+          folderId: destinationFolder.id
+        },
+        { tx }
+      );
 
-    const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
-      return {
-        ...secret,
-        secretKey: decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretKeyCiphertext,
-          iv: secret.secretKeyIV,
-          tag: secret.secretKeyTag,
-          key: botKey
-        }),
-        secretValue: decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key: botKey
-        })
-      };
-    });
-
-    const destinationSecretsGroupedByBlindIndex = groupBy(
-      decryptedDestinationSecrets.filter(({ secretBlindIndex }) => Boolean(secretBlindIndex)),
-      (i) => i.secretBlindIndex as string
-    );
-
-    const locallyCreatedSecrets = decryptedSourceSecrets
-      .filter(({ secretBlindIndex }) => !destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0])
-      .map((el) => ({ ...el, operation: SecretOperations.Create })); // rewrite update ops to create
-
-    const locallyUpdatedSecrets = decryptedSourceSecrets
-      .filter(
-        ({ secretBlindIndex, secretKey, secretValue }) =>
-          destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0] &&
-          // if key or value changed
-          (destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretKey !== secretKey ||
-            destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretValue !== secretValue)
-      )
-      .map((el) => ({ ...el, operation: SecretOperations.Update })); // rewrite update ops to create
-
-    const isEmpty = locallyCreatedSecrets.length + locallyUpdatedSecrets.length === 0;
-
-    if (isEmpty) {
-      throw new BadRequestError({
-        message: "No changes were detected between the source and destination."
+      const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
+        return {
+          ...secret,
+          secretKey: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: secret.secretKeyCiphertext,
+            iv: secret.secretKeyIV,
+            tag: secret.secretKeyTag,
+            key: botKey
+          }),
+          secretValue: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: secret.secretValueCiphertext,
+            iv: secret.secretValueIV,
+            tag: secret.secretValueTag,
+            key: botKey
+          })
+        };
       });
-    }
 
-    const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-      project.id,
-      destinationFolder.environment.slug,
-      destinationFolder.path
-    );
+      const destinationSecretsGroupedByBlindIndex = groupBy(
+        decryptedDestinationSecrets.filter(({ secretBlindIndex }) => Boolean(secretBlindIndex)),
+        (i) => i.secretBlindIndex as string
+      );
 
-    if (destinationFolderPolicy && actor === ActorType.USER) {
-      // if secret approval policy exists for destination, we create the secret approval request
-      const localSecretsIds = decryptedDestinationSecrets.map(({ id }) => id);
-      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(destinationFolder.id, localSecretsIds);
+      const locallyCreatedSecrets = decryptedSourceSecrets
+        .filter(({ secretBlindIndex }) => !destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0])
+        .map((el) => ({ ...el, operation: SecretOperations.Create })); // rewrite update ops to create
 
-      await secretApprovalRequestDAL.transaction(async (tx) => {
+      const locallyUpdatedSecrets = decryptedSourceSecrets
+        .filter(
+          ({ secretBlindIndex, secretKey, secretValue }) =>
+            destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0] &&
+            // if key or value changed
+            (destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretKey !== secretKey ||
+              destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretValue !== secretValue)
+        )
+        .map((el) => ({ ...el, operation: SecretOperations.Update })); // rewrite update ops to create
+
+      const isEmpty = locallyCreatedSecrets.length + locallyUpdatedSecrets.length === 0;
+
+      if (isEmpty) {
+        throw new BadRequestError({
+          message: "No changes were detected between the source and destination."
+        });
+      }
+
+      const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        project.id,
+        destinationFolder.environment.slug,
+        destinationFolder.path
+      );
+
+      if (destinationFolderPolicy && actor === ActorType.USER) {
+        // if secret approval policy exists for destination, we create the secret approval request
+        const localSecretsIds = decryptedDestinationSecrets.map(({ id }) => id);
+        const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
+          destinationFolder.id,
+          localSecretsIds,
+          tx
+        );
+
         const approvalRequestDoc = await secretApprovalRequestDAL.create(
           {
             folderId: destinationFolder.id,
@@ -1895,12 +1905,9 @@ export const secretServiceFactory = ({
               : {})
           };
         });
-        const approvalCommits = await secretApprovalRequestSecretDAL.insertMany(commits, tx);
-        return { ...approvalRequestDoc, commits: approvalCommits };
-      });
-    } else {
-      // apply changes directly
-      await secretDAL.transaction(async (tx) => {
+        await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+      } else {
+        // apply changes directly
         if (locallyCreatedSecrets.length) {
           await fnSecretBulkInsert({
             folderId: destinationFolder.id,
@@ -1967,33 +1974,23 @@ export const secretServiceFactory = ({
           });
         }
 
-        await snapshotService.performSnapshot(destinationFolder.id);
-        await secretQueueService.syncSecrets({
-          projectId: project.id,
-          secretPath: destinationFolder.path,
-          environmentSlug: destinationFolder.environment.slug,
-          actorId,
-          actor
-        });
-      });
-    }
+        isDestinationFolderUpdated = true;
+      }
 
-    // Next step is to delete the secrets from the source folder:
-    const sourceSecretsGroupByBlindIndex = groupBy(sourceSecrets, (i) => i.secretBlindIndex as string);
-    const locallyDeletedSecrets = decryptedSourceSecrets.map((el) => ({ ...el, operation: SecretOperations.Delete }));
+      // Next step is to delete the secrets from the source folder:
+      const sourceSecretsGroupByBlindIndex = groupBy(sourceSecrets, (i) => i.secretBlindIndex as string);
+      const locallyDeletedSecrets = decryptedSourceSecrets.map((el) => ({ ...el, operation: SecretOperations.Delete }));
 
-    const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-      project.id,
-      sourceFolder.environment.slug,
-      sourceFolder.path
-    );
+      const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        project.id,
+        sourceFolder.environment.slug,
+        sourceFolder.path
+      );
 
-    if (sourceFolderPolicy && actor === ActorType.USER) {
-      // if secret approval policy exists for source, we create the secret approval request
-      const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
-      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds);
-
-      await secretApprovalRequestDAL.transaction(async (tx) => {
+      if (sourceFolderPolicy && actor === ActorType.USER) {
+        // if secret approval policy exists for source, we create the secret approval request
+        const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
+        const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
         const approvalRequestDoc = await secretApprovalRequestDAL.create(
           {
             folderId: sourceFolder.id,
@@ -2031,18 +2028,36 @@ export const secretServiceFactory = ({
             secretVersion: latestSecretVersions[localSecret.id].id
           };
         });
-        const approvalCommits = await secretApprovalRequestSecretDAL.insertMany(commits, tx);
-        return { ...approvalRequestDoc, commits: approvalCommits };
-      });
-    } else {
-      // if no secret approval policy is present, we delete directly.
-      await secretDAL.delete({
-        $in: {
-          id: locallyDeletedSecrets.map(({ id }) => id)
-        },
-        folderId: sourceFolder.id
-      });
 
+        await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+      } else {
+        // if no secret approval policy is present, we delete directly.
+        await secretDAL.delete(
+          {
+            $in: {
+              id: locallyDeletedSecrets.map(({ id }) => id)
+            },
+            folderId: sourceFolder.id
+          },
+          tx
+        );
+
+        isSourceFolderUpdated = true;
+      }
+    });
+
+    if (isDestinationFolderUpdated) {
+      await snapshotService.performSnapshot(destinationFolder.id);
+      await secretQueueService.syncSecrets({
+        projectId: project.id,
+        secretPath: destinationFolder.path,
+        environmentSlug: destinationFolder.environment.slug,
+        actorId,
+        actor
+      });
+    }
+
+    if (isSourceFolderUpdated) {
       await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
