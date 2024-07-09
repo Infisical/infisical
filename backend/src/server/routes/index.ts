@@ -466,7 +466,8 @@ export const registerRoutes = async (
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     orgService,
-    keyStore
+    keyStore,
+    licenseService
   });
   const rateLimitService = rateLimitServiceFactory({
     rateLimitDAL,

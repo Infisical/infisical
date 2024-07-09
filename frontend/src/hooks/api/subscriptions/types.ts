@@ -39,4 +39,5 @@ export type SubscriptionPlan = {
   trial_end: number | null;
   has_used_trial: boolean;
   caCrl: boolean;
+  adminUserDeletion: boolean;
 };
