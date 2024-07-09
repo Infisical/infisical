@@ -42,9 +42,9 @@ To be more specific:
 4. If all is well, Infisical returns a short-lived access token that the application can use to make authenticated requests to the Infisical API.
 
 <Note>
-We recommend using one of Infisical's clients like SDKs or the Infisical Agent
-to authenticate with Infisical using Kubernetes Auth as they handle the
-authentication process including service account credential retrieval for you.
+  We recommend using one of Infisical's clients like SDKs or the Infisical Agent
+  to authenticate with Infisical using Kubernetes Auth as they handle the
+  authentication process including service account credential retrieval for you.
 </Note>
 
 ## Guide
@@ -137,9 +137,16 @@ In the following steps, we explore how to create and use identities for your app
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
-    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **Kubernetes Auth**.
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
 
-    ![identities organization create auth method](/images/platform/identities/identities-org-create-kubernetes-auth-method.png)
+    ![identities page](/images/platform/identities/identities-page.png)
+
+    Since the identity has been configured with Universal Auth by default, you should re-configure it to use Kubernetes Auth instead. To do this, press to edit the **Authentication** section,
+    remove the existing Universal Auth configuration, and add a new Kubernetes Auth configuration onto the identity.
+
+    ![identities page remove default auth](/images/platform/identities/identities-page-remove-default-auth.png)
+
+    ![identities organization create kubernetes auth method](/images/platform/identities/identities-org-create-kubernetes-auth-method.png)
 
     Here's some more guidance on each field:
 
@@ -240,8 +247,8 @@ In the following steps, we explore how to create and use identities for your app
   
   In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
-A token can be renewed any number of time and each call to renew it will extend the toke life by increments of access token TTL.
-Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation
+A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.
+Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation.
 
 </Accordion>
 </AccordionGroup>
