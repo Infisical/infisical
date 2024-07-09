@@ -53,7 +53,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">ID</p>
+          <p className="text-sm font-semibold text-mineshaft-300">Identity ID</p>
           <div className="flex align-top">
             <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
             <Tooltip content={copyTextId}>
