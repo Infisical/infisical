@@ -239,15 +239,18 @@ export const ActionBar = ({
 
   const handleSecretsMove = async ({
     destinationEnvironment,
-    destinationSecretPath
+    destinationSecretPath,
+    shouldOverwrite
   }: {
     destinationEnvironment: string;
     destinationSecretPath: string;
+    shouldOverwrite: boolean;
   }) => {
     try {
       const secretsToMove = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
-      await moveSecrets({
+      const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
         projectSlug,
+        shouldOverwrite,
         sourceEnvironment: environment,
         sourceSecretPath: secretPath,
         destinationEnvironment,
@@ -256,10 +259,25 @@ export const ActionBar = ({
         secretIds: secretsToMove.map((sec) => sec.id)
       });
 
+      let successMessage = "";
+      if (isDestinationUpdated && isSourceUpdated) {
+        successMessage = "Successfully moved selected secrets";
+      } else if (isDestinationUpdated) {
+        successMessage =
+          "Successfully created secrets in destination. A secret approval request has been generated for the source.";
+      } else if (isSourceUpdated) {
+        successMessage = "A secret approval request has been generated in the destination";
+      } else {
+        successMessage =
+          "A secret approval request has been generated in both the source and the destination.";
+      }
+
       createNotification({
         type: "success",
-        text: "Successfully moved selected secrets"
+        text: successMessage
       });
+
+      resetSelectedSecret();
     } catch (error) {
       createNotification({
         type: "error",

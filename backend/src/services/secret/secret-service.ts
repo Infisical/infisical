@@ -1705,6 +1705,7 @@ export const secretServiceFactory = ({
     destinationSecretPath,
     secretIds,
     projectSlug,
+    shouldOverwrite,
     actor,
     actorId,
     actorAuthMethod,
@@ -1793,8 +1794,8 @@ export const secretServiceFactory = ({
       })
     }));
 
-    let isSourceFolderUpdated = false;
-    let isDestinationFolderUpdated = false;
+    let isSourceUpdated = false;
+    let isDestinationUpdated = false;
 
     // Moving secrets is a two-step process.
     await secretDAL.transaction(async (tx) => {
@@ -1831,7 +1832,7 @@ export const secretServiceFactory = ({
 
       const locallyCreatedSecrets = decryptedSourceSecrets
         .filter(({ secretBlindIndex }) => !destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0])
-        .map((el) => ({ ...el, operation: SecretOperations.Create })); // rewrite update ops to create
+        .map((el) => ({ ...el, operation: SecretOperations.Create }));
 
       const locallyUpdatedSecrets = decryptedSourceSecrets
         .filter(
@@ -1841,16 +1842,25 @@ export const secretServiceFactory = ({
             (destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretKey !== secretKey ||
               destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretValue !== secretValue)
         )
-        .map((el) => ({ ...el, operation: SecretOperations.Update })); // rewrite update ops to create
+        .map((el) => ({ ...el, operation: SecretOperations.Update }));
+
+      if (locallyUpdatedSecrets.length > 0 && !shouldOverwrite) {
+        const existingKeys = locallyUpdatedSecrets.map((s) => s.secretKey);
+
+        throw new BadRequestError({
+          message: `Failed to move secrets. The following secrets already exist in the destination: ${existingKeys.join(
+            ","
+          )}`
+        });
+      }
 
       const isEmpty = locallyCreatedSecrets.length + locallyUpdatedSecrets.length === 0;
 
       if (isEmpty) {
         throw new BadRequestError({
-          message: "No changes were made. Secrets already exist in the destination."
+          message: "Selected secrets already exist in the destination."
         });
       }
-
       const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         project.id,
         destinationFolder.environment.slug,
@@ -1974,7 +1984,7 @@ export const secretServiceFactory = ({
           });
         }
 
-        isDestinationFolderUpdated = true;
+        isDestinationUpdated = true;
       }
 
       // Next step is to delete the secrets from the source folder:
@@ -2042,11 +2052,11 @@ export const secretServiceFactory = ({
           tx
         );
 
-        isSourceFolderUpdated = true;
+        isSourceUpdated = true;
       }
     });
 
-    if (isDestinationFolderUpdated) {
+    if (isDestinationUpdated) {
       await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
@@ -2057,7 +2067,7 @@ export const secretServiceFactory = ({
       });
     }
 
-    if (isSourceFolderUpdated) {
+    if (isSourceUpdated) {
       await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
@@ -2067,6 +2077,12 @@ export const secretServiceFactory = ({
         actor
       });
     }
+
+    return {
+      projectId: project.id,
+      isSourceUpdated,
+      isDestinationUpdated
+    };
   };
 
   return {

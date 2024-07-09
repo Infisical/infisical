@@ -185,6 +185,7 @@ export type TMoveSecretsDTO = {
   destinationEnvironment: string;
   destinationSecretPath: string;
   secretIds: string[];
+  shouldOverwrite: boolean;
 };
 
 export type CreateSecretDTO = {

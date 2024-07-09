@@ -1338,27 +1338,45 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         sourceSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         destinationEnvironment: z.string().trim(),
         destinationSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        secretIds: z.string().array()
+        secretIds: z.string().array(),
+        shouldOverwrite: z.boolean().default(false)
       }),
       response: {
-        200: z.union([
-          z.object({
-            secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
-          }),
-          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
-        ])
+        200: z.object({
+          isSourceUpdated: z.boolean(),
+          isDestinationUpdated: z.boolean()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // TODO: publish audit log
-      return server.services.secret.moveSecrets({
+      const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecrets({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.MOVE_SECRETS,
+          metadata: {
+            sourceEnvironment: req.body.sourceEnvironment,
+            sourceSecretPath: req.body.sourceSecretPath,
+            destinationEnvironment: req.body.destinationEnvironment,
+            destinationSecretPath: req.body.destinationSecretPath,
+            secretIds: req.body.secretIds
+          }
+        }
+      });
+
+      return {
+        isSourceUpdated,
+        isDestinationUpdated
+      };
     }
   });
 

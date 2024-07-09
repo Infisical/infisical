@@ -2,7 +2,15 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Checkbox,
+  FormControl,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -13,6 +21,7 @@ type Props = {
   onMoveApproved: (moveParams: {
     destinationEnvironment: string;
     destinationSecretPath: string;
+    shouldOverwrite: boolean;
   }) => void;
 };
 
@@ -23,7 +32,8 @@ const formSchema = z.object({
     .trim()
     .transform((val) =>
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
-    )
+    ),
+  shouldOverwrite: z.boolean().default(false)
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -44,7 +54,8 @@ export const MoveSecretsModal = ({ popUp, handlePopUpToggle, onMoveApproved }: P
   const handleFormSubmit = (data: TFormSchema) => {
     onMoveApproved({
       destinationEnvironment: data.environment,
-      destinationSecretPath: data.secretPath
+      destinationSecretPath: data.secretPath,
+      shouldOverwrite: data.shouldOverwrite
     });
 
     handlePopUpToggle("moveSecrets", false);
@@ -60,7 +71,7 @@ export const MoveSecretsModal = ({ popUp, handlePopUpToggle, onMoveApproved }: P
     >
       <ModalContent
         title="Move Secrets"
-        subTitle="Move selected secrets from current path to selected destination"
+        subTitle="Move secrets from the current path to the selected destination"
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <Controller
@@ -92,6 +103,22 @@ export const MoveSecretsModal = ({ popUp, handlePopUpToggle, onMoveApproved }: P
               <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
                 <SecretPathInput {...field} environment={selectedEnvironment} />
               </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="shouldOverwrite"
+            defaultValue={false}
+            render={({ field: { onBlur, value, onChange } }) => (
+              <Checkbox
+                id="overwrite-checkbox"
+                className="ml-2"
+                isChecked={value}
+                onCheckedChange={onChange}
+                onBlur={onBlur}
+              >
+                Overwrite existing secrets
+              </Checkbox>
             )}
           />
           <div className="mt-7 flex items-center">

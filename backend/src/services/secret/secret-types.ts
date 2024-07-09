@@ -405,4 +405,5 @@ export type TMoveSecretsDTO = {
   destinationEnvironment: string;
   destinationSecretPath: string;
   secretIds: string[];
+  shouldOverwrite: boolean;
 } & Omit<TProjectPermission, "projectId">;

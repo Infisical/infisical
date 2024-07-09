@@ -45,6 +45,7 @@ export enum EventType {
   CREATE_SECRETS = "create-secrets",
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
+  MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   GET_WORKSPACE_KEY = "get-workspace-key",
@@ -225,6 +226,17 @@ interface UpdateSecretBatchEvent {
     environment: string;
     secretPath: string;
     secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+  };
+}
+
+interface MoveSecretsEvent {
+  type: EventType.MOVE_SECRETS;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    secretIds: string[];
   };
 }
 
@@ -1030,6 +1042,7 @@ export type Event =
   | CreateSecretBatchEvent
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
+  | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | GetWorkspaceKeyEvent

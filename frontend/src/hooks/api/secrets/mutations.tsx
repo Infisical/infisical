@@ -383,22 +383,34 @@ export const useMoveSecrets = ({
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, TMoveSecretsDTO>({
+  return useMutation<
+    {
+      isSourceUpdated: boolean;
+      isDestinationUpdated: boolean;
+    },
+    {},
+    TMoveSecretsDTO
+  >({
     mutationFn: async ({
       sourceEnvironment,
       sourceSecretPath,
       projectSlug,
       destinationEnvironment,
       destinationSecretPath,
-      secretIds
+      secretIds,
+      shouldOverwrite
     }) => {
-      const { data } = await apiRequest.post("/api/v3/secrets/move", {
+      const { data } = await apiRequest.post<{
+        isSourceUpdated: boolean;
+        isDestinationUpdated: boolean;
+      }>("/api/v3/secrets/move", {
         sourceEnvironment,
         sourceSecretPath,
         projectSlug,
         destinationEnvironment,
         destinationSecretPath,
-        secretIds
+        secretIds,
+        shouldOverwrite
       });
 
       return data;
