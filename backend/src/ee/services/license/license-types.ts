@@ -31,6 +31,8 @@ export type TFeatureSet = {
   dynamicSecret: false;
   memberLimit: null;
   membersUsed: 0;
+  identityLimit: null;
+  identitiesUsed: 0;
   environmentLimit: null;
   environmentsUsed: 0;
   secretVersioning: true;
@@ -44,6 +46,7 @@ export type TFeatureSet = {
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   samlSSO: false;
+  oidcSSO: false;
   scim: false;
   ldap: false;
   groups: false;

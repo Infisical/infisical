@@ -19,6 +19,9 @@ From local development to production, Infisical SDKs provide the easiest way for
     <Card href="/sdks/languages/java" title="Java" icon="java" color="#e41f23">
         Manage secrets for your Java application on demand
     </Card>
+    <Card href="/sdks/languages/go" title="Go" icon="golang" color="#367B99">
+        Manage secrets for your Go application on demand
+    </Card>
     <Card href="/sdks/languages/csharp" title="C#" icon="bars" color="#368833">
         Manage secrets for your C#/.NET application on demand
     </Card>
@@ -42,8 +45,5 @@ From local development to production, Infisical SDKs provide the easiest way for
         can pass a `attachToProcessEnv` parameter, which tells the SDK to attach all the found secrets to your process environment.
         
         Note: The exact parameter name may differ depending on the language.
-    </Accordion>
-    <Accordion title="What if a request for a secret fails?">
-        The SDK caches every secret and falls back to the cached value if a request fails. If no cached value is found, and the request fails, then the SDK throws an error.
     </Accordion>
 </AccordionGroup>

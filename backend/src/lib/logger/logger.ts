@@ -58,7 +58,8 @@ const redactedKeys = [
   "decryptedSecret",
   "secrets",
   "key",
-  "password"
+  "password",
+  "config"
 ];
 
 export const initLogger = async () => {

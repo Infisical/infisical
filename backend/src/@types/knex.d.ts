@@ -1,4 +1,4 @@
-import { Knex } from "knex";
+import { Knex as KnexOriginal } from "knex";
 
 import {
   TableName,
@@ -134,6 +134,9 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
+  TOidcConfigs,
+  TOidcConfigsInsert,
+  TOidcConfigsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -277,317 +280,371 @@ import {
   TWebhooksUpdate
 } from "@app/db/schemas";
 
+declare module "knex" {
+  namespace Knex {
+    interface QueryInterface {
+      primaryNode(): KnexOriginal;
+      replicaNode(): KnexOriginal;
+    }
+  }
+}
+
 declare module "knex/types/tables" {
   interface Tables {
-    [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
-    [TableName.Groups]: Knex.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
-    [TableName.CertificateAuthority]: Knex.CompositeTableType<
+    [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
       TCertificateAuthoritiesInsert,
       TCertificateAuthoritiesUpdate
     >;
-    [TableName.CertificateAuthorityCert]: Knex.CompositeTableType<
+    [TableName.CertificateAuthorityCert]: KnexOriginal.CompositeTableType<
       TCertificateAuthorityCerts,
       TCertificateAuthorityCertsInsert,
       TCertificateAuthorityCertsUpdate
     >;
-    [TableName.CertificateAuthoritySecret]: Knex.CompositeTableType<
+    [TableName.CertificateAuthoritySecret]: KnexOriginal.CompositeTableType<
       TCertificateAuthoritySecret,
       TCertificateAuthoritySecretInsert,
       TCertificateAuthoritySecretUpdate
     >;
-    [TableName.CertificateAuthorityCrl]: Knex.CompositeTableType<
+    [TableName.CertificateAuthorityCrl]: KnexOriginal.CompositeTableType<
       TCertificateAuthorityCrl,
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
     >;
-    [TableName.Certificate]: Knex.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
-    [TableName.CertificateBody]: Knex.CompositeTableType<
+    [TableName.Certificate]: KnexOriginal.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
+    [TableName.CertificateBody]: KnexOriginal.CompositeTableType<
       TCertificateBodies,
       TCertificateBodiesInsert,
       TCertificateBodiesUpdate
     >;
-    [TableName.CertificateSecret]: Knex.CompositeTableType<
+    [TableName.CertificateSecret]: KnexOriginal.CompositeTableType<
       TCertificateSecrets,
       TCertificateSecretsInsert,
       TCertificateSecretsUpdate
     >;
-    [TableName.UserGroupMembership]: Knex.CompositeTableType<
+    [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,
       TUserGroupMembershipUpdate
     >;
-    [TableName.GroupProjectMembership]: Knex.CompositeTableType<
+    [TableName.GroupProjectMembership]: KnexOriginal.CompositeTableType<
       TGroupProjectMemberships,
       TGroupProjectMembershipsInsert,
       TGroupProjectMembershipsUpdate
     >;
-    [TableName.GroupProjectMembershipRole]: Knex.CompositeTableType<
+    [TableName.GroupProjectMembershipRole]: KnexOriginal.CompositeTableType<
       TGroupProjectMembershipRoles,
       TGroupProjectMembershipRolesInsert,
       TGroupProjectMembershipRolesUpdate
     >;
-    [TableName.UserAliases]: Knex.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
-    [TableName.UserEncryptionKey]: Knex.CompositeTableType<
+    [TableName.UserAliases]: KnexOriginal.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
+    [TableName.UserEncryptionKey]: KnexOriginal.CompositeTableType<
       TUserEncryptionKeys,
       TUserEncryptionKeysInsert,
       TUserEncryptionKeysUpdate
     >;
-    [TableName.AuthTokens]: Knex.CompositeTableType<TAuthTokens, TAuthTokensInsert, TAuthTokensUpdate>;
-    [TableName.AuthTokenSession]: Knex.CompositeTableType<
+    [TableName.AuthTokens]: KnexOriginal.CompositeTableType<TAuthTokens, TAuthTokensInsert, TAuthTokensUpdate>;
+    [TableName.AuthTokenSession]: KnexOriginal.CompositeTableType<
       TAuthTokenSessions,
       TAuthTokenSessionsInsert,
       TAuthTokenSessionsUpdate
     >;
-    [TableName.BackupPrivateKey]: Knex.CompositeTableType<
+    [TableName.BackupPrivateKey]: KnexOriginal.CompositeTableType<
       TBackupPrivateKey,
       TBackupPrivateKeyInsert,
       TBackupPrivateKeyUpdate
     >;
-    [TableName.Organization]: Knex.CompositeTableType<TOrganizations, TOrganizationsInsert, TOrganizationsUpdate>;
-    [TableName.OrgMembership]: Knex.CompositeTableType<TOrgMemberships, TOrgMembershipsInsert, TOrgMembershipsUpdate>;
-    [TableName.OrgRoles]: Knex.CompositeTableType<TOrgRoles, TOrgRolesInsert, TOrgRolesUpdate>;
-    [TableName.IncidentContact]: Knex.CompositeTableType<
+    [TableName.Organization]: KnexOriginal.CompositeTableType<
+      TOrganizations,
+      TOrganizationsInsert,
+      TOrganizationsUpdate
+    >;
+    [TableName.OrgMembership]: KnexOriginal.CompositeTableType<
+      TOrgMemberships,
+      TOrgMembershipsInsert,
+      TOrgMembershipsUpdate
+    >;
+    [TableName.OrgRoles]: KnexOriginal.CompositeTableType<TOrgRoles, TOrgRolesInsert, TOrgRolesUpdate>;
+    [TableName.IncidentContact]: KnexOriginal.CompositeTableType<
       TIncidentContacts,
       TIncidentContactsInsert,
       TIncidentContactsUpdate
     >;
-    [TableName.UserAction]: Knex.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
-    [TableName.SuperAdmin]: Knex.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
-    [TableName.ApiKey]: Knex.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
-    [TableName.Project]: Knex.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
-    [TableName.ProjectMembership]: Knex.CompositeTableType<
+    [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
+    [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
+    [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
+    [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
+    [TableName.ProjectMembership]: KnexOriginal.CompositeTableType<
       TProjectMemberships,
       TProjectMembershipsInsert,
       TProjectMembershipsUpdate
     >;
-    [TableName.Environment]: Knex.CompositeTableType<
+    [TableName.Environment]: KnexOriginal.CompositeTableType<
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
       TProjectEnvironmentsUpdate
     >;
-    [TableName.ProjectBot]: Knex.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
-    [TableName.ProjectUserMembershipRole]: Knex.CompositeTableType<
+    [TableName.ProjectBot]: KnexOriginal.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
+    [TableName.ProjectUserMembershipRole]: KnexOriginal.CompositeTableType<
       TProjectUserMembershipRoles,
       TProjectUserMembershipRolesInsert,
       TProjectUserMembershipRolesUpdate
     >;
-    [TableName.ProjectRoles]: Knex.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
-    [TableName.ProjectUserAdditionalPrivilege]: Knex.CompositeTableType<
+    [TableName.ProjectRoles]: KnexOriginal.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
+    [TableName.ProjectUserAdditionalPrivilege]: KnexOriginal.CompositeTableType<
       TProjectUserAdditionalPrivilege,
       TProjectUserAdditionalPrivilegeInsert,
       TProjectUserAdditionalPrivilegeUpdate
     >;
-    [TableName.ProjectKeys]: Knex.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
-    [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
-    [TableName.SecretReference]: Knex.CompositeTableType<
+    [TableName.ProjectKeys]: KnexOriginal.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
+    [TableName.Secret]: KnexOriginal.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
+    [TableName.SecretReference]: KnexOriginal.CompositeTableType<
       TSecretReferences,
       TSecretReferencesInsert,
       TSecretReferencesUpdate
     >;
-    [TableName.SecretBlindIndex]: Knex.CompositeTableType<
+    [TableName.SecretBlindIndex]: KnexOriginal.CompositeTableType<
       TSecretBlindIndexes,
       TSecretBlindIndexesInsert,
       TSecretBlindIndexesUpdate
     >;
-    [TableName.SecretVersion]: Knex.CompositeTableType<TSecretVersions, TSecretVersionsInsert, TSecretVersionsUpdate>;
-    [TableName.SecretFolder]: Knex.CompositeTableType<TSecretFolders, TSecretFoldersInsert, TSecretFoldersUpdate>;
-    [TableName.SecretFolderVersion]: Knex.CompositeTableType<
+    [TableName.SecretVersion]: KnexOriginal.CompositeTableType<
+      TSecretVersions,
+      TSecretVersionsInsert,
+      TSecretVersionsUpdate
+    >;
+    [TableName.SecretFolder]: KnexOriginal.CompositeTableType<
+      TSecretFolders,
+      TSecretFoldersInsert,
+      TSecretFoldersUpdate
+    >;
+    [TableName.SecretFolderVersion]: KnexOriginal.CompositeTableType<
       TSecretFolderVersions,
       TSecretFolderVersionsInsert,
       TSecretFolderVersionsUpdate
     >;
-    [TableName.SecretSharing]: Knex.CompositeTableType<TSecretSharing, TSecretSharingInsert, TSecretSharingUpdate>;
-    [TableName.RateLimit]: Knex.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
-    [TableName.SecretTag]: Knex.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
-    [TableName.SecretImport]: Knex.CompositeTableType<TSecretImports, TSecretImportsInsert, TSecretImportsUpdate>;
-    [TableName.Integration]: Knex.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
-    [TableName.Webhook]: Knex.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;
-    [TableName.ServiceToken]: Knex.CompositeTableType<TServiceTokens, TServiceTokensInsert, TServiceTokensUpdate>;
-    [TableName.IntegrationAuth]: Knex.CompositeTableType<
+    [TableName.SecretSharing]: KnexOriginal.CompositeTableType<
+      TSecretSharing,
+      TSecretSharingInsert,
+      TSecretSharingUpdate
+    >;
+    [TableName.RateLimit]: KnexOriginal.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
+    [TableName.SecretTag]: KnexOriginal.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
+    [TableName.SecretImport]: KnexOriginal.CompositeTableType<
+      TSecretImports,
+      TSecretImportsInsert,
+      TSecretImportsUpdate
+    >;
+    [TableName.Integration]: KnexOriginal.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
+    [TableName.Webhook]: KnexOriginal.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;
+    [TableName.ServiceToken]: KnexOriginal.CompositeTableType<
+      TServiceTokens,
+      TServiceTokensInsert,
+      TServiceTokensUpdate
+    >;
+    [TableName.IntegrationAuth]: KnexOriginal.CompositeTableType<
       TIntegrationAuths,
       TIntegrationAuthsInsert,
       TIntegrationAuthsUpdate
     >;
-    [TableName.Identity]: Knex.CompositeTableType<TIdentities, TIdentitiesInsert, TIdentitiesUpdate>;
-    [TableName.IdentityUniversalAuth]: Knex.CompositeTableType<
+    [TableName.Identity]: KnexOriginal.CompositeTableType<TIdentities, TIdentitiesInsert, TIdentitiesUpdate>;
+    [TableName.IdentityUniversalAuth]: KnexOriginal.CompositeTableType<
       TIdentityUniversalAuths,
       TIdentityUniversalAuthsInsert,
       TIdentityUniversalAuthsUpdate
     >;
-    [TableName.IdentityKubernetesAuth]: Knex.CompositeTableType<
+    [TableName.IdentityKubernetesAuth]: KnexOriginal.CompositeTableType<
       TIdentityKubernetesAuths,
       TIdentityKubernetesAuthsInsert,
       TIdentityKubernetesAuthsUpdate
     >;
-    [TableName.IdentityGcpAuth]: Knex.CompositeTableType<
+    [TableName.IdentityGcpAuth]: KnexOriginal.CompositeTableType<
       TIdentityGcpAuths,
       TIdentityGcpAuthsInsert,
       TIdentityGcpAuthsUpdate
     >;
-    [TableName.IdentityAwsAuth]: Knex.CompositeTableType<
+    [TableName.IdentityAwsAuth]: KnexOriginal.CompositeTableType<
       TIdentityAwsAuths,
       TIdentityAwsAuthsInsert,
       TIdentityAwsAuthsUpdate
     >;
-    [TableName.IdentityAzureAuth]: Knex.CompositeTableType<
+    [TableName.IdentityAzureAuth]: KnexOriginal.CompositeTableType<
       TIdentityAzureAuths,
       TIdentityAzureAuthsInsert,
       TIdentityAzureAuthsUpdate
     >;
-    [TableName.IdentityUaClientSecret]: Knex.CompositeTableType<
+    [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
       TIdentityUaClientSecretsInsert,
       TIdentityUaClientSecretsUpdate
     >;
-    [TableName.IdentityAccessToken]: Knex.CompositeTableType<
+    [TableName.IdentityAccessToken]: KnexOriginal.CompositeTableType<
       TIdentityAccessTokens,
       TIdentityAccessTokensInsert,
       TIdentityAccessTokensUpdate
     >;
-    [TableName.IdentityOrgMembership]: Knex.CompositeTableType<
+    [TableName.IdentityOrgMembership]: KnexOriginal.CompositeTableType<
       TIdentityOrgMemberships,
       TIdentityOrgMembershipsInsert,
       TIdentityOrgMembershipsUpdate
     >;
-    [TableName.IdentityProjectMembership]: Knex.CompositeTableType<
+    [TableName.IdentityProjectMembership]: KnexOriginal.CompositeTableType<
       TIdentityProjectMemberships,
       TIdentityProjectMembershipsInsert,
       TIdentityProjectMembershipsUpdate
     >;
-    [TableName.IdentityProjectMembershipRole]: Knex.CompositeTableType<
+    [TableName.IdentityProjectMembershipRole]: KnexOriginal.CompositeTableType<
       TIdentityProjectMembershipRole,
       TIdentityProjectMembershipRoleInsert,
       TIdentityProjectMembershipRoleUpdate
     >;
-    [TableName.IdentityProjectAdditionalPrivilege]: Knex.CompositeTableType<
+    [TableName.IdentityProjectAdditionalPrivilege]: KnexOriginal.CompositeTableType<
       TIdentityProjectAdditionalPrivilege,
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
     >;
 
-    [TableName.AccessApprovalPolicy]: Knex.CompositeTableType<
+    [TableName.AccessApprovalPolicy]: KnexOriginal.CompositeTableType<
       TAccessApprovalPolicies,
       TAccessApprovalPoliciesInsert,
       TAccessApprovalPoliciesUpdate
     >;
 
-    [TableName.AccessApprovalPolicyApprover]: Knex.CompositeTableType<
+    [TableName.AccessApprovalPolicyApprover]: KnexOriginal.CompositeTableType<
       TAccessApprovalPoliciesApprovers,
       TAccessApprovalPoliciesApproversInsert,
       TAccessApprovalPoliciesApproversUpdate
     >;
 
-    [TableName.AccessApprovalRequest]: Knex.CompositeTableType<
+    [TableName.AccessApprovalRequest]: KnexOriginal.CompositeTableType<
       TAccessApprovalRequests,
       TAccessApprovalRequestsInsert,
       TAccessApprovalRequestsUpdate
     >;
 
-    [TableName.AccessApprovalRequestReviewer]: Knex.CompositeTableType<
+    [TableName.AccessApprovalRequestReviewer]: KnexOriginal.CompositeTableType<
       TAccessApprovalRequestsReviewers,
       TAccessApprovalRequestsReviewersInsert,
       TAccessApprovalRequestsReviewersUpdate
     >;
 
-    [TableName.ScimToken]: Knex.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
-    [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
+    [TableName.ScimToken]: KnexOriginal.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
+    [TableName.SecretApprovalPolicy]: KnexOriginal.CompositeTableType<
       TSecretApprovalPolicies,
       TSecretApprovalPoliciesInsert,
       TSecretApprovalPoliciesUpdate
     >;
-    [TableName.SecretApprovalPolicyApprover]: Knex.CompositeTableType<
+    [TableName.SecretApprovalPolicyApprover]: KnexOriginal.CompositeTableType<
       TSecretApprovalPoliciesApprovers,
       TSecretApprovalPoliciesApproversInsert,
       TSecretApprovalPoliciesApproversUpdate
     >;
-    [TableName.SecretApprovalRequest]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequest]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequests,
       TSecretApprovalRequestsInsert,
       TSecretApprovalRequestsUpdate
     >;
-    [TableName.SecretApprovalRequestReviewer]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequestReviewer]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequestsReviewers,
       TSecretApprovalRequestsReviewersInsert,
       TSecretApprovalRequestsReviewersUpdate
     >;
-    [TableName.SecretApprovalRequestSecret]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequestSecret]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequestsSecrets,
       TSecretApprovalRequestsSecretsInsert,
       TSecretApprovalRequestsSecretsUpdate
     >;
-    [TableName.SecretApprovalRequestSecretTag]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequestSecretTag]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequestSecretTags,
       TSecretApprovalRequestSecretTagsInsert,
       TSecretApprovalRequestSecretTagsUpdate
     >;
-    [TableName.SecretRotation]: Knex.CompositeTableType<
+    [TableName.SecretRotation]: KnexOriginal.CompositeTableType<
       TSecretRotations,
       TSecretRotationsInsert,
       TSecretRotationsUpdate
     >;
-    [TableName.SecretRotationOutput]: Knex.CompositeTableType<
+    [TableName.SecretRotationOutput]: KnexOriginal.CompositeTableType<
       TSecretRotationOutputs,
       TSecretRotationOutputsInsert,
       TSecretRotationOutputsUpdate
     >;
-    [TableName.Snapshot]: Knex.CompositeTableType<TSecretSnapshots, TSecretSnapshotsInsert, TSecretSnapshotsUpdate>;
-    [TableName.SnapshotSecret]: Knex.CompositeTableType<
+    [TableName.Snapshot]: KnexOriginal.CompositeTableType<
+      TSecretSnapshots,
+      TSecretSnapshotsInsert,
+      TSecretSnapshotsUpdate
+    >;
+    [TableName.SnapshotSecret]: KnexOriginal.CompositeTableType<
       TSecretSnapshotSecrets,
       TSecretSnapshotSecretsInsert,
       TSecretSnapshotSecretsUpdate
     >;
-    [TableName.SnapshotFolder]: Knex.CompositeTableType<
+    [TableName.SnapshotFolder]: KnexOriginal.CompositeTableType<
       TSecretSnapshotFolders,
       TSecretSnapshotFoldersInsert,
       TSecretSnapshotFoldersUpdate
     >;
-    [TableName.DynamicSecret]: Knex.CompositeTableType<TDynamicSecrets, TDynamicSecretsInsert, TDynamicSecretsUpdate>;
-    [TableName.DynamicSecretLease]: Knex.CompositeTableType<
+    [TableName.DynamicSecret]: KnexOriginal.CompositeTableType<
+      TDynamicSecrets,
+      TDynamicSecretsInsert,
+      TDynamicSecretsUpdate
+    >;
+    [TableName.DynamicSecretLease]: KnexOriginal.CompositeTableType<
       TDynamicSecretLeases,
       TDynamicSecretLeasesInsert,
       TDynamicSecretLeasesUpdate
     >;
-    [TableName.SamlConfig]: Knex.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
-    [TableName.LdapConfig]: Knex.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
-    [TableName.LdapGroupMap]: Knex.CompositeTableType<TLdapGroupMaps, TLdapGroupMapsInsert, TLdapGroupMapsUpdate>;
-    [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
-    [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
-    [TableName.AuditLogStream]: Knex.CompositeTableType<
+    [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
+    [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
+    [TableName.LdapGroupMap]: KnexOriginal.CompositeTableType<
+      TLdapGroupMaps,
+      TLdapGroupMapsInsert,
+      TLdapGroupMapsUpdate
+    >;
+    [TableName.OrgBot]: KnexOriginal.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
+    [TableName.AuditLog]: KnexOriginal.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
+    [TableName.AuditLogStream]: KnexOriginal.CompositeTableType<
       TAuditLogStreams,
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
-    [TableName.GitAppInstallSession]: Knex.CompositeTableType<
+    [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,
       TGitAppInstallSessionsUpdate
     >;
-    [TableName.GitAppOrg]: Knex.CompositeTableType<TGitAppOrg, TGitAppOrgInsert, TGitAppOrgUpdate>;
-    [TableName.SecretScanningGitRisk]: Knex.CompositeTableType<
+    [TableName.GitAppOrg]: KnexOriginal.CompositeTableType<TGitAppOrg, TGitAppOrgInsert, TGitAppOrgUpdate>;
+    [TableName.SecretScanningGitRisk]: KnexOriginal.CompositeTableType<
       TSecretScanningGitRisks,
       TSecretScanningGitRisksInsert,
       TSecretScanningGitRisksUpdate
     >;
-    [TableName.TrustedIps]: Knex.CompositeTableType<TTrustedIps, TTrustedIpsInsert, TTrustedIpsUpdate>;
+    [TableName.TrustedIps]: KnexOriginal.CompositeTableType<TTrustedIps, TTrustedIpsInsert, TTrustedIpsUpdate>;
     // Junction tables
-    [TableName.JnSecretTag]: Knex.CompositeTableType<
+    [TableName.JnSecretTag]: KnexOriginal.CompositeTableType<
       TSecretTagJunction,
       TSecretTagJunctionInsert,
       TSecretTagJunctionUpdate
     >;
-    [TableName.SecretVersionTag]: Knex.CompositeTableType<
+    [TableName.SecretVersionTag]: KnexOriginal.CompositeTableType<
       TSecretVersionTagJunction,
       TSecretVersionTagJunctionInsert,
       TSecretVersionTagJunctionUpdate
     >;
     // KMS service
-    [TableName.KmsServerRootConfig]: Knex.CompositeTableType<
+    [TableName.KmsServerRootConfig]: KnexOriginal.CompositeTableType<
       TKmsRootConfig,
       TKmsRootConfigInsert,
       TKmsRootConfigUpdate
     >;
-    [TableName.KmsKey]: Knex.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
-    [TableName.KmsKeyVersion]: Knex.CompositeTableType<TKmsKeyVersions, TKmsKeyVersionsInsert, TKmsKeyVersionsUpdate>;
+    [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
+    [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
+      TKmsKeyVersions,
+      TKmsKeyVersionsInsert,
+      TKmsKeyVersionsUpdate
+    >;
   }
 }

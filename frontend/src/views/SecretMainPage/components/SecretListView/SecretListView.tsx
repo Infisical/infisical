@@ -10,9 +10,10 @@ import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
@@ -95,7 +96,8 @@ export const SecretListView = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag"
+    "createTag",
+    "createSharedSecret"
   ] as const);
 
   // strip of side effect queries
@@ -119,7 +121,7 @@ export const SecretListView = ({
 
   const handleSecretOperation = async (
     operation: "create" | "update" | "delete",
-    type: "shared" | "personal",
+    type: SecretType,
     key: string,
     {
       value,
@@ -227,23 +229,25 @@ export const SecretListView = ({
       try {
         // personal secret change
         if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", "personal", oldKey, {
+          await handleSecretOperation("delete", SecretType.Personal, oldKey, {
             secretId: orgSecret.idOverride
           });
         } else if (overrideAction && idOverride) {
-          await handleSecretOperation("update", "personal", oldKey, {
+          await handleSecretOperation("update", SecretType.Personal, oldKey, {
             value: valueOverride,
             newKey: hasKeyChanged ? key : undefined,
             secretId: orgSecret.idOverride,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
         } else if (overrideAction) {
-          await handleSecretOperation("create", "personal", oldKey, { value: valueOverride });
+          await handleSecretOperation("create", SecretType.Personal, oldKey, {
+            value: valueOverride
+          });
         }
 
         // shared secret change
         if (!isSharedSecUnchanged) {
-          await handleSecretOperation("update", "shared", oldKey, {
+          await handleSecretOperation("update", SecretType.Shared, oldKey, {
             value,
             tags: tagIds,
             comment,
@@ -286,7 +290,7 @@ export const SecretListView = ({
   const handleSecretDelete = useCallback(async () => {
     const { key, id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
     try {
-      await handleSecretOperation("delete", "shared", key, { secretId });
+      await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
@@ -363,6 +367,11 @@ export const SecretListView = ({
                   onDeleteSecret={onDeleteSecret}
                   onDetailViewSecret={onDetailViewSecret}
                   onCreateTag={onCreateTag}
+                  handleSecretShare={() =>
+                    handlePopUpOpen("createSharedSecret", {
+                      value: secret.valueOverride ?? secret.value
+                    })
+                  }
                 />
               ))}
             </div>
@@ -389,10 +398,17 @@ export const SecretListView = ({
         onSaveSecret={handleSaveSecret}
         tags={wsTags}
         onCreateTag={() => handlePopUpOpen("createTag")}
+        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
       />
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
+      />
+      <AddShareSecretModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        isPublic={false}
+        inModal
       />
     </>
   );

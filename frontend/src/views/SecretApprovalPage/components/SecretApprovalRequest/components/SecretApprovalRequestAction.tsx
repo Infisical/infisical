@@ -23,7 +23,7 @@ type Props = {
   status: "close" | "open";
   approvals: number;
   canApprove?: boolean;
-  statusChangeByEmail: string;
+  statusChangeByEmail?: string;
   workspaceId: string;
 };
 

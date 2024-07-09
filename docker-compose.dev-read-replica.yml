@@ -1,0 +1,191 @@
+version: "3.9"
+
+services:
+  nginx:
+    container_name: infisical-dev-nginx
+    image: nginx
+    restart: always
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+
+  db:
+    image: bitnami/postgresql:14
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRESQL_PASSWORD: infisical
+      POSTGRESQL_USERNAME: infisical
+      POSTGRESQL_DATABASE: infisical
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_REPLICATION_USER: repl_user
+      POSTGRESQL_REPLICATION_PASSWORD: repl_password
+      POSTGRESQL_SYNCHRONOUS_COMMIT_MODE: on
+      POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS: 1
+
+  db-slave:
+    image: bitnami/postgresql:14
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRESQL_PASSWORD: infisical
+      POSTGRESQL_USERNAME: infisical
+      POSTGRESQL_DATABASE: infisical
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_REPLICATION_USER: repl_user
+      POSTGRESQL_REPLICATION_PASSWORD: repl_password
+      POSTGRESQL_MASTER_HOST: db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432
+
+
+  redis:
+    image: redis
+    container_name: infisical-dev-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+
+  redis-commander:
+    container_name: infisical-dev-redis-commander
+    image: rediscommander/redis-commander
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8085:8081"
+
+  db-test:
+    profiles: ["test"]
+    image: postgres:14-alpine
+    ports:
+      - "5430:5432"
+    environment:
+      POSTGRES_PASSWORD: infisical
+      POSTGRES_USER: infisical
+      POSTGRES_DB: infisical-test
+
+  db-migration:
+    container_name: infisical-db-migration
+    depends_on:
+      - db
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    env_file: .env
+    environment:
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+    command: npm run migration:latest
+    volumes:
+      - ./backend/src:/app/src
+
+  backend:
+    container_name: infisical-dev-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      db-migration:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    ports:
+      - 4000:4000
+    environment:
+      - NODE_ENV=development
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - TELEMETRY_ENABLED=false
+    volumes:
+      - ./backend/src:/app/src
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    container_name: infisical-dev-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
+      - ./frontend/public:/app/public
+    env_file: .env
+    environment:
+      - NEXT_PUBLIC_ENV=development
+      - INFISICAL_TELEMETRY_ENABLED=false
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: pass
+    ports:
+      - 5050:80
+    depends_on:
+      - db
+
+  smtp-server:
+    container_name: infisical-dev-smtp-server
+    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
+    restart: always
+    logging:
+      driver: "none" # disable saving logs
+    ports:
+      - 1025:1025 # SMTP server
+      - 8025:8025 # Web UI
+
+  openldap: # note: more advanced configuration is available
+    image: osixia/openldap:1.5.0
+    restart: always
+    environment:
+      LDAP_ORGANISATION: Acme
+      LDAP_DOMAIN: acme.com
+      LDAP_ADMIN_PASSWORD: admin
+    ports:
+      - 389:389
+      - 636:636
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    profiles: [ldap]
+
+  phpldapadmin: # username: cn=admin,dc=acme,dc=com, pass is admin
+    image: osixia/phpldapadmin:latest
+    restart: always
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=openldap
+      - PHPLDAPADMIN_HTTPS=false
+    ports:
+      - 6433:80
+    depends_on:
+      - openldap
+    profiles: [ldap]
+
+volumes:
+  postgres-data:
+    driver: local
+  postgres-slave-data:
+    driver: local
+  redis_data:
+    driver: local
+  ldap_data:
+  ldap_config:

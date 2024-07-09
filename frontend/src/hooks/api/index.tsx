@@ -17,6 +17,7 @@ export * from "./integrationAuth";
 export * from "./integrations";
 export * from "./keys";
 export * from "./ldapConfig";
+export * from "./oidcConfig";
 export * from "./organization";
 export * from "./projectUserAdditionalPrivilege";
 export * from "./rateLimit";

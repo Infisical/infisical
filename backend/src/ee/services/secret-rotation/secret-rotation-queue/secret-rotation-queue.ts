@@ -331,7 +331,7 @@ export const secretRotationQueueFactory = ({
 
       logger.info("Finished rotating: rotation id: ", rotationId);
     } catch (error) {
-      logger.error(error);
+      logger.error(error, "Failed to execute secret rotation");
       if (error instanceof DisableRotationErrors) {
         if (job.id) {
           await queue.stopRepeatableJobByJobId(QueueName.SecretRotation, job.id);

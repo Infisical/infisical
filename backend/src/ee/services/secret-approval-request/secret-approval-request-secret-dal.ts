@@ -47,7 +47,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
 
   const findByRequestId = async (requestId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)({
+      const doc = await (tx || db.replicaNode())({
         secVerTag: TableName.SecretTag
       })
         .from(TableName.SecretApprovalRequestSecret)

@@ -885,7 +885,7 @@ func SetEncryptedSecrets(secretArgs []string, secretType string, environmentName
 		}
 
 		// Key and value from argument
-		key := splitKeyValueFromArg[0]
+		key := strings.TrimSpace(splitKeyValueFromArg[0])
 		value := splitKeyValueFromArg[1]
 
 		hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))

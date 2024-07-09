@@ -18,7 +18,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    */
   const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[], tx?: Knex) => {
     try {
-      const userProjectMemberships: string[] = await (tx || db)(TableName.ProjectMembership)
+      const userProjectMemberships: string[] = await (tx || db.replicaNode())(TableName.ProjectMembership)
         .where(`${TableName.ProjectMembership}.userId`, userId)
         .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
         .pluck(`${TableName.ProjectMembership}.projectId`);
@@ -43,7 +43,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   // special query
   const findUserGroupMembershipsInProject = async (usernames: string[], projectId: string) => {
     try {
-      const usernameDocs: string[] = await db(TableName.UserGroupMembership)
+      const usernameDocs: string[] = await db
+        .replicaNode()(TableName.UserGroupMembership)
         .join(
           TableName.GroupProjectMembership,
           `${TableName.UserGroupMembership}.groupId`,
@@ -73,7 +74,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     try {
       // get list of groups in the project with id [projectId]
       // that that are not the group with id [groupId]
-      const groups: string[] = await (tx || db)(TableName.GroupProjectMembership)
+      const groups: string[] = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .whereNot(`${TableName.GroupProjectMembership}.groupId`, groupId)
         .pluck(`${TableName.GroupProjectMembership}.groupId`);
@@ -83,8 +84,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         .where(`${TableName.UserGroupMembership}.groupId`, groupId)
         .where(`${TableName.UserGroupMembership}.isPending`, false)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.ProjectMembership, function () {
-          this.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
+        .leftJoin(TableName.ProjectMembership, (bd) => {
+          bd.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
             `${TableName.ProjectMembership}.projectId`,
             "=",
             db.raw("?", [projectId])
@@ -107,9 +108,9 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
         .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
-        .whereNotIn(`${TableName.UserGroupMembership}.userId`, function () {
+        .whereNotIn(`${TableName.UserGroupMembership}.userId`, (bd) => {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          this.select(`${TableName.UserGroupMembership}.userId`)
+          bd.select(`${TableName.UserGroupMembership}.userId`)
             .from(TableName.UserGroupMembership)
             .whereIn(`${TableName.UserGroupMembership}.groupId`, groups);
         });

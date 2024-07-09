@@ -9,6 +9,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TTokenDALFactory } from "../auth-token/auth-token-dal";
@@ -16,6 +17,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
 import {
@@ -157,9 +159,22 @@ export const authLoginServiceFactory = ({
     const userEnc = await userDAL.findUserEncKeyByUsername({
       username: email
     });
+    const serverCfg = await getServerCfg();
+
+    if (
+      serverCfg.enabledLoginMethods &&
+      !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
+      !providerAuthToken
+    ) {
+      throw new BadRequestError({
+        message: "Login with email is disabled by administrator."
+      });
+    }
+
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find user");
     }
+
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
       validateProviderAuthToken(providerAuthToken as string, email);
     }
@@ -201,7 +216,10 @@ export const authLoginServiceFactory = ({
       const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
       authMethod = decodedProviderToken.authMethod;
-      if ((isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId) {
+      if (
+        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+        decodedProviderToken.orgId
+      ) {
         organizationId = decodedProviderToken.orgId;
       }
     }
@@ -258,7 +276,13 @@ export const authLoginServiceFactory = ({
     });
     // from password decrypt the private key
     if (password) {
-      const privateKey = await getUserPrivateKey(password, userEnc);
+      const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
+        logger.error(
+          err,
+          `loginExchangeClientProof: private key generation failed for [userId=${user.id}] and [email=${user.email}] `
+        );
+        return "";
+      });
       const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
       const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
@@ -344,9 +368,12 @@ export const authLoginServiceFactory = ({
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
     const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId);
+    const selectedOrg = await orgDAL.findById(organizationId);
 
     if (!hasOrganizationMembership) {
-      throw new UnauthorizedError({ message: "User does not have access to the organization" });
+      throw new UnauthorizedError({
+        message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
     }
 
     await tokenDAL.incrementTokenSessionVersion(user.id, decodedToken.tokenVersionId);
@@ -494,6 +521,40 @@ export const authLoginServiceFactory = ({
     let user = await userDAL.findUserByUsername(email);
     const serverCfg = await getServerCfg();
 
+    if (serverCfg.enabledLoginMethods) {
+      switch (authMethod) {
+        case AuthMethod.GITHUB: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
+            throw new BadRequestError({
+              message: "Login with Github is disabled by administrator.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        case AuthMethod.GOOGLE: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
+            throw new BadRequestError({
+              message: "Login with Google is disabled by administrator.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        case AuthMethod.GITLAB: {
+          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
+            throw new BadRequestError({
+              message: "Login with Gitlab is disabled by administrator.",
+              name: "Oauth 2 login"
+            });
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
+
     const appCfg = getConfig();
 
     if (!user) {
@@ -571,7 +632,8 @@ export const authLoginServiceFactory = ({
     const { authMethod, userName } = decodedProviderToken;
     if (!userName) throw new BadRequestError({ message: "Missing user name" });
     const organizationId =
-      (isAuthMethodSaml(authMethod) || authMethod === AuthMethod.LDAP) && decodedProviderToken.orgId
+      (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
+      decodedProviderToken.orgId
         ? decodedProviderToken.orgId
         : undefined;
 

@@ -17,14 +17,17 @@ import {
   UntagResourceCommand,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { Octokit } from "@octokit/rest";
 import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
+import { randomUUID } from "crypto";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
 import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -257,14 +260,27 @@ const syncSecretsGCPSecretManager = async ({
 const syncSecretsAzureKeyVault = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  createManySecretsRawFn,
+  updateManySecretsRawFn
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
 }) => {
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
+    value: string;
     attributes: {
       enabled: true;
       created: number;
@@ -361,6 +377,83 @@ const syncSecretsAzureKeyVault = async ({
     }
   });
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+  const secretKeysToRemoveFromDelete = new Set<string>();
+
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  if (!integration.lastUsed) {
+    Object.keys(res).forEach((key) => {
+      // first time using integration
+      const underscoredKey = key.replace(/-/g, "_");
+
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
+            setSecrets.push({
+              key,
+              value: res[key].value
+            });
+          } else if (secrets[underscoredKey]?.value !== res[key].value) {
+            secretsToUpdate[underscoredKey] = res[key].value;
+            const toEditSecretIndex = setSecrets.findIndex((secret) => secret.key === key);
+            if (toEditSecretIndex >= 0) {
+              setSecrets[toEditSecretIndex].value = res[key].value;
+            }
+          }
+
+          secretKeysToRemoveFromDelete.add(key);
+
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
+            setSecrets.push({
+              key,
+              value: res[key].value
+            });
+          }
+
+          secretKeysToRemoveFromDelete.add(key);
+          break;
+        }
+        default:
+          break;
+      }
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
   const setSecretAzureKeyVault = async ({
     key,
     value,
@@ -428,7 +521,7 @@ const syncSecretsAzureKeyVault = async ({
     });
   }
 
-  for await (const deleteSecret of deleteSecrets) {
+  for await (const deleteSecret of deleteSecrets.filter((secret) => !secretKeysToRemoveFromDelete.has(secret.key))) {
     const { key } = deleteSecret;
     await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
       headers: {
@@ -605,24 +698,61 @@ const syncSecretsAWSSecretManager = async ({
   integration,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  awsAssumeRoleArn,
+  projectId
 }: {
   integration: TIntegrations;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  awsAssumeRoleArn: string | null;
+  projectId?: string;
 }) => {
+  const appCfg = getConfig();
   const metadata = z.record(z.any()).parse(integration.metadata || {});
 
-  if (!accessId) {
-    throw new Error("AWS access ID is required");
+  if (!accessId && !awsAssumeRoleArn) {
+    throw new Error("AWS access ID/AWS Assume Role is required");
+  }
+
+  let accessKeyId = "";
+  let secretAccessKey = "";
+  let sessionToken;
+  if (awsAssumeRoleArn) {
+    const client = new STSClient({
+      region: integration.region as string,
+      credentials:
+        appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
+          ? {
+              accessKeyId: appCfg.CLIENT_ID_AWS_INTEGRATION,
+              secretAccessKey: appCfg.CLIENT_SECRET_AWS_INTEGRATION
+            }
+          : undefined
+    });
+    const command = new AssumeRoleCommand({
+      RoleArn: awsAssumeRoleArn,
+      RoleSessionName: `infisical-sm-${randomUUID()}`,
+      DurationSeconds: 900, // 15mins
+      ExternalId: projectId
+    });
+    const response = await client.send(command);
+    if (!response.Credentials?.AccessKeyId || !response.Credentials?.SecretAccessKey)
+      throw new Error("Failed to assume role");
+    accessKeyId = response.Credentials?.AccessKeyId;
+    secretAccessKey = response.Credentials?.SecretAccessKey;
+    sessionToken = response.Credentials?.SessionToken;
+  } else {
+    accessKeyId = accessId as string;
+    secretAccessKey = accessToken;
   }
 
   const secretsManager = new SecretsManagerClient({
     region: integration.region as string,
     credentials: {
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
     }
   });
 
@@ -3478,7 +3608,9 @@ export const syncIntegrationSecrets = async ({
   secrets,
   accessId,
   accessToken,
-  appendices
+  awsAssumeRoleArn,
+  appendices,
+  projectId
 }: {
   createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
   updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
@@ -3495,8 +3627,10 @@ export const syncIntegrationSecrets = async ({
   integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
+  awsAssumeRoleArn: string | null;
   accessToken: string;
   appendices?: { prefix: string; suffix: string };
+  projectId?: string;
 }) => {
   let response: { isSynced: boolean; syncMessage: string } | null = null;
 
@@ -3512,7 +3646,9 @@ export const syncIntegrationSecrets = async ({
       await syncSecretsAzureKeyVault({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        createManySecretsRawFn,
+        updateManySecretsRawFn
       });
       break;
     case Integrations.AWS_PARAMETER_STORE:
@@ -3528,7 +3664,9 @@ export const syncIntegrationSecrets = async ({
         integration,
         secrets,
         accessId,
-        accessToken
+        accessToken,
+        awsAssumeRoleArn,
+        projectId
       });
       break;
     case Integrations.HEROKU:

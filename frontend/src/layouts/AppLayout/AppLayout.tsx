@@ -8,10 +8,10 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowLeft,
@@ -23,7 +23,8 @@ import {
   faInfo,
   faMobile,
   faPlus,
-  faQuestion
+  faQuestion,
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -67,13 +68,16 @@ import {
   useGetAccessRequestsCount,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
-  useGetUserAction,
   useLogoutUser,
-  useRegisterUserAction,
   useSelectOrganization
 } from "@app/hooks/api";
+import { Workspace } from "@app/hooks/api/types";
+import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
+import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { CreateOrgModal } from "@app/views/Org/components";
+
+import { WishForm } from "./components/WishForm/WishForm";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -122,11 +126,24 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
 
+  const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
+  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+
+  const workspacesWithFaveProp = useMemo(
+    () =>
+      workspaces
+        .map((w): Workspace & { isFavorite: boolean } => ({
+          ...w,
+          isFavorite: Boolean(projectFavorites?.includes(w.id))
+        }))
+        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
+    [workspaces, projectFavorites]
+  );
+
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
-  const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
@@ -160,12 +177,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { t } = useTranslation();
 
-  const registerUserAction = useRegisterUserAction();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
-
-  const closeUpdate = async () => {
-    await registerUserAction.mutateAsync("december_update_closed");
-  };
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -268,6 +280,38 @@ export const AppLayout = ({ children }: LayoutProps) => {
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });
+    }
+  };
+
+  const addProjectToFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []), projectId]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
+    }
+  };
+
+  const removeProjectFromFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to remove project from favorites.",
+        type: "error"
+      });
     }
   };
 
@@ -451,19 +495,47 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
-                          {workspaces
+                          {workspacesWithFaveProp
                             .filter((ws) => ws.orgId === currentOrg?.id)
-                            .map(({ id, name }) => (
-                              <SelectItem
-                                key={`ws-layout-list-${id}`}
-                                value={id}
+                            .map(({ id, name, isFavorite }) => (
+                              <div
                                 className={twMerge(
-                                  currentWorkspace?.id === id && "bg-mineshaft-600",
-                                  "truncate"
+                                  "mb-1 grid grid-cols-7 rounded-md hover:bg-mineshaft-500",
+                                  id === currentWorkspace?.id && "bg-mineshaft-500"
                                 )}
+                                key={id}
                               >
-                                {name}
-                              </SelectItem>
+                                <div className="col-span-6">
+                                  <SelectItem
+                                    key={`ws-layout-list-${id}`}
+                                    value={id}
+                                    className="transition-none data-[highlighted]:bg-mineshaft-500"
+                                  >
+                                    {name}
+                                  </SelectItem>
+                                </div>
+                                <div className="col-span-1 flex items-center">
+                                  {isFavorite ? (
+                                    <FontAwesomeIcon
+                                      icon={faSolidStar}
+                                      className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeProjectFromFavorites(id);
+                                      }}
+                                    />
+                                  ) : (
+                                    <FontAwesomeIcon
+                                      icon={faStar}
+                                      className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        addProjectToFavorites(id);
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
                             ))}
                         </div>
                         <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
@@ -686,49 +758,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     : "mb-4"
                 } flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400`}
               >
-                {/* <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
-                <div
-                  className={`${
-                    !updateClosed ? "block" : "hidden"
-                  } relative z-10 mb-6 flex h-64 w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3`}
-                >
-                  <div className="text-md mt-2 w-full font-semibold text-mineshaft-100">
-                    Infisical December update
-                  </div>
-                  <div className="mt-1 mb-1 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300">
-                    Infisical Agent, new SDKs, Machine Identities, and more!
-                  </div>
-                  <div className="mt-2 h-[6.77rem] w-full rounded-md border border-mineshaft-700">
-                    <Image
-                      src="/images/infisical-update-december-2023.png"
-                      height={319}
-                      width={539}
-                      alt="kubernetes image"
-                      className="rounded-sm"
-                    />
-                  </div>
-                  <div className="mt-3 flex w-full items-center justify-between px-0.5">
-                    <button
-                      type="button"
-                      onClick={() => closeUpdate()}
-                      className="text-mineshaft-400 duration-200 hover:text-mineshaft-100"
-                    >
-                      Close
-                    </button>
-                    <a
-                      href="https://infisical.com/blog/infisical-update-december-2023"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-normal leading-[1.2rem] text-mineshaft-400 duration-200 hover:text-mineshaft-100"
-                    >
-                      Learn More{" "}
-                      <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-0.5 text-xs" />
-                    </a>
-                  </div>
-                </div>
+                {(window.location.origin.includes("https://app.infisical.com") ||
+                  window.location.origin.includes("https://gamma.infisical.com")) && <WishForm />}
                 {router.asPath.includes("org") && (
                   <div
                     onKeyDown={() => null}

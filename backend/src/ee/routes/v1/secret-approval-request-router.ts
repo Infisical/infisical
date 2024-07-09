@@ -6,13 +6,23 @@ import {
   SecretApprovalRequestsSecretsSchema,
   SecretsSchema,
   SecretTagsSchema,
-  SecretVersionsSchema
+  SecretVersionsSchema,
+  UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const approvalRequestUser = z.object({ userId: z.string() }).merge(
+  UsersSchema.pick({
+    email: true,
+    firstName: true,
+    lastName: true,
+    username: true
+  })
+);
 
 export const registerSecretApprovalRequestRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -41,9 +51,10 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               approvers: z.string().array(),
               secretPath: z.string().optional().nullable()
             }),
+            committerUser: approvalRequestUser,
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
             environment: z.string(),
-            reviewers: z.object({ member: z.string(), status: z.string() }).array(),
+            reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
             approvers: z.string().array()
           }).array()
         })
@@ -195,7 +206,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           type: isClosing ? EventType.SECRET_APPROVAL_CLOSED : EventType.SECRET_APPROVAL_REOPENED,
           // eslint-disable-next-line
           metadata: {
-            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangeBy as string,
+            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]: approval.statusChangedByUserId as string,
             secretApprovalRequestId: approval.id,
             secretApprovalRequestSlug: approval.slug
             // eslint-disable-next-line
@@ -216,6 +227,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   })
     .array()
     .optional();
+
   server.route({
     method: "GET",
     url: "/:id",
@@ -235,12 +247,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 id: z.string(),
                 name: z.string(),
                 approvals: z.number(),
-                approvers: z.string().array(),
+                approvers: approvalRequestUser.array(),
                 secretPath: z.string().optional().nullable()
               }),
               environment: z.string(),
-              reviewers: z.object({ member: z.string(), status: z.string() }).array(),
-              approvers: z.string().array(),
+              statusChangedByUser: approvalRequestUser.optional(),
+              committerUser: approvalRequestUser,
+              reviewers: approvalRequestUser.extend({ status: z.string() }).array(),
               secretPath: z.string(),
               commits: SecretApprovalRequestsSecretsSchema.omit({ secretBlindIndex: true })
                 .merge(

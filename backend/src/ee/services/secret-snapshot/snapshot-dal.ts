@@ -21,7 +21,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const data = await (tx || db)(TableName.Snapshot)
+      const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, id)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
         .select(selectAllTableCols(TableName.Snapshot))
@@ -43,7 +43,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
   const countOfSnapshotsByFolderId = async (folderId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.Snapshot)
+      const doc = await (tx || db.replicaNode())(TableName.Snapshot)
         .where({ folderId })
         .groupBy(["folderId"])
         .count("folderId")
@@ -56,7 +56,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
   const findSecretSnapshotDataById = async (snapshotId: string, tx?: Knex) => {
     try {
-      const data = await (tx || db)(TableName.Snapshot)
+      const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
         .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
@@ -309,7 +309,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
   // when we need to rollback we will pull from these snapshots
   const findLatestSnapshotByFolderId = async (folderId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.Snapshot)
+      const docs = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.folderId`, folderId)
         .join<TSecretSnapshots>(
           (tx || db)(TableName.Snapshot).groupBy("folderId").max("createdAt").select("folderId").as("latestVersion"),

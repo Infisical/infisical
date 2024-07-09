@@ -61,6 +61,7 @@ type Props = {
   onCreateTag: () => void;
   environment: string;
   secretPath: string;
+  handleSecretShare: () => void;
 };
 
 export const SecretItem = memo(
@@ -75,7 +76,8 @@ export const SecretItem = memo(
     onCreateTag,
     onToggleSecretSelect,
     environment,
-    secretPath
+    secretPath,
+    handleSecretShare
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
@@ -248,7 +250,7 @@ export const SecretItem = memo(
                 />
               </div>
               <div
-                className="flex flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
+                className="flex w-80 flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
                 tabIndex={0}
                 role="button"
               >
@@ -420,8 +422,9 @@ export const SecretItem = memo(
                       <Tooltip
                         content={
                           secretReminderRepeatDays && secretReminderRepeatDays > 0
-                            ? `Every ${secretReminderRepeatDays} day${Number(secretReminderRepeatDays) > 1 ? "s" : ""
-                            }
+                            ? `Every ${secretReminderRepeatDays} day${
+                                Number(secretReminderRepeatDays) > 1 ? "s" : ""
+                              }
                           `
                             : "Reminder"
                         }
@@ -461,6 +464,20 @@ export const SecretItem = memo(
                         </PopoverTrigger>
                       )}
                     </ProjectPermissionCan>
+                    <IconButton
+                      className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6"
+                      variant="plain"
+                      size="md"
+                      ariaLabel="share-secret"
+                      onClick={handleSecretShare}
+                    >
+                      <Tooltip content="Share Secret">
+                        <FontAwesomeSymbol
+                          className="h-3.5 w-3.5"
+                          symbolName={FontAwesomeSpriteName.ShareSecret}
+                        />
+                      </Tooltip>
+                    </IconButton>
                     <PopoverContent
                       className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
                       sticky="always"
@@ -481,7 +498,7 @@ export const SecretItem = memo(
                 {!isDirty ? (
                   <motion.div
                     key="options"
-                    className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
+                    className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}

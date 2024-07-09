@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { SecretDataProps, Tag } from "public/data/frequentInterfaces";
 
 import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
+import { SecretType } from "@app/hooks/api/types";
 
 import { decryptAssymmetric, encryptSymmetric } from "../cryptography/crypto";
 
@@ -20,7 +21,7 @@ interface EncryptedSecretProps {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  type: "personal" | "shared";
+  type: SecretType;
   tags: Tag[];
 }
 
@@ -108,8 +109,8 @@ const encryptSecrets = async ({
         secretCommentTag,
         type:
           secret.valueOverride === undefined || secret?.value !== secret?.valueOverride
-            ? "shared"
-            : "personal",
+            ? SecretType.Shared
+            : SecretType.Personal,
         tags: secret.tags
       };
 

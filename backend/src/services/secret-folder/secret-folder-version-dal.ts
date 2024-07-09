@@ -13,7 +13,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
   // This will fetch all latest secret versions from a folder
   const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretFolderVersion)
+      const docs = await (tx || db.replicaNode())(TableName.SecretFolderVersion)
         .join(TableName.SecretFolder, `${TableName.SecretFolderVersion}.folderId`, `${TableName.SecretFolder}.id`)
         .where({ parentId: folderId, isReserved: false })
         .join<TSecretFolderVersions>(
@@ -38,7 +38,9 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
 
   const findLatestFolderVersions = async (folderIds: string[], tx?: Knex) => {
     try {
-      const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db)(TableName.SecretFolderVersion)
+      const docs: Array<TSecretFolderVersions & { max: number }> = await (tx || db.replicaNode())(
+        TableName.SecretFolderVersion
+      )
         .whereIn("folderId", folderIds)
         .join(
           (tx || db)(TableName.SecretFolderVersion)

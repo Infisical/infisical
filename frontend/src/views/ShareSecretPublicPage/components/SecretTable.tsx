@@ -16,7 +16,7 @@ export const SecretTable = ({
   isUrlCopied,
   copyUrlToClipboard
 }: Props) => (
-  <div className="flex w-full items-center justify-center rounded border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
+  <div className="flex w-full items-center justify-center rounded-md border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
     {isLoading && <div className="bg-mineshaft-800 text-center text-bunker-400">Loading...</div>}
     {!isLoading && !decryptedSecret && (
       <Tr>
@@ -26,7 +26,7 @@ export const SecretTable = ({
       </Tr>
     )}
     {!isLoading && decryptedSecret && (
-      <div className="dark relative flex h-full w-full items-center overflow-y-auto border border-mineshaft-700 bg-mineshaft-900 p-2">
+      <div className="dark relative flex h-full w-full items-center overflow-y-auto border border-mineshaft-700 bg-mineshaft-900 rounded-md p-2 md:p-3 pr-2">
         <div className="thin-scrollbar flex h-full max-h-44 w-full flex-1 overflow-y-scroll break-words pr-4 dark:[color-scheme:dark]">
           <div className="align-center flex w-full min-w-full whitespace-pre-line">
             {decryptedSecret}
@@ -37,7 +37,7 @@ export const SecretTable = ({
           colorSchema="primary"
           ariaLabel="copy to clipboard"
           onClick={copyUrlToClipboard}
-          className="mx-1 flex max-h-8 items-center rounded"
+          className="mx-1 flex max-h-8 items-center rounded absolute top-1 sm:top-2 right-0 sm:right-5"
           size="xs"
         >
           <FontAwesomeIcon className="pr-2" icon={isUrlCopied ? faCheck : faCopy} /> Copy

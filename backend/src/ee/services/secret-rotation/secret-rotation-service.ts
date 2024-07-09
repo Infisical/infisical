@@ -133,7 +133,7 @@ export const secretRotationServiceFactory = ({
       creds: []
     };
     const encData = infisicalSymmetricEncypt(JSON.stringify(unencryptedData));
-    const secretRotation = secretRotationDAL.transaction(async (tx) => {
+    const secretRotation = await secretRotationDAL.transaction(async (tx) => {
       const doc = await secretRotationDAL.create(
         {
           provider,
@@ -148,13 +148,13 @@ export const secretRotationServiceFactory = ({
         },
         tx
       );
-      await secretRotationQueue.addToQueue(doc.id, doc.interval);
       const outputSecretMapping = await secretRotationDAL.secretOutputInsertMany(
         Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
         tx
       );
       return { ...doc, outputs: outputSecretMapping, environment: folder.environment };
     });
+    await secretRotationQueue.addToQueue(secretRotation.id, secretRotation.interval);
     return secretRotation;
   };
 
@@ -212,9 +212,9 @@ export const secretRotationServiceFactory = ({
     );
     const deletedDoc = await secretRotationDAL.transaction(async (tx) => {
       const strat = await secretRotationDAL.deleteById(rotationId, tx);
-      await secretRotationQueue.removeFromQueue(strat.id, strat.interval);
       return strat;
     });
+    await secretRotationQueue.removeFromQueue(deletedDoc.id, deletedDoc.interval);
     return { ...doc, ...deletedDoc };
   };
 

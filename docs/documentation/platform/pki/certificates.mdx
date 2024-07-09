@@ -56,9 +56,9 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
 
     - Issuing CA: The CA under which to issue the certificate.
     - Friendly Name: A friendly name for the certificate; this is only for display and defaults to the common name of the certificate if left empty.
-    - Common Name (CN): The (common) name of the certificate.
+    - Common Name (CN): The (common) name for the certificate like `service.acme.com`.
+    - Alternative Names (SANs): A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses like `app1.acme.com, app2.acme.com`.
     - TTL: The lifetime of the certificate in seconds.
-    - Valid Until: The date until which the certificate is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
 
   </Step>
   <Step title="Copying the certificate details">

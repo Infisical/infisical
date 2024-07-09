@@ -1078,6 +1078,7 @@ export const secretServiceFactory = ({
     actor,
     environment,
     projectId: workspaceId,
+    expandSecretReferences,
     projectSlug,
     actorId,
     actorOrgId,
@@ -1091,7 +1092,7 @@ export const secretServiceFactory = ({
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
-    const secret = await getSecretByName({
+    const encryptedSecret = await getSecretByName({
       actorId,
       projectId,
       actorAuthMethod,
@@ -1105,7 +1106,46 @@ export const secretServiceFactory = ({
       version
     });
 
-    return decryptSecretRaw(secret, botKey);
+    const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
+
+    if (expandSecretReferences) {
+      const expandSecrets = interpolateSecrets({
+        folderDAL,
+        projectId,
+        secretDAL,
+        secretEncKey: botKey
+      });
+
+      const expandSingleSecret = async (secret: {
+        secretKey: string;
+        secretValue: string;
+        secretComment?: string;
+        secretPath: string;
+        skipMultilineEncoding: boolean | null | undefined;
+      }) => {
+        const secretRecord: Record<
+          string,
+          { value: string; comment?: string; skipMultilineEncoding: boolean | null | undefined }
+        > = {
+          [secret.secretKey]: {
+            value: secret.secretValue,
+            comment: secret.secretComment,
+            skipMultilineEncoding: secret.skipMultilineEncoding
+          }
+        };
+
+        await expandSecrets(secretRecord);
+
+        // Update the secret with the expanded value
+        // eslint-disable-next-line no-param-reassign
+        secret.secretValue = secretRecord[secret.secretKey].value;
+      };
+
+      // Expand the secret
+      await expandSingleSecret(decryptedSecret);
+    }
+
+    return decryptedSecret;
   };
 
   const createSecretRaw = async ({

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { authRateLimit, readLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -88,6 +88,50 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         logger.error(err);
       }
       return res.redirect(`${appCfg.SITE_URL}/login`);
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/me/project-favorites",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        orgId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          projectFavorites: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.user.getUserProjectFavorites(req.permission.id, req.query.orgId);
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/me/project-favorites",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        orgId: z.string().trim(),
+        projectFavorites: z.string().array()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.user.updateUserProjectFavorites(
+        req.permission.id,
+        req.body.orgId,
+        req.body.projectFavorites
+      );
     }
   });
 };

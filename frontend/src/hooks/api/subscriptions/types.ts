@@ -2,6 +2,8 @@ export type SubscriptionPlan = {
   id: string;
   membersUsed: number;
   memberLimit: number;
+  identitiesUsed: number;
+  identityLimit: number;
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number;
@@ -21,6 +23,7 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
+  oidcSSO: boolean;
   scim: boolean;
   ldap: boolean;
   groups: boolean;

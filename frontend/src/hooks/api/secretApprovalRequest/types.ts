@@ -47,10 +47,14 @@ export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   isReplicated?: boolean;
   slug: string;
   createdAt: string;
-  committerId: string;
+  committerUserId: string;
   reviewers: {
-    member: string;
+    userId: string;
     status: ApprovalStatus;
+    email: string;
+    firstName: string;
+    lastName: string;
+    username: string;
   }[];
   workspace: string;
   environment: string;
@@ -58,8 +62,30 @@ export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   secretPath: string;
   hasMerged: boolean;
   status: "open" | "close";
-  policy: TSecretApprovalPolicy;
-  statusChangeBy: string;
+  policy: Omit<TSecretApprovalPolicy, "approvers"> & {
+    approvers: {
+      userId: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      username: string;
+    }[];
+  };
+  statusChangedByUserId: string;
+  statusChangedByUser?: {
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
+  committerUser: {
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
   commits: ({
     // if there is no secret means it was creation

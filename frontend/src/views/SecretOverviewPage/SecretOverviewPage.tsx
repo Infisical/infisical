@@ -64,7 +64,7 @@ import {
 } from "@app/hooks/api";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { TSecretFolder } from "@app/hooks/api/types";
+import { SecretType, TSecretFolder } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -188,7 +188,7 @@ export const SecretOverviewPage = () => {
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
-  const { isImportedSecretPresentInEnv } = useGetImportedSecretsAllEnvs({
+  const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
     decryptFileKey: latestFileKey!,
     path: secretPath,
@@ -320,7 +320,7 @@ export const SecretOverviewPage = () => {
         secretName: key,
         secretValue: value,
         secretComment: "",
-        type: "shared",
+        type: SecretType.Shared,
         latestFileKey: latestFileKey!
       });
       createNotification({
@@ -344,7 +344,13 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretUpdate = async (env: string, key: string, value: string, secretId?: string) => {
+  const handleSecretUpdate = async (
+    env: string,
+    key: string,
+    value: string,
+    type = SecretType.Shared,
+    secretId?: string
+  ) => {
     try {
       await updateSecretV3({
         environment: env,
@@ -353,7 +359,7 @@ export const SecretOverviewPage = () => {
         secretId,
         secretName: key,
         secretValue: value,
-        type: "shared",
+        type,
         latestFileKey: latestFileKey!
       });
       createNotification({
@@ -377,7 +383,7 @@ export const SecretOverviewPage = () => {
         secretPath,
         secretName: key,
         secretId,
-        type: "shared"
+        type: SecretType.Shared
       });
       createNotification({
         type: "success",
@@ -419,7 +425,8 @@ export const SecretOverviewPage = () => {
         });
       }
     }
-    const query: Record<string, string> = { ...router.query, env: slug };
+
+    const query: Record<string, string> = { ...router.query, env: slug, searchFilter };
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       router.push({
@@ -807,6 +814,7 @@ export const SecretOverviewPage = () => {
                       isSelected={selectedEntries.secret[key]}
                       onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                       secretPath={secretPath}
+                      getImportedSecretByKey={getImportedSecretByKey}
                       isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
                       onSecretCreate={handleSecretCreate}
                       onSecretDelete={handleSecretDelete}

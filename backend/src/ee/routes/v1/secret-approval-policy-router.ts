@@ -25,10 +25,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .optional()
             .nullable()
             .transform((val) => (val ? removeTrailingSlash(val) : val)),
-          approvers: z.string().array().min(1),
+          approverUserIds: z.string().array().min(1),
           approvals: z.number().min(1).default(1)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvals <= data.approverUserIds.length, {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -66,7 +66,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z
         .object({
           name: z.string().optional(),
-          approvers: z.string().array().min(1),
+          approverUserIds: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
           secretPath: z
             .string()
@@ -74,7 +74,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .nullable()
             .transform((val) => (val ? removeTrailingSlash(val) : val))
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvals <= data.approverUserIds.length, {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -139,7 +139,15 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema.merge(z.object({ approvers: z.string().array() })).array()
+          approvals: sapPubSchema
+            .extend({
+              userApprovers: z
+                .object({
+                  userId: z.string()
+                })
+                .array()
+            })
+            .array()
         })
       }
     },
@@ -170,7 +178,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema.merge(z.object({ approvers: z.string().array() })).optional()
+          policy: sapPubSchema
+            .extend({
+              userApprovers: z.object({ userId: z.string() }).array()
+            })
+            .optional()
         })
       }
     },

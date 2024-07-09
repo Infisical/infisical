@@ -5,7 +5,8 @@ import {
   SecretApprovalRequestsSchema,
   TableName,
   TSecretApprovalRequests,
-  TSecretApprovalRequestsSecrets
+  TSecretApprovalRequestsSecrets,
+  TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, stripUndefinedInWhere, TFindFilter } from "@app/lib/knex";
@@ -16,7 +17,7 @@ export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalR
 
 type TFindQueryFilter = {
   projectId: string;
-  membershipId: string;
+  userId: string;
   status?: RequestState;
   environment?: string;
   committer?: string;
@@ -37,32 +38,68 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalRequest}.policyId`,
         `${TableName.SecretApprovalPolicy}.id`
       )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("statusChangedByUser"),
+        `${TableName.SecretApprovalRequest}.statusChangedByUserId`,
+        `statusChangedByUser.id`
+      )
+      .join<TUsers>(
+        db(TableName.Users).as("committerUser"),
+        `${TableName.SecretApprovalRequest}.committerUserId`,
+        `committerUser.id`
+      )
       .join(
         TableName.SecretApprovalPolicyApprover,
         `${TableName.SecretApprovalPolicy}.id`,
         `${TableName.SecretApprovalPolicyApprover}.policyId`
+      )
+      .join<TUsers>(
+        db(TableName.Users).as("secretApprovalPolicyApproverUser"),
+        `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
+        "secretApprovalPolicyApproverUser.id"
       )
       .leftJoin(
         TableName.SecretApprovalRequestReviewer,
         `${TableName.SecretApprovalRequest}.id`,
         `${TableName.SecretApprovalRequestReviewer}.requestId`
       )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("secretApprovalReviewerUser"),
+        `${TableName.SecretApprovalRequestReviewer}.reviewerUserId`,
+        `secretApprovalReviewerUser.id`
+      )
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
-        tx.ref("member").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
+        tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
+        tx.ref("email").withSchema("secretApprovalPolicyApproverUser").as("approverEmail"),
+        tx.ref("username").withSchema("secretApprovalPolicyApproverUser").as("approverUsername"),
+        tx.ref("firstName").withSchema("secretApprovalPolicyApproverUser").as("approverFirstName"),
+        tx.ref("lastName").withSchema("secretApprovalPolicyApproverUser").as("approverLastName"),
+        tx.ref("email").withSchema("statusChangedByUser").as("statusChangedByUserEmail"),
+        tx.ref("username").withSchema("statusChangedByUser").as("statusChangedByUserUsername"),
+        tx.ref("firstName").withSchema("statusChangedByUser").as("statusChangedByUserFirstName"),
+        tx.ref("lastName").withSchema("statusChangedByUser").as("statusChangedByUserLastName"),
+        tx.ref("email").withSchema("committerUser").as("committerUserEmail"),
+        tx.ref("username").withSchema("committerUser").as("committerUserUsername"),
+        tx.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
+        tx.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+        tx.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
         tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
+        tx.ref("email").withSchema("secretApprovalReviewerUser").as("reviewerEmail"),
+        tx.ref("username").withSchema("secretApprovalReviewerUser").as("reviewerUsername"),
+        tx.ref("firstName").withSchema("secretApprovalReviewerUser").as("reviewerFirstName"),
+        tx.ref("lastName").withSchema("secretApprovalReviewerUser").as("reviewerLastName"),
         tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
-        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-        tx.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover)
+        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals")
       );
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db);
+      const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
       const docs = await sql;
       const formatedDoc = sqlNestRelationships({
         data: docs,
@@ -71,6 +108,22 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           ...SecretApprovalRequestsSchema.parse(el),
           projectId: el.projectId,
           environment: el.environment,
+          statusChangedByUser: el.statusChangedByUserId
+            ? {
+                userId: el.statusChangedByUserId,
+                email: el.statusChangedByUserEmail,
+                firstName: el.statusChangedByUserFirstName,
+                lastName: el.statusChangedByUserLastName,
+                username: el.statusChangedByUserUsername
+              }
+            : undefined,
+          committerUser: {
+            userId: el.committerUserId,
+            email: el.committerUserEmail,
+            firstName: el.committerUserFirstName,
+            lastName: el.committerUserLastName,
+            username: el.committerUserUsername
+          },
           policy: {
             id: el.policyId,
             name: el.policyName,
@@ -80,11 +133,34 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({
+              reviewerUserId: userId,
+              reviewerStatus: status,
+              reviewerEmail: email,
+              reviewerLastName: lastName,
+              reviewerUsername: username,
+              reviewerFirstName: firstName
+            }) => (userId ? { userId, status, email, firstName, lastName, username } : undefined)
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          {
+            key: "approverUserId",
+            label: "approvers" as const,
+            mapper: ({
+              approverUserId,
+              approverEmail: email,
+              approverUsername: username,
+              approverLastName: lastName,
+              approverFirstName: firstName
+            }) => ({
+              userId: approverUserId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
+          }
         ]
       });
       if (!formatedDoc?.[0]) return;
@@ -97,12 +173,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectRequestCount = async (projectId: string, membershipId: string, tx?: Knex) => {
+  const findProjectRequestCount = async (projectId: string, userId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db)
         .with(
           "temp",
-          (tx || db)(TableName.SecretApprovalRequest)
+          (tx || db.replicaNode())(TableName.SecretApprovalRequest)
             .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
             .join(
@@ -114,8 +190,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .andWhere(
               (bd) =>
                 void bd
-                  .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-                  .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+                  .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
+                  .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
             )
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
@@ -142,13 +218,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const findByProjectId = async (
-    { status, limit = 20, offset = 0, projectId, committer, environment, membershipId }: TFindQueryFilter,
+    { status, limit = 20, offset = 0, projectId, committer, environment, userId }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
-      const query = (tx || db)(TableName.SecretApprovalRequest)
+      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(
@@ -160,6 +236,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           TableName.SecretApprovalPolicyApprover,
           `${TableName.SecretApprovalPolicy}.id`,
           `${TableName.SecretApprovalPolicyApprover}.policyId`
+        )
+        .join<TUsers>(
+          db(TableName.Users).as("committerUser"),
+          `${TableName.SecretApprovalRequest}.committerUserId`,
+          `committerUser.id`
         )
         .leftJoin(
           TableName.SecretApprovalRequestReviewer,
@@ -176,20 +257,21 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
-            committerId: committer
+            committerUserId: committer
           })
         )
         .andWhere(
           (bd) =>
             void bd
-              .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
-              .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
+              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
-          db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerId"),
+          db.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
           db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
           db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
           db.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
@@ -201,7 +283,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-          db.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover)
+          db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
+          db.ref("email").withSchema("committerUser").as("committerUserEmail"),
+          db.ref("username").withSchema("committerUser").as("committerUserUsername"),
+          db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
         .orderBy("createdAt", "desc");
 
@@ -223,18 +309,26 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath
+          },
+          committerUser: {
+            userId: el.committerUserId,
+            email: el.committerUserEmail,
+            firstName: el.committerUserFirstName,
+            lastName: el.committerUserLastName,
+            username: el.committerUserUsername
           }
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: s }) => (member ? { member, status: s } : undefined)
+            mapper: ({ reviewerUserId, reviewerStatus: s }) =>
+              reviewerUserId ? { userId: reviewerUserId, status: s } : undefined
           },
           {
-            key: "approverId",
+            key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverId }) => approverId
+            mapper: ({ approverUserId }) => approverUserId
           },
           {
             key: "commitId",

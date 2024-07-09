@@ -12,7 +12,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
 
   const findOne = async (filter: Partial<TIdentityAccessTokens>, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.IdentityAccessToken)
+      const doc = await (tx || db.replicaNode())(TableName.IdentityAccessToken)
         .where(filter)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
         .leftJoin(TableName.IdentityUaClientSecret, (qb) => {

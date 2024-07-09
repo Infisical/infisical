@@ -300,6 +300,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.GET.secretPath),
         version: z.coerce.number().optional().describe(RAW_SECRETS.GET.version),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
+        expandSecretReferences: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(RAW_SECRETS.GET.expand),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -344,6 +349,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        expandSecretReferences: req.query.expandSecretReferences,
         environment,
         projectId: workspaceId,
         projectSlug: workspaceSlug,
@@ -943,7 +949,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1127,7 +1133,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1265,7 +1271,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1391,7 +1397,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1518,7 +1524,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }
@@ -1632,7 +1638,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             event: {
               type: EventType.SECRET_APPROVAL_REQUEST,
               metadata: {
-                committedBy: approval.committerId,
+                committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
                 secretApprovalRequestSlug: approval.slug
               }

@@ -78,6 +78,7 @@ export enum TableName {
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
   LdapConfig = "ldap_configs",
+  OidcConfig = "oidc_configs",
   LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",

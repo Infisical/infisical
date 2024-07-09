@@ -43,6 +43,7 @@ export * from "./kms-root-config";
 export * from "./ldap-configs";
 export * from "./ldap-group-maps";
 export * from "./models";
+export * from "./oidc-configs";
 export * from "./org-bots";
 export * from "./org-memberships";
 export * from "./org-roles";

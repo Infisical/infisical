@@ -116,7 +116,6 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);

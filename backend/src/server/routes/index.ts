@@ -32,6 +32,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -162,6 +164,7 @@ import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-servi
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
@@ -250,6 +253,7 @@ export const registerRoutes = async (
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
 
+  const oidcConfigDAL = oidcConfigDALFactory(db);
   const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
   const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
@@ -316,7 +320,6 @@ export const registerRoutes = async (
     auditLogStreamDAL
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
-    projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
@@ -392,7 +395,9 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     permissionService,
-    licenseService
+    licenseService,
+    tokenService,
+    smtpService
   });
 
   const telemetryService = telemetryServiceFactory({
@@ -410,8 +415,10 @@ export const registerRoutes = async (
     userAliasDAL,
     orgMembershipDAL,
     tokenService,
-    smtpService
+    smtpService,
+    projectMembershipDAL
   });
+
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -761,7 +768,6 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    projectMembershipDAL,
     projectBotService
   });
   const secretRotationQueue = secretRotationQueueFactory({
@@ -801,7 +807,8 @@ export const registerRoutes = async (
   const identityService = identityServiceFactory({
     permissionService,
     identityDAL,
-    identityOrgMembershipDAL
+    identityOrgMembershipDAL,
+    licenseService
   });
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
@@ -903,6 +910,23 @@ export const registerRoutes = async (
     secretSharingDAL
   });
 
+  const oidcService = oidcConfigServiceFactory({
+    orgDAL,
+    orgMembershipDAL,
+    userDAL,
+    userAliasDAL,
+    licenseService,
+    tokenService,
+    smtpService,
+    orgBotDAL,
+    permissionService,
+    oidcConfigDAL
+  });
+
+  const userEngagementService = userEngagementServiceFactory({
+    userDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -923,6 +947,7 @@ export const registerRoutes = async (
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,
+    oidc: oidcService,
     apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,
@@ -973,7 +998,8 @@ export const registerRoutes = async (
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
-    secretSharing: secretSharingService
+    secretSharing: secretSharingService,
+    userEngagement: userEngagementService
   });
 
   const cronJobs: CronJob[] = [];

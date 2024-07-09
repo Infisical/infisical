@@ -41,7 +41,7 @@ export const secretRotationDALFactory = (db: TDbClient) => {
 
   const find = async (filter: TFindFilter<TSecretRotations & { projectId: string }>, tx?: Knex) => {
     try {
-      const data = await findQuery(filter, tx || db);
+      const data = await findQuery(filter, tx || db.replicaNode());
       return sqlNestRelationships({
         data,
         key: "id",
@@ -93,7 +93,7 @@ export const secretRotationDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.SecretRotation)
+      const doc = await (tx || db.replicaNode())(TableName.SecretRotation)
         .join(TableName.Environment, `${TableName.SecretRotation}.envId`, `${TableName.Environment}.id`)
         .where({ [`${TableName.SecretRotation}.id` as "id"]: id })
         .select(selectAllTableCols(TableName.SecretRotation))

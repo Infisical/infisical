@@ -29,7 +29,8 @@ export type User = {
 
 export enum UserAliasType {
   LDAP = "ldap",
-  SAML = "saml"
+  SAML = "saml",
+  OIDC = "oidc"
 }
 
 export type UserEnc = {

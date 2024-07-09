@@ -8,6 +8,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
@@ -22,6 +23,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true }).extend({
             isMigrationModeOn: z.boolean(),
+            defaultAuthOrgSlug: z.string().nullable(),
             isSecretScanningDisabled: z.boolean()
           })
         })
@@ -51,11 +53,22 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         allowSignUp: z.boolean().optional(),
         allowedSignUpDomain: z.string().optional().nullable(),
         trustSamlEmails: z.boolean().optional(),
-        trustLdapEmails: z.boolean().optional()
+        trustLdapEmails: z.boolean().optional(),
+        trustOidcEmails: z.boolean().optional(),
+        defaultAuthOrgId: z.string().optional().nullable(),
+        enabledLoginMethods: z
+          .nativeEnum(LoginMethod)
+          .array()
+          .optional()
+          .refine((methods) => !methods || methods.length > 0, {
+            message: "At least one login method should be enabled."
+          })
       }),
       response: {
         200: z.object({
-          config: SuperAdminSchema
+          config: SuperAdminSchema.extend({
+            defaultAuthOrgSlug: z.string().nullable()
+          })
         })
       }
     },
@@ -65,8 +78,84 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const config = await server.services.superAdmin.updateServerCfg(req.body);
+      const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
       return { config };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/user-management/users",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.superAdmin.getUsers({
+        ...req.query
+      });
+
+      return {
+        users
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/user-management/users/:userId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        userId: z.string()
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.superAdmin.deleteUser(req.params.userId);
+
+      return {
+        users
+      };
     }
   });
 

@@ -297,6 +297,7 @@ export const IntegrationsSection = ({
           (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.path ||
+          (popUp?.deleteConfirmation?.data as TIntegration)?.integration ||
           ""
         }
         onDeleteApproved={async () =>

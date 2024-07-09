@@ -1,4 +1,4 @@
-import { useEffect, useRef,useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -16,7 +16,7 @@ import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
-import { navigateUserToOrg, navigateUserToSelectOrg } from "../../Login.utils";
+import { navigateUserToOrg, useNavigateToSelectOrganization } from "../../Login.utils";
 
 type Props = {
   providerAuthToken: string;
@@ -39,8 +39,11 @@ export const PasswordStep = ({
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const { mutateAsync: oauthTokenExchange } = useOauthTokenExchange();
 
-  const { callbackPort, organizationId, hasExchangedPrivateKey } =
-    jwt_decode(providerAuthToken) as any;
+  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
+
+  const { callbackPort, organizationId, hasExchangedPrivateKey } = jwt_decode(
+    providerAuthToken
+  ) as any;
 
   const handleExchange = async () => {
     try {
@@ -92,7 +95,7 @@ export const PasswordStep = ({
 
         // case: user has orgs, so we navigate the user to select an org
         if (userOrgs.length > 0) {
-          navigateUserToSelectOrg(router, callbackPort);
+          navigateToSelectOrganization(callbackPort);
         }
         // case: no orgs found, so we navigate the user to create an org
         else {
@@ -176,7 +179,7 @@ export const PasswordStep = ({
 
             // case: user has orgs, so we navigate the user to select an org
             if (userOrgs.length > 0) {
-              navigateUserToSelectOrg(router, callbackPort);
+              navigateToSelectOrganization(callbackPort);
             }
             // case: no orgs found, so we navigate the user to create an org
             else {
@@ -220,7 +223,7 @@ export const PasswordStep = ({
             const userOrgs = await fetchOrganizations();
 
             if (userOrgs.length > 0) {
-              navigateUserToSelectOrg(router);
+              navigateToSelectOrganization();
             } else {
               await navigateUserToOrg(router);
             }
@@ -270,7 +273,7 @@ export const PasswordStep = ({
     <form onSubmit={handleLogin} className="mx-auto h-full w-full max-w-md px-6 pt-8">
       <div className="mb-8">
         <p className="mx-auto mb-4 flex w-max justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-           What&apos;s your Infisical password?
+          What&apos;s your Infisical password?
         </p>
       </div>
       <div className="relative mx-auto flex max-h-24 w-1/4 w-full min-w-[22rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">

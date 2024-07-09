@@ -7,10 +7,11 @@ import {
   TUserActionsUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
-  TUserEncryptionKeysUpdate
+  TUserEncryptionKeysUpdate,
+  TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
@@ -18,11 +19,45 @@ export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
   const findUserByUsername = async (username: string, tx?: Knex) => userOrm.findOne({ username }, tx);
 
+  const getUsersByFilter = async ({
+    limit,
+    offset,
+    searchTerm,
+    sortBy
+  }: {
+    limit: number;
+    offset: number;
+    searchTerm: string;
+    sortBy?: keyof TUsers;
+  }) => {
+    try {
+      let query = db.replicaNode()(TableName.Users).where("isGhost", "=", false);
+      if (searchTerm) {
+        query = query.where((qb) => {
+          void qb
+            .whereILike("email", `%${searchTerm}%`)
+            .orWhereILike("firstName", `%${searchTerm}%`)
+            .orWhereILike("lastName", `%${searchTerm}%`)
+            .orWhereLike("username", `%${searchTerm}%`);
+        });
+      }
+
+      if (sortBy) {
+        query = query.orderBy(sortBy);
+      }
+
+      return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get users by filter" });
+    }
+  };
+
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
   const findUserEncKeyByUsername = async ({ username }: { username: string }) => {
     try {
-      return await db(TableName.Users)
+      return await db
+        .replicaNode()(TableName.Users)
         .where({
           username,
           isGhost: false
@@ -36,7 +71,7 @@ export const userDALFactory = (db: TDbClient) => {
 
   const findUserEncKeyByUserIdsBatch = async ({ userIds }: { userIds: string[] }, tx?: Knex) => {
     try {
-      return await (tx || db)(TableName.Users)
+      return await (tx || db.replicaNode())(TableName.Users)
         .where({
           isGhost: false
         })
@@ -49,7 +84,8 @@ export const userDALFactory = (db: TDbClient) => {
 
   const findUserEncKeyByUserId = async (userId: string) => {
     try {
-      const user = await db(TableName.Users)
+      const user = await db
+        .replicaNode()(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
@@ -65,7 +101,8 @@ export const userDALFactory = (db: TDbClient) => {
 
   const findUserByProjectMembershipId = async (projectMembershipId: string) => {
     try {
-      return await db(TableName.ProjectMembership)
+      return await db
+        .replicaNode()(TableName.ProjectMembership)
         .where({ [`${TableName.ProjectMembership}.id` as "id"]: projectMembershipId })
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .first();
@@ -76,7 +113,8 @@ export const userDALFactory = (db: TDbClient) => {
 
   const findUsersByProjectMembershipIds = async (projectMembershipIds: string[]) => {
     try {
-      return await db(TableName.ProjectMembership)
+      return await db
+        .replicaNode()(TableName.ProjectMembership)
         .whereIn(`${TableName.ProjectMembership}.id`, projectMembershipIds)
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .select("*");
@@ -128,7 +166,7 @@ export const userDALFactory = (db: TDbClient) => {
   // ---------------------
   const findOneUserAction = (filter: TUserActionsUpdate, tx?: Knex) => {
     try {
-      return (tx || db)(TableName.UserAction).where(filter).first("*");
+      return (tx || db.replicaNode())(TableName.UserAction).where(filter).first("*");
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one user action" });
     }
@@ -155,6 +193,7 @@ export const userDALFactory = (db: TDbClient) => {
     upsertUserEncryptionKey,
     createUserEncryption,
     findOneUserAction,
-    createUserAction
+    createUserAction,
+    getUsersByFilter
   };
 };

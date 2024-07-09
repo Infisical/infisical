@@ -12,7 +12,7 @@ import { AuthMethod } from "../auth/auth-type";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { TAdminSignUpDTO } from "./super-admin-types";
+import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
@@ -25,7 +25,7 @@ type TSuperAdminServiceFactoryDep = {
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
 // eslint-disable-next-line
-export let getServerCfg: () => Promise<TSuperAdmin>;
+export let getServerCfg: () => Promise<TSuperAdmin & { defaultAuthOrgSlug: string | null }>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
@@ -42,16 +42,20 @@ export const superAdminServiceFactory = ({
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
       const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
+
       // missing in keystore means fetch from db
       if (!config) {
         const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-        if (serverCfg) {
-          await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
+
+        if (!serverCfg) {
+          throw new BadRequestError({ name: "Admin config", message: "Admin config not found" });
         }
+
+        await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
         return serverCfg;
       }
 
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin;
+      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultAuthOrgSlug: string | null };
       return {
         ...keyStoreServerCfg,
         // this is to allow admin router to work
@@ -65,14 +69,51 @@ export const superAdminServiceFactory = ({
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg) return;
 
-    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true, id: ADMIN_CONFIG_DB_UUID });
+    const newCfg = await serverCfgDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: ADMIN_CONFIG_DB_UUID,
+      initialized: false,
+      allowSignUp: true,
+      defaultAuthOrgId: null
+    });
     return newCfg;
   };
 
-  const updateServerCfg = async (data: TSuperAdminUpdate) => {
+  const updateServerCfg = async (data: TSuperAdminUpdate, userId: string) => {
+    if (data.enabledLoginMethods) {
+      const superAdminUser = await userDAL.findById(userId);
+      const loginMethodToAuthMethod = {
+        [LoginMethod.EMAIL]: [AuthMethod.EMAIL],
+        [LoginMethod.GOOGLE]: [AuthMethod.GOOGLE],
+        [LoginMethod.GITLAB]: [AuthMethod.GITLAB],
+        [LoginMethod.GITHUB]: [AuthMethod.GITHUB],
+        [LoginMethod.LDAP]: [AuthMethod.LDAP],
+        [LoginMethod.OIDC]: [AuthMethod.OIDC],
+        [LoginMethod.SAML]: [
+          AuthMethod.AZURE_SAML,
+          AuthMethod.GOOGLE_SAML,
+          AuthMethod.JUMPCLOUD_SAML,
+          AuthMethod.KEYCLOAK_SAML,
+          AuthMethod.OKTA_SAML
+        ]
+      };
+
+      if (
+        !data.enabledLoginMethods.some((loginMethod) =>
+          loginMethodToAuthMethod[loginMethod as LoginMethod].some(
+            (authMethod) => superAdminUser.authMethods?.includes(authMethod)
+          )
+        )
+      ) {
+        throw new BadRequestError({
+          message: "You must configure at least one auth method to prevent account lockout"
+        });
+      }
+    }
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
+
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+
     return updatedServerCfg;
   };
 
@@ -98,6 +139,7 @@ export const superAdminServiceFactory = ({
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
     const privateKey = await getUserPrivateKey(password, {
+      encryptionVersion: 2,
       salt,
       protectedKey,
       protectedKeyIV,
@@ -155,7 +197,7 @@ export const superAdminServiceFactory = ({
       orgName: initialOrganizationName
     });
 
-    await updateServerCfg({ initialized: true });
+    await updateServerCfg({ initialized: true }, userInfo.user.id);
     const token = await authService.generateUserTokens({
       user: userInfo.user,
       authMethod: AuthMethod.EMAIL,
@@ -167,9 +209,25 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
+  const getUsers = ({ offset, limit, searchTerm }: TAdminGetUsersDTO) => {
+    return userDAL.getUsersByFilter({
+      limit,
+      offset,
+      searchTerm,
+      sortBy: "username"
+    });
+  };
+
+  const deleteUser = async (userId: string) => {
+    const user = await userDAL.deleteById(userId);
+    return user;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
-    adminSignUp
+    adminSignUp,
+    getUsers,
+    deleteUser
   };
 };

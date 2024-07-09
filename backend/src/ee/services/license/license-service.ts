@@ -5,6 +5,7 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -155,6 +156,7 @@ export const licenseServiceFactory = ({
           LICENSE_SERVER_CLOUD_PLAN_TTL,
           JSON.stringify(currentPlan)
         );
+
         return currentPlan;
       }
     } catch (error) {
@@ -199,21 +201,27 @@ export const licenseServiceFactory = ({
     await licenseServerCloudApi.request.delete(`/api/license-server/v1/customers/${customerId}`);
   };
 
-  const updateSubscriptionOrgMemberCount = async (orgId: string) => {
+  const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
     if (instanceType === InstanceType.Cloud) {
       const org = await orgDAL.findOrgById(orgId);
       if (!org) throw new BadRequestError({ message: "Org not found" });
 
-      const count = await licenseDAL.countOfOrgMembers(orgId);
+      const quantity = await licenseDAL.countOfOrgMembers(orgId, tx);
+      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity: count
+          quantity,
+          quantityIdentities
         });
       }
       await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null);
-      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
+      const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
+      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
+      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
+        usedSeats,
+        usedIdentitySeats
+      });
     }
     await refreshPlan(orgId);
   };

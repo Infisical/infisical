@@ -10,12 +10,15 @@
 
 #sidebar {
   left: 0;
-  padding-left: 48px;
   padding-right: 30px;
   border-right: 1px;
   border-color: #cdd64b;
   background-color: #F4F3EF;
   border-right: 1px solid #ebebeb;
+}
+
+#sidebar-content {
+  padding-left: 2rem;
 }
 
 #sidebar .relative .sticky {

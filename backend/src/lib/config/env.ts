@@ -5,14 +5,25 @@ import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- If `process.pkg` is set, and it's true, then it means that the app is currently running in a packaged environment (a binary)
+export const IS_PACKAGED = (process as any)?.pkg !== undefined;
+
 const zodStrBool = z
   .enum(["true", "false"])
   .optional()
   .transform((val) => val === "true");
 
+const databaseReadReplicaSchema = z
+  .object({
+    DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
+    DB_ROOT_CERT: zpStr(z.string().optional().describe("Postgres read replica database certificate string"))
+  })
+  .array()
+  .optional();
+
 const envSchema = z
   .object({
-    PORT: z.coerce.number().default(4000),
+    PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
       .default("false")
@@ -29,6 +40,7 @@ const envSchema = z
     DB_USER: zpStr(z.string().describe("Postgres database username").optional()),
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
+    DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
     BCRYPT_SALT_ROUND: z.number().default(12),
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
@@ -101,6 +113,9 @@ const envSchema = z
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
+    // aws
+    CLIENT_ID_AWS_INTEGRATION: zpStr(z.string().optional()),
+    CLIENT_SECRET_AWS_INTEGRATION: zpStr(z.string().optional()),
     // gitlab
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
@@ -119,19 +134,24 @@ const envSchema = z
     // GENERIC
     STANDALONE_MODE: z
       .enum(["true", "false"])
-      .transform((val) => val === "true")
+      .transform((val) => val === "true" || IS_PACKAGED)
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
-    CAPTCHA_SECRET: zpStr(z.string().optional())
+    CAPTCHA_SECRET: zpStr(z.string().optional()),
+    PLAIN_API_KEY: zpStr(z.string().optional()),
+    PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional())
   })
   .transform((data) => ({
     ...data,
+    DB_READ_REPLICAS: data.DB_READ_REPLICAS
+      ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
+      : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
-    isProductionMode: data.NODE_ENV === "production",
+    isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&

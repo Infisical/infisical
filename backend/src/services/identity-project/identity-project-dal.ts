@@ -12,7 +12,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
 
   const findByProjectId = async (projectId: string, filter: { identityId?: string } = {}, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.IdentityProjectMembership)
+      const docs = await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
         .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
         .where((qb) => {

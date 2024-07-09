@@ -77,11 +77,12 @@ description: "How to sync secrets from Infisical to GitLab"
         </Steps>
       </Accordion>
     </AccordionGroup>
+
   </Tab>
   <Tab title="Self-Hosted Setup">
     Using the GitLab integration on a self-hosted instance of Infisical requires configuring an application in GitLab
     and registering your instance with it.
-    
+    <Tip>If you're self-hosting Gitlab with custom certificates, you will have to configure your Infisical instance to trust these certificates. To learn how, please follow [this guide](../../self-hosting/guides/custom-certificates).</Tip>
     <Steps>
       <Step title="Create an OAuth application in GitLab">
         Navigate to your user Settings > Applications to create a new GitLab application.
@@ -91,8 +92,8 @@ description: "How to sync secrets from Infisical to GitLab"
         
         Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/integrations/gitlab/oauth2/callback`.
 
-        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-new-app-form.png) 
-      
+        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-new-app-form.png)
+
         <Note>
           If you have a GitLab group, you can create an OAuth application under it
           in your group Settings > Applications.
@@ -100,17 +101,17 @@ description: "How to sync secrets from Infisical to GitLab"
       </Step>
       <Step title="Add your OAuth application credentials to Infisical">
         Obtain the **Application ID** and **Secret** for your GitLab application.
-        
-        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-credentials.png) 
-        
+
+        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-credentials.png)
+
         Back in your Infisical instance, add two new environment variables for the credentials of your GitLab application:
 
         - `CLIENT_ID_GITLAB`: The **Client ID** of your GitLab application.
         - `CLIENT_SECRET_GITLAB`: The **Secret** of your GitLab application.
-        
+
         Once added, restart your Infisical instance and use the GitLab integration.
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
-

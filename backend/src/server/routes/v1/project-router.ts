@@ -373,6 +373,44 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "PUT",
+    url: "/:workspaceSlug/audit-logs-retention",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceSlug: z.string().trim()
+      }),
+      body: z.object({
+        auditLogsRetentionDays: z.number().min(0)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: ProjectsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateAuditLogsRetention({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        workspaceSlug: req.params.workspaceSlug,
+        auditLogsRetentionDays: req.body.auditLogsRetentionDays
+      });
+
+      return {
+        message: "Successfully updated project's audit logs retention period",
+        workspace
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:workspaceId/integrations",
     config: {

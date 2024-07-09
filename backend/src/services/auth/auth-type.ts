@@ -8,7 +8,8 @@ export enum AuthMethod {
   JUMPCLOUD_SAML = "jumpcloud-saml",
   GOOGLE_SAML = "google-saml",
   KEYCLOAK_SAML = "keycloak-saml",
-  LDAP = "ldap"
+  LDAP = "ldap",
+  OIDC = "oidc"
 }
 
 export enum AuthTokenType {

@@ -17,6 +17,7 @@ export type TSaveIntegrationAccessTokenDTO = {
   url?: string;
   namespace?: string;
   refreshToken?: string;
+  awsAssumeIamRoleArn?: string;
 } & TProjectPermission;
 
 export type TDeleteIntegrationAuthsDTO = TProjectPermission & {

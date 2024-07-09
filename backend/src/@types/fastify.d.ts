@@ -13,6 +13,7 @@ import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
@@ -64,6 +65,7 @@ import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
+import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 
 declare module "fastify" {
@@ -102,6 +104,7 @@ declare module "fastify" {
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       orgRole: TOrgRoleServiceFactory;
+      oidc: TOidcConfigServiceFactory;
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
       group: TGroupServiceFactory;
@@ -155,6 +158,7 @@ declare module "fastify" {
       identityProjectAdditionalPrivilege: TIdentityProjectAdditionalPrivilegeServiceFactory;
       secretSharing: TSecretSharingServiceFactory;
       rateLimit: TRateLimitServiceFactory;
+      userEngagement: TUserEngagementServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

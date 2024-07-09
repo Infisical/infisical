@@ -6,12 +6,12 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useCreateSecretV3 } from "@app/hooks/api";
-import { UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretType, UserWsKeyPair } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
-  key: z.string(),
+  key: z.string().trim().min(1, { message: "Secret key is required" }),
   value: z.string().optional()
 });
 
@@ -56,7 +56,7 @@ export const CreateSecretForm = ({
         secretName: key,
         secretValue: value || "",
         secretComment: "",
-        type: "shared",
+        type: SecretType.Shared,
         latestFileKey: decryptFileKey
       });
       closePopUp(PopUpNames.CreateSecretForm);

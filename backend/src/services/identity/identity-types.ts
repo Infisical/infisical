@@ -16,6 +16,10 @@ export type TDeleteIdentityDTO = {
   id: string;
 } & Omit<TOrgPermission, "orgId">;
 
+export type TGetIdentityByIdDTO = {
+  id: string;
+} & Omit<TOrgPermission, "orgId">;
+
 export interface TIdentityTrustedIp {
   ipAddress: string;
   type: IPType;

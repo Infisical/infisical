@@ -178,7 +178,8 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     accessId,
     namespace,
-    accessToken
+    accessToken,
+    awsAssumeIamRoleArn
   }: TSaveIntegrationAccessTokenDTO) => {
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
@@ -230,7 +231,7 @@ export const integrationAuthServiceFactory = ({
       updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
     }
 
-    if (!refreshToken && (accessId || accessToken)) {
+    if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
       if (accessToken) {
         const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, key);
         updateDoc.accessIV = accessEncToken.iv;
@@ -243,6 +244,12 @@ export const integrationAuthServiceFactory = ({
         updateDoc.accessIdTag = accessEncToken.tag;
         updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
       }
+      if (awsAssumeIamRoleArn) {
+        const awsAssumeIamRoleArnEnc = encryptSymmetric128BitHexKeyUTF8(awsAssumeIamRoleArn, key);
+        updateDoc.awsAssumeIamRoleArnCipherText = awsAssumeIamRoleArnEnc.ciphertext;
+        updateDoc.awsAssumeIamRoleArnIV = awsAssumeIamRoleArnEnc.iv;
+        updateDoc.awsAssumeIamRoleArnTag = awsAssumeIamRoleArnEnc.tag;
+      }
     }
     return integrationAuthDAL.create(updateDoc);
   };
@@ -251,6 +258,14 @@ export const integrationAuthServiceFactory = ({
   const getIntegrationAccessToken = async (integrationAuth: TIntegrationAuths, botKey: string) => {
     let accessToken: string | undefined;
     let accessId: string | undefined;
+    // this means its not access token based
+    if (
+      integrationAuth.integration === Integrations.AWS_SECRET_MANAGER &&
+      integrationAuth.awsAssumeIamRoleArnCipherText
+    ) {
+      return { accessToken: "", accessId: "" };
+    }
+
     if (integrationAuth.accessTag && integrationAuth.accessIV && integrationAuth.accessCiphertext) {
       accessToken = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: integrationAuth.accessCiphertext,

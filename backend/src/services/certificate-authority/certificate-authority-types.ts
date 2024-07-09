@@ -75,6 +75,7 @@ export type TIssueCertFromCaDTO = {
   caId: string;
   friendlyName?: string;
   commonName: string;
+  altNames: string;
   ttl: string;
   notBefore?: string;
   notAfter?: string;

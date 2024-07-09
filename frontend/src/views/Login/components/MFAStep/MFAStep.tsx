@@ -16,7 +16,7 @@ import { useSelectOrganization, verifyMfaToken } from "@app/hooks/api/auth/queri
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
-import { navigateUserToOrg, navigateUserToSelectOrg } from "../../Login.utils";
+import { navigateUserToOrg, useNavigateToSelectOrganization } from "../../Login.utils";
 
 // The style for the verification code input
 const props = {
@@ -50,6 +50,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
+  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
 
   const { t } = useTranslation();
@@ -93,7 +94,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
 
       // case: user has orgs, so we navigate the user to select an org
       if (userOrgs.length > 0) {
-        navigateUserToSelectOrg(router, callbackPort);
+        navigateToSelectOrganization(callbackPort);
       }
       // case: no orgs found, so we navigate the user to create an org
       // cli login will fail in this case
@@ -166,7 +167,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
 
             // case: user has orgs, so we navigate the user to select an org
             if (userOrgs.length > 0) {
-              navigateUserToSelectOrg(router, callbackPort);
+              navigateToSelectOrganization(callbackPort);
             }
             // case: no orgs found, so we navigate the user to create an org
             // cli login will fail in this case
@@ -195,7 +196,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
           if (organizationId) {
             await navigateUserToOrg(router, organizationId);
           } else {
-            navigateUserToSelectOrg(router);
+            navigateToSelectOrganization();
           }
         } else {
           createNotification({

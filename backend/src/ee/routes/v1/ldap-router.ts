@@ -70,10 +70,13 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
           }
 
+          const externalId = ldapConfig.uniqueUserAttribute ? user[ldapConfig.uniqueUserAttribute] : user.uidNumber;
+          const username = ldapConfig.uniqueUserAttribute ? externalId : user.uid;
+
           const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
+            externalId,
+            username,
             ldapConfigId: ldapConfig.id,
-            externalId: user.uidNumber,
-            username: user.uid,
             firstName: user.givenName ?? user.cn ?? "",
             lastName: user.sn ?? "",
             email: user.mail,
@@ -138,6 +141,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           url: z.string(),
           bindDN: z.string(),
           bindPass: z.string(),
+          uniqueUserAttribute: z.string(),
           searchBase: z.string(),
           searchFilter: z.string(),
           groupSearchBase: z.string(),
@@ -172,6 +176,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         url: z.string().trim(),
         bindDN: z.string().trim(),
         bindPass: z.string().trim(),
+        uniqueUserAttribute: z.string().trim().default("uidNumber"),
         searchBase: z.string().trim(),
         searchFilter: z.string().trim().default("(uid={{username}})"),
         groupSearchBase: z.string().trim(),
@@ -213,6 +218,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           url: z.string().trim(),
           bindDN: z.string().trim(),
           bindPass: z.string().trim(),
+          uniqueUserAttribute: z.string().trim(),
           searchBase: z.string().trim(),
           searchFilter: z.string().trim(),
           groupSearchBase: z.string().trim(),

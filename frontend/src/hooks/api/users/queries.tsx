@@ -22,11 +22,14 @@ export const userKeys = {
   getUser: ["user"] as const,
   getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
+  userProjectFavorites: (orgId: string) => [{ orgId }, "user-project-favorites"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
+  listUsers: ["user-list"] as const,
+
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
 
@@ -38,7 +41,7 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-export const useDeleteUser = () => {
+export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -72,6 +75,14 @@ export const fetchUserAction = async (action: string) => {
     }
   });
   return data.userAction || "";
+};
+
+export const fetchUserProjectFavorites = async (orgId: string) => {
+  const { data } = await apiRequest.get<{ projectFavorites: string[] }>(
+    `/api/v1/user/me/project-favorites?orgId=${orgId}`
+  );
+
+  return data.projectFavorites;
 };
 
 export const useRenameUser = () => {
@@ -121,6 +132,12 @@ export const fetchOrgUsers = async (orgId: string) => {
 
   return data.users;
 };
+
+export const useGetUserProjectFavorites = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.userProjectFavorites(orgId),
+    queryFn: () => fetchUserProjectFavorites(orgId)
+  });
 
 export const useGetOrgUsers = (orgId: string) =>
   useQuery({

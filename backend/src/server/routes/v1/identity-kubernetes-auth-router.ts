@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { IdentityKubernetesAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -278,6 +279,56 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       });
 
       return { identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.parse(identityKubernetesAuth) };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/kubernetes-auth/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete Kubernetes Auth configuration on identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(KUBERNETES_AUTH.REVOKE.identityId)
+      }),
+      response: {
+        200: z.object({
+          identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.omit({
+            caCert: true,
+            tokenReviewerJwt: true
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const identityKubernetesAuth = await server.services.identityKubernetesAuth.revokeIdentityKubernetesAuth({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityKubernetesAuth.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_KUBERNETES_AUTH,
+          metadata: {
+            identityId: identityKubernetesAuth.identityId
+          }
+        }
+      });
+
+      return { identityKubernetesAuth };
     }
   });
 };
