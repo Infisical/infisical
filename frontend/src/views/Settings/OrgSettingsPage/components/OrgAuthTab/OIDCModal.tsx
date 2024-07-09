@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DeleteActionModal,
   FormControl,
   Input,
   Modal,
@@ -28,6 +29,7 @@ type Props = {
   popUp: UsePopUpState<["addOIDC"]>;
   handlePopUpClose: (popUpName: keyof UsePopUpState<["addOIDC"]>) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["addOIDC"]>, state?: boolean) => void;
+  hideDelete?: boolean;
 };
 
 const schema = z
@@ -94,11 +96,13 @@ const schema = z
 
 export type OIDCFormData = z.infer<typeof schema>;
 
-export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
+export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {
   const { currentOrg } = useOrganization();
 
   const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateOIDCConfig();
   const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateOIDCConfig();
+  const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
+
   const { data } = useGetOIDCConfig(currentOrg?.slug ?? "");
 
   const { control, handleSubmit, reset, setValue, watch } = useForm<OIDCFormData>({
@@ -112,6 +116,36 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
   const [isClientSecretFocused, setIsClientSecretFocused] = useToggle();
 
   const configurationTypeValue = watch("configurationType");
+  const handleOidcSoftDelete = async () => {
+    if (!currentOrg) {
+      return;
+    }
+    try {
+      await updateMutateAsync({
+        issuer: "",
+        discoveryURL: "",
+        authorizationEndpoint: "",
+        allowedEmailDomains: "",
+        jwksUri: "",
+        tokenEndpoint: "",
+        userinfoEndpoint: "",
+        clientId: "",
+        clientSecret: "",
+        isActive: false,
+        orgSlug: currentOrg.slug
+      });
+
+      createNotification({
+        text: "Successfully deleted OIDC configuration.",
+        type: "success"
+      });
+    } catch (err) {
+      createNotification({
+        text: "Failed deleting OIDC configuration.",
+        type: "error"
+      });
+    }
+  };
 
   useEffect(() => {
     if (data) {
@@ -193,212 +227,232 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props)
   };
 
   return (
-    <Modal
-      isOpen={popUp?.addOIDC?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("addOIDC", isOpen);
-        reset();
-      }}
-    >
-      <ModalContent title="Manage OIDC configuration">
-        <form onSubmit={handleSubmit(onOIDCModalSubmit)}>
-          <Controller
-            control={control}
-            name="configurationType"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Configuration Type"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  className="w-full"
-                  defaultValue="discoveryURL"
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                >
-                  <SelectItem value={ConfigurationType.DISCOVERY_URL}>Discovery URL</SelectItem>
-                  <SelectItem value={ConfigurationType.CUSTOM}>Custom</SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          />
-          {configurationTypeValue === ConfigurationType.DISCOVERY_URL && (
+    <>
+      <Modal
+        isOpen={popUp?.addOIDC?.isOpen}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("addOIDC", isOpen);
+          reset();
+        }}
+      >
+        <ModalContent title="Manage OIDC configuration">
+          <form onSubmit={handleSubmit(onOIDCModalSubmit)}>
             <Controller
               control={control}
-              name="discoveryURL"
+              name="configurationType"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Configuration Type"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Select
+                    className="w-full"
+                    defaultValue="discoveryURL"
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                  >
+                    <SelectItem value={ConfigurationType.DISCOVERY_URL}>Discovery URL</SelectItem>
+                    <SelectItem value={ConfigurationType.CUSTOM}>Custom</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+            {configurationTypeValue === ConfigurationType.DISCOVERY_URL && (
+              <Controller
+                control={control}
+                name="discoveryURL"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Discovery Document URL"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="https://accounts.google.com/.well-known/openid-configuration"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                )}
+              />
+            )}
+            {configurationTypeValue === ConfigurationType.CUSTOM && (
+              <>
+                <Controller
+                  control={control}
+                  name="issuer"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl label="Issuer" errorText={error?.message} isError={Boolean(error)}>
+                      <Input
+                        {...field}
+                        placeholder="https://accounts.google.com"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="authorizationEndpoint"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Authorization Endpoint"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Input
+                        {...field}
+                        placeholder="https://accounts.google.com/o/oauth2/v2/auth"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="tokenEndpoint"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Token Endpoint"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Input
+                        {...field}
+                        placeholder="https://oauth2.googleapis.com/token"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="userinfoEndpoint"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="User info endpoint"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Input
+                        {...field}
+                        placeholder="https://openidconnect.googleapis.com/v1/userinfo"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="jwksUri"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="JWKS URI"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Input
+                        {...field}
+                        placeholder="https://www.googleapis.com/oauth2/v3/certs"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                  )}
+                />
+              </>
+            )}
+            <Controller
+              control={control}
+              name="allowedEmailDomains"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Discovery Document URL"
+                  label="Allowed Email Domains (defaults to any)"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                >
+                  <Input {...field} placeholder="infisical.com, google.com" autoComplete="off" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="clientId"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Client ID" errorText={error?.message} isError={Boolean(error)}>
+                  <Input
+                    placeholder="Client ID"
+                    type={isClientIdFocused ? "text" : "password"}
+                    onFocus={() => setIsClientIdFocused.on()}
+                    {...field}
+                    onBlur={() => {
+                      field.onBlur();
+                      setIsClientIdFocused.off();
+                    }}
+                    autoComplete="off"
+                    className="bg-mineshaft-800"
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="clientSecret"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Client Secret"
                   errorText={error?.message}
                   isError={Boolean(error)}
                 >
                   <Input
                     {...field}
-                    placeholder="https://accounts.google.com/.well-known/openid-configuration"
+                    placeholder="Client Secret"
+                    type={isClientSecretFocused ? "text" : "password"}
                     autoComplete="off"
+                    onFocus={() => setIsClientSecretFocused.on()}
+                    onBlur={() => {
+                      field.onBlur();
+                      setIsClientSecretFocused.off();
+                    }}
+                    className="bg-mineshaft-800"
                   />
                 </FormControl>
               )}
             />
-          )}
-          {configurationTypeValue === ConfigurationType.CUSTOM && (
-            <>
-              <Controller
-                control={control}
-                name="issuer"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl label="Issuer" errorText={error?.message} isError={Boolean(error)}>
-                    <Input
-                      {...field}
-                      placeholder="https://accounts.google.com"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="authorizationEndpoint"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Authorization Endpoint"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input
-                      {...field}
-                      placeholder="https://accounts.google.com/o/oauth2/v2/auth"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="tokenEndpoint"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Token Endpoint"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input
-                      {...field}
-                      placeholder="https://oauth2.googleapis.com/token"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="userinfoEndpoint"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="User info endpoint"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input
-                      {...field}
-                      placeholder="https://openidconnect.googleapis.com/v1/userinfo"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="jwksUri"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl label="JWKS URI" errorText={error?.message} isError={Boolean(error)}>
-                    <Input
-                      {...field}
-                      placeholder="https://www.googleapis.com/oauth2/v3/certs"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <Controller
-            control={control}
-            name="allowedEmailDomains"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Allowed Email Domains (defaults to any)"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input {...field} placeholder="infisical.com, google.com" autoComplete="off" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="clientId"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Client ID" errorText={error?.message} isError={Boolean(error)}>
-                <Input
-                  placeholder="Client ID"
-                  type={isClientIdFocused ? "text" : "password"}
-                  onFocus={() => setIsClientIdFocused.on()}
-                  {...field}
-                  onBlur={() => {
-                    field.onBlur();
-                    setIsClientIdFocused.off();
-                  }}
-                  autoComplete="off"
-                  className="bg-mineshaft-800"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="clientSecret"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Client Secret"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input
-                  {...field}
-                  placeholder="Client Secret"
-                  type={isClientSecretFocused ? "text" : "password"}
-                  autoComplete="off"
-                  onFocus={() => setIsClientSecretFocused.on()}
-                  onBlur={() => {
-                    field.onBlur();
-                    setIsClientSecretFocused.off();
-                  }}
-                  className="bg-mineshaft-800"
-                />
-              </FormControl>
-            )}
-          />
-          <div className="mt-8 flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={createIsLoading || updateIsLoading}
-            >
-              {!data ? "Add" : "Update"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpClose("addOIDC")}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </ModalContent>
-    </Modal>
+            <div className="mt-8 flex justify-between">
+              <div className="flex items-center">
+                <Button
+                  className="mr-4"
+                  size="sm"
+                  type="submit"
+                  isLoading={createIsLoading || updateIsLoading}
+                >
+                  {!data ? "Add" : "Update"}
+                </Button>
+                <Button
+                  colorSchema="secondary"
+                  variant="plain"
+                  onClick={() => handlePopUpClose("addOIDC")}
+                >
+                  Cancel
+                </Button>
+              </div>
+              {!hideDelete && (
+                <Button colorSchema="danger" onClick={() => setIsDeletePopupOpen.on()}>
+                  Delete
+                </Button>
+              )}
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+      <DeleteActionModal
+        isOpen={isDeletePopupOpen}
+        title="Are you sure want to delete OIDC?"
+        onChange={() => setIsDeletePopupOpen.toggle()}
+        deleteKey="confirm"
+        onDeleteApproved={handleOidcSoftDelete}
+      />
+    </>
   );
 };

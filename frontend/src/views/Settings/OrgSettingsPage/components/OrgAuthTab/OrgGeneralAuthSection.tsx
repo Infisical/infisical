@@ -87,7 +87,6 @@ export const OrgGeneralAuthSection = () => {
           Enforce members to authenticate via SAML to access this organization
         </p>
       </div>
-      <hr className="border-mineshaft-600" />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

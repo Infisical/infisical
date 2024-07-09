@@ -115,7 +115,6 @@ export const OrgSSOSection = (): JSX.Element => {
           Allow members to authenticate into Infisical with SAML
         </p>
       </div>
-      <hr className="border-mineshaft-600" />
       <SSOModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
