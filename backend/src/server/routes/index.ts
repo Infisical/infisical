@@ -105,6 +105,8 @@ import { identityKubernetesAuthServiceFactory } from "@app/services/identity-kub
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
+import { identityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
@@ -234,6 +236,7 @@ export const registerRoutes = async (
   const identityProjectMembershipRoleDAL = identityProjectMembershipRoleDALFactory(db);
   const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
 
+  const identityTokenAuthDAL = identityTokenAuthDALFactory(db);
   const identityUaDAL = identityUaDALFactory(db);
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
@@ -808,6 +811,7 @@ export const registerRoutes = async (
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
+    identityProjectDAL,
     licenseService
   });
   const identityAccessTokenService = identityAccessTokenServiceFactory({
@@ -827,6 +831,14 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilegeDAL,
     permissionService,
     identityProjectDAL
+  });
+  const identityTokenAuthService = identityTokenAuthServiceFactory({
+    identityTokenAuthDAL,
+    identityDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    permissionService,
+    licenseService
   });
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
@@ -970,6 +982,7 @@ export const registerRoutes = async (
     identity: identityService,
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
+    identityTokenAuth: identityTokenAuthService,
     identityUa: identityUaService,
     identityKubernetesAuth: identityKubernetesAuthService,
     identityGcpAuth: identityGcpAuthService,

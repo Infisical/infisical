@@ -9,6 +9,7 @@ import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
 import { registerIdentityRouter } from "./identity-router";
+import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
@@ -34,6 +35,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (authRouter) => {
       await authRouter.register(registerAuthRoutes);
+      await authRouter.register(registerIdentityTokenAuthRouter);
       await authRouter.register(registerIdentityUaRouter);
       await authRouter.register(registerIdentityKubernetesRouter);
       await authRouter.register(registerIdentityGcpAuthRouter);

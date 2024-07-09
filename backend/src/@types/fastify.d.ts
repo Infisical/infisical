@@ -42,6 +42,7 @@ import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-a
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { TIdentityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
@@ -128,6 +129,7 @@ declare module "fastify" {
       identity: TIdentityServiceFactory;
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
+      identityTokenAuth: TIdentityTokenAuthServiceFactory;
       identityUa: TIdentityUaServiceFactory;
       identityKubernetesAuth: TIdentityKubernetesAuthServiceFactory;
       identityGcpAuth: TIdentityGcpAuthServiceFactory;

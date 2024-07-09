@@ -104,6 +104,9 @@ import {
   TIdentityProjectMemberships,
   TIdentityProjectMembershipsInsert,
   TIdentityProjectMembershipsUpdate,
+  TIdentityTokenAuths,
+  TIdentityTokenAuthsInsert,
+  TIdentityTokenAuthsUpdate,
   TIdentityUaClientSecrets,
   TIdentityUaClientSecretsInsert,
   TIdentityUaClientSecretsUpdate,
@@ -450,6 +453,11 @@ declare module "knex/types/tables" {
       TIntegrationAuthsUpdate
     >;
     [TableName.Identity]: KnexOriginal.CompositeTableType<TIdentities, TIdentitiesInsert, TIdentitiesUpdate>;
+    [TableName.IdentityTokenAuth]: KnexOriginal.CompositeTableType<
+      TIdentityTokenAuths,
+      TIdentityTokenAuthsInsert,
+      TIdentityTokenAuthsUpdate
+    >;
     [TableName.IdentityUniversalAuth]: KnexOriginal.CompositeTableType<
       TIdentityUniversalAuths,
       TIdentityUniversalAuthsInsert,
