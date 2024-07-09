@@ -49,7 +49,7 @@ Server-related logic is handled in `/src/server`. To connect the service layer t
 
 ## Writing API Routes
 
-1. To create a route component, run `npm generate:component`.
+1. To create a route component, run `npm run generate:component`.
 2. Select option 3, type the router name in dash-case, and provide the version number. This will generate a router file in `src/server/routes/v<version-number>/<router component name>`
     1. Implement your logic to connect with the service layer as needed.
     2. Import the router component in the version folder's index.ts. For instance, if it's in v1, import it in `v1/index.ts`.
