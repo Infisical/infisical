@@ -81,7 +81,14 @@ access the Infisical API using the GCP ID Token authentication method.
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
-    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **GCP Auth** and set the **Type** to **GCP ID Token Auth**.
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+
+    ![identities page](/images/platform/identities/identities-page.png)
+
+    Since the identity has been configured with Universal Auth by default, you should re-configure it to use GCP Auth instead. To do this, press to edit the **Authentication** section,
+    remove the existing Universal Auth configuration, and add a new GCP Auth configuration onto the identity; set the **Type** field to **GCP ID Token Auth**.
+
+    ![identities page remove default auth](/images/platform/identities/identities-page-remove-default-auth.png)
 
     ![identities create gcp auth method](/images/platform/identities/identities-org-create-gcp-gce-auth-method.png)
 
@@ -243,9 +250,16 @@ access the Infisical API using the GCP IAM authentication method.
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
-    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **GCP IAM Auth** and set the **Type** to **GCP IAM Auth**.
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
 
-    ![identities create gcp auth method](/images/platform/identities/identities-org-create-gcp-iam-auth-method.png)
+    ![identities page](/images/platform/identities/identities-page.png)
+
+    Since the identity has been configured with Universal Auth by default, you should re-configure it to use GCP Auth instead. To do this, press to edit the **Authentication** section,
+    remove the existing Universal Auth configuration, and add a new GCP Auth configuration onto the identity; set the **Type** field to **GCP IAM Auth**.
+
+    ![identities page remove default auth](/images/platform/identities/identities-page-remove-default-auth.png)
+
+    ![identities organization create token auth method](/images/platform/identities/identities-org-create-gcp-iam-auth-method.png)
 
     Here's some more guidance on each field:
 

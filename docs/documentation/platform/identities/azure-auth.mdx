@@ -75,7 +75,14 @@ access the Infisical API using the Azure Auth authentication method.
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
-    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **Azure Auth**.
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+
+    ![identities page](/images/platform/identities/identities-page.png)
+
+    Since the identity has been configured with Universal Auth by default, you should re-configure it to use Azure Auth instead. To do this, press to edit the **Authentication** section,
+    remove the existing Universal Auth configuration, and add a new Azure Auth configuration onto the identity.
+
+    ![identities page remove default auth](/images/platform/identities/identities-page-remove-default-auth.png)
 
     ![identities create azure auth method](/images/platform/identities/identities-org-create-azure-auth-method.png)
 

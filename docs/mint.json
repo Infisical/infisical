@@ -162,6 +162,7 @@
       "pages": [
         "documentation/platform/auth-methods/email-password",
         "documentation/platform/token",
+        "documentation/platform/identities/token-auth",
         "documentation/platform/identities/universal-auth",
         "documentation/platform/identities/kubernetes-auth",
         "documentation/platform/identities/gcp-auth",
