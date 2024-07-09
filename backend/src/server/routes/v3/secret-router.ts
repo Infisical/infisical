@@ -1327,6 +1327,48 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/move",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      body: z.object({
+        projectSlug: z.string().trim(),
+        sourceEnvironment: z.string().trim(),
+        sourceSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        destinationEnvironment: z.string().trim(),
+        destinationSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        secrets: z
+          .object({
+            id: z.string()
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.union([
+          z.object({
+            secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+          }),
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
+        ])
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      // TODO: publish audit log
+      return server.services.secret.moveSecrets({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/batch",
     config: {
       rateLimit: secretsLimit
