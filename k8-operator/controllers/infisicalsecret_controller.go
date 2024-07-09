@@ -196,6 +196,12 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				DeleteFunc: func(e event.DeleteEvent) bool {
 					return true
 				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return false
+				},
+				CreateFunc: func(e event.CreateEvent) bool {
+					return false
+				},
 			}),
 		).
 		Complete(r)
