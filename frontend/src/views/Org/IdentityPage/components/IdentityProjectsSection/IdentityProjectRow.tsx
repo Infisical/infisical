@@ -3,7 +3,7 @@ import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { IconButton, Td,Tooltip, Tr } from "@app/components/v2";
+import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -18,6 +18,7 @@ type Props = {
 
 const formatRoleName = (role: string, customRoleName?: string) => {
   if (role === ProjectMembershipRole.Custom) return customRoleName;
+  if (role === ProjectMembershipRole.Admin) return "Admin";
   if (role === ProjectMembershipRole.Member) return "Developer";
   if (role === ProjectMembershipRole.Viewer) return "Viewer";
   if (role === ProjectMembershipRole.NoAccess) return "No access";
