@@ -207,9 +207,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateById = async (orgId: string, data: Partial<TOrganizations>) => {
+  const updateById = async (orgId: string, data: Partial<TOrganizations>, tx?: Knex) => {
     try {
-      const [org] = await db(TableName.Organization)
+      const [org] = await (tx || db)(TableName.Organization)
         .where({ id: orgId })
         .update({ ...data })
         .returning("*");
