@@ -23,10 +23,10 @@ import {
   DeleteIdentityDTO,
   DeleteIdentityGcpAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
+  DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   DeleteIdentityUniversalAuthDTO,
-  DeleteIdentityOidcAuthDTO,
   Identity,
   IdentityAccessToken,
   IdentityAwsAuth,
@@ -44,8 +44,8 @@ import {
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityOidcAuthDTO,
-  UpdateIdentityUniversalAuthDTO,
   UpdateIdentityTokenAuthDTO,
+  UpdateIdentityUniversalAuthDTO,
   UpdateTokenIdentityTokenAuthDTO
 } from "./types";
 

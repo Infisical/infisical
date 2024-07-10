@@ -19,10 +19,9 @@ import {
   useDeleteIdentityAzureAuth,
   useDeleteIdentityGcpAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
-  useDeleteIdentityUniversalAuth,
-  useDeleteIdentityOidcAuth
-} from "@app/hooks/api";
+  useDeleteIdentityUniversalAuth} from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 

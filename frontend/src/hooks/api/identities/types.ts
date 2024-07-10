@@ -1,4 +1,5 @@
 import { TOrgRole } from "../roles/types";
+import { Workspace } from "../workspace/types";
 import { IdentityAuthMethod } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -45,6 +46,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
+  project: Pick<Workspace, "id" | "name">;
   roles: Array<
     {
       id: string;
