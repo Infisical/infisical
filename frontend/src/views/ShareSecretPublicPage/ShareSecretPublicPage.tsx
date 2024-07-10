@@ -77,7 +77,7 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
           </div>
           <div className="w-full flex justify-center">
             <h1 className={`${id ? "max-w-sm mb-4": "max-w-md mt-4 mb-6"} bg-gradient-to-b from-white to-bunker-200 bg-clip-text px-4 text-center text-3xl font-medium text-transparent`}>
-              {id ? "Someone shared a secret on Infisical with you" : "Share a secret with Infisical"}
+              {id ? "Someone shared a secret via Infisical with you" : "Share a secret via Infisical"}
             </h1>
           </div>
           <div className="m-auto mt-4 flex w-full max-w-2xl justify-center px-6">
