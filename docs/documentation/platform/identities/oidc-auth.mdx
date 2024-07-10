@@ -69,7 +69,14 @@ In the following steps, we explore how to create and use identities to access th
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
-    Once you've created an identity, you'll be prompted to configure the authentication method for it. Here, select **OIDC Auth**.
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+
+    ![identities page](/images/platform/identities/identities-page.png)
+
+    Since the identity has been configured with Universal Auth by default, you should re-configure it to use OIDC Auth instead. To do this, press to edit the **Authentication** section,
+    remove the existing Universal Auth configuration, and add a new OIDC Auth configuration onto the identity.
+
+    ![identities page remove default auth](/images/platform/identities/identities-page-remove-default-auth.png)
 
     ![identities create oidc auth method](/images/platform/identities/identities-org-create-oidc-auth-method.png)
 
@@ -79,7 +86,7 @@ In the following steps, we explore how to create and use identities to access th
     - OIDC Discovery URL:  The URL used to retrieve the OpenID Connect configuration information from the identity provider. This will be used to fetch the public key needed for verifying the provided JWT.
     - Issuer: The unique identifier of the identity provider issuing the JWT. This value is used to verify the iss (issuer) claim in the JWT to ensure the token is issued by a trusted provider.
     - CA Certificate: The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.
-    - Subject: The expected principal that is the subject of the JWT. The sub (subject) claim in the JWT should match this value.
+    - Subject: The expected principal that is the subject of the JWT. The `sub` (subject) claim in the JWT should match this value.
     - Audiences: A list of intended recipients. This value is checked against the aud (audience) claim in the token. The token's aud claim should match at least one of the audiences for it to be valid.
     - Claims: Additional information or attributes that should be present in the JWT for it to be valid.
     - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
