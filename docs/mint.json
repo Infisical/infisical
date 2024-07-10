@@ -444,6 +444,46 @@
           ]
         },
         {
+          "group": "GCP Auth",
+          "pages": [
+            "api-reference/endpoints/gcp-auth/login",
+            "api-reference/endpoints/gcp-auth/attach",
+            "api-reference/endpoints/gcp-auth/retrieve",
+            "api-reference/endpoints/gcp-auth/update",
+            "api-reference/endpoints/gcp-auth/revoke"
+          ]
+        },
+        {
+          "group": "AWS Auth",
+          "pages": [
+            "api-reference/endpoints/aws-auth/login",
+            "api-reference/endpoints/aws-auth/attach",
+            "api-reference/endpoints/aws-auth/retrieve",
+            "api-reference/endpoints/aws-auth/update",
+            "api-reference/endpoints/aws-auth/revoke"
+          ]
+        },
+        {
+          "group": "Azure Auth",
+          "pages": [
+            "api-reference/endpoints/azure-auth/login",
+            "api-reference/endpoints/azure-auth/attach",
+            "api-reference/endpoints/azure-auth/retrieve",
+            "api-reference/endpoints/azure-auth/update",
+            "api-reference/endpoints/azure-auth/revoke"
+          ]
+        },
+        {
+          "group": "Kubernetes Auth",
+          "pages": [
+            "api-reference/endpoints/kubernetes-auth/login",
+            "api-reference/endpoints/kubernetes-auth/attach",
+            "api-reference/endpoints/kubernetes-auth/retrieve",
+            "api-reference/endpoints/kubernetes-auth/update",
+            "api-reference/endpoints/kubernetes-auth/revoke"
+          ]
+        },
+        {
           "group": "Organizations",
           "pages": [
             "api-reference/endpoints/organizations/memberships",
