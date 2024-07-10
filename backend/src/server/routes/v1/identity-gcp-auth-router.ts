@@ -19,7 +19,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       description: "Login with GCP Auth",
       body: z.object({
-        identityId: z.string(),
+        identityId: z.string().describe(GCP_AUTH.LOGIN.identityId),
         jwt: z.string()
       }),
       response: {
@@ -72,20 +72,21 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(GCP_AUTH.ATTACH.identityId)
       }),
       body: z.object({
         type: z.enum(["iam", "gce"]),
-        allowedServiceAccounts: validateGcpAuthField,
-        allowedProjects: validateGcpAuthField,
-        allowedZones: validateGcpAuthField,
+        allowedServiceAccounts: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedServiceAccounts),
+        allowedProjects: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedProjects),
+        allowedZones: validateGcpAuthField.describe(GCP_AUTH.ATTACH.allowedZones),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(GCP_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
@@ -93,15 +94,17 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(GCP_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+          .default(2592000)
+          .describe(GCP_AUTH.ATTACH.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(GCP_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -157,22 +160,23 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(GCP_AUTH.UPDATE.identityId)
       }),
       body: z.object({
         type: z.enum(["iam", "gce"]).optional(),
-        allowedServiceAccounts: validateGcpAuthField.optional(),
-        allowedProjects: validateGcpAuthField.optional(),
-        allowedZones: validateGcpAuthField.optional(),
+        allowedServiceAccounts: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedServiceAccounts),
+        allowedProjects: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedProjects),
+        allowedZones: validateGcpAuthField.optional().describe(GCP_AUTH.UPDATE.allowedZones),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .optional(),
-        accessTokenTTL: z.number().int().min(0).optional(),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+          .optional()
+          .describe(GCP_AUTH.UPDATE.accessTokenTrustedIps),
+        accessTokenTTL: z.number().int().min(0).optional().describe(GCP_AUTH.UPDATE.accessTokenTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(GCP_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
@@ -180,6 +184,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
             message: "accessTokenMaxTTL must have a non zero number"
           })
           .optional()
+          .describe(GCP_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({
@@ -235,7 +240,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(GCP_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({

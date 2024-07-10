@@ -119,24 +119,149 @@ export const AWS_AUTH = {
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
   },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    allowedPrincipalArns:
+      "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
+    allowedAccountIds:
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    stsEndpoint: "The endpoint URL for the AWS STS API.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to be updated.",
+    allowedPrincipalArns:
+      "The new comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
+    allowedAccountIds:
+      "The new comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    stsEndpoint: "The new endpoint URL for the AWS STS API.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve."
+  },
   REVOKE: {
     identityId: "The ID of the identity to revoke."
   }
 } as const;
 
 export const AZURE_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    tenantId: "The tenant ID for the Azure AD organization.",
+    resource: "The resource URL for the application registered in Azure AD.",
+    allowedServicePrincipalIds:
+      "The comma-separated list of Azure AD service principal IDs that are allowed to authenticate with Infisical.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The new ID of the identity to be updated.",
+    tenantId: "The new tenant ID for the Azure AD organization.",
+    resource: "The new resource URL for the application registered in Azure AD.",
+    allowedServicePrincipalIds:
+      "The new comma-separated list of Azure AD service principal IDs that are allowed to authenticate with Infisical.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve."
+  },
   REVOKE: {
     identityId: "The ID of the identity to revoke."
   }
 } as const;
 
 export const GCP_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    allowedServiceAccounts:
+      "The comma-separated list of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical.",
+    allowedProjects:
+      "The comma-separated list of trusted GCP projects that the GCE instance must belong to authenticate with Infisical.",
+    allowedZones:
+      "The comma-separated list of trusted zones that the GCE instances must belong to authenticate with Infisical.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to be updated.",
+    allowedServiceAccounts:
+      "The new comma-separated list of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical.",
+    allowedProjects:
+      "The new comma-separated list of trusted GCP projects that the GCE instance must belong to authenticate with Infisical.",
+    allowedZones:
+      "The new comma-separated list of trusted zones that the GCE instances must belong to authenticate with Infisical.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve."
+  },
   REVOKE: {
     identityId: "The ID of the identity to revoke."
   }
 } as const;
 
 export const KUBERNETES_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
+    caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
+    tokenReviewerJwt:
+      "The long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+    allowedNamespaces:
+      "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
+    allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
+    allowedAudience:
+      "The optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to be updated.",
+    kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
+    caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
+    tokenReviewerJwt:
+      "The new long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods.",
+    allowedNamespaces:
+      "The new comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
+    allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
+    allowedAudience:
+      "The new optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve."
+  },
   REVOKE: {
     identityId: "The ID of the identity to revoke."
   }

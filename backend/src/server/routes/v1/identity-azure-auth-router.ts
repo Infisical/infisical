@@ -19,7 +19,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       description: "Login with Azure Auth",
       body: z.object({
-        identityId: z.string(),
+        identityId: z.string().describe(AZURE_AUTH.LOGIN.identityId),
         jwt: z.string()
       }),
       response: {
@@ -72,19 +72,20 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(AZURE_AUTH.LOGIN.identityId)
       }),
       body: z.object({
-        tenantId: z.string().trim(),
-        resource: z.string().trim(),
-        allowedServicePrincipalIds: validateAzureAuthField,
+        tenantId: z.string().trim().describe(AZURE_AUTH.ATTACH.tenantId),
+        resource: z.string().trim().describe(AZURE_AUTH.ATTACH.resource),
+        allowedServicePrincipalIds: validateAzureAuthField.describe(AZURE_AUTH.ATTACH.allowedServicePrincipalIds),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(AZURE_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
@@ -92,15 +93,17 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(AZURE_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+          .default(2592000)
+          .describe(AZURE_AUTH.ATTACH.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AZURE_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -154,21 +157,24 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(AZURE_AUTH.UPDATE.identityId)
       }),
       body: z.object({
-        tenantId: z.string().trim().optional(),
-        resource: z.string().trim().optional(),
-        allowedServicePrincipalIds: validateAzureAuthField.optional(),
+        tenantId: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.tenantId),
+        resource: z.string().trim().optional().describe(AZURE_AUTH.UPDATE.resource),
+        allowedServicePrincipalIds: validateAzureAuthField
+          .optional()
+          .describe(AZURE_AUTH.UPDATE.allowedServicePrincipalIds),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .optional(),
-        accessTokenTTL: z.number().int().min(0).optional(),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+          .optional()
+          .describe(AZURE_AUTH.UPDATE.accessTokenTrustedIps),
+        accessTokenTTL: z.number().int().min(0).optional().describe(AZURE_AUTH.UPDATE.accessTokenTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(AZURE_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
@@ -176,6 +182,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
             message: "accessTokenMaxTTL must have a non zero number"
           })
           .optional()
+          .describe(AZURE_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({
@@ -229,7 +236,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(AZURE_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({
