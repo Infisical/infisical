@@ -11,6 +11,9 @@ import {
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import {
@@ -18,9 +21,10 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -44,6 +48,7 @@ import {
 } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
 import {
+  SecretOperations,
   TAttachSecretTagsDTO,
   TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
@@ -59,6 +64,7 @@ import {
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
+  TMoveSecretsDTO,
   TUpdateBulkSecretDTO,
   TUpdateManySecretRawDTO,
   TUpdateSecretDTO,
@@ -84,6 +90,12 @@ type TSecretServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
+  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
+  secretApprovalRequestSecretDAL: Pick<
+    TSecretApprovalRequestSecretDALFactory,
+    "insertMany" | "insertApprovalSecretTags"
+  >;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -100,7 +112,10 @@ export const secretServiceFactory = ({
   projectDAL,
   projectBotService,
   secretImportDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  secretApprovalPolicyService,
+  secretApprovalRequestDAL,
+  secretApprovalRequestSecretDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1683,6 +1698,393 @@ export const secretServiceFactory = ({
     return { message: "Successfully backfilled secret references" };
   };
 
+  const moveSecrets = async ({
+    sourceEnvironment,
+    sourceSecretPath,
+    destinationEnvironment,
+    destinationSecretPath,
+    secretIds,
+    projectSlug,
+    shouldOverwrite,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TMoveSecretsDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found."
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Secrets, { environment: sourceEnvironment, secretPath: sourceSecretPath })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment: destinationEnvironment, secretPath: destinationSecretPath })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment: destinationEnvironment, secretPath: destinationSecretPath })
+    );
+
+    const botKey = await projectBotService.getBotKey(project.id);
+    if (!botKey) {
+      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    }
+
+    const sourceFolder = await folderDAL.findBySecretPath(project.id, sourceEnvironment, sourceSecretPath);
+    if (!sourceFolder) {
+      throw new NotFoundError({
+        message: "Source path does not exist."
+      });
+    }
+
+    const destinationFolder = await folderDAL.findBySecretPath(
+      project.id,
+      destinationEnvironment,
+      destinationSecretPath
+    );
+
+    if (!destinationFolder) {
+      throw new NotFoundError({
+        message: "Destination path does not exist."
+      });
+    }
+
+    const sourceSecrets = await secretDAL.find({
+      type: SecretType.Shared,
+      $in: {
+        id: secretIds
+      }
+    });
+
+    if (sourceSecrets.length !== secretIds.length) {
+      throw new BadRequestError({
+        message: "Invalid secrets"
+      });
+    }
+
+    const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
+      ...secret,
+      secretKey: decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key: botKey
+      }),
+      secretValue: decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key: botKey
+      })
+    }));
+
+    let isSourceUpdated = false;
+    let isDestinationUpdated = false;
+
+    // Moving secrets is a two-step process.
+    await secretDAL.transaction(async (tx) => {
+      // First step is to create/update the secret in the destination:
+      const destinationSecretsFromDB = await secretDAL.find(
+        {
+          folderId: destinationFolder.id
+        },
+        { tx }
+      );
+
+      const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
+        return {
+          ...secret,
+          secretKey: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: secret.secretKeyCiphertext,
+            iv: secret.secretKeyIV,
+            tag: secret.secretKeyTag,
+            key: botKey
+          }),
+          secretValue: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: secret.secretValueCiphertext,
+            iv: secret.secretValueIV,
+            tag: secret.secretValueTag,
+            key: botKey
+          })
+        };
+      });
+
+      const destinationSecretsGroupedByBlindIndex = groupBy(
+        decryptedDestinationSecrets.filter(({ secretBlindIndex }) => Boolean(secretBlindIndex)),
+        (i) => i.secretBlindIndex as string
+      );
+
+      const locallyCreatedSecrets = decryptedSourceSecrets
+        .filter(({ secretBlindIndex }) => !destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0])
+        .map((el) => ({ ...el, operation: SecretOperations.Create }));
+
+      const locallyUpdatedSecrets = decryptedSourceSecrets
+        .filter(
+          ({ secretBlindIndex, secretKey, secretValue }) =>
+            destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0] &&
+            // if key or value changed
+            (destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretKey !== secretKey ||
+              destinationSecretsGroupedByBlindIndex[secretBlindIndex as string]?.[0]?.secretValue !== secretValue)
+        )
+        .map((el) => ({ ...el, operation: SecretOperations.Update }));
+
+      if (locallyUpdatedSecrets.length > 0 && !shouldOverwrite) {
+        const existingKeys = locallyUpdatedSecrets.map((s) => s.secretKey);
+
+        throw new BadRequestError({
+          message: `Failed to move secrets. The following secrets already exist in the destination: ${existingKeys.join(
+            ","
+          )}`
+        });
+      }
+
+      const isEmpty = locallyCreatedSecrets.length + locallyUpdatedSecrets.length === 0;
+
+      if (isEmpty) {
+        throw new BadRequestError({
+          message: "Selected secrets already exist in the destination."
+        });
+      }
+      const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        project.id,
+        destinationFolder.environment.slug,
+        destinationFolder.path
+      );
+
+      if (destinationFolderPolicy && actor === ActorType.USER) {
+        // if secret approval policy exists for destination, we create the secret approval request
+        const localSecretsIds = decryptedDestinationSecrets.map(({ id }) => id);
+        const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
+          destinationFolder.id,
+          localSecretsIds,
+          tx
+        );
+
+        const approvalRequestDoc = await secretApprovalRequestDAL.create(
+          {
+            folderId: destinationFolder.id,
+            slug: alphaNumericNanoId(),
+            policyId: destinationFolderPolicy.id,
+            status: "open",
+            hasMerged: false,
+            committerUserId: actorId
+          },
+          tx
+        );
+
+        const commits = locallyCreatedSecrets.concat(locallyUpdatedSecrets).map((doc) => {
+          const { operation } = doc;
+          const localSecret = destinationSecretsGroupedByBlindIndex[doc.secretBlindIndex as string]?.[0];
+
+          return {
+            op: operation,
+            keyEncoding: doc.keyEncoding,
+            algorithm: doc.algorithm,
+            requestId: approvalRequestDoc.id,
+            metadata: doc.metadata,
+            secretKeyIV: doc.secretKeyIV,
+            secretKeyTag: doc.secretKeyTag,
+            secretKeyCiphertext: doc.secretKeyCiphertext,
+            secretValueIV: doc.secretValueIV,
+            secretValueTag: doc.secretValueTag,
+            secretValueCiphertext: doc.secretValueCiphertext,
+            secretBlindIndex: doc.secretBlindIndex,
+            secretCommentIV: doc.secretCommentIV,
+            secretCommentTag: doc.secretCommentTag,
+            secretCommentCiphertext: doc.secretCommentCiphertext,
+            skipMultilineEncoding: doc.skipMultilineEncoding,
+            // except create operation other two needs the secret id and version id
+            ...(operation !== SecretOperations.Create
+              ? { secretId: localSecret.id, secretVersion: latestSecretVersions[localSecret.id].id }
+              : {})
+          };
+        });
+        await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+      } else {
+        // apply changes directly
+        if (locallyCreatedSecrets.length) {
+          await fnSecretBulkInsert({
+            folderId: destinationFolder.id,
+            secretVersionDAL,
+            secretDAL,
+            tx,
+            secretTagDAL,
+            secretVersionTagDAL,
+            inputSecrets: locallyCreatedSecrets.map((doc) => {
+              return {
+                keyEncoding: doc.keyEncoding,
+                algorithm: doc.algorithm,
+                type: doc.type,
+                metadata: doc.metadata,
+                secretKeyIV: doc.secretKeyIV,
+                secretKeyTag: doc.secretKeyTag,
+                secretKeyCiphertext: doc.secretKeyCiphertext,
+                secretValueIV: doc.secretValueIV,
+                secretValueTag: doc.secretValueTag,
+                secretValueCiphertext: doc.secretValueCiphertext,
+                secretBlindIndex: doc.secretBlindIndex,
+                secretCommentIV: doc.secretCommentIV,
+                secretCommentTag: doc.secretCommentTag,
+                secretCommentCiphertext: doc.secretCommentCiphertext,
+                skipMultilineEncoding: doc.skipMultilineEncoding
+              };
+            })
+          });
+        }
+        if (locallyUpdatedSecrets.length) {
+          await fnSecretBulkUpdate({
+            projectId: project.id,
+            folderId: destinationFolder.id,
+            secretVersionDAL,
+            secretDAL,
+            tx,
+            secretTagDAL,
+            secretVersionTagDAL,
+            inputSecrets: locallyUpdatedSecrets.map((doc) => {
+              return {
+                filter: {
+                  folderId: destinationFolder.id,
+                  id: destinationSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
+                },
+                data: {
+                  keyEncoding: doc.keyEncoding,
+                  algorithm: doc.algorithm,
+                  type: doc.type,
+                  metadata: doc.metadata,
+                  secretKeyIV: doc.secretKeyIV,
+                  secretKeyTag: doc.secretKeyTag,
+                  secretKeyCiphertext: doc.secretKeyCiphertext,
+                  secretValueIV: doc.secretValueIV,
+                  secretValueTag: doc.secretValueTag,
+                  secretValueCiphertext: doc.secretValueCiphertext,
+                  secretBlindIndex: doc.secretBlindIndex,
+                  secretCommentIV: doc.secretCommentIV,
+                  secretCommentTag: doc.secretCommentTag,
+                  secretCommentCiphertext: doc.secretCommentCiphertext,
+                  skipMultilineEncoding: doc.skipMultilineEncoding
+                }
+              };
+            })
+          });
+        }
+
+        isDestinationUpdated = true;
+      }
+
+      // Next step is to delete the secrets from the source folder:
+      const sourceSecretsGroupByBlindIndex = groupBy(sourceSecrets, (i) => i.secretBlindIndex as string);
+      const locallyDeletedSecrets = decryptedSourceSecrets.map((el) => ({ ...el, operation: SecretOperations.Delete }));
+
+      const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        project.id,
+        sourceFolder.environment.slug,
+        sourceFolder.path
+      );
+
+      if (sourceFolderPolicy && actor === ActorType.USER) {
+        // if secret approval policy exists for source, we create the secret approval request
+        const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
+        const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
+        const approvalRequestDoc = await secretApprovalRequestDAL.create(
+          {
+            folderId: sourceFolder.id,
+            slug: alphaNumericNanoId(),
+            policyId: sourceFolderPolicy.id,
+            status: "open",
+            hasMerged: false,
+            committerUserId: actorId
+          },
+          tx
+        );
+
+        const commits = locallyDeletedSecrets.map((doc) => {
+          const { operation } = doc;
+          const localSecret = sourceSecretsGroupByBlindIndex[doc.secretBlindIndex as string]?.[0];
+
+          return {
+            op: operation,
+            keyEncoding: doc.keyEncoding,
+            algorithm: doc.algorithm,
+            requestId: approvalRequestDoc.id,
+            metadata: doc.metadata,
+            secretKeyIV: doc.secretKeyIV,
+            secretKeyTag: doc.secretKeyTag,
+            secretKeyCiphertext: doc.secretKeyCiphertext,
+            secretValueIV: doc.secretValueIV,
+            secretValueTag: doc.secretValueTag,
+            secretValueCiphertext: doc.secretValueCiphertext,
+            secretBlindIndex: doc.secretBlindIndex,
+            secretCommentIV: doc.secretCommentIV,
+            secretCommentTag: doc.secretCommentTag,
+            secretCommentCiphertext: doc.secretCommentCiphertext,
+            skipMultilineEncoding: doc.skipMultilineEncoding,
+            secretId: localSecret.id,
+            secretVersion: latestSecretVersions[localSecret.id].id
+          };
+        });
+
+        await secretApprovalRequestSecretDAL.insertMany(commits, tx);
+      } else {
+        // if no secret approval policy is present, we delete directly.
+        await secretDAL.delete(
+          {
+            $in: {
+              id: locallyDeletedSecrets.map(({ id }) => id)
+            },
+            folderId: sourceFolder.id
+          },
+          tx
+        );
+
+        isSourceUpdated = true;
+      }
+    });
+
+    if (isDestinationUpdated) {
+      await snapshotService.performSnapshot(destinationFolder.id);
+      await secretQueueService.syncSecrets({
+        projectId: project.id,
+        secretPath: destinationFolder.path,
+        environmentSlug: destinationFolder.environment.slug,
+        actorId,
+        actor
+      });
+    }
+
+    if (isSourceUpdated) {
+      await snapshotService.performSnapshot(sourceFolder.id);
+      await secretQueueService.syncSecrets({
+        projectId: project.id,
+        secretPath: sourceFolder.path,
+        environmentSlug: sourceFolder.environment.slug,
+        actorId,
+        actor
+      });
+    }
+
+    return {
+      projectId: project.id,
+      isSourceUpdated,
+      isDestinationUpdated
+    };
+  };
+
   return {
     attachTags,
     detachTags,
@@ -1703,6 +2105,7 @@ export const secretServiceFactory = ({
     updateManySecretsRaw,
     deleteManySecretsRaw,
     getSecretVersions,
-    backfillSecretReferences
+    backfillSecretReferences,
+    moveSecrets
   };
 };

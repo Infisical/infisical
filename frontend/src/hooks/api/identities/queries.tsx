@@ -9,7 +9,9 @@ import {
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityKubernetesAuth,
+  IdentityMembership,
   IdentityMembershipOrg,
+  IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth} from "./types";
 
@@ -22,6 +24,7 @@ export const identitiesKeys = {
   getIdentityKubernetesAuth: (identityId: string) =>
     [{ identityId }, "identity-kubernetes-auth"] as const,
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
+  getIdentityOidcAuth: (identityId: string) => [{ identityId }, "identity-oidc-auth"] as const,
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
   getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const,
   getIdentityTokenAuth: (identityId: string) => [{ identityId }, "identity-token-auth"] as const,
@@ -53,7 +56,9 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
     queryFn: async () => {
       const {
         data: { identityMemberships }
-      } = await apiRequest.get(`/api/v1/identities/${identityId}/identity-memberships`);
+      } = await apiRequest.get<{ identityMemberships: IdentityMembership[] }>(
+        `/api/v1/identities/${identityId}/identity-memberships`
+      );
       return identityMemberships;
     }
   });
@@ -188,5 +193,22 @@ export const useGetIdentityTokensTokenAuth = (identityId: string) => {
       );
       return tokens;
     }
+  });
+};
+
+export const useGetIdentityOidcAuth = (identityId: string) => {
+  return useQuery({
+    enabled: Boolean(identityId),
+    queryKey: identitiesKeys.getIdentityOidcAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityOidcAuth }
+      } = await apiRequest.get<{ identityOidcAuth: IdentityOidcAuth }>(
+        `/api/v1/auth/oidc-auth/identities/${identityId}`
+      );
+      return identityOidcAuth;
+    },
+    staleTime: 0,
+    cacheTime: 0
   });
 };

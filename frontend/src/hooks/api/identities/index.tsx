@@ -5,6 +5,7 @@ export {
   useAddIdentityAzureAuth,
   useAddIdentityGcpAuth,
   useAddIdentityKubernetesAuth,
+  useAddIdentityOidcAuth,
   useAddIdentityTokenAuth,
   useAddIdentityUniversalAuth,
   useCreateIdentity,
@@ -15,6 +16,7 @@ export {
   useDeleteIdentityAzureAuth,
   useDeleteIdentityGcpAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth,
   useRevokeIdentityTokenAuthToken,
@@ -24,6 +26,7 @@ export {
   useUpdateIdentityAzureAuth,
   useUpdateIdentityGcpAuth,
   useUpdateIdentityKubernetesAuth,
+  useUpdateIdentityOidcAuth,
   useUpdateIdentityTokenAuth,
   useUpdateIdentityTokenAuthToken,
   useUpdateIdentityUniversalAuth} from "./mutations";
@@ -33,9 +36,9 @@ export {
   useGetIdentityById,
   useGetIdentityGcpAuth,
   useGetIdentityKubernetesAuth,
+  useGetIdentityOidcAuth,
   useGetIdentityProjectMemberships,
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets
-} from "./queries";
+  useGetIdentityUniversalAuthClientSecrets} from "./queries";

@@ -168,6 +168,7 @@
         "documentation/platform/identities/gcp-auth",
         "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
+        "documentation/platform/identities/oidc-auth",
         "documentation/platform/mfa",
         {
           "group": "SSO",

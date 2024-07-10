@@ -306,6 +306,12 @@ export const TOKEN_AUTH = {
   }
 } as const;
 
+export const OIDC_AUTH = {
+  REVOKE: {
+    identityId: "The ID of the identity to revoke."
+  }
+} as const;
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."

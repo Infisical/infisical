@@ -45,6 +45,7 @@ export enum EventType {
   CREATE_SECRETS = "create-secrets",
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
+  MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   GET_WORKSPACE_KEY = "get-workspace-key",
@@ -78,6 +79,11 @@ export enum EventType {
   UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
   GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
   REVOKE_IDENTITY_KUBERNETES_AUTH = "revoke-identity-kubernetes-auth",
+  LOGIN_IDENTITY_OIDC_AUTH = "login-identity-oidc-auth",
+  ADD_IDENTITY_OIDC_AUTH = "add-identity-oidc-auth",
+  UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
+  GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
+  REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
@@ -232,6 +238,17 @@ interface UpdateSecretBatchEvent {
     environment: string;
     secretPath: string;
     secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+  };
+}
+
+interface MoveSecretsEvent {
+  type: EventType.MOVE_SECRETS;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    secretIds: string[];
   };
 }
 
@@ -749,6 +766,63 @@ interface GetIdentityAzureAuthEvent {
   };
 }
 
+interface LoginIdentityOidcAuthEvent {
+  type: EventType.LOGIN_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+    identityOidcAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityOidcAuthEvent {
+  type: EventType.ADD_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+    oidcDiscoveryUrl: string;
+    caCert: string;
+    boundIssuer: string;
+    boundAudiences: string;
+    boundClaims: Record<string, string>;
+    boundSubject: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityOidcAuthEvent {
+  type: EventType.REVOKE_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityOidcAuthEvent {
+  type: EventType.UPDATE_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+    oidcDiscoveryUrl?: string;
+    caCert?: string;
+    boundIssuer?: string;
+    boundAudiences?: string;
+    boundClaims?: Record<string, string>;
+    boundSubject?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityOidcAuthEvent {
+  type: EventType.GET_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -1097,6 +1171,7 @@ export type Event =
   | CreateSecretBatchEvent
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
+  | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | GetWorkspaceKeyEvent
@@ -1149,6 +1224,11 @@ export type Event =
   | DeleteIdentityAzureAuthEvent
   | UpdateIdentityAzureAuthEvent
   | GetIdentityAzureAuthEvent
+  | LoginIdentityOidcAuthEvent
+  | AddIdentityOidcAuthEvent
+  | DeleteIdentityOidcAuthEvent
+  | UpdateIdentityOidcAuthEvent
+  | GetIdentityOidcAuthEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

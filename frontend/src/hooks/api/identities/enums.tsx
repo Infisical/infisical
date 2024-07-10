@@ -4,5 +4,6 @@ export enum IdentityAuthMethod {
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
-  AZURE_AUTH = "azure-auth"
+  AZURE_AUTH = "azure-auth",
+  OIDC_AUTH = "oidc-auth"
 }

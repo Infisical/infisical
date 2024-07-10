@@ -5,6 +5,7 @@ import {
   IdentitiesSchema,
   IdentityProjectMembershipsSchema,
   ProjectMembershipRole,
+  ProjectsSchema,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
 import { PROJECT_IDENTITIES } from "@app/lib/api-docs";
@@ -234,7 +235,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+              identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
+              project: ProjectsSchema.pick({ name: true, id: true })
             })
             .array()
         })
@@ -291,7 +293,8 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 temporaryAccessEndTime: z.date().nullable().optional()
               })
             ),
-            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
+            project: ProjectsSchema.pick({ name: true, id: true })
           })
         })
       }

@@ -9,6 +9,7 @@ import {
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
   AddIdentityKubernetesAuthDTO,
+  AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
@@ -22,6 +23,7 @@ import {
   DeleteIdentityDTO,
   DeleteIdentityGcpAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
+  DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   DeleteIdentityUniversalAuthDTO,
@@ -31,6 +33,7 @@ import {
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityKubernetesAuth,
+  IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
   RevokeTokenDTO,
@@ -40,6 +43,7 @@ import {
   UpdateIdentityDTO,
   UpdateIdentityGcpAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
+  UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
   UpdateIdentityUniversalAuthDTO,
   UpdateTokenIdentityTokenAuthDTO
@@ -405,6 +409,111 @@ export const useDeleteIdentityAwsAuth = () => {
       queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
       queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
       queryClient.invalidateQueries(identitiesKeys.getIdentityAwsAuth(identityId));
+    }
+  });
+};
+
+export const useUpdateIdentityOidcAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOidcAuth, {}, UpdateIdentityOidcAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      oidcDiscoveryUrl,
+      caCert,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject
+    }) => {
+      const {
+        data: { identityOidcAuth }
+      } = await apiRequest.patch<{ identityOidcAuth: IdentityOidcAuth }>(
+        `/api/v1/auth/oidc-auth/identities/${identityId}`,
+        {
+          oidcDiscoveryUrl,
+          caCert,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOidcAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+    }
+  });
+};
+
+export const useAddIdentityOidcAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityOidcAuth, {}, AddIdentityOidcAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      oidcDiscoveryUrl,
+      caCert,
+      boundIssuer,
+      boundAudiences,
+      boundClaims,
+      boundSubject,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityOidcAuth }
+      } = await apiRequest.post<{ identityOidcAuth: IdentityOidcAuth }>(
+        `/api/v1/auth/oidc-auth/identities/${identityId}`,
+        {
+          oidcDiscoveryUrl,
+          caCert,
+          boundIssuer,
+          boundAudiences,
+          boundClaims,
+          boundSubject,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityOidcAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
+    }
+  });
+};
+
+export const useDeleteIdentityOidcAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTokenAuth, {}, DeleteIdentityOidcAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityOidcAuth }
+      } = await apiRequest.delete(`/api/v1/auth/oidc-auth/identities/${identityId}`);
+      return identityOidcAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgIdentityMemberships(organizationId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityById(identityId));
+      queryClient.invalidateQueries(identitiesKeys.getIdentityOidcAuth(identityId));
     }
   });
 };

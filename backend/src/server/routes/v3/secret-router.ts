@@ -1327,6 +1327,61 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/move",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      body: z.object({
+        projectSlug: z.string().trim(),
+        sourceEnvironment: z.string().trim(),
+        sourceSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        destinationEnvironment: z.string().trim(),
+        destinationSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        secretIds: z.string().array(),
+        shouldOverwrite: z.boolean().default(false)
+      }),
+      response: {
+        200: z.object({
+          isSourceUpdated: z.boolean(),
+          isDestinationUpdated: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecrets({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.MOVE_SECRETS,
+          metadata: {
+            sourceEnvironment: req.body.sourceEnvironment,
+            sourceSecretPath: req.body.sourceSecretPath,
+            destinationEnvironment: req.body.destinationEnvironment,
+            destinationSecretPath: req.body.destinationSecretPath,
+            secretIds: req.body.secretIds
+          }
+        }
+      });
+
+      return {
+        isSourceUpdated,
+        isDestinationUpdated
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/batch",
     config: {
       rateLimit: secretsLimit
