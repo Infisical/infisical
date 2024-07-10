@@ -70,13 +70,13 @@ export const UNIVERSAL_AUTH = {
       "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve."
+    identityId: "The ID of the identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke."
+    identityId: "The ID of the identity to revoke the auth method for."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update.",
+    identityId: "The ID of the identity to update the auth method for.",
     clientSecretTrustedIps: "The new list of IPs or CIDR ranges that the Client Secret can be used from.",
     accessTokenTrustedIps: "The new list of IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
@@ -132,7 +132,7 @@ export const AWS_AUTH = {
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
   },
   UPDATE: {
-    identityId: "The ID of the identity to be updated.",
+    identityId: "The ID of the identity to update the auth method for.",
     allowedPrincipalArns:
       "The new comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
@@ -144,10 +144,10 @@ export const AWS_AUTH = {
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve."
+    identityId: "The ID of the identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke."
+    identityId: "The ID of the identity to revoke the auth method for."
   }
 } as const;
 
@@ -167,7 +167,7 @@ export const AZURE_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to be updated.",
+    identityId: "The ID of the identity to update the auth method for.",
     tenantId: "The new tenant ID for the Azure AD organization.",
     resource: "The new resource URL for the application registered in Azure AD.",
     allowedServicePrincipalIds:
@@ -178,10 +178,10 @@ export const AZURE_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve."
+    identityId: "The ID of the identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke."
+    identityId: "The ID of the identity to revoke the auth method for."
   }
 } as const;
 
@@ -203,7 +203,7 @@ export const GCP_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to be updated.",
+    identityId: "The ID of the identity to update the auth method for.",
     allowedServiceAccounts:
       "The new comma-separated list of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical.",
     allowedProjects:
@@ -216,10 +216,10 @@ export const GCP_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve."
+    identityId: "The ID of the identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke."
+    identityId: "The ID of the identity to revoke the auth method for."
   }
 } as const;
 
@@ -244,7 +244,7 @@ export const KUBERNETES_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to be updated.",
+    identityId: "The ID of the identity to update the auth method for.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
@@ -260,10 +260,49 @@ export const KUBERNETES_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve."
+    identityId: "The ID of the identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke."
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const TOKEN_AUTH = {
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  },
+  GET_TOKENS: {
+    identityId: "The ID of the identity to list token metadata for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th token.",
+    limit: "The number of tokens to return"
+  },
+  CREATE_TOKEN: {
+    identityId: "The ID of the identity to create the token for.",
+    name: "The name of the token to create"
+  },
+  UPDATE_TOKEN: {
+    tokenId: "The ID of the token to update metadata for",
+    name: "The name of the token to update to"
+  },
+  REVOKE_TOKEN: {
+    tokenId: "The ID of the token to revoke"
   }
 } as const;
 

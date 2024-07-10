@@ -428,6 +428,19 @@
           ]
         },
         {
+          "group": "Token Auth",
+          "pages": [
+            "api-reference/endpoints/token-auth/attach",
+            "api-reference/endpoints/token-auth/retrieve",
+            "api-reference/endpoints/token-auth/update",
+            "api-reference/endpoints/token-auth/revoke",
+            "api-reference/endpoints/token-auth/get-tokens",
+            "api-reference/endpoints/token-auth/create-token",
+            "api-reference/endpoints/token-auth/update-token",
+            "api-reference/endpoints/token-auth/revoke-token"
+          ]
+        },
+        {
           "group": "Universal Auth",
           "pages": [
             "api-reference/endpoints/universal-auth/login",
