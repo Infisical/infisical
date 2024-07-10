@@ -712,7 +712,10 @@ export const registerRoutes = async (
     secretQueueService,
     secretImportDAL,
     projectEnvDAL,
-    projectBotService
+    projectBotService,
+    secretApprovalPolicyService,
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
