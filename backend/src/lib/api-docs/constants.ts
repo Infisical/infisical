@@ -167,7 +167,7 @@ export const AZURE_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The new ID of the identity to be updated.",
+    identityId: "The ID of the identity to be updated.",
     tenantId: "The new tenant ID for the Azure AD organization.",
     resource: "The new resource URL for the application registered in Azure AD.",
     allowedServicePrincipalIds:
