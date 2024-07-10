@@ -394,7 +394,6 @@ export const SecretOverviewPage = () => {
             secretId
           );
         }
-        
       })
       createNotification({
         type: "success",
@@ -631,21 +630,23 @@ export const SecretOverviewPage = () => {
                 />
               </div>
               {userAvailableEnvs.length > 0 && (
-                <div>
+                <div className="flex justify-between">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Create}
                     a={subject(ProjectPermissionSub.Secrets, { secretPath })}
                   >
                     {(isAllowed) => (
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline_bg"
-                          onClick={() => handleBulkSecretUpdate()}
-                          className="h-10 rounded-r-none"
-                          isDisabled={!isAllowed}
-                        >
-                          Save
-                        </Button>
+                      <div className="flex justify-between space-x-1">
+                        {bulkSecretUpdateContent.length > 0 && (
+                          <Button
+                            variant="outline_bg"
+                            onClick={() => handleBulkSecretUpdate()}
+                            className="h-10"
+                            isDisabled={!isAllowed}
+                          >
+                            Save
+                          </Button>
+                        )}
                         <Button
                           variant="outline_bg"
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}
