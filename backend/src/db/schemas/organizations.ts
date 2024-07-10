@@ -15,7 +15,8 @@ export const OrganizationsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   authEnforced: z.boolean().default(false).nullable().optional(),
-  scimEnabled: z.boolean().default(false).nullable().optional()
+  scimEnabled: z.boolean().default(false).nullable().optional(),
+  kmsDefaultKeyId: z.string().uuid().nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;
