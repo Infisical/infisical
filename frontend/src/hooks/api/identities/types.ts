@@ -181,6 +181,59 @@ export type DeleteIdentityGcpAuthDTO = {
   identityId: string;
 };
 
+export type IdentityOidcAuth = {
+  identityId: string;
+  oidcDiscoveryUrl: string;
+  caCert: string;
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityOidcAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  oidcDiscoveryUrl: string;
+  caCert: string;
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityOidcAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  oidcDiscoveryUrl?: string;
+  caCert?: string;
+  boundIssuer?: string;
+  boundAudiences?: string;
+  boundClaims?: Record<string, string>;
+  boundSubject?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityOidcAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityAwsAuth = {
   identityId: string;
   type: "iam";

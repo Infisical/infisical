@@ -8,6 +8,7 @@ import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
+import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
@@ -42,6 +43,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityAccessTokenRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
       await authRouter.register(registerIdentityAzureAuthRouter);
+      await authRouter.register(registerIdentityOidcAuthRouter);
     },
     { prefix: "/auth" }
   );
