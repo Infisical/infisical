@@ -22,6 +22,8 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
+import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -114,7 +116,8 @@ import { integrationDALFactory } from "@app/services/integration/integration-dal
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
-import { kmsDALFactory } from "@app/services/kms/kms-dal";
+import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
@@ -285,7 +288,9 @@ export const registerRoutes = async (
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
 
-  const kmsDAL = kmsDALFactory(db);
+  const kmsDAL = kmskeyDALFactory(db);
+  const internalKmsDAL = internalKmsDALFactory(db);
+  const externalKmsDAL = externalKmsDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
 
   const permissionService = permissionServiceFactory({
@@ -299,7 +304,16 @@ export const registerRoutes = async (
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
     keyStore,
-    kmsDAL
+    kmsDAL,
+    internalKmsDAL,
+    orgDAL,
+    projectDAL
+  });
+  const externalKmsService = externalKmsServiceFactory({
+    kmsDAL,
+    kmsService,
+    permissionService,
+    externalKmsDAL
   });
 
   const trustedIpService = trustedIpServiceFactory({
@@ -1012,7 +1026,8 @@ export const registerRoutes = async (
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     secretSharing: secretSharingService,
-    userEngagement: userEngagementService
+    userEngagement: userEngagementService,
+    externalKms: externalKmsService
   });
 
   const cronJobs: CronJob[] = [];
