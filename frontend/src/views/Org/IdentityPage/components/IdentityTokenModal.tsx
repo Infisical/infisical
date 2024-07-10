@@ -92,7 +92,6 @@ export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         setToken(newTokenData.accessToken);
-        // note: may be helpful to tell user ttl etc.
       }
 
       createNotification({

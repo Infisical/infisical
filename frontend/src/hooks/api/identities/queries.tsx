@@ -9,9 +9,11 @@ import {
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityKubernetesAuth,
+  IdentityMembership,
   IdentityMembershipOrg,
   IdentityTokenAuth,
-  IdentityUniversalAuth} from "./types";
+  IdentityUniversalAuth
+} from "./types";
 
 export const identitiesKeys = {
   getIdentityById: (identityId: string) => [{ identityId }, "identity"] as const,
@@ -53,7 +55,9 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
     queryFn: async () => {
       const {
         data: { identityMemberships }
-      } = await apiRequest.get(`/api/v1/identities/${identityId}/identity-memberships`);
+      } = await apiRequest.get<{ identityMemberships: IdentityMembership[] }>(
+        `/api/v1/identities/${identityId}/identity-memberships`
+      );
       return identityMemberships;
     }
   });

@@ -1,4 +1,4 @@
-import { faCheck, faCopy,faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -37,21 +37,23 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
     <div>
       <div className="mb-4">
         <p className="text-sm font-semibold text-mineshaft-300">Client ID</p>
-        <div className="flex align-top">
+        <div className="group flex align-top">
           <p className="text-sm text-mineshaft-300">{identityUniversalAuth?.clientId ?? ""}</p>
-          <Tooltip content={copyTextClientId}>
-            <IconButton
-              ariaLabel="copy icon"
-              variant="plain"
-              className="group relative ml-2"
-              onClick={() => {
-                navigator.clipboard.writeText(identityUniversalAuth?.clientId ?? "");
-                setCopyTextClientId("Copied");
-              }}
-            >
-              <FontAwesomeIcon icon={isCopyingClientId ? faCheck : faCopy} />
-            </IconButton>
-          </Tooltip>
+          <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <Tooltip content={copyTextClientId}>
+              <IconButton
+                ariaLabel="copy icon"
+                variant="plain"
+                className="group relative ml-2"
+                onClick={() => {
+                  navigator.clipboard.writeText(identityUniversalAuth?.clientId ?? "");
+                  setCopyTextClientId("Copied");
+                }}
+              >
+                <FontAwesomeIcon icon={isCopyingClientId ? faCheck : faCopy} />
+              </IconButton>
+            </Tooltip>
+          </div>
         </div>
       </div>
       {clientSecrets?.length ? (
