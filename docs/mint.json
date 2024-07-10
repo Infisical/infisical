@@ -498,6 +498,16 @@
           ]
         },
         {
+          "group": "OIDC Auth",
+          "pages": [
+            "api-reference/endpoints/oidc-auth/login",
+            "api-reference/endpoints/oidc-auth/attach",
+            "api-reference/endpoints/oidc-auth/retrieve",
+            "api-reference/endpoints/oidc-auth/update",
+            "api-reference/endpoints/oidc-auth/revoke"
+          ]
+        },
+        {
           "group": "Organizations",
           "pages": [
             "api-reference/endpoints/organizations/memberships",

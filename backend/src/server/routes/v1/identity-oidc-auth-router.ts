@@ -30,7 +30,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     schema: {
       description: "Login with OIDC Auth",
       body: z.object({
-        identityId: z.string().trim(),
+        identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
         jwt: z.string().trim()
       }),
       response: {
@@ -85,16 +85,23 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(OIDC_AUTH.ATTACH.identityId)
       }),
       body: z.object({
+        oidcDiscoveryUrl: z.string().url().min(1).describe(OIDC_AUTH.ATTACH.oidcDiscoveryUrl),
+        caCert: z.string().trim().default("").describe(OIDC_AUTH.ATTACH.caCert),
+        boundIssuer: z.string().min(1).describe(OIDC_AUTH.ATTACH.boundIssuer),
+        boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.ATTACH.boundAudiences),
+        boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.boundClaims),
+        boundSubject: z.string().optional().default("").describe(OIDC_AUTH.ATTACH.boundSubject),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(OIDC_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
@@ -102,21 +109,17 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(OIDC_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0),
-        oidcDiscoveryUrl: z.string().url().min(1),
-        caCert: z.string().trim().default(""),
-        boundIssuer: z.string().min(1),
-        boundAudiences: validateOidcAuthAudiencesField,
-        boundClaims: validateOidcBoundClaimsField,
-        boundSubject: z.string().optional().default("")
+          .default(2592000)
+          .describe(OIDC_AUTH.ATTACH.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -176,17 +179,24 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(OIDC_AUTH.UPDATE.identityId)
       }),
       body: z
         .object({
+          oidcDiscoveryUrl: z.string().url().min(1).describe(OIDC_AUTH.UPDATE.oidcDiscoveryUrl),
+          caCert: z.string().trim().default("").describe(OIDC_AUTH.UPDATE.caCert),
+          boundIssuer: z.string().min(1).describe(OIDC_AUTH.UPDATE.boundIssuer),
+          boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.UPDATE.boundAudiences),
+          boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.UPDATE.boundClaims),
+          boundSubject: z.string().optional().default("").describe(OIDC_AUTH.UPDATE.boundSubject),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
             })
             .array()
             .min(1)
-            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+            .describe(OIDC_AUTH.UPDATE.accessTokenTrustedIps),
           accessTokenTTL: z
             .number()
             .int()
@@ -194,21 +204,18 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             .refine((value) => value !== 0, {
               message: "accessTokenTTL must have a non zero number"
             })
-            .default(2592000),
+            .default(2592000)
+            .describe(OIDC_AUTH.UPDATE.accessTokenTTL),
           accessTokenMaxTTL: z
             .number()
             .int()
             .refine((value) => value !== 0, {
               message: "accessTokenMaxTTL must have a non zero number"
             })
-            .default(2592000),
-          accessTokenNumUsesLimit: z.number().int().min(0).default(0),
-          oidcDiscoveryUrl: z.string().url().min(1),
-          caCert: z.string().trim().default(""),
-          boundIssuer: z.string().min(1),
-          boundAudiences: validateOidcAuthAudiencesField,
-          boundClaims: validateOidcBoundClaimsField,
-          boundSubject: z.string().optional().default("")
+            .default(2592000)
+            .describe(OIDC_AUTH.UPDATE.accessTokenMaxTTL),
+
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.UPDATE.accessTokenNumUsesLimit)
         })
         .partial(),
       response: {
@@ -267,7 +274,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(OIDC_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({

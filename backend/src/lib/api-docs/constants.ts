@@ -307,8 +307,40 @@ export const TOKEN_AUTH = {
 } as const;
 
 export const OIDC_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    oidcDiscoveryUrl: "The URL used to retrieve the OpenID Connect configuration from the identity provider.",
+    caCert: "The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
+    boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
+    boundAudiences: "The list of intended recipients.",
+    boundClaims: "The attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    oidcDiscoveryUrl: "The new URL used to retrieve the OpenID Connect configuration from the identity provider.",
+    caCert: "The new PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
+    boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
+    boundAudiences: "The new list of intended recipients.",
+    boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
+    boundSubject: "The new expected principal that is the subject of the JWT.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
   REVOKE: {
-    identityId: "The ID of the identity to revoke."
+    identityId: "The ID of the identity to revoke the auth method for."
   }
 } as const;
 
