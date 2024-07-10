@@ -86,7 +86,7 @@ const UserPanelTable = ({
                                 ariaLabel="update"
                                 isDisabled={userId === id}
                                 onClick={() => {
-                                  if (!subscription?.adminUserDeletion) {
+                                  if (!subscription?.instanceUserManagement) {
                                     handlePopUpOpen("upgradePlan");
                                     return;
                                   }
