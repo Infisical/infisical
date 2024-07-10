@@ -14,7 +14,13 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
-import { EncryptionMode, TGenerateKMSDTO, TKmsServiceDecryptionDTO, TKmsServiceEncryptionDTO } from "./kms-types";
+import {
+  TDecryptWithKeyDTO,
+  TDecryptWithKmsDTO,
+  TEncryptionWithKeyDTO,
+  TEncryptWithKmsDTO,
+  TGenerateKMSDTO
+} from "./kms-types";
 
 type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
@@ -74,64 +80,55 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
-  /*
-   * KMS encryption service
-   * Function to handle various kinds of encryption like
-   * Normal encryption
-   * Encrypt with KMS key - internal or external
-   */
-  const encrypt = async (encryptionDetails: TKmsServiceEncryptionDTO) => {
+  const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) throw new BadRequestError({ message: "KMS ID not found" });
     // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    // instead of using kms key encrypt with the provided key
-    if (encryptionDetails.type === EncryptionMode.EncryptionKey) {
-      const { plainText, encryptionKey } = encryptionDetails;
+    return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+      const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const encryptedPlainTextBlob = cipher.encrypt(plainText, kmsKey);
 
-      const encryptedPlainTextBlob = cipher.encrypt(plainText, encryptionKey);
       // Buffer#1 encrypted text + Buffer#2 version number
       const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
       const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
       return { cipherTextBlob };
-    }
-
-    // this mean use kms to encrypt it
-    const { plainText, kmsId } = encryptionDetails;
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
-    if (!kmsDoc) throw new BadRequestError({ message: "KMS ID not found" });
-
-    const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-    const encryptedPlainTextBlob = cipher.encrypt(plainText, kmsKey);
-
-    // Buffer#1 encrypted text + Buffer#2 version number
-    const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
-    const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
-    return { cipherTextBlob };
+    };
   };
 
-  /*
-   * KMS decryption service
-   * Function to handle various kinds of decryptionlike
-   * Normal decryption with a key
-   * Encrypt with KMS key - internal or external
-   */
-  const decrypt = async (encryptionDetails: TKmsServiceDecryptionDTO) => {
+  const encryptWithInputKey = async ({ key }: Omit<TEncryptionWithKeyDTO, "plainText">) => {
     // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    if (encryptionDetails.type === EncryptionMode.EncryptionKey) {
-      const { cipherTextBlob: versionedCipherTextBlob, encryptionKey } = encryptionDetails;
-      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-      const decryptedBlob = cipher.decrypt(cipherTextBlob, encryptionKey);
-      return decryptedBlob;
-    }
+    return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+      const encryptedPlainTextBlob = cipher.encrypt(plainText, key);
+      // Buffer#1 encrypted text + Buffer#2 version number
+      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+      const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
+      return { cipherTextBlob };
+    };
+  };
 
-    const { cipherTextBlob: versionedCipherTextBlob, kmsId } = encryptionDetails;
+  const decryptWithKmsKey = async ({ kmsId }: Omit<TDecryptWithKmsDTO, "cipherTextBlob">) => {
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
     if (!kmsDoc) throw new BadRequestError({ message: "KMS ID not found" });
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
     const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
-    const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-    const decryptedBlob = cipher.decrypt(cipherTextBlob, kmsKey);
-    return decryptedBlob;
+    return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+      const decryptedBlob = cipher.decrypt(cipherTextBlob, kmsKey);
+      return decryptedBlob;
+    };
+  };
+
+  const decryptWithInputKey = async ({ key }: Omit<TDecryptWithKeyDTO, "cipherTextBlob">) => {
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+
+    return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKeyDTO, "cipherTextBlob">) => {
+      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+      const decryptedBlob = cipher.decrypt(cipherTextBlob, key);
+      return decryptedBlob;
+    };
   };
 
   const getOrgKmsKeyId = async (orgId: string) => {
@@ -246,8 +243,10 @@ export const kmsServiceFactory = ({
   return {
     startService,
     generateKmsKey,
-    encrypt,
-    decrypt,
+    encryptWithKmsKey,
+    encryptWithInputKey,
+    decryptWithKmsKey,
+    decryptWithInputKey,
     getOrgKmsKeyId,
     getProjectSecretManagerKmsKeyId
   };

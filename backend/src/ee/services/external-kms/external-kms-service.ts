@@ -22,7 +22,7 @@ import { ExternalKmsAwsSchema, KmsProviders } from "./providers/model";
 
 type TExternalKmsServiceFactoryDep = {
   externalKmsDAL: TExternalKmsDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "getOrgKmsKeyId" | "encrypt" | "decrypt">;
+  kmsService: Pick<TKmsServiceFactory, "getOrgKmsKeyId" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   kmsDAL: Pick<TKmsKeyDALFactory, "create" | "updateById" | "findById" | "deleteById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -70,8 +70,10 @@ export const externalKmsServiceFactory = ({
     }
 
     const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const { cipherTextBlob: encryptedProviderInputs } = await kmsService.encrypt({
-      kmsId: orgKmsKeyId,
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: orgKmsKeyId
+    });
+    const { cipherTextBlob: encryptedProviderInputs } = kmsEncryptor({
       plainText: Buffer.from(sanitizedProviderInput, "utf8")
     });
 
@@ -126,8 +128,10 @@ export const externalKmsServiceFactory = ({
     const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
     let sanitizedProviderInput = "";
     if (provider) {
-      const decryptedProviderInputBlob = await kmsService.decrypt({
-        kmsId: orgDefaultKmsId,
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+        kmsId: orgDefaultKmsId
+      });
+      const decryptedProviderInputBlob = kmsDecryptor({
         cipherTextBlob: externalKmsDoc.encryptedProviderInputs
       });
 
@@ -150,8 +154,10 @@ export const externalKmsServiceFactory = ({
 
     let encryptedProviderInputs: Buffer | undefined;
     if (sanitizedProviderInput) {
-      const { cipherTextBlob } = await kmsService.encrypt({
-        kmsId: orgDefaultKmsId,
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+        kmsId: orgDefaultKmsId
+      });
+      const { cipherTextBlob } = kmsEncryptor({
         plainText: Buffer.from(sanitizedProviderInput, "utf8")
       });
       encryptedProviderInputs = cipherTextBlob;
@@ -234,8 +240,10 @@ export const externalKmsServiceFactory = ({
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
     const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
-    const decryptedProviderInputBlob = await kmsService.decrypt({
-      kmsId: orgDefaultKmsId,
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: orgDefaultKmsId
+    });
+    const decryptedProviderInputBlob = kmsDecryptor({
       cipherTextBlob: externalKmsDoc.encryptedProviderInputs
     });
     switch (externalKmsDoc.provider) {
@@ -271,10 +279,13 @@ export const externalKmsServiceFactory = ({
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
     const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
-    const decryptedProviderInputBlob = await kmsService.decrypt({
-      kmsId: orgDefaultKmsId,
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: orgDefaultKmsId
+    });
+    const decryptedProviderInputBlob = kmsDecryptor({
       cipherTextBlob: externalKmsDoc.encryptedProviderInputs
     });
+
     switch (externalKmsDoc.provider) {
       case KmsProviders.Aws: {
         const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(

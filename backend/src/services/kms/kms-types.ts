@@ -7,35 +7,22 @@ export type TGenerateKMSDTO = {
   tx?: Knex;
 };
 
-export enum EncryptionMode {
-  KMS = "kms",
-  EncryptionKey = "encryption-key"
-}
-
 export type TEncryptWithKmsDTO = {
-  type?: EncryptionMode.KMS;
   kmsId: string;
   plainText: Buffer;
 };
 
 export type TEncryptionWithKeyDTO = {
-  type: EncryptionMode.EncryptionKey;
-  encryptionKey: Buffer;
+  key: Buffer;
   plainText: Buffer;
 };
 
-export type TKmsServiceEncryptionDTO = TEncryptWithKmsDTO | TEncryptionWithKeyDTO;
-
 export type TDecryptWithKmsDTO = {
-  type?: EncryptionMode.KMS;
   kmsId: string;
   cipherTextBlob: Buffer;
 };
 
-export type TDecryptWithEncryptionKeyDTO = {
-  type: EncryptionMode.EncryptionKey;
-  encryptionKey: Buffer;
+export type TDecryptWithKeyDTO = {
+  key: Buffer;
   cipherTextBlob: Buffer;
 };
-
-export type TKmsServiceDecryptionDTO = TDecryptWithKmsDTO | TDecryptWithEncryptionKeyDTO;
