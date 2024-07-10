@@ -28,6 +28,7 @@ export const userKeys = {
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
+  listUsers: ["user-list"] as const,
 
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
@@ -40,7 +41,7 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-export const useDeleteUser = () => {
+export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

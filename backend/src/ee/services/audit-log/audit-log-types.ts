@@ -66,6 +66,13 @@ export enum EventType {
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
   REVOKE_IDENTITY_UNIVERSAL_AUTH = "revoke-identity-universal-auth",
+  CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
+  UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
+  GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
+  ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
+  UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
+  GET_IDENTITY_TOKEN_AUTH = "get-identity-token-auth",
+  REVOKE_IDENTITY_TOKEN_AUTH = "revoke-identity-token-auth",
   LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
   ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
   UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
@@ -452,6 +459,66 @@ interface DeleteIdentityUniversalAuthEvent {
   };
 }
 
+interface CreateTokenIdentityTokenAuthEvent {
+  type: EventType.CREATE_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface UpdateTokenIdentityTokenAuthEvent {
+  type: EventType.UPDATE_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    tokenId: string;
+    name?: string;
+  };
+}
+
+interface GetTokensIdentityTokenAuthEvent {
+  type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface AddIdentityTokenAuthEvent {
+  type: EventType.ADD_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityTokenAuthEvent {
+  type: EventType.UPDATE_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityTokenAuthEvent {
+  type: EventType.GET_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface DeleteIdentityTokenAuthEvent {
+  type: EventType.REVOKE_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface LoginIdentityKubernetesAuthEvent {
   type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH;
   metadata: {
@@ -833,7 +900,6 @@ interface CreateWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -844,7 +910,6 @@ interface UpdateWebhookStatusEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -855,7 +920,6 @@ interface DeleteWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -1116,6 +1180,13 @@ export type Event =
   | UpdateIdentityUniversalAuthEvent
   | DeleteIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
+  | CreateTokenIdentityTokenAuthEvent
+  | UpdateTokenIdentityTokenAuthEvent
+  | GetTokensIdentityTokenAuthEvent
+  | AddIdentityTokenAuthEvent
+  | UpdateIdentityTokenAuthEvent
+  | GetIdentityTokenAuthEvent
+  | DeleteIdentityTokenAuthEvent
   | LoginIdentityKubernetesAuthEvent
   | DeleteIdentityKubernetesAuthEvent
   | AddIdentityKubernetesAuthEvent

@@ -131,7 +131,10 @@ export const identityAccessTokenServiceFactory = ({
     });
     if (!identityAccessToken) throw new UnauthorizedError();
 
-    const revokedToken = await identityAccessTokenDAL.deleteById(identityAccessToken.id);
+    const revokedToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
+      isAccessTokenRevoked: true
+    });
+
     return { revokedToken };
   };
 
@@ -141,6 +144,10 @@ export const identityAccessTokenServiceFactory = ({
       isAccessTokenRevoked: false
     });
     if (!identityAccessToken) throw new UnauthorizedError();
+    if (identityAccessToken.isAccessTokenRevoked)
+      throw new UnauthorizedError({
+        message: "Failed to authorize revoked access token"
+      });
 
     if (ipAddress && identityAccessToken) {
       checkIPAgainstBlocklist({

@@ -17,8 +17,6 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-// TODO: Add CA cert and token reviewer JWT fields
-
 const schema = z
   .object({
     kubernetesHost: z.string(),
@@ -45,7 +43,7 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
@@ -77,11 +75,11 @@ export const IdentityKubernetesAuthForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      kubernetesHost: "", // TODO
+      kubernetesHost: "",
       tokenReviewerJwt: "",
-      allowedNames: "", // TODO
-      allowedNamespaces: "", // TODO
-      allowedAudience: "", // TODO
+      allowedNames: "",
+      allowedNamespaces: "",
+      allowedAudience: "",
       caCert: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
@@ -118,7 +116,7 @@ export const IdentityKubernetesAuthForm = ({
       });
     } else {
       reset({
-        kubernetesHost: "", // TODO
+        kubernetesHost: "",
         tokenReviewerJwt: "",
         allowedNames: "",
         allowedNamespaces: "",
@@ -384,23 +382,36 @@ export const IdentityKubernetesAuthForm = ({
           Add IP Address
         </Button>
       </div>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
-        </Button>
+      <div className="flex justify-between">
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
+          </Button>
+          <Button
+            colorSchema="secondary"
+            variant="plain"
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
+        </div>
+        {identityAuthMethodData?.authMethod && (
+          <Button
+            size="sm"
+            colorSchema="danger"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+          >
+            Remove Auth Method
+          </Button>
+        )}
       </div>
     </form>
   );

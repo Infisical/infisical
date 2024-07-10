@@ -107,6 +107,8 @@ import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
+import { identityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
@@ -166,6 +168,7 @@ import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-servi
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
@@ -235,6 +238,7 @@ export const registerRoutes = async (
   const identityProjectMembershipRoleDAL = identityProjectMembershipRoleDALFactory(db);
   const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
 
+  const identityTokenAuthDAL = identityTokenAuthDALFactory(db);
   const identityUaDAL = identityUaDALFactory(db);
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
@@ -322,7 +326,6 @@ export const registerRoutes = async (
     auditLogStreamDAL
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
-    projectMembershipDAL,
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
@@ -771,7 +774,6 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    projectMembershipDAL,
     projectBotService
   });
   const secretRotationQueue = secretRotationQueueFactory({
@@ -812,6 +814,7 @@ export const registerRoutes = async (
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
+    identityProjectDAL,
     licenseService
   });
   const identityAccessTokenService = identityAccessTokenServiceFactory({
@@ -831,6 +834,14 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilegeDAL,
     permissionService,
     identityProjectDAL
+  });
+  const identityTokenAuthService = identityTokenAuthServiceFactory({
+    identityTokenAuthDAL,
+    identityDAL,
+    identityOrgMembershipDAL,
+    identityAccessTokenDAL,
+    permissionService,
+    licenseService
   });
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
@@ -937,6 +948,10 @@ export const registerRoutes = async (
     oidcConfigDAL
   });
 
+  const userEngagementService = userEngagementServiceFactory({
+    userDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -980,6 +995,7 @@ export const registerRoutes = async (
     identity: identityService,
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
+    identityTokenAuth: identityTokenAuthService,
     identityUa: identityUaService,
     identityKubernetesAuth: identityKubernetesAuthService,
     identityGcpAuth: identityGcpAuthService,
@@ -1009,7 +1025,8 @@ export const registerRoutes = async (
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
-    secretSharing: secretSharingService
+    secretSharing: secretSharingService,
+    userEngagement: userEngagementService
   });
 
   const cronJobs: CronJob[] = [];

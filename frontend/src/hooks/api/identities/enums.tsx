@@ -1,4 +1,5 @@
 export enum IdentityAuthMethod {
+  TOKEN_AUTH = "token-auth",
   UNIVERSAL_AUTH = "universal-auth",
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",

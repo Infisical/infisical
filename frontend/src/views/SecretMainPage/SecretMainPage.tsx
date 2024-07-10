@@ -53,13 +53,12 @@ export const SecretMainPage = () => {
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
   const { permission } = useProjectPermission();
-  
 
   const [isVisible, setIsVisible] = useState(false);
   const [sortDir, setSortDir] = useState<SortDir>(SortDir.ASC);
   const [filter, setFilter] = useState<Filter>({
     tags: {},
-    searchFilter: ""
+    searchFilter: (router.query.searchFilter as string) || ""
   });
 
   const [snapshotId, setSnapshotId] = useState<string | null>(null);

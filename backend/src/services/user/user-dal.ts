@@ -7,16 +7,50 @@ import {
   TUserActionsUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
-  TUserEncryptionKeysUpdate
+  TUserEncryptionKeysUpdate,
+  TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
   const findUserByUsername = async (username: string, tx?: Knex) => userOrm.findOne({ username }, tx);
+
+  const getUsersByFilter = async ({
+    limit,
+    offset,
+    searchTerm,
+    sortBy
+  }: {
+    limit: number;
+    offset: number;
+    searchTerm: string;
+    sortBy?: keyof TUsers;
+  }) => {
+    try {
+      let query = db.replicaNode()(TableName.Users).where("isGhost", "=", false);
+      if (searchTerm) {
+        query = query.where((qb) => {
+          void qb
+            .whereILike("email", `%${searchTerm}%`)
+            .orWhereILike("firstName", `%${searchTerm}%`)
+            .orWhereILike("lastName", `%${searchTerm}%`)
+            .orWhereLike("username", `%${searchTerm}%`);
+        });
+      }
+
+      if (sortBy) {
+        query = query.orderBy(sortBy);
+      }
+
+      return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get users by filter" });
+    }
+  };
 
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
@@ -159,6 +193,7 @@ export const userDALFactory = (db: TDbClient) => {
     upsertUserEncryptionKey,
     createUserEncryption,
     findOneUserAction,
-    createUserAction
+    createUserAction,
+    getUsersByFilter
   };
 };

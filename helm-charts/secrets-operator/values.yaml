@@ -32,7 +32,7 @@ controllerManager:
         - ALL
     image:
       repository: infisical/kubernetes-operator
-      tag: v0.6.2
+      tag: v0.6.4
     resources:
       limits:
         cpu: 500m
@@ -43,6 +43,8 @@ controllerManager:
   replicas: 1
   serviceAccount:
     annotations: {}
+  nodeSelector: {}
+  tolerations: []
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:

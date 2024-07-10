@@ -25,3 +25,7 @@ export interface TIdentityTrustedIp {
   type: IPType;
   prefix: number;
 }
+
+export type TListProjectIdentitiesByIdentityIdDTO = {
+  identityId: string;
+} & Omit<TOrgPermission, "orgId">;

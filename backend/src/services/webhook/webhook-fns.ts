@@ -4,55 +4,63 @@ import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { decryptSymmetric, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
+import { WebhookType } from "./webhook-types";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
-export const triggerWebhookRequest = async (
-  { url, encryptedSecretKey, iv, tag, keyEncoding }: TWebhooks,
-  data: Record<string, unknown>
-) => {
-  const headers: Record<string, string> = {};
-  const payload = { ...data, timestamp: Date.now() };
-  const appCfg = getConfig();
+
+export const decryptWebhookDetails = (webhook: TWebhooks) => {
+  const { keyEncoding, iv, encryptedSecretKey, tag, urlCipherText, urlIV, urlTag, url } = webhook;
+
+  let decryptedSecretKey = "";
+  let decryptedUrl = url;
 
   if (encryptedSecretKey) {
-    const encryptionKey = appCfg.ENCRYPTION_KEY;
-    const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
-    let secretKey;
-    if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
-      // case: encoding scheme is base64
-      secretKey = decryptSymmetric({
-        ciphertext: encryptedSecretKey,
-        iv: iv as string,
-        tag: tag as string,
-        key: rootEncryptionKey
-      });
-    } else if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
-      // case: encoding scheme is utf8
-      secretKey = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: encryptedSecretKey,
-        iv: iv as string,
-        tag: tag as string,
-        key: encryptionKey
-      });
-    }
-    if (secretKey) {
-      const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
-      headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
-    }
+    decryptedSecretKey = infisicalSymmetricDecrypt({
+      keyEncoding: keyEncoding as SecretKeyEncoding,
+      ciphertext: encryptedSecretKey,
+      iv: iv as string,
+      tag: tag as string
+    });
   }
+
+  if (urlCipherText) {
+    decryptedUrl = infisicalSymmetricDecrypt({
+      keyEncoding: keyEncoding as SecretKeyEncoding,
+      ciphertext: urlCipherText,
+      iv: urlIV as string,
+      tag: urlTag as string
+    });
+  }
+
+  return {
+    secretKey: decryptedSecretKey,
+    url: decryptedUrl
+  };
+};
+
+export const triggerWebhookRequest = async (webhook: TWebhooks, data: Record<string, unknown>) => {
+  const headers: Record<string, string> = {};
+  const payload = { ...data, timestamp: Date.now() };
+  const { secretKey, url } = decryptWebhookDetails(webhook);
+
+  if (secretKey) {
+    const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
+    headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
+  }
+
   const req = await request.post(url, payload, {
     headers,
     timeout: WEBHOOK_TRIGGER_TIMEOUT,
     signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
   });
+
   return req;
 };
 
@@ -60,15 +68,48 @@ export const getWebhookPayload = (
   eventName: string,
   workspaceId: string,
   environment: string,
-  secretPath?: string
-) => ({
-  event: eventName,
-  project: {
-    workspaceId,
-    environment,
-    secretPath
+  secretPath?: string,
+  type?: string | null
+) => {
+  switch (type) {
+    case WebhookType.SLACK:
+      return {
+        text: "A secret value has been added or modified.",
+        attachments: [
+          {
+            color: "#E7F256",
+            fields: [
+              {
+                title: "Workspace ID",
+                value: workspaceId,
+                short: false
+              },
+              {
+                title: "Environment",
+                value: environment,
+                short: false
+              },
+              {
+                title: "Secret Path",
+                value: secretPath,
+                short: false
+              }
+            ]
+          }
+        ]
+      };
+    case WebhookType.GENERAL:
+    default:
+      return {
+        event: eventName,
+        project: {
+          workspaceId,
+          environment,
+          secretPath
+        }
+      };
   }
-});
+};
 
 export type TFnTriggerWebhookDTO = {
   projectId: string;
@@ -95,9 +136,10 @@ export const fnTriggerWebhook = async ({
   logger.info("Secret webhook job started", { environment, secretPath, projectId });
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) =>
-      triggerWebhookRequest(hook, getWebhookPayload("secrets.modified", projectId, environment, secretPath))
+      triggerWebhookRequest(hook, getWebhookPayload("secrets.modified", projectId, environment, secretPath, hook.type))
     )
   );
+
   // filter hooks by status
   const successWebhooks = webhooksTriggered
     .filter(({ status }) => status === "fulfilled")

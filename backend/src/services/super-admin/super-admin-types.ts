@@ -15,3 +15,19 @@ export type TAdminSignUpDTO = {
   ip: string;
   userAgent: string;
 };
+
+export type TAdminGetUsersDTO = {
+  offset: number;
+  limit: number;
+  searchTerm: string;
+};
+
+export enum LoginMethod {
+  EMAIL = "email",
+  GOOGLE = "google",
+  GITHUB = "github",
+  GITLAB = "gitlab",
+  SAML = "saml",
+  LDAP = "ldap",
+  OIDC = "oidc"
+}

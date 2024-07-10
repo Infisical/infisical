@@ -7,8 +7,8 @@ export type TSecretApprovalPolicy = {
   envId: string;
   environment: WorkspaceEnv;
   secretPath?: string;
-  approvers: string[];
   approvals: number;
+  userApprovers: { userId: string }[];
 };
 
 export type TGetSecretApprovalPoliciesDTO = {
@@ -26,14 +26,14 @@ export type TCreateSecretPolicyDTO = {
   name?: string;
   environment: string;
   secretPath?: string | null;
-  approvers?: string[];
+  approverUserIds?: string[];
   approvals?: number;
 };
 
 export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: string[];
+  approverUserIds?: string[];
   secretPath?: string | null;
   approvals?: number;
   // for invalidating list

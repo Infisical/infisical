@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
@@ -16,8 +17,8 @@ import {
 import { useOrganization } from "@app/context";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import {
-  IdentityAuthMethod
-  // useAddIdentityUniversalAuth
+  // IdentityAuthMethod,
+  useAddIdentityUniversalAuth
 } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -32,18 +33,19 @@ export type FormData = yup.InferType<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["identity"]>;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
-    data: {
-      identityId: string;
-      name: string;
-      authMethod?: IdentityAuthMethod;
-    }
-  ) => void;
+  // handlePopUpOpen: (
+  //   popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+  //   data: {
+  //     identityId: string;
+  //     name: string;
+  //     authMethod?: IdentityAuthMethod;
+  //   }
+  // ) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
 };
 
-export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
+export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -51,7 +53,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
-  // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
+  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
     control,
@@ -113,32 +115,30 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
       } else {
         // create
 
-        const {
-          id: createdId,
-          name: createdName,
-          authMethod
-        } = await createMutateAsync({
+        const { id: createdId } = await createMutateAsync({
           name,
           role: role || undefined,
           organizationId: orgId
         });
 
-        // await addMutateAsync({
-        //   organizationId: orgId,
-        //   identityId: createdId,
-        //   clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        //   accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        //   accessTokenTTL: 2592000,
-        //   accessTokenMaxTTL: 2592000,
-        //   accessTokenNumUsesLimit: 0
-        // });
+        await addMutateAsync({
+          organizationId: orgId,
+          identityId: createdId,
+          clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+          accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+          accessTokenTTL: 2592000,
+          accessTokenMaxTTL: 2592000,
+          accessTokenNumUsesLimit: 0
+        });
 
         handlePopUpToggle("identity", false);
-        handlePopUpOpen("identityAuthMethod", {
-          identityId: createdId,
-          name: createdName,
-          authMethod
-        });
+        router.push(`/org/${orgId}/identities/${createdId}`);
+
+        // handlePopUpOpen("identityAuthMethod", {
+        //   identityId: createdId,
+        //   name: createdName,
+        //   authMethod
+        // });
       }
 
       createNotification({

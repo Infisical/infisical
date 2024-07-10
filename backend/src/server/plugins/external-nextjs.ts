@@ -1,8 +1,9 @@
 // this plugins allows to run infisical in standalone mode
 // standalone mode = infisical backend and nextjs frontend in one server
 // this way users don't need to deploy two things
-
 import path from "node:path";
+
+import { IS_PACKAGED } from "@app/lib/config/env";
 
 // to enabled this u need to set standalone mode to true
 export const registerExternalNextjs = async (
@@ -18,20 +19,33 @@ export const registerExternalNextjs = async (
   }
 ) => {
   if (standaloneMode) {
-    const nextJsBuildPath = path.join(dir, "frontend-build");
+    const frontendName = IS_PACKAGED ? "frontend" : "frontend-build";
+    const nextJsBuildPath = path.join(dir, frontendName);
 
     const { default: conf } = (await import(
-      path.join(dir, "frontend-build/.next/required-server-files.json"),
+      path.join(dir, `${frontendName}/.next/required-server-files.json`),
       // @ts-expect-error type
       {
         assert: { type: "json" }
       }
     )) as { default: { config: string } };
 
-    /* eslint-disable */
-    const { default: NextServer } = (
-      await import(path.join(dir, "frontend-build/node_modules/next/dist/server/next-server.js"))
-    ).default;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let NextServer: any;
+
+    if (!IS_PACKAGED) {
+      /* eslint-disable */
+      const { default: nextServer } = (
+        await import(path.join(dir, `${frontendName}/node_modules/next/dist/server/next-server.js`))
+      ).default;
+
+      NextServer = nextServer;
+    } else {
+      /* eslint-disable */
+      const nextServer = await import(path.join(dir, `${frontendName}/node_modules/next/dist/server/next-server.js`));
+
+      NextServer = nextServer.default;
+    }
 
     const nextApp = new NextServer({
       dev: false,

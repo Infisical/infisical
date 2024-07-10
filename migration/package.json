@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.0.3",
+    "ip": "^2.0.1",
     "mongoose": "^7.2.1"
   }
 }

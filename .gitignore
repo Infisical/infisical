@@ -69,3 +69,4 @@ frontend-build
 *.tgz
 cli/infisical-merge
 cli/test/infisical-merge
+/backend/binary
