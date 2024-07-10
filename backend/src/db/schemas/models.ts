@@ -95,10 +95,11 @@ export enum TableName {
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
-  KmsKeyVersion = "kms_key_versions",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
-  InternalKmsKeyVersion = "internal_kms_key_version"
+  InternalKmsKeyVersion = "internal_kms_key_version",
+  // @depreciated
+  KmsKeyVersion = "kms_key_versions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

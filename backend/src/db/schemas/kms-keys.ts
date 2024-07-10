@@ -13,6 +13,8 @@ export const KmsKeysSchema = z.object({
   isDisabled: z.boolean().default(false).nullable().optional(),
   isReserved: z.boolean().default(true).nullable().optional(),
   orgId: z.string().uuid(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   slug: z.string()
 });
 

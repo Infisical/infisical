@@ -5,13 +5,11 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TableName } from "../schemas";
 
-export async function up(knex: Knex): Promise<void> {
-  // rename old kms key table to internal kms table
-  // the kms key table would be a container to hold external and internal respectively
+const createInternalKmsTableAndBackfillData = async (knex: Knex) => {
   const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
-  const doesOldKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.KmsKeyVersion);
   const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
 
+  // building the internal kms table by filling from old kms table
   if (doesOldKmsKeyTableExist && !doesInternalKmsTableExist) {
     await knex.schema.createTable(TableName.InternalKms, (tb) => {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -21,7 +19,8 @@ export async function up(knex: Knex): Promise<void> {
       tb.uuid("kmsKeyId").unique().notNullable();
       tb.foreign("kmsKeyId").references("id").inTable(TableName.KmsKey).onDelete("CASCADE");
     });
-    // copy the old kms and build the data
+
+    // copy the old kms and backfill
     const oldKmsKey = await knex(TableName.KmsKey).select("version", "encryptedKey", "encryptionAlgorithm", "id");
     if (oldKmsKey.length) {
       await knex(TableName.InternalKms).insert(
@@ -33,51 +32,30 @@ export async function up(knex: Knex): Promise<void> {
         }))
       );
     }
+  }
+};
 
-    if (doesOldKmsKeyVersionTableExist) {
-      // because we haven't started using versioning for kms thus no data exist
-      await knex.schema.renameTable(TableName.KmsKeyVersion, TableName.InternalKmsKeyVersion);
-      await knex.schema.alterTable(TableName.InternalKmsKeyVersion, (tb) => {
-        tb.dropColumn("kmsKeyId");
+const renameKmsKeyVersionTableAsInternalKmsKeyVersion = async (knex: Knex) => {
+  const doesOldKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.KmsKeyVersion);
+  const doesNewKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.InternalKmsKeyVersion);
+
+  if (doesOldKmsKeyVersionTableExist && !doesNewKmsKeyVersionTableExist) {
+    // because we haven't started using versioning for kms thus no data exist
+    await knex.schema.renameTable(TableName.KmsKeyVersion, TableName.InternalKmsKeyVersion);
+    const hasKmsKeyIdColumn = await knex.schema.hasColumn(TableName.InternalKmsKeyVersion, "kmsKeyId");
+    const hasInternalKmsIdColumn = await knex.schema.hasColumn(TableName.InternalKmsKeyVersion, "internalKmsId");
+
+    await knex.schema.alterTable(TableName.InternalKmsKeyVersion, (tb) => {
+      if (hasKmsKeyIdColumn) tb.dropColumn("kmsKeyId");
+      if (!hasInternalKmsIdColumn) {
         tb.uuid("internalKmsId").notNullable();
         tb.foreign("internalKmsId").references("id").inTable(TableName.InternalKms).onDelete("CASCADE");
-      });
-    }
-
-    await knex.schema.alterTable(TableName.KmsKey, (tb) => {
-      tb.string("slug", 32);
-      tb.dropColumn("encryptedKey");
-      tb.dropColumn("encryptionAlgorithm");
-      tb.dropColumn("version");
-    });
-    // backfill all org id in kms key
-    await knex(TableName.KmsKey)
-      .whereNull("orgId")
-      .update({
-        // eslint-disable-next-line
-        // @ts-ignore because generate schema happens after this
-        orgId: knex(TableName.Project)
-          .select("orgId")
-          .where("id", knex.raw("??", [`${TableName.KmsKey}.projectId`]))
-      });
-    // backfill slugs in kms
-    const missingSlugs = await knex(TableName.KmsKey).whereNull("slug").select("id");
-    if (missingSlugs.length) {
-      await knex(TableName.KmsKey)
-        // eslint-disable-next-line
-        // @ts-ignore because generate schema happens after this
-        .insert(missingSlugs.map(({ id }) => ({ id, slug: slugify(alphaNumericNanoId(32)) })))
-        .onConflict("id")
-        .merge();
-    }
-
-    await knex.schema.alterTable(TableName.KmsKey, (tb) => {
-      tb.uuid("orgId").notNullable().alter();
-      tb.string("slug", 32).notNullable().alter();
-      tb.dropColumn("projectId");
+      }
     });
   }
+};
 
+const createExternalKmsKeyTable = async (knex: Knex) => {
   const doesExternalKmsServiceExist = await knex.schema.hasTable(TableName.ExternalKms);
   if (!doesExternalKmsServiceExist) {
     await knex.schema.createTable(TableName.ExternalKms, (tb) => {
@@ -90,6 +68,72 @@ export async function up(knex: Knex): Promise<void> {
       tb.foreign("kmsKeyId").references("id").inTable(TableName.KmsKey).onDelete("CASCADE");
     });
   }
+};
+
+const removeNonRequiredFieldsFromKmsKeyTableAndBackfillRequiredData = async (knex: Knex) => {
+  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
+
+  // building the internal kms table by filling from old kms table
+  if (doesOldKmsKeyTableExist) {
+    const hasSlugColumn = await knex.schema.hasColumn(TableName.KmsKey, "slug");
+    const hasEncryptedKeyColumn = await knex.schema.hasColumn(TableName.KmsKey, "encryptedKey");
+    const hasEncryptionAlgorithmColumn = await knex.schema.hasColumn(TableName.KmsKey, "encryptionAlgorithm");
+    const hasVersionColumn = await knex.schema.hasColumn(TableName.KmsKey, "version");
+    const hasTimestamps = await knex.schema.hasColumn(TableName.KmsKey, "createdAt");
+    const hasProjectId = await knex.schema.hasColumn(TableName.KmsKey, "projectId");
+    const hasOrgId = await knex.schema.hasColumn(TableName.KmsKey, "orgId");
+
+    await knex.schema.alterTable(TableName.KmsKey, (tb) => {
+      if (!hasSlugColumn) tb.string("slug", 32);
+      if (hasEncryptedKeyColumn) tb.dropColumn("encryptedKey");
+      if (hasEncryptionAlgorithmColumn) tb.dropColumn("encryptionAlgorithm");
+      if (hasVersionColumn) tb.dropColumn("version");
+      if (!hasTimestamps) tb.timestamps(true, true, true);
+    });
+
+    // backfill all org id in kms key because its gonna be changed to non nullable
+    if (hasProjectId && hasOrgId) {
+      await knex(TableName.KmsKey)
+        .whereNull("orgId")
+        .update({
+          // eslint-disable-next-line
+          // @ts-ignore because generate schema happens after this
+          orgId: knex(TableName.Project)
+            .select("orgId")
+            .where("id", knex.raw("??", [`${TableName.KmsKey}.projectId`]))
+        });
+    }
+
+    // backfill slugs in kms
+    const missingSlugs = await knex(TableName.KmsKey).whereNull("slug").select("id");
+    if (missingSlugs.length) {
+      await knex(TableName.KmsKey)
+        // eslint-disable-next-line
+        // @ts-ignore because generate schema happens after this
+        .insert(missingSlugs.map(({ id }) => ({ id, slug: slugify(alphaNumericNanoId(8).toLowerCase()) })))
+        .onConflict("id")
+        .merge();
+    }
+
+    await knex.schema.alterTable(TableName.KmsKey, (tb) => {
+      if (hasOrgId) tb.uuid("orgId").notNullable().alter();
+      tb.string("slug", 32).notNullable().alter();
+      if (hasProjectId) tb.dropColumn("projectId");
+      if (hasOrgId) tb.unique(["orgId", "slug"]);
+    });
+  }
+};
+
+/*
+ * The goal for this migration is split the existing kms key into three table
+ * the kms-key table would be a container table that contains
+ * the internal kms key table and external kms table
+ */
+export async function up(knex: Knex): Promise<void> {
+  await createInternalKmsTableAndBackfillData(knex);
+  await renameKmsKeyVersionTableAsInternalKmsKeyVersion(knex);
+  await removeNonRequiredFieldsFromKmsKeyTableAndBackfillRequiredData(knex);
+  await createExternalKmsKeyTable(knex);
 
   const doesOrgKmsKeyExist = await knex.schema.hasColumn(TableName.Organization, "kmsDefaultKeyId");
   if (!doesOrgKmsKeyExist) {
@@ -108,48 +152,54 @@ export async function up(knex: Knex): Promise<void> {
   }
 }
 
-export async function down(knex: Knex): Promise<void> {
-  const doesOrgKmsKeyExist = await knex.schema.hasColumn(TableName.Organization, "kmsDefaultKeyId");
-  if (doesOrgKmsKeyExist) {
-    await knex.schema.alterTable(TableName.Organization, (tb) => {
-      tb.dropColumn("kmsDefaultKeyId");
-    });
-  }
-
-  const doesProjectKmsSecretManagerKeyExist = await knex.schema.hasColumn(TableName.Project, "kmsSecretManagerKeyId");
-  if (doesProjectKmsSecretManagerKeyExist) {
-    await knex.schema.alterTable(TableName.Project, (tb) => {
-      tb.dropColumn("kmsSecretManagerKeyId");
-    });
-  }
-
+const renameInternalKmsKeyVersionBackToKmsKeyVersion = async (knex: Knex) => {
   const doesInternalKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.InternalKmsKeyVersion);
-  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
-  if (doesInternalKmsKeyVersionTableExist) {
+  const doesKmsKeyVersionTableExist = await knex.schema.hasTable(TableName.KmsKeyVersion);
+  if (doesInternalKmsKeyVersionTableExist && !doesKmsKeyVersionTableExist) {
     // because we haven't started using versioning for kms thus no data exist
     await knex.schema.renameTable(TableName.InternalKmsKeyVersion, TableName.KmsKeyVersion);
-    await knex.schema.alterTable(TableName.KmsKeyVersion, (tb) => {
-      tb.dropColumn("internalKmsId");
-      tb.uuid("kmsKeyId").notNullable();
-      tb.foreign("kmsKeyId").references("id").inTable(TableName.KmsKey).onDelete("CASCADE");
-    });
-  }
+    const hasInternalKmsIdColumn = await knex.schema.hasColumn(TableName.KmsKeyVersion, "internalKmsId");
+    const hasKmsKeyIdColumn = await knex.schema.hasColumn(TableName.KmsKeyVersion, "kmsKeyId");
 
-  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
-  const doesKmsSlugExist = await knex.schema.hasColumn(TableName.KmsKey, "slug");
-  if (doesInternalKmsTableExist && doesOldKmsKeyTableExist) {
-    // converting kms key to old one
-    // backfill so not setting it as not nullable
-    await knex.schema.alterTable(TableName.KmsKey, (tb) => {
-      tb.binary("encryptedKey");
-      tb.string("encryptionAlgorithm");
-      tb.integer("version").defaultTo(1);
-      tb.string("projectId");
-      tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      if (doesKmsSlugExist) {
-        tb.dropColumn("slug");
+    await knex.schema.alterTable(TableName.KmsKeyVersion, (tb) => {
+      if (hasInternalKmsIdColumn) tb.dropColumn("internalKmsId");
+      if (!hasKmsKeyIdColumn) {
+        tb.uuid("kmsKeyId").notNullable();
+        tb.foreign("kmsKeyId").references("id").inTable(TableName.KmsKey).onDelete("CASCADE");
       }
     });
+  }
+};
+
+const bringBackKmsKeyFields = async (knex: Knex) => {
+  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
+  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  if (doesOldKmsKeyTableExist && doesInternalKmsTableExist) {
+    const hasSlug = await knex.schema.hasColumn(TableName.KmsKey, "slug");
+    const hasEncryptedKeyColumn = await knex.schema.hasColumn(TableName.KmsKey, "encryptedKey");
+    const hasEncryptionAlgorithmColumn = await knex.schema.hasColumn(TableName.KmsKey, "encryptionAlgorithm");
+    const hasVersionColumn = await knex.schema.hasColumn(TableName.KmsKey, "version");
+    const hasNullableOrgId = await knex.schema.hasColumn(TableName.KmsKey, "orgId");
+    const hasProjectIdColumn = await knex.schema.hasColumn(TableName.KmsKey, "projectId");
+
+    await knex.schema.alterTable(TableName.KmsKey, (tb) => {
+      if (!hasEncryptedKeyColumn) tb.binary("encryptedKey");
+      if (!hasEncryptionAlgorithmColumn) tb.string("encryptionAlgorithm");
+      if (!hasVersionColumn) tb.integer("version").defaultTo(1);
+      if (hasNullableOrgId) tb.uuid("orgId").nullable().alter();
+      if (!hasProjectIdColumn) {
+        tb.string("projectId");
+        tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      }
+      if (hasSlug) tb.dropColumn("slug");
+    });
+  }
+};
+
+const backfillKmsKeyFromInternalKmsTable = async (knex: Knex) => {
+  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
+  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  if (doesInternalKmsTableExist && doesOldKmsKeyTableExist) {
     // backfill kms key with internal kms data
     await knex(TableName.KmsKey).update({
       // eslint-disable-next-line
@@ -168,21 +218,39 @@ export async function down(knex: Knex): Promise<void> {
         .select("id")
         .where("kmsCertificateKeyId", knex.raw("??", [`${TableName.KmsKey}.id`]))
     });
+  }
+};
+
+export async function down(knex: Knex): Promise<void> {
+  const doesOrgKmsKeyExist = await knex.schema.hasColumn(TableName.Organization, "kmsDefaultKeyId");
+  if (doesOrgKmsKeyExist) {
+    await knex.schema.alterTable(TableName.Organization, (tb) => {
+      tb.dropColumn("kmsDefaultKeyId");
+    });
+  }
+
+  const doesProjectKmsSecretManagerKeyExist = await knex.schema.hasColumn(TableName.Project, "kmsSecretManagerKeyId");
+  if (doesProjectKmsSecretManagerKeyExist) {
+    await knex.schema.alterTable(TableName.Project, (tb) => {
+      tb.dropColumn("kmsSecretManagerKeyId");
+    });
+  }
+
+  await renameInternalKmsKeyVersionBackToKmsKeyVersion(knex);
+  await bringBackKmsKeyFields(knex);
+  await backfillKmsKeyFromInternalKmsTable(knex);
+
+  const doesOldKmsKeyTableExist = await knex.schema.hasTable(TableName.KmsKey);
+  if (doesOldKmsKeyTableExist) {
     await knex.schema.alterTable(TableName.KmsKey, (tb) => {
       tb.binary("encryptedKey").notNullable().alter();
       tb.string("encryptionAlgorithm").notNullable().alter();
     });
-    await knex.schema.alterTable(TableName.InternalKms, (tb) => {
-      tb.dropForeign("kmsKeyId");
-    });
-    await knex.schema.dropTable(TableName.InternalKms);
   }
 
+  const doesInternalKmsTableExist = await knex.schema.hasTable(TableName.InternalKms);
+  if (doesInternalKmsTableExist) await knex.schema.dropTable(TableName.InternalKms);
+
   const doesExternalKmsServiceExist = await knex.schema.hasTable(TableName.ExternalKms);
-  if (doesExternalKmsServiceExist) {
-    await knex.schema.alterTable(TableName.ExternalKms, (tb) => {
-      tb.dropForeign("kmsKeyId");
-    });
-    await knex.schema.dropTable(TableName.ExternalKms);
-  }
+  if (doesExternalKmsServiceExist) await knex.schema.dropTable(TableName.ExternalKms);
 }
