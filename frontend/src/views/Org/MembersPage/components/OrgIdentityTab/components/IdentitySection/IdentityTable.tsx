@@ -1,13 +1,16 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { faEllipsis, faServer } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
-  IconButton,
   Select,
   SelectItem,
   Table,
@@ -21,8 +24,19 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
-export const IdentityTable = () => {
+type Props = {
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["deleteIdentity"]>,
+    data?: {
+      identityId: string;
+      name: string;
+    }
+  ) => void;
+};
+
+export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -76,9 +90,7 @@ export const IdentityTable = () => {
                   key={`identity-${id}`}
                   onClick={() => router.push(`/org/${orgId}/identities/${id}`)}
                 >
-                  <Td>
-                    <Link href={`/org/${orgId}/identities/${id}`}>{name}</Link>
-                  </Td>
+                  <Td>{name}</Td>
                   <Td>
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
@@ -109,16 +121,58 @@ export const IdentityTable = () => {
                     </OrgPermissionCan>
                   </Td>
                   <Td>
-                    <div className="flex items-center justify-end space-x-4">
-                      <IconButton
-                        ariaLabel="copy icon"
-                        variant="plain"
-                        className="group relative"
-                        onClick={() => router.push(`/org/${orgId}/identities/${id}`)}
-                      >
-                        <FontAwesomeIcon icon={faEllipsis} />
-                      </IconButton>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="rounded-lg">
+                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="p-1">
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.Identity}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              className={twMerge(
+                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/org/${orgId}/identities/${id}`);
+                              }}
+                              disabled={!isAllowed}
+                            >
+                              Edit Identity
+                            </DropdownMenuItem>
+                          )}
+                        </OrgPermissionCan>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Delete}
+                          a={OrgPermissionSubjects.Identity}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              className={twMerge(
+                                isAllowed
+                                  ? "hover:!bg-red-500 hover:!text-white"
+                                  : "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("deleteIdentity", {
+                                  identityId: id,
+                                  name
+                                });
+                              }}
+                              disabled={!isAllowed}
+                            >
+                              Delete Identity
+                            </DropdownMenuItem>
+                          )}
+                        </OrgPermissionCan>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </Td>
                 </Tr>
               );

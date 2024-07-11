@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent,Select, SelectItem } from "@app/components/v2";
+import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
   useAddIdentityToWorkspace,
@@ -54,7 +54,7 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();
 
-    projectMemberships?.forEach((projectMembership: any) => {
+    projectMemberships?.forEach((projectMembership) => {
       wsWorkspaceIds.set(projectMembership.project.id, true);
     });
 

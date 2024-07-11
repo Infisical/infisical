@@ -108,7 +108,7 @@ export const IdentitySection = withPermission(
             )}
           </OrgPermissionCan>
         </div>
-        <IdentityTable />
+        <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         {/* <IdentityAuthMethodModal
           popUp={popUp}
