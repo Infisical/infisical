@@ -168,7 +168,7 @@ export const UserPanel = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can delete users via Admin UI if you switch to Infisical's Pro plan."
+        text="Deleting users via Admin UI is only available on Infisical's Pro plan and above."
       />
     </div>
   );
