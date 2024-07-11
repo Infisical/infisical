@@ -22,7 +22,9 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 const schema = z
   .object({
     description: z.string(),
-    ttl: z.string(),
+    ttl: z.string().refine((val) => Number(val) <= 31536000, {
+      message: "TTL cannot be greater than 31536000"
+    }),
     numUsesLimit: z.string()
   })
   .required();

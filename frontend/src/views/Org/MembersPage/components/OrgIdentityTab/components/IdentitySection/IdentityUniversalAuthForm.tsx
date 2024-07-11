@@ -19,8 +19,8 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup
   .object({
-    accessTokenTTL: yup.string().required("Access Token TTL is required"),
-    accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required"),
+    accessTokenTTL: yup.string().required("Access Token TTL is required").max(31536000),
+    accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required").max(31536000),
     accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
     clientSecretTrustedIps: yup
       .array(
