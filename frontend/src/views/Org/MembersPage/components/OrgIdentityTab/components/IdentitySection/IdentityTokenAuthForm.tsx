@@ -17,8 +17,12 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    accessTokenTTL: z.string(),
-    accessTokenMaxTTL: z.string(),
+    accessTokenTTL: z.string().refine((val) => Number(val) <= 31536000, {
+      message: "Access Token TTL cannot be greater than 31536000"
+    }),
+    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 31536000, {
+      message: "Access Token Max TTL cannot be greater than 31536000"
+    }),
     accessTokenNumUsesLimit: z.string(),
     accessTokenTrustedIps: z
       .array(
