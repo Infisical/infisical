@@ -27,16 +27,16 @@ const schema = yup
       .required("Access Token TTL is required")
       .test(
         "is-value-valid",
-        "Access Token TTL cannot be greater than 31536000",
-        (value) => Number(value) <= 31536000
+        "Access Token TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
       ),
     accessTokenMaxTTL: yup
       .string()
       .required("Access Max Token TTL is required")
       .test(
         "is-value-valid",
-        "Access Token Max TTL cannot be greater than 31536000",
-        (value) => Number(value) <= 31536000
+        "Access Token Max TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
       ),
     accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
     accessTokenTrustedIps: yup

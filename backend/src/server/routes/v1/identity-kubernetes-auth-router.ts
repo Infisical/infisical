@@ -106,7 +106,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           .number()
           .int()
           .min(1)
-          .max(31536000)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
@@ -115,7 +115,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         accessTokenMaxTTL: z
           .number()
           .int()
-          .max(31536000)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
@@ -202,7 +202,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           .number()
           .int()
           .min(0)
-          .max(31536000)
+          .max(315360000)
           .optional()
           .describe(KUBERNETES_AUTH.UPDATE.accessTokenTTL),
         accessTokenNumUsesLimit: z
@@ -214,7 +214,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         accessTokenMaxTTL: z
           .number()
           .int()
-          .max(31536000)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })

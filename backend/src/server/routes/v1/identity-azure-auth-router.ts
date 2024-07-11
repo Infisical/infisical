@@ -90,7 +90,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           .number()
           .int()
           .min(1)
-          .max(31536000)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
@@ -99,7 +99,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         accessTokenMaxTTL: z
           .number()
           .int()
-          .max(31536000)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
@@ -175,12 +175,12 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           .min(1)
           .optional()
           .describe(AZURE_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z.number().int().min(0).max(31536000).optional().describe(AZURE_AUTH.UPDATE.accessTokenTTL),
+        accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(AZURE_AUTH.UPDATE.accessTokenTTL),
         accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(AZURE_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
-          .max(31536000)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })

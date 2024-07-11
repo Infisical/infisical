@@ -22,11 +22,11 @@ const schema = z.object({
       })
     )
     .min(1),
-  accessTokenTTL: z.string().refine((val) => Number(val) <= 31536000, {
-    message: "Access Token TTL cannot be greater than 31536000"
+  accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
+    message: "Access Token TTL cannot be greater than 315360000"
   }),
-  accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 31536000, {
-    message: "Access Token Max TTL cannot be greater than 31536000"
+  accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
+    message: "Access Token Max TTL cannot be greater than 315360000"
   }),
   accessTokenNumUsesLimit: z.string(),
   oidcDiscoveryUrl: z.string().url().min(1),

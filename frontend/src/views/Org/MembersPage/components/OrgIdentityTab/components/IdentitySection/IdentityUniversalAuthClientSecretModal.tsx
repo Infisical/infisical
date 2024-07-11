@@ -40,8 +40,8 @@ const schema = yup.object({
     .string()
     .test(
       "is-value-valid",
-      "TTL cannot be greater than 31536000",
-      (value) => Number(value) <= 31536000
+      "TTL cannot be greater than 315360000",
+      (value) => Number(value) <= 315360000
     ),
   numUsesLimit: yup.string()
 });
