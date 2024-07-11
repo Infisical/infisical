@@ -71,6 +71,7 @@ export const IdentityProjectRow = ({
           <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <Tooltip content="Remove">
               <IconButton
+                colorSchema="danger"
                 ariaLabel="copy icon"
                 variant="plain"
                 className="group relative"
