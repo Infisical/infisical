@@ -63,7 +63,7 @@ export const SecretTable = ({
             <IconButton
               variant="outline_bg"
               colorSchema="primary"
-              ariaLabel="copy to clipboard"
+              ariaLabel="toggle visibility"
               onClick={() => setIsVisible.toggle()}
               className="flex max-h-8 items-center rounded"
               size="xs"
