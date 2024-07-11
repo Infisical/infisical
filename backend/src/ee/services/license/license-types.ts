@@ -56,6 +56,7 @@ export type TFeatureSet = {
   secretApproval: false;
   secretRotation: true;
   caCrl: false;
+  instanceUserManagement: false;
 };
 
 export type TOrgPlansTableDTO = {
