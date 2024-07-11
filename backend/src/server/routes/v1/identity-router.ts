@@ -51,6 +51,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         orgId: req.body.organizationId
       });
 
+      console.log("test");
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.body.organizationId,
