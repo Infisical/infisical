@@ -22,8 +22,12 @@ const schema = z
     tenantId: z.string(),
     resource: z.string(),
     allowedServicePrincipalIds: z.string(),
-    accessTokenTTL: z.string(),
-    accessTokenMaxTTL: z.string(),
+    accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
+      message: "Access Token TTL cannot be greater than 315360000"
+    }),
+    accessTokenMaxTTL: z.string().refine((val) => Number(val) <= 315360000, {
+      message: "Access Token Max TTL cannot be greater than 315360000"
+    }),
     accessTokenNumUsesLimit: z.string(),
     accessTokenTrustedIps: z
       .array(

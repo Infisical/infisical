@@ -106,6 +106,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           .number()
           .int()
           .min(1)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
@@ -114,6 +115,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
@@ -201,6 +203,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             .number()
             .int()
             .min(1)
+            .max(315360000)
             .refine((value) => value !== 0, {
               message: "accessTokenTTL must have a non zero number"
             })
@@ -209,6 +212,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           accessTokenMaxTTL: z
             .number()
             .int()
+            .max(315360000)
             .refine((value) => value !== 0, {
               message: "accessTokenMaxTTL must have a non zero number"
             })
