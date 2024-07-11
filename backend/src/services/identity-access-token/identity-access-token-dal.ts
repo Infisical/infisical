@@ -57,7 +57,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             `${TableName.IdentityOidcAuth}.identityId`
           );
         })
-        .leftJoin(TableName.IdentityAccessToken, (qb) => {
+        .leftJoin(TableName.IdentityTokenAuth, (qb) => {
           qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.TOKEN_AUTH])).andOn(
             `${TableName.Identity}.id`,
             `${TableName.IdentityTokenAuth}.identityId`
