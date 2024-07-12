@@ -19,7 +19,7 @@ require (
 	github.com/petar-dambovaliev/aho-corasick v0.0.0-20211021192214-5ab2d9280aa9
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
-	github.com/rs/cors v1.9.0
+	github.com/rs/cors v1.11.0
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.8.1
