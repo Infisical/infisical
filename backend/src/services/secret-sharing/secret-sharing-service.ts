@@ -101,7 +101,7 @@ export const secretSharingServiceFactory = ({
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId } = getSharedSecretsInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
-    const userSharedSecrets = await secretSharingDAL.find({ userId: actorId, orgId }, { sort: [["expiresAt", "asc"]] });
+    const userSharedSecrets = await secretSharingDAL.findActiveSharedSecrets({ userId: actorId, orgId });
     return userSharedSecrets;
   };
 
@@ -113,7 +113,7 @@ export const secretSharingServiceFactory = ({
     }
     if (sharedSecret.expiresAfterViews != null && sharedSecret.expiresAfterViews >= 0) {
       if (sharedSecret.expiresAfterViews === 0) {
-        await secretSharingDAL.deleteById(sharedSecretId);
+        await secretSharingDAL.softDeleteById(sharedSecretId);
         return;
       }
       await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
