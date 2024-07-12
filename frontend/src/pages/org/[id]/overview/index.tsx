@@ -77,7 +77,7 @@ const features = [
       "Pull secrets into your Kubernetes containers and automatically redeploy upon secret changes."
   },
   {
-    _id: 1,
+    id: 1,
     name: "Infisical Agent",
     link: "https://infisical.com/docs/infisical-agent/overview",
     description: "Inject secrets into your apps without modifying any application logic."
@@ -889,27 +889,27 @@ const OrganizationPage = withPermission(
           <div className="mt-4 grid w-full grid-cols-3 gap-4">
             {features.map((feature) => (
               <div
-                key={feature._id}
-                className="flex h-44 w-full flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+                key={feature.id}
+                className="relative flex h-full w-full flex-col gap-2 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
               >
                 <div className="mt-0 text-lg text-mineshaft-100">{feature.name}</div>
-                <div className="mb-4 mt-2 text-[15px] font-light text-mineshaft-300">
+                <div className="line-clamp overflwo-auto mb-4 mt-2 h-full text-[15px] font-light text-mineshaft-300">
                   {feature.description}
                 </div>
-                <div className="flex w-full items-center">
-                  <div className="text-[15px] font-light text-mineshaft-300">
+                <div className="flex w-full flex-col items-start gap-2 xl:flex-row xl:items-center">
+                  <p className="left-0 text-[15px] font-light text-mineshaft-300">
                     Setup time: 20 min
-                  </div>
+                  </p>
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
+                    className="group ml-0 w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200 xl:ml-auto"
                     href={feature.link}
                   >
                     Learn more{" "}
                     <FontAwesomeIcon
                       icon={faArrowRight}
-                      className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
+                      className="s pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
                     />
                   </a>
                 </div>
