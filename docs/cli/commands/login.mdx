@@ -8,7 +8,8 @@ infisical login
 ```
 
 ### Description
-The CLI uses authentication to verify your identity. When you enter the correct email and password for your account, a token is generated and saved in your system Keyring to allow you to make future interactions with the CLI. 
+
+The CLI uses authentication to verify your identity. When you enter the correct email and password for your account, a token is generated and saved in your system Keyring to allow you to make future interactions with the CLI.
 
 To change where the login credentials are stored, visit the [vaults command](./vault).
 
@@ -17,12 +18,12 @@ If you have added multiple users, you can switch between the users by using the 
     <Info>
       When you authenticate with **any other method than `user`**, an access token will be printed to the console upon successful login. This token can be used to authenticate with the Infisical API and the CLI by passing it in the `--token` flag when applicable.
 
-      Use flag `--plain` along with `--silent` to print only the token in plain text when using a machine identity auth method. 
-      
+      Use flag `--plain` along with `--silent` to print only the token in plain text when using a machine identity auth method.
+
     </Info>
 
-
 ### Flags
+
 The login command supports a number of flags that you can use for different authentication methods. Below is a list of all the flags that can be used with the login command.
 
 <AccordionGroup>
@@ -52,6 +53,7 @@ The login command supports a number of flags that you can use for different auth
     <Tip>
       The `client-id` flag can be substituted with the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` environment variable.
     </Tip>
+
   </Accordion>
   <Accordion title="--client-secret">
     ```bash
@@ -63,6 +65,7 @@ The login command supports a number of flags that you can use for different auth
     <Tip>
       The `client-secret` flag can be substituted with the `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variable.
     </Tip>
+
   </Accordion>
   <Accordion title="--machine-identity-id">
     ```bash
@@ -75,6 +78,7 @@ The login command supports a number of flags that you can use for different auth
     <Tip>
       The `machine-identity-id` flag can be substituted with the `INFISICAL_MACHINE_IDENTITY_ID` environment variable.
     </Tip>
+
   </Accordion>
   <Accordion title="--service-account-token-path">
     ```bash
@@ -88,6 +92,7 @@ The login command supports a number of flags that you can use for different auth
     <Tip>
     The `service-account-token-path` flag can be substituted with the `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` environment variable.
     </Tip>
+
   </Accordion>
   <Accordion title="--service-account-key-file-path">
     ```bash
@@ -100,9 +105,23 @@ The login command supports a number of flags that you can use for different auth
     <Tip>
       The `service-account-key-path` flag can be substituted with the `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` environment variable.
     </Tip>
+
   </Accordion>
 </AccordionGroup>
 
+  <Accordion title="--oidc-jwt">
+    ```bash
+    infisical login --service-account-token-path=<service-account-token-path> # Optional Will default to '/var/run/secrets/kubernetes.io/serviceaccount/token'.
+    ```
+
+    #### Description
+    The JWT provided by an identity provider for OIDC authentication.
+
+    <Tip>
+    The `oidc-jwt` flag can be substituted with the `INFISICAL_OIDC_AUTH_JWT` environment variable.
+    </Tip>
+
+  </Accordion>
 
 ### Authentication Methods
 
@@ -121,6 +140,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
         Your machine identity client secret.
         </ParamField>
     </Expandable>
+
   </ParamField>
 
   <Steps>
@@ -134,6 +154,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
       infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
     ```
     </Step>
+
   </Steps>
 </Accordion>
 <Accordion title="Native Kubernetes">
@@ -148,6 +169,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
           Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
         </ParamField>
     </Expandable>
+
   </ParamField>
 
   <Steps>
@@ -162,6 +184,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
       infisical login --method=kubernetes --machine-identity-id=<machine-identity-id> --service-account-token-path=<service-account-token-path>
     ```
     </Step>
+
   </Steps>
 
 </Accordion>
@@ -213,6 +236,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
       ```
       </Step>
     </Steps>
+
   </Accordion>
   <Accordion title="GCP IAM">
     The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
@@ -235,11 +259,12 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
       <Step title="Obtain an access token">
         Run the `login` command with the following flags to obtain an access token:
 
-      ```bash 
+      ```bash
         infisical login --method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
       ```
       </Step>
     </Steps>
+
   </Accordion>
   <Accordion title="Native AWS IAM">
     The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
@@ -264,10 +289,40 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
       ```
       </Step>
     </Steps>
+
+  </Accordion>
+    <Accordion title="OIDC Auth">
+    The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+          <ParamField query="oidc-jwt" type="string" required>
+            The OIDC JWT from the identity provider.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <Steps>
+      <Step title="Create an OIDC machine identity">
+        To create an OIDC machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/oidc-auth/general).
+      </Step>
+      <Step title="Obtain an access token">
+        Run the `login` command with the following flags to obtain an access token:
+
+      ```bash
+        infisical login --method=oidc-auth --machine-identity-id=<machine-identity-id> --oidc-jwt=<oidc-jwt>
+      ```
+      </Step>
+    </Steps>
+
   </Accordion>
 </AccordionGroup>
 
 ### Machine Identity Authentication Quick Start
+
 In this example we'll be using the `universal-auth` method to login to obtain an Infisical access token, which we will then use to fetch secrets with.
 
 <Steps>
@@ -277,8 +332,8 @@ In this example we'll be using the `universal-auth` method to login to obtain an
         ```
 
         Now that we've set the `INFISICAL_TOKEN` environment variable, we can use the CLI to interact with Infisical. The CLI will automatically check for the presence of the `INFISICAL_TOKEN` environment variable and use it for authentication.
-        
-        
+
+
         Alternatively, if you would rather use the `--token` flag to pass the token directly, you can do so by running the following command:
 
         ```bash
@@ -297,6 +352,7 @@ In this example we'll be using the `universal-auth` method to login to obtain an
           The `--recursive`, and `--env` flag is optional and will fetch all secrets in subfolders. The default environment is `dev` if no `--env` flag is provided.
         </Info>
     </Step>
+
 </Steps>
 
 And that's it! Now you're ready to start using the Infisical CLI to interact with your secrets, with the use of Machine Identities.
