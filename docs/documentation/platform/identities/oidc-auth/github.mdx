@@ -1,17 +1,17 @@
 ---
-title: OIDC Auth
-description: "Learn how to authenticate with Infisical from any platform or environment using OpenID Connect (OIDC)."
+title: Github
+description: "Learn how to authenticate Github workflows with Infisical using OpenID Connect (OIDC)."
 ---
 
 **OIDC Auth** is a platform-agnostic JWT-based authentication method that can be used to authenticate from any platform or environment using an identity provider with OpenID Connect.
 
 ## Diagram
 
-The following sequence digram illustrates the OIDC Auth workflow for authenticating clients with Infisical.
+The following sequence diagram illustrates the OIDC Auth workflow for authenticating Github workflows with Infisical.
 
 ```mermaid
 sequenceDiagram
-  participant Client as Client
+  participant Client as Github Workflow
   participant Idp as Identity Provider
   participant Infis as Infisical
 
@@ -39,15 +39,14 @@ then Infisical returns a short-lived access token that can be used to make authe
 
 To be more specific:
 
-1. The client requests an identity token from its identity provider.
-2. The client sends the identity token to Infisical at the `/api/v1/auth/oidc-auth/login` endpoint.
-3. Infisical fetches the public key that was used to sign the identity token from the identity provider using OIDC Discovery.
+1. The Github workflow requests an identity token from Github's identity provider.
+2. The fetched identity token is sent to Infisical at the `/api/v1/auth/oidc-auth/login` endpoint.
+3. Infisical fetches the public key that was used to sign the identity token from Github's identity provider using OIDC Discovery.
 4. Infisical validates the JWT using the public key provided by the identity provider and checks that the subject, audience, and claims of the token matches with the set criteria.
-5. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
+5. If all is well, Infisical returns a short-lived access token that the Github workflow can use to make authenticated requests to the Infisical API.
 
 <Note>
-  Infisical needs network-level access to the identity provider configuration
-  endpoints.
+  Infisical needs network-level access to Github's identity provider endpoints.
 </Note>
 
 ## Guide
@@ -80,19 +79,21 @@ In the following steps, we explore how to create and use identities to access th
 
     ![identities create oidc auth method](/images/platform/identities/identities-org-create-oidc-auth-method.png)
 
-    <Tip>Restrict access by configuring the Subject, Audiences, and Claims fields</Tip>
+    <Warning>Restrict access by configuring the Subject, Audiences, and Claims fields</Warning>
 
     Here's some more guidance on each field:
-    - OIDC Discovery URL:  The URL used to retrieve the OpenID Connect configuration information from the identity provider. This will be used to fetch the public key needed for verifying the provided JWT.
-    - Issuer: The unique identifier of the identity provider issuing the JWT. This value is used to verify the iss (issuer) claim in the JWT to ensure the token is issued by a trusted provider.
-    - CA Certificate: The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.
-    - Subject: The expected principal that is the subject of the JWT. The `sub` (subject) claim in the JWT should match this value.
-    - Audiences: A list of intended recipients. This value is checked against the aud (audience) claim in the token. The token's aud claim should match at least one of the audiences for it to be valid.
-    - Claims: Additional information or attributes that should be present in the JWT for it to be valid.
+    - OIDC Discovery URL:  The URL used to retrieve the OpenID Connect configuration from the identity provider. This will be used to fetch the public key needed for verifying the provided JWT. This should be set to `https://token.actions.githubusercontent.com`
+    - Issuer: The unique identifier of the identity provider issuing the JWT. This value is used to verify the iss (issuer) claim in the JWT to ensure the token is issued by a trusted provider. This should be set to `https://token.actions.githubusercontent.com`
+    - CA Certificate: The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints. For Github workflows, this can be left as blank.
+    - Subject: The expected principal that is the subject of the JWT. The format of the sub field for GitHub workflow OIDC tokens is as follows: `"repo:<owner>/<repo>:<environment>"`. The environment can be where the GitHub workflow is running, such as `environment`, `ref`, or `job_workflow_ref`. For example, if you have a repository owned by octocat named example-repo, and the GitHub workflow is running on the main branch, the subject field might look like this: `repo:octocat/example-repo:ref:refs/heads/main`
+    - Audiences: A list of intended recipients. This value is checked against the aud (audience) claim in the token. By default, set this to the URL of the repository owner, such as the organization that owns the repository (e.g. `https://github.com/octo-org`).
+    - Claims: Additional information or attributes that should be present in the JWT for it to be valid. You can refer to Github's [documentation](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token) for the complete list of supported claims.
     - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
     - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
     - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
+
+    <Tip>If you are unsure about what to configure for the subject, audience, and claims fields you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to get the appropriate values. Alternatively, you can fetch the JWT from the workflow and inspect the fields manually.</Tip>
     </Step>
     <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
@@ -106,51 +107,55 @@ In the following steps, we explore how to create and use identities to access th
     ![identities project create](/images/platform/identities/identities-project-create.png)
     </Step>
     <Step title="Accessing the Infisical API with the identity">
-        To access the Infisical API as the identity, you need to fetch an identity token from an identity provider and make a request to the `/api/v1/auth/oidc-auth/login` endpoint in exchange for an access token.
+        As a prerequisite, you will need to set `id-token:write` permissions for the Github workflow. This setting allows the JWT to be requested from Github's OIDC provider.
 
-        We provide an example below of how authentication is done with Infisical using OIDC. It is a snippet from the [official Github secrets action](https://github.com/Infisical/secrets-action).
-
-        #### Sample usage
-        ```javascript
-        export const oidcLogin = async ({ identityId, domain, oidcAudience }) => {
-            const idToken = await core.getIDToken(oidcAudience);
-
-            const loginData = querystring.stringify({
-                identityId,
-                jwt: idToken,
-            });
-
-            try {
-                const response = await axios({
-                method: "post",
-                url: `${domain}/api/v1/auth/oidc-auth/login`,
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data: loginData,
-                });
-
-                return response.data.accessToken;
-            } catch (err) {
-                core.error("Error:", err.message);
-                throw err;
-            }
-        };
+        ```yaml
+        permissions:
+            id-token: write # This is required for requesting the JWT
+        ...
         ```
 
-        #### Sample OIDC login response
-
-        ```bash Response
-        {
-        "accessToken": "...",
-        "expiresIn": 7200,
-        "accessTokenMaxTTL": 43244
-        "tokenType": "Bearer"
-        }
+        To access the Infisical API as the identity, you need to fetch an identity token from Github's identity provider and make a request to the `/api/v1/auth/oidc-auth/login` endpoint in exchange for an access token.
+        The identity token can be fetched using either of the following approaches:
+        - Using environment variables on the runner (`ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN`).
+        ```yaml
+        steps:
+            - name: Request OIDC Token
+                run: |
+                echo "Requesting OIDC token..."
+                TOKEN=$(curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
+                echo "TOKEN=$TOKEN" >> $GITHUB_ENV
         ```
+
+        - Using `getIDToken()` from the Github Actions toolkit.
+
+        Below is an example of how a Github workflow can be configured to fetch secrets from Infisical using the [Infisical Secrets Action](https://github.com/Infisical/secrets-action) with OIDC Auth.
+        ```yaml
+        name: Manual workflow
+
+        on:
+            workflow_dispatch:
+
+        permissions:
+            id-token: write # This is required for requesting the JWT
+
+        jobs:
+            build:
+                runs-on: ubuntu-latest
+                steps:
+                    - uses: Infisical/secrets-action@v1.0.7
+                    with:
+                        method: "oidc"
+                        env-slug: "dev"
+                        project-slug: "ggggg-9-des"
+                        identity-id: "6b579c00-5c85-4b44-aabe-f8a
+        ...
+        ```
+
+        Preceding steps can then use the secret values injected onto the workflow's environment.
 
         <Tip>
-            We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using OIDC Auth as they handle the authentication process including the fetching of identity tokens for you.
+            We recommend using [Infisical Secrets Action](https://github.com/Infisical/secrets-action) to authenticate with Infisical using OIDC Auth as it handles the authentication process including the fetching of identity tokens for you.
         </Tip>
 
         <Note>
