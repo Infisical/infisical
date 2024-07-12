@@ -292,4 +292,39 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       return { folders };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:id",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get folder by id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        id: z.string().trim().describe(FOLDERS.GET_BY_ID.folderId)
+      }),
+      response: {
+        200: z.object({
+          folder: SecretFoldersSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const folder = await server.services.folder.getFolderById({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.id
+      });
+      return { folder };
+    }
+  });
 };
