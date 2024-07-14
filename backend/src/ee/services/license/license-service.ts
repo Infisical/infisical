@@ -218,6 +218,8 @@ export const licenseServiceFactory = ({
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
+      onPremFeatures.membersUsed = usedSeats;
+      onPremFeatures.identitiesUsed = usedIdentitySeats;
       await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
         usedSeats,
         usedIdentitySeats
