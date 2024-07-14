@@ -378,34 +378,23 @@ export const SecretOverviewPage = () => {
   };
 
   const handleBulkSecretUpdate = async() => {
-    try{
-      bulkSecretUpdateContent.map(async(secretContent: SecretBulkUpdate)=>{
-        if(secretContent?.isCreatable){
-          await handleSecretCreate(secretContent.env,secretContent.key,secretContent.value)
-        }
-        else{
-          let secretId =  secretContent.secretId;
-          let type = secretContent.type
-          await handleSecretUpdate(
-            secretContent.env,
-            secretContent.key,
-            secretContent?.value,
-            type,
-            secretId
-          );
-        }
-      })
-      createNotification({
-        type: "success",
-        text: "Successfully updated secrets"
-      });
-    }catch(error){
-      console.log(error)
-      createNotification({
-        type: "error",
-        text: "Failed to update secrets"
-      });
-    }
+    bulkSecretUpdateContent.map(async(secretContent: SecretBulkUpdate)=>{
+      if(secretContent?.isCreatable){
+        await handleSecretCreate(secretContent.env,secretContent.key,secretContent.value)
+      }
+      else{
+        let secretId =  secretContent.secretId;
+        let type = secretContent.type
+        await handleSecretUpdate(
+          secretContent.env,
+          secretContent.key,
+          secretContent?.value,
+          type,
+          secretId
+        );
+      }
+    })
+    setBulkSecretUpdateContent([]);
   }
 
   const handleSecretDelete = async (env: string, key: string, secretId?: string) => {

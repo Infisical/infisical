@@ -129,6 +129,20 @@ export const SecretEditRow = ({
     setIsDeleting.on();
     try {
       await onSecretDelete(environment, secretName, secretId);
+      
+      // updating bulksecretupdatecontent array to prevent it from being updated when secret that was changed is deleted
+      setBulkSecretUpdateContent((prevContent) => {
+        let data = [...prevContent];
+
+        const secretObjectIndex = data.findIndex(secretObject => 
+          (secretId && secretObject.secretId === secretId && secretObject.env === environment)
+        );
+
+        if (secretObjectIndex !== -1) {
+          data.splice(secretObjectIndex, 1);
+        }
+        return data
+      })
       reset({ value: null });
     } finally {
       setIsDeleting.off();
