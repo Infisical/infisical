@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups, TOrgMemberships, TUsers } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName, TOrgMemberships, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -66,7 +66,7 @@ type TScimServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "findAllGroupMembers" | "update" | "delete" | "findGroups" | "transaction"
+    "create" | "findOne" | "findAllGroupMembers" | "delete" | "findGroups" | "transaction" | "updateById" | "update"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   userGroupMembershipDAL: Pick<
@@ -817,7 +817,6 @@ export const scimServiceFactory = ({
     });
   };
 
-  // TODO: add support for add/remove op
   const updateScimGroupNamePatch = async ({ groupId, orgId, operations }: TUpdateScimGroupNamePatchDTO) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
@@ -840,23 +839,45 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    let group: TGroups | undefined;
+    let group = await groupDAL.findOne({
+      id: groupId,
+      orgId
+    });
+
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
     for await (const operation of operations) {
       switch (operation.op) {
         case "replace": {
-          await groupDAL.update(
-            {
-              id: groupId,
-              orgId
-            },
-            {
-              name: operation.value.displayName
-            }
-          );
+          group = await groupDAL.updateById(group.id, {
+            name: operation.value.displayName
+          });
           break;
         }
         case "add": {
-          // TODO
+          const orgMemberships = await orgMembershipDAL.find({
+            $in: {
+              id: operation.value.map((member) => member.value)
+            }
+          });
+
+          await addUsersToGroupByUserIds({
+            group,
+            userIds: orgMemberships.map((membership) => membership.userId as string),
+            userDAL,
+            userGroupMembershipDAL,
+            orgDAL,
+            groupProjectDAL,
+            projectKeyDAL,
+            projectDAL,
+            projectBotDAL
+          });
+
           break;
         }
         case "remove": {
@@ -870,13 +891,6 @@ export const scimServiceFactory = ({
           });
         }
       }
-    }
-
-    if (!group) {
-      throw new ScimRequestError({
-        detail: "Group Not Found",
-        status: 404
-      });
     }
 
     return buildScimGroup({

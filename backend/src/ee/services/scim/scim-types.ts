@@ -125,10 +125,11 @@ type TRemoveOp = {
 
 type TAddOp = {
   op: "add";
+  path: string;
   value: {
     value: string;
     display?: string;
-  };
+  }[];
 };
 
 export type TDeleteScimGroupDTO = {
