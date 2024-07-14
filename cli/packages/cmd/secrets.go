@@ -187,10 +187,8 @@ var secretsSetCmd = &cobra.Command{
 
 		var secretOperations []models.SecretSetOperation
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
-			fmt.Println(">>>", projectId)
 			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token)
 		} else {
-			// fmt.Println(">>>", projectId)
 			workspaceFile, err := util.GetWorkSpaceFromFile()
 			if err != nil {
 				util.HandleError(err, "unable to get your local config details [err=%v]")

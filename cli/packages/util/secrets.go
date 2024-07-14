@@ -141,34 +141,6 @@ func CreateDynamicSecretLease(accessToken string, projectSlug string, environmen
 	}, nil
 }
 
-func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]models.SingleEnvironmentVariable, error) {
-	if importedSecrets == nil {
-		return secrets, nil
-	}
-
-	hasOverriden := make(map[string]bool)
-	for _, sec := range secrets {
-		hasOverriden[sec.Key] = true
-	}
-
-	for i := len(importedSecrets) - 1; i >= 0; i-- {
-		importSec := importedSecrets[i]
-		plainTextImportedSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, importSec.Secrets)
-
-		if err != nil {
-			return nil, fmt.Errorf("unable to decrypt your imported secrets [err=%v]", err)
-		}
-
-		for _, sec := range plainTextImportedSecrets {
-			if _, ok := hasOverriden[sec.Key]; !ok {
-				secrets = append(secrets, sec)
-				hasOverriden[sec.Key] = true
-			}
-		}
-	}
-	return secrets, nil
-}
-
 func InjectRawImportedSecret(secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) ([]models.SingleEnvironmentVariable, error) {
 	if importedSecrets == nil {
 		return secrets, nil
@@ -470,87 +442,6 @@ func OverrideSecrets(secrets []models.SingleEnvironmentVariable, secretType stri
 		secretsToReturn = append(secretsToReturn, secret)
 	}
 	return secretsToReturn
-}
-
-func GetPlainTextSecrets(key []byte, encryptedSecrets []api.EncryptedSecretV3) ([]models.SingleEnvironmentVariable, error) {
-	plainTextSecrets := []models.SingleEnvironmentVariable{}
-	for _, secret := range encryptedSecrets {
-		// Decrypt key
-		key_iv, err := base64.StdEncoding.DecodeString(secret.SecretKeyIV)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret IV for secret key")
-		}
-
-		key_tag, err := base64.StdEncoding.DecodeString(secret.SecretKeyTag)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret authentication tag for secret key")
-		}
-
-		key_ciphertext, err := base64.StdEncoding.DecodeString(secret.SecretKeyCiphertext)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
-		}
-
-		plainTextKey, err := crypto.DecryptSymmetric(key, key_ciphertext, key_tag, key_iv)
-		if err != nil {
-			return nil, fmt.Errorf("unable to symmetrically decrypt secret key")
-		}
-
-		// Decrypt value
-		value_iv, err := base64.StdEncoding.DecodeString(secret.SecretValueIV)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret IV for secret value")
-		}
-
-		value_tag, err := base64.StdEncoding.DecodeString(secret.SecretValueTag)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret authentication tag for secret value")
-		}
-
-		value_ciphertext, err := base64.StdEncoding.DecodeString(secret.SecretValueCiphertext)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
-		}
-
-		plainTextValue, err := crypto.DecryptSymmetric(key, value_ciphertext, value_tag, value_iv)
-		if err != nil {
-			return nil, fmt.Errorf("unable to symmetrically decrypt secret value")
-		}
-
-		// Decrypt comment
-		comment_iv, err := base64.StdEncoding.DecodeString(secret.SecretCommentIV)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret IV for secret value")
-		}
-
-		comment_tag, err := base64.StdEncoding.DecodeString(secret.SecretCommentTag)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret authentication tag for secret value")
-		}
-
-		comment_ciphertext, err := base64.StdEncoding.DecodeString(secret.SecretCommentCiphertext)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
-		}
-
-		plainTextComment, err := crypto.DecryptSymmetric(key, comment_ciphertext, comment_tag, comment_iv)
-		if err != nil {
-			return nil, fmt.Errorf("unable to symmetrically decrypt secret comment")
-		}
-
-		plainTextSecret := models.SingleEnvironmentVariable{
-			Key:     string(plainTextKey),
-			Value:   string(plainTextValue),
-			Type:    string(secret.Type),
-			ID:      secret.ID,
-			Tags:    secret.Tags,
-			Comment: string(plainTextComment),
-		}
-
-		plainTextSecrets = append(plainTextSecrets, plainTextSecret)
-	}
-
-	return plainTextSecrets, nil
 }
 
 func WriteBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
