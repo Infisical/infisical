@@ -475,10 +475,13 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
             }),
             z.object({
               op: z.literal("add"),
-              value: z.object({
-                value: z.string().trim(),
-                display: z.string().trim().optional()
-              })
+              path: z.string().trim(),
+              value: z.array(
+                z.object({
+                  value: z.string().trim(),
+                  display: z.string().trim().optional()
+                })
+              )
             })
           ])
         )
