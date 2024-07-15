@@ -160,14 +160,16 @@ export type TGetASecretRawDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretRawDTO = TProjectPermission & {
+  secretName: string;
   secretPath: string;
   environment: string;
-  secretName: string;
   secretValue: string;
   type: SecretType;
   tagIds?: string[];
   secretComment?: string;
   skipMultilineEncoding?: boolean;
+  secretReminderRepeatDays?: number | null;
+  secretReminderNote?: string | null;
 };
 
 export type TUpdateSecretRawDTO = TProjectPermission & {
@@ -175,11 +177,16 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   environment: string;
   secretName: string;
   secretValue?: string;
+  newSecretName?: string;
+  secretComment?: string;
   type: SecretType;
   tagIds?: string[];
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  metadata?: {
+    source?: string;
+  };
 };
 
 export type TDeleteSecretRawDTO = TProjectPermission & {
@@ -191,34 +198,46 @@ export type TDeleteSecretRawDTO = TProjectPermission & {
 
 export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   environment: string;
   secrets: {
     secretKey: string;
     secretValue: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
+    tagIds?: string[];
+    metadata?: {
+      source?: string;
+    };
   }[];
 };
 
 export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   environment: string;
   secrets: {
     secretKey: string;
+    newSecretName?: string;
     secretValue: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
+    tagIds?: string[];
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
   }[];
 };
 
 export type TDeleteManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   environment: string;
   secrets: {
     secretKey: string;
+    type?: SecretType;
   }[];
 };
 

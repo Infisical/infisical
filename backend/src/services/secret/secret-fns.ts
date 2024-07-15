@@ -407,7 +407,12 @@ export const decryptSecretRaw = (
     id: secret.id,
     user: secret.userId,
     tags: secret.tags,
-    skipMultilineEncoding: secret.skipMultilineEncoding
+    skipMultilineEncoding: secret.skipMultilineEncoding,
+    secretReminderRepeatDays: secret.secretReminderRepeatDays,
+    secretReminderNote: secret.secretReminderNote,
+    metadata: secret.metadata,
+    createdAt: secret.createdAt,
+    updatedAt: secret.updatedAt
   };
 };
 

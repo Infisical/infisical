@@ -186,7 +186,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secrets: secretRawSchema
             .extend({
-              secretPath: z.string().optional()
+              secretPath: z.string().optional(),
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                name: true,
+                color: true
+              })
+                .array()
+                .optional()
             })
             .array(),
           imports: z
@@ -194,7 +202,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretPath: z.string(),
               environment: z.string(),
               folderId: z.string().optional(),
-              secrets: secretRawSchema.array()
+              secrets: secretRawSchema.omit({ createdAt: true, updatedAt: true }).array()
             })
             .array()
             .optional()
@@ -425,7 +433,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type)
+        type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
+        secretReminderRepeatDays: z
+          .number()
+          .optional()
+          .nullable()
+          .describe(RAW_SECRETS.CREATE.secretReminderRepeatDays),
+        secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.CREATE.secretReminderNote)
       }),
       response: {
         200: z.object({
@@ -448,7 +462,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretValue: req.body.secretValue,
         skipMultilineEncoding: req.body.skipMultilineEncoding,
         secretComment: req.body.secretComment,
-        tagIds: req.body.tagIds
+        tagIds: req.body.tagIds,
+        secretReminderNote: req.body.secretReminderNote,
+        secretReminderRepeatDays: req.body.secretReminderRepeatDays
       });
 
       await server.services.auditLog.createAuditLog({
@@ -514,7 +530,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .describe(RAW_SECRETS.UPDATE.secretPath),
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
-        tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds)
+        tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
+        metadata: z.record(z.string()).optional(),
+        secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.UPDATE.secretReminderNote),
+        secretReminderRepeatDays: z
+          .number()
+          .optional()
+          .nullable()
+          .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays),
+        newSecretName: z.string().min(1).optional().describe(RAW_SECRETS.UPDATE.newSecretName),
+        secretComment: z.string().optional().describe(RAW_SECRETS.UPDATE.secretComment)
       }),
       response: {
         200: z.object({
@@ -536,7 +561,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: req.body.type,
         secretValue: req.body.secretValue,
         skipMultilineEncoding: req.body.skipMultilineEncoding,
-        tagIds: req.body.tagIds
+        tagIds: req.body.tagIds,
+        secretReminderRepeatDays: req.body.secretReminderRepeatDays,
+        secretReminderNote: req.body.secretReminderNote,
+        metadata: req.body.metadata,
+        newSecretName: req.body.newSecretName,
+        secretComment: req.body.secretComment
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1760,7 +1790,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectSlug: z.string().trim().describe(RAW_SECRETS.CREATE.projectSlug),
+        projectSlug: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectSlug),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.workspaceId),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z
           .string()
@@ -1776,7 +1807,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding)
+            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+            metadata: z.record(z.string()).optional(),
+            tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
           })
           .array()
           .min(1)
@@ -1799,6 +1832,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment,
         projectSlug,
+        projectId: req.body.workspaceId,
         secrets: inputSecrets
       });
 
@@ -1849,7 +1883,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectSlug: z.string().trim().describe(RAW_SECRETS.UPDATE.projectSlug),
+        projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.workspaceId),
         environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
         secretPath: z
           .string()
@@ -1865,7 +1900,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.UPDATE.secretValue),
             secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding)
+            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
+            newSecretName: z.string().min(1).optional().describe(RAW_SECRETS.UPDATE.newSecretName),
+            tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
+            secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.UPDATE.secretReminderNote),
+            secretReminderRepeatDays: z
+              .number()
+              .optional()
+              .nullable()
+              .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays)
           })
           .array()
           .min(1)
@@ -1887,6 +1930,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment,
         projectSlug,
+        projectId: req.body.workspaceId,
         secrets: inputSecrets
       });
 
@@ -1937,7 +1981,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectSlug: z.string().trim().describe(RAW_SECRETS.DELETE.projectSlug),
+        projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.workspaceId),
         environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
         secretPath: z
           .string()
@@ -1947,7 +1992,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .describe(RAW_SECRETS.DELETE.secretPath),
         secrets: z
           .object({
-            secretKey: z.string().trim().describe(RAW_SECRETS.DELETE.secretName)
+            secretKey: z.string().trim().describe(RAW_SECRETS.DELETE.secretName),
+            type: z.nativeEnum(SecretType).default(SecretType.Shared)
           })
           .array()
           .min(1)
@@ -1969,6 +2015,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment,
         projectSlug,
         secretPath,
+        projectId: req.body.workspaceId,
         secrets: inputSecrets
       });
 
