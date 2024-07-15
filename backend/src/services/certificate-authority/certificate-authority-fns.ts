@@ -75,8 +75,10 @@ export const getCaCredentials = async ({
     kmsService
   });
 
-  const decryptedPrivateKey = await kmsService.decrypt({
-    kmsId: keyId,
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    kmsId: keyId
+  });
+  const decryptedPrivateKey = kmsDecryptor({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
@@ -123,15 +125,17 @@ export const getCaCertChain = async ({
     kmsService
   });
 
-  const decryptedCaCert = await kmsService.decrypt({
-    kmsId: keyId,
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    kmsId: keyId
+  });
+
+  const decryptedCaCert = kmsDecryptor({
     cipherTextBlob: caCert.encryptedCertificate
   });
 
   const caCertObj = new x509.X509Certificate(decryptedCaCert);
 
-  const decryptedChain = await kmsService.decrypt({
-    kmsId: keyId,
+  const decryptedChain = kmsDecryptor({
     cipherTextBlob: caCert.encryptedCertificateChain
   });
 
@@ -168,8 +172,11 @@ export const rebuildCaCrl = async ({
     kmsService
   });
 
-  const privateKey = await kmsService.decrypt({
-    kmsId: keyId,
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    kmsId: keyId
+  });
+
+  const privateKey = kmsDecryptor({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
@@ -200,8 +207,10 @@ export const rebuildCaCrl = async ({
     signingKey: sk
   });
 
-  const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
-    kmsId: keyId,
+  const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    kmsId: keyId
+  });
+  const { cipherTextBlob: encryptedCrl } = kmsEncryptor({
     plainText: Buffer.from(new Uint8Array(crl.rawData))
   });
 
