@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Button, FormControl, Input, Select, SelectItem, Spinner } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
-import { useGetProjectSecrets, useGetUserWsKey } from "@app/hooks/api";
+import { useGetProjectSecrets } from "@app/hooks/api";
 
 const formSchema = z.object({
   environment: z.string().trim(),
@@ -38,12 +38,10 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
   const secretPath = watch("secretPath");
   const selectedSecrets = watch("secrets");
 
-  const { data: userWsKey } = useGetUserWsKey(workspaceId);
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     environment,
-    secretPath,
-    decryptFileKey: userWsKey!
+    secretPath
   });
 
   return (

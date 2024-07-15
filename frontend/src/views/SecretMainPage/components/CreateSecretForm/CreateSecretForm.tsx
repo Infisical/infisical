@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useCreateSecretV3 } from "@app/hooks/api";
-import { SecretType, UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretType } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
 
@@ -20,7 +20,6 @@ type TFormSchema = z.infer<typeof typeSchema>;
 type Props = {
   environment: string;
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
   secretPath?: string;
   // modal props
   autoCapitalize?: boolean;
@@ -30,7 +29,6 @@ type Props = {
 export const CreateSecretForm = ({
   environment,
   workspaceId,
-  decryptFileKey,
   secretPath = "/",
   autoCapitalize = true,
   isProtectedBranch = false
@@ -53,11 +51,10 @@ export const CreateSecretForm = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value || "",
         secretComment: "",
-        type: SecretType.Shared,
-        latestFileKey: decryptFileKey
+        type: SecretType.Shared
       });
       closePopUp(PopUpNames.CreateSecretForm);
       reset();
