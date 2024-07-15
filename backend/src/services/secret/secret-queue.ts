@@ -642,7 +642,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL });
+    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL });
   });
 
   return {

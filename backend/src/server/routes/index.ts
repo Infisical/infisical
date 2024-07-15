@@ -645,7 +645,8 @@ export const registerRoutes = async (
   const webhookService = webhookServiceFactory({
     permissionService,
     webhookDAL,
-    projectEnvDAL
+    projectEnvDAL,
+    projectDAL
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
