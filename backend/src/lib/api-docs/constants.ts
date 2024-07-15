@@ -608,7 +608,9 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to create.",
     workspaceId: "The ID of the project to create the secret in.",
-    tagIds: "The ID of the tags to be attached to the created secret."
+    tagIds: "The ID of the tags to be attached to the created secret.",
+    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days",
+    secretReminderNote: "Note to be attached in notification email"
   },
   GET: {
     expand: "Whether or not to expand secret references",
@@ -631,7 +633,10 @@ export const RAW_SECRETS = {
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
     workspaceId: "The ID of the project to update the secret in.",
-    tagIds: "The ID of the tags to be attached to the updated secret."
+    tagIds: "The ID of the tags to be attached to the updated secret.",
+    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days",
+    secretReminderNote: "Note to be attached in notification email",
+    newSecretName: "The new name for the secret"
   },
   DELETE: {
     secretName: "The name of the secret to delete.",

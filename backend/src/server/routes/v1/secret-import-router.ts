@@ -8,6 +8,8 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { secretRawSchema } from "../sanitizedSchemas";
+
 export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -343,6 +345,50 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getSecretsFromImports({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query,
+        projectId: req.query.workspaceId
+      });
+      return { secrets: importedSecrets };
+    }
+  });
+
+  server.route({
+    url: "/secrets/raw",
+    method: "GET",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      querystring: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              secretPath: z.string(),
+              environment: z.string(),
+              environmentInfo: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              }),
+              folderId: z.string().optional(),
+              secrets: secretRawSchema.array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
