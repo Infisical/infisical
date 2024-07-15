@@ -144,10 +144,7 @@ export const orgServiceFactory = ({
     return members;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, actorOrgId, actorAuthMethod, orgId }: TFindAllWorkspacesDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
-
+  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
     const organizationWorkspaceIds = new Set((await projectDAL.find({ orgId })).map((workspace) => workspace.id));
 
     let workspaces: (TProjects & { organization: string } & {
