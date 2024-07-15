@@ -7,7 +7,7 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { DecryptedSecret, SecretType } from "../secrets/types";
+import { SecretType,SecretV3RawSanitized } from "../secrets/types";
 import {
   TGetSecretSnapshotsDTO,
   TSecretRollbackDTO,
@@ -80,7 +80,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, snapshotId }: TSnapshotD
         privateKey: PRIVATE_KEY
       });
 
-      const sharedSecrets: DecryptedSecret[] = [];
+      const sharedSecrets: SecretV3RawSanitized[] = [];
       const personalSecrets: Record<string, { id: string; value: string }> = {};
       data.secretVersions.forEach((encSecret) => {
         const secretKey = decryptSymmetric({

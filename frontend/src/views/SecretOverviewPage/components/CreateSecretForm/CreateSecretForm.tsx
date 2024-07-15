@@ -18,7 +18,7 @@ import {
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useWorkspace } from "@app/context";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
-import { DecryptedSecret, SecretType, UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/types";
 
 const typeSchema = z
   .object({
@@ -34,8 +34,7 @@ type TFormSchema = z.infer<typeof typeSchema>;
 
 type Props = {
   secretPath?: string;
-  decryptFileKey: UserWsKeyPair;
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   // modal props
   isOpen?: boolean;
   onClose: () => void;
@@ -44,7 +43,6 @@ type Props = {
 
 export const CreateSecretForm = ({
   secretPath = "/",
-  decryptFileKey,
   isOpen,
   getSecretByKey,
   onClose,
@@ -101,10 +99,9 @@ export const CreateSecretForm = ({
           environment,
           workspaceId,
           secretPath,
-          secretName: key,
+          secretKey: key,
           secretValue: value || "",
-          type: SecretType.Shared,
-          latestFileKey: decryptFileKey
+          type: SecretType.Shared
         });
       }
 
@@ -112,11 +109,10 @@ export const CreateSecretForm = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value || "",
         secretComment: "",
-        type: SecretType.Shared,
-        latestFileKey: decryptFileKey
+        type: SecretType.Shared
       });
     });
 

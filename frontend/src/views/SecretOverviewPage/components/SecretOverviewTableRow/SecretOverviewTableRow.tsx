@@ -13,7 +13,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
+import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretEditRow } from "./SecretEditRow";
@@ -26,7 +26,7 @@ type Props = {
   expandableColWidth: number;
   isSelected: boolean;
   onToggleSecretSelect: (key: string) => void;
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (
     env: string,
@@ -40,7 +40,7 @@ type Props = {
   getImportedSecretByKey: (
     env: string,
     secretName: string
-  ) => { secret?: DecryptedSecret; environmentInfo?: WorkspaceEnv } | undefined;
+  ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
 };
 
 export const SecretOverviewTableRow = ({

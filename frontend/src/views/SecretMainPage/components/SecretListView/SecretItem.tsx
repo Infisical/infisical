@@ -28,7 +28,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,14 +46,14 @@ import {
 } from "./SecretListView.utils";
 
 type Props = {
-  secret: DecryptedSecret;
+  secret: SecretV3RawSanitized;
   onSaveSecret: (
-    orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
+    orgSec: SecretV3RawSanitized,
+    modSec: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
     cb?: () => void
   ) => Promise<void>;
-  onDeleteSecret: (sec: DecryptedSecret) => void;
-  onDetailViewSecret: (sec: DecryptedSecret) => void;
+  onDeleteSecret: (sec: SecretV3RawSanitized) => void;
+  onDetailViewSecret: (sec: SecretV3RawSanitized) => void;
   isVisible?: boolean;
   isSelected?: boolean;
   onToggleSecretSelect: (id: string) => void;
@@ -113,7 +113,7 @@ export const SecretItem = memo(
     const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
 
-    const selectedTags = watch("tags", []);
+    const selectedTags = watch("tags", []) || [];
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
       (prev, curr) => ({ ...prev, [curr.id]: true }),
       {}

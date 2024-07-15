@@ -10,7 +10,7 @@ import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
+import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
@@ -22,7 +22,7 @@ import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
 type Props = {
-  secrets?: DecryptedSecret[];
+  secrets?: SecretV3RawSanitized[];
   environment: string;
   workspaceId: string;
   decryptFileKey: UserWsKeyPair;
@@ -34,8 +34,8 @@ type Props = {
   isProtectedBranch?: boolean;
 };
 
-const reorderSecretGroupByUnderscore = (secrets: DecryptedSecret[], sortDir: SortDir) => {
-  const groupedSecrets: Record<string, DecryptedSecret[]> = {};
+const reorderSecretGroupByUnderscore = (secrets: SecretV3RawSanitized[], sortDir: SortDir) => {
+  const groupedSecrets: Record<string, SecretV3RawSanitized[]> = {};
   secrets.forEach((secret) => {
     const lastSeperatorIndex = secret.key.lastIndexOf("_");
     const namespace =
@@ -53,7 +53,11 @@ const reorderSecretGroupByUnderscore = (secrets: DecryptedSecret[], sortDir: Sor
     .map((namespace) => ({ namespace, secrets: groupedSecrets[namespace] }));
 };
 
-const reorderSecret = (secrets: DecryptedSecret[], sortDir: SortDir, filter?: GroupBy | null) => {
+const reorderSecret = (
+  secrets: SecretV3RawSanitized[],
+  sortDir: SortDir,
+  filter?: GroupBy | null
+) => {
   if (filter === GroupBy.PREFIX) {
     return reorderSecretGroupByUnderscore(secrets, sortDir);
   }
@@ -70,12 +74,12 @@ const reorderSecret = (secrets: DecryptedSecret[], sortDir: SortDir, filter?: Gr
   ];
 };
 
-export const filterSecrets = (secrets: DecryptedSecret[], filter: Filter) =>
+export const filterSecrets = (secrets: SecretV3RawSanitized[], filter: Filter) =>
   secrets.filter(({ key, value, tags }) => {
     const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
     const searchTerm = filter.searchFilter.toLowerCase();
     return (
-      (!isTagFilterActive || tags.some(({ id }) => filter.tags?.[id])) &&
+      (!isTagFilterActive || tags?.some(({ id }) => filter.tags?.[id])) &&
       (key.toLowerCase().includes(searchTerm) || value.toLowerCase().includes(searchTerm))
     );
   });
@@ -148,7 +152,7 @@ export const SecretListView = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         type,
         secretId
       });
@@ -160,12 +164,10 @@ export const SecretListView = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
-        secretId,
+        secretKey: key,
         secretValue: value || "",
         type,
-        latestFileKey: decryptFileKey,
-        tags,
+        tagIds: tags,
         secretComment: comment,
         secretReminderRepeatDays: reminderRepeatDays,
         secretReminderNote: reminderNote,
@@ -180,12 +182,11 @@ export const SecretListView = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value || "",
         secretComment: "",
         skipMultilineEncoding,
-        type,
-        latestFileKey: decryptFileKey
+        type
       },
       {}
     );
@@ -193,8 +194,8 @@ export const SecretListView = ({
 
   const handleSaveSecret = useCallback(
     async (
-      orgSecret: DecryptedSecret,
-      modSecret: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
+      orgSecret: SecretV3RawSanitized,
+      modSecret: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
       cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
@@ -288,7 +289,7 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
+    const { key, id: secretId } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     try {
       await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
@@ -317,16 +318,16 @@ export const SecretListView = ({
         text: "Failed to delete secret"
       });
     }
-  }, [(popUp.deleteSecret?.data as DecryptedSecret)?.key, environment, secretPath]);
+  }, [(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key, environment, secretPath]);
 
   // for optimization on minimise re-rendering of secret items
   const onCreateTag = useCallback(() => handlePopUpOpen("createTag"), []);
   const onDeleteSecret = useCallback(
-    (sec: DecryptedSecret) => handlePopUpOpen("deleteSecret", sec),
+    (sec: SecretV3RawSanitized) => handlePopUpOpen("deleteSecret", sec),
     []
   );
   const onDetailViewSecret = useCallback(
-    (sec: DecryptedSecret) => handlePopUpOpen("secretDetail", sec),
+    (sec: SecretV3RawSanitized) => handlePopUpOpen("secretDetail", sec),
     []
   );
 
@@ -380,7 +381,7 @@ export const SecretListView = ({
       )}
       <DeleteActionModal
         isOpen={popUp.deleteSecret.isOpen}
-        deleteKey={(popUp.deleteSecret?.data as DecryptedSecret)?.key}
+        deleteKey={(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}
         title="Do you want to delete this secret?"
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
@@ -392,7 +393,7 @@ export const SecretListView = ({
         isOpen={popUp.secretDetail.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
         decryptFileKey={decryptFileKey}
-        secret={popUp.secretDetail.data as DecryptedSecret}
+        secret={popUp.secretDetail.data as SecretV3RawSanitized}
         onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
         onClose={() => handlePopUpClose("secretDetail")}
         onSaveSecret={handleSaveSecret}

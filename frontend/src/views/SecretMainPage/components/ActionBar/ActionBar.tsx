@@ -25,7 +25,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { decryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
@@ -46,15 +45,10 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
-import { interpolateSecrets } from "@app/helpers/secret";
 import { usePopUp } from "@app/hooks";
-import {
-  useCreateFolder,
-  useDeleteSecretBatch,
-  useGetUserWsKey,
-  useMoveSecrets
-} from "@app/hooks/api";
-import { DecryptedSecret, SecretType, TImportedSecrets, WsTag } from "@app/hooks/api/types";
+import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
+import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { debounce } from "@app/lib/fn/debounce";
 
 import {
@@ -70,9 +64,8 @@ import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
 
 type Props = {
-  secrets?: DecryptedSecret[];
+  secrets?: SecretV3RawSanitized[];
   // swtich the secrets type as it gets decrypted after api call
-  importedSecrets?: Array<Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] }>;
   environment: string;
   // @depreciated will be moving all these details to zustand
   workspaceId: string;
@@ -92,7 +85,6 @@ type Props = {
 
 export const ActionBar = ({
   secrets = [],
-  importedSecrets = [],
   environment,
   workspaceId,
   projectSlug,
@@ -124,7 +116,6 @@ export const ActionBar = ({
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: moveSecrets } = useMoveSecrets();
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
@@ -155,58 +146,46 @@ export const ActionBar = ({
   };
 
   const handleSecretDownload = async () => {
-    const secPriority: Record<string, boolean> = {};
-    const downloadedSecrets: Array<{ key: string; value: string; comment?: string }> = [];
-
-    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-    const workspaceKey = decryptAssymmetric({
-      ciphertext: decryptFileKey!.encryptedKey,
-      nonce: decryptFileKey!.nonce,
-      publicKey: decryptFileKey!.sender.publicKey,
-      privateKey: PRIVATE_KEY
+    const { secrets: localSecrets, imports: localImportedSecrets } = await fetchProjectSecrets({
+      workspaceId,
+      expandSecretReferences: true,
+      includeImports: true,
+      environment,
+      secretPath
     });
-
-    const expandSecrets = interpolateSecrets({
-      projectId: workspaceId,
-      secretEncKey: workspaceKey
-    });
-
-    const secretRecord: Record<
-      string,
-      { value: string; comment?: string; skipMultilineEncoding?: boolean }
-    > = {};
-
-    // load up secrets in dashboard
-    secrets?.forEach(({ key, value, valueOverride, comment }) => {
-      secPriority[key] = true;
-      downloadedSecrets.push({ key, value: valueOverride || value, comment });
-    });
-    // now load imported secrets with secPriority
-    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
-      importedSecrets[i].secrets.forEach(({ key, value, valueOverride, comment }) => {
-        if (secPriority?.[key]) return;
-        downloadedSecrets.unshift({ key, value: valueOverride || value, comment });
-        secPriority[key] = true;
+    const secretsPicked = new Set<string>();
+    const secretsToDownload: { key: string; value?: string; comment?: string }[] = [];
+    localSecrets.forEach((el) => {
+      secretsPicked.add(el.secretKey);
+      secretsToDownload.push({
+        key: el.secretKey,
+        value: el.secretValue,
+        comment: el.secretComment
       });
+    });
+
+    for (let i = localImportedSecrets.length - 1; i >= 0; i -= 1) {
+      for (let j = localImportedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
+        const secret = localImportedSecrets[i].secrets[j];
+        if (!secretsPicked.has(secret.secretKey)) {
+          secretsToDownload.push({
+            key: secret.secretKey,
+            value: secret.secretValue,
+            comment: secret.secretComment
+          });
+        }
+        secretsPicked.add(secret.secretKey);
+      }
     }
 
-    downloadedSecrets.forEach((secret) => {
-      secretRecord[secret.key] = {
-        value: secret.value,
-        comment: secret.comment
-      };
-    });
-
-    await expandSecrets(secretRecord);
-
-    const file = downloadedSecrets
+    const file = secretsToDownload
       .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
       .reduce(
-        (prev, { key, comment }, index) =>
+        (prev, { key, comment, value }, index) =>
           prev +
           (comment
-            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${secretRecord[key].value}\n`
-            : `${key}=${secretRecord[key].value}\n`),
+            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
+            : `${key}=${value}\n`),
         ""
       );
 
@@ -221,7 +200,7 @@ export const ActionBar = ({
         secretPath,
         workspaceId,
         environment,
-        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretName: key, type: SecretType.Shared }))
+        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
       });
       resetSelectedSecret();
       handlePopUpClose("bulkDeleteSecrets");

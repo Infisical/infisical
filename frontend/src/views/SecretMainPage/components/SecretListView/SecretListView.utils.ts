@@ -52,6 +52,7 @@ export const formSchema = z.object({
     })
     .array()
     .default([])
+    .optional()
 });
 
 export type TFormSchema = z.infer<typeof formSchema>;

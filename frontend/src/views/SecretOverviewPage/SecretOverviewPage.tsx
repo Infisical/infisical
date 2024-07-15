@@ -178,8 +178,7 @@ export const SecretOverviewPage = () => {
   } = useGetProjectSecretsAllEnv({
     workspaceId,
     envs: userAvailableEnvs.map(({ slug }) => slug),
-    secretPath,
-    decryptFileKey: latestFileKey!
+    secretPath
   });
 
   const { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv } = useGetFoldersByEnv({
@@ -190,7 +189,6 @@ export const SecretOverviewPage = () => {
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
-    decryptFileKey: latestFileKey!,
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
@@ -317,11 +315,10 @@ export const SecretOverviewPage = () => {
         environment: env,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value,
         secretComment: "",
-        type: SecretType.Shared,
-        latestFileKey: latestFileKey!
+        type: SecretType.Shared
       });
       createNotification({
         type: "success",
@@ -348,19 +345,16 @@ export const SecretOverviewPage = () => {
     env: string,
     key: string,
     value: string,
-    type = SecretType.Shared,
-    secretId?: string
+    type = SecretType.Shared
   ) => {
     try {
       await updateSecretV3({
         environment: env,
         workspaceId,
         secretPath,
-        secretId,
-        secretName: key,
+        secretKey: key,
         secretValue: value,
-        type,
-        latestFileKey: latestFileKey!
+        type
       });
       createNotification({
         type: "success",
@@ -381,7 +375,7 @@ export const SecretOverviewPage = () => {
         environment: env,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretId,
         type: SecretType.Shared
       });
@@ -861,7 +855,6 @@ export const SecretOverviewPage = () => {
         getSecretByKey={getSecretByKey}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
         onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
-        decryptFileKey={latestFileKey!}
       />
       <Modal
         isOpen={popUp.addFolder.isOpen}

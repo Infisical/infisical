@@ -100,7 +100,6 @@ export const SecretMainPage = () => {
     environment,
     workspaceId,
     secretPath,
-    decryptFileKey: decryptFileKey!,
     options: {
       enabled: canReadSecret
     }
@@ -131,7 +130,6 @@ export const SecretMainPage = () => {
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
     projectId: workspaceId,
     environment,
-    decryptFileKey: decryptFileKey!,
     path: secretPath,
     options: {
       enabled: canReadSecret
@@ -255,7 +253,6 @@ export const SecretMainPage = () => {
           <>
             <ActionBar
               secrets={secrets}
-              importedSecrets={importedSecrets}
               environment={environment}
               workspaceId={workspaceId}
               projectSlug={projectSlug}
@@ -343,7 +340,6 @@ export const SecretMainPage = () => {
             <CreateSecretForm
               environment={environment}
               workspaceId={workspaceId}
-              decryptFileKey={decryptFileKey!}
               secretPath={secretPath}
               autoCapitalize={currentWorkspace?.autoCapitalization}
               isProtectedBranch={isProtectedBranch}
@@ -352,7 +348,6 @@ export const SecretMainPage = () => {
               secrets={secrets}
               environment={environment}
               workspaceId={workspaceId}
-              decryptFileKey={decryptFileKey!}
               secretPath={secretPath}
               isSmaller={isNotEmtpy}
               environments={currentWorkspace?.environments}
