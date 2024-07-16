@@ -370,7 +370,8 @@ export const samlConfigServiceFactory = ({
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );
@@ -457,7 +458,8 @@ export const samlConfigServiceFactory = ({
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );

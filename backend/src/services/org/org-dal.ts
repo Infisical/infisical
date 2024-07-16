@@ -74,6 +74,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema(TableName.OrgMembership),
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("isActive").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
