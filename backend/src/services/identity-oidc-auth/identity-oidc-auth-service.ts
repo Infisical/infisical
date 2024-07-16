@@ -124,13 +124,17 @@ export const identityOidcAuthServiceFactory = ({
 
     if (identityOidcAuth.boundSubject) {
       if (tokenData.sub !== identityOidcAuth.boundSubject) {
-        throw new UnauthorizedError();
+        throw new ForbiddenRequestError({
+          message: "Access denied: OIDC subject not allowed."
+        });
       }
     }
 
     if (identityOidcAuth.boundAudiences) {
       if (!identityOidcAuth.boundAudiences.split(", ").includes(tokenData.aud)) {
-        throw new UnauthorizedError();
+        throw new ForbiddenRequestError({
+          message: "Access denied: OIDC audience not allowed."
+        });
       }
     }
 
@@ -139,7 +143,9 @@ export const identityOidcAuthServiceFactory = ({
         const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
         // handle both single and multi-valued claims
         if (!claimValue.split(", ").some((claimEntry) => tokenData[claimKey] === claimEntry)) {
-          throw new UnauthorizedError();
+          throw new ForbiddenRequestError({
+            message: "Access denied: OIDC claim not allowed."
+          });
         }
       });
     }
