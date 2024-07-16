@@ -1,3 +1,4 @@
+import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faEllipsis, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -23,6 +24,7 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetExternalKmsList, useRemoveExternalKms } from "@app/hooks/api";
+import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AddExternalKmsForm } from "./AddExternalKmsForm";
 import { UpdateExternalKmsForm } from "./UpdateExternalKmsForm";
@@ -102,8 +104,11 @@ export const OrgEncryptionTab = withPermission(
               {!isExternalKmsListLoading &&
                 externalKmsList?.map((kms) => (
                   <Tr key={kms.id}>
-                    <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                      {kms.externalKms.provider}
+                    <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
+                      {kms.externalKms.provider === ExternalKmsProvider.AWS && (
+                        <FontAwesomeIcon icon={faAws} />
+                      )}
+                      <div className="ml-2">{kms.externalKms.provider.toUpperCase()}</div>
                     </Td>
                     <Td>{kms.slug}</Td>
                     <Td>

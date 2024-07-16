@@ -52,7 +52,7 @@ const formSchema = z.object({
     .trim()
     .min(1)
     .refine((v) => slugify(v) === v, {
-      message: "Slug must be a valid slug"
+      message: "Alias must be a valid slug"
     }),
   description: z.string().trim().min(1).default(""),
   credential: z.discriminatedUnion("type", [
@@ -177,7 +177,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         control={control}
         name="slug"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Slug" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
             <Input placeholder="" {...field} />
           </FormControl>
         )}
@@ -293,7 +293,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
             >
               {AWS_REGIONS.map((awsRegion) => (
                 <SelectItem value={awsRegion.slug} key={`kms-aws-region-${awsRegion.slug}`}>
-                  {awsRegion.name}
+                  {awsRegion.name} ({awsRegion.slug})
                 </SelectItem>
               ))}
             </Select>
@@ -304,14 +304,14 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         control={control}
         name="kmsKeyId"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="KMS Key ID" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="AWS KMS Key ID" errorText={error?.message} isError={Boolean(error)}>
             <Input placeholder="" {...field} />
           </FormControl>
         )}
       />
       <div className="mt-6 flex items-center space-x-4">
         <Button type="submit" isLoading={isSubmitting}>
-          Submit
+          Save
         </Button>
         <Button variant="outline_bg" onClick={onCancel}>
           Cancel
