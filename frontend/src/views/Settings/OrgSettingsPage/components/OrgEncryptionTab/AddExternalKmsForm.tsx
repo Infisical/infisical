@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
+import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AwsKmsForm } from "./AwsKmsForm";
 
@@ -15,10 +16,6 @@ type Props = {
 enum WizardSteps {
   SelectProvider = "select-provider",
   ProviderInputs = "provider-inputs"
-}
-
-enum ExternalKmsProvider {
-  AWS = "aws"
 }
 
 const EXTERNAL_KMS_LIST = [
@@ -90,7 +87,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: -30 }}
               >
-                <AwsKmsForm onCancel={() => {}} onCompleted={() => {}} />
+                <AwsKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
               </motion.div>
             )}
         </AnimatePresence>

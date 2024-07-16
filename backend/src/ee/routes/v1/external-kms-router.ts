@@ -19,6 +19,23 @@ const sanitizedExternalSchema = KmsKeysSchema.extend({
   })
 });
 
+const sanitizedExternalSchemaForGetAll = KmsKeysSchema.pick({
+  id: true,
+  description: true,
+  isDisabled: true,
+  createdAt: true,
+  updatedAt: true,
+  slug: true
+})
+  .extend({
+    externalKms: ExternalKmsSchema.pick({
+      provider: true,
+      status: true,
+      statusDetails: true
+    })
+  })
+  .array();
+
 const sanitizedExternalSchemaForGetById = KmsKeysSchema.extend({
   external: ExternalKmsSchema.pick({
     id: true,
@@ -156,6 +173,31 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         id: req.params.id
       });
       return { externalKms };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          externalKmsList: sanitizedExternalSchemaForGetAll
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const externalKmsList = await server.services.externalKms.list({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { externalKmsList };
     }
   });
 
