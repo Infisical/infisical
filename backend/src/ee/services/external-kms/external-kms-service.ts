@@ -52,7 +52,7 @@ export const externalKmsServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-    const kmsSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(32));
+    const kmsSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(8).toLowerCase());
 
     let sanitizedProviderInput = "";
     switch (provider.type) {
