@@ -90,7 +90,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: -30 }}
               >
-                <AwsKmsForm />
+                <AwsKmsForm onCancel={() => {}} onCompleted={() => {}} />
               </motion.div>
             )}
         </AnimatePresence>
