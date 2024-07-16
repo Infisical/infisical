@@ -1844,9 +1844,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           metadata: {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
-            secrets: secrets.map((secret, i) => ({
+            secrets: secrets.map((secret) => ({
               secretId: secret.id,
-              secretKey: inputSecrets[i].secretKey,
+              secretKey: secret.secretKey,
               secretVersion: secret.version
             }))
           }
@@ -1942,9 +1942,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           metadata: {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
-            secrets: secrets.map((secret, i) => ({
+            secrets: secrets.map((secret) => ({
               secretId: secret.id,
-              secretKey: inputSecrets[i].secretKey,
+              secretKey: secret.secretKey,
               secretVersion: secret.version
             }))
           }
@@ -2027,9 +2027,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           metadata: {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
-            secrets: secrets.map((secret, i) => ({
+            secrets: secrets.map((secret) => ({
               secretId: secret.id,
-              secretKey: inputSecrets[i].secretKey,
+              secretKey: secret.secretKey,
               secretVersion: secret.version
             }))
           }
