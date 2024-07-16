@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
-import { useAddAwsExternalKms } from "@app/hooks/api/kms";
+import { useOrganization } from "@app/context";
+import { useAddAwsExternalKms, useUpdateAwsExternalKms } from "@app/hooks/api";
+import { Kms } from "@app/hooks/api/kms/types";
 
 const AWS_REGIONS = [
   { name: "US East (Ohio)", slug: "us-east-2" },
@@ -78,47 +80,95 @@ type TForm = z.infer<typeof formSchema>;
 type Props = {
   onCompleted: () => void;
   onCancel: () => void;
+  kms?: Kms;
 };
 
-export const AwsKmsForm = ({ onCompleted, onCancel }: Props) => {
+export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   const {
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm<TForm>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      slug: kms?.slug,
+      description: kms?.description,
+      credential: {
+        type: kms?.external?.providerInput?.credential?.type,
+        data: {
+          accessKey: kms?.external?.providerInput?.credential?.data?.accessKey,
+          secretKey: kms?.external?.providerInput?.credential?.data?.secretKey,
+          assumeRoleArn: kms?.external?.providerInput?.credential?.data?.assumeRoleArn,
+          externalId: kms?.external?.providerInput?.credential?.data?.externalId
+        }
+      },
+      awsRegion: kms?.external?.providerInput?.awsRegion,
+      kmsKeyId: kms?.external?.providerInput?.kmsKeyId
+    }
   });
+
+  const { currentOrg } = useOrganization();
+  const { mutateAsync: addAwsExternalKms } = useAddAwsExternalKms(currentOrg?.id!);
+  const { mutateAsync: updateAwsExternalKms } = useUpdateAwsExternalKms(currentOrg?.id!);
 
   const selectedAwsAuthType = watch("credential.type");
 
-  const { mutateAsync: addAwsExternalKms } = useAddAwsExternalKms();
-
   const handleAddAwsKms = async (data: TForm) => {
     const { slug, description, credential, awsRegion, kmsKeyId } = data;
-    await addAwsExternalKms({
-      slug,
-      description,
-      credentialType: credential.type,
-      awsRegion,
-      kmsKeyId,
-      ...(credential.type === KmsAwsCredentialType.AccessKey
-        ? {
-            accessKey: credential.data.accessKey,
-            secretKey: credential.data.secretKey
-          }
-        : {
-            assumeRoleArn: credential.data.assumeRoleArn,
-            externalId: credential.data.externalId
-          })
-    });
+    try {
+      if (kms) {
+        await updateAwsExternalKms({
+          kmsId: kms.id,
+          slug,
+          description,
+          credentialType: credential.type,
+          awsRegion,
+          kmsKeyId,
+          ...(credential.type === KmsAwsCredentialType.AccessKey
+            ? {
+                accessKey: credential.data.accessKey,
+                secretKey: credential.data.secretKey
+              }
+            : {
+                assumeRoleArn: credential.data.assumeRoleArn,
+                externalId: credential.data.externalId
+              })
+        });
 
-    createNotification({
-      text: "Successfully added AWS External KMS",
-      type: "success"
-    });
+        createNotification({
+          text: "Successfully updated AWS External KMS",
+          type: "success"
+        });
+      } else {
+        await addAwsExternalKms({
+          slug,
+          description,
+          credentialType: credential.type,
+          awsRegion,
+          kmsKeyId,
+          ...(credential.type === KmsAwsCredentialType.AccessKey
+            ? {
+                accessKey: credential.data.accessKey,
+                secretKey: credential.data.secretKey
+              }
+            : {
+                assumeRoleArn: credential.data.assumeRoleArn,
+                externalId: credential.data.externalId
+              })
+        });
 
-    onCompleted();
+        createNotification({
+          text: "Successfully added AWS External KMS",
+          type: "success"
+        });
+      }
+
+      onCompleted();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -154,7 +204,14 @@ export const AwsKmsForm = ({ onCompleted, onCancel }: Props) => {
             <Select
               defaultValue={field.value}
               {...field}
-              onValueChange={(e) => onChange(e)}
+              onValueChange={(e) => {
+                setValue("credential.data.accessKey", "");
+                setValue("credential.data.secretKey", "");
+                setValue("credential.data.assumeRoleArn", "");
+                setValue("credential.data.externalId", "");
+
+                onChange(e);
+              }}
               className="w-full"
             >
               <SelectItem value={KmsAwsCredentialType.AssumeRole}>AWS Assume Role</SelectItem>
