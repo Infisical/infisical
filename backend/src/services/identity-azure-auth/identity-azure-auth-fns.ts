@@ -17,6 +17,7 @@ export const validateAzureIdentity = async ({
   const jwksUri = `https://login.microsoftonline.com/${tenantId}/discovery/keys`;
 
   const decodedJwt = jwt.decode(azureJwt, { complete: true }) as TDecodedAzureAuthJwt;
+
   const { kid } = decodedJwt.header;
 
   const { data }: { data: TAzureJwksUriResponse } = await axios.get(jwksUri);
@@ -26,6 +27,13 @@ export const validateAzureIdentity = async ({
   if (!signingKey) throw new UnauthorizedError();
 
   const publicKey = `-----BEGIN CERTIFICATE-----\n${signingKey.x5c[0]}\n-----END CERTIFICATE-----`;
+
+  // Case: This can happen when the user uses a custom resource (such as https://management.azure.com&client_id=value).
+  // In this case, the audience in the decoded JWT will not have a trailing slash, but the resource will.
+  if (!decodedJwt.payload.aud.endsWith("/") && resource.endsWith("/")) {
+    // eslint-disable-next-line no-param-reassign
+    resource = resource.slice(0, -1);
+  }
 
   return jwt.verify(azureJwt, publicKey, {
     audience: resource,
