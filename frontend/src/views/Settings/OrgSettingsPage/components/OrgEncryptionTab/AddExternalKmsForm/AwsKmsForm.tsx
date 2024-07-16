@@ -1,8 +1,11 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { useAddAwsExternalKms } from "@app/hooks/api/kms";
 
 const AWS_REGIONS = [
   { name: "US East (Ohio)", slug: "us-east-2" },
@@ -42,6 +45,14 @@ export enum KmsAwsCredentialType {
 }
 
 const formSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .refine((v) => slugify(v) === v, {
+      message: "Slug must be a valid slug"
+    }),
+  description: z.string().trim().min(1).default(""),
   credential: z.discriminatedUnion("type", [
     z.object({
       type: z.literal(KmsAwsCredentialType.AccessKey),
@@ -58,23 +69,78 @@ const formSchema = z.object({
       })
     })
   ]),
-  awsRegion: z.string().min(1).trim().describe("AWS region to connect"),
+  awsRegion: z.string().min(1).trim(),
   kmsKeyId: z.string().trim().optional()
 });
 
 type TForm = z.infer<typeof formSchema>;
 
-export const AwsKmsForm = () => {
-  const { control, handleSubmit, watch } = useForm<TForm>({
+type Props = {
+  onCompleted: () => void;
+  onCancel: () => void;
+};
+
+export const AwsKmsForm = ({ onCompleted, onCancel }: Props) => {
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<TForm>({
     resolver: zodResolver(formSchema)
   });
 
   const selectedAwsAuthType = watch("credential.type");
 
-  const handleAddAwsKms = () => {};
+  const { mutateAsync: addAwsExternalKms } = useAddAwsExternalKms();
+
+  const handleAddAwsKms = async (data: TForm) => {
+    const { slug, description, credential, awsRegion, kmsKeyId } = data;
+    await addAwsExternalKms({
+      slug,
+      description,
+      credentialType: credential.type,
+      awsRegion,
+      kmsKeyId,
+      ...(credential.type === KmsAwsCredentialType.AccessKey
+        ? {
+            accessKey: credential.data.accessKey,
+            secretKey: credential.data.secretKey
+          }
+        : {
+            assumeRoleArn: credential.data.assumeRoleArn,
+            externalId: credential.data.externalId
+          })
+    });
+
+    createNotification({
+      text: "Successfully added AWS External KMS",
+      type: "success"
+    });
+
+    onCompleted();
+  };
 
   return (
     <form onSubmit={handleSubmit(handleAddAwsKms)} autoComplete="off">
+      <Controller
+        control={control}
+        name="slug"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl label="Slug" errorText={error?.message} isError={Boolean(error)}>
+            <Input placeholder="" {...field} />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="description"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
+            <Input placeholder="" {...field} />
+          </FormControl>
+        )}
+      />
       <Controller
         control={control}
         name="credential.type"
@@ -186,6 +252,14 @@ export const AwsKmsForm = () => {
           </FormControl>
         )}
       />
+      <div className="mt-6 flex items-center space-x-4">
+        <Button type="submit" isLoading={isSubmitting}>
+          Submit
+        </Button>
+        <Button variant="outline_bg" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
     </form>
   );
 };
