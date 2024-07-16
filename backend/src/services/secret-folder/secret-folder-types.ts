@@ -37,3 +37,7 @@ export type TGetFolderDTO = {
   environment: string;
   path: string;
 } & TProjectPermission;
+
+export type TGetFolderByIdDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
