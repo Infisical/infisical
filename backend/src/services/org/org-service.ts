@@ -207,7 +207,8 @@ export const orgServiceFactory = ({
       orgId,
       userId: user.id,
       role: OrgMembershipRole.Admin,
-      status: OrgMembershipStatus.Accepted
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
     };
 
     await orgDAL.createMembership(createMembershipData, tx);
@@ -311,7 +312,8 @@ export const orgServiceFactory = ({
           userId,
           orgId: org.id,
           role: OrgMembershipRole.Admin,
-          status: OrgMembershipStatus.Accepted
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
         },
         tx
       );
@@ -460,7 +462,8 @@ export const orgServiceFactory = ({
               inviteEmail: inviteeEmail,
               orgId,
               role: OrgMembershipRole.Member,
-              status: OrgMembershipStatus.Invited
+              status: OrgMembershipStatus.Invited,
+              isActive: true
             },
             tx
           );
@@ -491,7 +494,8 @@ export const orgServiceFactory = ({
           orgId,
           userId: user.id,
           role: OrgMembershipRole.Member,
-          status: OrgMembershipStatus.Invited
+          status: OrgMembershipStatus.Invited,
+          isActive: true
         },
         tx
       );

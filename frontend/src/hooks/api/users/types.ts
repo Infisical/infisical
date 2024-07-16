@@ -60,6 +60,7 @@ export type OrgUser = {
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   roleId: string;
+  isActive: boolean;
 };
 
 export type TProjectMembership = {

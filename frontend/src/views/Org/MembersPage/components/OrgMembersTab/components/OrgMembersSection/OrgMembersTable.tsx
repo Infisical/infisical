@@ -171,14 +171,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
             {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
             {!isLoading &&
               filterdUser?.map(
-                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
+                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status, isActive }) => {
                   const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
                   const username = u?.username ?? inviteEmail ?? "-";
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
-                      <Td>{name}</Td>
-                      <Td>{username}</Td>
+                      <Td className={isActive ? "" : "text-mineshaft-400"}>{name}</Td>
+                      <Td className={isActive ? "" : "text-mineshaft-400"}>{username}</Td>
                       <Td>
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
@@ -186,7 +186,18 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                         >
                           {(isAllowed) => (
                             <>
-                              {status === "accepted" && (
+                              {!isActive && (
+                                <Button
+                                  isDisabled
+                                  className="w-40"
+                                  colorSchema="primary"
+                                  variant="outline_bg"
+                                  onClick={() => {}}
+                                >
+                                  Suspended
+                                </Button>
+                              )}
+                              {isActive && status === "accepted" && (
                                 <Select
                                   value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
                                   isDisabled={userId === u?.id || !isAllowed}
@@ -207,7 +218,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     ))}
                                 </Select>
                               )}
-                              {(status === "invited" || status === "verified") &&
+                              {isActive &&
+                                (status === "invited" || status === "verified") &&
                                 email &&
                                 serverDetails?.emailConfigured && (
                                   <Button

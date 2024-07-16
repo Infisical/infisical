@@ -30,7 +30,14 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, parseScimFilter } from "./scim-fns";
+import {
+  buildScimGroup,
+  buildScimGroupList,
+  buildScimUser,
+  buildScimUserList,
+  extractScimValueFromPath,
+  parseScimFilter
+} from "./scim-fns";
 import {
   TCreateScimGroupDTO,
   TCreateScimTokenDTO,
@@ -61,7 +68,7 @@ type TScimServiceFactoryDep = {
     TOrgDALFactory,
     "createMembership" | "findById" | "findMembership" | "deleteMembershipById" | "transaction" | "updateMembershipById"
   >;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "findOne" | "create" | "updateById">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "findOne" | "create" | "updateById" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
@@ -71,7 +78,12 @@ type TScimServiceFactoryDep = {
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
-    "find" | "transaction" | "insertMany" | "filterProjectsByUserMembership" | "delete"
+    | "find"
+    | "transaction"
+    | "insertMany"
+    | "filterProjectsByUserMembership"
+    | "delete"
+    | "findUserGroupMembershipsInOrg"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -197,14 +209,14 @@ export const scimServiceFactory = ({
       findOpts
     );
 
-    const scimUsers = users.map(({ id, externalId, username, firstName, lastName, email }) =>
+    const scimUsers = users.map(({ id, externalId, username, firstName, lastName, email, isActive }) =>
       buildScimUser({
         orgMembershipId: id ?? "",
         username: externalId ?? username,
         firstName: firstName ?? "",
         lastName: lastName ?? "",
         email,
-        active: true
+        active: isActive
       })
     );
 
@@ -240,13 +252,19 @@ export const scimServiceFactory = ({
         status: 403
       });
 
+    const groupMembershipsInOrg = await userGroupMembershipDAL.findUserGroupMembershipsInOrg(membership.userId, orgId);
+
     return buildScimUser({
       orgMembershipId: membership.id,
       username: membership.externalId ?? membership.username,
       email: membership.email ?? "",
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      active: true
+      active: membership.isActive,
+      groups: groupMembershipsInOrg.map((group) => ({
+        value: group.groupId,
+        display: group.name
+      }))
     });
   };
 
@@ -296,7 +314,8 @@ export const scimServiceFactory = ({
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );
@@ -364,7 +383,8 @@ export const scimServiceFactory = ({
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );
@@ -401,7 +421,7 @@ export const scimServiceFactory = ({
       firstName: createdUser.firstName as string,
       lastName: createdUser.lastName as string,
       email: createdUser.email ?? "",
-      active: true
+      active: createdOrgMembership.isActive
     });
   };
 
@@ -445,14 +465,8 @@ export const scimServiceFactory = ({
     });
 
     if (!active) {
-      await deleteOrgMembershipFn({
-        orgMembershipId: membership.id,
-        orgId: membership.orgId,
-        orgDAL,
-        projectMembershipDAL,
-        projectKeyDAL,
-        userAliasDAL,
-        licenseService
+      await orgMembershipDAL.updateById(membership.id, {
+        isActive: false
       });
     }
 
@@ -491,17 +505,11 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    if (!active) {
-      await deleteOrgMembershipFn({
-        orgMembershipId: membership.id,
-        orgId: membership.orgId,
-        orgDAL,
-        projectMembershipDAL,
-        projectKeyDAL,
-        userAliasDAL,
-        licenseService
-      });
-    }
+    await orgMembershipDAL.updateById(membership.id, {
+      isActive: active
+    });
+
+    const groupMembershipsInOrg = await userGroupMembershipDAL.findUserGroupMembershipsInOrg(membership.userId, orgId);
 
     return buildScimUser({
       orgMembershipId: membership.id,
@@ -509,7 +517,11 @@ export const scimServiceFactory = ({
       email: membership.email,
       firstName: membership.firstName as string,
       lastName: membership.lastName as string,
-      active
+      active,
+      groups: groupMembershipsInOrg.map((group) => ({
+        value: group.groupId,
+        display: group.name
+      }))
     });
   };
 
@@ -881,7 +893,18 @@ export const scimServiceFactory = ({
           break;
         }
         case "remove": {
-          // TODO
+          const orgMembershipId = extractScimValueFromPath(operation.path);
+          if (!orgMembershipId) throw new ScimRequestError({ detail: "Invalid path value", status: 400 });
+          const orgMembership = await orgMembershipDAL.findById(orgMembershipId);
+          if (!orgMembership) throw new ScimRequestError({ detail: "Org Membership Not Found", status: 400 });
+          await removeUsersFromGroupByUserIds({
+            group,
+            userIds: [orgMembership.userId as string],
+            userDAL,
+            userGroupMembershipDAL,
+            groupProjectDAL,
+            projectKeyDAL
+          });
           break;
         }
         default: {
