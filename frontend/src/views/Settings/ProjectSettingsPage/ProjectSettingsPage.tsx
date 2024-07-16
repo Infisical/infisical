@@ -2,12 +2,14 @@ import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Tab } from "@headlessui/react";
 
+import { EncryptionTab } from "./components/EncryptionTab";
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 
 const tabs = [
   { name: "General", key: "tab-project-general" },
-  { name: "Webhooks", key: "tab-project-webhooks" },
+  { name: "Encryption", key: "tab-project-encryption" },
+  { name: "Webhooks", key: "tab-project-webhooks" }
 ];
 
 export const ProjectSettingsPage = () => {
@@ -25,8 +27,9 @@ export const ProjectSettingsPage = () => {
                 {({ selected }) => (
                   <button
                     type="button"
-                    className={`w-30 mx-2 mr-4 py-2 text-sm font-medium outline-none ${selected ? "border-b border-white text-white" : "text-mineshaft-400"
-                      }`}
+                    className={`w-30 mx-2 mr-4 py-2 text-sm font-medium outline-none ${
+                      selected ? "border-b border-white text-white" : "text-mineshaft-400"
+                    }`}
                   >
                     {tab.name}
                   </button>
@@ -37,6 +40,9 @@ export const ProjectSettingsPage = () => {
           <Tab.Panels>
             <Tab.Panel>
               <ProjectGeneralTab />
+            </Tab.Panel>
+            <Tab.Panel>
+              <EncryptionTab />
             </Tab.Panel>
             <Tab.Panel>
               <WebhooksTab />
