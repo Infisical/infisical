@@ -39,7 +39,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        slug: z.string().min(1).trim().optional(),
+        slug: z.string().min(1).trim().toLowerCase().optional(),
         description: z.string().min(1).trim().optional(),
         provider: ExternalKmsInputSchema
       }),
@@ -75,7 +75,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().min(1)
       }),
       body: z.object({
-        slug: z.string().min(1).trim().optional(),
+        slug: z.string().min(1).trim().toLowerCase().optional(),
         description: z.string().min(1).trim().optional(),
         provider: ExternalKmsInputUpdateSchema
       }),

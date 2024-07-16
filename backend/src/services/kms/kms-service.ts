@@ -56,15 +56,18 @@ export const kmsServiceFactory = ({
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
     const kmsKeyMaterial = randomSecureBytes(32);
     const encryptedKeyMaterial = cipher.encrypt(kmsKeyMaterial, ROOT_ENCRYPTION_KEY);
-    const sanitizedSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(32));
+    const sanitizedSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(8).toLowerCase());
     const dbQuery = async (db: Knex) => {
-      const kmsDoc = await kmsDAL.create({
-        slug: sanitizedSlug,
-        orgId,
-        isReserved
-      });
+      const kmsDoc = await kmsDAL.create(
+        {
+          slug: sanitizedSlug,
+          orgId,
+          isReserved
+        },
+        db
+      );
 
-      const { encryptedKey, ...doc } = await internalKmsDAL.create(
+      await internalKmsDAL.create(
         {
           version: 1,
           encryptedKey: encryptedKeyMaterial,
@@ -73,7 +76,7 @@ export const kmsServiceFactory = ({
         },
         db
       );
-      return doc;
+      return kmsDoc;
     };
     if (tx) return dbQuery(tx);
     const doc = await kmsDAL.transaction(async (tx2) => dbQuery(tx2));
