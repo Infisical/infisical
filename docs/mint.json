@@ -576,6 +576,7 @@
           "group": "Folders",
           "pages": [
             "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/get-by-id",
             "api-reference/endpoints/folders/create",
             "api-reference/endpoints/folders/update",
             "api-reference/endpoints/folders/delete"

@@ -515,6 +515,9 @@ export const FOLDERS = {
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)"
   },
+  GET_BY_ID: {
+    folderId: "The id of the folder to get details."
+  },
   CREATE: {
     workspaceId: "The ID of the project to create the folder in.",
     environment: "The slug of the environment to create the folder in.",

@@ -58,6 +58,8 @@ type AWSIamAuthDetails struct {
 type AzureAuthDetails struct {
 	// +kubebuilder:validation:Required
 	IdentityID string `json:"identityId"`
+	// +kubebuilder:validation:Optional
+	Resource string `json:"resource"`
 
 	// +kubebuilder:validation:Required
 	SecretsScope MachineIdentityScopeInWorkspace `json:"secretsScope"`

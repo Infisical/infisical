@@ -109,7 +109,7 @@ func (r *InfisicalSecretReconciler) handleAzureAuth(ctx context.Context, infisic
 		return AuthenticationDetails{}, ErrAuthNotApplicable
 	}
 
-	_, err := infisicalClient.Auth().AzureAuthLogin(azureAuthSpec.IdentityID)
+	_, err := infisicalClient.Auth().AzureAuthLogin(azureAuthSpec.IdentityID, azureAuthSpec.Resource) // If resource is empty(""), it will default to "https://management.azure.com/" in the SDK.
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("unable to login with Azure auth [err=%s]", err)
 	}
