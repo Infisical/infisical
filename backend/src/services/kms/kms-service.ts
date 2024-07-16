@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
@@ -166,6 +168,50 @@ export const kmsServiceFactory = ({
     return keyId;
   };
 
+  const getOrgKmsDataKey = async (orgId: string) => {
+    const kmsKeyId = await getOrgKmsKeyId(orgId);
+    const orgKmsDataKey = await orgDAL.transaction(async (tx) => {
+      const org = await orgDAL.findById(orgId, tx);
+
+      if (!org) {
+        throw new BadRequestError({ message: "Org not found" });
+      }
+
+      let encryptedDataKey = org.kmsEncryptedDataKey;
+      if (!encryptedDataKey) {
+        const dataKey = crypto.randomBytes(32);
+        const kmsEncryptor = await encryptWithKmsKey({
+          kmsId: kmsKeyId
+        });
+
+        const { cipherTextBlob } = kmsEncryptor({
+          plainText: dataKey
+        });
+
+        encryptedDataKey = cipherTextBlob;
+        await orgDAL.updateById(
+          org.id,
+          {
+            kmsEncryptedDataKey: encryptedDataKey
+          },
+          tx
+        );
+
+        return dataKey;
+      }
+
+      const kmsDecryptor = await decryptWithKmsKey({
+        kmsId: kmsKeyId
+      });
+
+      return kmsDecryptor({
+        cipherTextBlob: encryptedDataKey
+      });
+    });
+
+    return orgKmsDataKey;
+  };
+
   const getProjectSecretManagerKmsKeyId = async (projectId: string) => {
     const keyId = await projectDAL.transaction(async (tx) => {
       const project = await projectDAL.findById(projectId, tx);
@@ -251,6 +297,7 @@ export const kmsServiceFactory = ({
     decryptWithKmsKey,
     decryptWithInputKey,
     getOrgKmsKeyId,
-    getProjectSecretManagerKmsKeyId
+    getProjectSecretManagerKmsKeyId,
+    getOrgKmsDataKey
   };
 };

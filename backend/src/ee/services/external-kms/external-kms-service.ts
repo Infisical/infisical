@@ -22,7 +22,10 @@ import { ExternalKmsAwsSchema, KmsProviders } from "./providers/model";
 
 type TExternalKmsServiceFactoryDep = {
   externalKmsDAL: TExternalKmsDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "getOrgKmsKeyId" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "getOrgKmsKeyId" | "decryptWithInputKey" | "encryptWithInputKey" | "getOrgKmsDataKey"
+  >;
   kmsDAL: Pick<TKmsKeyDALFactory, "create" | "updateById" | "findById" | "deleteById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -69,10 +72,11 @@ export const externalKmsServiceFactory = ({
         throw new BadRequestError({ message: "external kms provided is invalid" });
     }
 
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    const orgKmsDataKey = await kmsService.getOrgKmsDataKey(actorOrgId);
+    const kmsEncryptor = await kmsService.encryptWithInputKey({
+      key: orgKmsDataKey
     });
+
     const { cipherTextBlob: encryptedProviderInputs } = kmsEncryptor({
       plainText: Buffer.from(sanitizedProviderInput, "utf8")
     });
@@ -125,12 +129,13 @@ export const externalKmsServiceFactory = ({
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
-    const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
     let sanitizedProviderInput = "";
     if (provider) {
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: orgDefaultKmsId
+      const orgKmsDataKey = await kmsService.getOrgKmsDataKey(kmsDoc.orgId);
+      const kmsDecryptor = await kmsService.decryptWithInputKey({
+        key: orgKmsDataKey
       });
+
       const decryptedProviderInputBlob = kmsDecryptor({
         cipherTextBlob: externalKmsDoc.encryptedProviderInputs
       });
@@ -154,8 +159,9 @@ export const externalKmsServiceFactory = ({
 
     let encryptedProviderInputs: Buffer | undefined;
     if (sanitizedProviderInput) {
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({
-        kmsId: orgDefaultKmsId
+      const orgKmsDataKey = await kmsService.getOrgKmsDataKey(actorOrgId);
+      const kmsEncryptor = await kmsService.encryptWithInputKey({
+        key: orgKmsDataKey
       });
       const { cipherTextBlob } = kmsEncryptor({
         plainText: Buffer.from(sanitizedProviderInput, "utf8")
@@ -239,10 +245,11 @@ export const externalKmsServiceFactory = ({
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
-    const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgDefaultKmsId
+    const orgKmsDataKey = await kmsService.getOrgKmsDataKey(kmsDoc.orgId);
+    const kmsDecryptor = await kmsService.decryptWithInputKey({
+      key: orgKmsDataKey
     });
+
     const decryptedProviderInputBlob = kmsDecryptor({
       cipherTextBlob: externalKmsDoc.encryptedProviderInputs
     });
@@ -278,10 +285,11 @@ export const externalKmsServiceFactory = ({
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
-    const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgDefaultKmsId
+    const orgKmsDataKey = await kmsService.getOrgKmsDataKey(kmsDoc.orgId);
+    const kmsDecryptor = await kmsService.decryptWithInputKey({
+      key: orgKmsDataKey
     });
+
     const decryptedProviderInputBlob = kmsDecryptor({
       cipherTextBlob: externalKmsDoc.encryptedProviderInputs
     });

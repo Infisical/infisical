@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const OrganizationsSchema = z.object({
@@ -16,7 +18,8 @@ export const OrganizationsSchema = z.object({
   updatedAt: z.date(),
   authEnforced: z.boolean().default(false).nullable().optional(),
   scimEnabled: z.boolean().default(false).nullable().optional(),
-  kmsDefaultKeyId: z.string().uuid().nullable().optional()
+  kmsDefaultKeyId: z.string().uuid().nullable().optional(),
+  kmsEncryptedDataKey: zodBuffer.nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;
