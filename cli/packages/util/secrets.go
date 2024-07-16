@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
+	"github.com/zalando/go-keyring"
 )
 
 func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool) ([]models.SingleEnvironmentVariable, error) {
@@ -252,15 +254,14 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
-		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
 		if errorToReturn == nil {
-			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupSecretsEncryptionKey, secretsToReturn)
+			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, res.Secrets)
 		}
 
 		secretsToReturn = res.Secrets
 		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
 		if !isConnected {
-			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupSecretsEncryptionKey)
+			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath)
 			if len(backedSecrets) > 0 {
 				PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
 				secretsToReturn = backedSecrets
@@ -444,93 +445,71 @@ func OverrideSecrets(secrets []models.SingleEnvironmentVariable, secretType stri
 	return secretsToReturn
 }
 
-func WriteBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
-	formattedPath := strings.ReplaceAll(secretsPath, "/", "-")
-	fileName := fmt.Sprintf("secrets_%s_%s_%s", workspace, environment, formattedPath)
-	secrets_backup_folder_name := "secrets-backup"
-
-	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
+func WriteBackupSecrets(workspace string, environment string, secretsPath string, secrets []models.SingleEnvironmentVariable) error {
+	var backedUpSecrets []models.BackupSecretKeyRing
+	secretValueInKeyRing, err := GetValueInKeyring(INFISICAL_BACKUP_SECRET)
 	if err != nil {
-		return fmt.Errorf("WriteBackupSecrets: unable to get full config folder path [err=%s]", err)
-	}
-
-	// create secrets backup directory
-	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
-	if _, err := os.Stat(fullPathToSecretsBackupFolder); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(fullPathToSecretsBackupFolder, os.ModePerm)
-		if err != nil {
-			return err
+		if err == keyring.ErrUnsupportedPlatform {
+			return errors.New("your OS does not support keyring. Consider using a service token https://infisical.com/docs/documentation/platform/token")
+		} else if err != keyring.ErrNotFound {
+			return fmt.Errorf("something went wrong, failed to retrieve value from system keyring [error=%v]", err)
 		}
 	}
+	_ = json.Unmarshal([]byte(secretValueInKeyRing), &backedUpSecrets)
 
-	var encryptedSecrets []models.SymmetricEncryptionResult
-	for _, secret := range secrets {
-		marshaledSecrets, _ := json.Marshal(secret)
-		result, err := crypto.EncryptSymmetric(marshaledSecrets, encryptionKey)
-		if err != nil {
-			return err
-		}
+	backedUpSecrets = slices.DeleteFunc(backedUpSecrets, func(e models.BackupSecretKeyRing) bool {
+		return e.SecretPath == secretsPath && e.ProjectID == workspace && e.Environment == environment
+	})
+	newBackupSecret := models.BackupSecretKeyRing{
+		ProjectID:   workspace,
+		Environment: environment,
+		SecretPath:  secretsPath,
+		Secrets:     secrets,
+	}
+	backedUpSecrets = append(backedUpSecrets, newBackupSecret)
 
-		encryptedSecrets = append(encryptedSecrets, result)
+	listOfSecretsMarshalled, err := json.Marshal(backedUpSecrets)
+	if err != nil {
+		return err
 	}
 
-	listOfSecretsMarshalled, _ := json.Marshal(encryptedSecrets)
-	err = os.WriteFile(fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName), listOfSecretsMarshalled, 0600)
+	err = SetValueInKeyring(INFISICAL_BACKUP_SECRET, string(listOfSecretsMarshalled))
 	if err != nil {
-		return fmt.Errorf("WriteBackupSecrets: Unable to write backup secrets to file [err=%s]", err)
+		return fmt.Errorf("StoreUserCredsInKeyRing: unable to store user credentials because [err=%s]", err)
 	}
 
 	return nil
 }
 
-func ReadBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte) ([]models.SingleEnvironmentVariable, error) {
-	formattedPath := strings.ReplaceAll(secretsPath, "/", "-")
-	fileName := fmt.Sprintf("secrets_%s_%s_%s", workspace, environment, formattedPath)
-	secrets_backup_folder_name := "secrets-backup"
-
-	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
+func ReadBackupSecrets(workspace string, environment string, secretsPath string) ([]models.SingleEnvironmentVariable, error) {
+	secretValueInKeyRing, err := GetValueInKeyring(INFISICAL_BACKUP_SECRET)
 	if err != nil {
-		return nil, fmt.Errorf("ReadBackupSecrets: unable to write config file because an error occurred when getting config file path [err=%s]", err)
+		if err == keyring.ErrUnsupportedPlatform {
+			return nil, errors.New("your OS does not support keyring. Consider using a service token https://infisical.com/docs/documentation/platform/token")
+		} else if err == keyring.ErrNotFound {
+			return nil, errors.New("credentials not found in system keyring")
+		} else {
+			return nil, fmt.Errorf("something went wrong, failed to retrieve value from system keyring [error=%v]", err)
+		}
 	}
 
-	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
-	if _, err := os.Stat(fullPathToSecretsBackupFolder); errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
-
-	encryptedBackupSecretsFilePath := fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName)
-
-	encryptedBackupSecretsAsBytes, err := os.ReadFile(encryptedBackupSecretsFilePath)
+	var backedUpSecrets []models.BackupSecretKeyRing
+	err = json.Unmarshal([]byte(secretValueInKeyRing), &backedUpSecrets)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getUserCredsFromKeyRing: Something went wrong when unmarshalling user creds [err=%s]", err)
 	}
 
-	var listOfEncryptedBackupSecrets []models.SymmetricEncryptionResult
-
-	_ = json.Unmarshal(encryptedBackupSecretsAsBytes, &listOfEncryptedBackupSecrets)
-
-	var plainTextSecrets []models.SingleEnvironmentVariable
-	for _, encryptedSecret := range listOfEncryptedBackupSecrets {
-		result, err := crypto.DecryptSymmetric(encryptionKey, encryptedSecret.CipherText, encryptedSecret.AuthTag, encryptedSecret.Nonce)
-		if err != nil {
-			return nil, err
+	for _, backupSecret := range backedUpSecrets {
+		if backupSecret.Environment == environment && backupSecret.ProjectID == workspace && backupSecret.SecretPath == secretsPath {
+			return backupSecret.Secrets, nil
 		}
-
-		var plainTextSecret models.SingleEnvironmentVariable
-
-		err = json.Unmarshal(result, &plainTextSecret)
-		if err != nil {
-			return nil, err
-		}
-
-		plainTextSecrets = append(plainTextSecrets, plainTextSecret)
 	}
 
-	return plainTextSecrets, nil
-
+	return nil, nil
 }
 
 func DeleteBackupSecrets() error {
+	// keeping this logic for now. Need to remove it later as more users migrate keyring would be used and this folder will be removed completely by then
 	secrets_backup_folder_name := "secrets-backup"
 
 	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
@@ -539,6 +518,8 @@ func DeleteBackupSecrets() error {
 	}
 
 	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
+
+	DeleteValueInKeyring(INFISICAL_BACKUP_SECRET)
 
 	return os.RemoveAll(fullPathToSecretsBackupFolder)
 }

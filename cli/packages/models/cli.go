@@ -140,3 +140,10 @@ type SecretSetOperation struct {
 	SecretValue     string
 	SecretOperation string
 }
+
+type BackupSecretKeyRing struct {
+	ProjectID   string `json:"projectId"`
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath"`
+	Secrets     []SingleEnvironmentVariable
+}
