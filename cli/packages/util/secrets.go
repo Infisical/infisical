@@ -710,7 +710,6 @@ func SetRawSecrets(secretArgs []string, secretType string, environmentName strin
 			Environment: environmentName,
 		}
 
-		fmt.Println(projectId, environmentName)
 		err = api.CallCreateRawSecretsV3(httpClient, createSecretRequest)
 		if err != nil {
 			return nil, fmt.Errorf("unable to process new secret creations [err=%v]", err)
