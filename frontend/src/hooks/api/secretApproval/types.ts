@@ -9,6 +9,7 @@ export type TSecretApprovalPolicy = {
   secretPath?: string;
   approvals: number;
   userApprovers: { userId: string }[];
+  updatedAt: Date;
 };
 
 export type TGetSecretApprovalPoliciesDTO = {
@@ -26,14 +27,14 @@ export type TCreateSecretPolicyDTO = {
   name?: string;
   environment: string;
   secretPath?: string | null;
-  approverUserIds?: string[];
+  approvers?: string[];
   approvals?: number;
 };
 
 export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
-  approverUserIds?: string[];
+  approvers?: string[];
   secretPath?: string | null;
   approvals?: number;
   // for invalidating list

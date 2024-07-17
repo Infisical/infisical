@@ -37,9 +37,9 @@ const formSchema = z
     name: z.string().optional(),
     secretPath: z.string().optional().nullable(),
     approvals: z.number().min(1),
-    approverUserIds: z.string().array().min(1)
+    approvers: z.string().array().min(1)
   })
-  .refine((data) => data.approvals <= data.approverUserIds.length, {
+  .refine((data) => data.approvals <= data.approvers.length, {
     path: ["approvals"],
     message: "The number of approvals should be lower than the number of approvers."
   });
@@ -62,7 +62,7 @@ export const SecretPolicyForm = ({
     values: editValues
       ? {
         ...editValues,
-        approverUserIds: editValues.userApprovers.map(({ userId }) => userId),
+        approvers: editValues.userApprovers.map(({ userId }) => userId),
         environment: editValues.environment.slug
       }
       : undefined
@@ -183,7 +183,7 @@ export const SecretPolicyForm = ({
           />
           <Controller
             control={control}
-            name="approverUserIds"
+            name="approvers"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
                 label="Approvers Required"

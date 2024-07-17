@@ -51,7 +51,7 @@ export const SecretApprovalPolicyRow = ({
                 {
                   workspaceId,
                   id: policy.id,
-                  approverUserIds: selectedApprovers
+                  approvers: selectedApprovers
                 },
                 {
                   onSettled: () => {
