@@ -4,13 +4,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { Divider } from "@app/components/v2/Divider";
 import { useWorkspace } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
 import { ApprovalPolicyList } from "./components/ApprovalPolicyList";
-import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
 import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
 enum TabSection {
@@ -59,17 +57,12 @@ export const SecretApprovalPage = () => {
             Secret Requests
             {Boolean(secretApprovalReqCount?.open) && (<Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>)}
           </Tab>
-          <Tab value={TabSection.SecretPolicies}>Secret Policies</Tab>
-          <Divider />
           <Tab value={TabSection.ResourceApprovalRequests}>
             Access Requests
             {Boolean(accessApprovalRequestCount?.pendingCount) && <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>}
           </Tab>
           <Tab value={TabSection.Policies}>Policies</Tab>
         </TabList>
-        <TabPanel value={TabSection.SecretPolicies}>
-          <SecretApprovalPolicyList workspaceId={projectId} />
-        </TabPanel>
         <TabPanel value={TabSection.SecretApprovalRequests}>
           <SecretApprovalRequest />
         </TabPanel>
