@@ -73,12 +73,11 @@ export const externalKmsServiceFactory = ({
       case KmsProviders.Aws:
         {
           const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs });
-          if (provider.inputs.kmsKeyId) {
-            await externalKms.validateConnection();
-          }
           // if missing kms key this generate a new kms key id and returns new provider input
           const newProviderInput = await externalKms.generateInputKmsKey();
           sanitizedProviderInput = JSON.stringify(newProviderInput);
+
+          await externalKms.validateConnection();
         }
         break;
       default:
