@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
@@ -167,35 +167,120 @@ export const kmsServiceFactory = ({
   };
 
   const getProjectSecretManagerKmsKeyId = async (projectId: string) => {
-    const keyId = await projectDAL.transaction(async (tx) => {
-      const project = await projectDAL.findById(projectId, tx);
-      if (!project) {
-        throw new BadRequestError({ message: "Project not found" });
+    let project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new BadRequestError({ message: "Project not found" });
+    }
+
+    if (!project.kmsSecretManagerKeyId) {
+      // create default kms key for certificate service
+      const lock = await keyStore
+        .acquireLock([KeyStorePrefixes.KmsProjectKeyCreation, projectId], 3000, { retryCount: 3 })
+        .catch(() => null);
+
+      try {
+        if (!lock) {
+          await keyStore.waitTillReady({
+            key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
+            keyCheckCb: (val) => val === "true",
+            waitingCb: () => logger.info("KMS. Waiting for project key to be created")
+          });
+
+          project = await projectDAL.findById(projectId);
+        } else {
+          const kmsKeyId = await projectDAL.transaction(async (tx) => {
+            const key = await generateKmsKey({
+              isReserved: true,
+              orgId: project.orgId,
+              tx
+            });
+
+            await projectDAL.updateById(
+              projectId,
+              {
+                kmsSecretManagerKeyId: key.id
+              },
+              tx
+            );
+
+            return key.id;
+          });
+
+          await keyStore.setItemWithExpiry(
+            `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
+            10,
+            "true"
+          );
+
+          return kmsKeyId;
+        }
+      } finally {
+        await lock?.release();
       }
+    }
 
-      if (!project.kmsSecretManagerKeyId) {
-        // create default kms key for certificate service
-        const key = await generateKmsKey({
-          isReserved: true,
-          orgId: project.orgId,
-          tx
-        });
+    if (!project.kmsSecretManagerKeyId) {
+      throw new Error("Missing project KMS key ID");
+    }
 
-        await projectDAL.updateById(
-          projectId,
-          {
-            kmsSecretManagerKeyId: key.id
-          },
-          tx
-        );
+    return project.kmsSecretManagerKeyId;
+  };
 
-        return key.id;
+  const getProjectSecretManagerKmsDataKey = async (projectId: string) => {
+    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
+    let project = await projectDAL.findById(projectId);
+
+    if (!project.kmsSecretManagerEncryptedDataKey) {
+      const lock = await keyStore
+        .acquireLock([KeyStorePrefixes.KmsProjectDataKeyCreation, projectId], 3000, { retryCount: 3 })
+        .catch(() => null);
+
+      try {
+        if (!lock) {
+          await keyStore.waitTillReady({
+            key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
+            keyCheckCb: (val) => val === "true",
+            waitingCb: () => logger.info("KMS. Waiting for project data key to be created")
+          });
+
+          project = await projectDAL.findById(projectId);
+        } else {
+          const dataKey = randomSecureBytes();
+          const kmsEncryptor = await encryptWithKmsKey({
+            kmsId: kmsKeyId
+          });
+
+          const { cipherTextBlob } = kmsEncryptor({
+            plainText: dataKey
+          });
+
+          await projectDAL.updateById(projectId, {
+            kmsSecretManagerEncryptedDataKey: cipherTextBlob
+          });
+
+          await keyStore.setItemWithExpiry(
+            `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
+            10,
+            "true"
+          );
+          return dataKey;
+        }
+      } finally {
+        await lock?.release();
       }
+    }
 
-      return project.kmsSecretManagerKeyId;
+    if (!project.kmsSecretManagerEncryptedDataKey) {
+      throw new Error("Missing project data key");
+    }
+
+    const kmsDecryptor = await decryptWithKmsKey({
+      kmsId: kmsKeyId
     });
 
-    return keyId;
+    return kmsDecryptor({
+      cipherTextBlob: project.kmsSecretManagerEncryptedDataKey
+    });
   };
 
   const startService = async () => {
@@ -251,6 +336,7 @@ export const kmsServiceFactory = ({
     decryptWithKmsKey,
     decryptWithInputKey,
     getOrgKmsKeyId,
-    getProjectSecretManagerKmsKeyId
+    getProjectSecretManagerKmsKeyId,
+    getProjectSecretManagerKmsDataKey
   };
 };
