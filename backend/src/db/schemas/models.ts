@@ -90,9 +90,14 @@ export enum TableName {
   TrustedIps = "trusted_ips",
   DynamicSecret = "dynamic_secrets",
   DynamicSecretLease = "dynamic_secret_leases",
+  SecretV2 = "secrets_v2",
+  SecretReferenceV2 = "secret_references_v2",
+  SecretVersionV2 = "secret_versions_v2",
   // junction tables with tags
+  SecretV2JnTag = "secret_v2_tag_junction",
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction",
+  SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
