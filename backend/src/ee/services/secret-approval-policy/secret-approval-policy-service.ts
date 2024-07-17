@@ -45,12 +45,12 @@ export const secretApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    approverUserIds,
+    approvers,
     projectId,
     secretPath,
     environment
   }: TCreateSapDTO) => {
-    if (approvals > approverUserIds.length)
+    if (approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -78,7 +78,7 @@ export const secretApprovalPolicyServiceFactory = ({
         tx
       );
       await secretApprovalPolicyApproverDAL.insertMany(
-        approverUserIds.map((approverUserId) => ({
+        approvers.map((approverUserId) => ({
           approverUserId,
           policyId: doc.id
         })),
@@ -90,7 +90,7 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const updateSecretApprovalPolicy = async ({
-    approverUserIds,
+    approvers,
     secretPath,
     name,
     actorId,
@@ -122,10 +122,10 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
-      if (approverUserIds) {
+      if (approvers) {
         await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await secretApprovalPolicyApproverDAL.insertMany(
-          approverUserIds.map((approverUserId) => ({
+          approvers.map((approverUserId) => ({
             approverUserId,
             policyId: doc.id
           })),
