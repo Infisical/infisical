@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { EnforcementLevel } from "@app/lib/types";
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalPoliciesSchema = z.object({
@@ -12,6 +14,7 @@ export const SecretApprovalPoliciesSchema = z.object({
   name: z.string(),
   secretPath: z.string().nullable().optional(),
   approvals: z.number().default(1),
+  enforcementLevel: z.nativeEnum(EnforcementLevel),
   envId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
