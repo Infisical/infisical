@@ -125,6 +125,7 @@ export type TCreateAccessPolicyDTO = {
   approvers?: string[];
   approvals?: number;
   secretPath?: string;
+  enforcementLevel?: EnforcementLevel;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -134,6 +135,7 @@ export type TUpdateAccessPolicyDTO = {
   secretPath?: string;
   environment?: string;
   approvals?: number;
+  enforcementLevel?: EnforcementLevel;
   // for invalidating list
   projectSlug: string;
 };

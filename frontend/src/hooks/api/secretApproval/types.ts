@@ -11,6 +11,7 @@ export type TSecretApprovalPolicy = {
   approvals: number;
   userApprovers: { userId: string }[];
   updatedAt: Date;
+  enforcementLevel: EnforcementLevel;
 };
 
 export type TGetSecretApprovalPoliciesDTO = {
