@@ -1,3 +1,4 @@
+import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { TProjectPermission } from "../roles/types";
 import { WorkspaceEnv } from "../workspace/types";
 
@@ -11,6 +12,11 @@ export type TAccessApprovalPolicy = {
   environment: WorkspaceEnv;
   projectId: string;
   approvers: string[];
+  policyType: PolicyType;
+  approversRequired: boolean;
+  enforcementLevel: EnforcementLevel;
+  updatedAt: Date;
+  userApprovers?: { userId: string }[];
 };
 
 export type TAccessApprovalRequest = {
