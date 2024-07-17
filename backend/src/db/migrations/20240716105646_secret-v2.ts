@@ -1,0 +1,81 @@
+import { Knex } from "knex";
+
+import { SecretType, TableName } from "../schemas";
+import { createJunctionTable, createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
+export async function up(knex: Knex): Promise<void> {
+  const doesSecretV2TableExist = await knex.schema.hasTable(TableName.SecretV2);
+  if (!doesSecretV2TableExist) {
+    await knex.schema.createTable(TableName.SecretV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.integer("version").defaultTo(1).notNullable();
+      t.string("type").notNullable().defaultTo(SecretType.Shared);
+      t.string("key", 500).notNullable();
+      t.binary("encryptedValue");
+      t.binary("encryptedComment");
+      t.string("reminderNote");
+      t.integer("reminderRepeatDays");
+      t.boolean("skipMultilineEncoding").defaultTo(false);
+      t.jsonb("metadata");
+      t.uuid("userId");
+      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("folderId").notNullable();
+      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+    });
+  }
+  await createOnUpdateTrigger(knex, TableName.SecretV2);
+
+  // many to many relation between tags
+  await createJunctionTable(knex, TableName.SecretV2JnTag, TableName.SecretV2, TableName.SecretTag);
+
+  const doesSecretV2VersionTableExist = await knex.schema.hasTable(TableName.SecretVersionV2);
+  if (!doesSecretV2VersionTableExist) {
+    await knex.schema.createTable(TableName.SecretVersionV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.integer("version").defaultTo(1).notNullable();
+      t.string("type").notNullable().defaultTo(SecretType.Shared);
+      t.string("key", 500).notNullable();
+      t.binary("encryptedValue");
+      t.binary("encryptedComment");
+      t.string("reminderNote");
+      t.integer("reminderRepeatDays");
+      t.boolean("skipMultilineEncoding").defaultTo(false);
+      t.jsonb("metadata");
+      // to avoid orphan rows
+      t.uuid("envId");
+      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
+      t.uuid("secretId").notNullable();
+      t.uuid("folderId").notNullable();
+      t.uuid("userId");
+      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+    });
+  }
+  await createOnUpdateTrigger(knex, TableName.SecretVersionV2);
+
+  if (!(await knex.schema.hasTable(TableName.SecretReferenceV2))) {
+    await knex.schema.createTable(TableName.SecretReferenceV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("environment").notNullable();
+      t.string("secretPath").notNullable();
+      t.string("secretKey", 500).notNullable();
+      t.uuid("secretId").notNullable();
+      t.foreign("secretId").references("id").inTable(TableName.SecretV2).onDelete("CASCADE");
+    });
+  }
+
+  await createJunctionTable(knex, TableName.SecretVersionV2Tag, TableName.SecretVersionV2, TableName.SecretTag);
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.SecretV2JnTag);
+  await knex.schema.dropTableIfExists(TableName.SecretReferenceV2);
+
+  await dropOnUpdateTrigger(knex, TableName.SecretV2);
+  await knex.schema.dropTableIfExists(TableName.SecretV2);
+
+  await dropOnUpdateTrigger(knex, TableName.SecretVersionV2);
+  await knex.schema.dropTableIfExists(TableName.SecretVersionV2Tag);
+  await knex.schema.dropTableIfExists(TableName.SecretVersionV2);
+}

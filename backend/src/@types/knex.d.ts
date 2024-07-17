@@ -227,6 +227,9 @@ import {
   TSecretReferences,
   TSecretReferencesInsert,
   TSecretReferencesUpdate,
+  TSecretReferencesV2,
+  TSecretReferencesV2Insert,
+  TSecretReferencesV2Update,
   TSecretRotationOutputs,
   TSecretRotationOutputsInsert,
   TSecretRotationOutputsUpdate,
@@ -263,6 +266,9 @@ import {
   TSecretVersionTagJunction,
   TSecretVersionTagJunctionInsert,
   TSecretVersionTagJunctionUpdate,
+  TSecretVersionV2TagJunction,
+  TSecretVersionV2TagJunctionInsert,
+  TSecretVersionV2TagJunctionUpdate,
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
@@ -291,6 +297,17 @@ import {
   TWebhooksInsert,
   TWebhooksUpdate
 } from "@app/db/schemas";
+import {
+  TSecretV2TagJunction,
+  TSecretV2TagJunctionInsert,
+  TSecretV2TagJunctionUpdate
+} from "@app/db/schemas/secret-v2-tag-junction";
+import {
+  TSecretVersionsV2,
+  TSecretVersionsV2Insert,
+  TSecretVersionsV2Update
+} from "@app/db/schemas/secret-versions-v2";
+import { TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas/secrets-v2";
 
 declare module "knex" {
   namespace Knex {
@@ -645,7 +662,23 @@ declare module "knex/types/tables" {
       TSecretScanningGitRisksUpdate
     >;
     [TableName.TrustedIps]: KnexOriginal.CompositeTableType<TTrustedIps, TTrustedIpsInsert, TTrustedIpsUpdate>;
+    [TableName.SecretV2]: KnexOriginal.CompositeTableType<TSecretsV2, TSecretsV2Insert, TSecretsV2Update>;
+    [TableName.SecretVersionV2]: KnexOriginal.CompositeTableType<
+      TSecretVersionsV2,
+      TSecretVersionsV2Insert,
+      TSecretVersionsV2Update
+    >;
+    [TableName.SecretReferenceV2]: KnexOriginal.CompositeTableType<
+      TSecretReferencesV2,
+      TSecretReferencesV2Insert,
+      TSecretReferencesV2Update
+    >;
     // Junction tables
+    [TableName.SecretV2JnTag]: KnexOriginal.CompositeTableType<
+      TSecretV2TagJunction,
+      TSecretV2TagJunctionInsert,
+      TSecretV2TagJunctionUpdate
+    >;
     [TableName.JnSecretTag]: KnexOriginal.CompositeTableType<
       TSecretTagJunction,
       TSecretTagJunctionInsert,
@@ -655,6 +688,11 @@ declare module "knex/types/tables" {
       TSecretVersionTagJunction,
       TSecretVersionTagJunctionInsert,
       TSecretVersionTagJunctionUpdate
+    >;
+    [TableName.SecretVersionV2Tag]: KnexOriginal.CompositeTableType<
+      TSecretVersionV2TagJunction,
+      TSecretVersionV2TagJunctionInsert,
+      TSecretVersionV2TagJunctionUpdate
     >;
     // KMS service
     [TableName.KmsServerRootConfig]: KnexOriginal.CompositeTableType<
