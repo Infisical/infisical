@@ -48,6 +48,7 @@ import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-a
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
@@ -164,6 +165,7 @@ declare module "fastify" {
       secretSharing: TSecretSharingServiceFactory;
       rateLimit: TRateLimitServiceFactory;
       userEngagement: TUserEngagementServiceFactory;
+      kms: TKmsServiceFactory;
       externalKms: TExternalKmsServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
