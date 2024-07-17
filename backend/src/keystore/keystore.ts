@@ -6,7 +6,11 @@ export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
 // all the key prefixes used must be set here to avoid conflict
 export enum KeyStorePrefixes {
-  SecretReplication = "secret-replication-import-lock"
+  SecretReplication = "secret-replication-import-lock",
+  KmsProjectDataKeyCreation = "kms-project-data-key-creation-lock",
+  KmsProjectKeyCreation = "kms-project-key-creation-lock",
+  WaitUntilReadyKmsProjectDataKeyCreation = "wait-until-ready-kms-project-data-key-creation-",
+  WaitUntilReadyKmsProjectKeyCreation = "wait-until-ready-kms-project-key-creation-"
 }
 
 type TWaitTillReady = {

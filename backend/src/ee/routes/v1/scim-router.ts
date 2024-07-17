@@ -186,7 +186,13 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
             })
           ),
           displayName: z.string().trim(),
-          active: z.boolean()
+          active: z.boolean(),
+          groups: z.array(
+            z.object({
+              value: z.string().trim(),
+              display: z.string().trim()
+            })
+          )
         })
       }
     },
@@ -572,7 +578,13 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
             })
           ),
           displayName: z.string().trim(),
-          active: z.boolean()
+          active: z.boolean(),
+          groups: z.array(
+            z.object({
+              value: z.string().trim(),
+              display: z.string().trim()
+            })
+          )
         })
       }
     },

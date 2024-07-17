@@ -81,7 +81,10 @@ export const identityGcpAuthServiceFactory = ({
         .map((serviceAccount) => serviceAccount.trim())
         .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
 
-      if (!isServiceAccountAllowed) throw new UnauthorizedError();
+      if (!isServiceAccountAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: GCP service account not allowed."
+        });
     }
 
     if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedProjects && gcpIdentityDetails.computeEngineDetails) {
@@ -92,7 +95,10 @@ export const identityGcpAuthServiceFactory = ({
         .map((project) => project.trim())
         .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
 
-      if (!isProjectAllowed) throw new UnauthorizedError();
+      if (!isProjectAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: GCP project not allowed."
+        });
     }
 
     if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
@@ -101,7 +107,10 @@ export const identityGcpAuthServiceFactory = ({
         .map((zone) => zone.trim())
         .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
 
-      if (!isZoneAllowed) throw new UnauthorizedError();
+      if (!isZoneAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: GCP zone not allowed."
+        });
     }
 
     const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {

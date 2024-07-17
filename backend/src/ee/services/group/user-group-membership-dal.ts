@@ -162,11 +162,26 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findUserGroupMembershipsInOrg = async (userId: string, orgId: string) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.UserGroupMembership)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .where(`${TableName.Groups}.orgId`, orgId);
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findTest" });
+    }
+  };
+
   return {
     ...userGroupMembershipOrm,
     filterProjectsByUserMembership,
     findUserGroupMembershipsInProject,
     findGroupMembersNotInProject,
-    deletePendingUserGroupMembershipsByUserIds
+    deletePendingUserGroupMembershipsByUserIds,
+    findUserGroupMembershipsInOrg
   };
 };
