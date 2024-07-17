@@ -22,7 +22,12 @@ import {
   Tr,
   UpgradePlanModal
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetExternalKmsList, useRemoveExternalKms } from "@app/hooks/api";
@@ -34,6 +39,7 @@ import { UpdateExternalKmsForm } from "./UpdateExternalKmsForm";
 export const OrgEncryptionTab = withPermission(
   () => {
     const { currentOrg } = useOrganization();
+    const { subscription } = useSubscription();
     const orgId = currentOrg?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "upgradePlan",
@@ -73,12 +79,11 @@ export const OrgEncryptionTab = withPermission(
             {(isAllowed) => (
               <Button
                 onClick={() => {
+                  if (subscription && !subscription?.externalKms) {
+                    handlePopUpOpen("upgradePlan");
+                    return;
+                  }
                   handlePopUpOpen("addExternalKms");
-                  // if (subscription && !subscription?.auditLogStreams) {
-                  //   handlePopUpOpen("upgradePlan");
-                  //   return;
-                  // }
-                  // handlePopUpOpen("auditLogStreamForm");
                 }}
                 isDisabled={!isAllowed}
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
@@ -138,6 +143,11 @@ export const OrgEncryptionTab = withPermission(
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (subscription && !subscription?.externalKms) {
+                                    handlePopUpOpen("upgradePlan");
+                                    return;
+                                  }
+
                                   handlePopUpOpen("editExternalKms", {
                                     kmsId: kms.id
                                   });
