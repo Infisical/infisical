@@ -177,7 +177,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                     <Button
                       variant="plain"
                       colorSchema="secondary"
-                      className="text-bunker-300"
+                      className="text-bunker-300 uppercase text-xs font-semibold"
                       rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
                     >
                       Type
