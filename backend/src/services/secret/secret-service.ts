@@ -1176,7 +1176,9 @@ export const secretServiceFactory = ({
     secretValue,
     secretComment,
     skipMultilineEncoding,
-    tagIds
+    tagIds,
+    secretReminderNote,
+    secretReminderRepeatDays
   }: TCreateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1205,6 +1207,8 @@ export const secretServiceFactory = ({
       secretCommentIV: secretCommentEncrypted.iv,
       secretCommentTag: secretCommentEncrypted.tag,
       skipMultilineEncoding,
+      secretReminderRepeatDays,
+      secretReminderNote,
       tags: tagIds
     });
 
@@ -1223,12 +1227,19 @@ export const secretServiceFactory = ({
     secretPath,
     secretValue,
     skipMultilineEncoding,
-    tagIds
+    tagIds,
+    secretReminderNote,
+    secretReminderRepeatDays,
+    metadata,
+    secretComment,
+    newSecretName
   }: TUpdateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
+    const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
+    const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(newSecretName || secretName, botKey);
 
     const secret = await updateSecret({
       secretName,
@@ -1244,7 +1255,17 @@ export const secretServiceFactory = ({
       secretValueIV: secretValueEncrypted.iv,
       secretValueTag: secretValueEncrypted.tag,
       skipMultilineEncoding,
-      tags: tagIds
+      tags: tagIds,
+      metadata,
+      secretReminderRepeatDays,
+      secretReminderNote,
+      newSecretName,
+      secretKeyIV: secretKeyEncrypted.iv,
+      secretKeyTag: secretKeyEncrypted.tag,
+      secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+      secretCommentIV: secretCommentEncrypted.iv,
+      secretCommentTag: secretCommentEncrypted.tag,
+      secretCommentCiphertext: secretCommentEncrypted.ciphertext
     });
 
     await snapshotService.performSnapshot(secret.folderId);
@@ -1283,6 +1304,7 @@ export const secretServiceFactory = ({
   const createManySecretsRaw = async ({
     actorId,
     projectSlug,
+    projectId: optionalProjectId,
     environment,
     actor,
     actorOrgId,
@@ -1290,9 +1312,16 @@ export const secretServiceFactory = ({
     secretPath,
     secrets: inputSecrets = []
   }: TCreateManySecretRawDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
+    if (!projectSlug && !optionalProjectId)
+      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
+
+    let projectId = optionalProjectId as string;
+    // pick either project slug or projectid
+    if (!optionalProjectId && projectSlug) {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      if (!project) throw new BadRequestError({ message: "Project not found" });
+      projectId = project.id;
+    }
 
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1305,24 +1334,28 @@ export const secretServiceFactory = ({
       actorId,
       actorOrgId,
       actorAuthMethod,
-      secrets: inputSecrets.map(({ secretComment, secretKey, secretValue, skipMultilineEncoding }) => {
-        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
-        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
-        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
-        return {
-          secretName: secretKey,
-          skipMultilineEncoding,
-          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-          secretKeyIV: secretKeyEncrypted.iv,
-          secretKeyTag: secretKeyEncrypted.tag,
-          secretValueCiphertext: secretValueEncrypted.ciphertext,
-          secretValueIV: secretValueEncrypted.iv,
-          secretValueTag: secretValueEncrypted.tag,
-          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-          secretCommentIV: secretCommentEncrypted.iv,
-          secretCommentTag: secretCommentEncrypted.tag
-        };
-      })
+      secrets: inputSecrets.map(
+        ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
+          const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
+          const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
+          const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
+          return {
+            secretName: secretKey,
+            skipMultilineEncoding,
+            secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+            secretKeyIV: secretKeyEncrypted.iv,
+            secretKeyTag: secretKeyEncrypted.tag,
+            secretValueCiphertext: secretValueEncrypted.ciphertext,
+            secretValueIV: secretValueEncrypted.iv,
+            secretValueTag: secretValueEncrypted.tag,
+            secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+            secretCommentIV: secretCommentEncrypted.iv,
+            secretCommentTag: secretCommentEncrypted.tag,
+            tags: tagIds,
+            metadata
+          };
+        }
+      )
     });
 
     return secrets.map((secret) =>
@@ -1333,6 +1366,7 @@ export const secretServiceFactory = ({
   const updateManySecretsRaw = async ({
     actorId,
     projectSlug,
+    projectId: optionalProjectId,
     environment,
     actor,
     actorOrgId,
@@ -1340,9 +1374,15 @@ export const secretServiceFactory = ({
     secretPath,
     secrets: inputSecrets = []
   }: TUpdateManySecretRawDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
+    if (!projectSlug && !optionalProjectId)
+      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
+
+    let projectId = optionalProjectId as string;
+    if (!optionalProjectId && projectSlug) {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      if (!project) throw new BadRequestError({ message: "Project not found" });
+      projectId = project.id;
+    }
 
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1355,25 +1395,40 @@ export const secretServiceFactory = ({
       actorId,
       actorOrgId,
       actorAuthMethod,
-      secrets: inputSecrets.map(({ secretComment, secretKey, secretValue, skipMultilineEncoding }) => {
-        const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
-        const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
-        const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
-        return {
-          secretName: secretKey,
-          type: SecretType.Shared,
+      secrets: inputSecrets.map(
+        ({
+          secretComment,
+          secretKey,
+          secretValue,
           skipMultilineEncoding,
-          secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-          secretKeyIV: secretKeyEncrypted.iv,
-          secretKeyTag: secretKeyEncrypted.tag,
-          secretValueCiphertext: secretValueEncrypted.ciphertext,
-          secretValueIV: secretValueEncrypted.iv,
-          secretValueTag: secretValueEncrypted.tag,
-          secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-          secretCommentIV: secretCommentEncrypted.iv,
-          secretCommentTag: secretCommentEncrypted.tag
-        };
-      })
+          tagIds: tags,
+          newSecretName,
+          secretReminderNote,
+          secretReminderRepeatDays
+        }) => {
+          const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(newSecretName || secretKey, botKey);
+          const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
+          const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
+          return {
+            secretName: secretKey,
+            newSecretName,
+            tags,
+            secretReminderRepeatDays,
+            secretReminderNote,
+            type: SecretType.Shared,
+            skipMultilineEncoding,
+            secretKeyCiphertext: secretKeyEncrypted.ciphertext,
+            secretKeyIV: secretKeyEncrypted.iv,
+            secretKeyTag: secretKeyEncrypted.tag,
+            secretValueCiphertext: secretValueEncrypted.ciphertext,
+            secretValueIV: secretValueEncrypted.iv,
+            secretValueTag: secretValueEncrypted.tag,
+            secretCommentCiphertext: secretCommentEncrypted.ciphertext,
+            secretCommentIV: secretCommentEncrypted.iv,
+            secretCommentTag: secretCommentEncrypted.tag
+          };
+        }
+      )
     });
 
     return secrets.map((secret) =>
@@ -1384,6 +1439,7 @@ export const secretServiceFactory = ({
   const deleteManySecretsRaw = async ({
     actorId,
     projectSlug,
+    projectId: optionalProjectId,
     environment,
     actor,
     actorOrgId,
@@ -1391,9 +1447,15 @@ export const secretServiceFactory = ({
     secretPath,
     secrets: inputSecrets = []
   }: TDeleteManySecretRawDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
+    if (!projectSlug && !optionalProjectId)
+      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
+
+    let projectId = optionalProjectId as string;
+    if (!optionalProjectId && projectSlug) {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      if (!project) throw new BadRequestError({ message: "Project not found" });
+      projectId = project.id;
+    }
 
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1406,7 +1468,7 @@ export const secretServiceFactory = ({
       actorId,
       actorOrgId,
       actorAuthMethod,
-      secrets: inputSecrets.map(({ secretKey }) => ({ secretName: secretKey, type: SecretType.Shared }))
+      secrets: inputSecrets.map(({ secretKey, type = SecretType.Shared }) => ({ secretName: secretKey, type }))
     });
 
     return secrets.map((secret) =>

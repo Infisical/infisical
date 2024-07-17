@@ -37,7 +37,7 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
-import { DecryptedSecret, UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, UserWsKeyPair, WsTag } from "@app/hooks/api/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -48,12 +48,12 @@ type Props = {
   secretPath: string;
   onToggle: (isOpen: boolean) => void;
   onClose: () => void;
-  secret: DecryptedSecret;
+  secret: SecretV3RawSanitized;
   decryptFileKey: UserWsKeyPair;
   onDeleteSecret: () => void;
   onSaveSecret: (
-    orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
+    orgSec: SecretV3RawSanitized,
+    modSec: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
     cb?: () => void
   ) => Promise<void>;
   tags: WsTag[];
@@ -101,7 +101,7 @@ export const SecretDetailSidebar = ({
     control,
     name: "tags"
   });
-  const selectedTags = watch("tags", []);
+  const selectedTags = watch("tags", []) || [];
   const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
     (prev, curr) => ({ ...prev, [curr.id]: true }),
     {}

@@ -63,7 +63,13 @@ export const secretRawSchema = z.object({
   type: z.string(),
   secretKey: z.string(),
   secretValue: z.string(),
-  secretComment: z.string().optional()
+  secretComment: z.string().optional(),
+  secretReminderNote: z.string().nullable().optional(),
+  secretReminderRepeatDays: z.number().nullable().optional(),
+  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  metadata: z.unknown().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export const ProjectPermissionSchema = z.object({

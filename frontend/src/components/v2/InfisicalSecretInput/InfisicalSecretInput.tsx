@@ -5,7 +5,7 @@ import * as Popover from "@radix-ui/react-popover";
 
 import { useWorkspace } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
-import { useGetProjectFolders, useGetProjectSecrets, useGetUserWsKey } from "@app/hooks/api";
+import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
 
 import { SecretInput } from "../SecretInput";
 
@@ -76,7 +76,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
-    const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
     const debouncedValue = useDebounce(value, 500);
 
@@ -121,7 +120,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
     const { data: secrets } = useGetProjectSecrets({
-      decryptFileKey: decryptFileKey!,
       environment: suggestionSource.environment || "",
       secretPath: suggestionSource.secretPath || "",
       workspaceId,
@@ -193,8 +191,9 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       );
       // mid will be computed value inside the interpolation
       const mid = suggestionSource.isDeep
-        ? `${suggestionSource.value.slice(0, -suggestionSource.predicate.length || undefined)}${selectedSuggestion.slug
-        }`
+        ? `${suggestionSource.value.slice(0, -suggestionSource.predicate.length || undefined)}${
+            selectedSuggestion.slug
+          }`
         : selectedSuggestion.slug;
       // whether we should append . or closing bracket on selecting suggestion
       const closingSymbol = getClosingSymbol(
@@ -328,8 +327,9 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   key={`secret-reference-secret-${i + 1}`}
                 >
                   <div
-                    className={`${highlightedIndex === i ? "bg-gray-600" : ""
-                      } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                    className={`${
+                      highlightedIndex === i ? "bg-gray-600" : ""
+                    } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-2 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
                   >
                     <div className="flex w-full gap-2">
                       <div className="flex items-center text-yellow-700">

@@ -21,7 +21,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { DecryptedSecret } from "@app/hooks/api/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 export enum TDiffModes {
   NoChange = "no change",
@@ -32,8 +32,8 @@ export enum TDiffModes {
 
 type Props = {
   mode: TDiffModes;
-  preSecret?: DecryptedSecret;
-  postSecret: DecryptedSecret;
+  preSecret?: SecretV3RawSanitized;
+  postSecret: SecretV3RawSanitized;
 };
 export type TDiffView<T> = {
   mode: TDiffModes;
@@ -120,9 +120,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Value</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      <SecretInput
-                        value={preSecret?.value}
-                      />
+                      <SecretInput value={preSecret?.value} />
                     </Td>
                   )}
                   <Td>

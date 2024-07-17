@@ -1,81 +1,40 @@
-import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
-import { createSecret } from "@app/hooks/api/secrets/mutations";
+import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
 
 const secretsToBeAdded = [
   {
-    pos: 0,
-    key: "DATABASE_URL",
+    secretKey: "DATABASE_URL",
     // eslint-disable-next-line no-template-curly-in-string
-    value: "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
-    valueOverride: undefined,
-    comment: "Secret referencing example",
-    id: "",
-    tags: []
+    secretValue: "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
+    secretComment: "Secret referencing example"
   },
   {
-    pos: 1,
-    key: "DB_USERNAME",
-    value: "OVERRIDE_THIS",
-    valueOverride: undefined,
-    comment: "Override secrets with personal value",
-    id: "",
-    tags: []
+    secretKey: "DB_USERNAME",
+    secretValue: "OVERRIDE_THIS",
+    secretComment: "Override secrets with personal value"
   },
   {
-    pos: 2,
-    key: "DB_PASSWORD",
-    value: "OVERRIDE_THIS",
-    valueOverride: undefined,
-    comment: "Another secret override",
-    id: "",
-    tags: []
+    secretKey: "DB_PASSWORD",
+    secretValue: "OVERRIDE_THIS",
+    secretComment: "Another secret override"
   },
   {
-    pos: 3,
-    key: "DB_USERNAME",
-    value: "user1234",
-    valueOverride: "user1234",
-    comment: "",
-    id: "",
-    tags: []
+    secretKey: "DB_PASSWORD",
+    secretValue: "example_password"
   },
   {
-    pos: 4,
-    key: "DB_PASSWORD",
-    value: "example_password",
-    valueOverride: "example_password",
-    comment: "",
-    id: "",
-    tags: []
+    secretKey: "TWILIO_AUTH_TOKEN",
+    secretValue: "example_twillio_token"
   },
   {
-    pos: 5,
-    key: "TWILIO_AUTH_TOKEN",
-    value: "example_twillio_token",
-    valueOverride: undefined,
-    comment: "",
-    id: "",
-    tags: []
-  },
-  {
-    pos: 6,
-    key: "WEBSITE_URL",
-    value: "http://localhost:3000",
-    valueOverride: undefined,
-    comment: "",
-    id: "",
-    tags: []
+    secretKey: "WEBSITE_URL",
+    secretValue: "http://localhost:3000"
   }
 ];
 
 /**
  * Create and initialize a new project in organization with id [organizationId]
  * Note: current user should be a member of the organization
- * @param {Object} obj
- * @param {String} obj.organizationId - id of organization
- * @param {String} obj.projectName - name of new project
- * @returns {Project} project - new project
  */
 const initProjectHelper = async ({ projectName }: { projectName: string }) => {
   // create new project
@@ -85,37 +44,14 @@ const initProjectHelper = async ({ projectName }: { projectName: string }) => {
     projectName
   });
 
-  // encrypt and upload secrets to new project
-  const secrets = await encryptSecrets({
-    secretsToEncrypt: secretsToBeAdded,
-    workspaceId: project.id,
-    env: "dev"
-  });
-
   try {
-    await Promise.allSettled(
-      (secrets || []).map((secret) =>
-        createSecret({
-          workspaceId: project.id,
-          environment: secret.environment,
-          type: secret.type,
-          secretKey: secret.secretName,
-          secretKeyCiphertext: secret.secretKeyCiphertext,
-          secretKeyIV: secret.secretKeyIV,
-          secretKeyTag: secret.secretKeyTag,
-          secretValueCiphertext: secret.secretValueCiphertext,
-          secretValueIV: secret.secretValueIV,
-          secretValueTag: secret.secretValueTag,
-          secretCommentCiphertext: secret.secretCommentCiphertext,
-          secretCommentIV: secret.secretCommentIV,
-          secretCommentTag: secret.secretCommentTag,
-          secretPath: "/",
-          metadata: {
-            source: "signup"
-          }
-        })
-      )
-    );
+    const { data } = await apiRequest.post("/api/v3/secrets/batch/raw", {
+      workspaceId: project.id,
+      environment: "dev",
+      secretPath: "/",
+      secrets: secretsToBeAdded
+    });
+    return data;
   } catch (err) {
     console.error("Failed to upload secrets", err);
   }

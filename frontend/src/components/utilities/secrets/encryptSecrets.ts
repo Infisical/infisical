@@ -1,30 +1,4 @@
-import crypto from "crypto";
-
-import { SecretDataProps, Tag } from "public/data/frequentInterfaces";
-
-import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
-import { SecretType } from "@app/hooks/api/types";
-
-import { decryptAssymmetric, encryptSymmetric } from "../cryptography/crypto";
-
-interface EncryptedSecretProps {
-  id: string;
-  createdAt: string;
-  environment: string;
-  secretName: string;
-  secretCommentCiphertext: string;
-  secretCommentIV: string;
-  secretCommentTag: string;
-  secretKeyCiphertext: string;
-  secretKeyIV: string;
-  secretKeyTag: string;
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
-  type: SecretType;
-  tags: Tag[];
-}
-
+import { SecretDataProps } from "public/data/frequentInterfaces";
 /**
  * Encypt secrets before pushing the to the DB
  * @param {object} obj
@@ -34,7 +8,6 @@ interface EncryptedSecretProps {
  */
 const encryptSecrets = async ({
   secretsToEncrypt,
-  workspaceId,
   env
 }: {
   secretsToEncrypt: SecretDataProps[];
@@ -43,74 +16,14 @@ const encryptSecrets = async ({
 }) => {
   let secrets;
   try {
-    // const sharedKey = await getLatestFileKey({ workspaceId });
-    const wsKey = await fetchUserWsKey(workspaceId);
-
-    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-
-    let randomBytes: string;
-    if (wsKey) {
-      // case: a (shared) key exists for the workspace
-      randomBytes = decryptAssymmetric({
-        ciphertext: wsKey.encryptedKey,
-        nonce: wsKey.nonce,
-        publicKey: wsKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-    } else {
-      // case: a (shared) key does not exist for the workspace
-      randomBytes = crypto.randomBytes(16).toString("hex");
-    }
-
     secrets = secretsToEncrypt.map((secret) => {
-      // encrypt key
-      const {
-        ciphertext: secretKeyCiphertext,
-        iv: secretKeyIV,
-        tag: secretKeyTag
-      } = encryptSymmetric({
-        plaintext: secret.key,
-        key: randomBytes
-      });
-
-      // encrypt value
-      const {
-        ciphertext: secretValueCiphertext,
-        iv: secretValueIV,
-        tag: secretValueTag
-      } = encryptSymmetric({
-        plaintext: secret.value ?? "",
-        key: randomBytes
-      });
-
-      // encrypt comment
-      const {
-        ciphertext: secretCommentCiphertext,
-        iv: secretCommentIV,
-        tag: secretCommentTag
-      } = encryptSymmetric({
-        plaintext: secret.comment ?? "",
-        key: randomBytes
-      });
-
-      const result: EncryptedSecretProps = {
+      const result = {
         id: secret.id,
         createdAt: "",
         environment: env,
-        secretName: secret.key,
-        secretKeyCiphertext,
-        secretKeyIV,
-        secretKeyTag,
-        secretValueCiphertext,
-        secretValueIV,
-        secretValueTag,
-        secretCommentCiphertext,
-        secretCommentIV,
-        secretCommentTag,
-        type:
-          secret.valueOverride === undefined || secret?.value !== secret?.valueOverride
-            ? SecretType.Shared
-            : SecretType.Personal,
+        secretKey: secret.key,
+        secretValue: secret.value,
+        secretComment: secret.comment,
         tags: secret.tags
       };
 

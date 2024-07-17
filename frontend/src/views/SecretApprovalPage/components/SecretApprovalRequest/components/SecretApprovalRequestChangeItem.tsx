@@ -13,11 +13,16 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { CommitType, DecryptedSecret, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
+import {
+  CommitType,
+  SecretV3RawSanitized,
+  TSecretApprovalSecChange,
+  WsTag
+} from "@app/hooks/api/types";
 
 export type Props = {
   op: CommitType;
-  secretVersion?: DecryptedSecret;
+  secretVersion?: SecretV3RawSanitized;
   newVersion?: Omit<TSecretApprovalSecChange, "tags"> & { tags?: WsTag[] };
   presentSecretVersionNumber: number;
   hasMerged?: Boolean;
