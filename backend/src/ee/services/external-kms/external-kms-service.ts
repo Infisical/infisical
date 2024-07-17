@@ -6,6 +6,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TExternalKmsDALFactory } from "./external-kms-dal";
@@ -28,6 +29,7 @@ type TExternalKmsServiceFactoryDep = {
   >;
   kmsDAL: Pick<TKmsKeyDALFactory, "create" | "updateById" | "findById" | "deleteById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;
@@ -35,6 +37,7 @@ export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFac
 export const externalKmsServiceFactory = ({
   externalKmsDAL,
   permissionService,
+  licenseService,
   kmsService,
   kmsDAL
 }: TExternalKmsServiceFactoryDep) => {
@@ -56,6 +59,13 @@ export const externalKmsServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to create external KMS due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const kmsSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(8).toLowerCase());
 
     let sanitizedProviderInput = "";
@@ -127,6 +137,14 @@ export const externalKmsServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
+
+    const plan = await licenseService.getPlan(kmsDoc.orgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to update external KMS due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const kmsSlug = slug ? slugify(slug) : undefined;
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
