@@ -250,15 +250,16 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			infisicalDotJson.WorkspaceId = params.WorkspaceId
 		}
 
-		res, errorToReturn := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, infisicalDotJson.WorkspaceId,
+		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, infisicalDotJson.WorkspaceId,
 			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
-		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
+		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", err)
 
-		if errorToReturn == nil {
+		if err == nil {
 			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, res.Secrets)
 		}
 
 		secretsToReturn = res.Secrets
+		errorToReturn = err
 		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
 		if !isConnected {
 			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath)
