@@ -162,17 +162,50 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserGroupMembershipsInOrg = async (userId: string, orgId: string) => {
+  const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string) => {
     try {
       const docs = await db
         .replicaNode()(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.OrgMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
-        .where(`${TableName.Groups}.orgId`, orgId);
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .select(
+          db.ref("id").withSchema(TableName.UserGroupMembership),
+          db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
+          db.ref("firstName").withSchema(TableName.Users).as("firstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("lastName")
+        );
 
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "findTest" });
+      throw new DatabaseError({ error, name: "Find group memberships by user id in org" });
+    }
+  };
+
+  const findGroupMembershipsByGroupIdInOrg = async (groupId: string, orgId: string) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.UserGroupMembership)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.OrgMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.Groups}.id`, groupId)
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .select(
+          db.ref("id").withSchema(TableName.UserGroupMembership),
+          db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
+          db.ref("firstName").withSchema(TableName.Users).as("firstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("lastName")
+        );
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find group memberships by group id in org" });
     }
   };
 
@@ -182,6 +215,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     findUserGroupMembershipsInProject,
     findGroupMembersNotInProject,
     deletePendingUserGroupMembershipsByUserIds,
-    findUserGroupMembershipsInOrg
+    findGroupMembershipsByUserIdInOrg,
+    findGroupMembershipsByGroupIdInOrg
   };
 };
