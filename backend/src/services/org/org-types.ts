@@ -6,10 +6,15 @@ export type TUpdateOrgMembershipDTO = {
   userId: string;
   orgId: string;
   membershipId: string;
-  role: string;
+  role?: string;
+  isActive?: boolean;
   actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
 };
+
+export type TGetOrgMembershipDTO = {
+  membershipId: string;
+} & TOrgPermission;
 
 export type TDeleteOrgMembershipDTO = {
   userId: string;
@@ -55,3 +60,7 @@ export type TUpdateOrgDTO = {
 } & TOrgPermission;
 
 export type TGetOrgGroupsDTO = TOrgPermission;
+
+export type TListProjectMembershipsByOrgMembershipIdDTO = {
+  orgMembershipId: string;
+} & TOrgPermission;

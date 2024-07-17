@@ -16,6 +16,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
       const docs = await db
         .replicaNode()(TableName.ProjectMembership)
         .where({ [`${TableName.ProjectMembership}.projectId` as "projectId"]: projectId })
+        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
           if (filter.usernames) {
@@ -58,17 +59,22 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("isTemporary").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryRange").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryAccessStartTime").withSchema(TableName.ProjectUserMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole)
+          db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("name").as("projectName").withSchema(TableName.Project)
         )
         .where({ isGhost: false });
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, userId }) => ({
+        parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, userId, projectName }) => ({
           id,
           userId,
           projectId,
-          user: { email, username, firstName, lastName, id: userId, publicKey, isGhost }
+          user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
+          project: {
+            id: projectId,
+            name: projectName
+          }
         }),
         key: "id",
         childrenMapper: [
@@ -151,14 +157,95 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
   const findProjectMembershipsByUserId = async (orgId: string, userId: string) => {
     try {
-      const memberships = await db
+      const docs = await db
         .replicaNode()(TableName.ProjectMembership)
-        .where({ userId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .where({ [`${TableName.Project}.orgId` as "orgId"]: orgId })
-        .select(selectAllTableCols(TableName.ProjectMembership));
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.Users}.id`, userId)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .join<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .join(
+          TableName.ProjectUserMembershipRole,
+          `${TableName.ProjectUserMembershipRole}.projectMembershipId`,
+          `${TableName.ProjectMembership}.id`
+        )
+        .leftJoin(
+          TableName.ProjectRoles,
+          `${TableName.ProjectUserMembershipRole}.customRoleId`,
+          `${TableName.ProjectRoles}.id`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.ProjectMembership),
+          db.ref("isGhost").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("role").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("id").withSchema(TableName.ProjectUserMembershipRole).as("membershipRoleId"),
+          db.ref("customRoleId").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("name").withSchema(TableName.ProjectRoles).as("customRoleName"),
+          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
+          db.ref("temporaryMode").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("isTemporary").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("temporaryRange").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("temporaryAccessStartTime").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole),
+          db.ref("name").as("projectName").withSchema(TableName.Project),
+          db.ref("id").as("projectId").withSchema(TableName.Project)
+        )
+        .where({ isGhost: false });
 
-      return memberships;
+      const members = sqlNestRelationships({
+        data: docs,
+        parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, projectId, projectName }) => ({
+          id,
+          userId,
+          projectId,
+          user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
+          project: {
+            id: projectId,
+            name: projectName
+          }
+        }),
+        key: "id",
+        childrenMapper: [
+          {
+            label: "roles" as const,
+            key: "membershipRoleId",
+            mapper: ({
+              role,
+              customRoleId,
+              customRoleName,
+              customRoleSlug,
+              membershipRoleId,
+              temporaryRange,
+              temporaryMode,
+              temporaryAccessEndTime,
+              temporaryAccessStartTime,
+              isTemporary
+            }) => ({
+              id: membershipRoleId,
+              role,
+              customRoleId,
+              customRoleName,
+              customRoleSlug,
+              temporaryRange,
+              temporaryMode,
+              temporaryAccessEndTime,
+              temporaryAccessStartTime,
+              isTemporary
+            })
+          }
+        ]
+      });
+      return members;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project memberships by user id" });
     }
