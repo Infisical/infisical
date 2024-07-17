@@ -22,6 +22,10 @@ export const getBotKeyFnFactory = (
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found during bot lookup." });
 
+    if (project.version === 3) {
+      return { project, shouldUseSecretV2Bridge: true };
+    }
+
     const bot = await projectBotDAL.findOne({ projectId: project.id });
 
     if (!bot) throw new BadRequestError({ message: "Failed to find bot key", name: "bot_not_found_error" });
@@ -31,12 +35,13 @@ export const getBotKeyFnFactory = (
 
     const botPrivateKey = getBotPrivateKey({ bot });
 
-    return decryptAsymmetric({
+    const botKey = decryptAsymmetric({
       ciphertext: bot.encryptedProjectKey,
       privateKey: botPrivateKey,
       nonce: bot.encryptedProjectKeyNonce,
       publicKey: bot.sender.publicKey
     });
+    return { botKey, project, shouldUseSecretV2Bridge: false };
   };
 
   return getBotKeyFn;

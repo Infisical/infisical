@@ -35,6 +35,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   decryptSecretRaw,
@@ -83,6 +84,7 @@ type TSecretServiceFactoryDep = {
     TSecretFolderDALFactory,
     "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find"
   >;
+  secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
@@ -115,19 +117,20 @@ export const secretServiceFactory = ({
   secretVersionTagDAL,
   secretApprovalPolicyService,
   secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL
+  secretApprovalRequestSecretDAL,
+  secretV2BridgeService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
-    const botKey = await projectBotService.getBotKey(projectId).catch(() => null);
+    const projectBot = await projectBotService.getBotKey(projectId).catch(() => null);
     return (el: { ciphertext?: string; iv: string; tag: string }) =>
-      botKey
+      projectBot?.botKey
         ? getAllNestedSecretReferences(
             decryptSymmetric128BitHexKeyUTF8({
               ciphertext: el.ciphertext || "",
               iv: el.iv,
               tag: el.tag,
-              key: botKey
+              key: projectBot.botKey
             })
           )
         : undefined;
@@ -951,7 +954,23 @@ export const secretServiceFactory = ({
     expandSecretReferences,
     recursive
   }: TGetSecretsRawDTO) => {
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { secrets, imports } = await secretV2BridgeService.getSecrets({
+        projectId,
+        expandSecretReferences,
+        actorId,
+        actor,
+        actorOrgId,
+        environment,
+        path,
+        recursive,
+        actorAuthMethod,
+        includeImports
+      });
+      return { secrets, imports };
+    }
+
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const { secrets, imports } = await getSecrets({
@@ -1103,9 +1122,23 @@ export const secretServiceFactory = ({
     version
   }: TGetASecretRawDTO) => {
     const projectId = workspaceId || (await projectDAL.findProjectBySlug(projectSlug as string, actorOrgId)).id;
-
-    const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secret = await secretV2BridgeService.getSecretByName({
+        environment,
+        projectId,
+        includeImports,
+        actorAuthMethod,
+        path,
+        actorOrgId,
+        actor,
+        actorId,
+        expandSecretReferences,
+        type,
+        secretName
+      });
+      return secret;
+    }
 
     const encryptedSecret = await getSecretByName({
       actorId,
@@ -1121,6 +1154,8 @@ export const secretServiceFactory = ({
       version
     });
 
+    if (!botKey)
+      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
     const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
 
     if (expandSecretReferences) {
@@ -1180,9 +1215,29 @@ export const secretServiceFactory = ({
     secretReminderNote,
     secretReminderRepeatDays
   }: TCreateSecretRawDTO) => {
-    const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secret = await secretV2BridgeService.createSecret({
+        secretName,
+        type,
+        actorId,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        projectId,
+        environment,
+        secretPath,
+        secretComment,
+        secretValue,
+        tagIds,
+        secretReminderNote,
+        skipMultilineEncoding,
+        secretReminderRepeatDays
+      });
+      return secret;
+    }
 
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
     const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretName, botKey);
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
     const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
@@ -1234,7 +1289,30 @@ export const secretServiceFactory = ({
     secretComment,
     newSecretName
   }: TUpdateSecretRawDTO) => {
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secret = await secretV2BridgeService.updateSecret({
+        secretReminderRepeatDays,
+        skipMultilineEncoding,
+        secretReminderNote,
+        tagIds,
+        secretComment,
+        secretPath,
+        environment,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actor,
+        actorId,
+        type,
+        secretName,
+        newSecretName,
+        metadata,
+        secretValue
+      });
+      return secret;
+    }
+
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
@@ -1283,7 +1361,21 @@ export const secretServiceFactory = ({
     type,
     secretPath
   }: TDeleteSecretRawDTO) => {
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secret = await secretV2BridgeService.deleteSecret({
+        secretName,
+        type,
+        actorId,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        projectId,
+        environment,
+        secretPath
+      });
+      return secret;
+    }
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secret = await deleteSecret({
@@ -1323,7 +1415,20 @@ export const secretServiceFactory = ({
       projectId = project.id;
     }
 
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secrets = await secretV2BridgeService.createManySecret({
+        secretPath,
+        environment,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actor,
+        actorId,
+        secrets: inputSecrets
+      });
+      return secrets;
+    }
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secrets = await createManySecret({
@@ -1384,7 +1489,21 @@ export const secretServiceFactory = ({
       projectId = project.id;
     }
 
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secrets = await secretV2BridgeService.updateManySecret({
+        secretPath,
+        environment,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actor,
+        actorId,
+        secrets: inputSecrets
+      });
+      return secrets;
+    }
+
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secrets = await updateManySecret({
@@ -1457,7 +1576,21 @@ export const secretServiceFactory = ({
       projectId = project.id;
     }
 
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const secrets = await secretV2BridgeService.deleteManySecret({
+        secretPath,
+        environment,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actor,
+        actorId,
+        secrets: inputSecrets
+      });
+      return secrets;
+    }
+
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secrets = await deleteManySecret({
@@ -1517,7 +1650,6 @@ export const secretServiceFactory = ({
     actorId
   }: TAttachSecretTagsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -1620,7 +1752,6 @@ export const secretServiceFactory = ({
     actorId
   }: TAttachSecretTagsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -1735,7 +1866,17 @@ export const secretServiceFactory = ({
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new BadRequestError({ message: "Only admins are allowed to take this action" });
 
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      return secretV2BridgeService.backfillSecretReferences({
+        projectId,
+        actor,
+        actorId,
+        actorOrgId,
+        actorAuthMethod
+      });
+    }
+
     if (!botKey)
       throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
 
@@ -1779,6 +1920,21 @@ export const secretServiceFactory = ({
         message: "Project not found."
       });
     }
+    if (project.version === 3) {
+      return secretV2BridgeService.moveSecrets({
+        sourceEnvironment,
+        sourceSecretPath,
+        destinationEnvironment,
+        destinationSecretPath,
+        secretIds,
+        projectId: project.id,
+        shouldOverwrite,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1803,7 +1959,7 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment: destinationEnvironment, secretPath: destinationSecretPath })
     );
 
-    const botKey = await projectBotService.getBotKey(project.id);
+    const { botKey } = await projectBotService.getBotKey(project.id);
     if (!botKey) {
       throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
     }

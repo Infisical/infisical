@@ -2,18 +2,22 @@ import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "@app/db/schemas";
+import { SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
+export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
 
-export const secretDALFactory = (db: TDbClient) => {
-  const secretOrm = ormify(db, TableName.Secret);
+export const secretV2BridgeDALFactory = (db: TDbClient) => {
+  const secretOrm = ormify(db, TableName.SecretV2);
 
-  const update = async (filter: Partial<TSecrets>, data: Omit<TSecretsUpdate, "version">, tx?: Knex) => {
+  const update = async (filter: Partial<TSecretsV2>, data: Omit<TSecretsV2Update, "version">, tx?: Knex) => {
     try {
-      const sec = await (tx || db)(TableName.Secret).where(filter).update(data).increment("version", 1).returning("*");
+      const sec = await (tx || db)(TableName.SecretV2)
+        .where(filter)
+        .update(data)
+        .increment("version", 1)
+        .returning("*");
       return sec;
     } catch (error) {
       throw new DatabaseError({ error, name: "update secret" });
@@ -21,14 +25,14 @@ export const secretDALFactory = (db: TDbClient) => {
   };
 
   const bulkUpdate = async (
-    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
+    data: Array<{ filter: Partial<TSecretsV2>; data: TSecretsV2Update }>,
 
     tx?: Knex
   ) => {
     try {
       const secs = await Promise.all(
         data.map(async ({ filter, data: updateData }) => {
-          const [doc] = await (tx || db)(TableName.Secret)
+          const [doc] = await (tx || db)(TableName.SecretV2)
             .where(filter)
             .update(updateData)
             .increment("version", 1)
@@ -43,7 +47,7 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const bulkUpdateNoVersionIncrement = async (data: TSecrets[], tx?: Knex) => {
+  const bulkUpdateNoVersionIncrement = async (data: TSecretsV2[], tx?: Knex) => {
     try {
       const existingSecrets = await secretOrm.find(
         {
@@ -60,7 +64,7 @@ export const secretDALFactory = (db: TDbClient) => {
 
       if (data.length === 0) return [];
 
-      const updatedSecrets = await (tx || db)(TableName.Secret)
+      const updatedSecrets = await (tx || db)(TableName.SecretV2)
         .insert(data)
         .onConflict("id") // this will cause a conflict then merge the data
         .merge() // Merge the data with the existing data
@@ -73,24 +77,25 @@ export const secretDALFactory = (db: TDbClient) => {
   };
 
   const deleteMany = async (
-    data: Array<{ blindIndex: string; type: SecretType }>,
+    data: Array<{ key: string; type: SecretType }>,
     folderId: string,
     userId: string,
     tx?: Knex
   ) => {
     try {
-      const deletedSecrets = await (tx || db)(TableName.Secret)
+      const deletedSecrets = await (tx || db)(TableName.SecretV2)
         .where({ folderId })
         .where((bd) => {
           data.forEach((el) => {
             void bd.orWhere({
-              secretBlindIndex: el.blindIndex,
+              key: el.key,
               type: el.type,
               ...(el.type === SecretType.Personal ? { userId } : {})
             });
+            // if shared is getting deleted then personal ones also should be deleted
             if (el.type === SecretType.Shared) {
               void bd.orWhere({
-                secretBlindIndex: el.blindIndex,
+                key: el.key,
                 type: SecretType.Personal
               });
             }
@@ -112,23 +117,32 @@ export const secretDALFactory = (db: TDbClient) => {
         userId = undefined;
       }
 
-      const secs = await (tx || db.replicaNode())(TableName.Secret)
+      const secs = await (tx || db.replicaNode())(TableName.SecretV2)
         .where({ folderId })
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
-        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
-        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
-        .select(selectAllTableCols(TableName.Secret))
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
         .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
         .orderBy("id", "asc");
+
       const data = sqlNestRelationships({
         data: secs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
+        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",
@@ -150,9 +164,9 @@ export const secretDALFactory = (db: TDbClient) => {
 
   const getSecretTags = async (secretId: string, tx?: Knex) => {
     try {
-      const tags = await (tx || db.replicaNode())(TableName.JnSecretTag)
-        .join(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
-        .where({ [`${TableName.Secret}Id` as const]: secretId })
+      const tags = await (tx || db.replicaNode())(TableName.SecretV2JnTag)
+        .join(TableName.SecretTag, `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .where({ [`${TableName.SecretV2}Id` as const]: secretId })
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -177,23 +191,32 @@ export const secretDALFactory = (db: TDbClient) => {
         userId = undefined;
       }
 
-      const secs = await (tx || db.replicaNode())(TableName.Secret)
+      const secs = await (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn("folderId", folderIds)
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
-        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
-        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
-        .select(selectAllTableCols(TableName.Secret))
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
         .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
         .orderBy("id", "asc");
+
       const data = sqlNestRelationships({
         data: secs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
+        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",
@@ -213,25 +236,24 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByBlindIndexes = async (
+  const findBySecretKeys = async (
     folderId: string,
-    blindIndexes: Array<{ blindIndex: string; type: SecretType }>,
-    userId?: string,
+    query: Array<{ key: string; type: SecretType.Shared } | { key: string; type: SecretType.Personal; userId: string }>,
     tx?: Knex
   ) => {
-    if (!blindIndexes.length) return [];
+    if (!query.length) return [];
     try {
-      const secrets = await (tx || db.replicaNode())(TableName.Secret)
+      const secrets = await (tx || db.replicaNode())(TableName.SecretV2)
         .where({ folderId })
         .where((bd) => {
-          blindIndexes.forEach((el) => {
-            if (el.type === SecretType.Personal && !userId) {
+          query.forEach((el) => {
+            if (el.type === SecretType.Personal && !el.userId) {
               throw new BadRequestError({ message: "Missing personal user id" });
             }
             void bd.orWhere({
-              secretBlindIndex: el.blindIndex,
+              key: el.key,
               type: el.type,
-              userId: el.type === SecretType.Personal ? userId : null
+              userId: el.type === SecretType.Personal ? el.userId : null
             });
           });
         });
@@ -244,14 +266,14 @@ export const secretDALFactory = (db: TDbClient) => {
   const upsertSecretReferences = async (
     data: {
       secretId: string;
-      references: Array<{ environment: string; secretPath: string }>;
+      references: Array<{ environment: string; secretPath: string; secretKey: string }>;
     }[] = [],
     tx?: Knex
   ) => {
     try {
       if (!data.length) return;
 
-      await (tx || db)(TableName.SecretReference)
+      await (tx || db)(TableName.SecretReferenceV2)
         .whereIn(
           "secretId",
           data.map(({ secretId }) => secretId)
@@ -260,14 +282,15 @@ export const secretDALFactory = (db: TDbClient) => {
       const newSecretReferences = data
         .filter(({ references }) => references.length)
         .flatMap(({ secretId, references }) =>
-          references.map(({ environment, secretPath }) => ({
+          references.map(({ environment, secretPath, secretKey }) => ({
             secretPath,
             secretId,
-            environment
+            environment,
+            secretKey
           }))
         );
       if (!newSecretReferences.length) return;
-      const secretReferences = await (tx || db)(TableName.SecretReference).insert(newSecretReferences);
+      const secretReferences = await (tx || db)(TableName.SecretReferenceV2).insert(newSecretReferences);
       return secretReferences;
     } catch (error) {
       throw new DatabaseError({ error, name: "UpsertSecretReference" });
@@ -276,17 +299,18 @@ export const secretDALFactory = (db: TDbClient) => {
 
   const findReferencedSecretReferences = async (projectId: string, envSlug: string, secretPath: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretReference)
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
         .where({
           secretPath,
           environment: envSlug
         })
-        .join(TableName.Secret, `${TableName.Secret}.id`, `${TableName.SecretReference}.secretId`)
-        .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
-        .select(selectAllTableCols(TableName.SecretReference))
+        .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
+
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindReferencedSecretReferences" });
@@ -296,26 +320,34 @@ export const secretDALFactory = (db: TDbClient) => {
   // special query to backfill secret value
   const findAllProjectSecretValues = async (projectId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.Secret)
-        .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where("projectId", projectId)
         // not empty
-        .whereNotNull("secretValueCiphertext")
-        .select("secretValueTag", "secretValueCiphertext", "secretValueIV", `${TableName.Secret}.id` as "id");
+        .whereNotNull("encryptedValue")
+        .select("encryptedValue", `${TableName.SecretV2}.id` as "id");
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindAllProjectSecretValues" });
     }
   };
 
-  const findOneWithTags = async (filter: Partial<TSecrets>, tx?: Knex) => {
+  const findOneWithTags = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
-      const rawDocs = await (tx || db.replicaNode())(TableName.Secret)
+      const rawDocs = await (tx || db.replicaNode())(TableName.SecretV2)
         .where(filter)
-        .leftJoin(TableName.JnSecretTag, `${TableName.Secret}.id`, `${TableName.JnSecretTag}.${TableName.Secret}Id`)
-        .leftJoin(TableName.SecretTag, `${TableName.JnSecretTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
-        .select(selectAllTableCols(TableName.Secret))
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -323,7 +355,7 @@ export const secretDALFactory = (db: TDbClient) => {
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
+        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",
@@ -353,7 +385,7 @@ export const secretDALFactory = (db: TDbClient) => {
     findOneWithTags,
     findByFolderId,
     findByFolderIds,
-    findByBlindIndexes,
+    findBySecretKeys,
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues
