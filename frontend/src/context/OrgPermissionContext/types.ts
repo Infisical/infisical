@@ -19,7 +19,8 @@ export enum OrgPermissionSubjects {
   Groups = "groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
-  Identity = "identity"
+  Identity = "identity",
+  Kms = "kms"
 }
 
 export type OrgPermissionSet =
@@ -35,6 +36,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
-  | [OrgPermissionActions, OrgPermissionSubjects.Identity];
+  | [OrgPermissionActions, OrgPermissionSubjects.Identity]
+  | [OrgPermissionActions, OrgPermissionSubjects.Kms];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;
