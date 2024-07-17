@@ -205,7 +205,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         );
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find group memberships by user id in org" });
+      throw new DatabaseError({ error, name: "Find group memberships by group id in org" });
     }
   };
 
