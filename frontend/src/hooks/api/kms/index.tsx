@@ -1,2 +1,7 @@
-export { useAddAwsExternalKms, useRemoveExternalKms, useUpdateAwsExternalKms } from "./mutations";
-export { useGetExternalKmsById, useGetExternalKmsList } from "./queries";
+export {
+  useAddAwsExternalKms,
+  useRemoveExternalKms,
+  useUpdateAwsExternalKms,
+  useUpdateProjectKms
+} from "./mutations";
+export { useGetActiveProjectKms, useGetExternalKmsById, useGetExternalKmsList } from "./queries";

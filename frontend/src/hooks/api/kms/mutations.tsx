@@ -126,3 +126,17 @@ export const useRemoveExternalKms = (orgId: string) => {
     }
   });
 };
+
+export const useUpdateProjectKms = (projectId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (updatedData: { secretManagerKmsKeyId: string }) => {
+      const { data } = await apiRequest.patch(`/api/v1/workspace/${projectId}/kms`, updatedData);
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(kmsKeys.getActiveProjectKms(projectId));
+    }
+  });
+};

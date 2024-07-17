@@ -6,7 +6,8 @@ import { Kms, KmsListEntry } from "./types";
 
 export const kmsKeys = {
   getExternalKmsList: (orgId: string) => ["get-all-external-kms", { orgId }],
-  getExternalKmsById: (id: string) => ["get-external-kms", { id }]
+  getExternalKmsById: (id: string) => ["get-external-kms", { id }],
+  getActiveProjectKms: (projectId: string) => ["get-active-project-kms", { projectId }]
 };
 
 export const useGetExternalKmsList = (orgId: string) => {
@@ -30,6 +31,25 @@ export const useGetExternalKmsById = (kmsId: string) => {
         data: { externalKms }
       } = await apiRequest.get<{ externalKms: Kms }>(`/api/v1/external-kms/${kmsId}`);
       return externalKms;
+    }
+  });
+};
+
+export const useGetActiveProjectKms = (projectId: string) => {
+  return useQuery({
+    queryKey: kmsKeys.getActiveProjectKms(projectId),
+    enabled: Boolean(projectId),
+    queryFn: async () => {
+      const {
+        data: { secretManagerKmsKey }
+      } = await apiRequest.get<{
+        secretManagerKmsKey: {
+          id: string;
+          slug: string;
+          isExternal: string;
+        };
+      }>(`/api/v1/workspace/${projectId}/kms`);
+      return secretManagerKmsKey;
     }
   });
 };

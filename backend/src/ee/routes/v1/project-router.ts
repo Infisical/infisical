@@ -171,4 +171,73 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async () => ({ actors: [] })
   });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/kms",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secretManagerKmsKey: z.object({
+            id: z.string(),
+            slug: z.string(),
+            isExternal: z.boolean()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secretManagerKmsKey = await server.services.kms.getProjectSecretManagerKmsKey(req.params.workspaceId);
+      return {
+        secretManagerKmsKey
+      };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:workspaceId/kms",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        secretManagerKmsKeyId: z.string()
+      }),
+      response: {
+        200: z.object({
+          secretManagerKmsKey: z.object({
+            id: z.string(),
+            slug: z.string(),
+            isExternal: z.boolean()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretManagerKmsKey } = await server.services.kms.updateProjectKmsKey({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        ...req.body
+      });
+
+      return {
+        secretManagerKmsKey
+      };
+    }
+  });
 };

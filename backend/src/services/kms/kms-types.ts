@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { TProjectPermission } from "@app/lib/types";
+
 export type TGenerateKMSDTO = {
   orgId: string;
   isReserved?: boolean;
@@ -26,3 +28,7 @@ export type TDecryptWithKeyDTO = {
   key: Buffer;
   cipherTextBlob: Buffer;
 };
+
+export type TUpdateProjectKmsDTO = {
+  secretManagerKmsKeyId: string;
+} & TProjectPermission;

@@ -1,8 +1,11 @@
 import crypto from "node:crypto";
 
+import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
@@ -21,7 +24,8 @@ import {
   TDecryptWithKmsDTO,
   TEncryptionWithKeyDTO,
   TEncryptWithKmsDTO,
-  TGenerateKMSDTO
+  TGenerateKMSDTO,
+  TUpdateProjectKmsDTO
 } from "./kms-types";
 
 type TKmsServiceFactoryDep = {
@@ -30,6 +34,7 @@ type TKmsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
   kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
 };
 
@@ -49,7 +54,8 @@ export const kmsServiceFactory = ({
   keyStore,
   internalKmsDAL,
   orgDAL,
-  projectDAL
+  projectDAL,
+  permissionService
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY = Buffer.alloc(0);
 
@@ -272,6 +278,13 @@ export const kmsServiceFactory = ({
     return project.kmsSecretManagerKeyId;
   };
 
+  const getProjectSecretManagerKmsKey = async (projectId: string) => {
+    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId);
+
+    return kmsKey;
+  };
+
   const getProjectSecretManagerKmsDataKey = async (projectId: string) => {
     const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
     let project = await projectDAL.findById(projectId);
@@ -329,6 +342,82 @@ export const kmsServiceFactory = ({
     });
   };
 
+  const updateProjectSecretManagerKmsKey = async (projectId: string, kmsId: string) => {
+    const currentKms = await getProjectSecretManagerKmsKey(projectId);
+    const dataKey = await getProjectSecretManagerKmsDataKey(projectId);
+
+    if (currentKms.isReserved && kmsId === "internal") {
+      return currentKms;
+    }
+
+    return kmsDAL.transaction(async (tx) => {
+      const project = await projectDAL.findById(projectId, tx);
+      let newKmsId = kmsId;
+
+      if (newKmsId === "internal") {
+        const key = await generateKmsKey({
+          isReserved: true,
+          orgId: project.orgId,
+          tx
+        });
+
+        newKmsId = key.id;
+      }
+
+      const kmsEncryptor = await encryptWithKmsKey({ kmsId: newKmsId });
+      const { cipherTextBlob } = kmsEncryptor({ plainText: dataKey });
+      await projectDAL.updateById(
+        projectId,
+        {
+          kmsSecretManagerKeyId: newKmsId,
+          kmsSecretManagerEncryptedDataKey: cipherTextBlob
+        },
+        tx
+      );
+
+      if (currentKms.isReserved) {
+        await kmsDAL.deleteById(currentKms.id, tx);
+      }
+
+      return kmsDAL.findByIdWithAssociatedKms(newKmsId);
+    });
+  };
+
+  const updateProjectKmsKey = async ({
+    projectId,
+    secretManagerKmsKeyId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateProjectKmsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+    if (secretManagerKmsKeyId !== "internal") {
+      const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(secretManagerKmsKeyId);
+      if (!kmsDoc) {
+        throw new BadRequestError({ message: "KMS ID not found." });
+      }
+
+      if (kmsDoc.orgId !== actorOrgId) {
+        throw new BadRequestError({
+          message: "KMS ID does not belong in the organization."
+        });
+      }
+    }
+
+    return {
+      secretManagerKmsKey: await updateProjectSecretManagerKmsKey(projectId, secretManagerKmsKeyId)
+    };
+  };
+
   const startService = async () => {
     const appCfg = getConfig();
     // This will switch to a seal process and HMS flow in future
@@ -383,6 +472,10 @@ export const kmsServiceFactory = ({
     decryptWithInputKey,
     getOrgKmsKeyId,
     getProjectSecretManagerKmsKeyId,
-    getOrgKmsDataKey
+    getOrgKmsDataKey,
+    getProjectSecretManagerKmsDataKey,
+    getProjectSecretManagerKmsKey,
+    updateProjectKmsKey,
+    updateProjectSecretManagerKmsKey
   };
 };
