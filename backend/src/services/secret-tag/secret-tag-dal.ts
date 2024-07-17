@@ -10,6 +10,7 @@ export type TSecretTagDALFactory = ReturnType<typeof secretTagDALFactory>;
 export const secretTagDALFactory = (db: TDbClient) => {
   const secretTagOrm = ormify(db, TableName.SecretTag);
   const secretJnTagOrm = ormify(db, TableName.JnSecretTag);
+  const secretV2JnTagOrm = ormify(db, TableName.SecretV2JnTag);
 
   const findManyTagsById = async (projectId: string, ids: string[], tx?: Knex) => {
     try {
@@ -38,6 +39,8 @@ export const secretTagDALFactory = (db: TDbClient) => {
     ...secretTagOrm,
     saveTagsToSecret: secretJnTagOrm.insertMany,
     deleteTagsToSecret: secretJnTagOrm.delete,
+    saveTagsToSecretV2: secretV2JnTagOrm.insertMany,
+    deleteTagsToSecretV2: secretV2JnTagOrm.delete,
     deleteTagsManySecret,
     findManyTagsById
   };

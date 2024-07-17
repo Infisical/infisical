@@ -62,7 +62,7 @@ export const secretRawSchema = z.object({
   version: z.number(),
   type: z.string(),
   secretKey: z.string(),
-  secretValue: z.string(),
+  secretValue: z.string().optional(),
   secretComment: z.string().optional(),
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),

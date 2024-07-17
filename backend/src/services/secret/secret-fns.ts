@@ -689,7 +689,7 @@ export const createManySecretsRawFnFactory = ({
     secrets,
     userId
   }: TCreateManySecretsRawFn) => {
-    const botKey = await getBotKeyFn(projectId);
+    const { botKey } = await getBotKeyFn(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -787,7 +787,7 @@ export const updateManySecretsRawFnFactory = ({
     secrets, // consider accepting instead ciphertext secrets
     userId
   }: TUpdateManySecretsRawFn): Promise<Array<TSecrets & { _id: string }>> => {
-    const botKey = await getBotKeyFn(projectId);
+    const { botKey } = await getBotKeyFn(projectId);
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
