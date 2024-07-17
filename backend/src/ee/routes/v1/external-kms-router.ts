@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ExternalKmsAwsSchema,
   ExternalKmsInputSchema,
@@ -56,7 +57,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        slug: z.string().min(1).trim().toLowerCase().optional(),
+        slug: z.string().min(1).trim().toLowerCase(),
         description: z.string().min(1).trim().optional(),
         provider: ExternalKmsInputSchema
       }),
@@ -77,6 +78,21 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         provider: req.body.provider,
         description: req.body.description
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            provider: req.body.provider.type,
+            slug: req.body.slug,
+            description: req.body.description
+          }
+        }
+      });
+
       return { externalKms };
     }
   });
@@ -114,6 +130,21 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         description: req.body.description,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            provider: req.body.provider.type,
+            slug: req.body.slug,
+            description: req.body.description
+          }
+        }
+      });
+
       return { externalKms };
     }
   });
@@ -143,6 +174,19 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            slug: externalKms.slug
+          }
+        }
+      });
+
       return { externalKms };
     }
   });
@@ -172,6 +216,19 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            slug: externalKms.slug
+          }
+        }
+      });
+
       return { externalKms };
     }
   });

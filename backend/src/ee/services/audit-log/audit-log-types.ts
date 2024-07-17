@@ -139,7 +139,11 @@ export enum EventType {
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
-  GET_CERT_BODY = "get-cert-body"
+  GET_CERT_BODY = "get-cert-body",
+  CREATE_KMS = "create-kms",
+  UPDATE_KMS = "update-kms",
+  DELETE_KMS = "delete-kms",
+  GET_KMS = "get-kms"
 }
 
 interface UserActorMetadata {
@@ -1172,6 +1176,42 @@ interface GetCertBody {
   };
 }
 
+interface CreateKmsEvent {
+  type: EventType.CREATE_KMS;
+  metadata: {
+    kmsId: string;
+    provider: string;
+    slug: string;
+    description?: string;
+  };
+}
+
+interface DeleteKmsEvent {
+  type: EventType.DELETE_KMS;
+  metadata: {
+    kmsId: string;
+    slug: string;
+  };
+}
+
+interface UpdateKmsEvent {
+  type: EventType.UPDATE_KMS;
+  metadata: {
+    kmsId: string;
+    provider: string;
+    slug?: string;
+    description?: string;
+  };
+}
+
+interface GetKmsEvent {
+  type: EventType.GET_KMS;
+  metadata: {
+    kmsId: string;
+    slug: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1273,4 +1313,8 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
-  | GetCertBody;
+  | GetCertBody
+  | CreateKmsEvent
+  | UpdateKmsEvent
+  | DeleteKmsEvent
+  | GetKmsEvent;
