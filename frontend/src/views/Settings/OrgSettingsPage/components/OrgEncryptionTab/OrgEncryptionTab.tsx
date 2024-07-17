@@ -1,8 +1,10 @@
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faEllipsis, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -67,22 +69,27 @@ export const OrgEncryptionTab = withPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">Key Management System (KMS)</p>
-          <Button
-            onClick={() => {
-              handlePopUpOpen("addExternalKms");
-              // if (subscription && !subscription?.auditLogStreams) {
-              //   handlePopUpOpen("upgradePlan");
-              //   return;
-              // }
-              // handlePopUpOpen("auditLogStreamForm");
-            }}
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          >
-            Add
-          </Button>
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Kms}>
+            {(isAllowed) => (
+              <Button
+                onClick={() => {
+                  handlePopUpOpen("addExternalKms");
+                  // if (subscription && !subscription?.auditLogStreams) {
+                  //   handlePopUpOpen("upgradePlan");
+                  //   return;
+                  // }
+                  // handlePopUpOpen("auditLogStreamForm");
+                }}
+                isDisabled={!isAllowed}
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              >
+                Add
+              </Button>
+            )}
+          </OrgPermissionCan>
         </div>
         <p className="mb-4 text-gray-400">
-          Integrate with external KMS systems for encrypting your organization&apos;s data
+          Integrate with external KMS for encrypting your organization&apos;s data
         </p>
         <TableContainer>
           <Table>
@@ -119,28 +126,50 @@ export const OrgEncryptionTab = withPermission(
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePopUpOpen("editExternalKms", {
-                                kmsId: kms.id
-                              });
-                            }}
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            an={OrgPermissionSubjects.Kms}
                           >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePopUpOpen("removeExternalKms", {
-                                slug: kms.slug,
-                                kmsId: kms.id,
-                                provider: kms.externalKms.provider
-                              });
-                            }}
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                disabled={!isAllowed}
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("editExternalKms", {
+                                    kmsId: kms.id
+                                  });
+                                }}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Delete}
+                            an={OrgPermissionSubjects.Kms}
                           >
-                            Delete
-                          </DropdownMenuItem>
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                disabled={!isAllowed}
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("removeExternalKms", {
+                                    slug: kms.slug,
+                                    kmsId: kms.id,
+                                    provider: kms.externalKms.provider
+                                  });
+                                }}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </Td>
@@ -175,5 +204,5 @@ export const OrgEncryptionTab = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms }
 );
