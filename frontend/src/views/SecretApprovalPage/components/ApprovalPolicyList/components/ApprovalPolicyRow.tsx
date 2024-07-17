@@ -18,7 +18,7 @@ import { Badge } from "@app/components/v2/Badge";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { policyDetails } from "@app/helpers/policies";
 import { useUpdateAccessApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
-import { PolicyType } from "@app/hooks/api/policies/enums";
+import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -33,6 +33,7 @@ interface IPolicy {
   userApprovers?: { userId: string }[];
   updatedAt: Date;
   policyType: PolicyType;
+  enforcementLevel: EnforcementLevel;
 };
 
 type Props = {
@@ -75,11 +76,7 @@ export const ApprovalPolicyRow = ({
                     id: policy.id,
                     approvers: selectedApprovers
                   },
-                  {
-                    onSettled: () => {
-                      // No changes needed here
-                    }
-                  }
+                  { onSettled: () => {} }
                 );
               } else {
                 updateSecretApprovalPolicy(
@@ -88,11 +85,7 @@ export const ApprovalPolicyRow = ({
                     id: policy.id,
                     approvers: selectedApprovers
                   },
-                  {
-                    onSettled: () => {
-                      // No changes needed here
-                    }
-                  }
+                  { onSettled: () => {} }
                 );
               }
             } else {

@@ -143,12 +143,12 @@ export const AccessPolicyForm = ({
 					...data,
 					projectSlug
 				});
-				createNotification({
-					type: "success",
-					text: "Successfully updated policy"
-				});
-				onToggle(false);
 			}
+			createNotification({
+				type: "success",
+				text: "Successfully updated policy"
+			});
+			onToggle(false);
 		} catch (err) {
 			console.log(err);
 			createNotification({
