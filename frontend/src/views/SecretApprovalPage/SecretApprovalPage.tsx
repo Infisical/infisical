@@ -8,7 +8,6 @@ import { Divider } from "@app/components/v2/Divider";
 import { useWorkspace } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 
-import { AccessApprovalPolicyList } from "./components/AccessApprovalPolicyList";
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
 import { ApprovalPolicyList } from "./components/ApprovalPolicyList";
 import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
@@ -66,8 +65,6 @@ export const SecretApprovalPage = () => {
             Access Requests
             {Boolean(accessApprovalRequestCount?.pendingCount) && <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>}
           </Tab>
-          <Tab value={TabSection.ResourcePolicies}>Access Request Policies</Tab>
-          <Divider />
           <Tab value={TabSection.Policies}>Policies</Tab>
         </TabList>
         <TabPanel value={TabSection.SecretPolicies}>
@@ -78,9 +75,6 @@ export const SecretApprovalPage = () => {
         </TabPanel>
         <TabPanel value={TabSection.ResourceApprovalRequests}>
           <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
-        </TabPanel>
-        <TabPanel value={TabSection.ResourcePolicies}>
-          <AccessApprovalPolicyList workspaceId={projectId} />
         </TabPanel>
         <TabPanel value={TabSection.Policies}>
           <ApprovalPolicyList workspaceId={projectId} />
