@@ -3,7 +3,7 @@ name: secrets manager platform staging deployment
 on:
   push:
     branches:
-      - main
+      - staging
     paths:
       - "helm-charts/infiscal-standalone-postgres/**"
   workflow_dispatch:
