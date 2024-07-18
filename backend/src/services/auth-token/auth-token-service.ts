@@ -4,7 +4,8 @@ import bcrypt from "bcrypt";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
 import { AuthModeJwtTokenPayload } from "../auth/auth-type";
 import { TUserDALFactory } from "../user/user-dal";
@@ -14,6 +15,7 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOne">;
 };
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
@@ -67,7 +69,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -153,6 +155,16 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFact
 
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
+
+    if (token.organizationId) {
+      const orgMembership = await orgMembershipDAL.findOne({
+        userId: user.id,
+        orgId: token.organizationId
+      });
+
+      if (!orgMembership) throw new ForbiddenRequestError({ message: "User not member of organization" });
+      if (!orgMembership.isActive) throw new ForbiddenRequestError({ message: "User not active in organization" });
+    }
 
     return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };
   };

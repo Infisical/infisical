@@ -78,7 +78,10 @@ export const identityAwsAuthServiceFactory = ({
         .map((accountId) => accountId.trim())
         .some((accountId) => accountId === Account);
 
-      if (!isAccountAllowed) throw new UnauthorizedError();
+      if (!isAccountAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: AWS account ID not allowed."
+        });
     }
 
     if (identityAwsAuth.allowedPrincipalArns) {
@@ -94,7 +97,10 @@ export const identityAwsAuthServiceFactory = ({
           return regex.test(extractPrincipalArn(Arn));
         });
 
-      if (!isArnAllowed) throw new UnauthorizedError();
+      if (!isArnAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: AWS principal ARN not allowed."
+        });
     }
 
     const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {

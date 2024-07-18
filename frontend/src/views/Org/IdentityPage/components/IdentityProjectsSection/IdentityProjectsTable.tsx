@@ -1,4 +1,4 @@
-import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { faFolder } from "@fortawesome/free-solid-svg-icons";
 
 import {
   EmptyState,
@@ -37,7 +37,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={2} innerKey="identity-project-memberships" />}
+          {isLoading && <TableSkeleton columns={4} innerKey="identity-project-memberships" />}
           {!isLoading &&
             projectMemberships?.map((membership) => {
               return (
@@ -51,7 +51,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
         </TBody>
       </Table>
       {!isLoading && !projectMemberships?.length && (
-        <EmptyState title="This identity has not been assigned to any projects" icon={faKey} />
+        <EmptyState title="This identity has not been assigned to any projects" icon={faFolder} />
       )}
     </TableContainer>
   );

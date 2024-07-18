@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -20,6 +20,7 @@ export type TCreateAccessApprovalPolicy = {
   approvers: string[];
   projectSlug: string;
   name: string;
+  enforcementLevel: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -28,6 +29,7 @@ export type TUpdateAccessApprovalPolicy = {
   approvers?: string[];
   secretPath?: string;
   name?: string;
+  enforcementLevel?: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {

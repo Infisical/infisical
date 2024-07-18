@@ -122,6 +122,7 @@ spec:
         # Azure Auth
         azureAuth:
             identityId: <your-machine-identity-id>
+            resource: https://management.azure.com/&client_id=CLIENT_ID # (Optional) This is the Azure resource that you want to access. For example, "https://management.azure.com/". If no value is provided, it will default to "https://management.azure.com/"
 
             # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
             secretsScope:

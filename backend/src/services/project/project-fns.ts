@@ -71,9 +71,8 @@ export const getProjectKmsCertificateKeyId = async ({
     if (!project.kmsCertificateKeyId) {
       // create default kms key for certificate service
       const key = await kmsService.generateKmsKey({
-        scopeId: projectId,
-        scopeType: "project",
         isReserved: true,
+        orgId: project.orgId,
         tx
       });
 

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization,useWorkspace } from "@app/context";
 import {
   useAddIdentityToWorkspace,
   useGetIdentityProjectMemberships,
@@ -33,6 +33,7 @@ type Props = {
 };
 
 export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle }: Props) => {
+  const { currentOrg } = useOrganization();
   const { workspaces } = useWorkspace();
   const { mutateAsync: addIdentityToWorkspace } = useAddIdentityToWorkspace();
 
@@ -58,7 +59,9 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
       wsWorkspaceIds.set(projectMembership.project.id, true);
     });
 
-    return (workspaces || []).filter(({ id }) => !wsWorkspaceIds.has(id));
+    return (workspaces || []).filter(
+      ({ id, orgId }) => !wsWorkspaceIds.has(id) && orgId === currentOrg?.id
+    );
   }, [workspaces, projectMemberships]);
 
   const onFormSubmit = async ({ projectId: workspaceId, role }: FormData) => {

@@ -25,7 +25,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   queueService: TQueueServiceFactory;
 };
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -88,8 +88,10 @@ export const certificateAuthorityQueueFactory = ({
       kmsService
     });
 
-    const privateKey = await kmsService.decrypt({
-      kmsId: keyId,
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: keyId
+    });
+    const privateKey = kmsDecryptor({
       cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
@@ -120,8 +122,10 @@ export const certificateAuthorityQueueFactory = ({
       signingKey: sk
     });
 
-    const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
-      kmsId: keyId,
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: keyId
+    });
+    const { cipherTextBlob: encryptedCrl } = kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(crl.rawData))
     });
 

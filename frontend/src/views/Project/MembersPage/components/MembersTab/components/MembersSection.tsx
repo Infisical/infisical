@@ -4,7 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub , useOrganization, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 
@@ -30,7 +35,11 @@ export const MembersSection = () => {
     if (!currentWorkspace?.id) return;
 
     try {
-      await removeUserFromWorkspace({ workspaceId: currentWorkspace.id, usernames: [username] });
+      await removeUserFromWorkspace({
+        workspaceId: currentWorkspace.id,
+        usernames: [username],
+        orgId: currentOrg.id
+      });
       createNotification({
         text: "Successfully removed user from project",
         type: "success"

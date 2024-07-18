@@ -1,20 +1,22 @@
+import React, { useState } from "react";
 import {
   faCheck,
   faClose,
+  faLandMineOn,
   faLockOpen,
   faSquareCheck,
   faSquareXmark,
-  faUserLock
-} from "@fortawesome/free-solid-svg-icons";
+  faUserLock} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import { Button, Checkbox } from "@app/components/v2";
 import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
 } from "@app/hooks/api";
+import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 
 type Props = {
   approvalRequestId: string;
@@ -25,6 +27,7 @@ type Props = {
   canApprove?: boolean;
   statusChangeByEmail?: string;
   workspaceId: string;
+  enforcementLevel: EnforcementLevel;
 };
 
 export const SecretApprovalRequestAction = ({
@@ -34,7 +37,8 @@ export const SecretApprovalRequestAction = ({
   isMergable,
   approvals,
   statusChangeByEmail,
-  workspaceId,
+  workspaceId,  
+  enforcementLevel,
   canApprove
 }: Props) => {
   const { mutateAsync: performSecretApprovalMerge, isLoading: isMerging } =
@@ -42,6 +46,8 @@ export const SecretApprovalRequestAction = ({
 
   const { mutateAsync: updateSecretStatusChange, isLoading: isStatusChanging } =
     useUpdateSecretApprovalRequestStatus();
+
+  const [byPassApproval, setByPassApproval] = useState(false);
 
   const handleSecretApprovalRequestMerge = async () => {
     try {
@@ -82,6 +88,8 @@ export const SecretApprovalRequestAction = ({
     }
   };
 
+  const isSoftEnforcement = enforcementLevel === EnforcementLevel.Soft;
+
   if (!hasMerged && status === "open") {
     return (
       <div className="flex w-full items-center justify-between">
@@ -96,10 +104,25 @@ export const SecretApprovalRequestAction = ({
               At least {approvals} approving review required
               {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
             </span>
+            {!canApprove && isSoftEnforcement && (
+              <div className="mt-1">
+                <Checkbox
+                  onCheckedChange={(checked) => setByPassApproval(checked === true)}
+                  isChecked={byPassApproval}
+                  id="byPassApproval"
+                  checkIndicatorBg="text-white"
+                  className={byPassApproval ? "bg-red hover:bg-red-600 border-red" : ""}
+                >
+                  <span className="text-red text-sm">
+                    Merge without waiting for approval (bypass secret change policy)
+                  </span>
+                </Checkbox>
+              </div>
+            )}
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          {canApprove ? (
+          {canApprove || isSoftEnforcement ? (
             <>
               <Button
                 onClick={() => handleSecretApprovalStatusChange("close")}
@@ -111,11 +134,14 @@ export const SecretApprovalRequestAction = ({
                 Close request
               </Button>
               <Button
-                leftIcon={<FontAwesomeIcon icon={faCheck} />}
-                isDisabled={!isMergable}
+                leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
+                isDisabled={
+                  (!isMergable && canApprove)
+                  || (!canApprove && isSoftEnforcement && !byPassApproval)
+                }
                 isLoading={isMerging}
                 onClick={handleSecretApprovalRequestMerge}
-                colorSchema="primary"
+                colorSchema={isSoftEnforcement && !canApprove ? "danger" : "primary"}
                 variant="solid"
               >
                 Merge

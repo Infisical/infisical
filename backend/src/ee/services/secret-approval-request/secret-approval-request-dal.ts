@@ -94,6 +94,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+        tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals")
       );
 
@@ -128,7 +129,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             id: el.policyId,
             name: el.policyName,
             approvals: el.policyApprovals,
-            secretPath: el.policySecretPath
+            secretPath: el.policySecretPath,
+            enforcementLevel: el.policyEnforcementLevel
           }
         }),
         childrenMapper: [
@@ -282,6 +284,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+          db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
@@ -308,7 +311,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             id: el.policyId,
             name: el.policyName,
             approvals: el.policyApprovals,
-            secretPath: el.policySecretPath
+            secretPath: el.policySecretPath,
+            enforcementLevel: el.policyEnforcementLevel
           },
           committerUser: {
             userId: el.committerUserId,

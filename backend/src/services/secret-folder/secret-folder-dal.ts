@@ -322,7 +322,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .first();
       if (folder) {
         const { envId, envName, envSlug, ...el } = folder;
-        return { ...el, environment: { envId, envName, envSlug } };
+        return { ...el, environment: { envId, envName, envSlug }, envId };
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id" });

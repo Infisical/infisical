@@ -25,7 +25,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -164,14 +164,16 @@ export const certificateServiceFactory = ({
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
-    const keyId = await getProjectKmsCertificateKeyId({
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
       kmsService
     });
 
-    const decryptedCert = await kmsService.decrypt({
-      kmsId: keyId,
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = kmsDecryptor({
       cipherTextBlob: certBody.encryptedCertificate
     });
 

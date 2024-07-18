@@ -106,6 +106,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-iam": "^3.525.0",
+    "@aws-sdk/client-kms": "^3.609.0",
     "@aws-sdk/client-secrets-manager": "^3.504.0",
     "@aws-sdk/client-sts": "^3.600.0",
     "@casl/ability": "^6.5.0",

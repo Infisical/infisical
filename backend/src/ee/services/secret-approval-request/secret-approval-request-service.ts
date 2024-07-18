@@ -11,6 +11,7 @@ import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -289,7 +290,10 @@ export const secretApprovalRequestServiceFactory = ({
         ({ userId: approverId }) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
       ).length;
 
-    if (!hasMinApproval) throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
+    const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
+
+    if (!hasMinApproval && !isSoftEnforcement)
+      throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
     const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 

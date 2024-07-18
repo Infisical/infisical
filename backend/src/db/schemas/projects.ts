@@ -19,7 +19,8 @@ export const ProjectsSchema = z.object({
   upgradeStatus: z.string().nullable().optional(),
   pitVersionLimit: z.number().default(10),
   kmsCertificateKeyId: z.string().uuid().nullable().optional(),
-  auditLogsRetentionDays: z.number().nullable().optional()
+  auditLogsRetentionDays: z.number().nullable().optional(),
+  kmsSecretManagerKeyId: z.string().uuid().nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

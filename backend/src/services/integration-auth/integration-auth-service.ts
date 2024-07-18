@@ -574,14 +574,14 @@ export const integrationAuthServiceFactory = ({
     const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
 
-    AWS.config.update({
+    const kms = new AWS.KMS({
       region,
       credentials: {
         accessKeyId: String(accessId),
         secretAccessKey: accessToken
       }
     });
-    const kms = new AWS.KMS();
+
     const aliases = await kms.listAliases({}).promise();
 
     const keyAliases = aliases.Aliases!.filter((alias) => {

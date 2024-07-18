@@ -48,6 +48,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.AccessApprovalPolicy).as("policyName"),
           db.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
           db.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
+          db.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId")
         )
 
@@ -98,6 +99,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             name: doc.policyName,
             approvals: doc.policyApprovals,
             secretPath: doc.policySecretPath,
+            enforcementLevel: doc.policyEnforcementLevel,
             envId: doc.policyEnvId
           },
           privilege: doc.privilegeId
@@ -165,6 +167,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
+        tx.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
         tx.ref("approverId").withSchema(TableName.AccessApprovalPolicyApprover)
       );
@@ -184,7 +187,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             id: el.policyId,
             name: el.policyName,
             approvals: el.policyApprovals,
-            secretPath: el.policySecretPath
+            secretPath: el.policySecretPath,
+            enforcementLevel: el.policyEnforcementLevel
           }
         }),
         childrenMapper: [

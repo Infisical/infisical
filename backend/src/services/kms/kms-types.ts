@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 export type TGenerateKMSDTO = {
-  scopeType: "project" | "org";
-  scopeId: string;
+  orgId: string;
   isReserved?: boolean;
+  slug?: string;
   tx?: Knex;
 };
 
@@ -12,7 +12,17 @@ export type TEncryptWithKmsDTO = {
   plainText: Buffer;
 };
 
+export type TEncryptionWithKeyDTO = {
+  key: Buffer;
+  plainText: Buffer;
+};
+
 export type TDecryptWithKmsDTO = {
   kmsId: string;
+  cipherTextBlob: Buffer;
+};
+
+export type TDecryptWithKeyDTO = {
+  key: Buffer;
   cipherTextBlob: Buffer;
 };

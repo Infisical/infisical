@@ -59,6 +59,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalKms,
+  TExternalKmsInsert,
+  TExternalKmsUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -125,6 +128,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TInternalKms,
+  TInternalKmsInsert,
+  TInternalKmsUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -656,6 +662,8 @@ declare module "knex/types/tables" {
       TKmsRootConfigInsert,
       TKmsRootConfigUpdate
     >;
+    [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
+    [TableName.ExternalKms]: KnexOriginal.CompositeTableType<TExternalKms, TExternalKmsInsert, TExternalKmsUpdate>;
     [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
     [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
       TKmsKeyVersions,

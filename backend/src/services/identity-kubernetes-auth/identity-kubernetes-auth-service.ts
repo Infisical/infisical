@@ -139,7 +139,10 @@ export const identityKubernetesAuthServiceFactory = ({
         .map((namespace) => namespace.trim())
         .some((namespace) => namespace === targetNamespace);
 
-      if (!isNamespaceAllowed) throw new UnauthorizedError();
+      if (!isNamespaceAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: K8s namespace not allowed."
+        });
     }
 
     if (identityKubernetesAuth.allowedNames) {
@@ -150,7 +153,10 @@ export const identityKubernetesAuthServiceFactory = ({
         .map((name) => name.trim())
         .some((name) => name === targetName);
 
-      if (!isNameAllowed) throw new UnauthorizedError();
+      if (!isNameAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: K8s name not allowed."
+        });
     }
 
     if (identityKubernetesAuth.allowedAudience) {
@@ -159,7 +165,10 @@ export const identityKubernetesAuthServiceFactory = ({
         (audience) => audience === identityKubernetesAuth.allowedAudience
       );
 
-      if (!isAudienceAllowed) throw new UnauthorizedError();
+      if (!isAudienceAllowed)
+        throw new ForbiddenRequestError({
+          message: "Access denied: K8s audience not allowed."
+        });
     }
 
     const identityAccessToken = await identityKubernetesAuthDAL.transaction(async (tx) => {

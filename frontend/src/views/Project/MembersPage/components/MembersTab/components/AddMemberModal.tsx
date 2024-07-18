@@ -6,14 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button,FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useAddUserToWsE2EE,
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetUserWsKey,
-  useGetWorkspaceUsers} from "@app/hooks/api";
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -76,7 +77,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       } else if (currentWorkspace.version === ProjectVersion.V2) {
         await addUserToWorkspaceNonE2EE({
           projectId: workspaceId,
-          usernames: [orgUser.user.username]
+          usernames: [orgUser.user.username],
+          orgId
         });
       } else {
         createNotification({

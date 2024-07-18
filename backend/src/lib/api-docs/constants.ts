@@ -348,10 +348,15 @@ export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },
+  GET_USER_MEMBERSHIP: {
+    organizationId: "The ID of the organization to get the membership for.",
+    membershipId: "The ID of the membership to get."
+  },
   UPDATE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to update the membership for.",
     membershipId: "The ID of the membership to update.",
-    role: "The new role of the membership."
+    role: "The new role of the membership.",
+    isActive: "The active status of the membership"
   },
   DELETE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to delete the membership from.",
@@ -514,6 +519,9 @@ export const FOLDERS = {
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)"
+  },
+  GET_BY_ID: {
+    folderId: "The id of the folder to get details."
   },
   CREATE: {
     workspaceId: "The ID of the project to create the folder in.",
