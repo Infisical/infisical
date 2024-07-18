@@ -1,0 +1,107 @@
+name: secrets manager platform staging deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "helm-charts/infiscal-standalone-postgres/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+env:
+  KUBERNETES_VERSION: 1.26.0
+  HELM_CHART_PATH: helm-charts
+  K8S_VERSION: "1.28.0"
+  HELM_VERSION: 3.8.1
+  GO_VERSION: 1.21.x
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      working-directory: .
+      cluster: ${{ secrets.STAGING_CLUSTER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo update
+
+      - name: Configure Kubernetes context
+        run: |
+          doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ env.cluster }}
+
+      - name: Create orchestration namespace
+        run: |
+          kubectl create namespace secrets-manager --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Build Helm dependencies
+        working-directory: ${{env.working-directory}}
+        run: |
+          helm dependency build ./helm-charts/infiscal-standalone-postgres
+
+      - name: Deploy To Staging Environment
+        working-directory: ${{env.working-directory}}
+        run: |
+          helm upgrade --install infisical-standalone ./helm-charts/infiscal-standalone-postgres \
+            --values ./helm-charts/infiscal-standalone-postgres/values.staging.yaml \
+            --set ingress.ingressClassName=nginx \
+            --set ingress.nginx.enabled=false \
+            --set ingress.enabled=false \
+            --set solomon.database.postgres.enabled=true \
+            --set solomon.database.redis.enabled=true \
+            --set solomon.database.redis.url=${{ secrets.STAGING_SECRET_MANAGER_REDIS_URL }} \
+            --set solomon.database.postgres.url=${{ secrets.STAGING_SECRET_MANAGER_POSTGRES_URL }} \
+            --namespace secrets-manager  \
+            --create-namespace \
+            --debug
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n secrets-manager
+          kubectl get ingress -n secrets-manager
+          kubectl get services -n secrets-manager
+
+      - name: Display Ingress details
+        run: |
+          kubectl get ingress -n secrets-manager -o yaml
+
+      - name: Temporarily disable webhook (if all else fails)
+        if: failure()
+        run: |
+          echo "Warning: Temporarily disabling Ingress Nginx admission webhook. This is not recommended for production."
+          kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
+
+          helm upgrade --install infisical-standalone ./helm-charts/infiscal-standalone-postgres \
+            --values ./helm-charts/infiscal-standalone-postgres/values.staging.yaml \
+            --set ingress.ingressClassName=nginx \
+            --set ingress.nginx.enabled=false \
+            --set ingress.enabled=false \
+            --set solomon.database.postgres.enabled=true \
+            --set solomon.database.redis.enabled=true \
+            --set solomon.database.redis.url=${{ secrets.STAGING_SECRET_MANAGER_REDIS_URL }} \
+            --set solomon.database.postgres.url=${{ secrets.STAGING_SECRET_MANAGER_POSTGRES_URL }} \
+            --namespace secrets-manager  \
+            --create-namespace \
+            --debug

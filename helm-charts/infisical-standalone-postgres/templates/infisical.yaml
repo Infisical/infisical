@@ -55,13 +55,13 @@ spec:
         ports: 
         - containerPort: 8080
         env:
-        {{- if .Values.postgresql.enabled }}
+        {{- if .Values.solomon.database.postgres.enabled }}
         - name: DB_CONNECTION_URI
-          value: {{ include "infisical.postgresDBConnectionString" . }}
+          value: {{ include "infisical.postgresql.url" . }}
         {{- end }}
-        {{- if .Values.redis.enabled }}
+        {{- if .Values.solomon.database.redis.enabled }}
         - name: REDIS_URL
-          value: {{ include "infisical.redisConnectionString" . }}
+          value: {{ include "infisical.redis.url" . }}
         {{- end }}
         envFrom:
         - secretRef:

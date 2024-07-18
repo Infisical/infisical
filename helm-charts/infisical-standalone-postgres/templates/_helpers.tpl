@@ -105,3 +105,26 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $serviceName := include "infisical.redisServiceName" . -}}
 {{- printf "redis://default:%s@%s:6379" $password "redis-master" -}}
 {{- end -}}
+
+
+{{/*
+Create the postgresql connection string.
+*/}}
+{{- define "infisical.postgresql.url" -}}
+{{- if .Values.solomon.database.postgres.url -}}
+{{- .Values.solomon.database.postgres.url -}}
+{{- else -}}
+{{- include "infisical.postgresDBConnectionString" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the redis connection string.
+*/}}
+{{- define "infisical.redis.url" -}}
+{{- if .Values.solomon.database.redis.url -}}
+{{- .Values.solomon.database.redis.url -}}
+{{- else -}}
+{{- include "infisical.redisConnectionString" . -}}
+{{- end -}}
+{{- end -}}
