@@ -113,35 +113,66 @@ export const kmsServiceFactory = ({
   };
 
   const getOrgKmsKeyId = async (orgId: string) => {
-    const keyId = await orgDAL.transaction(async (tx) => {
-      const org = await orgDAL.findById(orgId, tx);
-      if (!org) {
-        throw new NotFoundError({ message: "Org not found" });
+    let org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: "Org not found" });
+    }
+
+    if (!org.kmsDefaultKeyId) {
+      const lock = await keyStore
+        .acquireLock([KeyStorePrefixes.KmsOrgKeyCreation, orgId], 3000, { retryCount: 3 })
+        .catch(() => null);
+
+      try {
+        if (!lock) {
+          await keyStore.waitTillReady({
+            key: `${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`,
+            keyCheckCb: (val) => val === "true",
+            waitingCb: () => logger.info("KMS. Waiting for org key to be created")
+          });
+
+          org = await orgDAL.findById(orgId);
+        } else {
+          org = await orgDAL.findById(orgId);
+          if (!org.kmsDefaultKeyId) {
+            const keyId = await orgDAL.transaction(async (tx) => {
+              const key = await generateKmsKey({
+                isReserved: true,
+                orgId: org.id,
+                tx
+              });
+
+              await orgDAL.updateById(
+                org.id,
+                {
+                  kmsDefaultKeyId: key.id
+                },
+                tx
+              );
+
+              await keyStore.setItemWithExpiry(
+                `${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`,
+                10,
+                "true"
+              );
+
+              return key.id;
+            });
+
+            return keyId;
+          }
+        }
+      } finally {
+        await lock?.release();
       }
+    }
 
-      if (!org.kmsDefaultKeyId) {
-        // create default kms key for certificate service
-        const key = await generateKmsKey({
-          isReserved: true,
-          orgId: org.id,
-          tx
-        });
+    if (!org.kmsDefaultKeyId) {
+      throw new Error("Invalid organization KMS");
+    }
 
-        await orgDAL.updateById(
-          org.id,
-          {
-            kmsDefaultKeyId: key.id
-          },
-          tx
-        );
-
-        return key.id;
-      }
-
-      return org.kmsDefaultKeyId;
-    });
-
-    return keyId;
+    return org.kmsDefaultKeyId;
   };
 
   const decryptWithKmsKey = async ({ kmsId }: Omit<TDecryptWithKmsDTO, "cipherTextBlob">) => {
@@ -274,49 +305,78 @@ export const kmsServiceFactory = ({
 
   const getOrgKmsDataKey = async (orgId: string) => {
     const kmsKeyId = await getOrgKmsKeyId(orgId);
-    const orgKmsDataKey = await orgDAL.transaction(async (tx) => {
-      const org = await orgDAL.findById(orgId, tx);
+    let org = await orgDAL.findById(orgId);
 
-      if (!org) {
-        throw new NotFoundError({ message: "Org not found" });
+    if (!org) {
+      throw new NotFoundError({ message: "Org not found" });
+    }
+
+    if (!org.kmsEncryptedDataKey) {
+      const lock = await keyStore
+        .acquireLock([KeyStorePrefixes.KmsOrgDataKeyCreation, orgId], 3000, { retryCount: 3 })
+        .catch(() => null);
+
+      try {
+        if (!lock) {
+          await keyStore.waitTillReady({
+            key: `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+            keyCheckCb: (val) => val === "true",
+            waitingCb: () => logger.info("KMS. Waiting for org data key to be created")
+          });
+
+          org = await orgDAL.findById(orgId);
+        } else {
+          org = await orgDAL.findById(orgId);
+          if (!org.kmsEncryptedDataKey) {
+            const orgDataKey = await orgDAL.transaction(async (tx) => {
+              const dataKey = randomSecureBytes();
+              const kmsEncryptor = await encryptWithKmsKey(
+                {
+                  kmsId: kmsKeyId
+                },
+                tx
+              );
+
+              const { cipherTextBlob } = await kmsEncryptor({
+                plainText: dataKey
+              });
+
+              await orgDAL.updateById(
+                org.id,
+                {
+                  kmsEncryptedDataKey: cipherTextBlob
+                },
+                tx
+              );
+
+              await keyStore.setItemWithExpiry(
+                `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+                10,
+                "true"
+              );
+
+              return dataKey;
+            });
+
+            return orgDataKey;
+          }
+        }
+      } finally {
+        await lock?.release();
       }
+    }
 
-      let encryptedDataKey = org.kmsEncryptedDataKey;
-      if (!encryptedDataKey) {
-        const dataKey = randomSecureBytes();
-        const kmsEncryptor = await encryptWithKmsKey(
-          {
-            kmsId: kmsKeyId
-          },
-          tx
-        );
+    if (!org.kmsEncryptedDataKey) {
+      throw new Error("Invalid organization KMS");
+    }
 
-        const { cipherTextBlob } = await kmsEncryptor({
-          plainText: dataKey
-        });
-
-        encryptedDataKey = cipherTextBlob;
-        await orgDAL.updateById(
-          org.id,
-          {
-            kmsEncryptedDataKey: encryptedDataKey
-          },
-          tx
-        );
-
-        return dataKey;
-      }
-
-      const kmsDecryptor = await decryptWithKmsKey({
-        kmsId: kmsKeyId
-      });
-
-      return kmsDecryptor({
-        cipherTextBlob: encryptedDataKey
-      });
+    const kmsDecryptor = await decryptWithKmsKey({
+      kmsId: kmsKeyId
     });
 
-    return orgKmsDataKey;
+    return kmsDecryptor({
+      cipherTextBlob: org.kmsEncryptedDataKey
+    });
   };
 
   const getProjectSecretManagerKmsKeyId = async (projectId: string) => {
