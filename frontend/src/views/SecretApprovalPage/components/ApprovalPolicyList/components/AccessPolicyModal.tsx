@@ -7,8 +7,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-	Alert,
-	AlertDescription,
 	Button,
 	DropdownMenu,
 	DropdownMenuContent,
@@ -94,7 +92,6 @@ export const AccessPolicyForm = ({
 	const { mutateAsync: createSecretApprovalPolicy } = useCreateSecretApprovalPolicy();
 	const { mutateAsync: updateSecretApprovalPolicy } = useUpdateSecretApprovalPolicy();
 
-	const enforcementLevel = watch("enforcementLevel");
 	const policyName = policyDetails[watch("policyType")]?.name || "Policy";
 	
 	const handleCreatePolicy = async (data: TFormSchema) => {
@@ -330,6 +327,7 @@ export const AccessPolicyForm = ({
 							label="Enforcement Level"
 							isError={Boolean(error)}
 							errorText={error?.message}
+							tooltipText="Choose 'Hard' for required approval or 'Soft' for optional approval"
 							helperText={
 								field.value === EnforcementLevel.Hard
 								? "Hard enforcement prevents any request from being deployed without prior approval"
@@ -352,13 +350,6 @@ export const AccessPolicyForm = ({
 							</FormControl>
 						)}
 						/>
-						{enforcementLevel === EnforcementLevel.Soft && (
-							<Alert hideTitle variant="warning">
-								<AlertDescription>
-									Soft enforcement allows requesters to bypass approval, which may reduce system security and stability.
-								</AlertDescription>
-							</Alert>
-						)}
 						<div className="mt-8 flex items-center space-x-4">
 							<Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting}>
 								Save
