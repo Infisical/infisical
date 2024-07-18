@@ -134,34 +134,32 @@ export const kmsServiceFactory = ({
 
           org = await orgDAL.findById(orgId);
         } else {
-          org = await orgDAL.findById(orgId);
-          if (!org.kmsDefaultKeyId) {
-            const keyId = await orgDAL.transaction(async (tx) => {
-              const key = await generateKmsKey({
-                isReserved: true,
-                orgId: org.id,
-                tx
-              });
+          const keyId = await orgDAL.transaction(async (tx) => {
+            org = await orgDAL.findById(orgId, tx);
+            if (org.kmsDefaultKeyId) {
+              return org.kmsDefaultKeyId;
+            }
 
-              await orgDAL.updateById(
-                org.id,
-                {
-                  kmsDefaultKeyId: key.id
-                },
-                tx
-              );
-
-              await keyStore.setItemWithExpiry(
-                `${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`,
-                10,
-                "true"
-              );
-
-              return key.id;
+            const key = await generateKmsKey({
+              isReserved: true,
+              orgId: org.id,
+              tx
             });
 
-            return keyId;
-          }
+            await orgDAL.updateById(
+              org.id,
+              {
+                kmsDefaultKeyId: key.id
+              },
+              tx
+            );
+
+            await keyStore.setItemWithExpiry(`${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`, 10, "true");
+
+            return key.id;
+          });
+
+          return keyId;
         }
       } finally {
         await lock?.release();
@@ -192,7 +190,6 @@ export const kmsServiceFactory = ({
         kmsId: kmsDoc.orgKms.id
       });
 
-      // fetch encryptedDataKey straight from kmsDoc by joining it in query :D
       const orgKmsDataKey = await orgKmsDecryptor({
         cipherTextBlob: kmsDoc.orgKms.encryptedDataKey
       });
@@ -326,38 +323,42 @@ export const kmsServiceFactory = ({
 
           org = await orgDAL.findById(orgId);
         } else {
-          org = await orgDAL.findById(orgId);
-          if (!org.kmsEncryptedDataKey) {
-            const orgDataKey = await orgDAL.transaction(async (tx) => {
-              const dataKey = randomSecureBytes();
-              const kmsEncryptor = await encryptWithKmsKey(
-                {
-                  kmsId: kmsKeyId
-                },
-                tx
-              );
+          const orgDataKey = await orgDAL.transaction(async (tx) => {
+            org = await orgDAL.findById(orgId, tx);
+            if (org.kmsEncryptedDataKey) {
+              return;
+            }
 
-              const { cipherTextBlob } = await kmsEncryptor({
-                plainText: dataKey
-              });
+            const dataKey = randomSecureBytes();
+            const kmsEncryptor = await encryptWithKmsKey(
+              {
+                kmsId: kmsKeyId
+              },
+              tx
+            );
 
-              await orgDAL.updateById(
-                org.id,
-                {
-                  kmsEncryptedDataKey: cipherTextBlob
-                },
-                tx
-              );
-
-              await keyStore.setItemWithExpiry(
-                `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
-                10,
-                "true"
-              );
-
-              return dataKey;
+            const { cipherTextBlob } = await kmsEncryptor({
+              plainText: dataKey
             });
 
+            await orgDAL.updateById(
+              org.id,
+              {
+                kmsEncryptedDataKey: cipherTextBlob
+              },
+              tx
+            );
+
+            await keyStore.setItemWithExpiry(
+              `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+              10,
+              "true"
+            );
+
+            return dataKey;
+          });
+
+          if (orgDataKey) {
             return orgDataKey;
           }
         }
@@ -401,6 +402,11 @@ export const kmsServiceFactory = ({
           project = await projectDAL.findById(projectId);
         } else {
           const kmsKeyId = await projectDAL.transaction(async (tx) => {
+            project = await projectDAL.findById(projectId, tx);
+            if (project.kmsSecretManagerKeyId) {
+              return project.kmsSecretManagerKeyId;
+            }
+
             const key = await generateKmsKey({
               isReserved: true,
               orgId: project.orgId,
@@ -464,25 +470,40 @@ export const kmsServiceFactory = ({
 
           project = await projectDAL.findById(projectId);
         } else {
-          const dataKey = randomSecureBytes();
-          const kmsEncryptor = await encryptWithKmsKey({
-            kmsId: kmsKeyId
+          const projectDataKey = await projectDAL.transaction(async (tx) => {
+            project = await projectDAL.findById(projectId, tx);
+            if (project.kmsSecretManagerEncryptedDataKey) {
+              return;
+            }
+
+            const dataKey = randomSecureBytes();
+            const kmsEncryptor = await encryptWithKmsKey({
+              kmsId: kmsKeyId
+            });
+
+            const { cipherTextBlob } = await kmsEncryptor({
+              plainText: dataKey
+            });
+
+            await projectDAL.updateById(
+              projectId,
+              {
+                kmsSecretManagerEncryptedDataKey: cipherTextBlob
+              },
+              tx
+            );
+
+            await keyStore.setItemWithExpiry(
+              `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
+              10,
+              "true"
+            );
+            return dataKey;
           });
 
-          const { cipherTextBlob } = await kmsEncryptor({
-            plainText: dataKey
-          });
-
-          await projectDAL.updateById(projectId, {
-            kmsSecretManagerEncryptedDataKey: cipherTextBlob
-          });
-
-          await keyStore.setItemWithExpiry(
-            `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
-            10,
-            "true"
-          );
-          return dataKey;
+          if (projectDataKey) {
+            return projectDataKey;
+          }
         }
       } finally {
         await lock?.release();
