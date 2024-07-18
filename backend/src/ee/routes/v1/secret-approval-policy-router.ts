@@ -25,10 +25,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .string()
             .optional()
             .nullable()
+            .default("/")
             .transform((val) => (val ? removeTrailingSlash(val) : val)),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
-          enforcementLevel: z.nativeEnum(EnforcementLevel)
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
@@ -50,7 +51,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         projectId: req.body.workspaceId,
         ...req.body,
         name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
-        enforcementLevel: req.body.enforcementLevel ?? EnforcementLevel.Hard
+        enforcementLevel: req.body.enforcementLevel
       });
       return { approval };
     }
@@ -75,8 +76,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .string()
             .optional()
             .nullable()
-            .transform((val) => (val ? removeTrailingSlash(val) : val)),
-          enforcementLevel: z.nativeEnum(EnforcementLevel)
+            .transform((val) => (val ? removeTrailingSlash(val) : val))
+            .transform((val) => (val === "" ? "/" : val)),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],

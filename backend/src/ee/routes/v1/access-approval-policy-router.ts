@@ -19,7 +19,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           environment: z.string(),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
-          enforcementLevel: z.nativeEnum(EnforcementLevel)
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
@@ -119,7 +119,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .transform((val) => (val === "" ? "/" : val)),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
-          enforcementLevel: z.nativeEnum(EnforcementLevel)
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
