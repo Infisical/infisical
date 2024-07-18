@@ -53,3 +53,11 @@ export const useGetActiveProjectKms = (projectId: string) => {
     }
   });
 };
+
+export const fetchProjectKmsBackup = async (projectId: string) => {
+  const { data } = await apiRequest.get<{
+    secretManager: string;
+  }>(`/api/v1/workspace/${projectId}/kms/backup`);
+
+  return data;
+};

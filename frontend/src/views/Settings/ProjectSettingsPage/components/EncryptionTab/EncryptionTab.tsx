@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import FileSaver from "file-saver";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,6 +14,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { useGetActiveProjectKms, useGetExternalKmsList, useUpdateProjectKms } from "@app/hooks/api";
+import { fetchProjectKmsBackup } from "@app/hooks/api/kms/queries";
 
 const formSchema = z.object({
   kmsKeyId: z.string()
@@ -55,7 +57,7 @@ export const EncryptionTab = () => {
     }
   }, [kmsKeyId]);
 
-  const onFormSubmit = async (data: TForm) => {
+  const onUpdateProjectKms = async (data: TForm) => {
     try {
       await updateProjectKms({
         secretManagerKmsKeyId: data.kmsKeyId
@@ -70,12 +72,38 @@ export const EncryptionTab = () => {
     }
   };
 
+  const downloadKmsBackup = async () => {
+    if (!currentWorkspace || !currentOrg) {
+      return;
+    }
+
+    const { secretManager } = await fetchProjectKmsBackup(currentWorkspace.id);
+
+    const [, kmsFunction] = secretManager.split(".");
+    const file = secretManager;
+
+    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(
+      blob,
+      `kms-backup-${currentOrg.slug}-${currentWorkspace.slug}-${kmsFunction}.infisical.txt`
+    );
+  };
+
   return (
     <form
-      onSubmit={handleSubmit(onFormSubmit)}
+      onSubmit={handleSubmit(onUpdateProjectKms)}
       className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="mb-2 flex-1 text-xl font-semibold text-mineshaft-100">Key Management</h2>
+      <div className="flex justify-between">
+        <h2 className="mb-2 flex-1 text-xl font-semibold text-mineshaft-100">Key Management</h2>
+        <div className="space-x-2">
+          <Button colorSchema="secondary">Load Backup</Button>
+          <Button colorSchema="secondary" onClick={downloadKmsBackup}>
+            Create Backup
+          </Button>
+        </div>
+      </div>
+
       <p className="mb-4 text-gray-400">
         Select which Key Management System to use for encrypting your project data
       </p>

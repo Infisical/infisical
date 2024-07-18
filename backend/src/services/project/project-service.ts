@@ -78,7 +78,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
-  kmsService: Pick<TKmsServiceFactory, "updateProjectSecretManagerKmsKey">;
+  kmsService: Pick<TKmsServiceFactory, "updateProjectSecretManagerKmsKey" | "getProjectKeyBackup">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -693,6 +693,34 @@ export const projectServiceFactory = ({
     };
   };
 
+  const getProjectKmsBackup = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to create KMS backup due to plan restriction. Upgrade to the enterprise plan."
+      });
+    }
+
+    const kmsBackup = await kmsService.getProjectKeyBackup(projectId);
+    return kmsBackup;
+  };
+
   return {
     createProject,
     deleteProject,
@@ -707,6 +735,7 @@ export const projectServiceFactory = ({
     listProjectCertificates,
     updateVersionLimit,
     updateAuditLogsRetention,
-    updateProjectKmsKey
+    updateProjectKmsKey,
+    getProjectKmsBackup
   };
 };

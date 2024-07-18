@@ -585,6 +585,29 @@ export const kmsServiceFactory = ({
     });
   };
 
+  const getProjectKeyBackup = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found"
+      });
+    }
+
+    const secretManagerDataKey = await getProjectSecretManagerKmsDataKey(projectId);
+    const kmsKeyIdForEncrypt = await getOrgKmsKeyId(project.orgId);
+    const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyIdForEncrypt });
+    const { cipherTextBlob: encryptedSecretManagerDataKey } = await kmsEncryptor({ plainText: secretManagerDataKey });
+
+    // format: projectId.kmsFunction.kmsId.Base64(encryptedDataKey)
+    const secretManagerBackup = `${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
+      "base64"
+    )}`;
+
+    return {
+      secretManager: secretManagerBackup
+    };
+  };
+
   const startService = async () => {
     const appCfg = getConfig();
     // This will switch to a seal process and HMS flow in future
@@ -642,6 +665,7 @@ export const kmsServiceFactory = ({
     getOrgKmsDataKey,
     getProjectSecretManagerKmsDataKey,
     getProjectSecretManagerKmsKey,
-    updateProjectSecretManagerKmsKey
+    updateProjectSecretManagerKmsKey,
+    getProjectKeyBackup
   };
 };
