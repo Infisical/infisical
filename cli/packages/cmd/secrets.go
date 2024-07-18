@@ -187,6 +187,10 @@ var secretsSetCmd = &cobra.Command{
 
 		var secretOperations []models.SecretSetOperation
 		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+			if projectId == "" {
+				util.PrintErrorMessageAndExit("When using service tokens or machine identities, you must set the --projectId flag")
+			}
+
 			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token)
 		} else {
 			workspaceFile, err := util.GetWorkSpaceFromFile()
