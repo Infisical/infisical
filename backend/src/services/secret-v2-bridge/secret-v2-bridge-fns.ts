@@ -365,7 +365,7 @@ export const recursivelyGetSecretPaths = async ({
 
 type TInterpolateSecretArg = {
   projectId: string;
-  decryptSecret: (encryptedValue?: Buffer | null) => string;
+  decryptSecret: (encryptedValue?: Buffer | null) => string | undefined;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
