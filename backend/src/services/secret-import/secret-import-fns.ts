@@ -145,7 +145,8 @@ export const fnSecretsV2FromImports = async ({
   secretDAL,
   secretImportDAL,
   depth = 0,
-  cyclicDetector = new Set()
+  cyclicDetector = new Set(),
+  decryptor
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -155,6 +156,7 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
   depth?: number;
   cyclicDetector?: Set<string>;
+  decryptor: (value?: Buffer | null) => string | undefined;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
@@ -203,7 +205,8 @@ export const fnSecretsV2FromImports = async ({
       folderDAL,
       secretDAL,
       depth: depth + 1,
-      cyclicDetector
+      cyclicDetector,
+      decryptor
     });
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
@@ -224,8 +227,8 @@ export const fnSecretsV2FromImports = async ({
         .map((item) => ({
           ...item,
           secretKey: item.key,
-          secretValue: item.encryptedValue?.toString(),
-          secretComment: item.encryptedComment?.toString(),
+          secretValue: decryptor(item.encryptedValue),
+          secretComment: decryptor(item.encryptedComment),
           environment: importEnv.slug,
           workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
           _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.

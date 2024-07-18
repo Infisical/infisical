@@ -44,10 +44,16 @@ import {
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
   secretVersionDAL: TSecretVersionV2DALFactory;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "getProjectSecretManagerKmsDataKey" | "encryptWithInputKey" | "decryptWithInputKey"
+  >;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -64,9 +70,21 @@ type TSecretV2BridgeServiceFactoryDep = {
     TSecretApprovalRequestSecretDALFactory,
     "insertMany" | "insertApprovalSecretTags"
   >;
+  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
+
+const encryptionHelper = {
+  encryptValue: (encryptor: Awaited<ReturnType<TKmsServiceFactory["encryptWithKmsKey"]>>, value?: string) => {
+    if (typeof value === "undefined") return;
+    return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+  },
+  decryptValue: (decryptor: Awaited<ReturnType<TKmsServiceFactory["decryptWithInputKey"]>>, value?: Buffer | null) => {
+    if (!value) return;
+    return decryptor({ cipherTextBlob: value }).toString();
+  }
+};
 
 /*
  * This service is a bridge from our old architecture towards the new architecture
@@ -84,7 +102,8 @@ export const secretV2BridgeServiceFactory = ({
   secretVersionTagDAL,
   secretApprovalPolicyService,
   secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL
+  secretApprovalRequestSecretDAL,
+  kmsService
 }: TSecretV2BridgeServiceFactoryDep) => {
   const createSecret = async ({
     actor,
@@ -141,6 +160,9 @@ export const secretV2BridgeServiceFactory = ({
 
     const { secretName, type, ...el } = inputSecret;
     const references = getAllNestedSecretReferences(inputSecret.secretValue);
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerEncryptor = await kmsService.encryptWithInputKey({ key: secretManagerDataKey });
+
     const secret = await secretDAL.transaction((tx) =>
       fnSecretBulkInsert({
         folderId,
@@ -149,8 +171,8 @@ export const secretV2BridgeServiceFactory = ({
             version: 1,
             type,
             reminderRepeatDays: el.secretReminderRepeatDays,
-            encryptedComment: el.secretComment ? Buffer.from(el.secretComment) : undefined,
-            encryptedValue: el.secretValue ? Buffer.from(el.secretValue) : undefined,
+            encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
+            encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue),
             reminderNote: el.secretReminderNote,
             skipMultilineEncoding: el.skipMultilineEncoding,
             key: secretName,
@@ -167,7 +189,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    // await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       secretPath,
       actorId,
@@ -264,6 +286,16 @@ export const secretV2BridgeServiceFactory = ({
 
     const { secretName, secretValue, secretComment } = inputSecret;
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerEncryptor = await kmsService.encryptWithInputKey({ key: secretManagerDataKey });
+    const encryptedValue =
+      typeof secretValue !== "undefined"
+        ? {
+            encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, secretValue) as Buffer,
+            references: getAllNestedSecretReferences(secretValue)
+          }
+        : {};
+
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
@@ -272,20 +304,12 @@ export const secretV2BridgeServiceFactory = ({
             filter: { id: secretId },
             data: {
               reminderRepeatDays: inputSecret.secretReminderRepeatDays,
-              encryptedComment: secretComment ? Buffer.from(secretComment) : undefined,
+              encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, secretComment),
               reminderNote: inputSecret.secretReminderNote,
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
-              ...(secretValue
-                ? {
-                    encryptedValue: Buffer.from(secretValue),
-                    references: getAllNestedSecretReferences(secretValue)
-                  }
-                : {
-                    encryptedValue: undefined,
-                    references: undefined
-                  })
+              ...encryptedValue
             }
           }
         ],
@@ -305,7 +329,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    // await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -315,9 +339,8 @@ export const secretV2BridgeServiceFactory = ({
     });
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...updatedSecret[0],
-      // TODO(akhilmhdh-sev2): fix this
-      value: updatedSecret[0].encryptedValue?.toString(),
-      comment: updatedSecret[0].encryptedComment?.toString()
+      value: inputSecret.secretValue,
+      comment: inputSecret.secretComment
     });
   };
 
@@ -372,7 +395,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    // await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -380,11 +403,13 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       environmentSlug: folder.environment.slug
     });
+
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...deletedSecret[0],
-      // TODO(akhilmhdh-sev2): fix this
-      value: deletedSecret[0].encryptedValue?.toString(),
-      comment: deletedSecret[0].encryptedComment?.toString()
+      value: encryptionHelper.decryptValue(secretManagerDecryptor, deletedSecret[0].encryptedValue),
+      comment: encryptionHelper.decryptValue(secretManagerDecryptor, deletedSecret[0].encryptedComment)
     });
   };
 
@@ -448,6 +473,9 @@ export const secretV2BridgeServiceFactory = ({
       actorId
     );
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
+
     if (includeImports) {
       const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
       const allowedImports = secretImports.filter(({ importEnv, importPath, isReplication }) =>
@@ -467,16 +495,16 @@ export const secretV2BridgeServiceFactory = ({
         allowedImports,
         secretDAL,
         folderDAL,
-        secretImportDAL
+        secretImportDAL,
+        decryptor: (value) => encryptionHelper.decryptValue(secretManagerDecryptor, value)
       });
 
       return {
         secrets: secrets.map((secret) =>
           reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
             ...secret,
-            // TODO(akhilmhdh-sev2): decryption missiong
-            value: secret.encryptedValue?.toString(),
-            comment: secret.encryptedComment?.toString()
+            value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue),
+            comment: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
           })
         ),
         imports: importedSecrets
@@ -487,9 +515,8 @@ export const secretV2BridgeServiceFactory = ({
       secrets: secrets.map((secret) =>
         reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
           ...secret,
-          // TODO(akhilmhdh-sev2): decrypt this
-          value: secret.encryptedValue?.toString(),
-          comment: secret.encryptedComment?.toString()
+          value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue),
+          comment: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
         })
       )
     };
@@ -536,6 +563,9 @@ export const secretV2BridgeServiceFactory = ({
       secretType = SecretType.Shared;
     }
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
+
     const secret = await (version === undefined
       ? secretDAL.findOneWithTags({
           folderId,
@@ -551,13 +581,13 @@ export const secretV2BridgeServiceFactory = ({
             key: secretName
           })
           .then((el) => SecretsV2Schema.parse({ ...el, id: el.secretId })));
-    // TODO(akhilmhdh-sev2): resolve this decryptSecret
     const interpolateInlineSecretReference = interpolateSecrets({
       projectId,
-      decryptSecret: () => "",
+      decryptSecret: (encryptedValue) => encryptionHelper.decryptValue(secretManagerDecryptor, encryptedValue),
       secretDAL,
       folderDAL
     });
+
     // now if secret is not found
     // then search for imported secrets
     // here we consider the import order also thus starting from bottom
@@ -579,13 +609,15 @@ export const secretV2BridgeServiceFactory = ({
         allowedImports,
         secretDAL,
         folderDAL,
-        secretImportDAL
+        secretImportDAL,
+        decryptor: (value) => encryptionHelper.decryptValue(secretManagerDecryptor, value)
       });
+
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           if (secretName === importedSecrets[i].secrets[j].key) {
             const importedSecret = importedSecrets[i].secrets[j];
-            let secretValue = importedSecret.encryptedValue ? importedSecret.encryptedValue.toString() : undefined;
+            let secretValue = encryptionHelper.decryptValue(secretManagerDecryptor, importedSecret.encryptedValue);
             if (expandSecretReferences && secretValue) {
               const secretReferenceExpandedString = {
                 [importedSecret.key]: { value: secretValue }
@@ -595,11 +627,10 @@ export const secretV2BridgeServiceFactory = ({
               secretValue = secretReferenceExpandedString[importedSecret.key].value;
             }
 
-            // TODO(akhilmhdh-sev2): decrypt this
             return reshapeBridgeSecret(projectId, importedSecrets[i].environment, importedSecrets[i].secretPath, {
               ...importedSecret,
               value: secretValue,
-              comment: importedSecret.encryptedComment?.toString()
+              comment: encryptionHelper.decryptValue(secretManagerDecryptor, importedSecret.encryptedComment)
             });
           }
         }
@@ -607,7 +638,7 @@ export const secretV2BridgeServiceFactory = ({
     }
     if (!secret) throw new BadRequestError({ message: "Secret not found" });
 
-    let secretValue = secret.encryptedValue ? secret.encryptedValue.toString() : undefined;
+    let secretValue = encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue);
     if (expandSecretReferences && secretValue) {
       const secretReferenceExpandedString = {
         [secret.key]: { value: secretValue }
@@ -617,11 +648,10 @@ export const secretV2BridgeServiceFactory = ({
       secretValue = secretReferenceExpandedString[secret.key].value;
     }
 
-    // TODO(akhilmhdh-sev2): fix this
     return reshapeBridgeSecret(projectId, environment, path, {
       ...secret,
       value: secretValue,
-      comment: secret.encryptedComment?.toString()
+      comment: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
     });
   };
 
@@ -670,12 +700,15 @@ export const secretV2BridgeServiceFactory = ({
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
     if (tags.length !== sanitizedTagIds.length) throw new BadRequestError({ message: "Tag not found" });
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerEncryptor = await kmsService.encryptWithInputKey({ key: secretManagerDataKey });
+
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => ({
           version: 1,
-          encryptedComment: el.secretComment ? Buffer.from(el.secretComment) : undefined,
-          encryptedValue: el.secretValue ? Buffer.from(el.secretValue) : undefined,
+          encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
+          encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue),
           skipMultilineEncoding: el.skipMultilineEncoding,
           key: el.secretKey,
           tagIds: el.tagIds,
@@ -691,7 +724,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    // await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -700,12 +733,12 @@ export const secretV2BridgeServiceFactory = ({
       environmentSlug: folder.environment.slug
     });
 
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     return newSecrets.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        // TODO(akhilmhdh-sev2): decryption missiong
-        value: el.encryptedValue?.toString(),
-        comment: el.encryptedComment?.toString()
+        value: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
+        comment: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
       })
     );
   };
@@ -770,38 +803,41 @@ export const secretV2BridgeServiceFactory = ({
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
     if (tags.length !== sanitizedTagIds.length) throw new BadRequestError({ message: "Tag not found" });
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerEncryptor = await kmsService.encryptWithInputKey({ key: secretManagerDataKey });
+
     const secrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
         folderId,
         tx,
-        inputSecrets: inputSecrets.map((el) => ({
-          filter: { key: el.secretKey, type: SecretType.Shared },
-          data: {
-            reminderRepeatDays: el.secretReminderRepeatDays,
-            encryptedComment: el.secretComment ? Buffer.from(el.secretComment) : undefined,
-            reminderNote: el.secretReminderNote,
-            skipMultilineEncoding: el.skipMultilineEncoding,
-            key: el.newSecretName || el.secretKey,
-            tags: el.tagIds,
-            ...(el.secretValue
+        inputSecrets: inputSecrets.map((el) => {
+          const encryptedValue =
+            typeof el.secretValue !== "undefined"
               ? {
-                  encryptedValue: Buffer.from(el.secretValue),
+                  encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue) as Buffer,
                   references: getAllNestedSecretReferences(el.secretValue)
                 }
-              : {
-                  encryptedValue: undefined,
-                  references: undefined
-                })
-          }
-        })),
+              : {};
+          return {
+            filter: { key: el.secretKey, type: SecretType.Shared },
+            data: {
+              reminderRepeatDays: el.secretReminderRepeatDays,
+              encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
+              reminderNote: el.secretReminderNote,
+              skipMultilineEncoding: el.skipMultilineEncoding,
+              key: el.newSecretName || el.secretKey,
+              tags: el.tagIds,
+              ...encryptedValue
+            }
+          };
+        }),
         secretDAL,
         secretVersionDAL,
         secretTagDAL,
         secretVersionTagDAL
       })
     );
-
-    // await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -810,12 +846,12 @@ export const secretV2BridgeServiceFactory = ({
       environmentSlug: folder.environment.slug
     });
 
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     return secrets.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        // TODO(akhilmhdh-sev2): decryption missiong
-        value: el.encryptedValue?.toString(),
-        comment: el.encryptedComment?.toString()
+        value: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
+        comment: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
       })
     );
   };
@@ -884,12 +920,13 @@ export const secretV2BridgeServiceFactory = ({
       environmentSlug: folder.environment.slug
     });
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     return secretsDeleted.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        // TODO(akhilmhdh-sev2): decryption missiong
-        value: el.encryptedValue?.toString(),
-        comment: el.encryptedComment?.toString()
+        value: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
+        comment: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
       })
     );
   };
@@ -943,15 +980,20 @@ export const secretV2BridgeServiceFactory = ({
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new BadRequestError({ message: "Only admins are allowed to take this action" });
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     await secretDAL.transaction(async (tx) => {
       const secrets = await secretDAL.findAllProjectSecretValues(projectId, tx);
-      // TODO(akhilmhdh-sev2): decryption missing
       await secretDAL.upsertSecretReferences(
         secrets
           .filter((el) => Boolean(el.encryptedValue))
           .map(({ id, encryptedValue }) => ({
             secretId: id,
-            references: getAllNestedSecretReferences(encryptedValue?.toString("utf8"))
+            references: encryptedValue
+              ? getAllNestedSecretReferences(
+                  encryptionHelper.decryptValue(secretManagerDecryptor, encryptedValue) as string
+                )
+              : []
           })),
         tx
       );
@@ -1028,10 +1070,11 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
+    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
       ...secret,
-      // TODO(akhilmhdh-sev2): decryption missiong
-      value: secret.encryptedValue?.toString()
+      value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue)
     }));
 
     let isSourceUpdated = false;
@@ -1050,8 +1093,7 @@ export const secretV2BridgeServiceFactory = ({
       const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
         return {
           ...secret,
-          // TODO(akhilmhdh-sev2): decryption missiong
-          value: secret.encryptedValue?.toString()
+          value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue)
         };
       });
 
@@ -1154,8 +1196,8 @@ export const secretV2BridgeServiceFactory = ({
                 type: doc.type,
                 metadata: doc.metadata,
                 key: doc.key,
-                encryptedValue: doc.encryptedValue ? Buffer.from(doc.encryptedValue) : undefined,
-                encryptedComment: doc.encryptedComment ? Buffer.from(doc.encryptedComment) : undefined,
+                encryptedValue: doc.encryptedValue,
+                encryptedComment: doc.encryptedComment,
                 skipMultilineEncoding: doc.skipMultilineEncoding,
                 reminderNote: doc.reminderNote,
                 reminderRepeatDays: doc.reminderRepeatDays,
@@ -1188,8 +1230,7 @@ export const secretV2BridgeServiceFactory = ({
                   ...(doc.encryptedValue
                     ? {
                         encryptedValue: doc.encryptedValue,
-                        // TODO(akhilmhdh-sev2): fix decryption
-                        references: getAllNestedSecretReferences(doc.encryptedValue.toString())
+                        references: doc.value ? getAllNestedSecretReferences(doc.value) : []
                       }
                     : {
                         encryptedValue: undefined,
@@ -1275,7 +1316,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     if (isDestinationUpdated) {
-      // await snapshotService.performSnapshot(destinationFolder.id);
+      await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId,
         secretPath: destinationFolder.path,
@@ -1286,7 +1327,7 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      // await snapshotService.performSnapshot(sourceFolder.id);
+      await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId,
         secretPath: sourceFolder.path,
