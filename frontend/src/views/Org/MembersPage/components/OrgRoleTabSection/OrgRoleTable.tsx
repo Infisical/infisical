@@ -1,4 +1,5 @@
-import { faEllipsis,faPlus } from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "next/router";
+import { faEllipsis, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export const OrgRoleTable = ({ onSelectRole }: Props) => {
+  const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -92,6 +94,7 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
                 <Tr
                   key={`role-list-${id}`}
                   className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                  onClick={() => router.push(`/org/${orgId}/roles/${id}`)}
                 >
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
@@ -114,7 +117,10 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
                               className={twMerge(
                                 !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                               )}
-                              onClick={() => onSelectRole(role)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectRole(role);
+                              }}
                               disabled={!isAllowed}
                             >
                               Edit Role

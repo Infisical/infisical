@@ -53,6 +53,37 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    // new: note that doesn't work for default roles
+    method: "GET",
+    url: "/:organizationId/roles/:roleId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim(),
+        roleId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          role: OrgRolesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const role = await server.services.orgRole.getRole(
+        req.permission.id,
+        req.params.organizationId,
+        req.params.roleId,
+        req.permission.authMethod,
+        req.permission.orgId
+      );
+      return { role };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:organizationId/roles/:roleId",
     config: {

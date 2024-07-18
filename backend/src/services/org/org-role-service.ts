@@ -42,6 +42,20 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return role;
   };
 
+  const getRole = async (
+    userId: string,
+    orgId: string,
+    roleId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
+  ) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+    const role = await orgRoleDAL.findOne({ id: roleId, orgId });
+    if (!role) throw new BadRequestError({ message: "Role not found", name: "Get role" });
+    return role;
+  };
+
   const updateRole = async (
     userId: string,
     orgId: string,
@@ -144,5 +158,5 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return { permissions: packRules(permission.rules), membership };
   };
 
-  return { createRole, updateRole, deleteRole, listRoles, getUserPermission };
+  return { createRole, getRole, updateRole, deleteRole, listRoles, getUserPermission };
 };
