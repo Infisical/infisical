@@ -21,6 +21,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -43,6 +44,7 @@ import {
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
   TUpdateProjectDTO,
+  TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
   TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
@@ -76,6 +78,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
+  kmsService: Pick<TKmsServiceFactory, "updateProjectSecretManagerKmsKey">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -100,7 +103,8 @@ export const projectServiceFactory = ({
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
-  keyStore
+  keyStore,
+  kmsService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -664,6 +668,31 @@ export const projectServiceFactory = ({
     };
   };
 
+  const updateProjectKmsKey = async ({
+    projectId,
+    secretManagerKmsKeyId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateProjectKmsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+
+    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey(projectId, secretManagerKmsKeyId);
+
+    return {
+      secretManagerKmsKey
+    };
+  };
+
   return {
     createProject,
     deleteProject,
@@ -677,6 +706,7 @@ export const projectServiceFactory = ({
     listProjectCas,
     listProjectCertificates,
     updateVersionLimit,
-    updateAuditLogsRetention
+    updateAuditLogsRetention,
+    updateProjectKmsKey
   };
 };

@@ -14,6 +14,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.KmsKey)
         .where({ [`${TableName.KmsKey}.id` as "id"]: id })
+        .join(TableName.Organization, `${TableName.KmsKey}.orgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
         .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
         .first()
@@ -31,11 +32,19 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
           db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
           db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
+        )
+        .select(
+          db.ref("kmsDefaultKeyId").withSchema(TableName.Organization).as("orgKmsDefaultKeyId"),
+          db.ref("kmsEncryptedDataKey").withSchema(TableName.Organization).as("orgKmsEncryptedDataKey")
         );
 
       const data = {
         ...KmsKeysSchema.parse(result),
         isExternal: Boolean(result?.externalKmsId),
+        orgKms: {
+          id: result?.orgKmsDefaultKeyId,
+          encryptedDataKey: result?.orgKmsEncryptedDataKey
+        },
         externalKms: result?.externalKmsId
           ? {
               id: result.externalKmsId,

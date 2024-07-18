@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, ContentLoader, FormControl, Select, SelectItem } from "@app/components/v2";
+import { Button, FormControl, Select, SelectItem } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -19,29 +20,40 @@ const formSchema = z.object({
 
 type TForm = z.infer<typeof formSchema>;
 
+const INTERNAL_KMS_KEY_ID = "internal";
+
 export const EncryptionTab = () => {
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
 
-  const { data: externalKmsList, isLoading: isExternalKmsListLoading } = useGetExternalKmsList(
-    currentOrg?.id!
-  );
-  const { data: activeKms, isLoading: isActiveKmsLoading } = useGetActiveProjectKms(
-    currentWorkspace?.id!
-  );
+  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
+  const { data: activeKms } = useGetActiveProjectKms(currentWorkspace?.id!);
 
   const { mutateAsync: updateProjectKms } = useUpdateProjectKms(currentWorkspace?.id!);
+  const [kmsKeyId, setKmsKeyId] = useState("");
 
   const {
     handleSubmit,
     control,
-    formState: { isSubmitting }
+    setValue,
+    formState: { isSubmitting, isDirty }
   } = useForm<TForm>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      kmsKeyId: activeKms?.isExternal ? activeKms?.id : "internal"
-    }
+    resolver: zodResolver(formSchema)
   });
+
+  useEffect(() => {
+    if (activeKms) {
+      setKmsKeyId(activeKms.isExternal ? activeKms.id : INTERNAL_KMS_KEY_ID);
+    } else {
+      setKmsKeyId(INTERNAL_KMS_KEY_ID);
+    }
+  }, [activeKms]);
+
+  useEffect(() => {
+    if (kmsKeyId) {
+      setValue("kmsKeyId", kmsKeyId);
+    }
+  }, [kmsKeyId]);
 
   const onFormSubmit = async (data: TForm) => {
     try {
@@ -68,41 +80,42 @@ export const EncryptionTab = () => {
         Select which Key Management System to use for encrypting your project data
       </p>
       <div className="mb-6 max-w-md">
-        {isExternalKmsListLoading || isActiveKmsLoading ? (
-          <ContentLoader />
-        ) : (
-          <Controller
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl errorText={error?.message} isError={Boolean(error)}>
-                <Select
-                  {...field}
-                  onValueChange={(e) => {
-                    onChange(e);
-                  }}
-                  className="w-3/4 bg-mineshaft-600"
-                >
-                  <SelectItem value="internal" key="kms-internal">
-                    Default Infisical KMS
-                  </SelectItem>
-                  {externalKmsList?.map((kms) => (
-                    <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                      {kms.slug}
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Kms}>
+          {(isAllowed) => (
+            <Controller
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl errorText={error?.message} isError={Boolean(error)}>
+                  <Select
+                    {...field}
+                    isDisabled={!isAllowed}
+                    onValueChange={(e) => {
+                      onChange(e);
+                    }}
+                    className="w-3/4 bg-mineshaft-600"
+                  >
+                    <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                      Default Infisical KMS
                     </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-            control={control}
-            name="kmsKeyId"
-          />
-        )}
+                    {externalKmsList?.map((kms) => (
+                      <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                        {kms.slug}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+              control={control}
+              name="kmsKeyId"
+            />
+          )}
+        </ProjectPermissionCan>
       </div>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
         {(isAllowed) => (
           <Button
             colorSchema="secondary"
             type="submit"
-            isDisabled={!isAllowed || isSubmitting}
+            isDisabled={!isAllowed || isSubmitting || !isDirty}
             isLoading={isSubmitting}
           >
             Save

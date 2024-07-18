@@ -103,3 +103,7 @@ export type TListProjectCertsDTO = {
   friendlyName?: string;
   commonName?: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateProjectKmsDTO = {
+  secretManagerKmsKeyId: string;
+} & TProjectPermission;
