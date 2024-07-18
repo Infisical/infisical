@@ -1,14 +1,16 @@
-import { useState } from "react";
-import { faEdit, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis,faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
-  IconButton,
-  Input,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Table,
   TableContainer,
   TableSkeleton,
@@ -28,11 +30,12 @@ type Props = {
 };
 
 export const OrgRoleTable = ({ onSelectRole }: Props) => {
-  const [searchRoles, setSearchRoles] = useState("");
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
-  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "deleteRole"
+  ] as const);
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
 
@@ -54,50 +57,52 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-4 flex">
-        <div className="mr-4 flex-1">
-          <Input
-            value={searchRoles}
-            onChange={(e) => setSearchRoles(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            placeholder="Search roles..."
-          />
-        </div>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-4 flex justify-between">
+        <p className="text-xl font-semibold text-mineshaft-100">Organization Roles</p>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
-              isDisabled={!isAllowed}
+              colorSchema="primary"
+              type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => onSelectRole()}
+              isDisabled={!isAllowed}
             >
               Add Role
             </Button>
           )}
         </OrgPermissionCan>
       </div>
-      <div>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Slug</Th>
-                <Th aria-label="actions" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {roles?.map((role) => {
-                const { id, name, slug } = role;
-                const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
-
-                return (
-                  <Tr key={`role-list-${id}`}>
-                    <Td>{name}</Td>
-                    <Td>{slug}</Td>
-                    <Td className="flex justify-end">
-                      <div className="flex space-x-2">
+      <TableContainer>
+        <Table>
+          <THead>
+            <Tr>
+              <Th>Name</Th>
+              <Th>Slug</Th>
+              <Th aria-label="actions" className="w-5" />
+            </Tr>
+          </THead>
+          <TBody>
+            {isRolesLoading && <TableSkeleton columns={3} innerKey="org-roles" />}
+            {roles?.map((role) => {
+              const { id, name, slug } = role;
+              const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
+              return (
+                <Tr
+                  key={`role-list-${id}`}
+                  className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                >
+                  <Td>{name}</Td>
+                  <Td>{slug}</Td>
+                  <Td>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="rounded-lg">
+                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="p-1">
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
                           a={OrgPermissionSubjects.Role}
@@ -105,14 +110,15 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
                           allowedLabel="Edit"
                         >
                           {(isAllowed) => (
-                            <IconButton
-                              isDisabled={!isAllowed}
-                              ariaLabel="edit"
+                            <DropdownMenuItem
+                              className={twMerge(
+                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
                               onClick={() => onSelectRole(role)}
-                              variant="plain"
+                              disabled={!isAllowed}
                             >
-                              <FontAwesomeIcon icon={faEdit} />
-                            </IconButton>
+                              Edit Role
+                            </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
                         <OrgPermissionCan
@@ -124,30 +130,34 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
                           }
                         >
                           {(isAllowed) => (
-                            <IconButton
-                              ariaLabel="delete"
+                            <DropdownMenuItem
+                              className={twMerge(
+                                isAllowed
+                                  ? "hover:!bg-red-500 hover:!text-white"
+                                  : "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
                               onClick={() => handlePopUpOpen("deleteRole", role)}
-                              variant="plain"
-                              isDisabled={isNonMutatable || !isAllowed}
+                              disabled={!isAllowed}
                             >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
+                              Delete Role
+                            </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
-                      </div>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableContainer>
-      </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </TBody>
+        </Table>
+      </TableContainer>
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure want to delete ${
           (popUp?.deleteRole?.data as TOrgRole)?.name || " "
         } role?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
         deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
