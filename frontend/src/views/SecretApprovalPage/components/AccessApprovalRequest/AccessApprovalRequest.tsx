@@ -40,6 +40,7 @@ import {
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { queryClient } from "@app/reactQuery";
 
@@ -80,7 +81,12 @@ export const AccessApprovalRequest = ({
   projectId: string;
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
-    (TAccessApprovalRequest & { user: TWorkspaceUser["user"] | null }) | null
+    (TAccessApprovalRequest & {
+      user: TWorkspaceUser["user"] | null;
+      isRequestedByCurrentUser: boolean;
+      isApprover: boolean;
+    })
+    | null
   >(null);
 
   const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
@@ -141,6 +147,8 @@ export const AccessApprovalRequest = ({
     );
     const isApprover = request.policy.approvers.indexOf(membership.id || "") !== -1;
     const isAccepted = request.isApproved;
+    const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
+    const isRequestedByCurrentUser = request.requestedBy === membership.id;
 
     const userReviewStatus = request.reviewers.find(
       ({ member }) => member === membership.id
@@ -178,7 +186,9 @@ export const AccessApprovalRequest = ({
       isRejectedByAnyone,
       isApprover,
       userReviewStatus,
-      isAccepted
+      isAccepted,
+      isSoftEnforcement,
+      isRequestedByCurrentUser
     };
   };
 
@@ -331,16 +341,24 @@ export const AccessApprovalRequest = ({
                     tabIndex={0}
                     onClick={() => {
                       if (
-                        !details.isApprover ||
-                        details.isReviewedByUser ||
-                        details.isRejectedByAnyone ||
-                        details.isAccepted
+                        (
+                          !details.isApprover
+                          || details.isReviewedByUser
+                          || details.isRejectedByAnyone
+                          || details.isAccepted
+                        ) && !(
+                          details.isSoftEnforcement
+                          && details.isRequestedByCurrentUser
+                          && !details.isAccepted
+                        )
                       )
                         return;
 
                       setSelectedRequest({
                         ...request,
-                        user: membersGroupById?.[request.requestedBy].user!
+                        user: membersGroupById?.[request.requestedBy].user!,
+                        isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+                        isApprover: details.isApprover
                       });
                       handlePopUpOpen("reviewRequest");
                     }}
@@ -355,7 +373,9 @@ export const AccessApprovalRequest = ({
                       if (evt.key === "Enter") {
                         setSelectedRequest({
                           ...request,
-                          user: membersGroupById?.[request.requestedBy].user!
+                          user: membersGroupById?.[request.requestedBy].user!,
+                          isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+                          isApprover: details.isApprover
                         });
                         handlePopUpOpen("reviewRequest");
                       }

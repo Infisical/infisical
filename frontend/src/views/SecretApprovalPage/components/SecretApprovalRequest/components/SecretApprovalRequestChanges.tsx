@@ -252,6 +252,7 @@ export const SecretApprovalRequestChanges = ({
             status={secretApprovalRequestDetails.status}
             isMergable={isMergable}
             statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
+            enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
             workspaceId={workspaceId}
           />
         </div>
