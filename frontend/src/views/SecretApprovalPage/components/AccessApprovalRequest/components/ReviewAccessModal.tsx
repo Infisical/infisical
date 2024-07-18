@@ -172,7 +172,7 @@ export const ReviewAccessRequestModal = ({
                 className={byPassApproval ? "bg-red hover:bg-red-600 border-red" : ""}
               >
                 <span className="text-red text-sm">
-                  Approve without waiting for requirements to be met (by pass policy protection)
+                  Approve without waiting for requirements to be met (bypass policy protection)
                 </span>
               </Checkbox>
             </div>
