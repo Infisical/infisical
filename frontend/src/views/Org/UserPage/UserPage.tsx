@@ -25,7 +25,7 @@ import {
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { UserDetailsSection, UserOrgMembershipModal,UserProjectsSection } from "./components";
+import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 
 export const UserPage = withPermission(
   () => {
@@ -161,9 +161,9 @@ export const UserPage = withPermission(
                             : ""
                         }
                         onClick={async () => {
-                          if (currentOrg?.authEnforced) {
+                          if (currentOrg?.scimEnabled) {
                             createNotification({
-                              text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                              text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
                               type: "error"
                             });
                             return;
@@ -204,9 +204,9 @@ export const UserPage = withPermission(
                             : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={() => {
-                          if (currentOrg?.authEnforced) {
+                          if (currentOrg?.scimEnabled) {
                             createNotification({
-                              text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                              text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
                               type: "error"
                             });
                             return;

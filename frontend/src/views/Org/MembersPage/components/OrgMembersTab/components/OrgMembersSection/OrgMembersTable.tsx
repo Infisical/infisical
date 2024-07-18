@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { faEllipsis,faMagnifyingGlass, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faMagnifyingGlass, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 

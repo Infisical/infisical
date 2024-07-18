@@ -379,6 +379,11 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
+    const [foundMembership] = await orgDAL.findMembership({ id: membershipId, orgId });
+    if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (foundMembership.userId === userId)
+      throw new BadRequestError({ message: "Cannot update own organization membership" });
+
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (role && isCustomRole) {
       const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
@@ -398,10 +403,6 @@ export const orgServiceFactory = ({
         }
       );
       return membership;
-    }
-
-    if (isActive !== undefined) {
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
     }
 
     const [membership] = await orgDAL.updateMembership({ id: membershipId, orgId }, { role, roleId: null, isActive });
