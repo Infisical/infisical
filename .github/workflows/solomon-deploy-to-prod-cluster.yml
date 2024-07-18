@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "helm-charts/infiscal-standalone-postgres/**"
+    # paths:
+    #   - "helm-charts/infiscal-standalone-postgres/**"
   workflow_dispatch:
 
 permissions:
