@@ -204,6 +204,9 @@ import {
   TSecretApprovalRequestSecretTags,
   TSecretApprovalRequestSecretTagsInsert,
   TSecretApprovalRequestSecretTagsUpdate,
+  TSecretApprovalRequestSecretTagsV2,
+  TSecretApprovalRequestSecretTagsV2Insert,
+  TSecretApprovalRequestSecretTagsV2Update,
   TSecretApprovalRequestsInsert,
   TSecretApprovalRequestsReviewers,
   TSecretApprovalRequestsReviewersInsert,
@@ -211,6 +214,9 @@ import {
   TSecretApprovalRequestsSecrets,
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsUpdate,
+  TSecretApprovalRequestsSecretsV2,
+  TSecretApprovalRequestsSecretsV2Insert,
+  TSecretApprovalRequestsSecretsV2Update,
   TSecretApprovalRequestsUpdate,
   TSecretBlindIndexes,
   TSecretBlindIndexesInsert,
@@ -251,6 +257,9 @@ import {
   TSecretSnapshotSecrets,
   TSecretSnapshotSecretsInsert,
   TSecretSnapshotSecretsUpdate,
+  TSecretSnapshotSecretsV2,
+  TSecretSnapshotSecretsV2Insert,
+  TSecretSnapshotSecretsV2Update,
   TSecretSnapshotsInsert,
   TSecretSnapshotsUpdate,
   TSecretsUpdate,
@@ -693,6 +702,21 @@ declare module "knex/types/tables" {
       TSecretVersionV2TagJunction,
       TSecretVersionV2TagJunctionInsert,
       TSecretVersionV2TagJunctionUpdate
+    >;
+    [TableName.SnapshotSecretV2]: KnexOriginal.CompositeTableType<
+      TSecretSnapshotSecretsV2,
+      TSecretSnapshotSecretsV2Insert,
+      TSecretSnapshotSecretsV2Update
+    >;
+    [TableName.SecretApprovalRequestSecretV2]: KnexOriginal.CompositeTableType<
+      TSecretApprovalRequestsSecretsV2,
+      TSecretApprovalRequestsSecretsV2Insert,
+      TSecretApprovalRequestsSecretsV2Update
+    >;
+    [TableName.SecretApprovalRequestSecretTagV2]: KnexOriginal.CompositeTableType<
+      TSecretApprovalRequestSecretTagsV2,
+      TSecretApprovalRequestSecretTagsV2Insert,
+      TSecretApprovalRequestSecretTagsV2Update
     >;
     // KMS service
     [TableName.KmsServerRootConfig]: KnexOriginal.CompositeTableType<
