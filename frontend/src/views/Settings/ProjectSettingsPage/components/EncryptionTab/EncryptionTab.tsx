@@ -79,7 +79,7 @@ export const EncryptionTab = () => {
 
     const { secretManager } = await fetchProjectKmsBackup(currentWorkspace.id);
 
-    const [, kmsFunction] = secretManager.split(".");
+    const [, , kmsFunction] = secretManager.split(".");
     const file = secretManager;
 
     const blob = new Blob([file], { type: "text/plain;charset=utf-8" });

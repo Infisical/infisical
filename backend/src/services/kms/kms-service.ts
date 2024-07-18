@@ -598,8 +598,8 @@ export const kmsServiceFactory = ({
     const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyIdForEncrypt });
     const { cipherTextBlob: encryptedSecretManagerDataKey } = await kmsEncryptor({ plainText: secretManagerDataKey });
 
-    // format: projectId.kmsFunction.kmsId.Base64(encryptedDataKey)
-    const secretManagerBackup = `${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
+    // format: version.projectId.kmsFunction.kmsId.Base64(encryptedDataKey)
+    const secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
       "base64"
     )}`;
 

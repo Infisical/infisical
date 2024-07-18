@@ -281,7 +281,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
 
-      // TODO: add audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.GET_PROJECT_KMS_BACKUP
+        }
+      });
 
       return backup;
     }
