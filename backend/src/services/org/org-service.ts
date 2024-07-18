@@ -57,7 +57,7 @@ type TOrgServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId" | "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   smtpService: TSmtpService;
@@ -379,7 +379,10 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
-    const [foundMembership] = await orgDAL.findMembership({ id: membershipId, orgId });
+    const foundMembership = await orgMembershipDAL.findOne({
+      id: membershipId,
+      orgId
+    });
     if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
     if (foundMembership.userId === userId)
       throw new BadRequestError({ message: "Cannot update own organization membership" });
