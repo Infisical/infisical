@@ -2,14 +2,22 @@ import { Knex } from "knex";
 
 import { EnforcementLevel } from "@app/lib/types";
 
+import { TableName } from "../schemas";
+
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.table("secret_approval_policies", (table) => {
-    table.specificType("enforcementLevel", "VARCHAR(10)").notNullable().defaultTo(EnforcementLevel.Hard);
-  });
+  const hasColumn = await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "enforcementLevel");
+  if (!hasColumn) {
+    await knex.schema.table(TableName.SecretApprovalPolicy, (table) => {
+      table.string("enforcementLevel", 10).notNullable().defaultTo(EnforcementLevel.Hard);
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.table("secret_approval_policies", (table) => {
-    table.dropColumn("enforcementLevel");
-  });
+  const hasColumn = await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "enforcementLevel");
+  if (hasColumn) {
+    await knex.schema.table(TableName.SecretApprovalPolicy, (table) => {
+      table.dropColumn("enforcementLevel");
+    });
+  }
 }
