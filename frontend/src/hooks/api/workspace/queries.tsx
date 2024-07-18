@@ -11,6 +11,7 @@ import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { EncryptedSecret } from "../secrets/types";
+import { userKeys } from "../users/queries";
 import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
@@ -385,6 +386,7 @@ export const useDeleteUserFromWorkspace = () => {
     }: {
       workspaceId: string;
       usernames: string[];
+      orgId: string;
     }) => {
       const {
         data: { deletedMembership }
@@ -393,8 +395,9 @@ export const useDeleteUserFromWorkspace = () => {
       });
       return deletedMembership;
     },
-    onSuccess: (_, { workspaceId }) => {
+    onSuccess: (_, { orgId, workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
     }
   });
 };

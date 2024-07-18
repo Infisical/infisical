@@ -16,6 +16,8 @@ export {
   useGetMyIp,
   useGetMyOrganizationProjects,
   useGetMySessions,
+  useGetOrgMembership,
+  useGetOrgMembershipProjectMemberships,
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
@@ -23,6 +25,5 @@ export {
   useRegisterUserAction,
   useRevokeMySessions,
   useUpdateMfaEnabled,
-  useUpdateOrgUserRole,
-  useUpdateUserAuthMethods
-} from "./queries";
+  useUpdateOrgMembership,
+  useUpdateUserAuthMethods} from "./queries";

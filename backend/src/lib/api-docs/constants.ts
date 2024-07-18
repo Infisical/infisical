@@ -348,10 +348,15 @@ export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },
+  GET_USER_MEMBERSHIP: {
+    organizationId: "The ID of the organization to get the membership for.",
+    membershipId: "The ID of the membership to get."
+  },
   UPDATE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to update the membership for.",
     membershipId: "The ID of the membership to update.",
-    role: "The new role of the membership."
+    role: "The new role of the membership.",
+    isActive: "The active status of the membership"
   },
   DELETE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to delete the membership from.",

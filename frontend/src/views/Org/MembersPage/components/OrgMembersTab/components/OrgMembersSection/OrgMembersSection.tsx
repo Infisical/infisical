@@ -16,7 +16,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { useDeleteOrgMembership } from "@app/hooks/api";
+import { useDeleteOrgMembership, useUpdateOrgMembership } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
@@ -32,11 +32,13 @@ export const OrgMembersSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addMember",
     "removeMember",
+    "deactivateMember",
     "upgradePlan",
     "setUpEmail"
   ] as const);
 
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
+  const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
   const isMoreUsersAllowed = subscription?.memberLimit
     ? subscription.membersUsed < subscription.memberLimit
@@ -63,6 +65,29 @@ export const OrgMembersSection = () => {
     }
 
     handlePopUpOpen("addMember");
+  };
+
+  const onDeactivateMemberSubmit = async (orgMembershipId: string) => {
+    try {
+      await updateOrgMembership({
+        organizationId: orgId,
+        membershipId: orgMembershipId,
+        isActive: false
+      });
+
+      createNotification({
+        text: "Successfully deactivated user in organization",
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to deactivate user in organization",
+        type: "error"
+      });
+    }
+
+    handlePopUpClose("deactivateMember");
   };
 
   const onRemoveMemberSubmit = async (orgMembershipId: string) => {
@@ -127,6 +152,20 @@ export const OrgMembersSection = () => {
             (popUp?.removeMember?.data as { orgMembershipId: string })?.orgMembershipId
           )
         }
+      />
+      <DeleteActionModal
+        isOpen={popUp.deactivateMember.isOpen}
+        title={`Are you sure want to deactivate member with username ${
+          (popUp?.deactivateMember?.data as { username: string })?.username || ""
+        }?`}
+        onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={() =>
+          onDeactivateMemberSubmit(
+            (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
+          )
+        }
+        buttonText="Deactivate"
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

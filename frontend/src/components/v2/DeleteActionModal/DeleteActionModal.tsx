@@ -25,7 +25,7 @@ export const DeleteActionModal = ({
   deleteKey,
   onDeleteApproved,
   title,
-  subTitle = "This action is irreversible!",
+  subTitle = "This action is irreversible.",
   buttonText = "Delete"
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
@@ -86,7 +86,7 @@ export const DeleteActionModal = ({
           <FormControl
             label={
               <div className="break-words pb-2 text-sm">
-                Type <span className="font-bold">{deleteKey}</span> to delete the resource
+                Type <span className="font-bold">{deleteKey}</span> to perform this action
               </div>
             }
             className="mb-0"
@@ -94,7 +94,7 @@ export const DeleteActionModal = ({
             <Input
               value={inputData}
               onChange={(e) => setInputData(e.target.value)}
-              placeholder="Type to delete..."
+              placeholder="Type confirm..."
             />
           </FormControl>
         </form>
