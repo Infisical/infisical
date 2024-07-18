@@ -713,7 +713,7 @@ export const projectServiceFactory = ({
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
-        message: "Failed to create KMS backup due to plan restriction. Upgrade to the enterprise plan."
+        message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
     }
 
