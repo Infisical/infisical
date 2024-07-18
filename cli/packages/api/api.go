@@ -418,9 +418,8 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 	}
 
 	if response.IsError() && strings.Contains(response.String(), "bot_not_found_error") {
-		return GetRawSecretsV3Response{}, fmt.Errorf(`project with id %s is a legacy project type, 
-			Legacy infisical instance: Please disable end to end encryption inside project settings. 
-			New infisical instances/cloud: Please upgrade your project by navigating to secret overview page and click on upgrade. 
+		return GetRawSecretsV3Response{}, fmt.Errorf(`Project with id %s is incompatible with your current CLI version.
+			If you're self-hosting, update your Infisical instance to the latest release. Then, upgrade your project by visiting its settings page.
 		`, request.WorkspaceId)
 	}
 
