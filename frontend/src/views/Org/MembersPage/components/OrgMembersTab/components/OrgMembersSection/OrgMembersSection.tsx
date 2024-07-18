@@ -165,6 +165,7 @@ export const OrgMembersSection = () => {
             (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
           )
         }
+        buttonText="Deactivate"
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

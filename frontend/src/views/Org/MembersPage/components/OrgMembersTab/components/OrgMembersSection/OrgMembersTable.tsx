@@ -293,7 +293,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     onClick={async (e) => {
                                       e.stopPropagation();
 
-                                      if (currentOrg?.authEnforced) {
+                                      if (currentOrg?.scimEnabled) {
                                         createNotification({
                                           text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
                                           type: "error"
@@ -338,7 +338,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                                     onClick={(e) => {
                                       e.stopPropagation();
 
-                                      if (currentOrg?.authEnforced) {
+                                      if (currentOrg?.scimEnabled) {
                                         createNotification({
                                           text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
                                           type: "error"

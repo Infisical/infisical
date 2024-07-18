@@ -259,6 +259,7 @@ export const UserPage = withPermission(
               (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
             )
           }
+          buttonText="Deactivate"
         />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
