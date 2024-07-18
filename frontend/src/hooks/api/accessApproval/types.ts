@@ -53,6 +53,7 @@ export type TAccessApprovalRequest = {
     approvers: string[];
     secretPath?: string | null;
     envId: string;
+    enforcementLevel: EnforcementLevel;
   };
 
   reviewers: {
