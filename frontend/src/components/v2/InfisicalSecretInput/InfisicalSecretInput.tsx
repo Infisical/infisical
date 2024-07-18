@@ -248,6 +248,13 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           e.preventDefault();
         }
       }
+
+      if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        if (props.submitForm) {
+          props.submitForm();
+        }
+      }
     };
 
     const handlePopUpOpen = () => {

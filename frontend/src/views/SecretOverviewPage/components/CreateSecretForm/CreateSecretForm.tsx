@@ -164,6 +164,7 @@ export const CreateSecretForm = ({
                 <InfisicalSecretInput
                   {...field}
                   containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                  submitForm={handleSubmit(handleFormSubmit)}
                 />
               </FormControl>
             )}
