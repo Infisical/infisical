@@ -114,7 +114,7 @@ export const SecretApprovalRequestAction = ({
                   className={byPassApproval ? "bg-red hover:bg-red-600 border-red" : ""}
                 >
                   <span className="text-red text-sm">
-                    Merge without waiting for approval (by pass secrets protection)
+                    Merge without waiting for approval (by pass secret change policy)
                   </span>
                 </Checkbox>
               </div>

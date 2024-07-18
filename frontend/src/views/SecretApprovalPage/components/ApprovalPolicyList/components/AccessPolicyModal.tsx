@@ -178,11 +178,13 @@ export const AccessPolicyForm = ({
 						control={control}
 						name="policyType"
 						defaultValue={PolicyType.ChangePolicy}
+						
 						render={({ field: { value, onChange }, fieldState: { error } }) => (
 							<FormControl
 							label="Policy Type"
 							isRequired
 							isError={Boolean(error)}
+							tooltipText="Change polices govern secret changes within a given environment and secret path. Access polices allow underprivileged user to request access to environment/secret path."
 							errorText={error?.message}
 							>
 							<Select
@@ -327,11 +329,11 @@ export const AccessPolicyForm = ({
 							label="Enforcement Level"
 							isError={Boolean(error)}
 							errorText={error?.message}
-							tooltipText="Choose 'Hard' for required approval or 'Soft' for optional approval"
+							tooltipText="Determines the level of enforcement for required approvers of a request"
 							helperText={
 								field.value === EnforcementLevel.Hard
-								? "Hard enforcement prevents any request from being deployed without prior approval"
-								: "Soft enforcement lets requesters break glass to deploy without waiting for approval"
+								? "All approvers must approve the request."
+								: "All approvers must approve the request; however, the requester can bypass approval requirements in emergencies."
 							}
 							>
 								<Select
