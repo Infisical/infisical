@@ -26,7 +26,8 @@ export enum ProjectPermissionSub {
   SecretRotation = "secret-rotation",
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
-  Certificates = "certificates"
+  Certificates = "certificates",
+  Kms = "kms"
 }
 
 type SubjectFields = {

@@ -97,3 +97,7 @@ export type TListProjectCertsDTO = {
   offset: number;
   limit: number;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateProjectKmsDTO = {
+  secretManagerKmsKeyId: string;
+} & TProjectPermission;

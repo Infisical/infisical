@@ -310,8 +310,7 @@ export const registerRoutes = async (
     kmsDAL,
     internalKmsDAL,
     orgDAL,
-    projectDAL,
-    permissionService
+    projectDAL
   });
   const externalKmsService = externalKmsServiceFactory({
     kmsDAL,
@@ -626,7 +625,8 @@ export const registerRoutes = async (
     certificateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
-    keyStore
+    keyStore,
+    kmsService
   });
 
   const projectEnvService = projectEnvServiceFactory({

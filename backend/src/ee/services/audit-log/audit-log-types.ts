@@ -142,7 +142,8 @@ export enum EventType {
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
-  GET_KMS = "get-kms"
+  GET_KMS = "get-kms",
+  UPDATE_PROJECT_KMS = "update-project-kms"
 }
 
 interface UserActorMetadata {
@@ -1204,6 +1205,16 @@ interface GetKmsEvent {
   };
 }
 
+interface UpdateProjectKmsEvent {
+  type: EventType.UPDATE_PROJECT_KMS;
+  metadata: {
+    secretManagerKmsKey: {
+      id: string;
+      slug: string;
+    };
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1308,4 +1319,5 @@ export type Event =
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent
-  | GetKmsEvent;
+  | GetKmsEvent
+  | UpdateProjectKmsEvent;
