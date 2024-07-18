@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { faCheckCircle, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -9,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  IconButton,
   Input,
   Td,
   Tr
@@ -145,39 +145,55 @@ export const ApprovalPolicyRow = ({
         </Badge>
       </Td>
       <Td>
-        <div className="flex items-center justify-end space-x-4">
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Edit}
-            a={ProjectPermissionSub.SecretApproval}
-            renderTooltip
-            allowedLabel="Edit"
-          >
-            {(isAllowed) => (
-              <IconButton variant="plain" ariaLabel="edit" onClick={onEdit} isDisabled={!isAllowed}>
-                <FontAwesomeIcon icon={faPencil} size="lg" />
-              </IconButton>
-            )}
-          </ProjectPermissionCan>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Delete}
-            a={ProjectPermissionSub.SecretApproval}
-            renderTooltip
-            allowedLabel="Delete"
-          >
-            {(isAllowed) => (
-              <IconButton
-                variant="plain"
-                colorSchema="danger"
-                size="lg"
-                ariaLabel="edit"
-                onClick={onDelete}
-                isDisabled={!isAllowed}
-              >
-                <FontAwesomeIcon icon={faTrash} />
-              </IconButton>
-            )}
-          </ProjectPermissionCan>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild className="rounded-lg cursor-pointer">
+            <div className="flex justify-center items-center hover:text-primary-400 data-[state=open]:text-primary-400 hover:scale-125 data-[state=open]:scale-125 transition-transform duration-300 ease-in-out">
+              <FontAwesomeIcon size="sm" icon={faEllipsis} />
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="p-1 min-w-[100%]">
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.SecretApproval}
+            >
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  className={twMerge(
+                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  disabled={!isAllowed}
+                >
+                  Edit Policy
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Delete}
+              a={ProjectPermissionSub.SecretApproval}
+            >
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  className={twMerge(
+                    isAllowed
+                      ? "hover:!bg-red-500 hover:!text-white"
+                      : "pointer-events-none cursor-not-allowed opacity-50"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  disabled={!isAllowed}
+                >
+                  Delete Policy
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </Td>
     </Tr>
   );
