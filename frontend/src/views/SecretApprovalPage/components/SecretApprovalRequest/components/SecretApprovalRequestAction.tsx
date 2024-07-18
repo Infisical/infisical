@@ -134,8 +134,11 @@ export const SecretApprovalRequestAction = ({
                 Close request
               </Button>
               <Button
-                leftIcon={<FontAwesomeIcon icon={isSoftEnforcement && !canApprove ? faLandMineOn : faCheck} />}
-                isDisabled={!isMergable || (!byPassApproval && !canApprove)}
+                leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
+                isDisabled={
+                  (!isMergable && canApprove)
+                  || (!canApprove && isSoftEnforcement && !byPassApproval)
+                }
                 isLoading={isMerging}
                 onClick={handleSecretApprovalRequestMerge}
                 colorSchema={isSoftEnforcement && !canApprove ? "danger" : "primary"}
