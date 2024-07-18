@@ -373,7 +373,9 @@ export const AccessApprovalRequest = ({
                       if (evt.key === "Enter") {
                         setSelectedRequest({
                           ...request,
-                          user: membersGroupById?.[request.requestedBy].user!
+                          user: membersGroupById?.[request.requestedBy].user!,
+                          isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+                          isApprover: details.isApprover
                         });
                         handlePopUpOpen("reviewRequest");
                       }
