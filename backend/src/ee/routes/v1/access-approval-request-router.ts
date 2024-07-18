@@ -99,7 +99,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               approvals: z.number(),
               approvers: z.string().array(),
               secretPath: z.string().nullish(),
-              envId: z.string()
+              envId: z.string(),
+              enforcementLevel: z.string()
             }),
             reviewers: z
               .object({

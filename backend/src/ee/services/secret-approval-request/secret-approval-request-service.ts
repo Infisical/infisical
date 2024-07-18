@@ -290,9 +290,9 @@ export const secretApprovalRequestServiceFactory = ({
         ({ userId: approverId }) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
       ).length;
 
-    const isSoftPolicy = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
+    const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
 
-    if (!hasMinApproval && !isSoftPolicy)
+    if (!hasMinApproval && !isSoftEnforcement)
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
     const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
