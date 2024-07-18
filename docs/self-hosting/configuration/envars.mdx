@@ -332,10 +332,12 @@ SMTP_FROM_NAME=Infisical
 1. Create an account and configure [SMTP2Go](https://www.smtp2go.com/) to send emails.
 2. Turn on SMTP authentication  
 ```
-SMTP server: mail.smtp2go.com
-SMTP port: You can use one of the following ports: 2525, 80, 25, 8025, or 587
-Username: Your SMTP2GO account's SMTP username
-Password: Your SMTP2GO account's SMTP password
+SMTP_HOST=mail.smtp2go.com
+SMTP_PORT=You can use one of the following ports: 2525, 80, 25, 8025, or 587
+SMTP_USERNAME=username #Your SMTP2GO account's SMTP username
+SMTP_PASSWORD=password #Your SMTP2GO account's SMTP password
+SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+SMTP_FROM_NAME=Infisical
 ```
 {" "}
 
