@@ -160,6 +160,10 @@ import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sha
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
+import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { secretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
+import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
+import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -182,10 +186,6 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
-import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
-import { secretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,

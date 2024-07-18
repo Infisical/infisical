@@ -66,9 +66,62 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await createJunctionTable(knex, TableName.SecretVersionV2Tag, TableName.SecretVersionV2, TableName.SecretTag);
+
+  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecretV2))) {
+    await knex.schema.createTable(TableName.SecretApprovalRequestSecretV2, (t) => {
+      // everything related  to secret
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.integer("version").defaultTo(1);
+      t.string("key", 500).notNullable();
+      t.binary("encryptedValue");
+      t.binary("encryptedComment");
+      t.string("reminderNote");
+      t.integer("reminderRepeatDays");
+      t.boolean("skipMultilineEncoding").defaultTo(false);
+      t.jsonb("metadata");
+      t.timestamps(true, true, true);
+      // commit details
+      t.uuid("requestId").notNullable();
+      t.foreign("requestId").references("id").inTable(TableName.SecretApprovalRequest).onDelete("CASCADE");
+      t.string("op").notNullable();
+      t.uuid("secretId");
+      t.foreign("secretId").references("id").inTable(TableName.SecretV2).onDelete("SET NULL");
+      t.uuid("secretVersion");
+      t.foreign("secretVersion").references("id").inTable(TableName.SecretVersionV2).onDelete("SET NULL");
+    });
+  }
+
+  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecretTagV2))) {
+    await knex.schema.createTable(TableName.SecretApprovalRequestSecretTagV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("secretId").notNullable();
+      t.foreign("secretId").references("id").inTable(TableName.SecretApprovalRequestSecretV2).onDelete("CASCADE");
+      t.uuid("tagId").notNullable();
+      t.foreign("tagId").references("id").inTable(TableName.SecretTag).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+    });
+  }
+
+  if (!(await knex.schema.hasTable(TableName.SnapshotSecretV2))) {
+    await knex.schema.createTable(TableName.SnapshotSecretV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("envId").notNullable();
+      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
+      // not a relation kept like that to keep it when rolled back
+      t.uuid("secretVersionId").notNullable();
+      t.foreign("secretVersionId").references("id").inTable(TableName.SecretVersionV2).onDelete("CASCADE");
+      t.uuid("snapshotId").notNullable();
+      t.foreign("snapshotId").references("id").inTable(TableName.Snapshot).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.SnapshotSecretV2);
+  await knex.schema.dropTableIfExists(TableName.SecretApprovalRequestSecretTagV2);
+  await knex.schema.dropTableIfExists(TableName.SecretApprovalRequestSecretV2);
+
   await knex.schema.dropTableIfExists(TableName.SecretV2JnTag);
   await knex.schema.dropTableIfExists(TableName.SecretReferenceV2);
 

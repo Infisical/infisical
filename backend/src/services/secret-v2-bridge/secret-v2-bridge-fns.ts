@@ -388,7 +388,7 @@ export const interpolateSecrets = ({ projectId, decryptSecret, secretDAL, folder
 
       const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
         // eslint-disable-next-line
-        prev[secret.key] = decryptSecret(secret.encryptedValue);
+        prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
         return prev;
       }, {});
 
