@@ -254,4 +254,36 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/kms/backup",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secretManager: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const backup = await server.services.project.getProjectKmsBackup({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      // TODO: add audit log
+
+      return backup;
+    }
+  });
 };
