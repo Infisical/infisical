@@ -80,7 +80,7 @@ This is how you would run the playbook containing the roles for setting up Infis
 ### Installing the Infisical High Availability Deployment Ansible Role
 The Infisical Ansible role is available on Ansible Galaxy. You can install the role by running the following command:
 ```bash
-  ansible-galaxy install infisical.infisical-core-ha-deployment
+  ansible-galaxy collection install infisical.infisical_core_ha_deployment
 ```
 
 
@@ -128,8 +128,10 @@ The ETCD cluster is used to store and distribute data between the PostgreSQL nod
   - name: Set up etcd cluster
     hosts: etcd
     become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
     roles:
-      - role: infisical.infisical-core-ha-deployment.etcd
+      - role: etcd
 ```
 
 ```ini example.inventory.ini
@@ -162,8 +164,10 @@ Make sure to set the following variables in your playbook.yml file:
   - name: Set up PostgreSQL with Patroni
     hosts: postgres
     become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
     roles:
-      - role: infisical.infisical-core-ha-deployment.postgres
+      - role: postgres
         vars:
           postgres_super_user_password: "your-super-user-password"
           postgres_user: infisical-user
@@ -194,8 +198,10 @@ The Sentinel and Redis hosts will run the same role, therefore we are running th
     - name: Setup Redis and Sentinel
       hosts: redis:sentinel
       become: true
+      collections:
+        - infisical.infisical_core_ha_deployment
       roles:
-        - role: infisical.infisical-core-ha-deployment.redis
+        - role: redis
           vars:
             redis_password: "REDIS_PASSWORD"
 ```
@@ -239,8 +245,10 @@ internal_lb ansible_host=52.1.0.2
 - name: Set up HAProxy
   hosts: haproxy
   become: true
+  collections:
+    - infisical.infisical_core_ha_deployment
   roles:
-    - role: infisical.infisical-core-ha-deployment.haproxy
+    - role: haproxy
       vars:
         stats_user: "stats-username"
         stats_password: "stats-password!"
@@ -272,8 +280,10 @@ The `DB_CONNECTION_URI` and `REDIS_URL` variables will automatically be set if y
   - name: Setup Infisical
     hosts: infisical
     become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
     roles:
-      - role: infisical.infisical-core-ha-deployment.infisical
+      - role: infisical
         env_vars:
           ENCRYPTION_KEY: "YOUR_ENCRYPTION_KEY" # openssl rand -hex 16
           AUTH_SECRET: "YOUR_AUTH_SECRET" # openssl rand -base64 32
@@ -299,8 +309,10 @@ To bring your own database, you need to set the `DB_CONNECTION_URI` and `REDIS_U
   - name: Setup Infisical
     hosts: infisical
     become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
     roles:
-      - role: infisical.infisical-core-ha-deployment.infisical
+      - role: infisical
         env_vars:
           ENCRYPTION_KEY: "YOUR_ENCRYPTION_KEY" # openssl rand -hex 16
           AUTH_SECRET: "YOUR_AUTH_SECRET" # openssl rand -base64 32
@@ -334,7 +346,7 @@ To make it easier to get started, we've provided a full deployment example that 
   <Step title="Install the Infisical deployment Ansible Role">
     Install the Infisical deployment role from Ansible Galaxy.
   ```bash
-    ansible-galaxy install infisical.infisical-core-ha-deployment
+    ansible-galaxy collection install infisical.infisical_core_ha_deployment
   ```
   </Step>
   <Step title="Setup your hosts">
@@ -391,14 +403,18 @@ To make it easier to get started, we've provided a full deployment example that 
       - name: Set up etcd cluster
         hosts: etcd
         become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
         roles:
-          - role: infisical.infisical-core-ha-deployment.etcd
+          - role: etcd
 
       - name: Set up PostgreSQL with Patroni
         hosts: postgres
         become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
         roles:
-          - role: infisical.infisical-core-ha-deployment.postgres
+          - role: postgres
             vars:
               postgres_super_user_password: "<ENTER_SUPERUSER_PASSWORD>" # Password for the 'postgres' database user
 
@@ -412,16 +428,20 @@ To make it easier to get started, we've provided a full deployment example that 
       - name: Setup Redis and Sentinel
         hosts: redis:sentinel
         become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
         roles:
-          - role: infisical.infisical-core-ha-deployment.redis
+          - role: redis
             vars:
               redis_password: "<ENTER_REDIS_PASSWORD>"
 
       - name: Set up HAProxy
         hosts: haproxy
         become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
         roles:
-          - role: infisical.infisical-core-ha-deployment.haproxy
+          - role: haproxy
             vars:
               stats_user: "<ENTER_HAPROXY_STATS_USERNAME>"
               stats_password: "<ENTER_HAPROXY_STATS_PASSWORD>"
@@ -432,8 +452,10 @@ To make it easier to get started, we've provided a full deployment example that 
       - name: Setup Infisical
         hosts: infisical
         become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
         roles:
-          - role: infisical.infisical-core-ha-deployment.infisical
+          - role: infisical
             env_vars:
               ENCRYPTION_KEY: "YOUR_ENCRYPTION_KEY" # openssl rand -hex 16
               AUTH_SECRET: "YOUR_AUTH_SECRET" # openssl rand -base64 32
