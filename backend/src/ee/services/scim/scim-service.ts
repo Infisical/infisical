@@ -9,6 +9,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -51,6 +52,7 @@ import {
   TListScimUsers,
   TListScimUsersDTO,
   TReplaceScimUserDTO,
+  TScimGroup,
   TScimTokenJwtPayload,
   TUpdateScimGroupNamePatchDTO,
   TUpdateScimGroupNamePutDTO,
@@ -83,7 +85,8 @@ type TScimServiceFactoryDep = {
     | "insertMany"
     | "filterProjectsByUserMembership"
     | "delete"
-    | "findUserGroupMembershipsInOrg"
+    | "findGroupMembershipsByUserIdInOrg"
+    | "findGroupMembershipsByGroupIdInOrg"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -252,7 +255,10 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const groupMembershipsInOrg = await userGroupMembershipDAL.findUserGroupMembershipsInOrg(membership.userId, orgId);
+    const groupMembershipsInOrg = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
+      membership.userId,
+      orgId
+    );
 
     return buildScimUser({
       orgMembershipId: membership.id,
@@ -263,7 +269,7 @@ export const scimServiceFactory = ({
       active: membership.isActive,
       groups: groupMembershipsInOrg.map((group) => ({
         value: group.groupId,
-        display: group.name
+        display: group.groupName
       }))
     });
   };
@@ -509,7 +515,10 @@ export const scimServiceFactory = ({
       isActive: active
     });
 
-    const groupMembershipsInOrg = await userGroupMembershipDAL.findUserGroupMembershipsInOrg(membership.userId, orgId);
+    const groupMembershipsInOrg = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
+      membership.userId,
+      orgId
+    );
 
     return buildScimUser({
       orgMembershipId: membership.id,
@@ -520,7 +529,7 @@ export const scimServiceFactory = ({
       active,
       groups: groupMembershipsInOrg.map((group) => ({
         value: group.groupId,
-        display: group.name
+        display: group.groupName
       }))
     });
   };
@@ -589,13 +598,20 @@ export const scimServiceFactory = ({
       }
     );
 
-    const scimGroups = groups.map((group) =>
-      buildScimGroup({
+    const scimGroups: TScimGroup[] = [];
+
+    for await (const group of groups) {
+      const members = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
+      const scimGroup = buildScimGroup({
         groupId: group.id,
         name: group.name,
-        members: [] // does this need to be populated?
-      })
-    );
+        members: members.map((member) => ({
+          value: member.orgMembershipId,
+          display: `${member.firstName ?? ""} ${member.lastName ?? ""}`
+        }))
+      });
+      scimGroups.push(scimGroup);
+    }
 
     return buildScimGroupList({
       scimGroups,
@@ -872,23 +888,27 @@ export const scimServiceFactory = ({
           break;
         }
         case "add": {
-          const orgMemberships = await orgMembershipDAL.find({
-            $in: {
-              id: operation.value.map((member) => member.value)
-            }
-          });
+          try {
+            const orgMemberships = await orgMembershipDAL.find({
+              $in: {
+                id: operation.value.map((member) => member.value)
+              }
+            });
 
-          await addUsersToGroupByUserIds({
-            group,
-            userIds: orgMemberships.map((membership) => membership.userId as string),
-            userDAL,
-            userGroupMembershipDAL,
-            orgDAL,
-            groupProjectDAL,
-            projectKeyDAL,
-            projectDAL,
-            projectBotDAL
-          });
+            await addUsersToGroupByUserIds({
+              group,
+              userIds: orgMemberships.map((membership) => membership.userId as string),
+              userDAL,
+              userGroupMembershipDAL,
+              orgDAL,
+              groupProjectDAL,
+              projectKeyDAL,
+              projectDAL,
+              projectBotDAL
+            });
+          } catch {
+            logger.info("Repeat SCIM user-group add operation");
+          }
 
           break;
         }
@@ -916,10 +936,15 @@ export const scimServiceFactory = ({
       }
     }
 
+    const members = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
+
     return buildScimGroup({
       groupId: group.id,
       name: group.name,
-      members: []
+      members: members.map((member) => ({
+        value: member.orgMembershipId,
+        display: `${member.firstName ?? ""} ${member.lastName ?? ""}`
+      }))
     });
   };
 
