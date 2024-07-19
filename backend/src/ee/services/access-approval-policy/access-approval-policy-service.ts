@@ -47,7 +47,8 @@ export const accessApprovalPolicyServiceFactory = ({
     approvals,
     approvers,
     projectSlug,
-    environment
+    environment,
+    enforcementLevel
   }: TCreateAccessApprovalPolicy) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
@@ -94,7 +95,8 @@ export const accessApprovalPolicyServiceFactory = ({
           envId: env.id,
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
@@ -143,7 +145,8 @@ export const accessApprovalPolicyServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    approvals
+    approvals,
+    enforcementLevel
   }: TUpdateAccessApprovalPolicy) => {
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
     if (!accessApprovalPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
@@ -163,7 +166,8 @@ export const accessApprovalPolicyServiceFactory = ({
         {
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );

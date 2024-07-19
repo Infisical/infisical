@@ -9,14 +9,15 @@ export const useCreateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TCreateSecretPolicyDTO>({
-    mutationFn: async ({ environment, workspaceId, approvals, approverUserIds, secretPath, name }) => {
+    mutationFn: async ({ environment, workspaceId, approvals, approvers, secretPath, name, enforcementLevel }) => {
       const { data } = await apiRequest.post("/api/v1/secret-approvals", {
         environment,
         workspaceId,
         approvals,
-        approverUserIds,
+        approvers,
         secretPath,
-        name
+        name,
+        enforcementLevel
       });
       return data;
     },
@@ -30,12 +31,13 @@ export const useUpdateSecretApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateSecretPolicyDTO>({
-    mutationFn: async ({ id, approverUserIds, approvals, secretPath, name }) => {
+    mutationFn: async ({ id, approvers, approvals, secretPath, name, enforcementLevel }) => {
       const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
         approvals,
-        approverUserIds,
+        approvers,
         secretPath,
-        name
+        name,
+        enforcementLevel
       });
       return data;
     },

@@ -2,11 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent } from "@app/components/v2";
+import { Button, Checkbox, Modal, ModalContent } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import { ProjectPermissionActions } from "@app/context";
 import { useReviewAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 export const ReviewAccessRequestModal = ({
@@ -19,12 +20,18 @@ export const ReviewAccessRequestModal = ({
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  request: TAccessApprovalRequest & { user: TWorkspaceUser["user"] | null };
+  request: TAccessApprovalRequest & {
+    user: TWorkspaceUser["user"] | null;
+    isRequestedByCurrentUser: boolean;
+    isApprover: boolean;
+  };
   projectSlug: string;
   selectedRequester: string | undefined;
   selectedEnvSlug: string | undefined;
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
+  const [byPassApproval, setByPassApproval] = useState(false);
+  const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
 
   const accessDetails = {
     env: request.environmentName,
@@ -134,10 +141,14 @@ export const ReviewAccessRequestModal = ({
           <div className="space-x-2">
             <Button
               isLoading={isLoading === "approved"}
-              isDisabled={!!isLoading}
+              isDisabled={
+                !!isLoading ||
+                (!request.isApprover && !byPassApproval && isSoftEnforcement)
+              }
               onClick={() => handleReview("approved")}
               className="mt-4"
               size="sm"
+              colorSchema={!request.isApprover && isSoftEnforcement ? "danger" : "primary"}
             >
               Approve Request
             </Button>
@@ -151,6 +162,21 @@ export const ReviewAccessRequestModal = ({
               Reject Request
             </Button>
           </div>
+          {isSoftEnforcement && request.isRequestedByCurrentUser && !request.isApprover && (
+            <div className="mt-4">
+              <Checkbox
+                onCheckedChange={(checked) => setByPassApproval(checked === true)}
+                isChecked={byPassApproval}
+                id="byPassApproval"
+                checkIndicatorBg="text-white"
+                className={byPassApproval ? "bg-red hover:bg-red-600 border-red" : ""}
+              >
+                <span className="text-red text-sm">
+                  Approve without waiting for requirements to be met (bypass policy protection)
+                </span>
+              </Checkbox>
+            </div>
+          )}
         </div>
       </ModalContent>
     </Modal>

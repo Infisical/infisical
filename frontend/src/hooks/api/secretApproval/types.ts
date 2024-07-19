@@ -1,3 +1,4 @@
+import { EnforcementLevel } from "../policies/enums";
 import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretApprovalPolicy = {
@@ -9,6 +10,8 @@ export type TSecretApprovalPolicy = {
   secretPath?: string;
   approvals: number;
   userApprovers: { userId: string }[];
+  updatedAt: Date;
+  enforcementLevel: EnforcementLevel;
 };
 
 export type TGetSecretApprovalPoliciesDTO = {
@@ -26,16 +29,18 @@ export type TCreateSecretPolicyDTO = {
   name?: string;
   environment: string;
   secretPath?: string | null;
-  approverUserIds?: string[];
+  approvers?: string[];
   approvals?: number;
+  enforcementLevel: EnforcementLevel;
 };
 
 export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
-  approverUserIds?: string[];
+  approvers?: string[];
   secretPath?: string | null;
   approvals?: number;
+  enforcementLevel?: EnforcementLevel;
   // for invalidating list
   workspaceId: string;
 };

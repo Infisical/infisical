@@ -57,8 +57,9 @@ export const useAddUserToWsNonE2EE = () => {
       });
       return data;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { orgId, projectId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
+      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
     }
   });
 };
