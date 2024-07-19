@@ -31,6 +31,7 @@ import {
   useUpdateProjectKms
 } from "@app/hooks/api";
 import { fetchProjectKmsBackup } from "@app/hooks/api/kms/queries";
+import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { Organization, Workspace } from "@app/hooks/api/types";
 
 const formSchema = z.object({
@@ -38,8 +39,6 @@ const formSchema = z.object({
 });
 
 type TForm = z.infer<typeof formSchema>;
-
-const INTERNAL_KMS_KEY_ID = "internal";
 
 const BackupConfirmationModal = ({
   isOpen,

@@ -40,7 +40,7 @@ type TKmsServiceFactoryDep = {
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 
-const INTERNAL_KMS_KEY_ID = "internal";
+export const INTERNAL_KMS_KEY_ID = "internal";
 const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 const KMS_ROOT_CREATION_WAIT_KEY = "wait_till_ready_kms_root_key";

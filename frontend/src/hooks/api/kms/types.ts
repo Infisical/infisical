@@ -29,3 +29,5 @@ export type KmsListEntry = {
 export enum ExternalKmsProvider {
   AWS = "aws"
 }
+
+export const INTERNAL_KMS_KEY_ID = "internal";
