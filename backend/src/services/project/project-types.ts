@@ -112,3 +112,5 @@ export type TUpdateProjectKmsDTO = {
 export type TLoadProjectKmsBackupDTO = {
   backup: string;
 } & TProjectPermission;
+
+export type TGetProjectKmsKey = TProjectPermission;
