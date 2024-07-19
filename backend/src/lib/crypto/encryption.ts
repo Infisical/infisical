@@ -116,6 +116,8 @@ export const decryptAsymmetric = ({ ciphertext, nonce, publicKey, privateKey }: 
 
 export const generateSymmetricKey = (size = 32) => crypto.randomBytes(size).toString("base64");
 
+export const generateHash = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
+
 export const generateAsymmetricKeyPair = () => {
   const pair = nacl.box.keyPair();
 

@@ -1,5 +1,6 @@
 export {
   useAddAwsExternalKms,
+  useLoadProjectKmsBackup,
   useRemoveExternalKms,
   useUpdateAwsExternalKms,
   useUpdateProjectKms

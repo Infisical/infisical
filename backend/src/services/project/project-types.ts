@@ -107,3 +107,7 @@ export type TListProjectCertsDTO = {
 export type TUpdateProjectKmsDTO = {
   secretManagerKmsKeyId: string;
 } & TProjectPermission;
+
+export type TLoadProjectKmsBackupDTO = {
+  backup: string;
+} & TProjectPermission;

@@ -140,3 +140,19 @@ export const useUpdateProjectKms = (projectId: string) => {
     }
   });
 };
+
+export const useLoadProjectKmsBackup = (projectId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (backup: string) => {
+      const { data } = await apiRequest.post(`/api/v1/workspace/${projectId}/kms/backup`, {
+        backup
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(kmsKeys.getActiveProjectKms(projectId));
+    }
+  });
+};
