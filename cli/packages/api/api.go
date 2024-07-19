@@ -421,8 +421,7 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		(strings.Contains(response.String(), "bot_not_found_error") ||
 			strings.Contains(strings.ToLower(response.String()), "failed to find bot key") ||
 			strings.Contains(strings.ToLower(response.String()), "bot is not active")) {
-		return GetRawSecretsV3Response{}, fmt.Errorf(`Project with id %s is incompatible with your current CLI version.
-			If you're self-hosting, update your Infisical instance to the latest release. Then, upgrade your project by visiting its settings page.
+		return GetRawSecretsV3Response{}, fmt.Errorf(`Project with id %s is incompatible with your current CLI version. Upgrade your project by visiting the project settings page. If you're self hosting and project upgrade option isn't yet available, contact your administrator to upgrade your Infisical instance to the latest release.
 		`, request.WorkspaceId)
 	}
 
