@@ -32,7 +32,9 @@ export const SecretTable = ({
   orgName
 }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
-  const title = (<p>Someone from <strong>{orgName}</strong> organization has shared a secret with you</p>);
+  const title = orgName
+    ? (<p>Someone from <strong>{orgName}</strong> organization has shared a secret with you</p>)
+    : (<p>You need to be logged in to view this secret</p>);
 
   return (
     <div className="flex w-full items-center justify-center rounded-md border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
@@ -60,7 +62,7 @@ export const SecretTable = ({
                     onClick={() => {}}
                     rightIcon={<FontAwesomeIcon icon={faArrowRight} className="ml-2" />}
                   >
-                    Login to view this secret
+                    Login into <strong>{orgName}</strong> to view this secret
                   </Button>
                 </a>
               </div>

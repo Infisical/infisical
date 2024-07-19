@@ -137,7 +137,7 @@ export const secretSharingServiceFactory = ({
       }
       await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
     }
-    if (sharedSecret.accessType === SecretSharingAccessType.Organization) {
+    if (sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId) {
       return { ...sharedSecret, orgName };
     }
     return { ...sharedSecret, orgName: undefined };
