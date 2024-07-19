@@ -68,9 +68,9 @@ const BackupConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent title="Create KMS backup">
-        <p className="mb-10 text-bunker-300">
-          In case of interruptions with your configured external KMS, load the generated backup to
-          set the project&apos;s KMS back to the default Infisical KMS.
+        <p className="mb-6 text-bunker-300">
+          In case of interruptions with your configured external KMS, you can load a backup to set
+          the project&apos;s KMS back to the default Infisical KMS.
         </p>
         <Button onClick={downloadKmsBackup}>Generate</Button>
         <Button
@@ -159,12 +159,8 @@ const LoadBackupModal = ({
       }}
     >
       <ModalContent title="Load KMS backup">
-        <p className="mb-8 text-bunker-300">
+        <p className="mb-6 text-bunker-300">
           By loading a backup, the project&apos;s KMS will be switched to the default Infisical KMS.
-        </p>
-        <p className="mb-8 text-bunker-300">
-          If left unmodified, the filename of the backup should look like the following:
-          <p className="mt-2 font-bold">{`kms-backup-${org?.slug}-${workspace?.slug}-secretManager.infisical.txt`}</p>
         </p>
         <div className="flex justify-center">
           <input
