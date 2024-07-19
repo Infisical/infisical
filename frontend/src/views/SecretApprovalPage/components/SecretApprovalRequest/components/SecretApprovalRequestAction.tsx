@@ -127,7 +127,7 @@ export const SecretApprovalRequestAction = ({
                 </Checkbox>
                 {byPassApproval && (
                   <FormControl
-                    label="Reason for Bypass"
+                    label="Reason for bypass"
                     className="mt-2"
                     isRequired
                     tooltipText="Enter a reason for bypassing the secret change policy"

@@ -515,7 +515,7 @@ export const secretApprovalRequestServiceFactory = ({
 
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
-        subjectLine: "Secret Request Bypassed",
+        subjectLine: "Infisical Secret Change Policy Bypassed",
 
         substitutions: {
           projectName: project.name,
