@@ -94,6 +94,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+        tx.ref("envId").withSchema(TableName.SecretApprovalPolicy).as("policyEnvId"),
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals")
       );
@@ -130,7 +131,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             name: el.policyName,
             approvals: el.policyApprovals,
             secretPath: el.policySecretPath,
-            enforcementLevel: el.policyEnforcementLevel
+            enforcementLevel: el.policyEnforcementLevel,
+            envId: el.policyEnvId
           }
         }),
         childrenMapper: [

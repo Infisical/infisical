@@ -39,6 +39,7 @@ export type TGenerateSecretApprovalRequestDTO = {
 
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
+  bypassReason?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TStatusChangeDTO = {

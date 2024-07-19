@@ -117,6 +117,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       params: z.object({
         id: z.string()
       }),
+      body: z.object({
+        bypassReason: z.string().optional()
+      }),
       response: {
         200: z.object({
           approval: SecretApprovalRequestsSchema
@@ -130,7 +133,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        approvalId: req.params.id
+        approvalId: req.params.id,
+        bypassReason: req.body.bypassReason
       });
       return { approval };
     }
