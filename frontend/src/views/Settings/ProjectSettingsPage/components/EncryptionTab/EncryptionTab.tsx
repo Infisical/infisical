@@ -73,7 +73,7 @@ const BackupConfirmationModal = ({
           In case of interruptions with your configured external KMS, load the generated backup to
           set the project&apos;s KMS back to the default Infisical KMS.
         </p>
-        <Button onClick={downloadKmsBackup}>Continue</Button>
+        <Button onClick={downloadKmsBackup}>Generate</Button>
         <Button
           onClick={() => onOpenChange(false)}
           colorSchema="secondary"
