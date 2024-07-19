@@ -95,8 +95,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         tag: z.string(),
         hashedHex: z.string(),
         expiresAt: z.string(),
-        expiresAfterViews: z.number(),
-        accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
+        expiresAfterViews: z.number()
       }),
       response: {
         200: z.object({
@@ -105,7 +104,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews, accessType } = req.body;
+      const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createPublicSharedSecret({
         encryptedValue,
         iv,
@@ -113,7 +112,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex,
         expiresAt: new Date(expiresAt),
         expiresAfterViews,
-        accessType
+        accessType: SecretSharingAccessType.Anyone
       });
       return { id: sharedSecret.id };
     }

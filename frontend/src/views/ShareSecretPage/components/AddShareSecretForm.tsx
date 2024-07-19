@@ -1,5 +1,6 @@
 import crypto from "crypto";
 
+import { useEffect, useRef } from "react";
 import { Controller } from "react-hook-form";
 import { AxiosError } from "axios";
 import * as yup from "yup";
@@ -36,6 +37,14 @@ export const AddShareSecretForm = ({
   setNewSharedSecret: (value: string) => void;
   isInputDisabled?: boolean;
 }) => {
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const publicSharedSecretCreator = useCreatePublicSharedSecret();
   const privateSharedSecretCreator = useCreateSharedSecret();
   const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
@@ -94,16 +103,18 @@ export const AddShareSecretForm = ({
         expiresAfterViews: expiresAfterSingleView ? 1 : 1000,
         accessType: accessType as SecretSharingAccessType
       });
-      setNewSharedSecret(
-        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
-          hashedHex
-        )}-${encodeURIComponent(key)}`
-      );
 
-      createNotification({
-        text: "Successfully created a shared secret",
-        type: "success"
-      });
+      if (isMounted.current) {
+        setNewSharedSecret(
+          `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
+            hashedHex
+          )}-${encodeURIComponent(key)}`
+        );
+        createNotification({
+          text: "Successfully created a shared secret",
+          type: "success"
+        });
+      }
     } catch (err) {
       console.error(err);
       const axiosError = err as AxiosError;
@@ -146,7 +157,7 @@ export const AddShareSecretForm = ({
             )}
           />
         </div>
-        <div className="flex w-full flex-col md:flex-row justify-strech">
+        <div className="flex w-full flex-col md:flex-row justify-stretch">
           <div className="flex justify-start">
             <div className="flex justify-start">
               <div className="flex w-full justify-center pr-2">
@@ -230,23 +241,25 @@ export const AddShareSecretForm = ({
             </div>
           </div>
         </div>
-        <Controller
-          control={control}
-          name="accessType"
-          defaultValue="organization"
-          render={({ field: { onChange, ...field } }) => (
-            <FormControl label="General Access">
-              <Select
-                {...field}
-                onValueChange={(e) => onChange(e)}
-              >
-                <SelectItem value="organization">People within your organization</SelectItem>
-                <SelectItem value="anyone">Anyone</SelectItem>
-              </Select>
-            </FormControl>
-          )}
-        />
-        <div className={`flex items-center space-x-4 mt-6 ${!inModal && "justify-start pt-2"}`}>
+        {!isPublic && (
+          <Controller
+            control={control}
+            name="accessType"
+            defaultValue="organization"
+            render={({ field: { onChange, ...field } }) => (
+              <FormControl label="General Access">
+                <Select
+                  {...field}
+                  onValueChange={(e) => onChange(e)}
+                >
+                  <SelectItem value="organization">People within your organization</SelectItem>
+                  <SelectItem value="anyone">Anyone</SelectItem>
+                </Select>
+              </FormControl>
+            )}
+          />
+        )}
+        <div className={`flex items-center space-x-4 pt-2 ${!inModal && ""}`}>
           <Button className="mr-0" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
             {inModal ? "Create" : "Share Secret"}
           </Button>
