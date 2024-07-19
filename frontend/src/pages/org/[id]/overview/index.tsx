@@ -1098,7 +1098,7 @@ const OrganizationPage = withPermission(
                               onValueChange={(e) => {
                                 onChange(e);
                               }}
-                              className="mb-12 mr-4 w-full bg-mineshaft-600"
+                              className="mb-12 w-full bg-mineshaft-600"
                             >
                               <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
                                 Default Infisical KMS
@@ -1117,7 +1117,7 @@ const OrganizationPage = withPermission(
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <div className="flex items-end justify-end">
+                <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
                   <Button
                     key="layout-cancel-create-project"
                     onClick={() => handlePopUpClose("addNewWs")}
