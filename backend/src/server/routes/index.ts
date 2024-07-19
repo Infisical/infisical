@@ -755,7 +755,10 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     snapshotService,
     secretVersionTagDAL,
-    secretQueueService
+    secretQueueService,
+    smtpService,
+    userDAL,
+    projectEnvDAL
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
