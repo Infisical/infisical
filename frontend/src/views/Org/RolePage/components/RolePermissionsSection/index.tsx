@@ -1,1 +1,1 @@
-export { RolePermissionsSesction } from "./RolePermissionsSection";
+export { RolePermissionsSection } from "./RolePermissionsSection";

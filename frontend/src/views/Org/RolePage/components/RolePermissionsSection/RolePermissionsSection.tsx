@@ -6,13 +6,15 @@ import {
   // DeleteActionModal,
   IconButton
 } from "@app/components/v2";
+
+import { RolePermissionsTable } from "./RolePermissionsTable";
 // import { useDeleteIdentityFromWorkspace } from "@app/hooks/api";
 // import { usePopUp } from "@app/hooks/usePopUp";
 
 // import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
 // import { IdentityProjectsTable } from "./IdentityProjectsTable";
 
-export const RolePermissionsSesction = () => {
+export const RolePermissionsSection = () => {
   //   const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
 
   // const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -62,7 +64,7 @@ export const RolePermissionsSesction = () => {
         </IconButton>
       </div>
       <div className="py-4">
-        Permissions Table
+        <RolePermissionsTable />
         {/* <IdentityProjectsTable identityId={identityId} handlePopUpOpen={handlePopUpOpen} /> */}
       </div>
       {/* <DeleteActionModal

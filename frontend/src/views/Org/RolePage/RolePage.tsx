@@ -27,7 +27,8 @@ import {
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { RoleDetailsSection } from "./components";
+import { RolePermissionsTable } from "./components/RolePermissionsSection/RolePermissionsTable";
+import { RoleDetailsSection, RolePermissionsSection } from "./components";
 
 // import { IdentityAuthMethodModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 // import { IdentityModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
@@ -201,8 +202,7 @@ export const RolePage = withPermission(
               <div className="mr-4 w-96">
                 <RoleDetailsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              Permissions Section
-              {/* <IdentityProjectsSection identityId={identityId} /> */}
+              <RolePermissionsSection />
             </div>
           </div>
         )}
