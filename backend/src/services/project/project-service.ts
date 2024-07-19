@@ -21,6 +21,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
+import { TKmsKeyDALFactory } from "../kms/kms-key-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
@@ -83,6 +84,7 @@ type TProjectServiceFactoryDep = {
     TKmsServiceFactory,
     "updateProjectSecretManagerKmsKey" | "getProjectKeyBackup" | "loadProjectKeyBackup"
   >;
+  kmsDAL: Pick<TKmsKeyDALFactory, "findByIdWithAssociatedKms">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -108,7 +110,8 @@ export const projectServiceFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   keyStore,
-  kmsService
+  kmsService,
+  kmsDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -119,7 +122,8 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     workspaceName,
-    slug: projectSlug
+    slug: projectSlug,
+    kmsKeyId
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
 
@@ -147,16 +151,34 @@ export const projectServiceFactory = ({
     const results = await projectDAL.transaction(async (tx) => {
       const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
+      if (kmsKeyId) {
+        const kms = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+        if (!kms.id) {
+          throw new NotFoundError({
+            message: "KMS not found"
+          });
+        }
+
+        if (kms.orgId !== organization.id) {
+          throw new BadRequestError({
+            message: "KMS does not belong in the organization"
+          });
+        }
+      }
+
       const project = await projectDAL.create(
         {
           name: workspaceName,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           version: ProjectVersion.V2,
-          pitVersionLimit: 10
+          pitVersionLimit: 10,
+          kmsSecretManagerKeyId: kmsKeyId
         },
         tx
       );
+
       // set ghost user as admin of project
       const projectMembership = await projectMembershipDAL.create(
         {

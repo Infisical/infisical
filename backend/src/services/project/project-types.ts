@@ -27,6 +27,7 @@ export type TCreateProjectDTO = {
   actorOrgId?: string;
   workspaceName: string;
   slug?: string;
+  kmsKeyId?: string;
 };
 
 export type TDeleteProjectBySlugDTO = {
