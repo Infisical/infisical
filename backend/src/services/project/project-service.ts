@@ -772,13 +772,7 @@ export const projectServiceFactory = ({
     return kmsBackup;
   };
 
-  const getProjectSecretManagerKmsKey = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetProjectKmsKey) => {
+  const getProjectKmsKeys = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TGetProjectKmsKey) => {
     const { membership } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -796,7 +790,7 @@ export const projectServiceFactory = ({
     const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);
     const kmsKey = await kmsService.getKmsById(kmsKeyId);
 
-    return kmsKey;
+    return { secretManagerKmsKey: kmsKey };
   };
 
   return {
@@ -816,6 +810,6 @@ export const projectServiceFactory = ({
     updateProjectKmsKey,
     getProjectKmsBackup,
     loadProjectKmsBackup,
-    getProjectSecretManagerKmsKey
+    getProjectKmsKeys
   };
 };
