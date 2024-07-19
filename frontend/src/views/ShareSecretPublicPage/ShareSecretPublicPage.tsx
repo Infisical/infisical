@@ -26,7 +26,6 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
     id as string,
     hashedHex as string
   );
-  console.log(data);
   const accessType = data?.accessType;
   const orgName = data?.orgName;
 
