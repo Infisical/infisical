@@ -285,7 +285,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: req.params.workspaceId,
         event: {
-          type: EventType.GET_PROJECT_KMS_BACKUP
+          type: EventType.GET_PROJECT_KMS_BACKUP,
+          metadata: {}
         }
       });
 
@@ -331,7 +332,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: req.params.workspaceId,
         event: {
-          type: EventType.LOAD_PROJECT_KMS_BACKUP
+          type: EventType.LOAD_PROJECT_KMS_BACKUP,
+          metadata: {}
         }
       });
 
