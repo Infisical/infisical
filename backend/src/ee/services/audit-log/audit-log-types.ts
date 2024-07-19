@@ -1227,10 +1227,12 @@ interface UpdateProjectKmsEvent {
 
 interface GetProjectKmsBackupEvent {
   type: EventType.GET_PROJECT_KMS_BACKUP;
+  metadata: Record<string, string>; // no metadata yet
 }
 
 interface LoadProjectKmsBackupEvent {
   type: EventType.LOAD_PROJECT_KMS_BACKUP;
+  metadata: Record<string, string>; // no metadata yet
 }
 
 export type Event =
