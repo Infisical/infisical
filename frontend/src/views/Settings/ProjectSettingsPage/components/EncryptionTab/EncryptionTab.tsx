@@ -1,20 +1,32 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileSaver from "file-saver";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
   useWorkspace
 } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useGetActiveProjectKms, useGetExternalKmsList, useUpdateProjectKms } from "@app/hooks/api";
 import { fetchProjectKmsBackup } from "@app/hooks/api/kms/queries";
+import { Organization, Workspace } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   kmsKeyId: z.string()
@@ -24,6 +36,155 @@ type TForm = z.infer<typeof formSchema>;
 
 const INTERNAL_KMS_KEY_ID = "internal";
 
+const BackupConfirmationModal = ({
+  isOpen,
+  onOpenChange,
+  org,
+  workspace
+}: {
+  isOpen: boolean;
+  onOpenChange: (state: boolean) => void;
+  org?: Organization;
+  workspace?: Workspace;
+}) => {
+  const downloadKmsBackup = async () => {
+    if (!workspace || !org) {
+      return;
+    }
+
+    const { secretManager } = await fetchProjectKmsBackup(workspace.id);
+
+    const [, , kmsFunction] = secretManager.split(".");
+    const file = secretManager;
+
+    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(blob, `kms-backup-${org.slug}-${workspace.slug}-${kmsFunction}.infisical.txt`);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+      <ModalContent title="Create KMS backup">
+        <p className="mb-8 text-bunker-300">
+          In case of interruptions with your configured external KMS, use this generated backup to
+          set the project&apos;s KMS back to the default Infisical KMS.
+        </p>
+        <p className="mb-8 text-bunker-300">
+          Note: The project data key will be encrypted the organization&apos;s default Infisical
+          KMS.
+        </p>
+        <Button onClick={downloadKmsBackup}>Continue</Button>
+        <Button
+          onClick={() => onOpenChange(false)}
+          colorSchema="secondary"
+          variant="plain"
+          className="ml-4"
+        >
+          Cancel
+        </Button>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+const LoadBackupModal = ({
+  isOpen,
+  onOpenChange,
+  org,
+  workspace
+}: {
+  isOpen: boolean;
+  onOpenChange: (state: boolean) => void;
+  org?: Organization;
+  workspace?: Workspace;
+}) => {
+  const fileUploadRef = useRef<HTMLInputElement>(null);
+  const [backupContent, setBackupContent] = useState("");
+  const [backupFileName, setBackupFileName] = useState("");
+
+  const uploadKmsBackup = async () => {
+    if (!workspace || !org) {
+      // eslint-disable-next-line no-useless-return
+      return;
+    }
+  };
+
+  const parseFile = (file?: File) => {
+    if (!file) {
+      createNotification({
+        text: "Failed to parse uploaded file.",
+        type: "error"
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (!event?.target?.result) return;
+      const data = event.target.result.toString();
+      setBackupContent(data);
+    };
+
+    try {
+      reader.readAsText(file);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    parseFile(e.target?.files?.[0]);
+    setBackupFileName(e.target?.files?.[0]?.name || "");
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(state: boolean) => {
+        setBackupContent("");
+        setBackupFileName("");
+        onOpenChange(state);
+      }}
+    >
+      <ModalContent title="Load KMS backup">
+        <p className="mb-8 text-bunker-300">
+          By loading a backup, the project&apos;s KMS will be switched to the default Infisical KMS.
+        </p>
+        <p className="mb-8 text-bunker-300">
+          If left unmodified, the filename of the backup should look like the following:
+          <p className="mt-2 font-bold">{`kms-backup-${org?.slug}-${workspace?.slug}-secretManager.infisical.txt`}</p>
+        </p>
+        <div className="flex justify-center">
+          <input
+            id="fileSelect"
+            className="hidden"
+            type="file"
+            accept=".txt"
+            onChange={handleFileUpload}
+            ref={fileUploadRef}
+          />
+          <IconButton
+            className="p-10"
+            ariaLabel="upload-backup"
+            colorSchema="secondary"
+            onClick={() => {
+              fileUploadRef?.current?.click();
+            }}
+          >
+            <FontAwesomeIcon icon={faUpload} size="3x" />
+          </IconButton>
+        </div>
+        {backupFileName && <div className="mt-2 flex justify-center">{backupFileName}</div>}
+        {backupContent && (
+          <Button onClick={uploadKmsBackup} className="mt-10 w-fit">
+            Continue
+          </Button>
+        )}
+      </ModalContent>
+    </Modal>
+  );
+};
+
 export const EncryptionTab = () => {
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
@@ -32,6 +193,10 @@ export const EncryptionTab = () => {
   const { data: activeKms } = useGetActiveProjectKms(currentWorkspace?.id!);
 
   const { mutateAsync: updateProjectKms } = useUpdateProjectKms(currentWorkspace?.id!);
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
+    "createBackupConfirmation",
+    "loadBackup"
+  ] as const);
   const [kmsKeyId, setKmsKeyId] = useState("");
 
   const {
@@ -72,23 +237,6 @@ export const EncryptionTab = () => {
     }
   };
 
-  const downloadKmsBackup = async () => {
-    if (!currentWorkspace || !currentOrg) {
-      return;
-    }
-
-    const { secretManager } = await fetchProjectKmsBackup(currentWorkspace.id);
-
-    const [, , kmsFunction] = secretManager.split(".");
-    const file = secretManager;
-
-    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
-    FileSaver.saveAs(
-      blob,
-      `kms-backup-${currentOrg.slug}-${currentWorkspace.slug}-${kmsFunction}.infisical.txt`
-    );
-  };
-
   return (
     <form
       onSubmit={handleSubmit(onUpdateProjectKms)}
@@ -96,12 +244,21 @@ export const EncryptionTab = () => {
     >
       <div className="flex justify-between">
         <h2 className="mb-2 flex-1 text-xl font-semibold text-mineshaft-100">Key Management</h2>
-        <div className="space-x-2">
-          <Button colorSchema="secondary">Load Backup</Button>
-          <Button colorSchema="secondary" onClick={downloadKmsBackup}>
-            Create Backup
-          </Button>
-        </div>
+        {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
+          <div className="space-x-2">
+            <Button colorSchema="secondary" onClick={() => handlePopUpOpen("loadBackup")}>
+              Load Backup
+            </Button>
+            <Button
+              colorSchema="secondary"
+              onClick={() => {
+                handlePopUpOpen("createBackupConfirmation");
+              }}
+            >
+              Create Backup
+            </Button>
+          </div>
+        )}
       </div>
 
       <p className="mb-4 text-gray-400">
@@ -150,6 +307,18 @@ export const EncryptionTab = () => {
           </Button>
         )}
       </ProjectPermissionCan>
+      <BackupConfirmationModal
+        isOpen={popUp.createBackupConfirmation.isOpen}
+        onOpenChange={(state: boolean) => handlePopUpToggle("createBackupConfirmation", state)}
+        org={currentOrg}
+        workspace={currentWorkspace}
+      />
+      <LoadBackupModal
+        isOpen={popUp.loadBackup.isOpen}
+        onOpenChange={(state: boolean) => handlePopUpToggle("loadBackup", state)}
+        org={currentOrg}
+        workspace={currentWorkspace}
+      />
     </form>
   );
 };
