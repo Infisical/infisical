@@ -194,7 +194,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const secretManagerKmsKey = await server.services.kms.getProjectSecretManagerKmsKey(req.params.workspaceId);
+      const secretManagerKmsKey = await server.services.project.getProjectSecretManagerKmsKey({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
       return {
         secretManagerKmsKey
       };

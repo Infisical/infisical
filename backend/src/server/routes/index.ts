@@ -1048,7 +1048,6 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
-    kms: kmsService,
     externalKms: externalKmsService
   });
 

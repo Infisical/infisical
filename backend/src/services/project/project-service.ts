@@ -39,6 +39,7 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TGetProjectDTO,
+  TGetProjectKmsKey,
   TListProjectCasDTO,
   TListProjectCertsDTO,
   TLoadProjectKmsBackupDTO,
@@ -81,7 +82,11 @@ type TProjectServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
   kmsService: Pick<
     TKmsServiceFactory,
-    "updateProjectSecretManagerKmsKey" | "getProjectKeyBackup" | "loadProjectKeyBackup" | "getKmsById"
+    | "updateProjectSecretManagerKmsKey"
+    | "getProjectKeyBackup"
+    | "loadProjectKeyBackup"
+    | "getKmsById"
+    | "getProjectSecretManagerKmsKeyId"
   >;
 };
 
@@ -750,6 +755,33 @@ export const projectServiceFactory = ({
     return kmsBackup;
   };
 
+  const getProjectSecretManagerKmsKey = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetProjectKmsKey) => {
+    const { membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!membership) {
+      throw new ForbiddenRequestError({
+        message: "User is not a member of the project"
+      });
+    }
+
+    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsService.getKmsById(kmsKeyId);
+
+    return kmsKey;
+  };
+
   return {
     createProject,
     deleteProject,
@@ -766,6 +798,7 @@ export const projectServiceFactory = ({
     updateAuditLogsRetention,
     updateProjectKmsKey,
     getProjectKmsBackup,
-    loadProjectKmsBackup
+    loadProjectKmsBackup,
+    getProjectSecretManagerKmsKey
   };
 };
