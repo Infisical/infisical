@@ -41,6 +41,7 @@ import {
   TGetProjectDTO,
   TListProjectCasDTO,
   TListProjectCertsDTO,
+  TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
   TUpdateProjectDTO,
@@ -78,7 +79,10 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
-  kmsService: Pick<TKmsServiceFactory, "updateProjectSecretManagerKmsKey" | "getProjectKeyBackup">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "updateProjectSecretManagerKmsKey" | "getProjectKeyBackup" | "loadProjectKeyBackup"
+  >;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -704,6 +708,35 @@ export const projectServiceFactory = ({
     return kmsBackup;
   };
 
+  const loadProjectKmsBackup = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    backup
+  }: TLoadProjectKmsBackupDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
+      });
+    }
+
+    const kmsBackup = await kmsService.loadProjectKeyBackup(projectId, backup);
+    return kmsBackup;
+  };
+
   return {
     createProject,
     deleteProject,
@@ -719,6 +752,7 @@ export const projectServiceFactory = ({
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,
-    getProjectKmsBackup
+    getProjectKmsBackup,
+    loadProjectKmsBackup
   };
 };

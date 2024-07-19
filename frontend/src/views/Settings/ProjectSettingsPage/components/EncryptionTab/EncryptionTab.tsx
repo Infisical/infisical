@@ -24,7 +24,12 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetActiveProjectKms, useGetExternalKmsList, useUpdateProjectKms } from "@app/hooks/api";
+import {
+  useGetActiveProjectKms,
+  useGetExternalKmsList,
+  useLoadProjectKmsBackup,
+  useUpdateProjectKms
+} from "@app/hooks/api";
 import { fetchProjectKmsBackup } from "@app/hooks/api/kms/queries";
 import { Organization, Workspace } from "@app/hooks/api/types";
 
@@ -64,13 +69,9 @@ const BackupConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent title="Create KMS backup">
-        <p className="mb-8 text-bunker-300">
-          In case of interruptions with your configured external KMS, use this generated backup to
+        <p className="mb-10 text-bunker-300">
+          In case of interruptions with your configured external KMS, load the generated backup to
           set the project&apos;s KMS back to the default Infisical KMS.
-        </p>
-        <p className="mb-8 text-bunker-300">
-          Note: The project data key will be encrypted the organization&apos;s default Infisical
-          KMS.
         </p>
         <Button onClick={downloadKmsBackup}>Continue</Button>
         <Button
@@ -98,13 +99,25 @@ const LoadBackupModal = ({
   workspace?: Workspace;
 }) => {
   const fileUploadRef = useRef<HTMLInputElement>(null);
+  const { mutateAsync: loadKmsBackup, isLoading } = useLoadProjectKmsBackup(workspace?.id!);
   const [backupContent, setBackupContent] = useState("");
   const [backupFileName, setBackupFileName] = useState("");
 
   const uploadKmsBackup = async () => {
     if (!workspace || !org) {
-      // eslint-disable-next-line no-useless-return
       return;
+    }
+
+    try {
+      await loadKmsBackup(backupContent);
+      createNotification({
+        text: "Successfully loaded KMS backup",
+        type: "success"
+      });
+
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -174,9 +187,16 @@ const LoadBackupModal = ({
             <FontAwesomeIcon icon={faUpload} size="3x" />
           </IconButton>
         </div>
-        {backupFileName && <div className="mt-2 flex justify-center">{backupFileName}</div>}
+        {backupFileName && (
+          <div className="mt-2 flex justify-center px-4 text-center">{backupFileName}</div>
+        )}
         {backupContent && (
-          <Button onClick={uploadKmsBackup} className="mt-10 w-fit">
+          <Button
+            onClick={uploadKmsBackup}
+            className="mt-10 w-fit"
+            disabled={isLoading}
+            isLoading={isLoading}
+          >
             Continue
           </Button>
         )}

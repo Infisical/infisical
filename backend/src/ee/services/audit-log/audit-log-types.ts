@@ -144,7 +144,8 @@ export enum EventType {
   DELETE_KMS = "delete-kms",
   GET_KMS = "get-kms",
   UPDATE_PROJECT_KMS = "update-project-kms",
-  GET_PROJECT_KMS_BACKUP = "get-project-kms-backup"
+  GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
+  LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup"
 }
 
 interface UserActorMetadata {
@@ -1220,6 +1221,10 @@ interface GetProjectKmsBackupEvent {
   type: EventType.GET_PROJECT_KMS_BACKUP;
 }
 
+interface LoadProjectKmsBackupEvent {
+  type: EventType.LOAD_PROJECT_KMS_BACKUP;
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1326,4 +1331,5 @@ export type Event =
   | DeleteKmsEvent
   | GetKmsEvent
   | UpdateProjectKmsEvent
-  | GetProjectKmsBackupEvent;
+  | GetProjectKmsBackupEvent
+  | LoadProjectKmsBackupEvent;

@@ -11,6 +11,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
+import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -598,13 +599,70 @@ export const kmsServiceFactory = ({
     const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyIdForEncrypt });
     const { cipherTextBlob: encryptedSecretManagerDataKey } = await kmsEncryptor({ plainText: secretManagerDataKey });
 
-    // format: version.projectId.kmsFunction.kmsId.Base64(encryptedDataKey)
-    const secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
+    // backup format: version.projectId.kmsFunction.kmsId.Base64(encryptedDataKey).verificationHash
+    let secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
       "base64"
     )}`;
 
+    const verificationHash = generateHash(secretManagerBackup);
+    secretManagerBackup = `${secretManagerBackup}.${verificationHash}`;
+
     return {
       secretManager: secretManagerBackup
+    };
+  };
+
+  const loadProjectKeyBackup = async (projectId: string, backup: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found"
+      });
+    }
+
+    const [, backupProjectId, , backupKmsKeyId, backupBase64EncryptedDataKey, backupHash] = backup.split(".");
+    const computedHash = generateHash(backup.substring(0, backup.lastIndexOf(".")));
+    if (computedHash !== backupHash) {
+      throw new BadRequestError({
+        message: "Invalid backup"
+      });
+    }
+
+    if (backupProjectId !== projectId) {
+      throw new BadRequestError({
+        message: "Invalid backup for project"
+      });
+    }
+
+    const kmsDecryptor = await decryptWithKmsKey({ kmsId: backupKmsKeyId });
+    const dataKey = await kmsDecryptor({
+      cipherTextBlob: Buffer.from(backupBase64EncryptedDataKey, "base64")
+    });
+
+    const newKms = await kmsDAL.transaction(async (tx) => {
+      const key = await generateKmsKey({
+        isReserved: true,
+        orgId: project.orgId,
+        tx
+      });
+
+      const kmsEncryptor = await encryptWithKmsKey({ kmsId: key.id }, tx);
+      const { cipherTextBlob } = await kmsEncryptor({ plainText: dataKey });
+
+      await projectDAL.updateById(
+        projectId,
+        {
+          kmsSecretManagerKeyId: key.id,
+          kmsSecretManagerEncryptedDataKey: cipherTextBlob
+        },
+        tx
+      );
+
+      return kmsDAL.findByIdWithAssociatedKms(key.id, tx);
+    });
+
+    return {
+      secretManagerKmsKey: newKms
     };
   };
 
@@ -666,6 +724,7 @@ export const kmsServiceFactory = ({
     getProjectSecretManagerKmsDataKey,
     getProjectSecretManagerKmsKey,
     updateProjectSecretManagerKmsKey,
-    getProjectKeyBackup
+    getProjectKeyBackup,
+    loadProjectKeyBackup
   };
 };

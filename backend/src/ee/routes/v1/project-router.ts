@@ -4,7 +4,7 @@ import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -205,7 +205,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:workspaceId/kms",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       params: z.object({
@@ -286,6 +286,52 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         event: {
           type: EventType.GET_PROJECT_KMS_BACKUP
+        }
+      });
+
+      return backup;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/kms/backup",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        backup: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          secretManagerKmsKey: z.object({
+            id: z.string(),
+            slug: z.string(),
+            isExternal: z.boolean()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const backup = await server.services.project.loadProjectKmsBackup({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        backup: req.body.backup
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.LOAD_PROJECT_KMS_BACKUP
         }
       });
 
