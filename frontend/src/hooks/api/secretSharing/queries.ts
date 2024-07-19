@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TSharedSecret, TViewSharedSecretResponse } from "./types";
+import { SecretSharingAccessType, TSharedSecret, TViewSharedSecretResponse } from "./types";
 
 export const useGetSharedSecrets = () => {
   return useQuery({
@@ -17,7 +17,7 @@ export const useGetSharedSecrets = () => {
 export const useGetActiveSharedSecretByIdAndHashedHex = (id: string, hashedHex: string) => {
   return useQuery<TViewSharedSecretResponse, [string]>({
     queryFn: async () => {
-      if(!id || !hashedHex) return Promise.resolve({ encryptedValue: "", iv: "", tag: "" });
+      if(!id || !hashedHex) return Promise.resolve({ encryptedValue: "", iv: "", tag: "", accessType: SecretSharingAccessType.Organization, orgName: "" });
       const { data } = await apiRequest.get<TViewSharedSecretResponse>(
         `/api/v1/secret-sharing/public/${id}?hashedHex=${hashedHex}`
       );
@@ -25,6 +25,8 @@ export const useGetActiveSharedSecretByIdAndHashedHex = (id: string, hashedHex: 
         encryptedValue: data.encryptedValue,
         iv: data.iv,
         tag: data.tag,
+        accessType: data.accessType,
+        orgName: data.orgName
       };
     }
   });

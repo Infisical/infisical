@@ -20,12 +20,14 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
   const [hashedHex, key] = urlEncodedPublicKey
     ? urlEncodedPublicKey.toString().split("-")
     : ["", ""];
-
+  
   const publicKey = decodeURIComponent(urlEncodedPublicKey as string);
   const { isLoading, data } = useGetActiveSharedSecretByIdAndHashedHex(
     id as string,
     hashedHex as string
   );
+  const accessType = data?.accessType;
+  const orgName = data?.orgName;
 
   const decryptedSecret = useMemo(() => {
     if (data && data.encryptedValue && publicKey) {
@@ -87,6 +89,8 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
                 decryptedSecret={decryptedSecret}
                 isUrlCopied={isUrlCopied}
                 copyUrlToClipboard={copyUrlToClipboard}
+                accessType={accessType}
+                orgName={orgName}
               />
             )}
           </div>

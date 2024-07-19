@@ -1,3 +1,5 @@
+import { SecretSharingAccessType } from "@app/lib/types";
+
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TSharedSecretPermission = {
@@ -6,6 +8,7 @@ export type TSharedSecretPermission = {
   actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
   orgId: string;
+  accessType?: SecretSharingAccessType;
 };
 
 export type TCreatePublicSharedSecretDTO = {
@@ -15,6 +18,7 @@ export type TCreatePublicSharedSecretDTO = {
   hashedHex: string;
   expiresAt: Date;
   expiresAfterViews: number;
+  accessType: SecretSharingAccessType;
 };
 
 export type TCreateSharedSecretDTO = TSharedSecretPermission & TCreatePublicSharedSecretDTO;

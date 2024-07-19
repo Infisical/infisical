@@ -1,5 +1,6 @@
 import crypto from "crypto";
 
+import { useEffect, useRef } from "react";
 import { Controller } from "react-hook-form";
 import { AxiosError } from "axios";
 import * as yup from "yup";
@@ -7,13 +8,14 @@ import * as yup from "yup";
 import { createNotification } from "@app/components/notifications";
 import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { Button, Checkbox, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
+import { SecretSharingAccessType, useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
 
 const schema = yup.object({
   value: yup.string().max(10000).required().label("Shared Secret Value"),
   expiresAfterSingleView: yup.boolean().required().label("Expires After Views"),
   expiresInValue: yup.number().min(1).required().label("Expiration Value"),
-  expiresInUnit: yup.string().required().label("Expiration Unit")
+  expiresInUnit: yup.string().required().label("Expiration Unit"),
+  accessType: yup.string().required().label("General Access")
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -35,6 +37,14 @@ export const AddShareSecretForm = ({
   setNewSharedSecret: (value: string) => void;
   isInputDisabled?: boolean;
 }) => {
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const publicSharedSecretCreator = useCreatePublicSharedSecret();
   const privateSharedSecretCreator = useCreateSharedSecret();
   const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
@@ -65,7 +75,8 @@ export const AddShareSecretForm = ({
     value,
     expiresInValue,
     expiresInUnit,
-    expiresAfterSingleView
+    expiresAfterSingleView,
+    accessType
   }: FormData) => {
     try {
       const key = crypto.randomBytes(16).toString("hex");
@@ -89,18 +100,21 @@ export const AddShareSecretForm = ({
         tag,
         hashedHex,
         expiresAt,
-        expiresAfterViews: expiresAfterSingleView ? 1 : 1000
+        expiresAfterViews: expiresAfterSingleView ? 1 : 1000,
+        accessType: accessType as SecretSharingAccessType
       });
-      setNewSharedSecret(
-        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
-          hashedHex
-        )}-${encodeURIComponent(key)}`
-      );
 
-      createNotification({
-        text: "Successfully created a shared secret",
-        type: "success"
-      });
+      if (isMounted.current) {
+        setNewSharedSecret(
+          `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
+            hashedHex
+          )}-${encodeURIComponent(key)}`
+        );
+        createNotification({
+          text: "Successfully created a shared secret",
+          type: "success"
+        });
+      }
     } catch (err) {
       console.error(err);
       const axiosError = err as AxiosError;
@@ -143,7 +157,7 @@ export const AddShareSecretForm = ({
             )}
           />
         </div>
-        <div className="flex w-full flex-col md:flex-row justify-start">
+        <div className="flex w-full flex-col md:flex-row justify-stretch">
           <div className="flex justify-start">
             <div className="flex justify-start">
               <div className="flex w-full justify-center pr-2">
@@ -188,8 +202,8 @@ export const AddShareSecretForm = ({
               </div>
             </div>
           </div>
-          <div className="sm:w-1/7 mx-auto items-center justify-center px-6 hidden md:flex">
-            <p className="px-4 mt-2 text-sm text-gray-400">AND</p>
+          <div className="sm:w-1/7 mx-auto items-center justify-center hidden md:flex">
+            <p className="mt-2 text-sm text-gray-400">AND</p>
           </div>
           <div className="items-center pb-4 md:pb-0 md:pt-2 flex">
             <Controller
@@ -227,7 +241,25 @@ export const AddShareSecretForm = ({
             </div>
           </div>
         </div>
-        <div className={`flex items-center ${!inModal && "justify-start pt-2"}`}>
+        {!isPublic && (
+          <Controller
+            control={control}
+            name="accessType"
+            defaultValue="organization"
+            render={({ field: { onChange, ...field } }) => (
+              <FormControl label="General Access">
+                <Select
+                  {...field}
+                  onValueChange={(e) => onChange(e)}
+                >
+                  <SelectItem value="organization">People within your organization</SelectItem>
+                  <SelectItem value="anyone">Anyone</SelectItem>
+                </Select>
+              </FormControl>
+            )}
+          />
+        )}
+        <div className={`flex items-center space-x-4 pt-2 ${!inModal && ""}`}>
           <Button className="mr-0" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
             {inModal ? "Create" : "Share Secret"}
           </Button>
