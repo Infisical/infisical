@@ -666,6 +666,18 @@ export const kmsServiceFactory = ({
     };
   };
 
+  const getKmsById = async (kmsKeyId: string, tx?: Knex) => {
+    const kms = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+    if (!kms.id) {
+      throw new NotFoundError({
+        message: "KMS not found"
+      });
+    }
+
+    return kms;
+  };
+
   const startService = async () => {
     const appCfg = getConfig();
     // This will switch to a seal process and HMS flow in future
@@ -725,6 +737,7 @@ export const kmsServiceFactory = ({
     getProjectSecretManagerKmsKey,
     updateProjectSecretManagerKmsKey,
     getProjectKeyBackup,
-    loadProjectKeyBackup
+    loadProjectKeyBackup,
+    getKmsById
   };
 };
