@@ -737,7 +737,8 @@ export const registerRoutes = async (
 
   const secretSharingService = secretSharingServiceFactory({
     permissionService,
-    secretSharingDAL
+    secretSharingDAL,
+    orgDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
