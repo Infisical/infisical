@@ -193,9 +193,13 @@ var secretsSetCmd = &cobra.Command{
 
 			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, token)
 		} else {
-			workspaceFile, err := util.GetWorkSpaceFromFile()
-			if err != nil {
-				util.HandleError(err, "unable to get your local config details [err=%v]")
+			if projectId == "" {
+				workspaceFile, err := util.GetWorkSpaceFromFile()
+				if err != nil {
+					util.HandleError(err, "unable to get your local config details [err=%v]")
+				}
+
+				projectId = workspaceFile.WorkspaceId
 			}
 
 			loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
@@ -207,7 +211,7 @@ var secretsSetCmd = &cobra.Command{
 				util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 			}
 
-			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, workspaceFile.WorkspaceId, &models.TokenDetails{
+			secretOperations, err = util.SetRawSecrets(args, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
 				Type:  "",
 				Token: loggedInUserDetails.UserCredentials.JTWToken,
 			})
