@@ -18,9 +18,21 @@ In a similar way, to solve the above-mentioned issues, Infisical provides a feat
 
 ### Setting a policy
 
-First, you would need to create a set of policies for a certain environment. In the example below, a generic policy for a production environment is shown. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined approver (or multiple approvers).
+First, you would need to create a set of policies for a certain environment. In the example below, a generic change policy for a production environment is shown. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined approver (or multiple approvers).
 
 ![create secret update policy](../../images/platform/pr-workflows/secret-update-policy.png)
+
+### Defining enforcement level
+
+The enforcement level determines how strict the policy is. A **Hard** enforcement level means that any change that matches the policy will need approval prior merging. A **Soft** enforcement level means that a change requests that matches the policy could be bypassed if the requester provides a reason for the bypass. If a change request is bypassed, the approvers will be notified via email.
+
+Take into account that a **Soft** enforcement level is more flexible and allows for more flexibility in the approval process but it's more prone to human error.
+
+### Example of creating a change policy
+
+When creating a policy, you can choce the type of policy you want to create. In this case, we will be creating a `Change Policy`. Other types of policies include `Access Policy` that creates policies for **[Access Requests](/documentation/platform/access-controls/access-requests)**.
+
+![create panel secret update policy](../../images/platform/pr-workflows/create-change-policy.png)
 
 ### Example of updating secrets with Approval workflows
 
