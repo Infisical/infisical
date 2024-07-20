@@ -22,6 +22,7 @@ import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
+  secretEncryptionHelper,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
@@ -74,17 +75,6 @@ type TSecretV2BridgeServiceFactoryDep = {
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
-
-const encryptionHelper = {
-  encryptValue: (encryptor: Awaited<ReturnType<TKmsServiceFactory["encryptWithKmsKey"]>>, value?: string) => {
-    if (typeof value === "undefined") return;
-    return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
-  },
-  decryptValue: (decryptor: Awaited<ReturnType<TKmsServiceFactory["decryptWithInputKey"]>>, value?: Buffer | null) => {
-    if (!value) return;
-    return decryptor({ cipherTextBlob: value }).toString();
-  }
-};
 
 /*
  * This service is a bridge from our old architecture towards the new architecture
@@ -171,8 +161,8 @@ export const secretV2BridgeServiceFactory = ({
             version: 1,
             type,
             reminderRepeatDays: el.secretReminderRepeatDays,
-            encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
-            encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue),
+            encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
+            encryptedValue: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue),
             reminderNote: el.secretReminderNote,
             skipMultilineEncoding: el.skipMultilineEncoding,
             key: secretName,
@@ -291,7 +281,7 @@ export const secretV2BridgeServiceFactory = ({
     const encryptedValue =
       typeof secretValue !== "undefined"
         ? {
-            encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, secretValue) as Buffer,
+            encryptedValue: secretEncryptionHelper.encryptValue(secretManagerEncryptor, secretValue) as Buffer,
             references: getAllNestedSecretReferences(secretValue)
           }
         : {};
@@ -304,7 +294,7 @@ export const secretV2BridgeServiceFactory = ({
             filter: { id: secretId },
             data: {
               reminderRepeatDays: inputSecret.secretReminderRepeatDays,
-              encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, secretComment),
+              encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, secretComment),
               reminderNote: inputSecret.secretReminderNote,
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
@@ -408,8 +398,8 @@ export const secretV2BridgeServiceFactory = ({
     const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...deletedSecret[0],
-      value: encryptionHelper.decryptValue(secretManagerDecryptor, deletedSecret[0].encryptedValue),
-      comment: encryptionHelper.decryptValue(secretManagerDecryptor, deletedSecret[0].encryptedComment)
+      value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, deletedSecret[0].encryptedValue),
+      comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, deletedSecret[0].encryptedComment)
     });
   };
 
@@ -496,15 +486,15 @@ export const secretV2BridgeServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => encryptionHelper.decryptValue(secretManagerDecryptor, value)
+        decryptor: (value) => secretEncryptionHelper.decryptValue(secretManagerDecryptor, value)
       });
 
       return {
         secrets: secrets.map((secret) =>
           reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
             ...secret,
-            value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue),
-            comment: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
+            value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue),
+            comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
           })
         ),
         imports: importedSecrets
@@ -515,8 +505,8 @@ export const secretV2BridgeServiceFactory = ({
       secrets: secrets.map((secret) =>
         reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
           ...secret,
-          value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue),
-          comment: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
+          value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue),
+          comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
         })
       )
     };
@@ -583,7 +573,7 @@ export const secretV2BridgeServiceFactory = ({
           .then((el) => SecretsV2Schema.parse({ ...el, id: el.secretId })));
     const interpolateInlineSecretReference = interpolateSecrets({
       projectId,
-      decryptSecret: (encryptedValue) => encryptionHelper.decryptValue(secretManagerDecryptor, encryptedValue),
+      decryptSecret: (encryptedValue) => secretEncryptionHelper.decryptValue(secretManagerDecryptor, encryptedValue),
       secretDAL,
       folderDAL
     });
@@ -610,14 +600,17 @@ export const secretV2BridgeServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => encryptionHelper.decryptValue(secretManagerDecryptor, value)
+        decryptor: (value) => secretEncryptionHelper.decryptValue(secretManagerDecryptor, value)
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           if (secretName === importedSecrets[i].secrets[j].key) {
             const importedSecret = importedSecrets[i].secrets[j];
-            let secretValue = encryptionHelper.decryptValue(secretManagerDecryptor, importedSecret.encryptedValue);
+            let secretValue = secretEncryptionHelper.decryptValue(
+              secretManagerDecryptor,
+              importedSecret.encryptedValue
+            );
             if (expandSecretReferences && secretValue) {
               const secretReferenceExpandedString = {
                 [importedSecret.key]: { value: secretValue }
@@ -630,7 +623,7 @@ export const secretV2BridgeServiceFactory = ({
             return reshapeBridgeSecret(projectId, importedSecrets[i].environment, importedSecrets[i].secretPath, {
               ...importedSecret,
               value: secretValue,
-              comment: encryptionHelper.decryptValue(secretManagerDecryptor, importedSecret.encryptedComment)
+              comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, importedSecret.encryptedComment)
             });
           }
         }
@@ -638,7 +631,7 @@ export const secretV2BridgeServiceFactory = ({
     }
     if (!secret) throw new BadRequestError({ message: "Secret not found" });
 
-    let secretValue = encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue);
+    let secretValue = secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue);
     if (expandSecretReferences && secretValue) {
       const secretReferenceExpandedString = {
         [secret.key]: { value: secretValue }
@@ -651,7 +644,7 @@ export const secretV2BridgeServiceFactory = ({
     return reshapeBridgeSecret(projectId, environment, path, {
       ...secret,
       value: secretValue,
-      comment: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
+      comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedComment)
     });
   };
 
@@ -707,8 +700,8 @@ export const secretV2BridgeServiceFactory = ({
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => ({
           version: 1,
-          encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
-          encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue),
+          encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
+          encryptedValue: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue),
           skipMultilineEncoding: el.skipMultilineEncoding,
           key: el.secretKey,
           tagIds: el.tagIds,
@@ -737,8 +730,8 @@ export const secretV2BridgeServiceFactory = ({
     return newSecrets.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        value: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
-        comment: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
+        value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
+        comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
       })
     );
   };
@@ -814,7 +807,7 @@ export const secretV2BridgeServiceFactory = ({
           const encryptedValue =
             typeof el.secretValue !== "undefined"
               ? {
-                  encryptedValue: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue) as Buffer,
+                  encryptedValue: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretValue) as Buffer,
                   references: getAllNestedSecretReferences(el.secretValue)
                 }
               : {};
@@ -822,7 +815,7 @@ export const secretV2BridgeServiceFactory = ({
             filter: { key: el.secretKey, type: SecretType.Shared },
             data: {
               reminderRepeatDays: el.secretReminderRepeatDays,
-              encryptedComment: encryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
+              encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
               reminderNote: el.secretReminderNote,
               skipMultilineEncoding: el.skipMultilineEncoding,
               key: el.newSecretName || el.secretKey,
@@ -850,8 +843,8 @@ export const secretV2BridgeServiceFactory = ({
     return secrets.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        value: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
-        comment: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
+        value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
+        comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
       })
     );
   };
@@ -925,8 +918,8 @@ export const secretV2BridgeServiceFactory = ({
     return secretsDeleted.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        value: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
-        comment: encryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
+        value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedValue),
+        comment: secretEncryptionHelper.decryptValue(secretManagerDecryptor, el.encryptedComment)
       })
     );
   };
@@ -991,7 +984,7 @@ export const secretV2BridgeServiceFactory = ({
             secretId: id,
             references: encryptedValue
               ? getAllNestedSecretReferences(
-                  encryptionHelper.decryptValue(secretManagerDecryptor, encryptedValue) as string
+                  secretEncryptionHelper.decryptValue(secretManagerDecryptor, encryptedValue) as string
                 )
               : []
           })),
@@ -1074,7 +1067,7 @@ export const secretV2BridgeServiceFactory = ({
     const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
     const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
       ...secret,
-      value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue)
+      value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue)
     }));
 
     let isSourceUpdated = false;
@@ -1093,7 +1086,7 @@ export const secretV2BridgeServiceFactory = ({
       const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
         return {
           ...secret,
-          value: encryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue)
+          value: secretEncryptionHelper.decryptValue(secretManagerDecryptor, secret.encryptedValue)
         };
       });
 

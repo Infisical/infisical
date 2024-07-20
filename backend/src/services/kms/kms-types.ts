@@ -26,3 +26,18 @@ export type TDecryptWithKeyDTO = {
   key: Buffer;
   cipherTextBlob: Buffer;
 };
+
+export enum KmsDataKey {
+  Organization,
+  SecretManager
+  // CertificateManager
+}
+
+export type TEncryptWithKmsDataKeyDTO =
+  | { type: KmsDataKey.Organization; orgId: string }
+  | { type: KmsDataKey.SecretManager; projectId: string };
+// akhilmhdh: not implemented yet
+// | {
+//     type: KmsDataKey.CertificateManager;
+//     projectId: string;
+//   };

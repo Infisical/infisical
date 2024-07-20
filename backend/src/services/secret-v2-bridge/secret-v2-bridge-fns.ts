@@ -8,6 +8,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
+import { TKmsServiceFactory } from "../kms/kms-service";
 
 const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
 
@@ -551,3 +552,14 @@ export const reshapeBridgeSecret = (
   createdAt: secret.createdAt,
   updatedAt: secret.updatedAt
 });
+
+export const secretEncryptionHelper = {
+  encryptValue: (encryptor: Awaited<ReturnType<TKmsServiceFactory["encryptWithKmsKey"]>>, value?: string) => {
+    if (typeof value === "undefined") return;
+    return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+  },
+  decryptValue: (decryptor: Awaited<ReturnType<TKmsServiceFactory["decryptWithInputKey"]>>, value?: Buffer | null) => {
+    if (!value) return;
+    return decryptor({ cipherTextBlob: value }).toString();
+  }
+};
