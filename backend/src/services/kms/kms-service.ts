@@ -22,9 +22,11 @@ import { TInternalKmsDALFactory } from "./internal-kms-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
+  KmsDataKey,
   TDecryptWithKeyDTO,
   TDecryptWithKmsDTO,
   TEncryptionWithKeyDTO,
+  TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO
 } from "./kms-types";
@@ -678,6 +680,37 @@ export const kmsServiceFactory = ({
     return kms;
   };
 
+  const $getDataKey = async (dto: TEncryptWithKmsDataKeyDTO) => {
+    switch (dto.type) {
+      case KmsDataKey.SecretManager: {
+        return getProjectSecretManagerKmsDataKey(dto.projectId);
+      }
+      default: {
+        return getProjectSecretManagerKmsDataKey(dto.orgId);
+      }
+    }
+  };
+
+  const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO) => {
+    const dataKey = await $getDataKey(encryptionContext);
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    return {
+      encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+        const encryptedPlainTextBlob = cipher.encrypt(plainText, dataKey);
+
+        // Buffer#1 encrypted text + Buffer#2 version number
+        const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+        const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
+        return { cipherTextBlob };
+      },
+      decryptor: ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKeyDTO, "cipherTextBlob">) => {
+        const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+        const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
+        return decryptedBlob;
+      }
+    };
+  };
+
   const startService = async () => {
     const appCfg = getConfig();
     // This will switch to a seal process and HMS flow in future
@@ -738,6 +771,7 @@ export const kmsServiceFactory = ({
     updateProjectSecretManagerKmsKey,
     getProjectKeyBackup,
     loadProjectKeyBackup,
-    getKmsById
+    getKmsById,
+    createCipherPairWithDataKey
   };
 };

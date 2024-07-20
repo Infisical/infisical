@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { TableName, TSecretTagJunctionInsert } from "@app/db/schemas";
+import { TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -24,16 +24,24 @@ import { TSnapshotDALFactory } from "./snapshot-dal";
 import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
 import { getFullFolderPath } from "./snapshot-service-fns";
+import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
+import { TSnapshotSecretV2DALFactory } from "./snapshot-secret-v2-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;
   snapshotSecretDAL: TSnapshotSecretDALFactory;
+  snapshotSecretV2BridgeDAL: TSnapshotSecretV2DALFactory;
   snapshotFolderDAL: TSnapshotFolderDALFactory;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionByFolderId">;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionByFolderId">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestVersionByFolderId" | "insertMany">;
   secretDAL: Pick<TSecretDALFactory, "delete" | "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "delete" | "insertMany">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "saveTagsToSecretV2">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
+  secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findBySecretPath" | "delete" | "insertMany" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
@@ -52,7 +60,11 @@ export const secretSnapshotServiceFactory = ({
   permissionService,
   licenseService,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  secretVersionV2BridgeDAL,
+  secretV2BridgeDAL,
+  snapshotSecretV2BridgeDAL,
+  secretVersionV2TagBridgeDAL
 }: TSecretSnapshotServiceFactoryDep) => {
   const projectSecretSnapshotCount = async ({
     environment,
@@ -118,7 +130,7 @@ export const secretSnapshotServiceFactory = ({
   };
 
   const getSnapshotData = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetSnapshotDataDTO) => {
-    const snapshot = await snapshotDAL.findSecretSnapshotDataById(id);
+    const snapshot = await snapshotDAL.findById(id);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -127,26 +139,73 @@ export const secretSnapshotServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+    const shouldUseBridge = snapshot.projectVersion === 3;
+    let snapshotDetails;
+    if (shouldUseBridge) {
+      snapshotDetails = await snapshotDAL.findSecretSnapshotV2DataById(id);
+    } else {
+      snapshotDetails = await snapshotDAL.findSecretSnapshotDataById(id);
+    }
 
     const fullFolderPath = await getFullFolderPath({
       folderDAL,
-      folderId: snapshot.folderId,
-      envId: snapshot.environment.id
+      folderId: snapshotDetails.folderId,
+      envId: snapshotDetails.environment.id
     });
 
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: snapshot.environment.slug, secretPath: fullFolderPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: snapshotDetails.environment.slug,
+        secretPath: fullFolderPath
+      })
     );
 
-    return snapshot;
+    return snapshotDetails;
   };
 
-  const performSnapshot = async (folderId: string) => {
+  const performSnapshot = async (folderId: string, shouldUseSecretV2Bridge: boolean) => {
     try {
       if (!licenseService.isValidLicense) throw new InternalServerError({ message: "Invalid license" });
+      if (shouldUseSecretV2Bridge) {
+        const snapshot = await snapshotDAL.transaction(async (tx) => {
+          const folder = await folderDAL.findById(folderId, tx);
+          if (!folder) throw new BadRequestError({ message: "Folder not found" });
+
+          const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx);
+          const folderVersions = await folderVersionDAL.findLatestVersionByFolderId(folderId, tx);
+          const newSnapshot = await snapshotDAL.create(
+            {
+              folderId,
+              envId: folder.environment.envId,
+              parentFolderId: folder.parentId
+            },
+            tx
+          );
+          const snapshotSecrets = await snapshotSecretV2BridgeDAL.insertMany(
+            secretVersions.map(({ id }) => ({
+              secretVersionId: id,
+              envId: folder.environment.envId,
+              snapshotId: newSnapshot.id
+            })),
+            tx
+          );
+          const snapshotFolders = await snapshotFolderDAL.insertMany(
+            folderVersions.map(({ id }) => ({
+              folderVersionId: id,
+              envId: folder.environment.envId,
+              snapshotId: newSnapshot.id
+            })),
+            tx
+          );
+
+          return { ...newSnapshot, secrets: snapshotSecrets, folder: snapshotFolders };
+        });
+        return snapshot;
+      }
 
       const snapshot = await snapshotDAL.transaction(async (tx) => {
         const folder = await folderDAL.findById(folderId, tx);
@@ -199,6 +258,7 @@ export const secretSnapshotServiceFactory = ({
   }: TRollbackSnapshotDTO) => {
     const snapshot = await snapshotDAL.findById(snapshotId);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
+    const shouldUseBridge = snapshot.projectVersion === 3;
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -211,6 +271,117 @@ export const secretSnapshotServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRollback
     );
+
+    if (shouldUseBridge) {
+      const rollback = await snapshotDAL.transaction(async (tx) => {
+        const rollbackSnaps = await snapshotDAL.findRecursivelySnapshotsV2Bridge(snapshot.id, tx);
+        // this will remove all secrets in current folder
+        const deletedTopLevelSecs = await secretV2BridgeDAL.delete({ folderId: snapshot.folderId }, tx);
+        const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
+        // this will remove all secrets and folders on child
+        // due to sql foreign key and link list connection removing the folders removes everything below too
+        const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId, isReserved: false }, tx);
+        const deletedTopLevelFolders = groupBy(
+          deletedFolders.filter(({ parentId }) => parentId === snapshot.folderId),
+          (item) => item.id
+        );
+        const folders = await folderDAL.insertMany(
+          rollbackSnaps.flatMap(({ folderVersion, folderId }) =>
+            folderVersion.map(({ name, id, latestFolderVersion }) => ({
+              envId: snapshot.envId,
+              id,
+              // this means don't bump up the version if not root folder
+              // because below ones can be same version as nothing changed
+              version: deletedTopLevelFolders[folderId] ? latestFolderVersion + 1 : latestFolderVersion,
+              name,
+              parentId: folderId
+            }))
+          ),
+          tx
+        );
+        const secrets = await secretV2BridgeDAL.insertMany(
+          rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
+            secretVersions.map(
+              ({ latestSecretVersion, version, updatedAt, createdAt, secretId, envId, id, tags, ...el }) => ({
+                ...el,
+                id: secretId,
+                version: deletedTopLevelSecsGroupById[secretId] ? latestSecretVersion + 1 : latestSecretVersion,
+                folderId
+              })
+            )
+          ),
+          tx
+        );
+        const secretTagsToBeInsert: TSecretV2TagJunctionInsert[] = [];
+        const secretVerTagToBeInsert: Record<string, string[]> = {};
+        rollbackSnaps.forEach(({ secretVersions }) => {
+          secretVersions.forEach((secVer) => {
+            secVer.tags.forEach((tag) => {
+              secretTagsToBeInsert.push({ secrets_v2Id: secVer.secretId, secret_tagsId: tag.id });
+              if (!secretVerTagToBeInsert?.[secVer.secretId]) secretVerTagToBeInsert[secVer.secretId] = [];
+              secretVerTagToBeInsert[secVer.secretId].push(tag.id);
+            });
+          });
+        });
+        await secretTagDAL.saveTagsToSecretV2(secretTagsToBeInsert, tx);
+        const folderVersions = await folderVersionDAL.insertMany(
+          folders.map(({ version, name, id, envId }) => ({
+            name,
+            version,
+            folderId: id,
+            envId
+          })),
+          tx
+        );
+        const secretVersions = await secretVersionV2BridgeDAL.insertMany(
+          secrets.map(({ id, updatedAt, createdAt, ...el }) => ({ ...el, secretId: id })),
+          tx
+        );
+        await secretVersionV2TagBridgeDAL.insertMany(
+          secretVersions.flatMap(({ secretId, id }) =>
+            secretVerTagToBeInsert?.[secretId]?.length
+              ? secretVerTagToBeInsert[secretId].map((tagId) => ({
+                  [`${TableName.SecretTag}Id` as const]: tagId,
+                  [`${TableName.SecretVersionV2}Id` as const]: id
+                }))
+              : []
+          ),
+          tx
+        );
+        const newSnapshot = await snapshotDAL.create(
+          {
+            folderId: snapshot.folderId,
+            envId: snapshot.envId,
+            parentFolderId: snapshot.parentFolderId
+          },
+          tx
+        );
+        const snapshotSecrets = await snapshotSecretV2BridgeDAL.insertMany(
+          secretVersions
+            .filter(({ secretId }) => Boolean(deletedTopLevelSecsGroupById?.[secretId]))
+            .map(({ id }) => ({
+              secretVersionId: id,
+              envId: newSnapshot.envId,
+              snapshotId: newSnapshot.id
+            })),
+          tx
+        );
+        const snapshotFolders = await snapshotFolderDAL.insertMany(
+          folderVersions
+            .filter(({ folderId }) => Boolean(deletedTopLevelFolders?.[folderId]))
+            .map(({ id }) => ({
+              folderVersionId: id,
+              envId: newSnapshot.envId,
+              snapshotId: newSnapshot.id
+            })),
+          tx
+        );
+
+        return { ...newSnapshot, snapshotSecrets, snapshotFolders };
+      });
+
+      return rollback;
+    }
 
     const rollback = await snapshotDAL.transaction(async (tx) => {
       const rollbackSnaps = await snapshotDAL.findRecursivelySnapshots(snapshot.id, tx);

@@ -887,3 +887,50 @@ export const updateManySecretsRawFnFactory = ({
 
   return updateManySecretsRawFn;
 };
+
+export const decryptSecretWithBot = (
+  secret: Pick<
+    TSecrets,
+    | "secretKeyIV"
+    | "secretKeyTag"
+    | "secretKeyCiphertext"
+    | "secretValueIV"
+    | "secretValueTag"
+    | "secretValueCiphertext"
+    | "secretCommentIV"
+    | "secretCommentTag"
+    | "secretCommentCiphertext"
+  >,
+  key: string
+) => {
+  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretKeyCiphertext,
+    iv: secret.secretKeyIV,
+    tag: secret.secretKeyTag,
+    key
+  });
+
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key
+  });
+
+  let secretComment = "";
+
+  if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    secretComment = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretCommentCiphertext,
+      iv: secret.secretCommentIV,
+      tag: secret.secretCommentTag,
+      key
+    });
+  }
+
+  return {
+    secretKey,
+    secretValue,
+    secretComment
+  };
+};
