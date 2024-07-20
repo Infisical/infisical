@@ -32,12 +32,19 @@ export const parseScimFilter = (filterToParse: string | undefined) => {
   return { [attributeName]: parsedValue.replace(/"/g, "") };
 };
 
+export function extractScimValueFromPath(path: string): string | null {
+  const regex = /members\[value eq "([^"]+)"\]/;
+  const match = path.match(regex);
+  return match ? match[1] : null;
+}
+
 export const buildScimUser = ({
   orgMembershipId,
   username,
   email,
   firstName,
   lastName,
+  groups = [],
   active
 }: {
   orgMembershipId: string;
@@ -45,6 +52,10 @@ export const buildScimUser = ({
   email?: string | null;
   firstName: string;
   lastName: string;
+  groups?: {
+    value: string;
+    display: string;
+  }[];
   active: boolean;
 }): TScimUser => {
   const scimUser = {
@@ -67,7 +78,7 @@ export const buildScimUser = ({
         ]
       : [],
     active,
-    groups: [],
+    groups,
     meta: {
       resourceType: "User",
       location: null

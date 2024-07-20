@@ -17,7 +17,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decrypt" | "generateKmsKey">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -68,11 +68,11 @@ export const certificateAuthorityCrlServiceFactory = ({
       kmsService
     });
 
-    const decryptedCrl = await kmsService.decrypt({
-      kmsId: keyId,
-      cipherTextBlob: caCrl.encryptedCrl
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: keyId
     });
 
+    const decryptedCrl = kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
     const crl = new x509.X509Crl(decryptedCrl);
 
     const base64crl = crl.toString("base64");

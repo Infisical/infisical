@@ -1,4 +1,5 @@
 import { TOrgRole } from "../roles/types";
+import { Workspace } from "../workspace/types";
 import { IdentityAuthMethod } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -45,6 +46,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
+  project: Pick<Workspace, "id" | "name">;
   roles: Array<
     {
       id: string;
@@ -177,6 +179,59 @@ export type UpdateIdentityGcpAuthDTO = {
 };
 
 export type DeleteIdentityGcpAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
+export type IdentityOidcAuth = {
+  identityId: string;
+  oidcDiscoveryUrl: string;
+  caCert: string;
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityOidcAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  oidcDiscoveryUrl: string;
+  caCert: string;
+  boundIssuer: string;
+  boundAudiences: string;
+  boundClaims: Record<string, string>;
+  boundSubject: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityOidcAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  oidcDiscoveryUrl?: string;
+  caCert?: string;
+  boundIssuer?: string;
+  boundAudiences?: string;
+  boundClaims?: Record<string, string>;
+  boundSubject?: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityOidcAuthDTO = {
   organizationId: string;
   identityId: string;
 };

@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -20,6 +21,7 @@ type TSuperAdminServiceFactoryDep = {
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -36,7 +38,8 @@ export const superAdminServiceFactory = ({
   userDAL,
   authService,
   orgService,
-  keyStore
+  keyStore,
+  licenseService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -219,6 +222,12 @@ export const superAdminServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
+    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+      throw new BadRequestError({
+        message: "Failed to delete user due to plan restriction. Upgrade to Infisical's Pro plan."
+      });
+    }
+
     const user = await userDAL.deleteById(userId);
     return user;
   };

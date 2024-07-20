@@ -264,7 +264,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
           usernames: orgUsers
             .map((member) => member.user.username)
             .filter((username) => username !== user.username),
-          projectId: newProjectId
+          projectId: newProjectId,
+          orgId: currentOrg.id
         });
       }
 

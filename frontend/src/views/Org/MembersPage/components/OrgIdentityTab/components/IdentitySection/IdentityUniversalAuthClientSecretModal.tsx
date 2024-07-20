@@ -36,7 +36,13 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
   description: yup.string(),
-  ttl: yup.string(),
+  ttl: yup
+    .string()
+    .test(
+      "is-value-valid",
+      "TTL cannot be greater than 315360000",
+      (value) => Number(value) <= 315360000
+    ),
   numUsesLimit: yup.string()
 });
 

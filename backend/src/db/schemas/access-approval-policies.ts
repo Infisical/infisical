@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { EnforcementLevel } from "@app/lib/types";
+
 import { TImmutableDBKeys } from "./models";
 
 export const AccessApprovalPoliciesSchema = z.object({
@@ -14,7 +16,8 @@ export const AccessApprovalPoliciesSchema = z.object({
   secretPath: z.string().nullable().optional(),
   envId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;

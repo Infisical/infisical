@@ -3,16 +3,10 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
-import { 
-  OrgGroupsTab,
-  OrgIdentityTab, 
-  OrgMembersTab,
-  OrgRoleTabSection 
-} from "./components";
+import { OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 
 enum TabSections {
   Member = "members",
-  Groups = "groups",
   Roles = "roles",
   Identities = "identities"
 }
@@ -25,8 +19,7 @@ export const MembersPage = withPermission(
           <p className="mr-4 mb-4 text-3xl font-semibold text-white">Organization Access Control</p>
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
-              <Tab value={TabSections.Member}>People</Tab>
-              <Tab value={TabSections.Groups}>Groups</Tab>
+              <Tab value={TabSections.Member}>Users</Tab>
               <Tab value={TabSections.Identities}>
                 <div className="flex items-center">
                   <p>Machine Identities</p>
@@ -36,9 +29,6 @@ export const MembersPage = withPermission(
             </TabList>
             <TabPanel value={TabSections.Member}>
               <OrgMembersTab />
-            </TabPanel>
-            <TabPanel value={TabSections.Groups}>
-              <OrgGroupsTab />
             </TabPanel>
             <TabPanel value={TabSections.Identities}>
               <OrgIdentityTab />

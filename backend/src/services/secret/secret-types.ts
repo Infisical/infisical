@@ -397,3 +397,13 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
       // used for import creation to trigger replication
       pickOnlyImportIds?: string[];
     });
+
+export type TMoveSecretsDTO = {
+  projectSlug: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  shouldOverwrite: boolean;
+} & Omit<TProjectPermission, "projectId">;

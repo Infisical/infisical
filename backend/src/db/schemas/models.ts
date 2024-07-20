@@ -60,6 +60,7 @@ export enum TableName {
   IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
+  IdentityOidcAuth = "identity_oidc_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -95,6 +96,10 @@ export enum TableName {
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
+  ExternalKms = "external_kms",
+  InternalKms = "internal_kms",
+  InternalKmsKeyVersion = "internal_kms_key_version",
+  // @depreciated
   KmsKeyVersion = "kms_key_versions"
 }
 
@@ -167,5 +172,6 @@ export enum IdentityAuthMethod {
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
-  AZURE_AUTH = "azure-auth"
+  AZURE_AUTH = "azure-auth",
+  OIDC_AUTH = "oidc-auth"
 }

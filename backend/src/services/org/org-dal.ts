@@ -74,7 +74,9 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema(TableName.OrgMembership),
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("isActive").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
@@ -83,9 +85,9 @@ export const orgDALFactory = (db: TDbClient) => {
         )
         .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
 
-      return members.map(({ email, username, firstName, lastName, userId, publicKey, ...data }) => ({
+      return members.map(({ email, isEmailVerified, username, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
-        user: { email, username, firstName, lastName, id: userId, publicKey }
+        user: { email, isEmailVerified, username, firstName, lastName, id: userId, publicKey }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
@@ -207,9 +209,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateById = async (orgId: string, data: Partial<TOrganizations>) => {
+  const updateById = async (orgId: string, data: Partial<TOrganizations>, tx?: Knex) => {
     try {
-      const [org] = await db(TableName.Organization)
+      const [org] = await (tx || db)(TableName.Organization)
         .where({ id: orgId })
         .update({ ...data })
         .returning("*");

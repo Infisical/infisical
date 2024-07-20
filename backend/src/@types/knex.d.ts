@@ -59,6 +59,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalKms,
+  TExternalKmsInsert,
+  TExternalKmsUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -92,6 +95,9 @@ import {
   TIdentityKubernetesAuths,
   TIdentityKubernetesAuthsInsert,
   TIdentityKubernetesAuthsUpdate,
+  TIdentityOidcAuths,
+  TIdentityOidcAuthsInsert,
+  TIdentityOidcAuthsUpdate,
   TIdentityOrgMemberships,
   TIdentityOrgMembershipsInsert,
   TIdentityOrgMembershipsUpdate,
@@ -122,6 +128,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TInternalKms,
+  TInternalKmsInsert,
+  TInternalKmsUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -483,6 +492,11 @@ declare module "knex/types/tables" {
       TIdentityAzureAuthsInsert,
       TIdentityAzureAuthsUpdate
     >;
+    [TableName.IdentityOidcAuth]: KnexOriginal.CompositeTableType<
+      TIdentityOidcAuths,
+      TIdentityOidcAuthsInsert,
+      TIdentityOidcAuthsUpdate
+    >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
       TIdentityUaClientSecretsInsert,
@@ -648,6 +662,8 @@ declare module "knex/types/tables" {
       TKmsRootConfigInsert,
       TKmsRootConfigUpdate
     >;
+    [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
+    [TableName.ExternalKms]: KnexOriginal.CompositeTableType<TExternalKms, TExternalKmsInsert, TExternalKmsUpdate>;
     [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
     [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
       TKmsKeyVersions,

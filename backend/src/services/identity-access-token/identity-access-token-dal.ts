@@ -51,6 +51,18 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             `${TableName.IdentityKubernetesAuth}.identityId`
           );
         })
+        .leftJoin(TableName.IdentityOidcAuth, (qb) => {
+          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.OIDC_AUTH])).andOn(
+            `${TableName.Identity}.id`,
+            `${TableName.IdentityOidcAuth}.identityId`
+          );
+        })
+        .leftJoin(TableName.IdentityTokenAuth, (qb) => {
+          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.TOKEN_AUTH])).andOn(
+            `${TableName.Identity}.id`,
+            `${TableName.IdentityTokenAuth}.identityId`
+          );
+        })
         .select(selectAllTableCols(TableName.IdentityAccessToken))
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
@@ -58,6 +70,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAzureAuth).as("accessTokenTrustedIpsAzure"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOidcAuth).as("accessTokenTrustedIpsOidc"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTokenAuth).as("accessTokenTrustedIpsToken"),
           db.ref("name").withSchema(TableName.Identity)
         )
         .first();
@@ -71,7 +85,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           doc.accessTokenTrustedIpsGcp ||
           doc.accessTokenTrustedIpsAws ||
           doc.accessTokenTrustedIpsAzure ||
-          doc.accessTokenTrustedIpsK8s
+          doc.accessTokenTrustedIpsK8s ||
+          doc.accessTokenTrustedIpsOidc ||
+          doc.accessTokenTrustedIpsToken
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });

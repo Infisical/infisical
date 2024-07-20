@@ -22,8 +22,22 @@ const schema = yup
     stsEndpoint: yup.string(),
     allowedPrincipalArns: yup.string(),
     allowedAccountIds: yup.string(),
-    accessTokenTTL: yup.string().required("Access Token TTL is required"),
-    accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required"),
+    accessTokenTTL: yup
+      .string()
+      .required("Access Token TTL is required")
+      .test(
+        "is-value-valid",
+        "Access Token TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
+      ),
+    accessTokenMaxTTL: yup
+      .string()
+      .required("Access Max Token TTL is required")
+      .test(
+        "is-value-valid",
+        "Access Token Max TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
+      ),
     accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
     accessTokenTrustedIps: yup
       .array(

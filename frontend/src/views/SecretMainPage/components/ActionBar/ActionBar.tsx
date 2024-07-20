@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
+  faAnglesRight,
   faCheckCircle,
   faChevronRight,
   faCodeCommit,
@@ -46,7 +48,12 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
 import { interpolateSecrets } from "@app/helpers/secret";
 import { usePopUp } from "@app/hooks";
-import { useCreateFolder, useDeleteSecretBatch, useGetUserWsKey } from "@app/hooks/api";
+import {
+  useCreateFolder,
+  useDeleteSecretBatch,
+  useGetUserWsKey,
+  useMoveSecrets
+} from "@app/hooks/api";
 import { DecryptedSecret, SecretType, TImportedSecrets, WsTag } from "@app/hooks/api/types";
 import { debounce } from "@app/lib/fn/debounce";
 
@@ -60,6 +67,7 @@ import { Filter, GroupBy } from "../../SecretMainPage.types";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
+import { MoveSecretsModal } from "./MoveSecretsModal";
 
 type Props = {
   secrets?: DecryptedSecret[];
@@ -105,6 +113,7 @@ export const ActionBar = ({
     "addDynamicSecret",
     "addSecretImport",
     "bulkDeleteSecrets",
+    "moveSecrets",
     "misc",
     "upgradePlan"
   ] as const);
@@ -114,6 +123,7 @@ export const ActionBar = ({
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
+  const { mutateAsync: moveSecrets } = useMoveSecrets();
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
   const selectedSecrets = useSelectedSecrets();
@@ -225,6 +235,55 @@ export const ActionBar = ({
         type: "error",
         text: "Failed to delete secrets"
       });
+    }
+  };
+
+  const handleSecretsMove = async ({
+    destinationEnvironment,
+    destinationSecretPath,
+    shouldOverwrite
+  }: {
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    shouldOverwrite: boolean;
+  }) => {
+    try {
+      const secretsToMove = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
+      const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
+        projectSlug,
+        shouldOverwrite,
+        sourceEnvironment: environment,
+        sourceSecretPath: secretPath,
+        destinationEnvironment,
+        destinationSecretPath,
+        projectId: workspaceId,
+        secretIds: secretsToMove.map((sec) => sec.id)
+      });
+
+      let notificationMessage = "";
+      let notificationType: TypeOptions = "info";
+
+      if (isDestinationUpdated && isSourceUpdated) {
+        notificationMessage = "Successfully moved selected secrets";
+        notificationType = "success";
+      } else if (isDestinationUpdated) {
+        notificationMessage =
+          "Successfully created secrets in destination. A secret approval request has been generated for the source.";
+      } else if (isSourceUpdated) {
+        notificationMessage = "A secret approval request has been generated in the destination";
+      } else {
+        notificationMessage =
+          "A secret approval request has been generated in both the source and the destination.";
+      }
+
+      createNotification({
+        type: notificationType,
+        text: notificationMessage
+      });
+
+      resetSelectedSecret();
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -459,6 +518,25 @@ export const ActionBar = ({
             I={ProjectPermissionActions.Delete}
             a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             renderTooltip
+            allowedLabel="Move"
+          >
+            {(isAllowed) => (
+              <Button
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
+                className="ml-4"
+                onClick={() => handlePopUpOpen("moveSecrets")}
+                isDisabled={!isAllowed}
+                size="xs"
+              >
+                Move
+              </Button>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Delete}
+            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            renderTooltip
             allowedLabel="Delete"
           >
             {(isAllowed) => (
@@ -466,7 +544,7 @@ export const ActionBar = ({
                 variant="outline_bg"
                 colorSchema="danger"
                 leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-4"
+                className="ml-2"
                 onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
                 isDisabled={!isAllowed}
                 size="xs"
@@ -508,6 +586,11 @@ export const ActionBar = ({
         title="Do you want to delete these secrets?"
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteSecrets", isOpen)}
         onDeleteApproved={handleSecretBulkDelete}
+      />
+      <MoveSecretsModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        onMoveApproved={handleSecretsMove}
       />
       {subscription && (
         <UpgradePlanModal

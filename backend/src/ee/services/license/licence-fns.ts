@@ -38,7 +38,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   has_used_trial: true,
   secretApproval: false,
   secretRotation: true,
-  caCrl: false
+  caCrl: false,
+  instanceUserManagement: false
 });
 
 export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {

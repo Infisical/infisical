@@ -1,6 +1,8 @@
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { SecretSharingAccessType } from "@app/lib/types";
 
+import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
   TCreatePublicSharedSecretDTO,
@@ -12,13 +14,15 @@ import {
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
+  orgDAL: TOrgDALFactory;
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
 
 export const secretSharingServiceFactory = ({
   permissionService,
-  secretSharingDAL
+  secretSharingDAL,
+  orgDAL
 }: TSecretSharingServiceFactoryDep) => {
   const createSharedSecret = async (createSharedSecretInput: TCreateSharedSecretDTO) => {
     const {
@@ -30,6 +34,7 @@ export const secretSharingServiceFactory = ({
       encryptedValue,
       iv,
       tag,
+      accessType,
       hashedHex,
       expiresAt,
       expiresAfterViews
@@ -62,13 +67,14 @@ export const secretSharingServiceFactory = ({
       expiresAt,
       expiresAfterViews,
       userId: actorId,
-      orgId
+      orgId,
+      accessType
     });
     return { id: newSharedSecret.id };
   };
 
   const createPublicSharedSecret = async (createSharedSecretInput: TCreatePublicSharedSecretDTO) => {
-    const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = createSharedSecretInput;
+    const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews, accessType } = createSharedSecretInput;
     if (new Date(expiresAt) < new Date()) {
       throw new BadRequestError({ message: "Expiration date cannot be in the past" });
     }
@@ -92,7 +98,8 @@ export const secretSharingServiceFactory = ({
       tag,
       hashedHex,
       expiresAt,
-      expiresAfterViews
+      expiresAfterViews,
+      accessType
     });
     return { id: newSharedSecret.id };
   };
@@ -101,24 +108,39 @@ export const secretSharingServiceFactory = ({
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId } = getSharedSecretsInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
-    const userSharedSecrets = await secretSharingDAL.find({ userId: actorId, orgId }, { sort: [["expiresAt", "asc"]] });
+    const userSharedSecrets = await secretSharingDAL.findActiveSharedSecrets({ userId: actorId, orgId });
     return userSharedSecrets;
   };
 
-  const getActiveSharedSecretByIdAndHashedHex = async (sharedSecretId: string, hashedHex: string) => {
+  const getActiveSharedSecretByIdAndHashedHex = async (sharedSecretId: string, hashedHex: string, orgId?: string) => {
     const sharedSecret = await secretSharingDAL.findOne({ id: sharedSecretId, hashedHex });
     if (!sharedSecret) return;
+
+    const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
+    // Support organization level access for secret sharing
+    if (sharedSecret.accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId) {
+      return {
+        ...sharedSecret,
+        encryptedValue: "",
+        iv: "",
+        tag: "",
+        orgName
+      };
+    }
     if (sharedSecret.expiresAt && sharedSecret.expiresAt < new Date()) {
       return;
     }
     if (sharedSecret.expiresAfterViews != null && sharedSecret.expiresAfterViews >= 0) {
       if (sharedSecret.expiresAfterViews === 0) {
-        await secretSharingDAL.deleteById(sharedSecretId);
+        await secretSharingDAL.softDeleteById(sharedSecretId);
         return;
       }
       await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
     }
-    return sharedSecret;
+    if (sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId) {
+      return { ...sharedSecret, orgName };
+    }
+    return { ...sharedSecret, orgName: undefined };
   };
 
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {

@@ -107,6 +107,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           .number()
           .int()
           .min(1)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
@@ -115,6 +116,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
@@ -196,7 +198,13 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           .min(1)
           .optional()
           .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTrustedIps),
-        accessTokenTTL: z.number().int().min(0).optional().describe(UNIVERSAL_AUTH.UPDATE.accessTokenTTL),
+        accessTokenTTL: z
+          .number()
+          .int()
+          .min(0)
+          .max(315360000)
+          .optional()
+          .describe(UNIVERSAL_AUTH.UPDATE.accessTokenTTL),
         accessTokenNumUsesLimit: z
           .number()
           .int()
@@ -206,6 +214,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
@@ -362,7 +371,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         description: z.string().trim().default("").describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.description),
         numUsesLimit: z.number().min(0).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.numUsesLimit),
-        ttl: z.number().min(0).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.ttl)
+        ttl: z.number().min(0).max(315360000).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.ttl)
       }),
       response: {
         200: z.object({

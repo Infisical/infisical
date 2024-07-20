@@ -122,6 +122,21 @@ func handleAwsIamAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.Infi
 	return infisicalClient.Auth().AwsIamAuthLogin(identityId)
 }
 
+func handleOidcAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	jwt, err := util.GetCmdFlagOrEnv(cmd, "oidc-jwt", util.INFISICAL_OIDC_AUTH_JWT_NAME)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, err
+	}
+
+	return infisicalClient.Auth().OidcAuthLogin(identityId, jwt)
+}
+
 func formatAuthMethod(authMethod string) string {
 	return strings.ReplaceAll(authMethod, "-", " ")
 }
@@ -257,6 +272,7 @@ var loginCmd = &cobra.Command{
 				util.AuthStrategy.GCP_ID_TOKEN_AUTH: handleGcpIdTokenAuthLogin,
 				util.AuthStrategy.GCP_IAM_AUTH:      handleGcpIamAuthLogin,
 				util.AuthStrategy.AWS_IAM_AUTH:      handleAwsIamAuthLogin,
+				util.AuthStrategy.OIDC_AUTH:         handleOidcAuthLogin,
 			}
 
 			credential, err := authStrategies[strategy](cmd, infisicalClient)
@@ -456,6 +472,7 @@ func init() {
 	loginCmd.Flags().String("machine-identity-id", "", "machine identity id for kubernetes, azure, gcp-id-token, gcp-iam, and aws-iam auth methods")
 	loginCmd.Flags().String("service-account-token-path", "", "service account token path for kubernetes auth")
 	loginCmd.Flags().String("service-account-key-file-path", "", "service account key file path for GCP IAM auth")
+	loginCmd.Flags().String("oidc-jwt", "", "JWT for OIDC authentication")
 }
 
 func DomainOverridePrompt() (bool, error) {
@@ -616,7 +633,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	loginTwoResponseResult, err := api.CallLogin2V2(httpClient, api.GetLoginTwoV2Request{
 		Email:       email,
 		ClientProof: hex.EncodeToString(srpM1),
-		Password: password,
+		Password:    password,
 	})
 
 	if err != nil {

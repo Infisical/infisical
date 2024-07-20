@@ -15,6 +15,7 @@ export const SecretApprovalRequestsSchema = z.object({
   conflicts: z.unknown().nullable().optional(),
   slug: z.string(),
   folderId: z.string().uuid(),
+  bypassReason: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   isReplicated: z.boolean().nullable().optional(),

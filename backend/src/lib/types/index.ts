@@ -42,3 +42,13 @@ export type RequiredKeys<T> = {
 }[keyof T];
 
 export type PickRequired<T> = Pick<T, RequiredKeys<T>>;
+
+export enum EnforcementLevel {
+  Hard = "hard",
+  Soft = "soft"
+}
+
+export enum SecretSharingAccessType {
+  Anyone = "anyone",
+  Organization = "organization"
+}

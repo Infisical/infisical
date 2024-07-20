@@ -49,7 +49,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               name: z.string(),
               approvals: z.number(),
               approvers: z.string().array(),
-              secretPath: z.string().optional().nullable()
+              secretPath: z.string().optional().nullable(),
+              enforcementLevel: z.string()
             }),
             committerUser: approvalRequestUser,
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
@@ -116,6 +117,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       params: z.object({
         id: z.string()
       }),
+      body: z.object({
+        bypassReason: z.string().optional()
+      }),
       response: {
         200: z.object({
           approval: SecretApprovalRequestsSchema
@@ -129,7 +133,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        approvalId: req.params.id
+        approvalId: req.params.id,
+        bypassReason: req.body.bypassReason
       });
       return { approval };
     }
@@ -248,7 +253,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 name: z.string(),
                 approvals: z.number(),
                 approvers: approvalRequestUser.array(),
-                secretPath: z.string().optional().nullable()
+                secretPath: z.string().optional().nullable(),
+                enforcementLevel: z.string()
               }),
               environment: z.string(),
               statusChangedByUser: approvalRequestUser.optional(),

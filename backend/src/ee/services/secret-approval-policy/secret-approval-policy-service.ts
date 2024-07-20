@@ -45,12 +45,13 @@ export const secretApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    approverUserIds,
+    approvers,
     projectId,
     secretPath,
-    environment
+    environment,
+    enforcementLevel
   }: TCreateSapDTO) => {
-    if (approvals > approverUserIds.length)
+    if (approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -73,12 +74,13 @@ export const secretApprovalPolicyServiceFactory = ({
           envId: env.id,
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
       await secretApprovalPolicyApproverDAL.insertMany(
-        approverUserIds.map((approverUserId) => ({
+        approvers.map((approverUserId) => ({
           approverUserId,
           policyId: doc.id
         })),
@@ -90,7 +92,7 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const updateSecretApprovalPolicy = async ({
-    approverUserIds,
+    approvers,
     secretPath,
     name,
     actorId,
@@ -98,7 +100,8 @@ export const secretApprovalPolicyServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     approvals,
-    secretPolicyId
+    secretPolicyId,
+    enforcementLevel
   }: TUpdateSapDTO) => {
     const secretApprovalPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!secretApprovalPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
@@ -118,14 +121,15 @@ export const secretApprovalPolicyServiceFactory = ({
         {
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
-      if (approverUserIds) {
+      if (approvers) {
         await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await secretApprovalPolicyApproverDAL.insertMany(
-          approverUserIds.map((approverUserId) => ({
+          approvers.map((approverUserId) => ({
             approverUserId,
             policyId: doc.id
           })),

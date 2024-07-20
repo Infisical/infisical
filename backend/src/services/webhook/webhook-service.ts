@@ -6,6 +6,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { decryptWebhookDetails, getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
@@ -20,12 +21,18 @@ import {
 type TWebhookServiceFactoryDep = {
   webhookDAL: TWebhookDALFactory;
   projectEnvDAL: TProjectEnvDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
 
-export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionService }: TWebhookServiceFactoryDep) => {
+export const webhookServiceFactory = ({
+  webhookDAL,
+  projectEnvDAL,
+  permissionService,
+  projectDAL
+}: TWebhookServiceFactoryDep) => {
   const createWebhook = async ({
     actor,
     actorId,
@@ -124,13 +131,21 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
+    const project = await projectDAL.findById(webhook.projectId);
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
     let webhookError: string | undefined;
     try {
       await triggerWebhookRequest(
         webhook,
-        getWebhookPayload("test", webhook.projectId, webhook.environment.slug, webhook.secretPath, webhook.type)
+        getWebhookPayload("test", {
+          workspaceName: project.name,
+          workspaceId: webhook.projectId,
+          environment: webhook.environment.slug,
+          secretPath: webhook.secretPath,
+          type: webhook.type
+        })
       );
     } catch (err) {
       webhookError = (err as Error).message;

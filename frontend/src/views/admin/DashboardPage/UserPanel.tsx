@@ -16,9 +16,10 @@ import {
   Td,
   Th,
   THead,
-  Tr
+  Tr,
+  UpgradePlanModal
 } from "@app/components/v2";
-import { useUser } from "@app/context";
+import { useSubscription, useUser } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
 import { useAdminDeleteUser, useAdminGetUsers } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -27,8 +28,8 @@ const UserPanelTable = ({
   handlePopUpOpen
 }: {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeUser"]>,
-    data: {
+    popUpName: keyof UsePopUpState<["removeUser", "upgradePlan"]>,
+    data?: {
       username: string;
       id: string;
     }
@@ -38,6 +39,7 @@ const UserPanelTable = ({
   const { user } = useUser();
   const userId = user?.id || "";
   const debounedSearchTerm = useDebounce(searchUserFilter, 500);
+  const { subscription } = useSubscription();
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetUsers({
     limit: 20,
@@ -83,7 +85,13 @@ const UserPanelTable = ({
                                 variant="plain"
                                 ariaLabel="update"
                                 isDisabled={userId === id}
-                                onClick={() => handlePopUpOpen("removeUser", { username, id })}
+                                onClick={() => {
+                                  if (!subscription?.instanceUserManagement) {
+                                    handlePopUpOpen("upgradePlan");
+                                    return;
+                                  }
+                                  handlePopUpOpen("removeUser", { username, id });
+                                }}
                               >
                                 <FontAwesomeIcon icon={faXmark} />
                               </IconButton>
@@ -117,7 +125,8 @@ const UserPanelTable = ({
 
 export const UserPanel = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "removeUser"
+    "removeUser",
+    "upgradePlan"
   ] as const);
 
   const { mutateAsync: deleteUser } = useAdminDeleteUser();
@@ -155,6 +164,11 @@ export const UserPanel = () => {
         }?`}
         onChange={(isOpen) => handlePopUpToggle("removeUser", isOpen)}
         onDeleteApproved={handleRemoveUser}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Deleting users via Admin UI is only available on Infisical's Pro plan and above."
       />
     </div>
   );

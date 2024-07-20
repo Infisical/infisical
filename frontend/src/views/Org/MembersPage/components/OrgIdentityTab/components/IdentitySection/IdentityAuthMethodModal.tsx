@@ -11,22 +11,25 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  UpgradePlanModal} from "@app/components/v2";
+  UpgradePlanModal
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
   useDeleteIdentityAwsAuth,
   useDeleteIdentityAzureAuth,
   useDeleteIdentityGcpAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth} from "@app/hooks/api";
-import { IdentityAuthMethod , identityAuthToNameMap } from "@app/hooks/api/identities";
+import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
+import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
@@ -45,7 +48,8 @@ const identityAuthMethods = [
   { label: "Kubernetes Auth", value: IdentityAuthMethod.KUBERNETES_AUTH },
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
-  { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH }
+  { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
+  { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH }
 ];
 
 const schema = yup
@@ -66,6 +70,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
   const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
+  const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
 
   const { control, watch, setValue } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -138,6 +143,15 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
           />
         );
       }
+      case IdentityAuthMethod.OIDC_AUTH: {
+        return (
+          <IdentityOidcAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+          />
+        );
+      }
       case IdentityAuthMethod.TOKEN_AUTH: {
         return (
           <IdentityTokenAuthForm
@@ -196,6 +210,13 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
         }
         case IdentityAuthMethod.AZURE_AUTH: {
           await revokeAzureAuth({
+            identityId: identityAuthMethodData.identityId,
+            organizationId: orgId
+          });
+          break;
+        }
+        case IdentityAuthMethod.OIDC_AUTH: {
+          await revokeOidcAuth({
             identityId: identityAuthMethodData.identityId,
             organizationId: orgId
           });

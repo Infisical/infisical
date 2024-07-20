@@ -111,6 +111,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
+        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
         .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
         .where((qb) => {
           if (filter.identityId) {
@@ -149,12 +150,13 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("isTemporary").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryRange").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryAccessStartTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole)
+          db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
+          db.ref("name").as("projectName").withSchema(TableName.Project)
         );
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ identityId, identityName, identityAuthMethod, id, createdAt, updatedAt }) => ({
+        parentMapper: ({ identityId, identityName, identityAuthMethod, id, createdAt, updatedAt, projectName }) => ({
           id,
           identityId,
           createdAt,
@@ -163,6 +165,10 @@ export const identityProjectDALFactory = (db: TDbClient) => {
             id: identityId,
             name: identityName,
             authMethod: identityAuthMethod
+          },
+          project: {
+            id: projectId,
+            name: projectName
           }
         }),
         key: "id",

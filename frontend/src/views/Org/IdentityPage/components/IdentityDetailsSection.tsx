@@ -1,4 +1,4 @@
-import { faCheck,faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -54,21 +54,23 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
       <div className="pt-4">
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Identity ID</p>
-          <div className="flex align-top">
+          <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
-            <Tooltip content={copyTextId}>
-              <IconButton
-                ariaLabel="copy icon"
-                variant="plain"
-                className="group relative ml-2"
-                onClick={() => {
-                  navigator.clipboard.writeText(data.identity.id);
-                  setCopyTextId("Copied");
-                }}
-              >
-                <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-              </IconButton>
-            </Tooltip>
+            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <Tooltip content={copyTextId}>
+                <IconButton
+                  ariaLabel="copy icon"
+                  variant="plain"
+                  className="group relative ml-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(data.identity.id);
+                    setCopyTextId("Copied");
+                  }}
+                >
+                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
+                </IconButton>
+              </Tooltip>
+            </div>
           </div>
         </div>
         <div className="mb-4">

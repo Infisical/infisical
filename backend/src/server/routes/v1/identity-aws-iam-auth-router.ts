@@ -77,35 +77,45 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string().trim()
+        identityId: z.string().trim().describe(AWS_AUTH.ATTACH.identityId)
       }),
       body: z.object({
-        stsEndpoint: z.string().trim().min(1).default("https://sts.amazonaws.com/"),
-        allowedPrincipalArns: validatePrincipalArns,
-        allowedAccountIds: validateAccountIds,
+        stsEndpoint: z
+          .string()
+          .trim()
+          .min(1)
+          .default("https://sts.amazonaws.com/")
+          .describe(AWS_AUTH.ATTACH.stsEndpoint),
+        allowedPrincipalArns: validatePrincipalArns.describe(AWS_AUTH.ATTACH.allowedPrincipalArns),
+        allowedAccountIds: validateAccountIds.describe(AWS_AUTH.ATTACH.allowedAccountIds),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+          .describe(AWS_AUTH.ATTACH.accessTokenTrustedIps),
         accessTokenTTL: z
           .number()
           .int()
           .min(1)
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenTTL must have a non zero number"
           })
-          .default(2592000),
+          .default(2592000)
+          .describe(AWS_AUTH.ATTACH.accessTokenTTL),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
-          .default(2592000),
-        accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+          .default(2592000)
+          .describe(AWS_AUTH.ATTACH.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AWS_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
         200: z.object({
@@ -160,28 +170,31 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(AWS_AUTH.UPDATE.identityId)
       }),
       body: z.object({
-        stsEndpoint: z.string().trim().min(1).optional(),
-        allowedPrincipalArns: validatePrincipalArns,
-        allowedAccountIds: validateAccountIds,
+        stsEndpoint: z.string().trim().min(1).optional().describe(AWS_AUTH.UPDATE.stsEndpoint),
+        allowedPrincipalArns: validatePrincipalArns.describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
+        allowedAccountIds: validateAccountIds.describe(AWS_AUTH.UPDATE.allowedAccountIds),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .optional(),
-        accessTokenTTL: z.number().int().min(0).optional(),
-        accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+          .optional()
+          .describe(AWS_AUTH.UPDATE.accessTokenTrustedIps),
+        accessTokenTTL: z.number().int().min(0).max(315360000).optional().describe(AWS_AUTH.UPDATE.accessTokenTTL),
+        accessTokenNumUsesLimit: z.number().int().min(0).optional().describe(AWS_AUTH.UPDATE.accessTokenNumUsesLimit),
         accessTokenMaxTTL: z
           .number()
           .int()
+          .max(315360000)
           .refine((value) => value !== 0, {
             message: "accessTokenMaxTTL must have a non zero number"
           })
           .optional()
+          .describe(AWS_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
         200: z.object({
@@ -236,7 +249,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         }
       ],
       params: z.object({
-        identityId: z.string()
+        identityId: z.string().describe(AWS_AUTH.RETRIEVE.identityId)
       }),
       response: {
         200: z.object({

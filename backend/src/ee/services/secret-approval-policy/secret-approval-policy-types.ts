@@ -1,20 +1,22 @@
-import { TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 
 export type TCreateSapDTO = {
   approvals: number;
   secretPath?: string | null;
   environment: string;
-  approverUserIds: string[];
+  approvers: string[];
   projectId: string;
   name: string;
+  enforcementLevel: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
   secretPath?: string | null;
-  approverUserIds: string[];
+  approvers: string[];
   name?: string;
+  enforcementLevel?: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSapDTO = {

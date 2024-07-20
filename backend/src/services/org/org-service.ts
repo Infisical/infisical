@@ -15,9 +15,10 @@ import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
@@ -38,7 +39,9 @@ import {
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
+  TGetOrgMembershipDTO,
   TInviteUserToOrgDTO,
+  TListProjectMembershipsByOrgMembershipIdDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
   TVerifyUserToOrgDTO
@@ -54,6 +57,7 @@ type TOrgServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId" | "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   smtpService: TSmtpService;
@@ -79,6 +83,7 @@ export const orgServiceFactory = ({
   projectDAL,
   projectMembershipDAL,
   projectKeyDAL,
+  orgMembershipDAL,
   tokenService,
   orgBotDAL,
   licenseService,
@@ -144,10 +149,7 @@ export const orgServiceFactory = ({
     return members;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, actorOrgId, actorAuthMethod, orgId }: TFindAllWorkspacesDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
-
+  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
     const organizationWorkspaceIds = new Set((await projectDAL.find({ orgId })).map((workspace) => workspace.id));
 
     let workspaces: (TProjects & { organization: string } & {
@@ -207,7 +209,8 @@ export const orgServiceFactory = ({
       orgId,
       userId: user.id,
       role: OrgMembershipRole.Admin,
-      status: OrgMembershipStatus.Accepted
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
     };
 
     await orgDAL.createMembership(createMembershipData, tx);
@@ -311,7 +314,8 @@ export const orgServiceFactory = ({
           userId,
           orgId: org.id,
           role: OrgMembershipRole.Admin,
-          status: OrgMembershipStatus.Accepted
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
         },
         tx
       );
@@ -365,6 +369,7 @@ export const orgServiceFactory = ({
    * */
   const updateOrgMembership = async ({
     role,
+    isActive,
     orgId,
     userId,
     membershipId,
@@ -374,8 +379,16 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
+    const foundMembership = await orgMembershipDAL.findOne({
+      id: membershipId,
+      orgId
+    });
+    if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (foundMembership.userId === userId)
+      throw new BadRequestError({ message: "Cannot update own organization membership" });
+
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
-    if (isCustomRole) {
+    if (role && isCustomRole) {
       const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!customRole) throw new BadRequestError({ name: "Update membership", message: "Role not found" });
 
@@ -395,7 +408,7 @@ export const orgServiceFactory = ({
       return membership;
     }
 
-    const [membership] = await orgDAL.updateMembership({ id: membershipId, orgId }, { role, roleId: null });
+    const [membership] = await orgDAL.updateMembership({ id: membershipId, orgId }, { role, roleId: null, isActive });
     return membership;
   };
   /*
@@ -460,7 +473,8 @@ export const orgServiceFactory = ({
               inviteEmail: inviteeEmail,
               orgId,
               role: OrgMembershipRole.Member,
-              status: OrgMembershipStatus.Invited
+              status: OrgMembershipStatus.Invited,
+              isActive: true
             },
             tx
           );
@@ -491,7 +505,8 @@ export const orgServiceFactory = ({
           orgId,
           userId: user.id,
           role: OrgMembershipRole.Member,
-          status: OrgMembershipStatus.Invited
+          status: OrgMembershipStatus.Invited,
+          isActive: true
         },
         tx
       );
@@ -584,6 +599,24 @@ export const orgServiceFactory = ({
     return { token, user };
   };
 
+  const getOrgMembership = async ({
+    membershipId,
+    orgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetOrgMembershipDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+
+    const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
+    if (!membership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
+
+    return membership;
+  };
+
   const deleteOrgMembership = async ({
     orgId,
     userId,
@@ -605,6 +638,26 @@ export const orgServiceFactory = ({
     });
 
     return deletedMembership;
+  };
+
+  const listProjectMembershipsByOrgMembershipId = async ({
+    orgMembershipId,
+    orgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectMembershipsByOrgMembershipIdDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+
+    const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
+    if (!membership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
+
+    const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, membership.user.id);
+
+    return projectMemberships;
   };
 
   /*
@@ -667,6 +720,7 @@ export const orgServiceFactory = ({
     findOrgMembersByUsername,
     createOrganization,
     deleteOrganizationById,
+    getOrgMembership,
     deleteOrgMembership,
     findAllWorkspaces,
     addGhostUser,
@@ -675,6 +729,7 @@ export const orgServiceFactory = ({
     findIncidentContacts,
     createIncidentContact,
     deleteIncidentContact,
-    getOrgGroups
+    getOrgGroups,
+    listProjectMembershipsByOrgMembershipId
   };
 };

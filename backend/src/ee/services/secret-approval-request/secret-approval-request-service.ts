@@ -7,13 +7,16 @@ import {
   SecretType,
   TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   fnSecretBlindIndexCheck,
@@ -30,6 +33,8 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -62,8 +67,11 @@ type TSecretApprovalRequestServiceFactoryDep = {
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectById">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -82,7 +90,10 @@ export const secretApprovalRequestServiceFactory = ({
   snapshotService,
   secretVersionDAL,
   secretQueueService,
-  projectBotService
+  projectBotService,
+  smtpService,
+  userDAL,
+  projectEnvDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -257,7 +268,8 @@ export const secretApprovalRequestServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
-    actorAuthMethod
+    actorAuthMethod,
+    bypassReason
   }: TMergeSecretApprovalRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
@@ -289,7 +301,10 @@ export const secretApprovalRequestServiceFactory = ({
         ({ userId: approverId }) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
       ).length;
 
-    if (!hasMinApproval) throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
+    const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
+
+    if (!hasMinApproval && !isSoftEnforcement)
+      throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
     const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 
@@ -466,7 +481,8 @@ export const secretApprovalRequestServiceFactory = ({
           conflicts: JSON.stringify(conflicts),
           hasMerged: true,
           status: RequestState.Closed,
-          statusChangedByUserId: actorId
+          statusChangedByUserId: actorId,
+          bypassReason
         },
         tx
       );
@@ -485,6 +501,35 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       actor
     });
+
+    if (isSoftEnforcement) {
+      const cfg = getConfig();
+      const project = await projectDAL.findProjectById(projectId);
+      const env = await projectEnvDAL.findOne({ id: policy.envId });
+      const requestedByUser = await userDAL.findOne({ id: actorId });
+      const approverUsers = await userDAL.find({
+        $in: {
+          id: policy.approvers.map((approver: { userId: string }) => approver.userId)
+        }
+      });
+
+      await smtpService.sendMail({
+        recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
+        subjectLine: "Infisical Secret Change Policy Bypassed",
+
+        substitutions: {
+          projectName: project.name,
+          requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
+          requesterEmail: requestedByUser.email,
+          bypassReason,
+          secretPath: policy.secretPath,
+          environment: env.name,
+          approvalUrl: `${cfg.SITE_URL}/project/${project.id}/approval`
+        },
+        template: SmtpTemplates.AccessSecretRequestBypassed
+      });
+    }
+
     return mergeStatus;
   };
 

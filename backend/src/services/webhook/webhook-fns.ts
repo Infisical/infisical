@@ -9,6 +9,7 @@ import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { WebhookType } from "./webhook-types";
@@ -66,11 +67,16 @@ export const triggerWebhookRequest = async (webhook: TWebhooks, data: Record<str
 
 export const getWebhookPayload = (
   eventName: string,
-  workspaceId: string,
-  environment: string,
-  secretPath?: string,
-  type?: string | null
+  details: {
+    workspaceName: string;
+    workspaceId: string;
+    environment: string;
+    secretPath?: string;
+    type?: string | null;
+  }
 ) => {
+  const { workspaceName, workspaceId, environment, secretPath, type } = details;
+
   switch (type) {
     case WebhookType.SLACK:
       return {
@@ -80,8 +86,8 @@ export const getWebhookPayload = (
             color: "#E7F256",
             fields: [
               {
-                title: "Workspace ID",
-                value: workspaceId,
+                title: "Project",
+                value: workspaceName,
                 short: false
               },
               {
@@ -117,7 +123,9 @@ export type TFnTriggerWebhookDTO = {
   environment: string;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
+
 // this is reusable function
 // used in secret queue to trigger webhook and update status when secrets changes
 export const fnTriggerWebhook = async ({
@@ -125,7 +133,8 @@ export const fnTriggerWebhook = async ({
   secretPath,
   projectId,
   webhookDAL,
-  projectEnvDAL
+  projectEnvDAL,
+  projectDAL
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(
@@ -134,9 +143,19 @@ export const fnTriggerWebhook = async ({
   );
   if (!toBeTriggeredHooks.length) return;
   logger.info("Secret webhook job started", { environment, secretPath, projectId });
+  const project = await projectDAL.findById(projectId);
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) =>
-      triggerWebhookRequest(hook, getWebhookPayload("secrets.modified", projectId, environment, secretPath, hook.type))
+      triggerWebhookRequest(
+        hook,
+        getWebhookPayload("secrets.modified", {
+          workspaceName: project.name,
+          workspaceId: projectId,
+          environment,
+          secretPath,
+          type: hook.type
+        })
+      )
     )
   );
 

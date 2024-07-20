@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { EnforcementLevel } from "@app/lib/types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -17,7 +18,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           secretPath: z.string().trim().default("/"),
           environment: z.string(),
           approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1)
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
@@ -38,7 +40,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectSlug: req.body.projectSlug,
-        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`
+        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
+        enforcementLevel: req.body.enforcementLevel
       });
       return { approval };
     }
@@ -115,7 +118,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .optional()
             .transform((val) => (val === "" ? "/" : val)),
           approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1)
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],

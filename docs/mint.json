@@ -168,6 +168,13 @@
         "documentation/platform/identities/gcp-auth",
         "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
+        {
+          "group": "OIDC Auth",
+          "pages": [
+            "documentation/platform/identities/oidc-auth/general",
+            "documentation/platform/identities/oidc-auth/github"
+          ]
+        },
         "documentation/platform/mfa",
         {
           "group": "SSO",
@@ -210,7 +217,14 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Installation methods",
+          "group": "Native installation methods",
+          "pages": [
+            "self-hosting/deployment-options/native/standalone-binary",
+            "self-hosting/deployment-options/native/high-availability"
+          ]
+        },
+        {
+          "group": "Containerized installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-swarm",
@@ -428,6 +442,19 @@
           ]
         },
         {
+          "group": "Token Auth",
+          "pages": [
+            "api-reference/endpoints/token-auth/attach",
+            "api-reference/endpoints/token-auth/retrieve",
+            "api-reference/endpoints/token-auth/update",
+            "api-reference/endpoints/token-auth/revoke",
+            "api-reference/endpoints/token-auth/get-tokens",
+            "api-reference/endpoints/token-auth/create-token",
+            "api-reference/endpoints/token-auth/update-token",
+            "api-reference/endpoints/token-auth/revoke-token"
+          ]
+        },
+        {
           "group": "Universal Auth",
           "pages": [
             "api-reference/endpoints/universal-auth/login",
@@ -441,6 +468,56 @@
             "api-reference/endpoints/universal-auth/get-client-secret-by-id",
             "api-reference/endpoints/universal-auth/renew-access-token",
             "api-reference/endpoints/universal-auth/revoke-access-token"
+          ]
+        },
+        {
+          "group": "GCP Auth",
+          "pages": [
+            "api-reference/endpoints/gcp-auth/login",
+            "api-reference/endpoints/gcp-auth/attach",
+            "api-reference/endpoints/gcp-auth/retrieve",
+            "api-reference/endpoints/gcp-auth/update",
+            "api-reference/endpoints/gcp-auth/revoke"
+          ]
+        },
+        {
+          "group": "AWS Auth",
+          "pages": [
+            "api-reference/endpoints/aws-auth/login",
+            "api-reference/endpoints/aws-auth/attach",
+            "api-reference/endpoints/aws-auth/retrieve",
+            "api-reference/endpoints/aws-auth/update",
+            "api-reference/endpoints/aws-auth/revoke"
+          ]
+        },
+        {
+          "group": "Azure Auth",
+          "pages": [
+            "api-reference/endpoints/azure-auth/login",
+            "api-reference/endpoints/azure-auth/attach",
+            "api-reference/endpoints/azure-auth/retrieve",
+            "api-reference/endpoints/azure-auth/update",
+            "api-reference/endpoints/azure-auth/revoke"
+          ]
+        },
+        {
+          "group": "Kubernetes Auth",
+          "pages": [
+            "api-reference/endpoints/kubernetes-auth/login",
+            "api-reference/endpoints/kubernetes-auth/attach",
+            "api-reference/endpoints/kubernetes-auth/retrieve",
+            "api-reference/endpoints/kubernetes-auth/update",
+            "api-reference/endpoints/kubernetes-auth/revoke"
+          ]
+        },
+        {
+          "group": "OIDC Auth",
+          "pages": [
+            "api-reference/endpoints/oidc-auth/login",
+            "api-reference/endpoints/oidc-auth/attach",
+            "api-reference/endpoints/oidc-auth/retrieve",
+            "api-reference/endpoints/oidc-auth/update",
+            "api-reference/endpoints/oidc-auth/revoke"
           ]
         },
         {
@@ -506,6 +583,7 @@
           "group": "Folders",
           "pages": [
             "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/get-by-id",
             "api-reference/endpoints/folders/create",
             "api-reference/endpoints/folders/update",
             "api-reference/endpoints/folders/delete"

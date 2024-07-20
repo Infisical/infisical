@@ -53,7 +53,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encrypt" | "decrypt">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -154,10 +154,13 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      const keyId = await getProjectKmsCertificateKeyId({
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
         projectId: project.id,
         projectDAL,
         kmsService
+      });
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+        kmsId: certificateManagerKmsId
       });
 
       if (type === CaType.ROOT) {
@@ -178,13 +181,11 @@ export const certificateAuthorityServiceFactory = ({
           ]
         });
 
-        const { cipherTextBlob: encryptedCertificate } = await kmsService.encrypt({
-          kmsId: keyId,
+        const { cipherTextBlob: encryptedCertificate } = kmsEncryptor({
           plainText: Buffer.from(new Uint8Array(cert.rawData))
         });
 
-        const { cipherTextBlob: encryptedCertificateChain } = await kmsService.encrypt({
-          kmsId: keyId,
+        const { cipherTextBlob: encryptedCertificateChain } = kmsEncryptor({
           plainText: Buffer.alloc(0)
         });
 
@@ -208,8 +209,7 @@ export const certificateAuthorityServiceFactory = ({
         signingKey: keys.privateKey
       });
 
-      const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
-        kmsId: keyId,
+      const { cipherTextBlob: encryptedCrl } = kmsEncryptor({
         plainText: Buffer.from(new Uint8Array(crl.rawData))
       });
 
@@ -224,8 +224,7 @@ export const certificateAuthorityServiceFactory = ({
       // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
       const skObj = KeyObject.from(keys.privateKey);
 
-      const { cipherTextBlob: encryptedPrivateKey } = await kmsService.encrypt({
-        kmsId: keyId,
+      const { cipherTextBlob: encryptedPrivateKey } = kmsEncryptor({
         plainText: skObj.export({
           type: "pkcs8",
           format: "der"
@@ -449,15 +448,17 @@ export const certificateAuthorityServiceFactory = ({
 
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
-    const keyId = await getProjectKmsCertificateKeyId({
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
       kmsService
     });
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
 
     const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
-    const decryptedCaCert = await kmsService.decrypt({
-      kmsId: keyId,
+    const decryptedCaCert = kmsDecryptor({
       cipherTextBlob: caCert.encryptedCertificate
     });
 
@@ -605,19 +606,20 @@ export const certificateAuthorityServiceFactory = ({
       dn: parentCertSubject
     });
 
-    const keyId = await getProjectKmsCertificateKeyId({
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
       kmsService
     });
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
 
-    const { cipherTextBlob: encryptedCertificate } = await kmsService.encrypt({
-      kmsId: keyId,
+    const { cipherTextBlob: encryptedCertificate } = kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
     });
 
-    const { cipherTextBlob: encryptedCertificateChain } = await kmsService.encrypt({
-      kmsId: keyId,
+    const { cipherTextBlob: encryptedCertificateChain } = kmsEncryptor({
       plainText: Buffer.from(certificateChain)
     });
 
@@ -682,14 +684,16 @@ export const certificateAuthorityServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
     if (!caCert) throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
-    const keyId = await getProjectKmsCertificateKeyId({
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
       kmsService
     });
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
 
-    const decryptedCaCert = await kmsService.decrypt({
-      kmsId: keyId,
+    const decryptedCaCert = kmsDecryptor({
       cipherTextBlob: caCert.encryptedCertificate
     });
 
@@ -796,8 +800,10 @@ export const certificateAuthorityServiceFactory = ({
     const skLeafObj = KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-    const { cipherTextBlob: encryptedCertificate } = await kmsService.encrypt({
-      kmsId: keyId,
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+    const { cipherTextBlob: encryptedCertificate } = kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 

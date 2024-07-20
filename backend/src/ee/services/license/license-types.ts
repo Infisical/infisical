@@ -30,9 +30,9 @@ export type TFeatureSet = {
   workspacesUsed: 0;
   dynamicSecret: false;
   memberLimit: null;
-  membersUsed: 0;
+  membersUsed: number;
   identityLimit: null;
-  identitiesUsed: 0;
+  identitiesUsed: number;
   environmentLimit: null;
   environmentsUsed: 0;
   secretVersioning: true;
@@ -56,6 +56,7 @@ export type TFeatureSet = {
   secretApproval: false;
   secretRotation: true;
   caCrl: false;
+  instanceUserManagement: false;
 };
 
 export type TOrgPlansTableDTO = {
