@@ -244,10 +244,5 @@ func WriteConfigFile(configFile *models.ConfigFile) error {
 		return fmt.Errorf("writeConfigFile: Unable to write to file [err=%s]", err)
 	}
 
-	if err != nil {
-		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when write the config to file [err=%s]", err)
-
-	}
-
 	return nil
 }

@@ -52,10 +52,6 @@ func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentia
 		return models.UserCredentials{}, fmt.Errorf("getUserCredsFromKeyRing: Something went wrong when unmarshalling user creds [err=%s]", err)
 	}
 
-	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: Unable to store user credentials [err=%s]", err)
-	}
-
 	return userCredentials, err
 }
 

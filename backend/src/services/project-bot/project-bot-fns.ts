@@ -24,10 +24,10 @@ export const getBotKeyFnFactory = (
 
     const bot = await projectBotDAL.findOne({ projectId: project.id });
 
-    if (!bot) throw new BadRequestError({ message: "Failed to find bot key" });
-    if (!bot.isActive) throw new BadRequestError({ message: "Bot is not active" });
+    if (!bot) throw new BadRequestError({ message: "Failed to find bot key", name: "bot_not_found_error" });
+    if (!bot.isActive) throw new BadRequestError({ message: "Bot is not active", name: "bot_not_found_error" });
     if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
-      throw new BadRequestError({ message: "Encryption key missing" });
+      throw new BadRequestError({ message: "Encryption key missing", name: "bot_not_found_error" });
 
     const botPrivateKey = getBotPrivateKey({ bot });
 

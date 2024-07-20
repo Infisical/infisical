@@ -33,6 +33,8 @@ const (
 
 	SERVICE_TOKEN_IDENTIFIER        = "service-token"
 	UNIVERSAL_AUTH_TOKEN_IDENTIFIER = "universal-auth-token"
+
+	INFISICAL_BACKUP_SECRET = "infisical-backup-secrets"
 )
 
 var (
