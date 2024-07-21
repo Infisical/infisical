@@ -24,6 +24,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/chzyer/readline"
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
@@ -229,6 +230,7 @@ var loginCmd = &cobra.Command{
 				fmt.Println("Logging in via browser... To login via interactive mode run [infisical login -i]")
 				userCredentialsToBeStored, err = browserCliLogin()
 				if err != nil {
+					fmt.Printf("Logging in via browser failed. %s", err.Error())
 					//default to cli login on error
 					cliDefaultLogin(&userCredentialsToBeStored)
 				}
@@ -713,10 +715,63 @@ func askForMFACode() string {
 	return mfaVerifyCode
 }
 
+func askToPasteJwtToken(stdin *readline.CancelableStdin, success chan models.UserCredentials, failure chan error) {
+	time.Sleep(time.Second * 5)
+
+	prompt := &promptui.Prompt{
+		Label:     "Did you see a prompt in your browser asking you to paste a token?",
+		IsConfirm: true,
+		Stdin:     stdin,
+	}
+
+	_, err := prompt.Run()
+	if err != nil {
+		if errors.Is(err, promptui.ErrAbort) {
+			stdin.Close()
+			return
+		}
+		failure <- err
+		return
+	}
+
+	prompt = &promptui.Prompt{
+		Label: "Paste your token",
+		Mask:  '*',
+		Stdin: stdin,
+	}
+	infisicalPastedToken, err := prompt.Run()
+	if err != nil {
+		failure <- err
+		return
+	}
+
+	userCredentials, err := decodePastedBase64Token(infisicalPastedToken)
+	if err != nil {
+		failure <- err
+		return
+	}
+	success <- *userCredentials
+}
+
+func decodePastedBase64Token(token string) (*models.UserCredentials, error) {
+	data, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, err
+	}
+	var loginResponse models.UserCredentials
+
+	err = json.Unmarshal(data, &loginResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &loginResponse, nil
+}
+
 // Manages the browser login flow.
 // Returns a UserCredentials object on success and an error on failure
 func browserCliLogin() (models.UserCredentials, error) {
-	SERVER_TIMEOUT := 60 * 10
+	SERVER_TIMEOUT := 10 * 60
 
 	//create listener
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -738,7 +793,6 @@ func browserCliLogin() (models.UserCredentials, error) {
 	success := make(chan models.UserCredentials)
 	failure := make(chan error)
 	timeout := time.After(time.Second * time.Duration(SERVER_TIMEOUT))
-	quit := make(chan bool)
 
 	//terminal state
 	oldState, err := term.GetState(int(os.Stdin.Fd()))
@@ -760,24 +814,27 @@ func browserCliLogin() (models.UserCredentials, error) {
 
 	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
 
+	stdin := readline.NewCancelableStdin(os.Stdin)
 	go http.Serve(listener, corsHandler)
+	go askToPasteJwtToken(stdin, success, failure)
 
 	for {
 		select {
 		case loginResponse := <-success:
 			_ = closeListener(&listener)
+			_ = stdin.Close()
+			fmt.Println("Browser login successfull")
 			return loginResponse, nil
 
-		case <-failure:
-			err = closeListener(&listener)
-			return models.UserCredentials{}, err
+		case err := <-failure:
+			serverErr := closeListener(&listener)
+			stdErr := stdin.Close()
+			return models.UserCredentials{}, errors.Join(err, serverErr, stdErr)
 
 		case <-timeout:
 			_ = closeListener(&listener)
+			_ = stdin.Close()
 			return models.UserCredentials{}, errors.New("server timeout")
-
-		case <-quit:
-			return models.UserCredentials{}, errors.New("quitting browser login, defaulting to cli...")
 		}
 	}
 }
