@@ -7,11 +7,13 @@ import { useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
+import { addSeconds, formatISO } from "date-fns";
 import jwt_decode from "jwt-decode";
 
 import { createNotification } from "@app/components/notifications";
 import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import { Button, Spinner } from "@app/components/v2";
+import { SessionStorageKeys } from "@app/const";
 import { useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
 import { Organization } from "@app/hooks/api/types";
@@ -94,9 +96,19 @@ export default function LoginPage() {
 
         // send request to server endpoint
         const instance = axios.create();
-        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload);
-        // cli page
+        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
+          // if error happens to communicate we set the token with an expiry in sessino storage
+          // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+          sessionStorage.setItem(
+            SessionStorageKeys.CLI_TERMINAL_TOKEN,
+            JSON.stringify({
+              expiry: formatISO(addSeconds(new Date(), 30)),
+              data: window.btoa(JSON.stringify(payload))
+            })
+          );
+        });
         router.push("/cli-redirect");
+        // cli page
       } else {
         navigateUserToOrg(router, organization.id);
       }

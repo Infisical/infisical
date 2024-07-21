@@ -3,6 +3,7 @@ import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import axios from "axios";
+import { addSeconds, formatISO } from "date-fns";
 import jwt_decode from "jwt-decode";
 
 import Error from "@app/components/basic/Error";
@@ -11,6 +12,7 @@ import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
+import { SessionStorageKeys } from "@app/const";
 import { useSendMfaToken } from "@app/hooks/api/auth";
 import { useSelectOrganization, verifyMfaToken } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -79,11 +81,24 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
       if (callbackPort) {
         const cliUrl = `http://127.0.0.1:${callbackPort}/`;
         const instance = axios.create();
-        await instance.post(cliUrl, {
+        const payload = {
           email,
           privateKey,
           JTWToken: newJwtToken
+        };
+        await instance.post(cliUrl, payload).catch(() => {
+          // if error happens to communicate we set the token with an expiry in sessino storage
+          // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+          sessionStorage.setItem(
+            SessionStorageKeys.CLI_TERMINAL_TOKEN,
+            JSON.stringify({
+              expiry: formatISO(addSeconds(new Date(), 30)),
+              data: window.btoa(JSON.stringify(payload))
+            })
+          );
         });
+        router.push("/cli-redirect");
+        return;
       }
       await navigateUserToOrg(router, organizationId);
     }
