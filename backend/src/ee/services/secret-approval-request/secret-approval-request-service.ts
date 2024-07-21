@@ -715,7 +715,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId, shouldUseSecretV2Bridge);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
     await secretQueueService.syncSecrets({

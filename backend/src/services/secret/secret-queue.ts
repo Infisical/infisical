@@ -36,6 +36,10 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
@@ -57,6 +61,10 @@ type TSecretQueueFactoryDep = {
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretV2BridgeDAL: TSecretV2BridgeDALFactory;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
 };
 
 export type TGetSecrets = {
@@ -91,7 +99,11 @@ export const secretQueueFactory = ({
   secretVersionDAL,
   secretBlindIndexDAL,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  secretV2BridgeDAL,
+  secretVersionV2BridgeDAL,
+  kmsService,
+  secretVersionTagV2BridgeDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -195,7 +207,11 @@ export const secretQueueFactory = ({
     secretBlindIndexDAL,
     secretTagDAL,
     secretVersionTagDAL,
-    folderDAL
+    folderDAL,
+    kmsService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -206,8 +222,81 @@ export const secretQueueFactory = ({
     secretBlindIndexDAL,
     secretTagDAL,
     secretVersionTagDAL,
-    folderDAL
+    folderDAL,
+    kmsService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
   });
+
+  /**
+   * Return the secrets in a given [folderId] including secrets from
+   * nested imported folders recursively.
+   */
+  const getIntegrationSecretsV2 = async (dto: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+    depth: number;
+    decryptor: (value: Buffer | null | undefined) => string;
+  }) => {
+    let content: TIntegrationSecret = {};
+    if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
+      logger.info(
+        `getIntegrationSecrets: secret depth exceeded for [projectId=${dto.projectId}] [folderId=${dto.folderId}] [depth=${dto.depth}]`
+      );
+      return content;
+    }
+
+    // process secrets in current folder
+    const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
+    secrets.forEach((secret) => {
+      const secretKey = secret.key;
+      const secretValue = dto.decryptor(secret.encryptedValue);
+      content[secretKey] = { value: secretValue };
+
+      if (secret.encryptedComment) {
+        const commentValue = dto.decryptor(secret.encryptedComment);
+        content[secretKey].comment = commentValue;
+      }
+
+      content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+    });
+
+    // TODO(akhilmhdh-sev2): change this to v2 expand secrets
+
+    // check if current folder has any imports from other folders
+    const secretImport = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
+
+    // if no imports then return secrets in the current folder
+    if (!secretImport) return content;
+
+    const importedFolders = await folderDAL.findByManySecretPath(
+      secretImport.map(({ importEnv, importPath }) => ({
+        envId: importEnv.id,
+        secretPath: importPath
+      }))
+    );
+
+    for await (const folder of importedFolders) {
+      if (folder) {
+        // get secrets contained in each imported folder by recursively calling
+        // this function against the imported folder
+        const importedSecrets = await getIntegrationSecretsV2({
+          environment: dto.environment,
+          projectId: dto.projectId,
+          folderId: folder.id,
+          depth: dto.depth + 1,
+          decryptor: dto.decryptor
+        });
+
+        // add the imported secrets to the current folder secrets
+        content = { ...importedSecrets, ...content };
+      }
+    }
+
+    return content;
+  };
 
   /**
    * Return the secrets in a given [folderId] including secrets from
@@ -467,24 +556,35 @@ export const secretQueueFactory = ({
       );
     }
 
-    const secretReferences = await secretDAL.findReferencedSecretReferences(
-      projectId,
-      folder.environment.slug,
-      secretPath
-    );
-    if (secretReferences.length) {
-      const referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    let referencedFolderIds;
+    if (shouldUseSecretV2Bridge) {
+      const secretReferences = await secretV2BridgeDAL.findReferencedSecretReferences(
+        projectId,
+        folder.environment.slug,
+        secretPath
+      );
+      referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+    } else {
+      const secretReferences = await secretDAL.findReferencedSecretReferences(
+        projectId,
+        folder.environment.slug,
+        secretPath
+      );
+      referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+    }
+    if (referencedFolderIds.length) {
       const referencedFolders = await folderDAL.findSecretPathByFolderIds(projectId, referencedFolderIds);
       const referencedFoldersGroupedById = groupBy(referencedFolders.filter(Boolean), (i) => i?.id as string);
       logger.info(
         `getIntegrationSecrets: Syncing secret due to reference change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
       );
       await Promise.all(
-        secretReferences
-          .filter(({ folderId }) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
+        referencedFolderIds
+          .filter((folderId) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
           // filter out already synced ones
           .filter(
-            ({ folderId }) =>
+            (folderId) =>
               !deDupeQueue[
                 uniqueSecretQueueKey(
                   referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
@@ -492,7 +592,7 @@ export const secretQueueFactory = ({
                 )
               ]
           )
-          .map(({ folderId }) =>
+          .map((folderId) =>
             syncSecrets({
               projectId,
               secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
@@ -523,7 +623,6 @@ export const secretQueueFactory = ({
         projectId: integration.projectId
       };
 
-      const botKey = await projectBotService.getBotKey(projectId);
       const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(integrationAuth, botKey);
       const awsAssumeRoleArn =
         integrationAuth.awsAssumeIamRoleArnTag &&
@@ -537,13 +636,20 @@ export const secretQueueFactory = ({
             })
           : null;
 
-      const secrets = await getIntegrationSecrets({
-        environment,
-        projectId,
-        folderId: folder.id,
-        key: botKey,
-        depth: 1
-      });
+      const secrets = shouldUseSecretV2Bridge
+        ? await getIntegrationSecretsV2({
+            environment,
+            projectId,
+            folderId: folder.id,
+            depth: 1
+          })
+        : await getIntegrationSecrets({
+            environment,
+            projectId,
+            folderId: folder.id,
+            key: botKey,
+            depth: 1
+          });
       const suffixedSecrets: typeof secrets = {};
       const metadata = integration.metadata as Record<string, string>;
       if (metadata) {

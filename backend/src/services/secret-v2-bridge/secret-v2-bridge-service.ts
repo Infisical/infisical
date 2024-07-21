@@ -179,7 +179,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId, true);
     await secretQueueService.syncSecrets({
       secretPath,
       actorId,
@@ -319,7 +319,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId, true);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -385,7 +385,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId, true);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -717,7 +717,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId, true);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -775,6 +775,7 @@ export const secretV2BridgeServiceFactory = ({
     );
     if (secretsToUpdate.length !== inputSecrets.length)
       throw new BadRequestError({ message: `Secret not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+    const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
     // now find any secret that needs to update its name
     // same process as above
@@ -788,7 +789,9 @@ export const secretV2BridgeServiceFactory = ({
         }))
       );
       if (secrets.length)
-        throw new BadRequestError({ message: `Secret not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+        throw new BadRequestError({
+          message: `Secret with new name exist: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
+        });
     }
 
     // get all tags
@@ -804,6 +807,7 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         tx,
         inputSecrets: inputSecrets.map((el) => {
+          const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
           const encryptedValue =
             typeof el.secretValue !== "undefined"
               ? {
@@ -812,7 +816,7 @@ export const secretV2BridgeServiceFactory = ({
                 }
               : {};
           return {
-            filter: { key: el.secretKey, type: SecretType.Shared },
+            filter: { id: originalSecret.id, type: SecretType.Shared },
             data: {
               reminderRepeatDays: el.secretReminderRepeatDays,
               encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, el.secretComment),
@@ -830,7 +834,7 @@ export const secretV2BridgeServiceFactory = ({
         secretVersionTagDAL
       })
     );
-    await snapshotService.performSnapshot(folderId);
+    await snapshotService.performSnapshot(folderId, true);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -1309,7 +1313,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     if (isDestinationUpdated) {
-      await snapshotService.performSnapshot(destinationFolder.id);
+      await snapshotService.performSnapshot(destinationFolder.id, true);
       await secretQueueService.syncSecrets({
         projectId,
         secretPath: destinationFolder.path,
@@ -1320,7 +1324,7 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      await snapshotService.performSnapshot(sourceFolder.id);
+      await snapshotService.performSnapshot(sourceFolder.id, true);
       await secretQueueService.syncSecrets({
         projectId,
         secretPath: sourceFolder.path,
