@@ -717,19 +717,13 @@ func askForMFACode() string {
 
 func askToPasteJwtToken(stdin *readline.CancelableStdin, success chan models.UserCredentials, failure chan error) {
 	time.Sleep(time.Second * 5)
-
 	prompt := &promptui.Prompt{
-		Label:     "Did you see a prompt in your browser asking you to paste a token?",
-		IsConfirm: true,
-		Stdin:     stdin,
+		Label: "Press ENTER to paste your token manually",
+		Stdin: stdin,
 	}
 
 	_, err := prompt.Run()
 	if err != nil {
-		if errors.Is(err, promptui.ErrAbort) {
-			stdin.Close()
-			return
-		}
 		failure <- err
 		return
 	}
@@ -747,7 +741,8 @@ func askToPasteJwtToken(stdin *readline.CancelableStdin, success chan models.Use
 
 	userCredentials, err := decodePastedBase64Token(infisicalPastedToken)
 	if err != nil {
-		failure <- err
+		fmt.Println("Invalid user credentials provided", err)
+		os.Exit(1)
 		return
 	}
 	success <- *userCredentials
