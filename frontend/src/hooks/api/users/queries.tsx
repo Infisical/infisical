@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { SessionStorageKeys } from "@app/const";
 import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
@@ -293,6 +294,7 @@ export const useLogoutUser = (keepQueryClient?: boolean) => {
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
       localStorage.removeItem("projectData.id");
+      sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
       if (!keepQueryClient) {
         queryClient.clear();

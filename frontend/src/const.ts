@@ -57,6 +57,10 @@ export const plans = plansProd || plansDev;
 export const leaveConfirmDefaultMessage =
   "Your changes will be lost if you leave the page. Are you sure you want to continue?";
 
+export enum SessionStorageKeys {
+  CLI_TERMINAL_TOKEN = "CLI_TERMINAL_TOKEN"
+}
+
 export const secretTagsColors = [
   {
     id: 1,
