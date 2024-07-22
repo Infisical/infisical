@@ -13,15 +13,13 @@ import {
 import { apiRequest } from "@app/config/request";
 
 import { UserWsKeyPair } from "../keys/types";
-import { EncryptedSecret, SecretType,SecretV3RawSanitized } from "../secrets/types";
+import { EncryptedSecret, SecretType, SecretV3RawSanitized } from "../secrets/types";
 import {
-  CommitType,
   TGetSecretApprovalRequestCount,
   TGetSecretApprovalRequestDetails,
   TGetSecretApprovalRequestList,
   TSecretApprovalRequest,
-  TSecretApprovalRequestCount,
-  TSecretApprovalSecChangeData
+  TSecretApprovalRequestCount
 } from "./types";
 
 export const secretApprovalRequestKeys = {
@@ -117,48 +115,6 @@ export const decryptSecrets = (
   return secrets;
 };
 
-export const decryptSecretApprovalSecret = (
-  encSecret: TSecretApprovalSecChangeData,
-  decryptFileKey: UserWsKeyPair
-) => {
-  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-  const key = decryptAssymmetric({
-    ciphertext: decryptFileKey.encryptedKey,
-    nonce: decryptFileKey.nonce,
-    publicKey: decryptFileKey.sender.publicKey,
-    privateKey: PRIVATE_KEY
-  });
-
-  const secretKey = decryptSymmetric({
-    ciphertext: encSecret.secretKeyCiphertext,
-    iv: encSecret.secretKeyIV,
-    tag: encSecret.secretKeyTag,
-    key
-  });
-
-  const secretValue = decryptSymmetric({
-    ciphertext: encSecret.secretValueCiphertext,
-    iv: encSecret.secretValueIV,
-    tag: encSecret.secretValueTag,
-    key
-  });
-
-  const secretComment = decryptSymmetric({
-    ciphertext: encSecret.secretCommentCiphertext,
-    iv: encSecret.secretCommentIV,
-    tag: encSecret.secretCommentTag,
-    key
-  });
-  return {
-    id: encSecret.id,
-    version: encSecret.version,
-    secretKey,
-    secretValue,
-    secretComment,
-    tags: encSecret.tags
-  };
-};
-
 const fetchSecretApprovalRequestList = async ({
   workspaceId,
   environment,
@@ -245,7 +201,7 @@ export const useGetSecretApprovalRequestDetails = ({
     UseQueryOptions<
       TSecretApprovalRequest,
       unknown,
-      TSecretApprovalRequest<SecretV3RawSanitized>,
+      TSecretApprovalRequest,
       ReturnType<typeof secretApprovalRequestKeys.detail>
     >,
     "queryKey" | "queryFn"
@@ -254,16 +210,6 @@ export const useGetSecretApprovalRequestDetails = ({
   useQuery({
     queryKey: secretApprovalRequestKeys.detail({ id }),
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
-    select: (data) => ({
-      ...data,
-      commits: data.commits.map(({ secretVersion, op, secret, ...newVersion }) => ({
-        op,
-        secret,
-        secretVersion: secretVersion ? decryptSecrets([secretVersion], decryptKey)[0] : undefined,
-        newVersion:
-          op !== CommitType.DELETE ? decryptSecretApprovalSecret(newVersion, decryptKey) : undefined
-      }))
-    }),
     enabled: Boolean(id && decryptKey) && (options?.enabled ?? true)
   });
 

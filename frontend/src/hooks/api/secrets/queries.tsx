@@ -2,19 +2,15 @@
 import { useCallback, useMemo } from "react";
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
-import {
-  decryptAssymmetric,
-  decryptSymmetric
-} from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
 import {
-  EncryptedSecretVersion,
   GetSecretVersionsDTO,
   SecretType,
   SecretV3Raw,
   SecretV3RawResponse,
   SecretV3RawSanitized,
+  SecretVersions,
   TGetProjectSecretsAllEnvDTO,
   TGetProjectSecretsDTO,
   TGetProjectSecretsKey
@@ -166,7 +162,7 @@ export const useGetProjectSecretsAllEnv = ({
 };
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
-  const { data } = await apiRequest.get<{ secretVersions: EncryptedSecretVersion[] }>(
+  const { data } = await apiRequest.get<{ secretVersions: SecretVersions[] }>(
     `/api/v1/secret/${secretId}/secret-versions`,
     {
       params: {
@@ -180,33 +176,10 @@ const fetchEncryptedSecretVersion = async (secretId: string, offset: number, lim
 
 export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
   useQuery({
-    enabled: Boolean(dto.secretId && dto.decryptFileKey),
+    enabled: Boolean(dto.secretId),
     queryKey: secretKeys.getSecretVersion(dto.secretId),
     queryFn: () => fetchEncryptedSecretVersion(dto.secretId, dto.offset, dto.limit),
-    select: useCallback(
-      (data: EncryptedSecretVersion[]) => {
-        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-        const latestKey = dto.decryptFileKey;
-        const key = decryptAssymmetric({
-          ciphertext: latestKey.encryptedKey,
-          nonce: latestKey.nonce,
-          publicKey: latestKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        });
-
-        return data
-          .map((el) => ({
-            createdAt: el.createdAt,
-            id: el.id,
-            value: decryptSymmetric({
-              ciphertext: el.secretValueCiphertext,
-              iv: el.secretValueIV,
-              tag: el.secretValueTag,
-              key
-            })
-          }))
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      },
-      [dto.decryptFileKey]
-    )
+    select: useCallback((data: SecretVersions[]) => {
+      return data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }, [])
   });
