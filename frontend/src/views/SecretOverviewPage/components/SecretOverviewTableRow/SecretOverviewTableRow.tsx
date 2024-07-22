@@ -161,7 +161,6 @@ export const SecretOverviewTableRow = ({
                 secretPath={secretPath}
                 getSecretByKey={getSecretByKey}
               />
-
               <TableContainer>
                 <table className="secret-table">
                   <thead>

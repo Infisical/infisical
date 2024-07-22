@@ -3,17 +3,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { IconButton, Tooltip } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects,useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetOrgRole } from "@app/hooks/api";
-// import { UsePopUpState } from "@app/hooks/usePopUp";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   roleId: string;
-  //   handlePopUpOpen: (popUpName: keyof UsePopUpState<[]>, data?: {}) => void;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<["role"]>, data?: {}) => void;
 };
 
-export const RoleDetailsSection = ({ roleId }: Props) => {
+export const RoleDetailsSection = ({ roleId, handlePopUpOpen }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -21,8 +21,6 @@ export const RoleDetailsSection = ({ roleId }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetOrgRole(orgId, roleId);
-
-  console.log("useGetOrgRole data: ", data);
 
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -37,14 +35,11 @@ export const RoleDetailsSection = ({ roleId }: Props) => {
                   ariaLabel="copy icon"
                   variant="plain"
                   className="group relative"
-                  onClick={() => {
-                    // handlePopUpOpen("identity", {
-                    //   identityId,
-                    //   name: data.identity.name,
-                    //   role: data.role,
-                    //   customRole: data.customRole
-                    // });
-                  }}
+                  onClick={() =>
+                    handlePopUpOpen("role", {
+                      roleId
+                    })
+                  }
                 >
                   <FontAwesomeIcon icon={faPencil} />
                 </IconButton>
@@ -78,6 +73,14 @@ export const RoleDetailsSection = ({ roleId }: Props) => {
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.name}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Slug</p>
+          <p className="text-sm text-mineshaft-300">{data.slug}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Description</p>
+          <p className="text-sm text-mineshaft-300">{data.description}</p>
         </div>
       </div>
     </div>

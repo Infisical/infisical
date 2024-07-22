@@ -100,7 +100,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .trim()
           .optional()
           .refine(
-            (val) => typeof val === "undefined" || Object.keys(OrgMembershipRole).includes(val),
+            (val) => typeof val !== "undefined" && !Object.keys(OrgMembershipRole).includes(val),
             "Please choose a different slug, the slug you have entered is reserved."
           )
           .refine((val) => typeof val === "undefined" || slugify(val) === val, {

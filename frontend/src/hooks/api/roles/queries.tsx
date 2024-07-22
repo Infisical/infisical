@@ -94,10 +94,13 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
   useQuery({
     queryKey: roleQueryKeys.getOrgRole(orgId, roleId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ role: TProjectRole }>(
-        `/api/v1/organization/${orgId}/roles/${roleId}` // TODO: implement
-      );
-      return data.role;
+      const { data } = await apiRequest.get<{
+        role: Omit<TOrgRole, "permissions"> & { permissions: unknown };
+      }>(`/api/v1/organization/${orgId}/roles/${roleId}`);
+      return {
+        ...data.role,
+        permissions: unpackRules(data.role.permissions as PackRule<TPermission>[])
+      };
     },
     enabled: Boolean(orgId && roleId)
   });

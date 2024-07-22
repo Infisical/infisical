@@ -1,4 +1,4 @@
-// import { useEffect } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,11 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import {
-  useGetOrgRole
-  // useCreateOrgRole,
-  // useUpdateOrgRole
-} from "@app/hooks/api";
+import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -37,26 +33,22 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["role"]>, state?: boolean) => void;
 };
 
-export const RoleDetailsModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   // const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
-  const role = popUp?.role?.data as {
+  const popupData = popUp?.role?.data as {
     roleId: string;
   };
 
-  const { data } = useGetOrgRole(orgId, role.roleId ?? "");
-  console.log("RoleDetailsModal: useGetOrgRole data: ", data);
-
-  // TODO: fetch by role id here
+  const { data: role } = useGetOrgRole(orgId, popupData?.roleId ?? "");
 
   // const { mutateAsync: createMutateAsync } = useCreateIdentity();
   // const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
   // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
-  // const { mutateAsync: createOrgRole } = useCreateOrgRole();
-  // const { mutateAsync: updateOrgRole } = useUpdateOrgRole();
+  const { mutateAsync: updateOrgRole } = useUpdateOrgRole();
 
   const {
     control,
@@ -71,21 +63,21 @@ export const RoleDetailsModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   });
 
-  // useEffect(() => {
-  //   if (role) {
-  //     reset({
-  //       name: role.name,
-  //       description: role.description,
-  //       slug: role.slug
-  //     });
-  //   } else {
-  //     reset({
-  //       name: "",
-  //       description: "",
-  //       slug: ""
-  //     });
-  //   }
-  // }, [role]);
+  useEffect(() => {
+    if (role) {
+      reset({
+        name: role.name,
+        description: role.description,
+        slug: role.slug
+      });
+    } else {
+      reset({
+        name: "",
+        description: "",
+        slug: ""
+      });
+    }
+  }, [role]);
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     try {
@@ -95,38 +87,27 @@ export const RoleDetailsModal = ({ popUp, handlePopUpToggle }: Props) => {
         slug
       });
 
+      if (!orgId) return;
+
       if (role) {
         // update
 
-        // const up = await updateOrgRole({});
-
-        // console.log("onFormSubmit up: ", up);
-
-        // await updateMutateAsync({
-        //   identityId: identity.identityId,
-        //   name,
-        //   role: role || undefined,
-        //   organizationId: orgId
-        // });
+        await updateOrgRole({
+          orgId,
+          id: role.id,
+          name,
+          description,
+          slug
+        });
 
         handlePopUpToggle("role", false);
       } else {
-        // create
+        // TODO: create
 
         // const { id: createdId } = await createMutateAsync({
         //   name,
         //   role: role || undefined,
         //   organizationId: orgId
-        // });
-
-        // await addMutateAsync({
-        //   organizationId: orgId,
-        //   identityId: createdId,
-        //   clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        //   accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        //   accessTokenTTL: 2592000,
-        //   accessTokenMaxTTL: 2592000,
-        //   accessTokenNumUsesLimit: 0
         // });
 
         handlePopUpToggle("role", false);
@@ -168,7 +149,12 @@ export const RoleDetailsModal = ({ popUp, handlePopUpToggle }: Props) => {
             defaultValue=""
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
+              <FormControl
+                label="Name"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                isRequired
+              >
                 <Input {...field} placeholder="Billing Team" />
               </FormControl>
             )}
@@ -178,7 +164,12 @@ export const RoleDetailsModal = ({ popUp, handlePopUpToggle }: Props) => {
             defaultValue=""
             name="slug"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Slug" isError={Boolean(error)} errorText={error?.message}>
+              <FormControl
+                label="Slug"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                isRequired
+              >
                 <Input {...field} placeholder="billing" />
               </FormControl>
             )}

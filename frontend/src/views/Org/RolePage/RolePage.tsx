@@ -18,29 +18,15 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
-import {
-  //   useDeleteIdentity,
-  //   useGetIdentityById,
-  //   useRevokeIdentityTokenAuthToken,
-  //   useRevokeIdentityUniversalAuthClientSecret,
-  useGetOrgRole
-} from "@app/hooks/api";
+import { useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { RolePermissionsTable } from "./components/RolePermissionsSection/RolePermissionsTable";
-import { RoleDetailsSection, RolePermissionsSection } from "./components";
-
-// import { IdentityAuthMethodModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
-// import { IdentityModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
-// import { IdentityUniversalAuthClientSecretModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthClientSecretModal";
-// import {
-//   IdentityAuthenticationSection,
-//   IdentityClientSecretModal,
-//   IdentityDetailsSection,
-//   IdentityProjectsSection,
-//   IdentityTokenListModal,
-//   IdentityTokenModal
-// } from "./components";
+import {
+  RoleDetailsSection,
+  RoleModal,
+  RolePermissionModal,
+  RolePermissionsSection} from "./components";
 
 export const RolePage = withPermission(
   () => {
@@ -57,17 +43,8 @@ export const RolePage = withPermission(
     // const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-      "identity",
-      "deleteIdentity",
-      "identityAuthMethod",
-      "revokeAuthMethod",
-      "token",
-      "tokenList",
-      "revokeToken",
-      "clientSecret",
-      "revokeClientSecret",
-      "universalAuthClientSecret", // list of client secrets
-      "upgradePlan"
+      "role",
+      "rolePermission"
     ] as const);
 
     // const onDeleteIdentitySubmit = async (id: string) => {
@@ -202,10 +179,12 @@ export const RolePage = withPermission(
               <div className="mr-4 w-96">
                 <RoleDetailsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              <RolePermissionsSection />
+              <RolePermissionsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
             </div>
           </div>
         )}
+        <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <RolePermissionModal roleId={roleId} popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         {/* <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityAuthMethodModal
           popUp={popUp}

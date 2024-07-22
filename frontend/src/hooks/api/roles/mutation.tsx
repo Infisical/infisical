@@ -68,13 +68,22 @@ export const useUpdateOrgRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) =>
-      apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
+    mutationFn: ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
+      console.log("update args: ", {
+        id,
+        orgId,
+        permissions,
+        ...dto,
+        pack: permissions?.length ? packRules(permissions) : []
+      });
+      return apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
         ...dto,
         permissions: permissions?.length ? packRules(permissions) : []
-      }),
-    onSuccess: (_, { orgId }) => {
+      });
+    },
+    onSuccess: (_, { id, orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
+      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
     }
   });
 };
@@ -87,8 +96,9 @@ export const useDeleteOrgRole = () => {
       apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
         data: { orgId }
       }),
-    onSuccess: (_, { orgId }) => {
+    onSuccess: (_, { id, orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
+      queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));
     }
   });
 };

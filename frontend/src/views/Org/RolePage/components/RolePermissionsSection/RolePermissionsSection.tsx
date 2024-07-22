@@ -1,20 +1,15 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { UsePopUpState } from "@app/hooks/usePopUp";
+import { RolePermissionsTable2 } from "./RolePermissionsTable2";
 
-// import { createNotification } from "@app/components/notifications";
-import {
-  // DeleteActionModal,
-  IconButton
-} from "@app/components/v2";
+type Props = {
+  roleId: string;
+  // handlePopUpOpen: (popUpName: keyof UsePopUpState<["rolePermission"]>, data?: {}) => void;
+};
 
-import { RolePermissionsTable } from "./RolePermissionsTable";
-// import { useDeleteIdentityFromWorkspace } from "@app/hooks/api";
-// import { usePopUp } from "@app/hooks/usePopUp";
-
-// import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
-// import { IdentityProjectsTable } from "./IdentityProjectsTable";
-
-export const RolePermissionsSection = () => {
+export const RolePermissionsSection = ({
+  roleId
+}: // handlePopUpOpen
+Props) => {
   //   const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
 
   // const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -51,20 +46,18 @@ export const RolePermissionsSection = () => {
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Permissions</h3>
-        <IconButton
+        {/* <IconButton
           ariaLabel="copy icon"
           variant="plain"
           className="group relative"
-          onClick={() => {
-            console.log("TODO");
-            // handlePopUpOpen("addIdentityToProject");
-          }}
+          onClick={() => handlePopUpOpen("rolePermission")}
         >
           <FontAwesomeIcon icon={faPlus} />
-        </IconButton>
+        </IconButton> */}
       </div>
       <div className="py-4">
-        <RolePermissionsTable />
+        {/* <RolePermissionsTable /> */}
+        <RolePermissionsTable2 roleId={roleId} />
         {/* <IdentityProjectsTable identityId={identityId} handlePopUpOpen={handlePopUpOpen} /> */}
       </div>
       {/* <DeleteActionModal
