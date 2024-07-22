@@ -1,0 +1,87 @@
+---
+title: "AWS Key Management Service (KMS)"
+description: "Learn how to manage encryption using AWS KMS"
+---
+
+You can configure your projects to use AWS KMS keys for encryption, enhancing the security and management of your secrets.
+
+## Setup AWS KMS in the Organization Settings
+
+Follow these steps to set up AWS KMS for your organization:
+
+<Steps>
+  <Step title="Navigate to the organization settings and select the Encryption tab.">
+	![Open encryption org settings](../../../images/platform/kms/aws/encryption-org-settings.png)
+  </Step>
+  <Step title="Click on the 'Add' button">
+	![Add encryption org settings](../../../images/platform/kms/aws/encryption-org-settings-add.png)
+    Click the 'Add' button to begin adding a new external KMS.
+  </Step>
+  <Step title="Select 'AWS KMS'">
+	![Select Encryption Provider](../../../images/platform/kms/aws/encryption-modal-provider-select.png)
+     Choose 'AWS KMS' from the list of encryption providers.
+  </Step>
+  <Step title="Provide the inputs for AWS KMS">
+    Fill in the required details for AWS KMS:
+	<ParamField path="Alias" type="string" required>
+		Name for referencing the AWS KMS key within the organization.
+	</ParamField>
+
+    <ParamField path="Description" type="string">
+        Short description of the AWS KMS key.
+    </ParamField>
+
+    <ParamField path="Authentication Mode" type="string" required>
+    	Authentication mode for AWS, either "AWS Assume Role" or "Access Key".
+    </ParamField>
+
+    <ParamField path="IAM Role ARN For Role Assumption" type="string" required>
+        ARN of the AWS role to assume for providing Infisical access to the AWS KMS Key (required if Authentication Mode is "AWS Assume Role")
+    </ParamField>
+
+    <ParamField path="Assume Role External ID" type="string">
+    	Custom identifier for additional validation during role assumption.
+    </ParamField>
+
+    <ParamField path="Access Key ID" type="string" required>
+    	AWS IAM Access Key ID for authentication (required if Authentication Mode is "Access Key").
+    </ParamField>
+
+    <ParamField path="Secret Access Key" type="string" required>
+        AWS IAM Secret Access Key for authentication (required if Authentication Mode is "Access Key").
+    </ParamField>
+
+    <ParamField path="AWS Region" type="string" required>
+    	AWS region where the AWS KMS Key is located.
+    </ParamField>
+    <ParamField path="AWS KMS Key ID" type="string">
+    	Key ID of the AWS KMS Key. If left blank, Infisical will generate and use a new AWS KMS Key in the specified region.
+        ![AWS KMS key ID](../../../images/platform/kms/aws/aws-kms-key-id.png)
+    </ParamField>
+
+  </Step>
+  <Step title="Click Save">
+    Save your configuration to apply the settings.
+  </Step>
+</Steps>
+
+You now have an AWS KMS Key configured at the organization level. You can assign these keys to existing projects via the Project Settings page.
+
+## Assign AWS KMS Key to an Existing Project
+
+Follow these steps to assign an AWS KMS key to a project:
+
+<Steps>
+  <Step title="Open Project Settings and proceed to the Encryption Tab">
+    ![Open encryption project
+    settings](../../../images/platform/kms/aws/encryption-project-settings.png)
+  </Step>
+  <Step title="Under the Key Management section, select your newly added AWS KMS key from the dropdown">
+    ![Select encryption project
+    settings](../../../images/platform/kms/aws/encryption-project-settings-select.png)
+    Choose the AWS KMS key you configured earlier.
+  </Step>
+  <Step title="Click Save">
+    Save the changes to apply the new encryption settings to your project.
+  </Step>
+</Steps>
