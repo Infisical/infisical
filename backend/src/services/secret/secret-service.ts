@@ -51,6 +51,7 @@ import {
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   SecretOperations,
+  SecretProtectionType,
   TAttachSecretTagsDTO,
   TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
@@ -1228,7 +1229,7 @@ export const secretServiceFactory = ({
         : undefined;
     if (shouldUseSecretV2Bridge) {
       if (policy) {
-        return secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
           environment,
@@ -1251,6 +1252,7 @@ export const secretServiceFactory = ({
             ]
           }
         });
+        return { type: SecretProtectionType.Approval as const, approval };
       }
 
       const secret = await secretV2BridgeService.createSecret({
@@ -1270,7 +1272,7 @@ export const secretServiceFactory = ({
         skipMultilineEncoding,
         secretReminderRepeatDays
       });
-      return secret;
+      return { secret, type: SecretProtectionType.Direct as const };
     }
 
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1278,7 +1280,7 @@ export const secretServiceFactory = ({
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
     const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
     if (policy) {
-      return secretApprovalRequestService.generateSecretApprovalRequest({
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
         environment,
@@ -1306,6 +1308,7 @@ export const secretServiceFactory = ({
           ]
         }
       });
+      return { type: SecretProtectionType.Approval as const, approval };
     }
 
     const secret = await createSecret({
@@ -1333,7 +1336,7 @@ export const secretServiceFactory = ({
       tags: tagIds
     });
 
-    return decryptSecretRaw(secret, botKey);
+    return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
   };
 
   const updateSecretRaw = async ({
@@ -1362,7 +1365,7 @@ export const secretServiceFactory = ({
         : undefined;
     if (shouldUseSecretV2Bridge) {
       if (policy) {
-        return secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
           environment,
@@ -1386,6 +1389,7 @@ export const secretServiceFactory = ({
             ]
           }
         });
+        return { type: SecretProtectionType.Approval as const, approval };
       }
       const secret = await secretV2BridgeService.updateSecret({
         secretReminderRepeatDays,
@@ -1406,7 +1410,7 @@ export const secretServiceFactory = ({
         metadata,
         secretValue
       });
-      return secret;
+      return { type: SecretProtectionType.Direct as const, secret };
     }
 
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1416,7 +1420,7 @@ export const secretServiceFactory = ({
     const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(newSecretName || secretName, botKey);
 
     if (policy) {
-      return secretApprovalRequestService.generateSecretApprovalRequest({
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
         environment,
@@ -1447,6 +1451,7 @@ export const secretServiceFactory = ({
           ]
         }
       });
+      return { approval, type: SecretProtectionType.Approval as const };
     }
 
     const secret = await updateSecret({
@@ -1477,7 +1482,7 @@ export const secretServiceFactory = ({
     });
 
     await snapshotService.performSnapshot(secret.folderId);
-    return decryptSecretRaw(secret, botKey);
+    return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
   };
 
   const deleteSecretRaw = async ({
@@ -1498,7 +1503,7 @@ export const secretServiceFactory = ({
         : undefined;
     if (shouldUseSecretV2Bridge) {
       if (policy) {
-        return secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           actorAuthMethod,
           actorOrgId,
@@ -1515,6 +1520,7 @@ export const secretServiceFactory = ({
             ]
           }
         });
+        return { type: SecretProtectionType.Approval as const, approval };
       }
       const secret = await secretV2BridgeService.deleteSecret({
         secretName,
@@ -1527,11 +1533,11 @@ export const secretServiceFactory = ({
         environment,
         secretPath
       });
-      return secret;
+      return { type: SecretProtectionType.Direct as const, secret };
     }
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
     if (policy) {
-      return secretApprovalRequestService.generateSecretApprovalRequest({
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         actorAuthMethod,
         actorOrgId,
@@ -1548,6 +1554,7 @@ export const secretServiceFactory = ({
           ]
         }
       });
+      return { type: SecretProtectionType.Approval as const, approval };
     }
     const secret = await deleteSecret({
       secretName,
@@ -1561,7 +1568,7 @@ export const secretServiceFactory = ({
       actorAuthMethod
     });
 
-    return decryptSecretRaw(secret, botKey);
+    return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
   };
 
   const createManySecretsRaw = async ({
@@ -1593,7 +1600,7 @@ export const secretServiceFactory = ({
         : undefined;
     if (shouldUseSecretV2Bridge) {
       if (policy) {
-        return secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
           environment,
@@ -1613,6 +1620,7 @@ export const secretServiceFactory = ({
             }))
           }
         });
+        return { type: SecretProtectionType.Approval as const, approval };
       }
       const secrets = await secretV2BridgeService.createManySecret({
         secretPath,
@@ -1624,8 +1632,9 @@ export const secretServiceFactory = ({
         actorId,
         secrets: inputSecrets
       });
-      return secrets;
+      return { secrets, type: SecretProtectionType.Direct as const };
     }
+
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
     const sanitizedSecrets = inputSecrets.map(
       ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
@@ -1651,7 +1660,7 @@ export const secretServiceFactory = ({
       }
     );
     if (policy) {
-      return secretApprovalRequestService.generateSecretApprovalRequest({
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
         environment,
@@ -1664,6 +1673,7 @@ export const secretServiceFactory = ({
           [SecretOperations.Create]: sanitizedSecrets
         }
       });
+      return { type: SecretProtectionType.Approval as const, approval };
     }
     const secrets = await createManySecret({
       projectId,
@@ -1676,9 +1686,12 @@ export const secretServiceFactory = ({
       secrets: sanitizedSecrets
     });
 
-    return secrets.map((secret) =>
-      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
-    );
+    return {
+      type: SecretProtectionType.Direct as const,
+      secrets: secrets.map((secret) =>
+        decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+      )
+    };
   };
 
   const updateManySecretsRaw = async ({
@@ -1709,7 +1722,7 @@ export const secretServiceFactory = ({
         : undefined;
     if (shouldUseSecretV2Bridge) {
       if (policy) {
-        return secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
           environment,
@@ -1728,6 +1741,7 @@ export const secretServiceFactory = ({
             }))
           }
         });
+        return { type: SecretProtectionType.Approval as const, approval };
       }
       const secrets = await secretV2BridgeService.updateManySecret({
         secretPath,
@@ -1739,7 +1753,7 @@ export const secretServiceFactory = ({
         actorId,
         secrets: inputSecrets
       });
-      return secrets;
+      return { type: SecretProtectionType.Direct as const, secrets };
     }
 
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
@@ -1779,7 +1793,7 @@ export const secretServiceFactory = ({
       }
     );
     if (policy) {
-      return secretApprovalRequestService.generateSecretApprovalRequest({
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
         environment,
@@ -1792,6 +1806,8 @@ export const secretServiceFactory = ({
           [SecretOperations.Update]: sanitizedSecrets
         }
       });
+
+      return { type: SecretProtectionType.Approval as const, approval };
     }
     const secrets = await updateManySecret({
       projectId,
@@ -1804,9 +1820,12 @@ export const secretServiceFactory = ({
       secrets: sanitizedSecrets
     });
 
-    return secrets.map((secret) =>
-      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
-    );
+    return {
+      type: SecretProtectionType.Direct as const,
+      secrets: secrets.map((secret) =>
+        decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+      )
+    };
   };
 
   const deleteManySecretsRaw = async ({
@@ -1837,7 +1856,7 @@ export const secretServiceFactory = ({
         : undefined;
     if (shouldUseSecretV2Bridge) {
       if (policy) {
-        return secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           actorAuthMethod,
           actorOrgId,
@@ -1850,6 +1869,7 @@ export const secretServiceFactory = ({
             [SecretOperations.Delete]: inputSecrets
           }
         });
+        return { type: SecretProtectionType.Approval as const, approval };
       }
       const secrets = await secretV2BridgeService.deleteManySecret({
         secretPath,
@@ -1861,13 +1881,13 @@ export const secretServiceFactory = ({
         actorId,
         secrets: inputSecrets
       });
-      return secrets;
+      return { type: SecretProtectionType.Direct as const, secrets };
     }
 
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     if (policy) {
-      return secretApprovalRequestService.generateSecretApprovalRequest({
+      const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         actorAuthMethod,
         actorOrgId,
@@ -1880,6 +1900,7 @@ export const secretServiceFactory = ({
           [SecretOperations.Delete]: inputSecrets.map((el) => ({ secretName: el.secretKey }))
         }
       });
+      return { type: SecretProtectionType.Approval as const, approval };
     }
     const secrets = await deleteManySecret({
       projectId,
@@ -1892,9 +1913,12 @@ export const secretServiceFactory = ({
       secrets: inputSecrets.map(({ secretKey, type = SecretType.Shared }) => ({ secretName: secretKey, type }))
     });
 
-    return secrets.map((secret) =>
-      decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
-    );
+    return {
+      type: SecretProtectionType.Direct as const,
+      secrets: secrets.map((secret) =>
+        decryptSecretRaw({ ...secret, workspace: projectId, environment, secretPath }, botKey)
+      )
+    };
   };
 
   const getSecretVersions = async ({
@@ -1906,11 +1930,24 @@ export const secretServiceFactory = ({
     offset = 0,
     secretId
   }: TGetSecretVersionsDTO) => {
+    const secretVersionV2 = await secretV2BridgeService.getSecretVersions({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      limit,
+      offset,
+      secretId
+    });
+    if (secretVersionV2) return secretVersionV2;
+
     const secret = await secretDAL.findById(secretId);
     if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
-
     const folder = await folderDAL.findById(secret.folderId);
     if (!folder) throw new BadRequestError({ message: "Failed to find secret" });
+
+    const { botKey } = await projectBotService.getBotKey(folder.projectId);
+    if (!botKey) throw new BadRequestError({ message: "bot not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1920,9 +1957,18 @@ export const secretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-
     const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
-    return secretVersions;
+    return secretVersions.map((el) =>
+      decryptSecretRaw(
+        {
+          ...el,
+          workspace: folder.projectId,
+          environment: folder.environment.envSlug,
+          secretPath: "/"
+        },
+        botKey
+      )
+    );
   };
 
   const attachTags = async ({

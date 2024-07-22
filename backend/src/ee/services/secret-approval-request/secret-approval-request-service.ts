@@ -221,6 +221,15 @@ export const secretApprovalRequestServiceFactory = ({
       );
       secrets = encrypedSecrets.map((el) => ({
         ...el,
+        secretKey: el.key,
+        id: el.id,
+        version: el.version,
+        secretValue: el.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+          : undefined,
+        secretComment: el.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+          : undefined,
         secret: {
           secretKey: el.secret.key,
           id: el.secret.id,
@@ -249,6 +258,7 @@ export const secretApprovalRequestServiceFactory = ({
       const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encrypedSecrets.map((el) => ({
         ...el,
+        ...decryptSecretWithBot(el, botKey),
         secret: {
           id: el.secret.id,
           version: el.secret.version,

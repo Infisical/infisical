@@ -444,3 +444,8 @@ export type TMoveSecretsDTO = {
   secretIds: string[];
   shouldOverwrite: boolean;
 } & Omit<TProjectPermission, "projectId">;
+
+export enum SecretProtectionType {
+  Approval = "approval",
+  Direct = "direct"
+}
