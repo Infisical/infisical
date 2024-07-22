@@ -1,9 +1,13 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
+import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
@@ -45,6 +49,8 @@ type TSecretSnapshotServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findBySecretPath" | "delete" | "insertMany" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
 };
 
 export type TSecretSnapshotServiceFactory = ReturnType<typeof secretSnapshotServiceFactory>;
@@ -64,7 +70,9 @@ export const secretSnapshotServiceFactory = ({
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
   snapshotSecretV2BridgeDAL,
-  secretVersionV2TagBridgeDAL
+  secretVersionV2TagBridgeDAL,
+  kmsService,
+  projectBotService
 }: TSecretSnapshotServiceFactoryDep) => {
   const projectSecretSnapshotCount = async ({
     environment,
@@ -144,9 +152,55 @@ export const secretSnapshotServiceFactory = ({
     const shouldUseBridge = snapshot.projectVersion === 3;
     let snapshotDetails;
     if (shouldUseBridge) {
-      snapshotDetails = await snapshotDAL.findSecretSnapshotV2DataById(id);
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: snapshot.projectId
+      });
+      const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotV2DataById(id);
+      snapshotDetails = {
+        ...encryptedSnapshotDetails,
+        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
+          ...el,
+          secretKey: el.key,
+          secretValue: el.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+            : undefined,
+          secretComment: el.encryptedComment
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+            : undefined
+        }))
+      };
     } else {
-      snapshotDetails = await snapshotDAL.findSecretSnapshotDataById(id);
+      const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotDataById(id);
+      const { botKey } = await projectBotService.getBotKey(snapshot.projectId);
+      if (!botKey) throw new BadRequestError({ message: "bot not found" });
+      snapshotDetails = {
+        ...encryptedSnapshotDetails,
+        secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
+          ...el,
+          secretKey: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: el.secretKeyCiphertext,
+            iv: el.secretKeyIV,
+            tag: el.secretKeyTag,
+            key: botKey
+          }),
+          secretValue: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: el.secretValueCiphertext,
+            iv: el.secretValueIV,
+            tag: el.secretValueTag,
+            key: botKey
+          }),
+          secretComment:
+            el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.secretCommentCiphertext,
+                  iv: el.secretCommentIV,
+                  tag: el.secretCommentTag,
+                  key: botKey
+                })
+              : ""
+        }))
+      };
     }
 
     const fullFolderPath = await getFullFolderPath({

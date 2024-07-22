@@ -1,9 +1,10 @@
 import { z } from "zod";
 
-import { SecretSnapshotsSchema, SecretTagsSchema, SecretVersionsSchema } from "@app/db/schemas";
+import { SecretSnapshotsSchema, SecretTagsSchema } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
@@ -27,7 +28,8 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
               slug: z.string(),
               name: z.string()
             }),
-            secretVersions: SecretVersionsSchema.omit({ secretBlindIndex: true })
+            secretVersions: secretRawSchema
+              .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
               .merge(
                 z.object({
                   tags: SecretTagsSchema.pick({

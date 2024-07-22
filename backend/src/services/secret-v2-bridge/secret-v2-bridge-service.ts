@@ -995,9 +995,20 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: folder.projectId
+    });
     const secretVersions = await secretVersionDAL.find({ secretId }, { offset, limit, sort: [["createdAt", "desc"]] });
-    return secretVersions;
+    return secretVersions.map((el) =>
+      reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, "/", {
+        ...el,
+        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : undefined,
+        comment: el.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+          : undefined
+      })
+    );
   };
 
   // this is a backfilling API for secret references

@@ -66,6 +66,7 @@ import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/s
 import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
 import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
+import { snapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -235,7 +236,7 @@ export const registerRoutes = async (
 
   const secretV2BridgeDAL = secretV2BridgeDALFactory(db);
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
-  const secretVersionV2TagBridgeDAL = secretVersionV2TagBridgeDALFactory(db);
+  const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
@@ -285,6 +286,7 @@ export const registerRoutes = async (
   const secretRotationDAL = secretRotationDALFactory(db);
   const snapshotDAL = snapshotDALFactory(db);
   const snapshotSecretDAL = snapshotSecretDALFactory(db);
+  const snapshotSecretV2BridgeDAL = snapshotSecretV2DALFactory(db);
   const snapshotFolderDAL = snapshotFolderDALFactory(db);
 
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
@@ -664,7 +666,13 @@ export const registerRoutes = async (
     secretVersionDAL,
     folderVersionDAL,
     secretTagDAL,
-    secretVersionTagDAL
+    secretVersionTagDAL,
+    projectBotService,
+    kmsService,
+    secretV2BridgeDAL,
+    secretVersionV2BridgeDAL,
+    snapshotSecretV2BridgeDAL,
+    secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL
   });
   const webhookService = webhookServiceFactory({
     permissionService,
@@ -688,7 +696,8 @@ export const registerRoutes = async (
     integrationDAL,
     permissionService,
     projectBotDAL,
-    projectBotService
+    projectBotService,
+    kmsService
   });
   const secretQueueService = secretQueueFactory({
     queueService,
@@ -708,7 +717,11 @@ export const registerRoutes = async (
     secretVersionDAL,
     secretBlindIndexDAL,
     secretTagDAL,
-    secretVersionTagDAL
+    secretVersionTagDAL,
+    kmsService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,
@@ -719,7 +732,9 @@ export const registerRoutes = async (
     secretImportDAL,
     projectDAL,
     secretDAL,
-    secretQueueService
+    secretQueueService,
+    secretV2BridgeDAL,
+    kmsService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -733,13 +748,36 @@ export const registerRoutes = async (
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
-    secretVersionTagDAL: secretVersionV2TagBridgeDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
     secretImportDAL,
     secretApprovalRequestDAL,
     secretApprovalPolicyService,
-    secretApprovalRequestSecretDAL
+    secretApprovalRequestSecretDAL,
+    kmsService,
+    snapshotService
+  });
+
+  const secretApprovalRequestService = secretApprovalRequestServiceFactory({
+    permissionService,
+    projectBotService,
+    folderDAL,
+    secretDAL,
+    secretTagDAL,
+    secretApprovalRequestSecretDAL,
+    secretApprovalRequestReviewerDAL,
+    projectDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretApprovalRequestDAL,
+    snapshotService,
+    secretVersionTagDAL,
+    secretQueueService,
+    kmsService,
+    secretV2BridgeDAL,
+    secretVersionV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
   });
 
   const secretService = secretServiceFactory({
@@ -759,29 +797,13 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
-    secretV2BridgeService
+    secretV2BridgeService,
+    secretApprovalRequestService
   });
 
   const secretSharingService = secretSharingServiceFactory({
     permissionService,
     secretSharingDAL
-  });
-
-  const secretApprovalRequestService = secretApprovalRequestServiceFactory({
-    permissionService,
-    projectBotService,
-    folderDAL,
-    secretDAL,
-    secretTagDAL,
-    secretApprovalRequestSecretDAL,
-    secretApprovalRequestReviewerDAL,
-    projectDAL,
-    secretVersionDAL,
-    secretBlindIndexDAL,
-    secretApprovalRequestDAL,
-    snapshotService,
-    secretVersionTagDAL,
-    secretQueueService
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
@@ -817,11 +839,14 @@ export const registerRoutes = async (
     queueService,
     folderDAL,
     secretApprovalPolicyService,
-    secretBlindIndexDAL,
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
-    projectBotService
+    projectBotService,
+    kmsService,
+    secretV2BridgeDAL,
+    secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
+    secretVersionV2BridgeDAL
   });
   const secretRotationQueue = secretRotationQueueFactory({
     telemetryService,
@@ -829,7 +854,10 @@ export const registerRoutes = async (
     queue: queueService,
     secretDAL,
     secretVersionDAL,
-    projectBotService
+    projectBotService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    kmsService
   });
 
   const secretRotationService = secretRotationServiceFactory({
