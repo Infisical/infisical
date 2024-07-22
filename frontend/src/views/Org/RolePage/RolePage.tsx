@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { useDeleteOrgRole,useGetOrgRole } from "@app/hooks/api";
+import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
@@ -64,6 +64,8 @@ export const RolePage = withPermission(
       }
     };
 
+    const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
+
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         {data && (
@@ -81,51 +83,56 @@ export const RolePage = withPermission(
             </Button>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-3xl font-semibold text-white">{data.name}</p>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                    <Tooltip content="More options">
-                      <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                    </Tooltip>
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
-                  <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        className={twMerge(
-                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
-                        onClick={async () => {
-                          handlePopUpOpen("role", {
-                            roleId
-                          });
-                        }}
-                        disabled={!isAllowed}
-                      >
-                        Edit Role
-                      </DropdownMenuItem>
-                    )}
-                  </OrgPermissionCan>
-                  <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Role}>
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        className={twMerge(
-                          isAllowed
-                            ? "hover:!bg-red-500 hover:!text-white"
-                            : "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
-                        onClick={async () => {
-                          handlePopUpOpen("deleteOrgRole");
-                        }}
-                        disabled={!isAllowed}
-                      >
-                        Delete Role
-                      </DropdownMenuItem>
-                    )}
-                  </OrgPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {isCustomRole && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild className="rounded-lg">
+                    <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                      <Tooltip content="More options">
+                        <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                      </Tooltip>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="p-1">
+                    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
+                      {(isAllowed) => (
+                        <DropdownMenuItem
+                          className={twMerge(
+                            !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                          )}
+                          onClick={async () => {
+                            handlePopUpOpen("role", {
+                              roleId
+                            });
+                          }}
+                          disabled={!isAllowed}
+                        >
+                          Edit Role
+                        </DropdownMenuItem>
+                      )}
+                    </OrgPermissionCan>
+                    <OrgPermissionCan
+                      I={OrgPermissionActions.Delete}
+                      a={OrgPermissionSubjects.Role}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenuItem
+                          className={twMerge(
+                            isAllowed
+                              ? "hover:!bg-red-500 hover:!text-white"
+                              : "pointer-events-none cursor-not-allowed opacity-50"
+                          )}
+                          onClick={async () => {
+                            handlePopUpOpen("deleteOrgRole");
+                          }}
+                          disabled={!isAllowed}
+                        >
+                          Delete Role
+                        </DropdownMenuItem>
+                      )}
+                    </OrgPermissionCan>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
             <div className="flex">
               <div className="mr-4 w-96">

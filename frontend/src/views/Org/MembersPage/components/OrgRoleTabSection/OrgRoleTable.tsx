@@ -110,8 +110,6 @@ export const OrgRoleTable = () => {
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
                           a={OrgPermissionSubjects.Role}
-                          renderTooltip
-                          allowedLabel="Edit"
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
@@ -121,39 +119,36 @@ export const OrgRoleTable = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 router.push(`/org/${orgId}/roles/${id}`);
-                                // onSelectRole(role);
                               }}
                               disabled={!isAllowed}
                             >
-                              Edit Role
+                              {`${isNonMutatable ? "View" : "Edit"} Role`}
                             </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Delete}
-                          a={OrgPermissionSubjects.Role}
-                          renderTooltip
-                          allowedLabel={
-                            isNonMutatable ? "Reserved roles are non-removable" : "Delete"
-                          }
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                isAllowed
-                                  ? "hover:!bg-red-500 hover:!text-white"
-                                  : "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("deleteRole", role);
-                              }}
-                              disabled={!isAllowed}
-                            >
-                              Delete Role
-                            </DropdownMenuItem>
-                          )}
-                        </OrgPermissionCan>
+                        {!isNonMutatable && (
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Delete}
+                            a={OrgPermissionSubjects.Role}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  isAllowed
+                                    ? "hover:!bg-red-500 hover:!text-white"
+                                    : "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteRole", role);
+                                }}
+                                disabled={!isAllowed}
+                              >
+                                Delete Role
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </Td>
