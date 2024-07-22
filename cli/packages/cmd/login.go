@@ -84,7 +84,7 @@ func handleAzureAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.Infis
 		return infisicalSdk.MachineIdentityCredential{}, err
 	}
 
-	return infisicalClient.Auth().AzureAuthLogin(identityId)
+	return infisicalClient.Auth().AzureAuthLogin(identityId, "")
 }
 
 func handleGcpIdTokenAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
