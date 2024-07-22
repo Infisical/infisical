@@ -550,7 +550,7 @@ func (tm *AgentManager) FetchAzureAuthAccessToken() (credential infisicalSdk.Mac
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
-	return tm.infisicalClient.Auth().AzureAuthLogin(identityId)
+	return tm.infisicalClient.Auth().AzureAuthLogin(identityId, "")
 
 }
 
