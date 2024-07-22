@@ -165,7 +165,8 @@ export enum SecretType {
 
 export enum ProjectVersion {
   V1 = 1,
-  V2 = 2
+  V2 = 2,
+  V3 = 3
 }
 
 export enum ProjectUpgradeStatus {
