@@ -14,7 +14,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, Input, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetSnapshotSecrets, usePerformSecretRollback } from "@app/hooks/api";
-import { SecretV3RawSanitized, TSecretFolder, UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 
 import { renderIcon, SecretItem, TDiffModes, TDiffView } from "./SecretItem";
 
@@ -23,7 +23,6 @@ type Props = {
   environment: string;
   workspaceId: string;
   secretPath?: string;
-  decryptFileKey: UserWsKeyPair;
   secrets?: SecretV3RawSanitized[];
   folders?: TSecretFolder[];
   snapshotCount?: number;
@@ -45,7 +44,6 @@ export const SnapshotView = ({
   environment,
   workspaceId,
   secretPath,
-  decryptFileKey,
   secrets = [],
   folders = [],
   onGoBack,
@@ -57,8 +55,7 @@ export const SnapshotView = ({
 
   const { data: snapshotData, isLoading: isSnapshotLoading } = useGetSnapshotSecrets({
     snapshotId,
-    env: environment,
-    decryptFileKey
+    env: environment
   });
 
   const rollingFolder = snapshotData?.folders || [];

@@ -230,7 +230,7 @@ export const SecretApprovalRequestChanges = ({
         </div>
         <div className="flex flex-col space-y-4">
           {secretApprovalRequestDetails.commits.map(
-            ({ op, secretVersion, secret, newVersion }, index) => (
+            ({ op, secretVersion, secret, ...newVersion }, index) => (
               <SecretApprovalRequestChangeItem
                 op={op}
                 conflicts={secretApprovalRequestDetails.conflicts}
@@ -269,8 +269,9 @@ export const SecretApprovalRequestChanges = ({
               >
                 <div className="flex-grow text-sm">
                   <Tooltip
-                    content={`${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""
-                      }`}
+                    content={`${requiredApprover.firstName || ""} ${
+                      requiredApprover.lastName || ""
+                    }`}
                   >
                     <span>{requiredApprover?.email} </span>
                   </Tooltip>

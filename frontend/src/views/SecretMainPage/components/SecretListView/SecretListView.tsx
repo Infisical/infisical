@@ -10,9 +10,9 @@ import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
-import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
@@ -25,7 +25,6 @@ type Props = {
   secrets?: SecretV3RawSanitized[];
   environment: string;
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
   secretPath?: string;
   filter: Filter;
   sortDir?: SortDir;
@@ -88,7 +87,6 @@ export const SecretListView = ({
   secrets = [],
   environment,
   workspaceId,
-  decryptFileKey,
   secretPath = "/",
   filter,
   sortDir = SortDir.ASC,
@@ -392,7 +390,6 @@ export const SecretListView = ({
         secretPath={secretPath}
         isOpen={popUp.secretDetail.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
-        decryptFileKey={decryptFileKey}
         secret={popUp.secretDetail.data as SecretV3RawSanitized}
         onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
         onClose={() => handlePopUpClose("secretDetail")}

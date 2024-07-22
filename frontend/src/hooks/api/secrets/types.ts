@@ -1,4 +1,3 @@
-import type { UserWsKeyPair } from "../keys/types";
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -79,7 +78,7 @@ export type SecretV3RawResponse = {
   }[];
 };
 
-export type EncryptedSecretVersion = {
+export type SecretVersions = {
   id: string;
   secretId: string;
   version: number;
@@ -87,12 +86,9 @@ export type EncryptedSecretVersion = {
   type: SecretType;
   isDeleted: boolean;
   envId: string;
-  secretKeyCiphertext: string;
-  secretKeyIV: string;
-  secretKeyTag: string;
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
+  secretKey: string;
+  secretValue?: string;
+  secretComment?: string;
   tags: WsTag[];
   __v: number;
   skipMultilineEncoding?: boolean;
@@ -123,7 +119,6 @@ export type GetSecretVersionsDTO = {
   secretId: string;
   limit: number;
   offset: number;
-  decryptFileKey: UserWsKeyPair;
 };
 
 export type TCreateSecretsV3DTO = {

@@ -23,13 +23,11 @@ import {
   useGetProjectSecrets,
   useGetSecretApprovalPolicyOfABoard,
   useGetSecretImports,
-  useGetUserWsKey,
   useGetWorkspaceSnapshotList,
   useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
 
-import { ProjectIndexSecretsSection } from "../SecretOverviewPage/components/ProjectIndexSecretsSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
@@ -92,8 +90,6 @@ export const SecretMainPage = () => {
       });
     }
   }, [isWorkspaceLoading, currentWorkspace, environment, router.isReady]);
-
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
   // fetch secrets
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
@@ -248,7 +244,6 @@ export const SecretMainPage = () => {
             protectionPolicyName={boardPolicy?.name}
           />
         </div>
-        <ProjectIndexSecretsSection decryptFileKey={decryptFileKey!} />
         {!isRollbackMode ? (
           <>
             <ActionBar
@@ -330,7 +325,6 @@ export const SecretMainPage = () => {
                     environment={environment}
                     workspaceId={workspaceId}
                     secretPath={secretPath}
-                    decryptFileKey={decryptFileKey!}
                     isProtectedBranch={isProtectedBranch}
                   />
                 )}
@@ -367,7 +361,6 @@ export const SecretMainPage = () => {
         ) : (
           <SnapshotView
             snapshotId={snapshotId || ""}
-            decryptFileKey={decryptFileKey!}
             environment={environment}
             workspaceId={workspaceId}
             secretPath={secretPath}
