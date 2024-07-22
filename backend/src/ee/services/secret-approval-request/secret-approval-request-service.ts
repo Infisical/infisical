@@ -15,6 +15,7 @@ import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -28,13 +29,6 @@ import {
   fnSecretBulkUpdate,
   getAllNestedSecretReferences
 } from "@app/services/secret/secret-fns";
-import {
-  fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge,
-  secretEncryptionHelper
-} from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -44,6 +38,16 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import {
+  fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
+  fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
+  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge,
+  secretEncryptionHelper
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -63,10 +67,6 @@ import {
   TSecretApprovalDetailsDTO,
   TStatusChangeDTO
 } from "./secret-approval-request-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
-import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -730,7 +730,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await snapshotService.performSnapshot(folderId, shouldUseSecretV2Bridge);
+    await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
     await secretQueueService.syncSecrets({

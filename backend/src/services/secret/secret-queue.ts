@@ -18,6 +18,8 @@ import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
@@ -25,6 +27,9 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
@@ -36,10 +41,6 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
-import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
@@ -557,6 +558,10 @@ export const secretQueueFactory = ({
     }
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     let referencedFolderIds;
     if (shouldUseSecretV2Bridge) {
       const secretReferences = await secretV2BridgeDAL.findReferencedSecretReferences(
@@ -623,31 +628,44 @@ export const secretQueueFactory = ({
         projectId: integration.projectId
       };
 
-      const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(integrationAuth, botKey);
-      const awsAssumeRoleArn =
+      const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(
+        integrationAuth,
+        shouldUseSecretV2Bridge,
+        botKey
+      );
+      let awsAssumeRoleArn = null;
+      if (shouldUseSecretV2Bridge) {
+        if (integrationAuth.awsAssumeIamRoleArnCipherText) {
+          awsAssumeRoleArn = secretManagerDecryptor({
+            cipherTextBlob: Buffer.from(integrationAuth.awsAssumeIamRoleArnCipherText)
+          }).toString();
+        }
+      } else if (
         integrationAuth.awsAssumeIamRoleArnTag &&
         integrationAuth.awsAssumeIamRoleArnIV &&
         integrationAuth.awsAssumeIamRoleArnCipherText
-          ? decryptSymmetric128BitHexKeyUTF8({
-              ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
-              iv: integrationAuth.awsAssumeIamRoleArnIV,
-              tag: integrationAuth.awsAssumeIamRoleArnTag,
-              key: botKey
-            })
-          : null;
+      ) {
+        awsAssumeRoleArn = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
+          iv: integrationAuth.awsAssumeIamRoleArnIV,
+          tag: integrationAuth.awsAssumeIamRoleArnTag,
+          key: botKey as string
+        });
+      }
 
       const secrets = shouldUseSecretV2Bridge
         ? await getIntegrationSecretsV2({
             environment,
             projectId,
             folderId: folder.id,
-            depth: 1
+            depth: 1,
+            decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
           })
         : await getIntegrationSecrets({
             environment,
             projectId,
             folderId: folder.id,
-            key: botKey,
+            key: botKey as string,
             depth: 1
           });
       const suffixedSecrets: typeof secrets = {};

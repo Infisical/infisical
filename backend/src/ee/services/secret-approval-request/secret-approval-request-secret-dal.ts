@@ -16,6 +16,7 @@ export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApp
 export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
   const secretApprovalRequestSecretTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTag);
+  const secretApprovalRequestSecretV2TagOrm = ormify(db, TableName.SecretApprovalRequestSecretTagV2);
   const secretApprovalRequestSecretV2Orm = ormify(db, TableName.SecretApprovalRequestSecretV2);
 
   const bulkUpdateNoVersionIncrement = async (data: TSecretApprovalRequestsSecrets[], tx?: Knex) => {
@@ -359,6 +360,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
     findByRequestId,
     findByRequestIdBridgeSecretV2,
     bulkUpdateNoVersionIncrement,
-    insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany
+    insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany,
+    insertApprovalSecretV2Tags: secretApprovalRequestSecretV2TagOrm.insertMany
   };
 };

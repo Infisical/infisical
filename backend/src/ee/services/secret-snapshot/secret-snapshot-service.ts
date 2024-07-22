@@ -10,6 +10,9 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -23,11 +26,8 @@ import {
 import { TSnapshotDALFactory } from "./snapshot-dal";
 import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
-import { getFullFolderPath } from "./snapshot-service-fns";
-import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSnapshotSecretV2DALFactory } from "./snapshot-secret-v2-dal";
-import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { getFullFolderPath } from "./snapshot-service-fns";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDAL: TSnapshotDALFactory;
@@ -167,14 +167,15 @@ export const secretSnapshotServiceFactory = ({
     return snapshotDetails;
   };
 
-  const performSnapshot = async (folderId: string, shouldUseSecretV2Bridge: boolean) => {
+  const performSnapshot = async (folderId: string) => {
     try {
       if (!licenseService.isValidLicense) throw new InternalServerError({ message: "Invalid license" });
+      const folder = await folderDAL.findById(folderId);
+      if (!folder) throw new BadRequestError({ message: "Folder not found" });
+      const shouldUseSecretV2Bridge = folder.projectVersion === 3;
+
       if (shouldUseSecretV2Bridge) {
         const snapshot = await snapshotDAL.transaction(async (tx) => {
-          const folder = await folderDAL.findById(folderId, tx);
-          if (!folder) throw new BadRequestError({ message: "Folder not found" });
-
           const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx);
           const folderVersions = await folderVersionDAL.findLatestVersionByFolderId(folderId, tx);
           const newSnapshot = await snapshotDAL.create(
@@ -208,9 +209,6 @@ export const secretSnapshotServiceFactory = ({
       }
 
       const snapshot = await snapshotDAL.transaction(async (tx) => {
-        const folder = await folderDAL.findById(folderId, tx);
-        if (!folder) throw new BadRequestError({ message: "Folder not found" });
-
         const secretVersions = await secretVersionDAL.findLatestVersionByFolderId(folderId, tx);
         const folderVersions = await folderVersionDAL.findLatestVersionByFolderId(folderId, tx);
         const newSnapshot = await snapshotDAL.create(

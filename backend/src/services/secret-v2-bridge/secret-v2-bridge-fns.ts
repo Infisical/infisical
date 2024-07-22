@@ -4,11 +4,11 @@ import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 
 const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
 
