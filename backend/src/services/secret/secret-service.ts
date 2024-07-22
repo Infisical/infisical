@@ -14,6 +14,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import {
@@ -73,7 +74,6 @@ import {
 } from "./secret-types";
 import { TSecretVersionDALFactory } from "./secret-version-dal";
 import { TSecretVersionTagDALFactory } from "./secret-version-tag-dal";
-import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 
 type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;

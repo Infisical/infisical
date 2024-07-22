@@ -9,6 +9,8 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -16,8 +18,9 @@ import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
-import { fnSecretsFromImports } from "./secret-import-fns";
+import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
@@ -31,12 +34,14 @@ type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -52,7 +57,9 @@ export const secretImportServiceFactory = ({
   secretDAL,
   secretQueueService,
   licenseService,
-  projectBotService
+  projectBotService,
+  secretV2BridgeDAL,
+  kmsService
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -489,7 +496,23 @@ export const secretImportServiceFactory = ({
       )
     );
 
-    const botKey = await projectBotService.getBotKey(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const importedSecrets = await fnSecretsV2FromImports({
+        allowedImports,
+        folderDAL,
+        secretDAL: secretV2BridgeDAL,
+        secretImportDAL,
+        decryptor: (value) =>
+          value ? secretManagerEncryptor({ plainText: value }).cipherTextBlob.toString() : undefined
+      });
+      return importedSecrets;
+    }
+
     if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const importedSecrets = await fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });

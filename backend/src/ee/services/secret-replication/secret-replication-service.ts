@@ -10,15 +10,11 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
-import {
-  fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllNestedSecretReferences,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
-} from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -28,13 +24,17 @@ import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-
-import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import {
+  fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
+  getAllNestedSecretReferences,
+  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+
+import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
 
 type TSecretReplicationServiceFactoryDep = {
   secretDAL: Pick<
