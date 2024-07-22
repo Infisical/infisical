@@ -28,7 +28,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	"github.com/pkg/browser"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
@@ -227,10 +226,9 @@ var loginCmd = &cobra.Command{
 
 			//call browser login function
 			if !interactiveLogin {
-				fmt.Println("Logging in via browser... To login via interactive mode run [infisical login -i]")
 				userCredentialsToBeStored, err = browserCliLogin()
 				if err != nil {
-					fmt.Printf("Logging in via browser failed. %s", err.Error())
+					fmt.Printf("Login via browser failed. %s", err.Error())
 					//default to cli login on error
 					cliDefaultLogin(&userCredentialsToBeStored)
 				}
@@ -717,34 +715,38 @@ func askForMFACode() string {
 
 func askToPasteJwtToken(stdin *readline.CancelableStdin, success chan models.UserCredentials, failure chan error) {
 	time.Sleep(time.Second * 5)
-	prompt := &promptui.Prompt{
-		Label: "Press ENTER to paste your token manually",
-		Stdin: stdin,
-	}
+	fmt.Println("\n\nOnce login is completed via browser, the CLI should be authenticated automatically.")
+	fmt.Println("However, if browser fails to communicate with the CLI, please paste the token from the browser below.")
 
-	_, err := prompt.Run()
+	fmt.Print("\n\nToken: ")
+	bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		failure <- err
-		return
+		fmt.Println("\nError reading input:", err)
+		os.Exit(1)
 	}
 
-	prompt = &promptui.Prompt{
-		Label: "Paste your token",
-		Mask:  '*',
-		Stdin: stdin,
-	}
-	infisicalPastedToken, err := prompt.Run()
-	if err != nil {
-		failure <- err
-		return
-	}
+	infisicalPastedToken := strings.TrimSpace(string(bytePassword))
 
 	userCredentials, err := decodePastedBase64Token(infisicalPastedToken)
 	if err != nil {
+		failure <- err
 		fmt.Println("Invalid user credentials provided", err)
 		os.Exit(1)
-		return
 	}
+
+	// verify JTW
+	httpClient := resty.New().
+		SetAuthToken(userCredentials.JTWToken).
+		SetHeader("Accept", "application/json")
+
+	isAuthenticated := api.CallIsAuthenticated(httpClient)
+	if !isAuthenticated {
+		fmt.Println("Invalid user credentials provided", err)
+		failure <- err
+		os.Exit(1)
+	}
+
 	success <- *userCredentials
 }
 
@@ -778,11 +780,7 @@ func browserCliLogin() (models.UserCredentials, error) {
 	callbackPort := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("%s?callback_port=%d", config.INFISICAL_LOGIN_URL, callbackPort)
 
-	//open browser and login
-	err = browser.OpenURL(url)
-	if err != nil {
-		return models.UserCredentials{}, err
-	}
+	fmt.Printf("\n\nTo complete your login, open this address in your browser: %v \n", url)
 
 	//flow channels
 	success := make(chan models.UserCredentials)
@@ -818,7 +816,7 @@ func browserCliLogin() (models.UserCredentials, error) {
 		case loginResponse := <-success:
 			_ = closeListener(&listener)
 			_ = stdin.Close()
-			fmt.Println("Browser login successfull")
+			fmt.Println("Browser login successful")
 			return loginResponse, nil
 
 		case err := <-failure:

@@ -49,10 +49,13 @@ export default function CliRedirect() {
           <>
             <div className="pb-4">
               <p className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
-                Login successful!
+                Unable to reach CLI
               </p>
-              <p className="text-light mb-1 text-lg text-mineshaft-400">
-                However, your token could not be sent to the CLI
+              <p className="text-light mb-1 text-lg text-mineshaft-400 text-center">
+                Your login was successful but, Infisical couldn&apos;t automatically push your login token to the CLI.
+              </p>
+              <p className="text-light mb-1 text-lg text-mineshaft-400 text-center">
+                Please copy the token below and manually provide it to your CLI.
               </p>
             </div>
             <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-mineshaft-700 bg-mineshaft-900 p-3">
@@ -70,9 +73,6 @@ export default function CliRedirect() {
                 </IconButton>
               </div>
             </div>
-            <p className="text-light mb-1 text-lg text-mineshaft-400">
-              After copying, return to terminal screen and paste it there
-            </p>
           </>
         ) : (
           <>
