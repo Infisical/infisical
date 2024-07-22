@@ -21,32 +21,35 @@ export const RoleDetailsSection = ({ roleId, handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetOrgRole(orgId, roleId);
+  const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
 
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Details</h3>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
-          {(isAllowed) => {
-            return (
-              <Tooltip content="Edit Role">
-                <IconButton
-                  isDisabled={!isAllowed}
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative"
-                  onClick={() =>
-                    handlePopUpOpen("role", {
-                      roleId
-                    })
-                  }
-                >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
-              </Tooltip>
-            );
-          }}
-        </OrgPermissionCan>
+        {isCustomRole && (
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
+            {(isAllowed) => {
+              return (
+                <Tooltip content="Edit Role">
+                  <IconButton
+                    isDisabled={!isAllowed}
+                    ariaLabel="copy icon"
+                    variant="plain"
+                    className="group relative"
+                    onClick={() =>
+                      handlePopUpOpen("role", {
+                        roleId
+                      })
+                    }
+                  >
+                    <FontAwesomeIcon icon={faPencil} />
+                  </IconButton>
+                </Tooltip>
+              );
+            }}
+          </OrgPermissionCan>
+        )}
       </div>
       <div className="pt-4">
         <div className="mb-4">

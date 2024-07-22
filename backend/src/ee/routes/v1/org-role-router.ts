@@ -53,7 +53,6 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    // new: note that doesn't work for default roles
     method: "GET",
     url: "/:organizationId/roles/:roleId",
     config: {

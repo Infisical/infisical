@@ -93,6 +93,8 @@ export const RolePermissionsTable = ({ roleId }: Props) => {
     }
   };
 
+  const isCustomRole = !["admin", "member", "no-access"].includes(role?.slug ?? "");
+
   return (
     <TableContainer>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -114,6 +116,7 @@ export const RolePermissionsTable = ({ roleId }: Props) => {
                   setValue={setValue}
                   handleSubmit={handleSubmit(onSubmit)}
                   key={`org-role-${roleId}-permission-${permission.formName}`}
+                  isEditable={isCustomRole}
                 />
               );
             })}

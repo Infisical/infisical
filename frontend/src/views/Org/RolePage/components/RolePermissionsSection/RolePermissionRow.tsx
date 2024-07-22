@@ -3,7 +3,8 @@ import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form"
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Checkbox, IconButton, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { TFormSchema } from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleModifySection/OrgRoleModifySection.utils";
 
@@ -58,6 +59,7 @@ const getPermissionList = (option: string) => {
 };
 
 type Props = {
+  isEditable: boolean;
   title: string;
   formName: keyof Omit<Exclude<TFormSchema["permissions"], undefined>, "workspace">;
   setValue: UseFormSetValue<TFormSchema>;
@@ -76,7 +78,14 @@ enum Permission {
 
 // TODO: support for default roles
 
-export const RolePermissionRow = ({ title, formName, handleSubmit, control, setValue }: Props) => {
+export const RolePermissionRow = ({
+  isEditable,
+  title,
+  formName,
+  handleSubmit,
+  control,
+  setValue
+}: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
@@ -159,14 +168,7 @@ export const RolePermissionRow = ({ title, formName, handleSubmit, control, setV
         onClick={() => setIsRowExpanded.toggle()}
       >
         <Td>
-          <IconButton
-            ariaLabel="copy icon"
-            variant="plain"
-            className="group relative ml-2"
-            onClick={() => setIsRowExpanded.toggle()}
-          >
-            <FontAwesomeIcon icon={isRowExpanded ? faChevronDown : faChevronRight} />
-          </IconButton>
+          <FontAwesomeIcon icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td>{title}</Td>
         <Td>
@@ -175,6 +177,7 @@ export const RolePermissionRow = ({ title, formName, handleSubmit, control, setV
             className="w-40 bg-mineshaft-600"
             dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
             onValueChange={handlePermissionChange}
+            isDisabled={!isEditable}
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
             <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
@@ -200,6 +203,13 @@ export const RolePermissionRow = ({ title, formName, handleSubmit, control, setV
                       <Checkbox
                         isChecked={field.value}
                         onCheckedChange={(e) => {
+                          if (!isEditable) {
+                            createNotification({
+                              type: "error",
+                              text: "Failed to update default role"
+                            });
+                            return;
+                          }
                           field.onChange(e);
                           handleSubmit();
                         }}
