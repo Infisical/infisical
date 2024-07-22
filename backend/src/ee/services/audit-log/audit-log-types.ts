@@ -106,6 +106,7 @@ export enum EventType {
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
+  GET_ENVIRONMENT = "get-environment",
   ADD_WORKSPACE_MEMBER = "add-workspace-member",
   ADD_BATCH_WORKSPACE_MEMBER = "add-workspace-members",
   REMOVE_WORKSPACE_MEMBER = "remove-workspace-member",
@@ -831,6 +832,13 @@ interface CreateEnvironmentEvent {
   };
 }
 
+interface GetEnvironmentEvent {
+  type: EventType.GET_ENVIRONMENT;
+  metadata: {
+    id: string;
+  };
+}
+
 interface UpdateEnvironmentEvent {
   type: EventType.UPDATE_ENVIRONMENT;
   metadata: {
@@ -1230,6 +1238,7 @@ export type Event =
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
   | CreateEnvironmentEvent
+  | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
   | AddWorkspaceMemberEvent

@@ -20,3 +20,7 @@ export type TReorderEnvDTO = {
   id: string;
   pos: number;
 } & TProjectPermission;
+
+export type TGetEnvDTO = {
+  id: string;
+} & TProjectPermission;
