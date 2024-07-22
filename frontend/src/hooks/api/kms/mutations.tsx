@@ -3,50 +3,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { kmsKeys } from "./queries";
+import { AddExternalKmsType } from "./types";
 
-export const useAddAwsExternalKms = (orgId: string) => {
+export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      slug,
-      description,
-      credentialType,
-      accessKey,
-      secretKey,
-      assumeRoleArn,
-      externalId,
-      awsRegion,
-      kmsKeyId
-    }: {
-      slug: string;
-      description: string;
-      credentialType: string;
-      accessKey?: string;
-      secretKey?: string;
-      assumeRoleArn?: string;
-      externalId?: string;
-      awsRegion: string;
-      kmsKeyId?: string;
-    }) => {
+    mutationFn: async ({ slug, description, provider }: AddExternalKmsType) => {
       const { data } = await apiRequest.post("/api/v1/external-kms", {
         slug,
         description,
-        provider: {
-          type: "aws",
-          inputs: {
-            credential: {
-              type: credentialType,
-              data: {
-                accessKey,
-                secretKey,
-                assumeRoleArn,
-                externalId
-              }
-            },
-            awsRegion,
-            kmsKeyId
-          }
-        }
+        provider
       });
 
       return data;
@@ -57,51 +23,21 @@ export const useAddAwsExternalKms = (orgId: string) => {
   });
 };
 
-export const useUpdateAwsExternalKms = (orgId: string) => {
+export const useUpdateExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       kmsId,
       slug,
       description,
-      credentialType,
-      accessKey,
-      secretKey,
-      assumeRoleArn,
-      externalId,
-      awsRegion,
-      kmsKeyId
+      provider
     }: {
       kmsId: string;
-      slug?: string;
-      description?: string;
-      credentialType?: string;
-      accessKey?: string;
-      secretKey?: string;
-      assumeRoleArn?: string;
-      externalId?: string;
-      awsRegion: string;
-      kmsKeyId?: string;
-    }) => {
+    } & AddExternalKmsType) => {
       const { data } = await apiRequest.patch(`/api/v1/external-kms/${kmsId}`, {
         slug,
         description,
-        provider: {
-          type: "aws",
-          inputs: {
-            credential: {
-              type: credentialType,
-              data: {
-                accessKey,
-                secretKey,
-                assumeRoleArn,
-                externalId
-              }
-            },
-            awsRegion,
-            kmsKeyId
-          }
-        }
+        provider
       });
 
       return data;
