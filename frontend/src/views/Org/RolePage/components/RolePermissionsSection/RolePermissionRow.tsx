@@ -3,8 +3,7 @@ import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form"
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
-import { Checkbox, IconButton, Select, SelectItem,Td, Tr } from "@app/components/v2";
+import { Checkbox, IconButton, Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { TFormSchema } from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleModifySection/OrgRoleModifySection.utils";
 
@@ -63,6 +62,7 @@ type Props = {
   formName: keyof Omit<Exclude<TFormSchema["permissions"], undefined>, "workspace">;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
+  handleSubmit: () => void;
 };
 
 // permission categories
@@ -76,7 +76,7 @@ enum Permission {
 
 // TODO: support for default roles
 
-export const RolePermissionRow2 = ({ title, formName, control, setValue }: Props) => {
+export const RolePermissionRow = ({ title, formName, handleSubmit, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
@@ -111,7 +111,6 @@ export const RolePermissionRow2 = ({ title, formName, control, setValue }: Props
   }, []);
 
   const handlePermissionChange = (val: Permission) => {
-    // TODO: trigger update
     if (val === Permission.Custom) {
       setIsRowExpanded.on();
       setIsCustom.on();
@@ -150,12 +149,15 @@ export const RolePermissionRow2 = ({ title, formName, control, setValue }: Props
         break;
     }
 
-    createNotification({ type: "success", text: "Updated permission on role." });
+    handleSubmit();
   };
 
   return (
     <>
-      <Tr>
+      <Tr
+        className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+        onClick={() => setIsRowExpanded.toggle()}
+      >
         <Td>
           <IconButton
             ariaLabel="copy icon"
@@ -197,7 +199,10 @@ export const RolePermissionRow2 = ({ title, formName, control, setValue }: Props
                     render={({ field }) => (
                       <Checkbox
                         isChecked={field.value}
-                        onCheckedChange={field.onChange}
+                        onCheckedChange={(e) => {
+                          field.onChange(e);
+                          handleSubmit();
+                        }}
                         id={`permissions.${formName}.${action}`}
                       >
                         {label}

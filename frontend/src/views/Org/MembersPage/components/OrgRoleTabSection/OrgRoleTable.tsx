@@ -25,17 +25,15 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
+import { RoleModal } from "@app/views/Org/RolePage/components";
 
-type Props = {
-  onSelectRole: (role?: TOrgRole) => void;
-};
-
-export const OrgRoleTable = ({ onSelectRole }: Props) => {
+export const OrgRoleTable = () => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "role",
     "deleteRole"
   ] as const);
 
@@ -68,7 +66,10 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
               colorSchema="primary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => onSelectRole()}
+              // onClick={() => onSelectRole()}
+              onClick={() => {
+                handlePopUpOpen("role");
+              }}
               isDisabled={!isAllowed}
             >
               Add Role
@@ -119,7 +120,8 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onSelectRole(role);
+                                router.push(`/org/${orgId}/roles/${id}`);
+                                // onSelectRole(role);
                               }}
                               disabled={!isAllowed}
                             >
@@ -142,7 +144,10 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
                                   ? "hover:!bg-red-500 hover:!text-white"
                                   : "pointer-events-none cursor-not-allowed opacity-50"
                               )}
-                              onClick={() => handlePopUpOpen("deleteRole", role)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("deleteRole", role);
+                              }}
                               disabled={!isAllowed}
                             >
                               Delete Role
@@ -158,6 +163,7 @@ export const OrgRoleTable = ({ onSelectRole }: Props) => {
           </TBody>
         </Table>
       </TableContainer>
+      <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure want to delete ${

@@ -7,7 +7,7 @@ import { OrgRoleModifySection } from "./OrgRoleModifySection";
 import { OrgRoleTable } from "./OrgRoleTable";
 
 export const OrgRoleTabSection = () => {
-  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["editRole"] as const);
+  const { popUp, handlePopUpClose } = usePopUp(["editRole"] as const);
   return popUp.editRole.isOpen ? (
     <motion.div
       key="role-modify"
@@ -29,7 +29,7 @@ export const OrgRoleTabSection = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: -30 }}
     >
-      <OrgRoleTable onSelectRole={(role) => handlePopUpOpen("editRole", role)} />
+      <OrgRoleTable />
     </motion.div>
   );
 };

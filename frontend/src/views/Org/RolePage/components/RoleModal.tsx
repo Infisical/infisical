@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-// import { useRouter } from "next/router";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
+import { useCreateOrgRole, useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -22,19 +22,11 @@ export type FormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["role"]>;
-  // handlePopUpOpen: (
-  //   popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
-  //   data: {
-  //     identityId: string;
-  //     name: string;
-  //     authMethod?: IdentityAuthMethod;
-  //   }
-  // ) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["role"]>, state?: boolean) => void;
 };
 
 export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
-  // const router = useRouter();
+  const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -44,10 +36,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: role } = useGetOrgRole(orgId, popupData?.roleId ?? "");
 
-  // const { mutateAsync: createMutateAsync } = useCreateIdentity();
-  // const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
-  // const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
-
+  const { mutateAsync: createOrgRole } = useCreateOrgRole();
   const { mutateAsync: updateOrgRole } = useUpdateOrgRole();
 
   const {
@@ -102,16 +91,18 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
         handlePopUpToggle("role", false);
       } else {
-        // TODO: create
+        // create
 
-        // const { id: createdId } = await createMutateAsync({
-        //   name,
-        //   role: role || undefined,
-        //   organizationId: orgId
-        // });
+        const newRole = await createOrgRole({
+          orgId,
+          name,
+          description,
+          slug,
+          permissions: []
+        });
 
         handlePopUpToggle("role", false);
-        // router.push(`/org/${orgId}/identities/${createdId}`);
+        router.push(`/org/${orgId}/roles/${newRole.id}`);
       }
 
       createNotification({

@@ -9,6 +9,7 @@ import {
   TCreateProjectRoleDTO,
   TDeleteOrgRoleDTO,
   TDeleteProjectRoleDTO,
+  TOrgRole,
   TUpdateOrgRoleDTO,
   TUpdateProjectRoleDTO
 } from "./types";
@@ -52,12 +53,17 @@ export const useDeleteProjectRole = () => {
 export const useCreateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) =>
-      apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
+  return useMutation<TOrgRole, {}, TCreateOrgRoleDTO>({
+    mutationFn: async ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
         ...dto,
         permissions: permissions.length ? packRules(permissions) : []
-      }),
+      });
+
+      return role;
+    },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
     }
@@ -67,19 +73,16 @@ export const useCreateOrgRole = () => {
 export const useUpdateOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
-      console.log("update args: ", {
-        id,
-        orgId,
-        permissions,
-        ...dto,
-        pack: permissions?.length ? packRules(permissions) : []
-      });
-      return apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
+  return useMutation<TOrgRole, {}, TUpdateOrgRoleDTO>({
+    mutationFn: async ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
         ...dto,
         permissions: permissions?.length ? packRules(permissions) : []
       });
+
+      return role;
     },
     onSuccess: (_, { id, orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
@@ -91,11 +94,16 @@ export const useUpdateOrgRole = () => {
 export const useDeleteOrgRole = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ orgId, id }: TDeleteOrgRoleDTO) =>
-      apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
+  return useMutation<TOrgRole, {}, TDeleteOrgRoleDTO>({
+    mutationFn: async ({ orgId, id }: TDeleteOrgRoleDTO) => {
+      const {
+        data: { role }
+      } = await apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
         data: { orgId }
-      }),
+      });
+
+      return role;
+    },
     onSuccess: (_, { id, orgId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getOrgRoles(orgId));
       queryClient.invalidateQueries(roleQueryKeys.getOrgRole(orgId, id));

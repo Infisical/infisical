@@ -1,124 +1,125 @@
-import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { createNotification } from "@app/components/notifications";
+import { Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
+import { useOrganization } from "@app/context";
+import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  // Tooltip,
-  // IconButton,
-  // EmptyState,
-  Table,
-  TableContainer,
-  // TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr} from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-// import { UsePopUpState } from "@app/hooks/usePopUp";
+  formRolePermission2API,
+  formSchema,
+  rolePermission2Form,
+  TFormSchema
+} from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleModifySection/OrgRoleModifySection.utils";
 
-// import { IdentityProjectRow } from "./IdentityProjectRow";
+import { RolePermissionRow } from "./RolePermissionRow";
 
-// type Props = {
-//     identityId: string;
-//     handlePopUpOpen: (
-//       popUpName: keyof UsePopUpState<["removeIdentityFromProject"]>,
-//       data?: {}
-//     ) => void;
-// };
+const SIMPLE_PERMISSION_OPTIONS = [
+  {
+    title: "User management",
+    formName: "member"
+  },
+  {
+    title: "Group management",
+    formName: "groups"
+  },
+  {
+    title: "Machine identity management",
+    formName: "identity"
+  },
+  {
+    title: "Billing & usage",
+    formName: "billing"
+  },
+  {
+    title: "Role management",
+    formName: "role"
+  },
+  {
+    title: "Incident Contacts",
+    formName: "incident-contact"
+  },
+  {
+    title: "Organization profile",
+    formName: "settings"
+  },
+  {
+    title: "Secret Scanning",
+    formName: "secret-scanning"
+  },
+  {
+    title: "SSO",
+    formName: "sso"
+  },
+  {
+    title: "LDAP",
+    formName: "ldap"
+  },
+  {
+    title: "SCIM",
+    formName: "scim"
+  }
+] as const;
 
-export const RolePermissionsTable = () => {
-  //   const { data: projectMemberships, isLoading } = useGetIdentityProjectMemberships(identityId);
+type Props = {
+  roleId: string;
+};
+
+export const RolePermissionsTable = ({ roleId }: Props) => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
+
+  const { data: role } = useGetOrgRole(orgId, roleId);
+
+  const { setValue, control, handleSubmit } = useForm<TFormSchema>({
+    defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
+    resolver: zodResolver(formSchema)
+  });
+
+  const { mutateAsync: updateRole } = useUpdateOrgRole();
+
+  const onSubmit = async (el: TFormSchema) => {
+    try {
+      await updateRole({
+        orgId,
+        id: roleId,
+        ...el,
+        permissions: formRolePermission2API(el.permissions)
+      });
+      createNotification({ type: "success", text: "Successfully updated role" });
+    } catch (err) {
+      console.log(err);
+      createNotification({ type: "error", text: "Failed to update role" });
+    }
+  };
+
   return (
     <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Resource</Th>
-            <Th>Allowed Actions</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          <Tr>
-            <Td>Identity</Td>
-            <Td>Create/Read</Td>
-            <Td>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                    <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
-                  <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        className={twMerge(
-                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // TODO
-                        }}
-                        disabled={!isAllowed}
-                      >
-                        Edit Permission
-                      </DropdownMenuItem>
-                    )}
-                  </OrgPermissionCan>
-                  <OrgPermissionCan
-                    I={OrgPermissionActions.Edit}
-                    a={OrgPermissionSubjects.Identity}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        className={twMerge(
-                          isAllowed
-                            ? "hover:!bg-red-500 hover:!text-white"
-                            : "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          //   handlePopUpOpen("deleteIdentity", {
-                          //     identityId: id,
-                          //     name
-                          //   });
-                        }}
-                        disabled={!isAllowed}
-                      >
-                        Delete Permission
-                      </DropdownMenuItem>
-                    )}
-                  </OrgPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </Td>
-          </Tr>
-          {/* <TableSkeleton columns={3} innerKey="role-permissions" /> */}
-          {/* {isLoading && <TableSkeleton columns={2} innerKey="identity-project-memberships" />} */}
-          {/* {!isLoading &&
-            projectMemberships?.map((membership) => {
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Table>
+          <THead>
+            <Tr>
+              <Th className="w-5" />
+              <Th>Resource</Th>
+              <Th>Permission</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {SIMPLE_PERMISSION_OPTIONS.map((permission) => {
               return (
-                <div key={`membership-${membership.id}`}>Row</div>
-               <IdentityProjectRow
-                 key={`identity-project-membership-${membership.id}`}
-                  membership={membership}
-                  handlePopUpOpen={handlePopUpOpen}
+                <RolePermissionRow
+                  title={permission.title}
+                  formName={permission.formName}
+                  control={control}
+                  setValue={setValue}
+                  handleSubmit={handleSubmit(onSubmit)}
+                  key={`org-role-${roleId}-permission-${permission.formName}`}
                 />
               );
-            })} */}
-        </TBody>
-      </Table>
-      {/* <EmptyState title="This role does not have any permissions on it" icon={faShield} /> */}
-      {/* {!isLoading && !projectMemberships?.length && (
-        <EmptyState title="This identity has not been assigned to any projects" icon={faKey} />
-      )} */}
+            })}
+          </TBody>
+        </Table>
+      </form>
     </TableContainer>
   );
 };

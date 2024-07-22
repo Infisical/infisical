@@ -80,7 +80,9 @@ export const RoleDetailsSection = ({ roleId, handlePopUpOpen }: Props) => {
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Description</p>
-          <p className="text-sm text-mineshaft-300">{data.description}</p>
+          <p className="text-sm text-mineshaft-300">
+            {data.description?.length ? data.description : "-"}
+          </p>
         </div>
       </div>
     </div>

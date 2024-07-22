@@ -13,20 +13,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip,
-  UpgradePlanModal
+  Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { useGetOrgRole } from "@app/hooks/api";
+import { useDeleteOrgRole,useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { RolePermissionsTable } from "./components/RolePermissionsSection/RolePermissionsTable";
-import {
-  RoleDetailsSection,
-  RoleModal,
-  RolePermissionModal,
-  RolePermissionsSection} from "./components";
+import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
 
 export const RolePage = withPermission(
   () => {
@@ -35,76 +29,40 @@ export const RolePage = withPermission(
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
     const { data } = useGetOrgRole(orgId, roleId);
-    console.log("useGetOrgRole data: ", data);
-
-    // const { data } = useGetIdentityById(identityId); // TODO: get role by id
-    // const { mutateAsync: deleteIdentity } = useDeleteIdentity();
-    // const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
-    // const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
+    const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "role",
-      "rolePermission"
+      "deleteOrgRole"
     ] as const);
 
-    // const onDeleteIdentitySubmit = async (id: string) => {
-    //   try {
-    //     await deleteIdentity({
-    //       identityId: id,
-    //       organizationId: orgId
-    //     });
+    const onDeleteOrgRoleSubmit = async () => {
+      try {
+        if (!orgId || !roleId) return;
 
-    //     createNotification({
-    //       text: "Successfully deleted identity",
-    //       type: "success"
-    //     });
+        await deleteOrgRole({
+          orgId,
+          id: roleId
+        });
 
-    //     handlePopUpClose("deleteIdentity");
-    //     router.push(`/org/${orgId}/members`);
-    //   } catch (err) {
-    //     console.error(err);
-    //     const error = err as any;
-    //     const text = error?.response?.data?.message ?? "Failed to delete identity";
+        createNotification({
+          text: "Successfully deleted organization role",
+          type: "success"
+        });
 
-    //     createNotification({
-    //       text,
-    //       type: "error"
-    //     });
-    //   }
-    // };
+        handlePopUpClose("deleteOrgRole");
+        router.push(`/org/${orgId}/members`);
+      } catch (err) {
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to delete organization role";
 
-    // const onRevokeTokenSubmit = async ({
-    //   identityId: parentIdentityId,
-    //   tokenId,
-    //   name
-    // }: {
-    //   identityId: string;
-    //   tokenId: string;
-    //   name: string;
-    // }) => {
-    //   try {
-    //     await revokeToken({
-    //       identityId: parentIdentityId,
-    //       tokenId
-    //     });
-
-    //     handlePopUpClose("revokeToken");
-
-    //     createNotification({
-    //       text: `Successfully revoked token ${name ?? ""}`,
-    //       type: "success"
-    //     });
-    //   } catch (err) {
-    //     console.error(err);
-    //     const error = err as any;
-    //     const text = error?.response?.data?.message ?? "Failed to delete identity";
-
-    //     createNotification({
-    //       text,
-    //       type: "error"
-    //     });
-    //   }
-    // };
+        createNotification({
+          text,
+          type: "error"
+        });
+      }
+    };
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -139,12 +97,9 @@ export const RolePage = withPermission(
                           !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          //   handlePopUpOpen("identity", {
-                          //     identityId,
-                          //     name: data.identity.name,
-                          //     role: data.role,
-                          //     customRole: data.customRole
-                          //   });
+                          handlePopUpOpen("role", {
+                            roleId
+                          });
                         }}
                         disabled={!isAllowed}
                       >
@@ -161,10 +116,7 @@ export const RolePage = withPermission(
                             : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={async () => {
-                          //   handlePopUpOpen("deleteIdentity", {
-                          //     identityId,
-                          //     name: data.identity.name
-                          //   });
+                          handlePopUpOpen("deleteOrgRole");
                         }}
                         disabled={!isAllowed}
                       >
@@ -179,84 +131,18 @@ export const RolePage = withPermission(
               <div className="mr-4 w-96">
                 <RoleDetailsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              <RolePermissionsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
+              <RolePermissionsSection roleId={roleId} />
             </div>
           </div>
         )}
         <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <RolePermissionModal roleId={roleId} popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        {/* <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <IdentityAuthMethodModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
-        <IdentityTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <IdentityTokenListModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
-        <IdentityClientSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <IdentityUniversalAuthClientSecretModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={(popUp.upgradePlan?.data as { description: string })?.description}
-        />
         <DeleteActionModal
-          isOpen={popUp.deleteIdentity.isOpen}
-          title={`Are you sure want to delete ${
-            (popUp?.deleteIdentity?.data as { name: string })?.name || ""
-          }?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+          isOpen={popUp.deleteOrgRole.isOpen}
+          title={`Are you sure want to delete the organization role ${data?.name ?? ""}?`}
+          onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
           deleteKey="confirm"
-          onDeleteApproved={() =>
-            onDeleteIdentitySubmit(
-              (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
-            )
-          }
+          onDeleteApproved={() => onDeleteOrgRoleSubmit()}
         />
-        <DeleteActionModal
-          isOpen={popUp.revokeToken.isOpen}
-          title={`Are you sure want to revoke ${
-            (popUp?.revokeToken?.data as { name: string })?.name || ""
-          }?`}
-          onChange={(isOpen) => handlePopUpToggle("revokeToken", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() => {
-            const revokeTokenData = popUp?.revokeToken?.data as {
-              identityId: string;
-              tokenId: string;
-              name: string;
-            };
-
-            return onRevokeTokenSubmit(revokeTokenData);
-          }}
-        />
-        <DeleteActionModal
-          isOpen={popUp.revokeClientSecret.isOpen}
-          title={`Are you sure want to delete the client secret ${
-            (popUp?.revokeClientSecret?.data as { clientSecretPrefix: string })
-              ?.clientSecretPrefix || ""
-          }************?`}
-          onChange={(isOpen) => handlePopUpToggle("revokeClientSecret", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() => {
-            const deleteClientSecretData = popUp?.revokeClientSecret?.data as {
-              clientSecretId: string;
-              clientSecretPrefix: string;
-            };
-
-            return onDeleteClientSecretSubmit({
-              clientSecretId: deleteClientSecretData.clientSecretId
-            });
-          }}
-        /> */}
       </div>
     );
   },
