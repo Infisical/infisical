@@ -391,7 +391,7 @@ export const kmsServiceFactory = ({
 
     if (!project.kmsSecretManagerKeyId) {
       const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.KmsProjectKeyCreation, projectId], 3000, { retryCount: 3 })
+        .acquireLock([KeyStorePrefixes.KmsProjectKeyCreation, projectId], 3000, { retryCount: 0 })
         .catch(() => null);
 
       try {
@@ -399,7 +399,8 @@ export const kmsServiceFactory = ({
           await keyStore.waitTillReady({
             key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
             keyCheckCb: (val) => val === "true",
-            waitingCb: () => logger.info("KMS. Waiting for project key to be created")
+            waitingCb: () => logger.debug("KMS. Waiting for project key to be created"),
+            delay: 500
           });
 
           project = await projectDAL.findById(projectId);
@@ -460,7 +461,7 @@ export const kmsServiceFactory = ({
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
       const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.KmsProjectDataKeyCreation, projectId], 3000, { retryCount: 3 })
+        .acquireLock([KeyStorePrefixes.KmsProjectDataKeyCreation, projectId], 3000, { retryCount: 0 })
         .catch(() => null);
 
       try {
@@ -468,7 +469,8 @@ export const kmsServiceFactory = ({
           await keyStore.waitTillReady({
             key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
             keyCheckCb: (val) => val === "true",
-            waitingCb: () => logger.info("KMS. Waiting for project data key to be created")
+            waitingCb: () => logger.debug("KMS. Waiting for secret manager data key to be created"),
+            delay: 500
           });
 
           project = await projectDAL.findById(projectId);

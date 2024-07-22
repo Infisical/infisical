@@ -40,7 +40,7 @@ export const keyStoreFactory = (redisUrl: string) => {
     exp: number | string,
     value: string | number | Buffer,
     prefix?: string
-  ) => redis.setex(prefix ? `${prefix}:${key}` : key, exp, value);
+  ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", exp);
 
   const deleteItem = async (key: string) => redis.del(key);
 
@@ -65,7 +65,7 @@ export const keyStoreFactory = (redisUrl: string) => {
       });
       attempts += 1;
       // eslint-disable-next-line
-      isReady = keyCheckCb(await getItem(key, "wait_till_ready"));
+      isReady = keyCheckCb(await getItem(key));
     }
   };
 

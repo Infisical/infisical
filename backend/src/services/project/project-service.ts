@@ -8,8 +8,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { getConfig } from "@app/lib/config/env";
-import { createSecretBlindIndex } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -24,12 +22,10 @@ import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/id
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
-import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
@@ -69,10 +65,8 @@ type TProjectServiceFactoryDep = {
   identityProjectDAL: TIdentityProjectDALFactory;
   identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
-  secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   permissionService: TPermissionServiceFactory;
@@ -102,9 +96,7 @@ export const projectServiceFactory = ({
   folderDAL,
   orgService,
   identityProjectDAL,
-  projectBotDAL,
   identityOrgMembershipDAL,
-  secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
@@ -138,9 +130,6 @@ export const projectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
 
-    const appCfg = getConfig();
-    const blindIndex = createSecretBlindIndex(appCfg.ROOT_ENCRYPTION_KEY, appCfg.ENCRYPTION_KEY);
-
     const plan = await licenseService.getPlan(organization.id);
     if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
       // case: limit imposed on number of workspaces allowed
@@ -168,9 +157,9 @@ export const projectServiceFactory = ({
           name: workspaceName,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
-          version: ProjectVersion.V2,
-          pitVersionLimit: 10,
-          kmsSecretManagerKeyId: kmsKeyId
+          kmsSecretManagerKeyId: kmsKeyId,
+          version: ProjectVersion.V3,
+          pitVersionLimit: 10
         },
         tx
       );
@@ -188,18 +177,6 @@ export const projectServiceFactory = ({
         tx
       );
 
-      // generate the blind index for project
-      await secretBlindIndexDAL.create(
-        {
-          projectId: project.id,
-          keyEncoding: blindIndex.keyEncoding,
-          saltIV: blindIndex.iv,
-          saltTag: blindIndex.tag,
-          algorithm: blindIndex.algorithm,
-          encryptedSaltCipherText: blindIndex.ciphertext
-        },
-        tx
-      );
       // set default environments and root folder for provided environments
       const envs = await projectEnvDAL.insertMany(
         DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
@@ -228,26 +205,7 @@ export const projectServiceFactory = ({
         tx
       );
 
-      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
-
-      // 5. Create & a bot for the project
-      await projectBotDAL.create(
-        {
-          name: "Infisical Bot (Ghost)",
-          projectId: project.id,
-          tag,
-          iv,
-          encryptedProjectKey,
-          encryptedProjectKeyNonce: encryptedProjectKeyIv,
-          encryptedPrivateKey: ciphertext,
-          isActive: true,
-          publicKey: ghostUser.keys.publicKey,
-          senderId: ghostUser.user.id,
-          algorithm,
-          keyEncoding: encoding
-        },
-        tx
-      );
+      // const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
 
       // Find the ghost users latest key
       const latestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.user.id, project.id, tx);
