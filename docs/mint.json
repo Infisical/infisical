@@ -154,6 +154,13 @@
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
+        {
+          "group": "Key Management",
+          "pages": [
+            "documentation/platform/kms/overview",
+            "documentation/platform/kms/aws-kms"
+          ]
+        },
         "documentation/platform/secret-sharing"
       ]
     },
