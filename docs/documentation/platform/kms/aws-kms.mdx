@@ -5,6 +5,67 @@ description: "Learn how to manage encryption using AWS KMS"
 
 You can configure your projects to use AWS KMS keys for encryption, enhancing the security and management of your secrets.
 
+## Prerequisites
+
+Depending on the AWS Authentication Method you intend to use, you will have to do either of the following:
+
+<Tabs>
+  <Tab title="Assume Role (Recommended)">
+  <Steps>
+    <Step title="Create the Managing User IAM Role">
+      1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
+        ![IAM Role Creation](../../images/integrations/aws/integration-aws-iam-assume-role.png)
+
+      2. Select **AWS Account** as the **Trusted Entity Type**.
+      3. Choose **Another AWS Account** and enter **381492033652** (Infisical AWS Account ID). This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+      4. Optionally, enable **Require external ID** and enter your **project ID** to further enhance security.
+    </Step>
+    <Step title="Add Required Permissions for the IAM Role">
+      Use the following custom policy to grant the minimum permissions required by Infisical to integrate with AWS KMS
+
+      ```json
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowKMSAccess",
+            "Effect": "Allow",
+              "Action": [
+                "kms:Decrypt",
+                "kms:Encrypt",
+                "kms:DescribeKey"
+            ],
+            "Resource": "*"
+          }
+        ]
+      }
+      ```
+    </Step>
+
+  </Steps>
+  </Tab>
+  <Tab title="Access Key">
+      Navigate to your IAM user and add a policy to grant the following permissions:
+      ```json
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowKMSAccess",
+            "Effect": "Allow",
+              "Action": [
+                "kms:Decrypt",
+                "kms:Encrypt",
+                "kms:DescribeKey"
+            ],
+            "Resource": "*"
+          }
+        ]
+      }
+      ```
+  </Tab>
+</Tabs>
+
 ## Setup AWS KMS in the Organization Settings
 
 Follow these steps to set up AWS KMS for your organization:
