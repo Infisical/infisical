@@ -505,7 +505,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("max").withSchema("secGroupByMaxVersion").as("latestSecretVersion"),
           db.ref("max").withSchema("folderGroupByMaxVersion").as("latestFolderVersion"),
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
-          db.ref("id").withSchema(TableName.SecretVersionTag).as("tagVersionId"),
+          db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
           db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
           db.ref("name").withSchema(TableName.SecretTag).as("tagName")

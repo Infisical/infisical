@@ -242,7 +242,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalRequestSecretTagV2}.tagId`,
           `${TableName.SecretTag}.id`
         )
-        .leftJoin(TableName.SecretV2, `${TableName.SecretApprovalRequestSecretV2}.secretId`, `${TableName.Secret}.id`)
+        .leftJoin(TableName.SecretV2, `${TableName.SecretApprovalRequestSecretV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
           TableName.SecretVersionV2,
           `${TableName.SecretVersionV2}.id`,

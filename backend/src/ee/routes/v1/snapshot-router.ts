@@ -29,17 +29,16 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
               name: z.string()
             }),
             secretVersions: secretRawSchema
-              .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
-              .merge(
-                z.object({
-                  tags: SecretTagsSchema.pick({
-                    id: true,
-                    slug: true,
-                    name: true,
-                    color: true
-                  }).array()
-                })
-              )
+              .omit({ _id: true, environment: true, workspace: true, type: true })
+              .extend({
+                secretId: z.string(),
+                tags: SecretTagsSchema.pick({
+                  id: true,
+                  slug: true,
+                  name: true,
+                  color: true
+                }).array()
+              })
               .array(),
             folderVersion: z.object({ id: z.string(), name: z.string() }).array(),
             createdAt: z.date(),
