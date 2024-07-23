@@ -230,28 +230,32 @@ export const secretApprovalRequestServiceFactory = ({
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
           : undefined,
-        secret: {
-          secretKey: el.secret.key,
-          id: el.secret.id,
-          version: el.secret.version,
-          secretValue: el.secret.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
-            : undefined,
-          secretComment: el.secret.encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedComment }).toString()
-            : undefined
-        },
-        secretVersion: {
-          secretKey: el.secretVersion.key,
-          id: el.secretVersion.id,
-          version: el.secretVersion.version,
-          secretValue: el.secretVersion.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
-            : undefined,
-          secretComment: el.secretVersion.encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
-            : undefined
-        }
+        secret: el.secret
+          ? {
+              secretKey: el.secret.key,
+              id: el.secret.id,
+              version: el.secret.version,
+              secretValue: el.secret.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
+                : undefined,
+              secretComment: el.secret.encryptedComment
+                ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedComment }).toString()
+                : undefined
+            }
+          : undefined,
+        secretVersion: el.secretVersion
+          ? {
+              secretKey: el.secretVersion.key,
+              id: el.secretVersion.id,
+              version: el.secretVersion.version,
+              secretValue: el.secretVersion.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
+                : undefined,
+              secretComment: el.secretVersion.encryptedComment
+                ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
+                : undefined
+            }
+          : undefined
       }));
     } else {
       if (!botKey) throw new BadRequestError({ message: "Bot key not found" });
@@ -259,16 +263,20 @@ export const secretApprovalRequestServiceFactory = ({
       secrets = encrypedSecrets.map((el) => ({
         ...el,
         ...decryptSecretWithBot(el, botKey),
-        secret: {
-          id: el.secret.id,
-          version: el.secret.version,
-          ...decryptSecretWithBot(el.secret, botKey)
-        },
-        secretVersion: {
-          id: el.secretVersion.id,
-          version: el.secretVersion.version,
-          ...decryptSecretWithBot(el.secretVersion, botKey)
-        }
+        secret: el.secret
+          ? {
+              id: el.secret.id,
+              version: el.secret.version,
+              ...decryptSecretWithBot(el.secret, botKey)
+            }
+          : undefined,
+        secretVersion: el.secretVersion
+          ? {
+              id: el.secretVersion.id,
+              version: el.secretVersion.version,
+              ...decryptSecretWithBot(el.secretVersion, botKey)
+            }
+          : undefined
       }));
     }
     const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [

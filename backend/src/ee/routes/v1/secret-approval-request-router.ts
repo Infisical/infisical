@@ -261,31 +261,30 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               secretPath: z.string(),
               commits: secretRawSchema
                 .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
-                .merge(
-                  z.object({
-                    tags: tagSchema,
-                    secret: z
-                      .object({
-                        id: z.string(),
-                        version: z.number(),
-                        secretKey: z.string(),
-                        secretValue: z.string().optional(),
-                        secretComment: z.string().optional()
-                      })
-                      .optional()
-                      .nullable(),
-                    secretVersion: z
-                      .object({
-                        id: z.string(),
-                        version: z.number(),
-                        secretKey: z.string(),
-                        secretValue: z.string().optional(),
-                        secretComment: z.string().optional(),
-                        tags: tagSchema
-                      })
-                      .optional()
-                  })
-                )
+                .extend({
+                  op: z.string(),
+                  tags: tagSchema,
+                  secret: z
+                    .object({
+                      id: z.string(),
+                      version: z.number(),
+                      secretKey: z.string(),
+                      secretValue: z.string().optional(),
+                      secretComment: z.string().optional()
+                    })
+                    .optional()
+                    .nullable(),
+                  secretVersion: z
+                    .object({
+                      id: z.string(),
+                      version: z.number(),
+                      secretKey: z.string(),
+                      secretValue: z.string().optional(),
+                      secretComment: z.string().optional(),
+                      tags: tagSchema
+                    })
+                    .optional()
+                })
                 .array()
             })
           )
