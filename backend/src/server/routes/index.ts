@@ -316,7 +316,8 @@ export const registerRoutes = async (
     kmsDAL,
     kmsService,
     permissionService,
-    externalKmsDAL
+    externalKmsDAL,
+    licenseService
   });
 
   const trustedIpService = trustedIpServiceFactory({
@@ -624,7 +625,8 @@ export const registerRoutes = async (
     certificateDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
-    keyStore
+    keyStore,
+    kmsService
   });
 
   const projectEnvService = projectEnvServiceFactory({

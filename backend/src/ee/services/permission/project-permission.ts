@@ -28,7 +28,8 @@ export enum ProjectPermissionSub {
   SecretRotation = "secret-rotation",
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
-  Certificates = "certificates"
+  Certificates = "certificates",
+  Kms = "kms"
 }
 
 type SubjectFields = {
@@ -60,7 +61,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
-  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback];
+  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
 
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
@@ -156,6 +158,8 @@ const buildAdminPermissionRules = () => {
 
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
+
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
   return rules;
 };

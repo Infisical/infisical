@@ -10,7 +10,11 @@ export enum KeyStorePrefixes {
   KmsProjectDataKeyCreation = "kms-project-data-key-creation-lock",
   KmsProjectKeyCreation = "kms-project-key-creation-lock",
   WaitUntilReadyKmsProjectDataKeyCreation = "wait-until-ready-kms-project-data-key-creation-",
-  WaitUntilReadyKmsProjectKeyCreation = "wait-until-ready-kms-project-key-creation-"
+  WaitUntilReadyKmsProjectKeyCreation = "wait-until-ready-kms-project-key-creation-",
+  KmsOrgKeyCreation = "kms-org-key-creation-lock",
+  KmsOrgDataKeyCreation = "kms-org-data-key-creation-lock",
+  WaitUntilReadyKmsOrgKeyCreation = "wait-until-ready-kms-org-key-creation-",
+  WaitUntilReadyKmsOrgDataKeyCreation = "wait-until-ready-kms-org-data-key-creation-"
 }
 
 type TWaitTillReady = {

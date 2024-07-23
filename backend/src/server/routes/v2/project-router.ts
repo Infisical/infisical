@@ -161,7 +161,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             message: "Slug must be a valid slug"
           })
           .optional()
-          .describe(PROJECTS.CREATE.slug)
+          .describe(PROJECTS.CREATE.slug),
+        kmsKeyId: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -177,7 +178,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
-        slug: req.body.slug
+        slug: req.body.slug,
+        kmsKeyId: req.body.kmsKeyId
       });
 
       await server.services.telemetry.sendPostHogEvents({

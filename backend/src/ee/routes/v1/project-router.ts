@@ -4,7 +4,7 @@ import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -170,5 +170,179 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async () => ({ actors: [] })
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/kms",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secretManagerKmsKey: z.object({
+            id: z.string(),
+            slug: z.string(),
+            isExternal: z.boolean()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const kmsKeys = await server.services.project.getProjectKmsKeys({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      return kmsKeys;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:workspaceId/kms",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        secretManagerKmsKeyId: z.string()
+      }),
+      response: {
+        200: z.object({
+          secretManagerKmsKey: z.object({
+            id: z.string(),
+            slug: z.string(),
+            isExternal: z.boolean()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretManagerKmsKey } = await server.services.project.updateProjectKmsKey({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT_KMS,
+          metadata: {
+            secretManagerKmsKey: {
+              id: secretManagerKmsKey.id,
+              slug: secretManagerKmsKey.slug
+            }
+          }
+        }
+      });
+
+      return {
+        secretManagerKmsKey
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/kms/backup",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secretManager: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const backup = await server.services.project.getProjectKmsBackup({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.GET_PROJECT_KMS_BACKUP,
+          metadata: {}
+        }
+      });
+
+      return backup;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/kms/backup",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        backup: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          secretManagerKmsKey: z.object({
+            id: z.string(),
+            slug: z.string(),
+            isExternal: z.boolean()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const backup = await server.services.project.loadProjectKmsBackup({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        backup: req.body.backup
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.LOAD_PROJECT_KMS_BACKUP,
+          metadata: {}
+        }
+      });
+
+      return backup;
+    }
   });
 };

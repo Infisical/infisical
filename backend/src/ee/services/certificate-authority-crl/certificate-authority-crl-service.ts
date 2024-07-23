@@ -72,7 +72,7 @@ export const certificateAuthorityCrlServiceFactory = ({
       kmsId: keyId
     });
 
-    const decryptedCrl = kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
+    const decryptedCrl = await kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
     const crl = new x509.X509Crl(decryptedCrl);
 
     const base64crl = crl.toString("base64");

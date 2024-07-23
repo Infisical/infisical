@@ -27,6 +27,7 @@ export type TCreateProjectDTO = {
   actorOrgId?: string;
   workspaceName: string;
   slug?: string;
+  kmsKeyId?: string;
 };
 
 export type TDeleteProjectBySlugDTO = {
@@ -97,3 +98,13 @@ export type TListProjectCertsDTO = {
   offset: number;
   limit: number;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateProjectKmsDTO = {
+  secretManagerKmsKeyId: string;
+} & TProjectPermission;
+
+export type TLoadProjectKmsBackupDTO = {
+  backup: string;
+} & TProjectPermission;
+
+export type TGetProjectKmsKey = TProjectPermission;

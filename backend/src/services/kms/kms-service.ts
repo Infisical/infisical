@@ -1,11 +1,18 @@
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
+import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
+import {
+  ExternalKmsAwsSchema,
+  KmsProviders,
+  TExternalKmsProviderFns
+} from "@app/ee/services/external-kms/providers/model";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
-import { BadRequestError } from "@app/lib/errors";
+import { generateHash } from "@app/lib/crypto/encryption";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
@@ -33,6 +40,7 @@ type TKmsServiceFactoryDep = {
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 
+export const INTERNAL_KMS_KEY_ID = "internal";
 const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 const KMS_ROOT_CREATION_WAIT_KEY = "wait_till_ready_kms_root_key";
@@ -83,22 +91,6 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
-  const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
-    if (!kmsDoc) throw new BadRequestError({ message: "KMS ID not found" });
-    // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-      const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-      const encryptedPlainTextBlob = cipher.encrypt(plainText, kmsKey);
-
-      // Buffer#1 encrypted text + Buffer#2 version number
-      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
-      const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
-      return { cipherTextBlob };
-    };
-  };
-
   const encryptWithInputKey = async ({ key }: Omit<TEncryptionWithKeyDTO, "plainText">) => {
     // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
@@ -108,19 +100,6 @@ export const kmsServiceFactory = ({
       const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
       const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
       return { cipherTextBlob };
-    };
-  };
-
-  const decryptWithKmsKey = async ({ kmsId }: Omit<TDecryptWithKmsDTO, "cipherTextBlob">) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
-    if (!kmsDoc) throw new BadRequestError({ message: "KMS ID not found" });
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
-
-    return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
-      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-      const decryptedBlob = cipher.decrypt(cipherTextBlob, kmsKey);
-      return decryptedBlob;
     };
   };
 
@@ -135,45 +114,280 @@ export const kmsServiceFactory = ({
   };
 
   const getOrgKmsKeyId = async (orgId: string) => {
-    const keyId = await orgDAL.transaction(async (tx) => {
-      const org = await orgDAL.findById(orgId, tx);
-      if (!org) {
-        throw new BadRequestError({ message: "Org not found" });
+    let org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: "Org not found" });
+    }
+
+    if (!org.kmsDefaultKeyId) {
+      const lock = await keyStore
+        .acquireLock([KeyStorePrefixes.KmsOrgKeyCreation, orgId], 3000, { retryCount: 3 })
+        .catch(() => null);
+
+      try {
+        if (!lock) {
+          await keyStore.waitTillReady({
+            key: `${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`,
+            keyCheckCb: (val) => val === "true",
+            waitingCb: () => logger.info("KMS. Waiting for org key to be created")
+          });
+
+          org = await orgDAL.findById(orgId);
+        } else {
+          const keyId = await orgDAL.transaction(async (tx) => {
+            org = await orgDAL.findById(orgId, tx);
+            if (org.kmsDefaultKeyId) {
+              return org.kmsDefaultKeyId;
+            }
+
+            const key = await generateKmsKey({
+              isReserved: true,
+              orgId: org.id,
+              tx
+            });
+
+            await orgDAL.updateById(
+              org.id,
+              {
+                kmsDefaultKeyId: key.id
+              },
+              tx
+            );
+
+            await keyStore.setItemWithExpiry(`${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`, 10, "true");
+
+            return key.id;
+          });
+
+          return keyId;
+        }
+      } finally {
+        await lock?.release();
+      }
+    }
+
+    if (!org.kmsDefaultKeyId) {
+      throw new Error("Invalid organization KMS");
+    }
+
+    return org.kmsDefaultKeyId;
+  };
+
+  const decryptWithKmsKey = async ({ kmsId }: Omit<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: "KMS ID not found" });
+    }
+
+    if (kmsDoc.externalKms) {
+      let externalKms: TExternalKmsProviderFns;
+
+      if (!kmsDoc.orgKms.id || !kmsDoc.orgKms.encryptedDataKey) {
+        throw new Error("Invalid organization KMS");
       }
 
-      if (!org.kmsDefaultKeyId) {
-        // create default kms key for certificate service
-        const key = await generateKmsKey({
-          isReserved: true,
-          orgId: org.id,
-          tx
-        });
+      const orgKmsDecryptor = await decryptWithKmsKey({
+        kmsId: kmsDoc.orgKms.id
+      });
 
-        await orgDAL.updateById(
-          org.id,
-          {
-            kmsDefaultKeyId: key.id
-          },
-          tx
-        );
+      const orgKmsDataKey = await orgKmsDecryptor({
+        cipherTextBlob: kmsDoc.orgKms.encryptedDataKey
+      });
 
-        return key.id;
+      const kmsDecryptor = await decryptWithInputKey({
+        key: orgKmsDataKey
+      });
+
+      const decryptedProviderInputBlob = kmsDecryptor({
+        cipherTextBlob: kmsDoc.externalKms.encryptedProviderInput
+      });
+
+      switch (kmsDoc.externalKms.provider) {
+        case KmsProviders.Aws: {
+          const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
+            JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          );
+
+          externalKms = await AwsKmsProviderFactory({
+            inputs: decryptedProviderInput
+          });
+          break;
+        }
+        default:
+          throw new Error("Invalid KMS provider.");
       }
 
-      return org.kmsDefaultKeyId;
+      return async ({ cipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+        const { data } = await externalKms.decrypt(cipherTextBlob);
+
+        return data;
+      };
+    }
+
+    // internal KMS
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+    return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+      const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+      const decryptedBlob = cipher.decrypt(cipherTextBlob, kmsKey);
+      return Promise.resolve(decryptedBlob);
+    };
+  };
+
+  const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: "KMS ID not found" });
+    }
+
+    if (kmsDoc.externalKms) {
+      let externalKms: TExternalKmsProviderFns;
+      if (!kmsDoc.orgKms.id || !kmsDoc.orgKms.encryptedDataKey) {
+        throw new Error("Invalid organization KMS");
+      }
+
+      const orgKmsDecryptor = await decryptWithKmsKey({
+        kmsId: kmsDoc.orgKms.id
+      });
+
+      const orgKmsDataKey = await orgKmsDecryptor({
+        cipherTextBlob: kmsDoc.orgKms.encryptedDataKey
+      });
+
+      const kmsDecryptor = await decryptWithInputKey({
+        key: orgKmsDataKey
+      });
+
+      const decryptedProviderInputBlob = kmsDecryptor({
+        cipherTextBlob: kmsDoc.externalKms.encryptedProviderInput
+      });
+
+      switch (kmsDoc.externalKms.provider) {
+        case KmsProviders.Aws: {
+          const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
+            JSON.parse(decryptedProviderInputBlob.toString("utf8"))
+          );
+
+          externalKms = await AwsKmsProviderFactory({
+            inputs: decryptedProviderInput
+          });
+          break;
+        }
+        default:
+          throw new Error("Invalid KMS provider.");
+      }
+
+      return async ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+        const { encryptedBlob } = await externalKms.encrypt(plainText);
+
+        return { cipherTextBlob: encryptedBlob };
+      };
+    }
+
+    // internal KMS
+    // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+      const kmsKey = cipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const encryptedPlainTextBlob = cipher.encrypt(plainText, kmsKey);
+
+      // Buffer#1 encrypted text + Buffer#2 version number
+      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+      const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
+
+      return Promise.resolve({ cipherTextBlob });
+    };
+  };
+
+  const getOrgKmsDataKey = async (orgId: string) => {
+    const kmsKeyId = await getOrgKmsKeyId(orgId);
+    let org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: "Org not found" });
+    }
+
+    if (!org.kmsEncryptedDataKey) {
+      const lock = await keyStore
+        .acquireLock([KeyStorePrefixes.KmsOrgDataKeyCreation, orgId], 3000, { retryCount: 3 })
+        .catch(() => null);
+
+      try {
+        if (!lock) {
+          await keyStore.waitTillReady({
+            key: `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+            keyCheckCb: (val) => val === "true",
+            waitingCb: () => logger.info("KMS. Waiting for org data key to be created")
+          });
+
+          org = await orgDAL.findById(orgId);
+        } else {
+          const orgDataKey = await orgDAL.transaction(async (tx) => {
+            org = await orgDAL.findById(orgId, tx);
+            if (org.kmsEncryptedDataKey) {
+              return;
+            }
+
+            const dataKey = randomSecureBytes();
+            const kmsEncryptor = await encryptWithKmsKey(
+              {
+                kmsId: kmsKeyId
+              },
+              tx
+            );
+
+            const { cipherTextBlob } = await kmsEncryptor({
+              plainText: dataKey
+            });
+
+            await orgDAL.updateById(
+              org.id,
+              {
+                kmsEncryptedDataKey: cipherTextBlob
+              },
+              tx
+            );
+
+            await keyStore.setItemWithExpiry(
+              `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+              10,
+              "true"
+            );
+
+            return dataKey;
+          });
+
+          if (orgDataKey) {
+            return orgDataKey;
+          }
+        }
+      } finally {
+        await lock?.release();
+      }
+    }
+
+    if (!org.kmsEncryptedDataKey) {
+      throw new Error("Invalid organization KMS");
+    }
+
+    const kmsDecryptor = await decryptWithKmsKey({
+      kmsId: kmsKeyId
     });
 
-    return keyId;
+    return kmsDecryptor({
+      cipherTextBlob: org.kmsEncryptedDataKey
+    });
   };
 
   const getProjectSecretManagerKmsKeyId = async (projectId: string) => {
     let project = await projectDAL.findById(projectId);
     if (!project) {
-      throw new BadRequestError({ message: "Project not found" });
+      throw new NotFoundError({ message: "Project not found" });
     }
 
     if (!project.kmsSecretManagerKeyId) {
-      // create default kms key for certificate service
       const lock = await keyStore
         .acquireLock([KeyStorePrefixes.KmsProjectKeyCreation, projectId], 3000, { retryCount: 3 })
         .catch(() => null);
@@ -189,6 +403,11 @@ export const kmsServiceFactory = ({
           project = await projectDAL.findById(projectId);
         } else {
           const kmsKeyId = await projectDAL.transaction(async (tx) => {
+            project = await projectDAL.findById(projectId, tx);
+            if (project.kmsSecretManagerKeyId) {
+              return project.kmsSecretManagerKeyId;
+            }
+
             const key = await generateKmsKey({
               isReserved: true,
               orgId: project.orgId,
@@ -226,6 +445,13 @@ export const kmsServiceFactory = ({
     return project.kmsSecretManagerKeyId;
   };
 
+  const getProjectSecretManagerKmsKey = async (projectId: string) => {
+    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId);
+
+    return kmsKey;
+  };
+
   const getProjectSecretManagerKmsDataKey = async (projectId: string) => {
     const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
     let project = await projectDAL.findById(projectId);
@@ -245,25 +471,40 @@ export const kmsServiceFactory = ({
 
           project = await projectDAL.findById(projectId);
         } else {
-          const dataKey = randomSecureBytes();
-          const kmsEncryptor = await encryptWithKmsKey({
-            kmsId: kmsKeyId
+          const projectDataKey = await projectDAL.transaction(async (tx) => {
+            project = await projectDAL.findById(projectId, tx);
+            if (project.kmsSecretManagerEncryptedDataKey) {
+              return;
+            }
+
+            const dataKey = randomSecureBytes();
+            const kmsEncryptor = await encryptWithKmsKey({
+              kmsId: kmsKeyId
+            });
+
+            const { cipherTextBlob } = await kmsEncryptor({
+              plainText: dataKey
+            });
+
+            await projectDAL.updateById(
+              projectId,
+              {
+                kmsSecretManagerEncryptedDataKey: cipherTextBlob
+              },
+              tx
+            );
+
+            await keyStore.setItemWithExpiry(
+              `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
+              10,
+              "true"
+            );
+            return dataKey;
           });
 
-          const { cipherTextBlob } = kmsEncryptor({
-            plainText: dataKey
-          });
-
-          await projectDAL.updateById(projectId, {
-            kmsSecretManagerEncryptedDataKey: cipherTextBlob
-          });
-
-          await keyStore.setItemWithExpiry(
-            `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
-            10,
-            "true"
-          );
-          return dataKey;
+          if (projectDataKey) {
+            return projectDataKey;
+          }
         }
       } finally {
         await lock?.release();
@@ -281,6 +522,160 @@ export const kmsServiceFactory = ({
     return kmsDecryptor({
       cipherTextBlob: project.kmsSecretManagerEncryptedDataKey
     });
+  };
+
+  const updateProjectSecretManagerKmsKey = async (projectId: string, kmsId: string) => {
+    const currentKms = await getProjectSecretManagerKmsKey(projectId);
+
+    if ((currentKms.isReserved && kmsId === INTERNAL_KMS_KEY_ID) || currentKms.id === kmsId) {
+      return currentKms;
+    }
+
+    if (kmsId !== INTERNAL_KMS_KEY_ID) {
+      const project = await projectDAL.findById(projectId);
+      if (!project) {
+        throw new NotFoundError({
+          message: "Project not found."
+        });
+      }
+
+      const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+      if (!kmsDoc) {
+        throw new NotFoundError({ message: "KMS ID not found." });
+      }
+
+      if (kmsDoc.orgId !== project.orgId) {
+        throw new BadRequestError({
+          message: "KMS ID does not belong in the organization."
+        });
+      }
+    }
+
+    const dataKey = await getProjectSecretManagerKmsDataKey(projectId);
+
+    return kmsDAL.transaction(async (tx) => {
+      const project = await projectDAL.findById(projectId, tx);
+      let newKmsId = kmsId;
+
+      if (newKmsId === INTERNAL_KMS_KEY_ID) {
+        const key = await generateKmsKey({
+          isReserved: true,
+          orgId: project.orgId,
+          tx
+        });
+
+        newKmsId = key.id;
+      }
+
+      const kmsEncryptor = await encryptWithKmsKey({ kmsId: newKmsId }, tx);
+      const { cipherTextBlob } = await kmsEncryptor({ plainText: dataKey });
+      await projectDAL.updateById(
+        projectId,
+        {
+          kmsSecretManagerKeyId: newKmsId,
+          kmsSecretManagerEncryptedDataKey: cipherTextBlob
+        },
+        tx
+      );
+
+      if (currentKms.isReserved) {
+        await kmsDAL.deleteById(currentKms.id, tx);
+      }
+
+      return kmsDAL.findByIdWithAssociatedKms(newKmsId, tx);
+    });
+  };
+
+  const getProjectKeyBackup = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found"
+      });
+    }
+
+    const secretManagerDataKey = await getProjectSecretManagerKmsDataKey(projectId);
+    const kmsKeyIdForEncrypt = await getOrgKmsKeyId(project.orgId);
+    const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyIdForEncrypt });
+    const { cipherTextBlob: encryptedSecretManagerDataKey } = await kmsEncryptor({ plainText: secretManagerDataKey });
+
+    // backup format: version.projectId.kmsFunction.kmsId.Base64(encryptedDataKey).verificationHash
+    let secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
+      "base64"
+    )}`;
+
+    const verificationHash = generateHash(secretManagerBackup);
+    secretManagerBackup = `${secretManagerBackup}.${verificationHash}`;
+
+    return {
+      secretManager: secretManagerBackup
+    };
+  };
+
+  const loadProjectKeyBackup = async (projectId: string, backup: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found"
+      });
+    }
+
+    const [, backupProjectId, , backupKmsKeyId, backupBase64EncryptedDataKey, backupHash] = backup.split(".");
+    const computedHash = generateHash(backup.substring(0, backup.lastIndexOf(".")));
+    if (computedHash !== backupHash) {
+      throw new BadRequestError({
+        message: "Invalid backup"
+      });
+    }
+
+    if (backupProjectId !== projectId) {
+      throw new BadRequestError({
+        message: "Invalid backup for project"
+      });
+    }
+
+    const kmsDecryptor = await decryptWithKmsKey({ kmsId: backupKmsKeyId });
+    const dataKey = await kmsDecryptor({
+      cipherTextBlob: Buffer.from(backupBase64EncryptedDataKey, "base64")
+    });
+
+    const newKms = await kmsDAL.transaction(async (tx) => {
+      const key = await generateKmsKey({
+        isReserved: true,
+        orgId: project.orgId,
+        tx
+      });
+
+      const kmsEncryptor = await encryptWithKmsKey({ kmsId: key.id }, tx);
+      const { cipherTextBlob } = await kmsEncryptor({ plainText: dataKey });
+
+      await projectDAL.updateById(
+        projectId,
+        {
+          kmsSecretManagerKeyId: key.id,
+          kmsSecretManagerEncryptedDataKey: cipherTextBlob
+        },
+        tx
+      );
+
+      return kmsDAL.findByIdWithAssociatedKms(key.id, tx);
+    });
+
+    return {
+      secretManagerKmsKey: newKms
+    };
+  };
+
+  const getKmsById = async (kmsKeyId: string, tx?: Knex) => {
+    const kms = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+    if (!kms.id) {
+      throw new NotFoundError({
+        message: "KMS not found"
+      });
+    }
+
+    return kms;
   };
 
   const startService = async () => {
@@ -337,6 +732,12 @@ export const kmsServiceFactory = ({
     decryptWithInputKey,
     getOrgKmsKeyId,
     getProjectSecretManagerKmsKeyId,
-    getProjectSecretManagerKmsDataKey
+    getOrgKmsDataKey,
+    getProjectSecretManagerKmsDataKey,
+    getProjectSecretManagerKmsKey,
+    updateProjectSecretManagerKmsKey,
+    getProjectKeyBackup,
+    loadProjectKeyBackup,
+    getKmsById
   };
 };

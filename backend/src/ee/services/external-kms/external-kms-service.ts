@@ -6,6 +6,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TExternalKmsDALFactory } from "./external-kms-dal";
@@ -22,9 +23,13 @@ import { ExternalKmsAwsSchema, KmsProviders } from "./providers/model";
 
 type TExternalKmsServiceFactoryDep = {
   externalKmsDAL: TExternalKmsDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "getOrgKmsKeyId" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "getOrgKmsKeyId" | "decryptWithInputKey" | "encryptWithInputKey" | "getOrgKmsDataKey"
+  >;
   kmsDAL: Pick<TKmsKeyDALFactory, "create" | "updateById" | "findById" | "deleteById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;
@@ -32,6 +37,7 @@ export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFac
 export const externalKmsServiceFactory = ({
   externalKmsDAL,
   permissionService,
+  licenseService,
   kmsService,
   kmsDAL
 }: TExternalKmsServiceFactoryDep) => {
@@ -51,7 +57,15 @@ export const externalKmsServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to create external KMS due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const kmsSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(8).toLowerCase());
 
     let sanitizedProviderInput = "";
@@ -59,20 +73,22 @@ export const externalKmsServiceFactory = ({
       case KmsProviders.Aws:
         {
           const externalKms = await AwsKmsProviderFactory({ inputs: provider.inputs });
-          await externalKms.validateConnection();
           // if missing kms key this generate a new kms key id and returns new provider input
           const newProviderInput = await externalKms.generateInputKmsKey();
           sanitizedProviderInput = JSON.stringify(newProviderInput);
+
+          await externalKms.validateConnection();
         }
         break;
       default:
         throw new BadRequestError({ message: "external kms provided is invalid" });
     }
 
-    const orgKmsKeyId = await kmsService.getOrgKmsKeyId(actorOrgId);
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
-      kmsId: orgKmsKeyId
+    const orgKmsDataKey = await kmsService.getOrgKmsDataKey(actorOrgId);
+    const kmsEncryptor = await kmsService.encryptWithInputKey({
+      key: orgKmsDataKey
     });
+
     const { cipherTextBlob: encryptedProviderInputs } = kmsEncryptor({
       plainText: Buffer.from(sanitizedProviderInput, "utf8")
     });
@@ -119,18 +135,27 @@ export const externalKmsServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
+
+    const plan = await licenseService.getPlan(kmsDoc.orgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to update external KMS due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const kmsSlug = slug ? slugify(slug) : undefined;
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
-    const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
     let sanitizedProviderInput = "";
     if (provider) {
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: orgDefaultKmsId
+      const orgKmsDataKey = await kmsService.getOrgKmsDataKey(kmsDoc.orgId);
+      const kmsDecryptor = await kmsService.decryptWithInputKey({
+        key: orgKmsDataKey
       });
+
       const decryptedProviderInputBlob = kmsDecryptor({
         cipherTextBlob: externalKmsDoc.encryptedProviderInputs
       });
@@ -154,8 +179,9 @@ export const externalKmsServiceFactory = ({
 
     let encryptedProviderInputs: Buffer | undefined;
     if (sanitizedProviderInput) {
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({
-        kmsId: orgDefaultKmsId
+      const orgKmsDataKey = await kmsService.getOrgKmsDataKey(actorOrgId);
+      const kmsEncryptor = await kmsService.encryptWithInputKey({
+        key: orgKmsDataKey
       });
       const { cipherTextBlob } = kmsEncryptor({
         plainText: Buffer.from(sanitizedProviderInput, "utf8")
@@ -197,7 +223,7 @@ export const externalKmsServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
@@ -218,7 +244,7 @@ export const externalKmsServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDocs = await externalKmsDAL.find({ orgId: actorOrgId });
 
@@ -234,15 +260,17 @@ export const externalKmsServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
-    const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgDefaultKmsId
+    const orgKmsDataKey = await kmsService.getOrgKmsDataKey(kmsDoc.orgId);
+    const kmsDecryptor = await kmsService.decryptWithInputKey({
+      key: orgKmsDataKey
     });
+
     const decryptedProviderInputBlob = kmsDecryptor({
       cipherTextBlob: externalKmsDoc.encryptedProviderInputs
     });
@@ -273,15 +301,16 @@ export const externalKmsServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
 
-    const orgDefaultKmsId = await kmsService.getOrgKmsKeyId(kmsDoc.orgId);
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: orgDefaultKmsId
+    const orgKmsDataKey = await kmsService.getOrgKmsDataKey(kmsDoc.orgId);
+    const kmsDecryptor = await kmsService.decryptWithInputKey({
+      key: orgKmsDataKey
     });
+
     const decryptedProviderInputBlob = kmsDecryptor({
       cipherTextBlob: externalKmsDoc.encryptedProviderInputs
     });
