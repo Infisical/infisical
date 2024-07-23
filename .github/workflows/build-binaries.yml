@@ -34,29 +34,46 @@ jobs:
               with:
                   node-version: 20
 
+            - name: Set up QEMU
+              if: matrix.arch == 'arm64' && matrix.os == 'linux'
+              uses: docker/setup-qemu-action@v2
+
+            - name: Install dependencies and build (x64)
+              if: matrix.arch == 'x64'
+              run: |
+                  npm install
+                  npm install --prefix ../frontend
+                  npm run binary:build
+
+            - name: Install dependencies and build (arm64)
+              if: matrix.arch == 'arm64' && matrix.os == 'linux'
+              run: |
+                  docker run --rm -v ${{ github.workspace }}:/workspace --platform linux/arm64 node:20 bash -c "
+                    cd /workspace/backend && npm install && 
+                    cd /workspace/frontend && npm install && npm run build && 
+                    cd /workspace/backend && npm run binary:build
+                  "
+
             - name: Install pkg
               run: npm install -g @yao-pkg/pkg
 
-            - name: Install dependencies (backend)
-              run: npm install
-
-            - name: Rebuild native modules
-              if: matrix.os == 'linux' && matrix.arch == 'arm64'
-              run: npm rebuild
-
-            - name: Install dependencies (frontend)
-              run: npm install --prefix ../frontend
-
-            - name: Prerequisites for pkg
-              run: npm run binary:build
-
-            - name: Package into node binary
+            - name: Package into node binary (x64)
+              if: matrix.arch == 'x64'
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --native-build --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --native-build --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   fi
+
+            - name: Package into node binary (arm64)
+              if: matrix.arch == 'arm64' && matrix.os == 'linux'
+              run: |
+                  docker run --rm -v ${{ github.workspace }}:/workspace --platform linux/arm64 node:20 bash -c "
+                    cd /workspace/backend && 
+                    npm install -g @yao-pkg/pkg && 
+                    pkg --no-bytecode --public-packages '*' --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                  "
 
             # Set up .deb package structure (Debian/Ubuntu only)
             - name: Set up .deb package structure
