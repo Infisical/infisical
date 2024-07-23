@@ -510,6 +510,10 @@ export const ENVIRONMENTS = {
   DELETE: {
     workspaceId: "The ID of the project to delete the environment from.",
     id: "The ID of the environment to delete."
+  },
+  GET: {
+    workspaceId: "The ID of the project the environment belongs to.",
+    id: "The ID of the environment to fetch."
   }
 } as const;
 

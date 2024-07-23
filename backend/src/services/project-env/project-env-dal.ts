@@ -24,10 +24,15 @@ export const projectEnvDALFactory = (db: TDbClient) => {
   // we are using postion based sorting as its a small list
   // this will return the last value of the position in a folder with secret imports
   const findLastEnvPosition = async (projectId: string, tx?: Knex) => {
+    // acquire update lock on project environments.
+    // this ensures that concurrent invocations will wait and execute sequentially
+    await (tx || db)(TableName.Environment).where({ projectId }).forUpdate();
+
     const lastPos = await (tx || db)(TableName.Environment)
       .where({ projectId })
       .max("position", { as: "position" })
       .first();
+
     return lastPos?.position || 0;
   };
 
