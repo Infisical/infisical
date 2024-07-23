@@ -498,7 +498,7 @@ export const secretImportServiceFactory = ({
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -507,8 +507,7 @@ export const secretImportServiceFactory = ({
         folderDAL,
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
-        decryptor: (value) =>
-          value ? secretManagerEncryptor({ plainText: value }).cipherTextBlob.toString() : undefined
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
       });
       return importedSecrets;
     }

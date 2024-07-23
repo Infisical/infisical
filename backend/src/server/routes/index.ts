@@ -694,7 +694,6 @@ export const registerRoutes = async (
     integrationAuthDAL,
     integrationDAL,
     permissionService,
-    projectBotDAL,
     projectBotService,
     kmsService
   });

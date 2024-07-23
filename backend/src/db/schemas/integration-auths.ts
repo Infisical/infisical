@@ -38,7 +38,7 @@ export const IntegrationAuthsSchema = z.object({
   encryptedAccess: zodBuffer.nullable().optional(),
   encryptedAccessId: zodBuffer.nullable().optional(),
   encryptedRefresh: zodBuffer.nullable().optional(),
-  hasEncryptedAwsIamAssumRole: zodBuffer.nullable().optional()
+  encryptedAwsIamAssumRole: zodBuffer.nullable().optional()
 });
 
 export type TIntegrationAuths = z.infer<typeof IntegrationAuthsSchema>;

@@ -128,7 +128,7 @@ export async function up(knex: Knex): Promise<void> {
       if (!hasEncryptedAccess) t.binary("encryptedAccess");
       if (!hasEncryptedAccessId) t.binary("encryptedAccessId");
       if (!hasEncryptedRefresh) t.binary("encryptedRefresh");
-      if (!hasEncryptedAwsIamAssumRole) t.binary("hasEncryptedAwsIamAssumRole");
+      if (!hasEncryptedAwsIamAssumRole) t.binary("encryptedAwsIamAssumRole");
     });
   }
 }
@@ -160,7 +160,7 @@ export async function down(knex: Knex): Promise<void> {
       if (hasEncryptedAccess) t.dropColumn("encryptedAccess");
       if (hasEncryptedAccessId) t.dropColumn("encryptedAccessId");
       if (hasEncryptedRefresh) t.dropColumn("encryptedRefresh");
-      if (hasEncryptedAwsIamAssumRole) t.dropColumn("hasEncryptedAwsIamAssumRole");
+      if (hasEncryptedAwsIamAssumRole) t.dropColumn("encryptedAwsIamAssumRole");
     });
   }
 }
