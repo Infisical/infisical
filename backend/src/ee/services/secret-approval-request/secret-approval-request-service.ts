@@ -11,6 +11,7 @@ import {
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
+import { setKnexStringValue } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -38,8 +39,7 @@ import {
   fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge,
-  secretEncryptionHelper
+  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
@@ -1042,8 +1042,14 @@ export const secretApprovalRequestServiceFactory = ({
         ...createdSecrets.map((createdSecret) => ({
           op: SecretOperations.Create,
           version: 1,
-          encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, createdSecret.secretComment),
-          encryptedValue: secretEncryptionHelper.encryptValue(secretManagerEncryptor, createdSecret.secretValue),
+          encryptedComment: setKnexStringValue(
+            createdSecret.secretComment,
+            (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+          ),
+          encryptedValue: setKnexStringValue(
+            createdSecret.secretValue,
+            (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+          ),
           skipMultilineEncoding: createdSecret.skipMultilineEncoding,
           key: createdSecret.secretKey,
           type: SecretType.Shared
@@ -1108,8 +1114,14 @@ export const secretApprovalRequestServiceFactory = ({
             return {
               ...latestSecretVersions[secretId],
               key: newSecretName || secretKey,
-              encryptedValue: secretEncryptionHelper.encryptValue(secretManagerEncryptor, secretValue) as Buffer,
-              encryptedComment: secretEncryptionHelper.encryptValue(secretManagerEncryptor, secretComment) as Buffer,
+              encryptedComment: setKnexStringValue(
+                secretComment,
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              ),
+              encryptedValue: setKnexStringValue(
+                secretValue,
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              ),
               reminderRepeatDays,
               reminderNote,
               metadata,

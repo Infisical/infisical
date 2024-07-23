@@ -4,7 +4,6 @@ import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -204,7 +203,10 @@ export const fnSecretBulkUpdate = async ({
     tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
   );
   if (secsUpdatedTag.length) {
-    await secretTagDAL.deleteTagsToSecretV2({ $in: { id: secsUpdatedTag.map(({ secretId }) => secretId) } }, tx);
+    await secretTagDAL.deleteTagsToSecretV2(
+      { $in: { secrets_v2Id: secsUpdatedTag.map(({ secretId }) => secretId) } },
+      tx
+    );
     const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
       secretTags.map((tag) => ({
         [`${TableName.SecretTag}Id` as const]: tag,
@@ -552,14 +554,3 @@ export const reshapeBridgeSecret = (
   createdAt: secret.createdAt,
   updatedAt: secret.updatedAt
 });
-
-export const secretEncryptionHelper = {
-  encryptValue: (encryptor: Awaited<ReturnType<TKmsServiceFactory["encryptWithKmsKey"]>>, value?: string) => {
-    if (typeof value === "undefined") return;
-    return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
-  },
-  decryptValue: (decryptor: Awaited<ReturnType<TKmsServiceFactory["decryptWithInputKey"]>>, value?: Buffer | null) => {
-    if (!value) return;
-    return decryptor({ cipherTextBlob: value }).toString();
-  }
-};

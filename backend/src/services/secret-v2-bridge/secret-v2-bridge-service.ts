@@ -9,6 +9,7 @@ import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
@@ -160,9 +161,10 @@ export const secretV2BridgeServiceFactory = ({
             version: 1,
             type,
             reminderRepeatDays: el.secretReminderRepeatDays,
-            encryptedComment: el.secretComment
-              ? secretManagerEncryptor({ plainText: Buffer.from(el.secretComment) }).cipherTextBlob
-              : undefined,
+            encryptedComment: setKnexStringValue(
+              el.secretComment,
+              (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+            ),
             encryptedValue: el.secretValue
               ? secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
               : undefined,
@@ -265,7 +267,7 @@ export const secretV2BridgeServiceFactory = ({
 
     if (inputSecret.newSecretName) {
       const doesNewNameSecretExist = await secretDAL.findOne({
-        key: inputSecret.secretName,
+        key: inputSecret.newSecretName,
         type: SecretType.Shared,
         folderId
       });
@@ -299,9 +301,10 @@ export const secretV2BridgeServiceFactory = ({
             filter: { id: secretId },
             data: {
               reminderRepeatDays: inputSecret.secretReminderRepeatDays,
-              encryptedComment: inputSecret.secretComment
-                ? secretManagerEncryptor({ plainText: Buffer.from(inputSecret.secretComment) }).cipherTextBlob
-                : undefined,
+              encryptedComment: setKnexStringValue(
+                inputSecret.secretComment,
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              ),
               reminderNote: inputSecret.secretReminderNote,
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
@@ -732,9 +735,10 @@ export const secretV2BridgeServiceFactory = ({
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => ({
           version: 1,
-          encryptedComment: el.secretComment
-            ? secretManagerEncryptor({ plainText: Buffer.from(el.secretComment) }).cipherTextBlob
-            : undefined,
+          encryptedComment: setKnexStringValue(
+            el.secretComment,
+            (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+          ),
           encryptedValue: el.secretValue
             ? secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
             : undefined,
@@ -821,7 +825,7 @@ export const secretV2BridgeServiceFactory = ({
       const secrets = await secretDAL.findBySecretKeys(
         folderId,
         secretsWithNewName.map((el) => ({
-          key: el.secretKey,
+          key: el.newSecretName as string,
           type: SecretType.Shared
         }))
       );
@@ -856,9 +860,10 @@ export const secretV2BridgeServiceFactory = ({
             filter: { id: originalSecret.id, type: SecretType.Shared },
             data: {
               reminderRepeatDays: el.secretReminderRepeatDays,
-              encryptedComment: el.secretComment
-                ? secretManagerEncryptor({ plainText: Buffer.from(el.secretComment) }).cipherTextBlob
-                : undefined,
+              encryptedComment: setKnexStringValue(
+                el.secretComment,
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              ),
               reminderNote: el.secretReminderNote,
               skipMultilineEncoding: el.skipMultilineEncoding,
               key: el.newSecretName || el.secretKey,

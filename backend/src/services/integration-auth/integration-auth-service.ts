@@ -13,7 +13,6 @@ import { TProjectPermission } from "@app/lib/types";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
@@ -55,7 +54,6 @@ type TIntegrationAuthServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "delete">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -66,7 +64,6 @@ export const integrationAuthServiceFactory = ({
   permissionService,
   integrationAuthDAL,
   integrationDAL,
-  projectBotDAL,
   projectBotService,
   kmsService
 }: TIntegrationAuthServiceFactoryDep) => {
@@ -125,9 +122,6 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
-
-    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
-    if (!bot) throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
 
     const tokenExchange = await exchangeCode({ integration, code, url });
     const updateDoc: TIntegrationAuthsInsert = {
@@ -217,9 +211,6 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
-    if (!bot) throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
-
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       namespace,
@@ -278,7 +269,7 @@ export const integrationAuthServiceFactory = ({
           const awsAssumeIamRoleArnEncrypted = secretManagerEncryptor({
             plainText: Buffer.from(awsAssumeIamRoleArn)
           }).cipherTextBlob;
-          updateDoc.hasEncryptedAwsIamAssumRole = awsAssumeIamRoleArnEncrypted;
+          updateDoc.encryptedAwsIamAssumRole = awsAssumeIamRoleArnEncrypted;
         }
       }
     } else {
@@ -338,7 +329,7 @@ export const integrationAuthServiceFactory = ({
     if (
       integrationAuth.integration === Integrations.AWS_SECRET_MANAGER &&
       (shouldUseSecretV2Bridge
-        ? integrationAuth.hasEncryptedAwsIamAssumRole
+        ? integrationAuth.encryptedAwsIamAssumRole
         : integrationAuth.awsAssumeIamRoleArnCipherText)
     ) {
       return { accessToken: "", accessId: "" };
