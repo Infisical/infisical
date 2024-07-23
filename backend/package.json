@@ -20,7 +20,8 @@
       "../frontend/.next/**",
       "!../frontend/node_modules/next/dist/server/**/*.js",
       "../frontend/node_modules/@fortawesome/fontawesome-svg-core/**/*",
-      "../frontend/public/**"
+      "../frontend/public/**",
+      "node_modules/argon2/**/*"
     ],
     "outputPath": "binary"
   },
