@@ -28,7 +28,9 @@ jobs:
         env:
             npm_config_arch: ${{ matrix.arch }}
             # Not doing this results in argon2 seemingly being built as x86_64 on arm64.
-            npm_config_build_from_source: true
+
+            # Only set to true if matrix.arch == 'arm64'
+            npm_config_build_from_source: ${{ (matrix.arch == 'arm64') && 'true' || 'false' }}
 
             # Only relevant for arm64 linux builds
             TARGET_ARCH: arm64
