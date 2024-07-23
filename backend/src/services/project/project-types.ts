@@ -3,6 +3,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { CaStatus } from "../certificate-authority/certificate-authority-types";
+import { KmsType } from "../kms/kms-types";
 
 export enum ProjectFilterType {
   ID = "id",
@@ -106,7 +107,7 @@ export type TListProjectCertsDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateProjectKmsDTO = {
-  secretManagerKmsKeyId: string;
+  kms: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string };
 } & TProjectPermission;
 
 export type TLoadProjectKmsBackupDTO = {

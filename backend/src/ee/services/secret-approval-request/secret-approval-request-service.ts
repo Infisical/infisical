@@ -17,6 +17,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -89,10 +90,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById" | "findProjectById">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "getProjectSecretManagerKmsDataKey" | "encryptWithInputKey" | "decryptWithInputKey"
-  >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
@@ -214,8 +212,10 @@ export const secretApprovalRequestServiceFactory = ({
 
     let secrets;
     if (shouldUseSecretV2Bridge) {
-      const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
-      const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
       const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
@@ -427,8 +427,10 @@ export const secretApprovalRequestServiceFactory = ({
       );
       if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 
-      const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
-      const secretManagerDecryptor = await kmsService.decryptWithInputKey({ key: secretManagerDataKey });
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
       const conflicts: Array<{ secretId: string; op: SecretOperations }> = [];
       let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Create);
@@ -1074,8 +1076,10 @@ export const secretApprovalRequestServiceFactory = ({
     const commits: Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
 
-    const secretManagerDataKey = await kmsService.getProjectSecretManagerKmsDataKey(projectId);
-    const secretManagerEncryptor = await kmsService.encryptWithInputKey({ key: secretManagerDataKey });
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];

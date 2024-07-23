@@ -29,6 +29,11 @@ export type KmsListEntry = {
   };
 };
 
+export enum KmsType {
+  Internal = "internal",
+  External = "external"
+}
+
 export enum ExternalKmsProvider {
   AWS = "aws"
 }

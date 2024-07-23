@@ -31,7 +31,7 @@ import {
   useUpdateProjectKms
 } from "@app/hooks/api";
 import { fetchProjectKmsBackup } from "@app/hooks/api/kms/queries";
-import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
+import { INTERNAL_KMS_KEY_ID, KmsType } from "@app/hooks/api/kms/types";
 import { Organization, Workspace } from "@app/hooks/api/types";
 
 const formSchema = z.object({
@@ -207,7 +207,9 @@ export const EncryptionTab = () => {
   const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
   const { data: activeKms } = useGetActiveProjectKms(currentWorkspace?.id!);
 
-  const { mutateAsync: updateProjectKms } = useUpdateProjectKms(currentWorkspace?.id!);
+  const { mutateAsync: updateProjectKms, isLoading: isUpdatingProjectKms } = useUpdateProjectKms(
+    currentWorkspace?.id!
+  );
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
     "createBackupConfirmation",
     "loadBackup"
@@ -239,9 +241,11 @@ export const EncryptionTab = () => {
 
   const onUpdateProjectKms = async (data: TForm) => {
     try {
-      await updateProjectKms({
-        secretManagerKmsKeyId: data.kmsKeyId
-      });
+      await updateProjectKms(
+        data.kmsKeyId === INTERNAL_KMS_KEY_ID
+          ? { type: KmsType.Internal }
+          : { type: KmsType.External, kmsId: data.kmsKeyId }
+      );
 
       createNotification({
         text: "Successfully updated project KMS",
@@ -287,10 +291,9 @@ export const EncryptionTab = () => {
                 <FormControl errorText={error?.message} isError={Boolean(error)}>
                   <Select
                     {...field}
-                    isDisabled={!isAllowed}
-                    onValueChange={(e) => {
-                      onChange(e);
-                    }}
+                    isDisabled={!isAllowed || isUpdatingProjectKms}
+                    onValueChange={onChange}
+                    isLoading={isUpdatingProjectKms}
                     className="w-3/4 bg-mineshaft-600"
                   >
                     <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">

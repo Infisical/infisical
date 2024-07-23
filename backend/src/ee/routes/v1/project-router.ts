@@ -7,6 +7,7 @@ import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { KmsType } from "@app/services/kms/kms-types";
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -194,7 +195,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const kmsKeys = await server.services.project.getProjectKmsKeys({
+      const kmsKey = await server.services.project.getProjectKmsKeys({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -202,7 +203,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
 
-      return kmsKeys;
+      return kmsKey;
     }
   });
 
@@ -217,7 +218,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim()
       }),
       body: z.object({
-        secretManagerKmsKeyId: z.string()
+        kms: z.discriminatedUnion("type", [
+          z.object({ type: z.literal(KmsType.Internal) }),
+          z.object({ type: z.literal(KmsType.External), kmsId: z.string() })
+        ])
       }),
       response: {
         200: z.object({

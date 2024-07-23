@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { kmsKeys } from "./queries";
-import { AddExternalKmsType } from "./types";
+import { AddExternalKmsType, KmsType } from "./types";
 
 export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
@@ -66,7 +66,9 @@ export const useRemoveExternalKms = (orgId: string) => {
 export const useUpdateProjectKms = (projectId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (updatedData: { secretManagerKmsKeyId: string }) => {
+    mutationFn: async (
+      updatedData: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string }
+    ) => {
       const { data } = await apiRequest.patch(`/api/v1/workspace/${projectId}/kms`, updatedData);
 
       return data;
