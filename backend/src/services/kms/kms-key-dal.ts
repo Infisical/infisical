@@ -10,6 +10,8 @@ export type TKmsKeyDALFactory = ReturnType<typeof kmskeyDALFactory>;
 export const kmskeyDALFactory = (db: TDbClient) => {
   const kmsOrm = ormify(db, TableName.KmsKey);
 
+  // akhilmhdh: this function should never be called outside kms service
+  // why: because the encrypted key should never be shared with another service
   const findByIdWithAssociatedKms = async (id: string, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.KmsKey)

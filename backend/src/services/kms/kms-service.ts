@@ -1,6 +1,8 @@
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
+import { z } from "zod";
 
+import { KmsKeysSchema } from "@app/db/schemas";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
 import {
   ExternalKmsAwsSchema,
@@ -23,12 +25,14 @@ import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
+  KmsType,
   TDecryptWithKeyDTO,
   TDecryptWithKmsDTO,
   TEncryptionWithKeyDTO,
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
-  TGenerateKMSDTO
+  TGenerateKMSDTO,
+  TUpdateProjectSecretManagerKmsKeyDTO
 } from "./kms-types";
 
 type TKmsServiceFactoryDep = {
@@ -42,7 +46,6 @@ type TKmsServiceFactoryDep = {
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 
-export const INTERNAL_KMS_KEY_ID = "internal";
 const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 const KMS_ROOT_CREATION_WAIT_KEY = "wait_till_ready_kms_root_key";
@@ -51,6 +54,8 @@ const KMS_ROOT_CREATION_WAIT_TIME = 10;
 // akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
+const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
+
 export const kmsServiceFactory = ({
   kmsDAL,
   kmsRootConfigDAL,
@@ -61,7 +66,11 @@ export const kmsServiceFactory = ({
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY = Buffer.alloc(0);
 
-  // this is used symmetric encryption
+  /*
+   * Generate KMS Key
+   * This function is responsibile for generating the infisical internal KMS for various entities
+   * Like for secret manager, cert manager or for organization
+   */
   const generateKmsKey = async ({ orgId, isReserved = true, tx, slug }: TGenerateKMSDTO) => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
     const kmsKeyMaterial = randomSecureBytes(32);
@@ -93,6 +102,11 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
+  /*
+   * Simple encryption service function to do all the encryption tasks in infisical
+   * This can be even later exposed directly as api for encryption as function
+   * The encrypted binary even has everything into it. The IV, the version etc
+   */
   const encryptWithInputKey = async ({ key }: Omit<TEncryptionWithKeyDTO, "plainText">) => {
     // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
@@ -105,6 +119,10 @@ export const kmsServiceFactory = ({
     };
   };
 
+  /*
+   * Simple decryption service function to do all the encryption tasks in infisical
+   * This can be even later exposed directly as api for encryption as function
+   */
   const decryptWithInputKey = async ({ key }: Omit<TDecryptWithKeyDTO, "cipherTextBlob">) => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
 
@@ -115,6 +133,13 @@ export const kmsServiceFactory = ({
     };
   };
 
+  /*
+   * Function to generate a KMS for an org
+   * We handle concurrent with redis locking and waitReady
+   * What happens is first we check kms is assigned else first we acquire lock and create the kms with connection
+   * In mean time the rest of the request will wait until creation is finished followed by getting the created on
+   * In real time this would be milliseconds
+   */
   const getOrgKmsKeyId = async (orgId: string) => {
     let org = await orgDAL.findById(orgId);
 
@@ -176,7 +201,12 @@ export const kmsServiceFactory = ({
     return org.kmsDefaultKeyId;
   };
 
-  const decryptWithKmsKey = async ({ kmsId }: Omit<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+  const decryptWithKmsKey = async ({
+    kmsId,
+    depth = 0
+  }: Omit<TDecryptWithKmsDTO, "cipherTextBlob"> & { depth?: number }) => {
+    if (depth > 2) throw new BadRequestError({ message: "KMS depth max limit" });
+
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
     if (!kmsDoc) {
       throw new NotFoundError({ message: "KMS ID not found" });
@@ -189,8 +219,12 @@ export const kmsServiceFactory = ({
         throw new Error("Invalid organization KMS");
       }
 
+      // The idea is external kms connection info is encrypted by an org default KMS
+      // This could be external kms(in future) but at the end of the day, the end KMS will be an infisical internal one
+      // we put a limit of depth to avoid too many cycles
       const orgKmsDecryptor = await decryptWithKmsKey({
-        kmsId: kmsDoc.orgKms.id
+        kmsId: kmsDoc.orgKms.id,
+        depth: depth + 1
       });
 
       const orgKmsDataKey = await orgKmsDecryptor({
@@ -303,7 +337,7 @@ export const kmsServiceFactory = ({
     };
   };
 
-  const getOrgKmsDataKey = async (orgId: string) => {
+  const $getOrgKmsDataKey = async (orgId: string) => {
     const kmsKeyId = await getOrgKmsKeyId(orgId);
     let org = await orgDAL.findById(orgId);
 
@@ -313,7 +347,7 @@ export const kmsServiceFactory = ({
 
     if (!org.kmsEncryptedDataKey) {
       const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.KmsOrgDataKeyCreation, orgId], 3000, { retryCount: 3 })
+        .acquireLock([KeyStorePrefixes.KmsOrgDataKeyCreation, orgId], 500, { retryCount: 0 })
         .catch(() => null);
 
       try {
@@ -448,14 +482,7 @@ export const kmsServiceFactory = ({
     return project.kmsSecretManagerKeyId;
   };
 
-  const getProjectSecretManagerKmsKey = async (projectId: string) => {
-    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
-    const kmsKey = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId);
-
-    return kmsKey;
-  };
-
-  const getProjectSecretManagerKmsDataKey = async (projectId: string) => {
+  const $getProjectSecretManagerKmsDataKey = async (projectId: string) => {
     const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
     let project = await projectDAL.findById(projectId);
 
@@ -528,21 +555,58 @@ export const kmsServiceFactory = ({
     });
   };
 
-  const updateProjectSecretManagerKmsKey = async (projectId: string, kmsId: string) => {
-    const currentKms = await getProjectSecretManagerKmsKey(projectId);
+  const $getDataKey = async (dto: TEncryptWithKmsDataKeyDTO) => {
+    switch (dto.type) {
+      case KmsDataKey.SecretManager: {
+        return $getProjectSecretManagerKmsDataKey(dto.projectId);
+      }
+      default: {
+        return $getOrgKmsDataKey(dto.orgId);
+      }
+    }
+  };
 
-    if ((currentKms.isReserved && kmsId === INTERNAL_KMS_KEY_ID) || currentKms.id === kmsId) {
-      return currentKms;
+  // by keeping the decrypted data key in inner scope
+  // none of the entities outside can interact directly or expose the data key
+  const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO) => {
+    const dataKey = await $getDataKey(encryptionContext);
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+
+    return {
+      encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
+        const encryptedPlainTextBlob = cipher.encrypt(plainText, dataKey);
+
+        // Buffer#1 encrypted text + Buffer#2 version number
+        const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+        const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
+        return { cipherTextBlob };
+      },
+      decryptor: ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKeyDTO, "cipherTextBlob">) => {
+        const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
+        const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
+        return decryptedBlob;
+      }
+    };
+  };
+
+  const updateProjectSecretManagerKmsKey = async ({ projectId, kms }: TUpdateProjectSecretManagerKmsKeyDTO) => {
+    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
+    const currentKms = await kmsDAL.findById(kmsKeyId);
+
+    // case: internal kms -> internal kms. no change needed
+    if (kms.type === KmsType.Internal && currentKms.isReserved) {
+      return KmsSanitizedSchema.parseAsync({ isExternal: false, ...currentKms });
     }
 
-    if (kmsId !== INTERNAL_KMS_KEY_ID) {
+    if (kms.type === KmsType.External) {
+      // validate kms is scoped in org
+      const { kmsId } = kms;
       const project = await projectDAL.findById(projectId);
       if (!project) {
         throw new NotFoundError({
           message: "Project not found."
         });
       }
-
       const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
       if (!kmsDoc) {
         throw new NotFoundError({ message: "KMS ID not found." });
@@ -555,38 +619,36 @@ export const kmsServiceFactory = ({
       }
     }
 
-    const dataKey = await getProjectSecretManagerKmsDataKey(projectId);
-
+    const dataKey = await $getProjectSecretManagerKmsDataKey(projectId);
     return kmsDAL.transaction(async (tx) => {
       const project = await projectDAL.findById(projectId, tx);
-      let newKmsId = kmsId;
-
-      if (newKmsId === INTERNAL_KMS_KEY_ID) {
-        const key = await generateKmsKey({
+      let kmsId;
+      if (kms.type === KmsType.Internal) {
+        const internalKms = await generateKmsKey({
           isReserved: true,
           orgId: project.orgId,
           tx
         });
-
-        newKmsId = key.id;
+        kmsId = internalKms.id;
+      } else {
+        kmsId = kms.kmsId;
       }
 
-      const kmsEncryptor = await encryptWithKmsKey({ kmsId: newKmsId }, tx);
+      const kmsEncryptor = await encryptWithKmsKey({ kmsId }, tx);
       const { cipherTextBlob } = await kmsEncryptor({ plainText: dataKey });
       await projectDAL.updateById(
         projectId,
         {
-          kmsSecretManagerKeyId: newKmsId,
+          kmsSecretManagerKeyId: kmsId,
           kmsSecretManagerEncryptedDataKey: cipherTextBlob
         },
         tx
       );
-
       if (currentKms.isReserved) {
         await kmsDAL.deleteById(currentKms.id, tx);
       }
-
-      return kmsDAL.findByIdWithAssociatedKms(newKmsId, tx);
+      const newKms = await kmsDAL.findById(kmsId, tx);
+      return KmsSanitizedSchema.parseAsync({ isExternal: !currentKms.isReserved, ...newKms });
     });
   };
 
@@ -598,13 +660,15 @@ export const kmsServiceFactory = ({
       });
     }
 
-    const secretManagerDataKey = await getProjectSecretManagerKmsDataKey(projectId);
+    const secretManagerDataKey = await $getProjectSecretManagerKmsDataKey(projectId);
     const kmsKeyIdForEncrypt = await getOrgKmsKeyId(project.orgId);
     const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyIdForEncrypt });
-    const { cipherTextBlob: encryptedSecretManagerDataKey } = await kmsEncryptor({ plainText: secretManagerDataKey });
+    const { cipherTextBlob: encryptedSecretManagerDataKeyWithOrgKms } = await kmsEncryptor({
+      plainText: secretManagerDataKey
+    });
 
     // backup format: version.projectId.kmsFunction.kmsId.Base64(encryptedDataKey).verificationHash
-    let secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKey.toString(
+    let secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKeyWithOrgKms.toString(
       "base64"
     )}`;
 
@@ -678,39 +742,8 @@ export const kmsServiceFactory = ({
         message: "KMS not found"
       });
     }
-
-    return kms;
-  };
-
-  const $getDataKey = async (dto: TEncryptWithKmsDataKeyDTO) => {
-    switch (dto.type) {
-      case KmsDataKey.SecretManager: {
-        return getProjectSecretManagerKmsDataKey(dto.projectId);
-      }
-      default: {
-        return getProjectSecretManagerKmsDataKey(dto.orgId);
-      }
-    }
-  };
-
-  const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO) => {
-    const dataKey = await $getDataKey(encryptionContext);
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    return {
-      encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
-        const encryptedPlainTextBlob = cipher.encrypt(plainText, dataKey);
-
-        // Buffer#1 encrypted text + Buffer#2 version number
-        const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
-        const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
-        return { cipherTextBlob };
-      },
-      decryptor: ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKeyDTO, "cipherTextBlob">) => {
-        const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-        const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
-        return decryptedBlob;
-      }
-    };
+    const { id, slug, orgId, isExternal } = kms;
+    return { id, slug, orgId, isExternal };
   };
 
   const startService = async () => {
@@ -762,14 +795,11 @@ export const kmsServiceFactory = ({
     startService,
     generateKmsKey,
     encryptWithKmsKey,
-    encryptWithInputKey,
     decryptWithKmsKey,
+    encryptWithInputKey,
     decryptWithInputKey,
     getOrgKmsKeyId,
     getProjectSecretManagerKmsKeyId,
-    getOrgKmsDataKey,
-    getProjectSecretManagerKmsDataKey,
-    getProjectSecretManagerKmsKey,
     updateProjectSecretManagerKmsKey,
     getProjectKeyBackup,
     loadProjectKeyBackup,

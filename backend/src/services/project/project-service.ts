@@ -633,7 +633,7 @@ export const projectServiceFactory = ({
 
   const updateProjectKmsKey = async ({
     projectId,
-    secretManagerKmsKeyId,
+    kms,
     actor,
     actorId,
     actorAuthMethod,
@@ -649,7 +649,10 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey(projectId, secretManagerKmsKeyId);
+    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey({
+      projectId,
+      kms
+    });
 
     return {
       secretManagerKmsKey
