@@ -64,10 +64,7 @@ type Props = {
   formName: keyof Omit<Exclude<TFormSchema["permissions"], undefined>, "workspace">;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
-  handleSubmit: () => void;
 };
-
-// permission categories
 
 enum Permission {
   NoAccess = "no-access",
@@ -76,16 +73,7 @@ enum Permission {
   Custom = "custom"
 }
 
-// TODO: support for default roles
-
-export const RolePermissionRow = ({
-  isEditable,
-  title,
-  formName,
-  handleSubmit,
-  control,
-  setValue
-}: Props) => {
+export const RolePermissionRow = ({ isEditable, title, formName, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
@@ -157,8 +145,6 @@ export const RolePermissionRow = ({
         );
         break;
     }
-
-    handleSubmit();
   };
 
   return (
@@ -211,7 +197,6 @@ export const RolePermissionRow = ({
                             return;
                           }
                           field.onChange(e);
-                          handleSubmit();
                         }}
                         id={`permissions.${formName}.${action}`}
                       >

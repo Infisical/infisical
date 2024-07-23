@@ -66,7 +66,6 @@ export const OrgRoleTable = () => {
               colorSchema="primary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              // onClick={() => onSelectRole()}
               onClick={() => {
                 handlePopUpOpen("role");
               }}
