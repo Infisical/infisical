@@ -869,7 +869,9 @@ export const registerRoutes = async (
     projectDAL,
     licenseService,
     secretDAL,
-    folderDAL
+    folderDAL,
+    projectBotService,
+    secretV2BridgeDAL
   });
 
   const integrationService = integrationServiceFactory({

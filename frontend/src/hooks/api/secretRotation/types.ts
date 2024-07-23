@@ -1,5 +1,3 @@
-import { UserWsKeyPair } from "../keys/types";
-import { EncryptedSecret } from "../secrets/types";
 import { WorkspaceEnv } from "../workspace/types";
 
 export enum TProviderFunctionTypes {
@@ -74,7 +72,7 @@ export type TDbProviderTemplate = {
   outputs: Record<string, unknown>;
 };
 
-export type TSecretRotation<T extends unknown = EncryptedSecret> = {
+export type TSecretRotation = {
   id: string;
   interval: number;
   provider: string;
@@ -85,7 +83,11 @@ export type TSecretRotation<T extends unknown = EncryptedSecret> = {
   secretPath: string;
   outputs: Array<{
     key: string;
-    secret: T;
+    secret: {
+      version: number;
+      id: string;
+      secretKey: string;
+    };
   }>;
   status?: "success" | "failed";
   lastRotatedAt?: string;
@@ -103,9 +105,8 @@ export type TGetSecretRotationProviders = {
   workspaceId: string;
 };
 
-export type TGetSecretRotationList = {
+export type TGetSecretRotationListDTO = {
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
 };
 
 export type TCreateSecretRotationDTO = {
