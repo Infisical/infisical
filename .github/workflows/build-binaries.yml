@@ -23,17 +23,28 @@ jobs:
                 include:
                     - os: linux
                       target: node18-linux
+                      arm_prefix: aarch64-linux-gnu
+                      x86_prefix: x86_64-linux-gnu
+                      npm_arch: arm64
+                      apt_arch: arm64
                     # - os: win
                     #   target: node18-win
         env:
-            npm_config_arch: ${{ matrix.arch }}
-            # Not doing this results in argon2 seemingly being built as x86_64 on arm64.
-
-            # Only set to true if matrix.arch == 'arm64'
-            npm_config_build_from_source: ${{ (matrix.arch == 'arm64') && 'true' || 'false' }}
-
-            # Only relevant for arm64 linux builds
-            TARGET_ARCH: arm64
+            AR: ${{ matrix.arch == 'arm64' && format('{0}-ar', matrix.arm_prefix) || format('{0}-ar', matrix.x86_prefix) }}
+            AS: ${{ matrix.arch == 'arm64' && format('{0}-as', matrix.arm_prefix) || format('{0}-as', matrix.x86_prefix) }}
+            CC: ${{ matrix.arch == 'arm64' && format('{0}-gcc', matrix.arm_prefix) || format('{0}-gcc', matrix.x86_prefix) }}
+            CPP: ${{ matrix.arch == 'arm64' && format('{0}-cpp', matrix.arm_prefix) || format('{0}-cpp', matrix.x86_prefix) }}
+            CXX: ${{ matrix.arch == 'arm64' && format('{0}-g++', matrix.arm_prefix) || format('{0}-g++', matrix.x86_prefix) }}
+            FC: ${{ matrix.arch == 'arm64' && format('{0}-gfortran', matrix.arm_prefix) || format('{0}-gfortran', matrix.x86_prefix) }}
+            LD: ${{ matrix.arch == 'arm64' && format('{0}-ld', matrix.arm_prefix) || format('{0}-ld', matrix.x86_prefix) }}
+            STRIP: ${{ matrix.arch == 'arm64' && format('{0}-strip', matrix.arm_prefix) || format('{0}-strip', matrix.x86_prefix) }}
+            PKG_CONFIG_PATH: ${{ matrix.arch == 'arm64' && format('/usr/lib/{0}/pkgconfig', matrix.arm_prefix) || format('/usr/lib/{0}/pkgconfig', matrix.x86_prefix) }}
+            TARGET_ARCH: ${{ matrix.apt_arch }}
+            npm_config_arch: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
+            NODE_VERSION: v18.15.0
+            # Not building from source results in an x86_64 argon2, as if
+            # npm_config_arch is being ignored.
+            npm_config_build_from_source: true
 
         steps:
             - name: Checkout code
