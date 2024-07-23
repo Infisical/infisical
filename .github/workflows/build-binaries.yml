@@ -122,7 +122,7 @@ jobs:
             - name: List files in resources folders
               run: |
                   echo "Listing files in backend:"
-                  ls -R backend
+                  ls -R ./backend
 
             - uses: actions/upload-artifact@v4
               if: matrix.os == 'linux' && matrix.arch == 'arm64'
