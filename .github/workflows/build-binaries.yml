@@ -119,8 +119,13 @@ jobs:
               working-directory: ./backend
               run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
 
+            - name: List files in resources folders
+              run: |
+                  echo "Listing files in backend:"
+                  ls -R backend
+
             - uses: actions/upload-artifact@v4
               if: matrix.os == 'linux' && matrix.arch == 'arm64'
               with:
                   name: test-binary
-                  path: ./backend/binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.deb
+                  path: backend/binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.deb
