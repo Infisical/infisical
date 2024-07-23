@@ -239,6 +239,9 @@ import {
   TSecretRotationOutputs,
   TSecretRotationOutputsInsert,
   TSecretRotationOutputsUpdate,
+  TSecretRotationOutputV2,
+  TSecretRotationOutputV2Insert,
+  TSecretRotationOutputV2Update,
   TSecretRotations,
   TSecretRotationsInsert,
   TSecretRotationsUpdate,
@@ -717,6 +720,11 @@ declare module "knex/types/tables" {
       TSecretApprovalRequestSecretTagsV2,
       TSecretApprovalRequestSecretTagsV2Insert,
       TSecretApprovalRequestSecretTagsV2Update
+    >;
+    [TableName.SecretRotationOutputV2]: KnexOriginal.CompositeTableType<
+      TSecretRotationOutputV2,
+      TSecretRotationOutputV2Insert,
+      TSecretRotationOutputV2Update
     >;
     // KMS service
     [TableName.KmsServerRootConfig]: KnexOriginal.CompositeTableType<

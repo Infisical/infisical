@@ -121,7 +121,13 @@ export const secretRotationQueueFactory = ({
     try {
       if (!rotationProvider || !secretRotation) throw new DisableRotationErrors({ message: "Provider not found" });
 
-      const rotationOutputs = await secretRotationDAL.findRotationOutputsByRotationId(rotationId);
+      const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(secretRotation.projectId);
+      let rotationOutputs;
+      if (shouldUseSecretV2Bridge) {
+        rotationOutputs = await secretRotationDAL.findRotationOutputsV2ByRotationId(rotationId);
+      } else {
+        rotationOutputs = await secretRotationDAL.findRotationOutputsByRotationId(rotationId);
+      }
       if (!rotationOutputs.length) throw new DisableRotationErrors({ message: "Secrets not found" });
 
       // deep copy
@@ -277,7 +283,6 @@ export const secretRotationQueueFactory = ({
         internal: newCredential.internal
       });
       const encVarData = infisicalSymmetricEncypt(JSON.stringify(variables));
-      const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(secretRotation.projectId);
       const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: secretRotation.projectId

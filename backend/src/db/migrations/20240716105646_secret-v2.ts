@@ -128,7 +128,18 @@ export async function up(knex: Knex): Promise<void> {
       if (!hasEncryptedAccess) t.binary("encryptedAccess");
       if (!hasEncryptedAccessId) t.binary("encryptedAccessId");
       if (!hasEncryptedRefresh) t.binary("encryptedRefresh");
-      if (!hasEncryptedAwsIamAssumRole) t.binary("encryptedAwsIamAssumRole");
+      if (!hasEncryptedAwsIamAssumRole) t.binary("encryptedAwsAssumeIamRoleArn");
+    });
+  }
+
+  if (!(await knex.schema.hasTable(TableName.SecretRotationOutputV2))) {
+    await knex.schema.createTable(TableName.SecretRotationOutputV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("key").notNullable();
+      t.uuid("secretId").notNullable();
+      t.foreign("secretId").references("id").inTable(TableName.SecretV2).onDelete("CASCADE");
+      t.uuid("rotationId").notNullable();
+      t.foreign("rotationId").references("id").inTable(TableName.SecretRotation).onDelete("CASCADE");
     });
   }
 }
@@ -141,12 +152,14 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.SecretV2JnTag);
   await knex.schema.dropTableIfExists(TableName.SecretReferenceV2);
 
-  await dropOnUpdateTrigger(knex, TableName.SecretV2);
-  await knex.schema.dropTableIfExists(TableName.SecretV2);
+  await knex.schema.dropTableIfExists(TableName.SecretRotationOutputV2);
 
   await dropOnUpdateTrigger(knex, TableName.SecretVersionV2);
   await knex.schema.dropTableIfExists(TableName.SecretVersionV2Tag);
   await knex.schema.dropTableIfExists(TableName.SecretVersionV2);
+
+  await dropOnUpdateTrigger(knex, TableName.SecretV2);
+  await knex.schema.dropTableIfExists(TableName.SecretV2);
 
   if (await knex.schema.hasTable(TableName.IntegrationAuth)) {
     const hasEncryptedAccess = await knex.schema.hasColumn(TableName.IntegrationAuth, "encryptedAccess");
@@ -160,7 +173,7 @@ export async function down(knex: Knex): Promise<void> {
       if (hasEncryptedAccess) t.dropColumn("encryptedAccess");
       if (hasEncryptedAccessId) t.dropColumn("encryptedAccessId");
       if (hasEncryptedRefresh) t.dropColumn("encryptedRefresh");
-      if (hasEncryptedAwsIamAssumRole) t.dropColumn("encryptedAwsIamAssumRole");
+      if (hasEncryptedAwsIamAssumRole) t.dropColumn("encryptedAwsAssumeIamRoleArn");
     });
   }
 }

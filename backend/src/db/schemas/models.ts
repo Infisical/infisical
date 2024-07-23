@@ -101,6 +101,7 @@ export enum TableName {
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction",
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
+  SecretRotationOutputV2 = "secret_rotation_output_v2",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
