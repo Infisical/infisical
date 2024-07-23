@@ -48,7 +48,7 @@ Import the SDK and create a client instance.
 infisical = InfisicalSDK::InfisicalClient.new('https://app.infisical.com') # Optional parameter, default is https://api.infisical.com
 ```
 
-### ClientSettings methods
+### Client parameters
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
@@ -60,7 +60,6 @@ infisical = InfisicalSDK::InfisicalClient.new('https://app.infisical.com') # Opt
           How long the client should cache secrets for. Default is 5 minutes. Disable by setting to 0.
         </ParamField>
     </Expandable>
-
 </ParamField>
 
 ### Authentication
@@ -386,7 +385,7 @@ key = infisical.cryptography.create_symmetric_key
 encrypted_data = infisical.cryptography.encrypt_symmetric(data: "Hello World!", key: key)
 ```
 
-#### Methods
+#### Parameters
 
 <ParamField query="Parameters" type="object" required>
     <Expandable title="properties">
@@ -415,7 +414,7 @@ decrypted_data = infisical.cryptography.decrypt_symmetric(
 )
 ```
 
-#### Methods
+#### Parameters
 <ParamField query="Parameters" type="object" required>
     <Expandable title="properties">
         <ParamField query="ciphertext" type="string">
