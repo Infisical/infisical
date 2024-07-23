@@ -106,4 +106,4 @@ jobs:
               if: matrix.os == 'linux' && matrix.arch == 'arm64'
               with:
                   name: test-binary
-                  path: ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.deb
+                  path: ./backend/binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.deb
