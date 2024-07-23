@@ -19,7 +19,7 @@ jobs:
         strategy:
             matrix:
                 arch: [x64, arm64]
-                os: [linux, win]
+                os: [linux]
                 include:
                     - os: linux
                       target: node18-linux
@@ -71,9 +71,9 @@ jobs:
             - name: Package into node binary
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   fi
 
             # Set up .deb package structure (Debian/Ubuntu only)
