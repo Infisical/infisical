@@ -61,9 +61,9 @@ jobs:
               if: matrix.arch == 'x64'
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   fi
 
             - name: Package into node binary (arm64)
@@ -72,7 +72,7 @@ jobs:
                   docker run --rm -v ${{ github.workspace }}:/workspace --platform linux/arm64 node:20 bash -c "
                     cd /workspace/backend && 
                     npm install -g @yao-pkg/pkg && 
-                    pkg --no-bytecode --public-packages '*' --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages '*' --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   "
 
             # Set up .deb package structure (Debian/Ubuntu only)
