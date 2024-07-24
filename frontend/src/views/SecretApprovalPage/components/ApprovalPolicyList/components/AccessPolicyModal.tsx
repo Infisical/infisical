@@ -107,26 +107,6 @@ export const AccessPolicyForm = ({
           workspaceId: currentWorkspace?.id || ""
         });
       } else {
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
-        console.log(data);
         await createAccessApprovalPolicy({
           ...data,
           projectSlug
