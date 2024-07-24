@@ -25,7 +25,8 @@ export enum QueueName {
   DynamicSecretRevocation = "dynamic-secret-revocation",
   CaCrlRotation = "ca-crl-rotation",
   SecretReplication = "secret-replication",
-  SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
+  SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
+  ProjectV3Migration = "project-v3-migration"
 }
 
 export enum QueueJobs {
@@ -44,7 +45,8 @@ export enum QueueJobs {
   DynamicSecretPruning = "dynamic-secret-pruning",
   CaCrlRotation = "ca-crl-rotation-job",
   SecretReplication = "secret-replication",
-  SecretSync = "secret-sync" // parent queue to push integration sync, webhook, and secret replication
+  SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
+  ProjectV3Migration = "project-v3-migration"
 }
 
 export type TQueueJobTypes = {
@@ -135,6 +137,10 @@ export type TQueueJobTypes = {
   [QueueName.SecretSync]: {
     name: QueueJobs.SecretSync;
     payload: TSyncSecretsDTO;
+  };
+  [QueueName.ProjectV3Migration]: {
+    name: QueueJobs.ProjectV3Migration;
+    payload: { projectId: string };
   };
 };
 

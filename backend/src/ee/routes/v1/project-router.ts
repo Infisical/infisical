@@ -349,4 +349,35 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return backup;
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/:workspaceId/migrate-v3",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const migration = await server.services.secret.startSecretV2Migration({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      return migration;
+    }
+  });
 };

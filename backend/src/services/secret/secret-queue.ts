@@ -41,6 +41,7 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
+import { ProjectUpgradeStatus, ProjectVersion } from "@app/db/schemas";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
@@ -52,7 +53,7 @@ type TSecretQueueFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
@@ -761,6 +762,108 @@ export const secretQueueFactory = ({
     });
   });
 
+  const startSecretV2Migration = async (projectId: string) => {
+    await queueService.queue(
+      QueueName.ProjectV3Migration,
+      QueueJobs.ProjectV3Migration,
+      { projectId },
+      {
+        attempts: 2,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        },
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+  };
+
+  const MIGRATION_BATCH_SIZE = 10000;
+  queueService.start(QueueName.ProjectV3Migration, async (job) => {
+    const { projectId } = job.data;
+    const { botKey, shouldUseSecretV2Bridge: isProjectUpgradedToV3 } = await projectBotService.getBotKey(projectId);
+    if (isProjectUpgradedToV3) {
+      return;
+    }
+    if (!botKey) throw new BadRequestError({ message: "Bot not found" });
+    await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      projectId,
+      type: KmsDataKey.SecretManager
+    });
+
+    const folders = await folderDAL.findByProjectId(projectId);
+    // except secret version and snapshot migrate rest of everything first in a transaction
+    await secretDAL.transaction(async (tx) => {
+      for (const folder of folders) {
+        const folderId = folder.id;
+        let projectV1Secrets;
+        do {
+          // eslint-disable-next-line no-await-in-loop
+          projectV1Secrets = await secretDAL.find({ folderId }, { limit: MIGRATION_BATCH_SIZE, tx });
+          await secretV2BridgeDAL.insertMany(
+            projectV1Secrets.map((el) => {
+              const key = decryptSymmetric128BitHexKeyUTF8({
+                ciphertext: el.secretKeyCiphertext,
+                iv: el.secretKeyIV,
+                tag: el.secretKeyTag,
+                key: botKey
+              });
+              const value = decryptSymmetric128BitHexKeyUTF8({
+                ciphertext: el.secretValueCiphertext,
+                iv: el.secretValueIV,
+                tag: el.secretValueTag,
+                key: botKey
+              });
+              const comment =
+                el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+                  ? decryptSymmetric128BitHexKeyUTF8({
+                      ciphertext: el.secretCommentCiphertext,
+                      iv: el.secretCommentIV,
+                      tag: el.secretCommentTag,
+                      key: botKey
+                    })
+                  : "";
+              const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+              const encryptedComment = comment
+                ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+                : null;
+              return {
+                id: el.id,
+                createdAt: el.createdAt,
+                updatedAt: el.updatedAt,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                encryptedComment,
+                encryptedValue,
+                key,
+                version: el.version,
+                type: el.type,
+                userId: el.userId,
+                folderId: el.folderId,
+                metadata: el.metadata,
+                reminderNote: el.secretReminderNote,
+                reminderRepeatDays: el.secretReminderRepeatDays
+              };
+            }),
+            tx
+          );
+          projectV1Secrets = await secretDAL.delete({ folderId, $in: { id: projectV1Secrets.map((el) => el.id) } }, tx);
+        } while (projectV1Secrets.length > 0);
+      }
+      await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
+    });
+  });
+
+  // eslint-disable-next-line
+  queueService.listen(QueueName.ProjectV3Migration, "failed", async (job, err) => {
+    if (job?.data) {
+      const { projectId } = job.data;
+      await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.Failed });
+      logger.error(err, `Failed to migrate project to v3: ${projectId}`);
+    }
+  });
+
   queueService.listen(QueueName.IntegrationSync, "failed", (job, err) => {
     logger.error(err, "Failed to sync integration %s", job?.id);
   });
@@ -772,6 +875,7 @@ export const secretQueueFactory = ({
   return {
     // depth is internal only field thus no need to make it available outside
     syncSecrets,
+    startSecretV2Migration,
     syncIntegrations,
     addSecretReminder,
     removeSecretReminder,

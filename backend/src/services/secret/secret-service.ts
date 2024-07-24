@@ -68,6 +68,7 @@ import {
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
+  TStartSecretsV2MigrationDTO,
   TUpdateBulkSecretDTO,
   TUpdateManySecretRawDTO,
   TUpdateSecretDTO,
@@ -90,7 +91,10 @@ type TSecretServiceFactoryDep = {
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
+  secretQueueService: Pick<
+    TSecretQueueFactory,
+    "syncSecrets" | "handleSecretReminder" | "removeSecretReminder" | "startSecretV2Migration"
+  >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -2638,6 +2642,30 @@ export const secretServiceFactory = ({
     };
   };
 
+  const startSecretV2Migration = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TStartSecretsV2MigrationDTO) => {
+    const { hasRole } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!hasRole(ProjectMembershipRole.Admin))
+      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+
+    const { shouldUseSecretV2Bridge: isProjectV3 } = await projectBotService.getBotKey(projectId);
+    if (isProjectV3) throw new BadRequestError({ message: "project is already in v3" });
+    await secretQueueService.startSecretV2Migration(projectId);
+    return { message: "Migrating project to new KMS architecture" };
+  };
+
   return {
     attachTags,
     detachTags,
@@ -2659,6 +2687,7 @@ export const secretServiceFactory = ({
     deleteManySecretsRaw,
     getSecretVersions,
     backfillSecretReferences,
-    moveSecrets
+    moveSecrets,
+    startSecretV2Migration
   };
 };

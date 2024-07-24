@@ -449,3 +449,5 @@ export enum SecretProtectionType {
   Approval = "approval",
   Direct = "direct"
 }
+
+export type TStartSecretsV2MigrationDTO = TProjectPermission;
