@@ -14,7 +14,6 @@ defaults:
 
 jobs:
     build-and-deploy:
-        runs-on: ubuntu-20.04
         strategy:
             matrix:
                 arch: [x64, arm64]
@@ -24,6 +23,7 @@ jobs:
                       target: node20-linux
                     - os: win
                       target: node20-win
+        runs-on: ${{ (matrix.arch == 'arm64' && matrix.os == 'linux') && 'ubuntu24-arm64' || 'ubuntu-20.04' }}
 
         steps:
             - name: Checkout code
