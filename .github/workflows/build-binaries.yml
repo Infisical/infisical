@@ -23,7 +23,7 @@ jobs:
                       target: node20-linux
                     - os: win
                       target: node20-win
-        runs-on: ${{ (matrix.arch == 'arm64' && matrix.os == 'linux') && 'ubuntu24-arm64' || 'ubuntu-20.04' }}
+        runs-on: ${{ (matrix.arch == 'arm64' && matrix.os == 'linux') && 'ubuntu24-arm64' || 'ubuntu-latest' }}
 
         steps:
             - name: Checkout code
