@@ -95,7 +95,7 @@ export const AddExternalKmsSchema = z.object({
     .refine((v) => slugify(v) === v, {
       message: "Alias must be a valid slug"
     }),
-  description: z.string().trim().min(1).optional(),
+  description: z.string().trim().optional(),
   provider: ExternalKmsInputSchema
 });
 

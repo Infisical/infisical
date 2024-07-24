@@ -69,7 +69,9 @@ export const useUpdateProjectKms = (projectId: string) => {
     mutationFn: async (
       updatedData: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string }
     ) => {
-      const { data } = await apiRequest.patch(`/api/v1/workspace/${projectId}/kms`, updatedData);
+      const { data } = await apiRequest.patch(`/api/v1/workspace/${projectId}/kms`, {
+        kms: updatedData
+      });
 
       return data;
     },
