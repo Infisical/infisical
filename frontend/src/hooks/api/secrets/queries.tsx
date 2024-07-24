@@ -44,7 +44,7 @@ export const fetchProjectSecrets = async ({
 };
 
 export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
-  const personalSecrets: Record<string, { id: string; value: string }> = {};
+  const personalSecrets: Record<string, { id: string; value?: string }> = {};
   const secrets: SecretV3RawSanitized[] = [];
   rawSecrets.forEach((el) => {
     const decryptedSecret: SecretV3RawSanitized = {

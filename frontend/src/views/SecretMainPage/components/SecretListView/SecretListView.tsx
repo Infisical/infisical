@@ -79,7 +79,7 @@ export const filterSecrets = (secrets: SecretV3RawSanitized[], filter: Filter) =
     const searchTerm = filter.searchFilter.toLowerCase();
     return (
       (!isTagFilterActive || tags?.some(({ id }) => filter.tags?.[id])) &&
-      (key.toLowerCase().includes(searchTerm) || value.toLowerCase().includes(searchTerm))
+      (key.toLowerCase().includes(searchTerm) || value?.toLowerCase().includes(searchTerm))
     );
   });
 

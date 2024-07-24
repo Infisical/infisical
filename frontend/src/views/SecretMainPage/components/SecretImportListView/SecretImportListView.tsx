@@ -63,7 +63,7 @@ export const computeImportedSecretRows = (
   const importedEntry: Record<string, boolean> = {};
   const importedSecretEntries: {
     key: string;
-    value: string;
+    value?: string;
     overriden: {
       env: string;
       secretPath: string;

@@ -329,7 +329,7 @@ export const integrationAuthServiceFactory = ({
     if (
       integrationAuth.integration === Integrations.AWS_SECRET_MANAGER &&
       (shouldUseSecretV2Bridge
-        ? integrationAuth.encryptedAwsIamAssumRole
+        ? integrationAuth.encryptedAwsAssumeIamRoleArn
         : integrationAuth.awsAssumeIamRoleArnCipherText)
     ) {
       return { accessToken: "", accessId: "" };

@@ -417,7 +417,12 @@ export const SecretDetailSidebar = ({
                   className="px-2 py-1"
                   variant="outline_bg"
                   leftIcon={<FontAwesomeIcon icon={faShare} />}
-                  onClick={() => handleSecretShare(secret.valueOverride ?? secret.value)}
+                  onClick={() => {
+                    const value = secret?.valueOverride ?? secret?.value;
+                    if (value) {
+                      handleSecretShare(value);
+                    }
+                  }}
                 >
                   Share Secret
                 </Button>
