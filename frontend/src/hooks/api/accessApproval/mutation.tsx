@@ -16,12 +16,20 @@ export const useCreateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TCreateAccessPolicyDTO>({
-    mutationFn: async ({ environment, projectSlug, approvals, approvers, name, secretPath, enforcementLevel }) => {
+    mutationFn: async ({
+      environment,
+      projectSlug,
+      approvals,
+      approverUserIds,
+      name,
+      secretPath,
+      enforcementLevel
+    }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environment,
         projectSlug,
         approvals,
-        approvers,
+        approverUserIds,
         secretPath,
         name,
         enforcementLevel

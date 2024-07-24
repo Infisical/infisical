@@ -23,7 +23,14 @@ export type TAccessApprovalRequest = {
   id: string;
   policyId: string;
   privilegeId: string | null;
-  requestedBy: string;
+  requestedByUserId: string;
+  requestedByUser: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    username: string;
+  };
   createdAt: Date;
   updatedAt: Date;
   isTemporary: boolean;
@@ -123,7 +130,7 @@ export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
   environment: string;
-  approvers?: string[];
+  approverUserIds?: string[];
   approvals?: number;
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
