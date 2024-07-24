@@ -62,7 +62,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
     resolver: zodResolver(AddExternalKmsSchema),
     defaultValues: {
       slug: kms?.slug,
-      description: kms?.description,
+      description: kms?.description ?? "",
       provider: {
         type: ExternalKmsProvider.AWS,
         inputs: {

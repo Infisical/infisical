@@ -23,7 +23,7 @@ import {
   useOrganization,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   useGetActiveProjectKms,
   useGetExternalKmsList,
@@ -51,18 +51,36 @@ const BackupConfirmationModal = ({
   org?: Organization;
   workspace?: Workspace;
 }) => {
+  const [isGeneratingBackup, setGeneratingBackup] = useToggle();
   const downloadKmsBackup = async () => {
     if (!workspace || !org) {
       return;
     }
 
-    const { secretManager } = await fetchProjectKmsBackup(workspace.id);
+    setGeneratingBackup.on();
 
-    const [, , kmsFunction] = secretManager.split(".");
-    const file = secretManager;
+    try {
+      const { secretManager } = await fetchProjectKmsBackup(workspace.id);
 
-    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
-    FileSaver.saveAs(blob, `kms-backup-${org.slug}-${workspace.slug}-${kmsFunction}.infisical.txt`);
+      const [, , kmsFunction] = secretManager.split(".");
+      const file = secretManager;
+
+      const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
+      FileSaver.saveAs(
+        blob,
+        `kms-backup-${org.slug}-${workspace.slug}-${kmsFunction}.infisical.txt`
+      );
+
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to create KMS backup",
+        type: "error"
+      });
+    }
+
+    setGeneratingBackup.off();
   };
 
   return (
@@ -72,7 +90,9 @@ const BackupConfirmationModal = ({
           In case of interruptions with your configured external KMS, you can load a backup to set
           the project&apos;s KMS back to the default Infisical KMS.
         </p>
-        <Button onClick={downloadKmsBackup}>Generate</Button>
+        <Button onClick={downloadKmsBackup} isLoading={isGeneratingBackup}>
+          Generate
+        </Button>
         <Button
           onClick={() => onOpenChange(false)}
           colorSchema="secondary"
