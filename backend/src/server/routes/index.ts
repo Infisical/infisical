@@ -553,6 +553,7 @@ export const registerRoutes = async (
     smtpService,
     projectKeyDAL,
     projectRoleDAL,
+    groupProjectDAL,
     licenseService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({

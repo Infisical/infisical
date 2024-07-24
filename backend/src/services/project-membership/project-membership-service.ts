@@ -19,6 +19,7 @@ import { groupBy } from "@app/lib/fn";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
+import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
@@ -54,6 +55,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  groupProjectDAL: TGroupProjectDALFactory;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -68,6 +70,7 @@ export const projectMembershipServiceFactory = ({
   orgDAL,
   userDAL,
   userGroupMembershipDAL,
+  groupProjectDAL,
   projectDAL,
   projectKeyDAL,
   licenseService
@@ -77,6 +80,7 @@ export const projectMembershipServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
+    includeGroupMembers,
     projectId
   }: TGetProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission(
@@ -88,7 +92,25 @@ export const projectMembershipServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    return projectMembershipDAL.findAllProjectMembers(projectId);
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+
+    // projectMembers[0].project
+    if (includeGroupMembers) {
+      const groupMembers = await groupProjectDAL.findAllProjectGroupMembers(projectId);
+
+      const allMembers = [
+        ...projectMembers.map((m) => ({ ...m, isGroupMember: false })),
+        ...groupMembers.map((m) => ({ ...m, isGroupMember: true }))
+      ];
+
+      // Ensure the userId is unique
+      const membersIds = new Set(allMembers.map((entity) => entity.user.id));
+      const uniqueMembers = allMembers.filter((entity) => membersIds.has(entity.user.id));
+
+      return uniqueMembers;
+    }
+
+    return projectMembers.map((m) => ({ ...m, isGroupMember: false }));
   };
 
   const getProjectMembershipByUsername = async ({
