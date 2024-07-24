@@ -136,7 +136,6 @@ export const fnSecretBulkUpdate = async ({
         encryptedValue,
         userId,
         encryptedComment,
-        version,
         metadata,
         reminderNote,
         reminderRepeatDays
@@ -149,7 +148,6 @@ export const fnSecretBulkUpdate = async ({
         key,
         userId,
         encryptedComment,
-        version,
         metadata,
         reminderNote,
         encryptedValue,

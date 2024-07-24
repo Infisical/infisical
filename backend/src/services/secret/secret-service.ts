@@ -1675,6 +1675,7 @@ export const secretServiceFactory = ({
       });
       return { type: SecretProtectionType.Approval as const, approval };
     }
+
     const secrets = await createManySecret({
       projectId,
       environment,

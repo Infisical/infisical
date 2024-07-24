@@ -547,10 +547,51 @@ export const fnSecretBulkInsert = async ({
   secretVersionTagDAL,
   tx
 }: TFnSecretBulkInsert) => {
-  const newSecrets = await secretDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({ ...el, folderId })),
-    tx
+  const sanitizedInputSecrets = inputSecrets.map(
+    ({
+      skipMultilineEncoding,
+      type,
+      userId,
+      version,
+      metadata,
+      algorithm,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueIV,
+      keyEncoding,
+      secretValueTag,
+      secretCommentIV,
+      secretBlindIndex,
+      secretCommentTag,
+      secretKeyCiphertext,
+      secretReminderNote,
+      secretValueCiphertext,
+      secretCommentCiphertext,
+      secretReminderRepeatDays
+    }) => ({
+      skipMultilineEncoding,
+      folderId,
+      type,
+      userId,
+      version,
+      metadata,
+      algorithm,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueIV,
+      keyEncoding,
+      secretValueTag,
+      secretCommentIV,
+      secretBlindIndex,
+      secretCommentTag,
+      secretKeyCiphertext,
+      secretReminderNote,
+      secretValueCiphertext,
+      secretCommentCiphertext,
+      secretReminderRepeatDays
+    })
   );
+  const newSecrets = await secretDAL.insertMany(sanitizedInputSecrets, tx);
   const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex as string);
   const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
     secretTags.map((tag) => ({
@@ -559,9 +600,8 @@ export const fnSecretBulkInsert = async ({
     }))
   );
   const secretVersions = await secretVersionDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({
+    sanitizedInputSecrets.map((el) => ({
       ...el,
-      folderId,
       secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
     })),
     tx
@@ -596,13 +636,55 @@ export const fnSecretBulkUpdate = async ({
   secretTagDAL,
   secretVersionTagDAL
 }: TFnSecretBulkUpdate) => {
-  const newSecrets = await secretDAL.bulkUpdate(
-    inputSecrets.map(({ filter, data: { tags, references, ...data } }) => ({
+  const sanitizedInputSecrets = inputSecrets.map(
+    ({
+      filter,
+      data: {
+        skipMultilineEncoding,
+        type,
+        userId,
+        metadata,
+        algorithm,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        keyEncoding,
+        secretValueTag,
+        secretCommentIV,
+        secretBlindIndex,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretReminderNote,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        secretReminderRepeatDays
+      }
+    }) => ({
       filter: { ...filter, folderId },
-      data
-    })),
-    tx
+      data: {
+        skipMultilineEncoding,
+        type,
+        userId,
+        metadata,
+        algorithm,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        keyEncoding,
+        secretValueTag,
+        secretCommentIV,
+        secretBlindIndex,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretReminderNote,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        secretReminderRepeatDays
+      }
+    })
   );
+
+  const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const secretVersions = await secretVersionDAL.insertMany(
     newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
       ...el,
@@ -811,7 +893,7 @@ export const createManySecretsRawFnFactory = ({
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
+        inputSecrets: inputSecrets.map(({ secretName, tags: _, ...el }) => ({
           ...el,
           version: 0,
           secretBlindIndex: keyName2BlindIndex[secretName],

@@ -370,12 +370,12 @@ export const secretV2BridgeServiceFactory = ({
     if (!folder)
       throw new BadRequestError({
         message: "Folder not found for the given environment slug & secret path",
-        name: "Create secret"
+        name: "Delete secret"
       });
     const folderId = folder.id;
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
-      throw new BadRequestError({ message: "Must be user to create personal secret" });
+      throw new BadRequestError({ message: "Must be user to delete personal secret" });
     }
 
     const deletedSecret = await secretDAL.transaction(async (tx) =>
