@@ -719,7 +719,9 @@ export const registerRoutes = async (
     kmsService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    secretVersionTagV2BridgeDAL
+    secretVersionTagV2BridgeDAL,
+    secretRotationDAL,
+    integrationAuthDAL
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,

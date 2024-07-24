@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
+import { ProjectUpgradeStatus, ProjectVersion } from "@app/db/schemas";
+import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -16,6 +18,7 @@ import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/se
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -28,6 +31,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -41,12 +45,12 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
-import { ProjectUpgradeStatus, ProjectVersion } from "@app/db/schemas";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2" | "updateById">;
+  integrationAuthDAL: Pick<TIntegrationAuthDALFactory, "upsert" | "find">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
@@ -67,6 +71,7 @@ type TSecretQueueFactoryDep = {
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  secretRotationDAL: Pick<TSecretRotationDALFactory, "secretOutputV2InsertMany" | "find">;
 };
 
 export type TGetSecrets = {
@@ -86,6 +91,7 @@ type TIntegrationSecret = Record<
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
+  integrationAuthDAL,
   projectBotService,
   integrationAuthService,
   secretDAL,
@@ -105,7 +111,8 @@ export const secretQueueFactory = ({
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   kmsService,
-  secretVersionTagV2BridgeDAL
+  secretVersionTagV2BridgeDAL,
+  secretRotationDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -779,7 +786,6 @@ export const secretQueueFactory = ({
     );
   };
 
-  const MIGRATION_BATCH_SIZE = 10000;
   queueService.start(QueueName.ProjectV3Migration, async (job) => {
     const { projectId } = job.data;
     const { botKey, shouldUseSecretV2Bridge: isProjectUpgradedToV3 } = await projectBotService.getBotKey(projectId);
@@ -798,10 +804,16 @@ export const secretQueueFactory = ({
     await secretDAL.transaction(async (tx) => {
       for (const folder of folders) {
         const folderId = folder.id;
-        let projectV1Secrets;
-        do {
-          // eslint-disable-next-line no-await-in-loop
-          projectV1Secrets = await secretDAL.find({ folderId }, { limit: MIGRATION_BATCH_SIZE, tx });
+        /*
+         * Secrets Migration
+         * */
+        // eslint-disable-next-line no-await-in-loop
+        const projectV1Secrets = await secretDAL.find({ folderId }, { tx });
+        if (projectV1Secrets.length) {
+          const secretReferences: {
+            secretId: string;
+            references: { environment: string; secretPath: string; secretKey: string }[];
+          }[] = [];
           await secretV2BridgeDAL.insertMany(
             projectV1Secrets.map((el) => {
               const key = decryptSymmetric128BitHexKeyUTF8({
@@ -826,6 +838,10 @@ export const secretQueueFactory = ({
                     })
                   : "";
               const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+              // create references
+              const references = getAllNestedSecretReferences(value);
+              secretReferences.push({ secretId: el.id, references });
+
               const encryptedComment = comment
                 ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
                 : null;
@@ -848,9 +864,104 @@ export const secretQueueFactory = ({
             }),
             tx
           );
-          projectV1Secrets = await secretDAL.delete({ folderId, $in: { id: projectV1Secrets.map((el) => el.id) } }, tx);
-        } while (projectV1Secrets.length > 0);
+          await secretV2BridgeDAL.upsertSecretReferences(secretReferences);
+        }
       }
+      /*
+       * Secret Tag Migration
+       * */
+      // eslint-disable-next-line no-await-in-loop
+      const projectV1SecretTags = await secretTagDAL.findSecretTagsByProjectId(projectId, tx);
+      if (projectV1SecretTags.length) {
+        await secretTagDAL.saveTagsToSecretV2(
+          projectV1SecretTags.map((el) => ({
+            secrets_v2Id: el.secretsId,
+            secret_tagsId: el.secret_tagsId
+          })),
+          tx
+        );
+      }
+
+      /*
+       * Integration Auth Migration
+       * Saving the new encrypted colum
+       * */
+      // eslint-disable-next-line no-await-in-loop
+      const projectV1IntegrationAuths = await integrationAuthDAL.find({ projectId }, { tx });
+      await integrationAuthDAL.upsert(
+        projectV1IntegrationAuths.map((el) => {
+          const accessToken =
+            el.accessIV && el.accessTag && el.accessCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.accessCiphertext,
+                  iv: el.accessIV,
+                  tag: el.accessTag,
+                  key: botKey
+                })
+              : undefined;
+          const accessId =
+            el.accessIdIV && el.accessIdTag && el.accessIdCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.accessIdCiphertext,
+                  iv: el.accessIdIV,
+                  tag: el.accessIdTag,
+                  key: botKey
+                })
+              : undefined;
+          const refreshToken =
+            el.refreshIV && el.refreshTag && el.refreshCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.refreshCiphertext,
+                  iv: el.refreshIV,
+                  tag: el.refreshTag,
+                  key: botKey
+                })
+              : undefined;
+          const awsAssumeRoleArn =
+            el.awsAssumeIamRoleArnCipherText && el.awsAssumeIamRoleArnIV && el.awsAssumeIamRoleArnTag
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.awsAssumeIamRoleArnCipherText,
+                  iv: el.awsAssumeIamRoleArnIV,
+                  tag: el.awsAssumeIamRoleArnTag,
+                  key: botKey
+                })
+              : undefined;
+
+          const encryptedAccess = accessToken
+            ? secretManagerEncryptor({ plainText: Buffer.from(accessToken) }).cipherTextBlob
+            : null;
+          const encryptedAccessId = accessId
+            ? secretManagerEncryptor({ plainText: Buffer.from(accessId) }).cipherTextBlob
+            : null;
+          const encryptedRefresh = refreshToken
+            ? secretManagerEncryptor({ plainText: Buffer.from(refreshToken) }).cipherTextBlob
+            : null;
+          const encryptedAwsAssumeIamRoleArn = awsAssumeRoleArn
+            ? secretManagerEncryptor({ plainText: Buffer.from(awsAssumeRoleArn) }).cipherTextBlob
+            : null;
+          return {
+            ...el,
+            encryptedAccess,
+            encryptedRefresh,
+            encryptedAccessId,
+            encryptedAwsAssumeIamRoleArn
+          };
+        }),
+        "id",
+        tx
+      );
+      /*
+       * Secret Rotation Secret Migration
+       * Saving the new encrypted colum
+       * */
+
+      const projectV1SecretRotations = await secretRotationDAL.find({ projectId }, tx);
+      await secretRotationDAL.secretOutputV2InsertMany(
+        projectV1SecretRotations.flatMap((el) =>
+          el.outputs.map((output) => ({ rotationId: el.id, key: output.key, secretId: output.secret.id }))
+        ),
+        tx
+      );
       await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
     });
   });

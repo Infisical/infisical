@@ -144,6 +144,8 @@ export const secretRotationDALFactory = (db: TDbClient) => {
   const findRotationOutputsV2ByRotationId = async (rotationId: string) =>
     secretRotationOutputV2Orm.find({ rotationId });
 
+  // special query
+
   return {
     ...secretRotationOrm,
     find,

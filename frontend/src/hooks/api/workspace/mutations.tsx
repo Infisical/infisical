@@ -79,7 +79,7 @@ export const useMigrateProjectToV3 = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, { workspaceId: string }>({
     mutationFn: ({ workspaceId }) => {
-      return apiRequest.delete(`/api/v1/workspace/${workspaceId}/migrate-v3`);
+      return apiRequest.post(`/api/v1/workspace/${workspaceId}/migrate-v3`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);

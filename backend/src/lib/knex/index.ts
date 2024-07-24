@@ -104,6 +104,19 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       throw new DatabaseError({ error, name: "Create" });
     }
   },
+  upsert: async (data: readonly Tables[Tname]["insert"][], onConflictField: keyof Tables[Tname]["base"], tx?: Knex) => {
+    try {
+      if (!data.length) return [];
+      const res = await (tx || db)(tableName)
+        .insert(data as never)
+        .onConflict(onConflictField as never)
+        .merge()
+        .returning("*");
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create" });
+    }
+  },
   updateById: async (
     id: string,
     {

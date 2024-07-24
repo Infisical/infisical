@@ -69,10 +69,10 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
-import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
+import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 
 export enum EntryType {
