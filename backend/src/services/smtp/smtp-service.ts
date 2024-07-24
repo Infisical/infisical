@@ -5,6 +5,7 @@ import handlebars from "handlebars";
 import { createTransport } from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 export type TSmtpConfig = SMTPTransport.Options;
@@ -12,7 +13,7 @@ export type TSmtpSendMail = {
   template: SmtpTemplates;
   subjectLine: string;
   recipients: string[];
-  substitutions: unknown;
+  substitutions: object;
 };
 export type TSmtpService = ReturnType<typeof smtpServiceFactory>;
 
@@ -47,9 +48,11 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const isSmtpOn = Boolean(cfg.host);
 
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
+    const appCfg = getConfig();
     const html = await fs.readFile(path.resolve(__dirname, "./templates/", template), "utf8");
     const temp = handlebars.compile(html);
-    const htmlToSend = temp(substitutions);
+    const htmlToSend = temp({ isCloud: appCfg.isCloud, siteUrl: appCfg.SITE_URL, ...substitutions });
+
     if (isSmtpOn) {
       await smtp.sendMail({
         from: cfg.from,
