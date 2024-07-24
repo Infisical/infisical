@@ -51,7 +51,7 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     const appCfg = getConfig();
     const html = await fs.readFile(path.resolve(__dirname, "./templates/", template), "utf8");
     const temp = handlebars.compile(html);
-    const htmlToSend = temp({ ...substitutions, isCloud: appCfg.isCloud });
+    const htmlToSend = temp({ isCloud: appCfg.isCloud, siteUrl: appCfg.SITE_URL, ...substitutions });
 
     if (isSmtpOn) {
       await smtp.sendMail({
