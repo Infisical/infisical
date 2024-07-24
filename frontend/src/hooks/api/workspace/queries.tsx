@@ -150,11 +150,15 @@ export const useGetWorkspaceSecrets = (workspaceId: string) => {
   });
 };
 
-export const useGetWorkspaceById = (workspaceId: string) => {
+export const useGetWorkspaceById = (
+  workspaceId: string,
+  dto?: { refetchInterval?: number | false }
+) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceById(workspaceId),
     queryFn: () => fetchWorkspaceById(workspaceId),
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(workspaceId),
+    refetchInterval: dto?.refetchInterval
   });
 };
 

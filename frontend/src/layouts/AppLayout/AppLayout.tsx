@@ -55,7 +55,6 @@ import {
   SelectItem,
   UpgradePlanModal
 } from "@app/components/v2";
-import { UpgradeOverlay } from "@app/components/v2/UpgradeOverlay";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -335,7 +334,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
-                <UpgradeOverlay />
                 {!router.asPath.includes("personal") && (
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
                     {(router.asPath.includes("project") ||

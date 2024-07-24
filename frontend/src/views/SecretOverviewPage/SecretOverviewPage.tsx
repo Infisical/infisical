@@ -59,7 +59,6 @@ import {
   useGetFoldersByEnv,
   useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
-  useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
@@ -70,7 +69,7 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
-import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
+import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
@@ -103,7 +102,6 @@ export const SecretOverviewPage = () => {
   const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?.id as string;
   const projectSlug = currentWorkspace?.slug as string;
-  const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
 
@@ -475,7 +473,7 @@ export const SecretOverviewPage = () => {
   return (
     <>
       <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-        <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} />
+        <SecretV2MigrationSection />
         <div className="relative right-5 ml-4">
           <NavHeader pageName={t("dashboard.title")} isProjectRelated />
         </div>
