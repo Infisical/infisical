@@ -635,9 +635,9 @@ export const secretQueueFactory = ({
       );
       let awsAssumeRoleArn = null;
       if (shouldUseSecretV2Bridge) {
-        if (integrationAuth.encryptedAwsIamAssumRole) {
+        if (integrationAuth.encryptedAwsAssumeIamRoleArn) {
           awsAssumeRoleArn = secretManagerDecryptor({
-            cipherTextBlob: Buffer.from(integrationAuth.encryptedAwsIamAssumRole)
+            cipherTextBlob: Buffer.from(integrationAuth.encryptedAwsAssumeIamRoleArn)
           }).toString();
         }
       } else if (

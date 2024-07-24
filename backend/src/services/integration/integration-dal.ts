@@ -127,7 +127,7 @@ export const integrationDALFactory = (db: TDbClient) => {
         db.ref("encryptedRefresh").withSchema(TableName.IntegrationAuth),
         db.ref("encryptedAccess").withSchema(TableName.IntegrationAuth),
         db.ref("encryptedAccessId").withSchema(TableName.IntegrationAuth),
-        db.ref("encryptedAwsIamAssumRole").withSchema(TableName.IntegrationAuth)
+        db.ref("encryptedAwsAssumeIamRoleArn").withSchema(TableName.IntegrationAuth)
       );
     return docs.map(
       ({
@@ -159,7 +159,7 @@ export const integrationDALFactory = (db: TDbClient) => {
         encryptedAccess,
         encryptedRefresh,
         encryptedAccessId,
-        encryptedAwsIamAssumRole,
+        encryptedAwsAssumeIamRoleArn,
         ...el
       }) => ({
         ...el,
@@ -195,7 +195,7 @@ export const integrationDALFactory = (db: TDbClient) => {
           encryptedAccess,
           encryptedRefresh,
           encryptedAccessId,
-          encryptedAwsIamAssumRole
+          encryptedAwsAssumeIamRoleArn
         }
       })
     );
