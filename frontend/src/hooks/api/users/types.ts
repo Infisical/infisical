@@ -65,7 +65,6 @@ export type OrgUser = {
 
 export type TProjectMembership = {
   id: string;
-  role: string;
   createdAt: string;
   updatedAt: string;
   projectId: string;

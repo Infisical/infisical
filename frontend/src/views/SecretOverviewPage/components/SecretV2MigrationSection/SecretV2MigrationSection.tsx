@@ -1,13 +1,6 @@
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
-
 import { Button, Spinner } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
-} from "@app/context";
+import { useProjectPermission, useWorkspace } from "@app/context";
 import { useGetWorkspaceById, useMigrateProjectToV3 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
@@ -50,8 +43,8 @@ export const SecretV2MigrationSection = () => {
       });
     }
   };
-  // for non admin this would throw an error
-  // so no need to render
+
+  const isAdmin = membership?.roles.includes(ProjectMembershipRole.Admin);
   return (
     <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       {isUpgrading && (
@@ -66,25 +59,18 @@ export const SecretV2MigrationSection = () => {
       <p className="mb-2 text-lg font-semibold">Action Required</p>
       <p className="mb-4 leading-7 text-gray-400">
         There is a new update for your project. Introducing Infisical KMS.
-        <b>
-          {membership.role !== ProjectMembershipRole.Admin && "This is an admin only operation."}
-        </b>
+        <b>{!isAdmin && "This is an admin only operation."}</b>
       </p>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-        {(isAllowed) => (
-          <Button
-            onClick={handleMigrationSecretV2}
-            isDisabled={
-              !isAllowed || membership.role !== ProjectMembershipRole.Admin || isUpgrading
-            }
-            color="mineshaft"
-            type="submit"
-            isLoading={migrateProjectToV3.isLoading}
-          >
-            Start Migration
-          </Button>
-        )}
-      </ProjectPermissionCan>
+
+      <Button
+        onClick={handleMigrationSecretV2}
+        isDisabled={!isAdmin || isUpgrading}
+        color="mineshaft"
+        type="submit"
+        isLoading={migrateProjectToV3.isLoading}
+      >
+        Start Migration
+      </Button>
     </div>
   );
 };
