@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TProjectBots } from "@app/db/schemas";
+import { TableName, TProjectBots, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -41,5 +41,43 @@ export const projectBotDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...projectBotOrm, findOne, findProjectByBotId };
+  const findProjectUserWorkspaceKey = async (projectId: string) => {
+    try {
+      const doc = await db
+        .replicaNode()(TableName.ProjectMembership)
+        .where(`${TableName.ProjectMembership}.projectId` as "projectId", projectId)
+        .where(`${TableName.Users}.isGhost` as "isGhost", false)
+        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .join(TableName.ProjectKeys, `${TableName.ProjectMembership}.userId`, `${TableName.ProjectKeys}.receiverId`)
+        .join<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .join<TUserEncryptionKeys>(
+          db(TableName.UserEncryptionKey).as("senderUserEncryption"),
+          `${TableName.ProjectKeys}.senderId`,
+          `senderUserEncryption.userId`
+        )
+        .whereNotNull(`${TableName.UserEncryptionKey}.serverEncryptedPrivateKey`)
+        .whereNotNull(`${TableName.UserEncryptionKey}.serverEncryptedPrivateKeyIV`)
+        .whereNotNull(`${TableName.UserEncryptionKey}.serverEncryptedPrivateKeyTag`)
+        .select(
+          db.ref("serverEncryptedPrivateKey").withSchema(TableName.UserEncryptionKey),
+          db.ref("serverEncryptedPrivateKeyTag").withSchema(TableName.UserEncryptionKey),
+          db.ref("serverEncryptedPrivateKeyIV").withSchema(TableName.UserEncryptionKey),
+          db.ref("serverEncryptedPrivateKeyEncoding").withSchema(TableName.UserEncryptionKey),
+          db.ref("encryptedKey").withSchema(TableName.ProjectKeys).as("projectEncryptedKey"),
+          db.ref("nonce").withSchema(TableName.ProjectKeys).as("projectKeyNonce"),
+          db.ref("publicKey").withSchema("senderUserEncryption").as("senderPublicKey"),
+          db.ref("id").withSchema(TableName.Users).as("userId")
+        )
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all project members" });
+    }
+  };
+
+  return { ...projectBotOrm, findOne, findProjectByBotId, findProjectUserWorkspaceKey };
 };
