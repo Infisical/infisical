@@ -238,13 +238,13 @@ export async function down(knex: Knex): Promise<void> {
         }
       });
 
-      await knex(TableName.AccessApprovalRequest).update({
-        // eslint-disable-next-line
-        // @ts-ignore because generate schema happens after this
-        requestedBy: knex(TableName.ProjectMembership)
-          .select("id")
-          .where("userId", knex.raw("??", [`${TableName.AccessApprovalRequest}.requestedByUserId`]))
-      });
+      // await knex(TableName.AccessApprovalRequest).update({
+      //   // eslint-disable-next-line
+      //   // @ts-ignore because generate schema happens after this
+      //   requestedBy: knex(TableName.ProjectMembership)
+      //     .select("id")
+      //     .where("userId", knex.raw("??", [`${TableName.AccessApprovalRequest}.requestedByUserId`]))
+      // });
 
       // Try to find a project membership based on the AccessApprovalRequest.requestedByUserId and AccessApprovalRequest.policyId(reference to AccessApprovalRequestPolicy).envId(reference to Environment).projectId(reference to Project)
       // If a project membership is found, set the AccessApprovalRequest.requestedBy to the project membership id
