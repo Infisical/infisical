@@ -425,6 +425,21 @@ export const PROJECTS = {
   },
   LIST_INTEGRATION_AUTHORIZATION: {
     workspaceId: "The ID of the project to list integration auths for."
+  },
+  LIST_CAS: {
+    slug: "The slug of the project to list CAs for.",
+    status: "The status of the CA to filter by.",
+    friendlyName: "The friendly name of the CA to filter by.",
+    commonName: "The common name of the CA to filter by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th CA.",
+    limit: "The number of CAs to return."
+  },
+  LIST_CERTIFICATES: {
+    slug: "The slug of the project to list certificates for.",
+    friendlyName: "The friendly name of the certificate to filter by.",
+    commonName: "The common name of the certificate to filter by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
+    limit: "The number of certificates to return."
   }
 } as const;
 
