@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,12 +12,12 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const projectWithEnv = ProjectsSchema.merge(
-  z.object({
-    _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
-  })
-);
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
+
+const projectWithEnv = SanitizedProjectSchema.extend({
+  _id: z.string(),
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+});
 
 const slugSchema = z
   .string()
@@ -214,7 +214,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to delete.")
       }),
       response: {
-        200: ProjectsSchema
+        200: SanitizedProjectSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -285,7 +285,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         autoCapitalization: z.boolean().optional().describe("The new auto-capitalization setting.")
       }),
       response: {
-        200: ProjectsSchema
+        200: SanitizedProjectSchema
       }
     },
 

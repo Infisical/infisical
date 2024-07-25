@@ -5,7 +5,6 @@ import {
   IdentitiesSchema,
   IdentityProjectMembershipsSchema,
   ProjectMembershipRole,
-  ProjectsSchema,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
 import { PROJECT_IDENTITIES } from "@app/lib/api-docs";
@@ -14,6 +13,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
+
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
 export const registerIdentityProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -236,7 +237,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 })
               ),
               identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
-              project: ProjectsSchema.pick({ name: true, id: true })
+              project: SanitizedProjectSchema.pick({ name: true, id: true })
             })
             .array()
         })
@@ -294,7 +295,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
               })
             ),
             identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
-            project: ProjectsSchema.pick({ name: true, id: true })
+            project: SanitizedProjectSchema.pick({ name: true, id: true })
           })
         })
       }
