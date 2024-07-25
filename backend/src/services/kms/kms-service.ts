@@ -102,6 +102,13 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
+  const deleteInternalKms = async (kmsId: string, orgId: string, tx?: Knex) => {
+    const kms = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
+    if (kms.isExternal) return;
+    if (kms.orgId !== orgId) throw new BadRequestError({ message: "KMS doesn't belong to organization" });
+    return kmsDAL.deleteById(kmsId, tx);
+  };
+
   /*
    * Simple encryption service function to do all the encryption tasks in infisical
    * This can be even later exposed directly as api for encryption as function
@@ -794,6 +801,7 @@ export const kmsServiceFactory = ({
   return {
     startService,
     generateKmsKey,
+    deleteInternalKms,
     encryptWithKmsKey,
     decryptWithKmsKey,
     encryptWithInputKey,

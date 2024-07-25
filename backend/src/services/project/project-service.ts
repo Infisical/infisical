@@ -81,6 +81,7 @@ type TProjectServiceFactoryDep = {
     | "loadProjectKeyBackup"
     | "getKmsById"
     | "getProjectSecretManagerKmsKeyId"
+    | "deleteInternalKms"
   >;
 };
 
@@ -337,7 +338,12 @@ export const projectServiceFactory = ({
     const deletedProject = await projectDAL.transaction(async (tx) => {
       const delProject = await projectDAL.deleteById(project.id, tx);
       const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
-
+      if (delProject.kmsCertificateKeyId) {
+        await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
+      }
+      if (delProject.kmsSecretManagerKeyId) {
+        await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
+      }
       // Delete the org membership for the ghost user if it's found.
       if (projectGhostUser) {
         await userDAL.deleteById(projectGhostUser.id, tx);
