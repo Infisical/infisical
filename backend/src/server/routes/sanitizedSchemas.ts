@@ -5,6 +5,7 @@ import {
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   ProjectRolesSchema,
+  ProjectsSchema,
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -140,4 +141,19 @@ export const SanitizedAuditLogStreamSchema = z.object({
   url: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
+});
+
+export const SanitizedProjectSchema = ProjectsSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  autoCapitalization: true,
+  orgId: true,
+  createdAt: true,
+  updatedAt: true,
+  version: true,
+  upgradeStatus: true,
+  pitVersionLimit: true,
+  kmsCertificateKeyId: true,
+  auditLogsRetentionDays: true
 });
