@@ -354,12 +354,66 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "FindByRequestId" });
     }
   };
+  // special query for migration to v2 secret
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.SecretApprovalRequestSecret)
+        .join(
+          TableName.SecretApprovalRequest,
+          `${TableName.SecretApprovalRequest}.id`,
+          `${TableName.SecretApprovalRequestSecret}.requestId`
+        )
+        .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(
+          TableName.SecretApprovalRequestSecretTag,
+          `${TableName.SecretApprovalRequestSecret}.id`,
+          `${TableName.SecretApprovalRequestSecretTag}.secretId`
+        )
+        .where({ projectId })
+        .select(selectAllTableCols(TableName.SecretApprovalRequestSecret))
+        .select(
+          db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagId"),
+          db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagSecretId"),
+          db.ref("tagId").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagSecretTagId"),
+          db.ref("createdAt").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagUpdatedAt")
+        );
+      const formatedDoc = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (data) => SecretApprovalRequestsSecretsSchema.parse(data),
+        childrenMapper: [
+          {
+            key: "secretApprovalTagId",
+            label: "tags" as const,
+            mapper: ({
+              secretApprovalTagSecretId,
+              secretApprovalTagId,
+              secretApprovalTagUpdatedAt,
+              secretApprovalTagCreatedAt
+            }) => ({
+              secretApprovalTagSecretId,
+              secretApprovalTagId,
+              secretApprovalTagUpdatedAt,
+              secretApprovalTagCreatedAt
+            })
+          }
+        ]
+      });
+      return formatedDoc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByRequestId" });
+    }
+  };
+
   return {
     ...secretApprovalRequestSecretOrm,
     insertV2Bridge: secretApprovalRequestSecretV2Orm.insertMany,
     findByRequestId,
     findByRequestIdBridgeSecretV2,
     bulkUpdateNoVersionIncrement,
+    findByProjectId,
     insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany,
     insertApprovalSecretV2Tags: secretApprovalRequestSecretV2TagOrm.insertMany
   };
