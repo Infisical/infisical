@@ -24,11 +24,11 @@ import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
+  expandSecretReferencesFactory,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
   getAllNestedSecretReferences,
-  interpolateSecrets,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
@@ -428,7 +428,8 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     includeImports,
-    recursive // TODO(akhilmhdh-sev2): add logic for expandSecretReferences
+    recursive,
+    expandSecretReferences: shouldExpandSecretReferences
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -484,57 +485,81 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    if (includeImports) {
-      const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
-      const allowedImports = secretImports.filter(({ importEnv, importPath, isReplication }) =>
-        !isReplication &&
-        // if its service token allow full access over imported one
-        actor === ActorType.SERVICE
-          ? true
-          : permission.can(
-              ProjectPermissionActions.Read,
-              subject(ProjectPermissionSub.Secrets, {
-                environment: importEnv.slug,
-                secretPath: importPath
-              })
-            )
-      );
-      const importedSecrets = await fnSecretsV2FromImports({
-        allowedImports,
-        secretDAL,
-        folderDAL,
-        secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
-      });
+    const decryptedSecrets = secrets.map((secret) =>
+      reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
+        ...secret,
+        value: secret.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+          : undefined,
+        comment: secret.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+          : undefined
+      })
+    );
+    const expandSecretReferences = expandSecretReferencesFactory({
+      projectId,
+      folderDAL,
+      secretDAL,
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+    });
 
+    if (shouldExpandSecretReferences) {
+      const secretsGroupByPath = groupBy(decryptedSecrets, (i) => i.secretPath);
+      for (const secretPathKey in secretsGroupByPath) {
+        if (Object.hasOwn(secretsGroupByPath, secretPathKey)) {
+          const secretsGroupByKey = secretsGroupByPath[secretPathKey].reduce(
+            (acc, item) => {
+              acc[item.secretKey] = {
+                value: item.secretValue,
+                comment: item.secretComment,
+                skipMultilineEncoding: item.skipMultilineEncoding
+              };
+              return acc;
+            },
+            {} as Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
+          );
+          // eslint-disable-next-line
+          await expandSecretReferences(secretsGroupByKey);
+          secretsGroupByPath[secretPathKey].forEach((decryptedSecret) => {
+            // eslint-disable-next-line no-param-reassign
+            decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value;
+          });
+        }
+      }
+    }
+
+    if (!includeImports) {
       return {
-        secrets: secrets.map((secret) =>
-          reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
-            ...secret,
-            value: secret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-              : undefined,
-            comment: secret.encryptedComment
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-              : undefined
-          })
-        ),
-        imports: importedSecrets
+        secrets: decryptedSecrets
       };
     }
 
+    const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
+    const allowedImports = secretImports.filter(({ importEnv, importPath, isReplication }) =>
+      !isReplication &&
+      // if its service token allow full access over imported one
+      actor === ActorType.SERVICE
+        ? true
+        : permission.can(
+            ProjectPermissionActions.Read,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: importEnv.slug,
+              secretPath: importPath
+            })
+          )
+    );
+    const importedSecrets = await fnSecretsV2FromImports({
+      allowedImports,
+      secretDAL,
+      folderDAL,
+      secretImportDAL,
+      expandSecretReferences,
+      decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+    });
+
     return {
-      secrets: secrets.map((secret) =>
-        reshapeBridgeSecret(projectId, environment, groupedPaths[secret.folderId][0].path, {
-          ...secret,
-          value: secret.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-            : undefined,
-          comment: secret.encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-            : undefined
-        })
-      )
+      secrets: decryptedSecrets,
+      imports: importedSecrets
     };
   };
 
@@ -550,7 +575,7 @@ export const secretV2BridgeServiceFactory = ({
     secretName,
     version,
     includeImports,
-    expandSecretReferences
+    expandSecretReferences: shouldExpandSecretReferences
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -600,11 +625,11 @@ export const secretV2BridgeServiceFactory = ({
           })
           .then((el) => SecretsV2Schema.parse({ ...el, id: el.secretId })));
 
-    const interpolateInlineSecretReference = interpolateSecrets({
+    const expandSecretReferences = expandSecretReferencesFactory({
       projectId,
-      decryptSecret: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+      folderDAL,
       secretDAL,
-      folderDAL
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
     });
 
     // now if secret is not found
@@ -629,33 +654,20 @@ export const secretV2BridgeServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+        expandSecretReferences: shouldExpandSecretReferences ? expandSecretReferences : undefined
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
-          if (secretName === importedSecrets[i].secrets[j].key) {
-            const importedSecret = importedSecrets[i].secrets[j];
-            let secretValue = importedSecret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: importedSecret.encryptedValue }).toString()
-              : undefined;
-
-            if (expandSecretReferences && secretValue) {
-              const secretReferenceExpandedString = {
-                [importedSecret.key]: { value: secretValue }
-              };
-              // eslint-disable-next-line
-              await interpolateInlineSecretReference(secretReferenceExpandedString);
-              secretValue = secretReferenceExpandedString[importedSecret.key].value;
-            }
-
-            return reshapeBridgeSecret(projectId, importedSecrets[i].environment, importedSecrets[i].secretPath, {
-              ...importedSecret,
-              value: secretValue,
-              comment: importedSecret.encryptedComment
-                ? secretManagerDecryptor({ cipherTextBlob: importedSecret.encryptedComment }).toString()
-                : undefined
-            });
+          const importedSecret = importedSecrets[i].secrets[j];
+          if (secretName === importedSecret.key) {
+            return reshapeBridgeSecret(
+              projectId,
+              importedSecrets[i].environment,
+              importedSecrets[i].secretPath,
+              importedSecret
+            );
           }
         }
       }
@@ -665,13 +677,13 @@ export const secretV2BridgeServiceFactory = ({
     let secretValue = secret.encryptedValue
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : undefined;
-    if (expandSecretReferences && secretValue) {
-      const secretReferenceExpandedString = {
+    if (shouldExpandSecretReferences && secretValue) {
+      const secretReferenceExpandedRecord = {
         [secret.key]: { value: secretValue }
       };
       // eslint-disable-next-line
-      await interpolateInlineSecretReference(secretReferenceExpandedString);
-      secretValue = secretReferenceExpandedString[secret.key].value;
+      await expandSecretReferences(secretReferenceExpandedRecord);
+      secretValue = secretReferenceExpandedRecord[secret.key].value;
     }
 
     return reshapeBridgeSecret(projectId, environment, path, {

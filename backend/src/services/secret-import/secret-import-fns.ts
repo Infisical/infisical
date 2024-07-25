@@ -1,5 +1,5 @@
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -146,7 +146,8 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL,
   depth = 0,
   cyclicDetector = new Set(),
-  decryptor
+  decryptor,
+  expandSecretReferences
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -157,6 +158,9 @@ export const fnSecretsV2FromImports = async ({
   depth?: number;
   cyclicDetector?: Set<string>;
   decryptor: (value?: Buffer | null) => string | undefined;
+  expandSecretReferences?: (
+    secrets: Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
+  ) => Promise<Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>>;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
@@ -206,16 +210,27 @@ export const fnSecretsV2FromImports = async ({
       secretDAL,
       depth: depth + 1,
       cyclicDetector,
-      decryptor
+      decryptor,
+      expandSecretReferences
     });
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
 
-  const secrets = allowedImports.map(({ importPath, importEnv, id, folderId }, i) => {
+  const processedImports = allowedImports.map(({ importPath, importEnv, id, folderId }, i) => {
     const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`][0];
     const folderDeeperImportSecrets =
       secretsFromdeeperImportGroupedByFolderId?.[sourceImportFolder?.id || ""]?.[0]?.secrets || [];
-
+    const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
+      .map((item) => ({
+        ...item,
+        secretKey: item.key,
+        secretValue: decryptor(item.encryptedValue),
+        secretComment: decryptor(item.encryptedComment),
+        environment: importEnv.slug,
+        workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
+        _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
+      }))
+      .concat(folderDeeperImportSecrets);
     return {
       secretPath: importPath,
       environment: importEnv.slug,
@@ -223,19 +238,33 @@ export const fnSecretsV2FromImports = async ({
       folderId: importedFolders?.[i]?.id,
       id,
       importFolderId: folderId,
-      secrets: (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
-        .map((item) => ({
-          ...item,
-          secretKey: item.key,
-          secretValue: decryptor(item.encryptedValue),
-          secretComment: decryptor(item.encryptedComment),
-          environment: importEnv.slug,
-          workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
-          _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
-        }))
-        .concat(folderDeeperImportSecrets)
+      secrets: unique(secretsWithDuplicate, (el) => el.secretKey)
     };
   });
 
-  return secrets;
+  if (expandSecretReferences) {
+    await Promise.all(
+      processedImports.map(async (processedImport) => {
+        const secretsGroupByKey = processedImport.secrets.reduce(
+          (acc, item) => {
+            acc[item.secretKey] = {
+              value: item.secretValue,
+              comment: item.secretComment,
+              skipMultilineEncoding: item.skipMultilineEncoding
+            };
+            return acc;
+          },
+          {} as Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
+        );
+        // eslint-disable-next-line
+        await expandSecretReferences(secretsGroupByKey);
+        processedImport.secrets.forEach((decryptedSecret) => {
+          // eslint-disable-next-line no-param-reassign
+          decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value;
+        });
+      })
+    );
+  }
+
+  return processedImports;
 };
