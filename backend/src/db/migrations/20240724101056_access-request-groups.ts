@@ -246,6 +246,29 @@ export async function down(knex: Knex): Promise<void> {
           .where("userId", knex.raw("??", [`${TableName.AccessApprovalRequest}.requestedByUserId`]))
       });
 
+      // Try to find a project membership based on the AccessApprovalRequest.requestedByUserId and AccessApprovalRequest.policyId(reference to AccessApprovalRequestPolicy).envId(reference to Environment).projectId(reference to Project)
+      // If a project membership is found, set the AccessApprovalRequest.requestedBy to the project membership id
+      // If a project membership is not found, remove the AccessApprovalRequest record
+      await knex.raw(`
+        UPDATE ${TableName.AccessApprovalRequest} AS aar
+        SET "requestedBy" = pm."id"
+        FROM ${TableName.ProjectMembership} AS pm
+        WHERE aar."requestedByUserId" = pm."userId" AND aar."policyId" IN (
+          SELECT "id"
+          FROM ${TableName.AccessApprovalPolicy}
+          WHERE "envId" IN (
+            SELECT "id"
+            FROM ${TableName.Environment}
+            WHERE "projectId" = pm."projectId"
+          )
+        )
+      `);
+      // Then, delete records where no matching project membership was found
+      await knex.raw(`
+        DELETE FROM ${TableName.AccessApprovalRequest}
+        WHERE "requestedBy" IS NULL
+      `);
+
       await knex.schema.alterTable(TableName.AccessApprovalRequest, (tb) => {
         if (hasRequestedByUserId) {
           // DROP AT A LATER TIME
@@ -280,9 +303,10 @@ export async function down(knex: Knex): Promise<void> {
         tb.uuid("member").notNullable().alter();
 
         // DROP AT A LATER TIME
-        tb.dropColumn("reviewerUserId");
+        // tb.dropColumn("reviewerUserId");
 
         // ADD ALLOW NULLABLE FOR NOW
+        tb.uuid("reviewerUserId").nullable().alter();
       });
     }
   }
