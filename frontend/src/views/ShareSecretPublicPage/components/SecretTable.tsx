@@ -1,14 +1,17 @@
-import { faCheck, faCopy, faEye, faEyeSlash, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faCheck, faCopy, faEye, faEyeSlash, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { EmptyState, IconButton, Td, Tr } from "@app/components/v2";
+import { Button, EmptyState, IconButton, Td, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
+import { SecretSharingAccessType } from "@app/hooks/api/secretSharing/types";
 
 type Props = {
   isLoading: boolean;
   decryptedSecret: string;
   isUrlCopied: boolean;
   copyUrlToClipboard: () => void;
+  accessType?: SecretSharingAccessType;
+  orgName?: string;
 };
 
 const replaceContentWithDot = (str: string) => {
@@ -24,17 +27,46 @@ export const SecretTable = ({
   isLoading,
   decryptedSecret,
   isUrlCopied,
-  copyUrlToClipboard
+  copyUrlToClipboard,
+  accessType,
+  orgName
 }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
+  const title = orgName
+    ? (<p>Someone from <strong>{orgName}</strong> organization has shared a secret with you</p>)
+    : (<p>You need to be logged in to view this secret</p>);
 
   return (
     <div className="flex w-full items-center justify-center rounded-md border border-solid border-mineshaft-700 bg-mineshaft-800 p-2">
       {isLoading && <div className="bg-mineshaft-800 text-center text-bunker-400">Loading...</div>}
-      {!isLoading && !decryptedSecret && (
+      {!isLoading && !decryptedSecret && accessType !== SecretSharingAccessType.Organization && (
         <Tr>
           <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
             <EmptyState title="Secret has either expired or does not exist!" icon={faKey} />
+          </Td>
+        </Tr>
+      )}
+      {!isLoading && !decryptedSecret && accessType === SecretSharingAccessType.Organization && (
+        <Tr>
+          <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-4000">
+            <EmptyState title={title} icon={faKey}>
+              <div className="flex flex-1 flex-col items-center justify-center pt-6">
+                <a
+                  href="/login"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    colorSchema="primary"
+                    size="sm"
+                    onClick={() => {}}
+                    rightIcon={<FontAwesomeIcon icon={faArrowRight} className="ml-2" />}
+                  >
+                    Login into <strong>{orgName}</strong> to view this secret
+                  </Button>
+                </a>
+              </div>
+            </EmptyState>
           </Td>
         </Tr>
       )}

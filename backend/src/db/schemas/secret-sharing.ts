@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { SecretSharingAccessType } from "@app/lib/types";
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSharingSchema = z.object({
@@ -16,6 +18,7 @@ export const SecretSharingSchema = z.object({
   expiresAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),
+  accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization),
   createdAt: z.date(),
   updatedAt: z.date(),
   expiresAfterViews: z.number().nullable().optional()

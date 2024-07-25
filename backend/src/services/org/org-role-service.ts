@@ -42,6 +42,61 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return role;
   };
 
+  const getRole = async (
+    userId: string,
+    orgId: string,
+    roleId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string | undefined
+  ) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+
+    switch (roleId) {
+      case "b11b49a9-09a9-4443-916a-4246f9ff2c69": {
+        return {
+          id: roleId,
+          orgId,
+          name: "Admin",
+          slug: "admin",
+          description: "Complete administration access over the organization",
+          permissions: packRules(orgAdminPermissions.rules),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      }
+      case "b11b49a9-09a9-4443-916a-4246f9ff2c70": {
+        return {
+          id: roleId,
+          orgId,
+          name: "Member",
+          slug: "member",
+          description: "Non-administrative role in an organization",
+          permissions: packRules(orgMemberPermissions.rules),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      }
+      case "b10d49a9-09a9-4443-916a-4246f9ff2c72": {
+        return {
+          id: "b10d49a9-09a9-4443-916a-4246f9ff2c72", // dummy user for zod validation in response
+          orgId,
+          name: "No Access",
+          slug: "no-access",
+          description: "No access to any resources in the organization",
+          permissions: packRules(orgNoAccessPermissions.rules),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      }
+      default: {
+        const role = await orgRoleDAL.findOne({ id: roleId, orgId });
+        if (!role) throw new BadRequestError({ message: "Role not found", name: "Get role" });
+        return role;
+      }
+    }
+  };
+
   const updateRole = async (
     userId: string,
     orgId: string,
@@ -144,5 +199,5 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     return { permissions: packRules(permission.rules), membership };
   };
 
-  return { createRole, updateRole, deleteRole, listRoles, getUserPermission };
+  return { createRole, getRole, updateRole, deleteRole, listRoles, getUserPermission };
 };

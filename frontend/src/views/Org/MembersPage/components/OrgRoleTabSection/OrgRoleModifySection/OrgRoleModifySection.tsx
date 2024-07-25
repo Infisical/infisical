@@ -106,8 +106,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
 export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
   const isNonEditable = ["owner", "admin", "member", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
-
-  
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const {

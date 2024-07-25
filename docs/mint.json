@@ -217,7 +217,7 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Installation methods",
+          "group": "Containerized installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-swarm",
@@ -406,6 +406,7 @@
         "sdks/languages/node",
         "sdks/languages/python",
         "sdks/languages/go",
+        "sdks/languages/ruby",
         "sdks/languages/java",
         "sdks/languages/csharp"
       ]

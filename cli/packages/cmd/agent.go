@@ -312,7 +312,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 
 func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		res, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false, false)
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -550,7 +550,7 @@ func (tm *AgentManager) FetchAzureAuthAccessToken() (credential infisicalSdk.Mac
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
-	return tm.infisicalClient.Auth().AzureAuthLogin(identityId)
+	return tm.infisicalClient.Auth().AzureAuthLogin(identityId, "")
 
 }
 

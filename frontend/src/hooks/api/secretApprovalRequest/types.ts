@@ -133,4 +133,5 @@ export type TUpdateSecretApprovalRequestStatusDTO = {
 export type TPerformSecretApprovalRequestMerge = {
   id: string;
   workspaceId: string;
+  bypassReason?: string;
 };

@@ -24,10 +24,10 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/chzyer/readline"
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	"github.com/pkg/browser"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
@@ -84,7 +84,7 @@ func handleAzureAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.Infis
 		return infisicalSdk.MachineIdentityCredential{}, err
 	}
 
-	return infisicalClient.Auth().AzureAuthLogin(identityId)
+	return infisicalClient.Auth().AzureAuthLogin(identityId, "")
 }
 
 func handleGcpIdTokenAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
@@ -226,9 +226,9 @@ var loginCmd = &cobra.Command{
 
 			//call browser login function
 			if !interactiveLogin {
-				fmt.Println("Logging in via browser... To login via interactive mode run [infisical login -i]")
 				userCredentialsToBeStored, err = browserCliLogin()
 				if err != nil {
+					fmt.Printf("Login via browser failed. %s", err.Error())
 					//default to cli login on error
 					cliDefaultLogin(&userCredentialsToBeStored)
 				}
@@ -713,10 +713,62 @@ func askForMFACode() string {
 	return mfaVerifyCode
 }
 
+func askToPasteJwtToken(stdin *readline.CancelableStdin, success chan models.UserCredentials, failure chan error) {
+	time.Sleep(time.Second * 5)
+	fmt.Println("\n\nOnce login is completed via browser, the CLI should be authenticated automatically.")
+	fmt.Println("However, if browser fails to communicate with the CLI, please paste the token from the browser below.")
+
+	fmt.Print("\n\nToken: ")
+	bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		failure <- err
+		fmt.Println("\nError reading input:", err)
+		os.Exit(1)
+	}
+
+	infisicalPastedToken := strings.TrimSpace(string(bytePassword))
+
+	userCredentials, err := decodePastedBase64Token(infisicalPastedToken)
+	if err != nil {
+		failure <- err
+		fmt.Println("Invalid user credentials provided", err)
+		os.Exit(1)
+	}
+
+	// verify JTW
+	httpClient := resty.New().
+		SetAuthToken(userCredentials.JTWToken).
+		SetHeader("Accept", "application/json")
+
+	isAuthenticated := api.CallIsAuthenticated(httpClient)
+	if !isAuthenticated {
+		fmt.Println("Invalid user credentials provided", err)
+		failure <- err
+		os.Exit(1)
+	}
+
+	success <- *userCredentials
+}
+
+func decodePastedBase64Token(token string) (*models.UserCredentials, error) {
+	data, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, err
+	}
+	var loginResponse models.UserCredentials
+
+	err = json.Unmarshal(data, &loginResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &loginResponse, nil
+}
+
 // Manages the browser login flow.
 // Returns a UserCredentials object on success and an error on failure
 func browserCliLogin() (models.UserCredentials, error) {
-	SERVER_TIMEOUT := 60 * 10
+	SERVER_TIMEOUT := 10 * 60
 
 	//create listener
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -728,17 +780,12 @@ func browserCliLogin() (models.UserCredentials, error) {
 	callbackPort := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("%s?callback_port=%d", config.INFISICAL_LOGIN_URL, callbackPort)
 
-	//open browser and login
-	err = browser.OpenURL(url)
-	if err != nil {
-		return models.UserCredentials{}, err
-	}
+	fmt.Printf("\n\nTo complete your login, open this address in your browser: %v \n", url)
 
 	//flow channels
 	success := make(chan models.UserCredentials)
 	failure := make(chan error)
 	timeout := time.After(time.Second * time.Duration(SERVER_TIMEOUT))
-	quit := make(chan bool)
 
 	//terminal state
 	oldState, err := term.GetState(int(os.Stdin.Fd()))
@@ -760,24 +807,27 @@ func browserCliLogin() (models.UserCredentials, error) {
 
 	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
 
+	stdin := readline.NewCancelableStdin(os.Stdin)
 	go http.Serve(listener, corsHandler)
+	go askToPasteJwtToken(stdin, success, failure)
 
 	for {
 		select {
 		case loginResponse := <-success:
 			_ = closeListener(&listener)
+			_ = stdin.Close()
+			fmt.Println("Browser login successful")
 			return loginResponse, nil
 
-		case <-failure:
-			err = closeListener(&listener)
-			return models.UserCredentials{}, err
+		case err := <-failure:
+			serverErr := closeListener(&listener)
+			stdErr := stdin.Close()
+			return models.UserCredentials{}, errors.Join(err, serverErr, stdErr)
 
 		case <-timeout:
 			_ = closeListener(&listener)
+			_ = stdin.Close()
 			return models.UserCredentials{}, errors.New("server timeout")
-
-		case <-quit:
-			return models.UserCredentials{}, errors.New("quitting browser login, defaulting to cli...")
 		}
 	}
 }

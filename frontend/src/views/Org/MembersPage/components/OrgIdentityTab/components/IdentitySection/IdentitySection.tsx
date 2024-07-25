@@ -68,7 +68,7 @@ export const IdentitySection = withPermission(
     };
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
           <div className="flex w-full justify-end pr-4">
