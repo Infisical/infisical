@@ -126,7 +126,8 @@ export async function up(knex: Knex): Promise<void> {
         projectId: knex.ref("pm.projectId")
       })
       .from(`${TableName.ProjectUserAdditionalPrivilege} as puap`)
-      .join(`${TableName.ProjectMembership} as pm`, "puap.projectMembershipId", "pm.id");
+      .join(`${TableName.ProjectMembership} as pm`, "puap.projectMembershipId", "pm.id")
+      .whereNotNull("puap.projectMembershipId");
 
     await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (tb) => {
       tb.uuid("userId").notNullable().alter();
@@ -187,10 +188,6 @@ export async function down(knex: Knex): Promise<void> {
         .where("userId", knex.raw("??", [`${TableName.SecretApprovalRequest}.userId`]))
     });
 
-    // Then, delete records where no matching project membership was found
-    await knex(TableName.AccessApprovalRequest).whereNull("projectMembershipId").delete();
-    await knex(TableName.ProjectUserAdditionalPrivilege).whereNull("projectMembershipId").delete();
-
     await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (tb) => {
       // DROP AT A LATER TIME
       // tb.dropColumn("userId");
@@ -203,6 +200,10 @@ export async function down(knex: Knex): Promise<void> {
       tb.uuid("projectMembershipId").notNullable().alter();
     });
   }
+
+  // Then, delete records where no matching project membership was found
+  await knex(TableName.ProjectUserAdditionalPrivilege).whereNull("projectMembershipId").delete();
+  await knex(TableName.AccessApprovalRequest).whereNull("requestedBy").delete();
 
   // ---------- ACCESS APPROVAL POLICY APPROVER ------------
   const hasApproverUserId = await knex.schema.hasColumn(TableName.AccessApprovalPolicyApprover, "approverUserId");
