@@ -116,14 +116,17 @@ export async function up(knex: Knex): Promise<void> {
       tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
 
-    await knex.raw(`
-      UPDATE ${TableName.ProjectUserAdditionalPrivilege} AS puap
-      SET 
-        "userId" = pm."userId",
-        "projectId" = pm."projectId"
-      FROM ${TableName.ProjectMembership} AS pm
-      WHERE puap."projectMembershipId" = pm."id"
-    `);
+    await knex(TableName.ProjectUserAdditionalPrivilege)
+      .update({
+        // eslint-disable-next-line
+        // @ts-ignore because generate schema happens after this
+        userId: knex.ref("pm.userId"),
+        // eslint-disable-next-line
+        // @ts-ignore because generate schema happens after this
+        projectId: knex.ref("pm.projectId")
+      })
+      .from(`${TableName.ProjectUserAdditionalPrivilege} as puap`)
+      .join(`${TableName.ProjectMembership} as pm`, "puap.projectMembershipId", "pm.id");
 
     await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (tb) => {
       tb.uuid("userId").notNullable().alter();
@@ -168,18 +171,25 @@ export async function down(knex: Knex): Promise<void> {
 
   if (!hasProjectMembershipId) {
     // First, update records where a matching project membership exists
-    await knex.raw(`
-      UPDATE ${TableName.ProjectUserAdditionalPrivilege} AS puap
-      SET "projectMembershipId" = pm."id"
-      FROM ${TableName.ProjectMembership} AS pm
-      WHERE puap."userId" = pm."userId" AND puap."projectId" = pm."projectId"
-    `);
+    await knex(TableName.ProjectUserAdditionalPrivilege).update({
+      // eslint-disable-next-line
+      // @ts-ignore because generate schema happens after this
+      projectMembershipId: knex(TableName.ProjectMembership)
+        .select("id")
+        .where("userId", knex.raw("??", [`${TableName.ProjectUserAdditionalPrivilege}.userId`]))
+    });
+
+    await knex(TableName.AccessApprovalRequest).update({
+      // eslint-disable-next-line
+      // @ts-ignore because generate schema happens after this
+      projectMembershipId: knex(TableName.ProjectMembership)
+        .select("id")
+        .where("userId", knex.raw("??", [`${TableName.SecretApprovalRequest}.userId`]))
+    });
 
     // Then, delete records where no matching project membership was found
-    await knex.raw(`
-      DELETE FROM ${TableName.ProjectUserAdditionalPrivilege}
-      WHERE "projectMembershipId" IS NULL
-    `);
+    await knex(TableName.AccessApprovalRequest).whereNull("projectMembershipId").delete();
+    await knex(TableName.ProjectUserAdditionalPrivilege).whereNull("projectMembershipId").delete();
 
     await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (tb) => {
       // DROP AT A LATER TIME
@@ -238,36 +248,20 @@ export async function down(knex: Knex): Promise<void> {
         }
       });
 
-      // await knex(TableName.AccessApprovalRequest).update({
-      //   // eslint-disable-next-line
-      //   // @ts-ignore because generate schema happens after this
-      //   requestedBy: knex(TableName.ProjectMembership)
-      //     .select("id")
-      //     .where("userId", knex.raw("??", [`${TableName.AccessApprovalRequest}.requestedByUserId`]))
-      // });
-
       // Try to find a project membership based on the AccessApprovalRequest.requestedByUserId and AccessApprovalRequest.policyId(reference to AccessApprovalRequestPolicy).envId(reference to Environment).projectId(reference to Project)
       // If a project membership is found, set the AccessApprovalRequest.requestedBy to the project membership id
       // If a project membership is not found, remove the AccessApprovalRequest record
-      await knex.raw(`
-        UPDATE ${TableName.AccessApprovalRequest} AS aar
-        SET "requestedBy" = pm."id"
-        FROM ${TableName.ProjectMembership} AS pm
-        WHERE aar."requestedByUserId" = pm."userId" AND aar."policyId" IN (
-          SELECT "id"
-          FROM ${TableName.AccessApprovalPolicy}
-          WHERE "envId" IN (
-            SELECT "id"
-            FROM ${TableName.Environment}
-            WHERE "projectId" = pm."projectId"
-          )
-        )
-      `);
+
+      await knex(TableName.AccessApprovalRequest).update({
+        // eslint-disable-next-line
+        // @ts-ignore because generate schema happens after this
+        requestedBy: knex(TableName.ProjectMembership)
+          .select("id")
+          .where("userId", knex.raw("??", [`${TableName.AccessApprovalRequest}.requestedByUserId`]))
+      });
+
       // Then, delete records where no matching project membership was found
-      await knex.raw(`
-        DELETE FROM ${TableName.AccessApprovalRequest}
-        WHERE "requestedBy" IS NULL
-      `);
+      await knex(TableName.AccessApprovalRequest).whereNull("requestedBy").delete();
 
       await knex.schema.alterTable(TableName.AccessApprovalRequest, (tb) => {
         if (hasRequestedByUserId) {
