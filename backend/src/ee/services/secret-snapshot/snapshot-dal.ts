@@ -723,7 +723,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
   // special query for migration for secret v2
   const findNSecretV1SnapshotByFolderId = async (folderId: string, n = 15, tx?: Knex) => {
     try {
-      const data = await (tx || db.replicaNode())(TableName.Snapshot)
+      const query = (tx || db.replicaNode())(TableName.Snapshot)
         .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin(
           TableName.SecretVersion,
@@ -749,8 +749,12 @@ export const snapshotDALFactory = (db: TDbClient) => {
           )
         )
         .orderBy(`${TableName.Snapshot}.createdAt`, "desc")
-        .where(`${TableName.Snapshot}.folderId`, folderId)
-        .andWhere("rank", "<", n);
+        .where(`${TableName.Snapshot}.folderId`, folderId);
+      const data = await (tx || db)
+        .with("w", query)
+        .select("*")
+        .from<Awaited<typeof query>[number]>("w")
+        .andWhere("w.rank", "<", n);
 
       return sqlNestRelationships({
         data,
