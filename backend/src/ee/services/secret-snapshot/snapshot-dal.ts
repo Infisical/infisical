@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { TDbClient } from "@app/db";
 import {
@@ -719,6 +720,71 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
+  // special query for migration for secret v2
+  const findNSecretV1SnapshotByFolderId = async (folderId: string, n = 15, tx?: Knex) => {
+    try {
+      const data = await (tx || db.replicaNode())(TableName.Snapshot)
+        .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
+        .leftJoin(
+          TableName.SecretVersion,
+          `${TableName.SnapshotSecret}.secretVersionId`,
+          `${TableName.SecretVersion}.id`
+        )
+        .leftJoin(
+          TableName.SecretVersionTag,
+          `${TableName.SecretVersionTag}.${TableName.SecretVersion}Id`,
+          `${TableName.SecretVersion}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretVersion))
+        .select(
+          db.ref("id").withSchema(TableName.Snapshot).as("snapshotId"),
+          db.ref("createdAt").withSchema(TableName.Snapshot).as("snapshotCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.Snapshot).as("snapshotUpdatedAt"),
+          db.ref("envId").withSchema(TableName.SnapshotSecret).as("snapshotEnvId"),
+          db.ref("id").withSchema(TableName.SecretVersionTag).as("secretVersionTagId"),
+          db.ref("secret_versionsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretId"),
+          db.ref("secret_versionsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretTagId"),
+          db.raw(
+            `DENSE_RANK() OVER (partition by ${TableName.Snapshot}."id" ORDER BY ${TableName.SecretVersion}."createdAt") as rank`
+          )
+        )
+        .orderBy(`${TableName.Snapshot}.createdAt`, "desc")
+        .where(`${TableName.Snapshot}.folderId`, folderId)
+        .andWhere("rank", "<", n);
+
+      return sqlNestRelationships({
+        data,
+        key: "snapshotId",
+        parentMapper: ({ snapshotId: id, snapshotCreatedAt: createdAt, snapshotUpdatedAt: updatedAt }) => ({
+          id,
+          folderId,
+          createdAt,
+          updatedAt
+        }),
+        childrenMapper: [
+          {
+            key: "id",
+            label: "secretVersions" as const,
+            mapper: (el) => SecretVersionsSchema.extend({ snapshotEnvId: z.string() }).parse(el),
+            childrenMapper: [
+              {
+                key: "secretVersionTagId",
+                label: "tags" as const,
+                mapper: ({ secretVersionTagId, secretVersionTagSecretId, secretVersionTagSecretTagId }) => ({
+                  id: secretVersionTagId,
+                  secretVersionId: secretVersionTagSecretId,
+                  secretTagId: secretVersionTagSecretTagId
+                })
+              }
+            ]
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretSnapshotDataById" });
+    }
+  };
+
   return {
     ...secretSnapshotOrm,
     findById,
@@ -728,6 +794,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
     countOfSnapshotsByFolderId,
     findSecretSnapshotDataById,
     findSecretSnapshotV2DataById,
-    pruneExcessSnapshots
+    pruneExcessSnapshots,
+    findNSecretV1SnapshotByFolderId
   };
 };

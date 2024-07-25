@@ -1,8 +1,11 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { ProjectUpgradeStatus, ProjectVersion } from "@app/db/schemas";
+import { ProjectUpgradeStatus, ProjectVersion, TSecretSnapshotSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
+import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
+import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -73,6 +76,12 @@ type TSecretQueueFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretRotationDAL: Pick<TSecretRotationDALFactory, "secretOutputV2InsertMany" | "find">;
+  secretApprovalRequestSecretDAL: Pick<
+    TSecretApprovalRequestSecretDALFactory,
+    "findByProjectId" | "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  >;
+  snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId">;
+  snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany">;
 };
 
 export type TGetSecrets = {
@@ -113,7 +122,10 @@ export const secretQueueFactory = ({
   secretVersionV2BridgeDAL,
   kmsService,
   secretVersionTagV2BridgeDAL,
-  secretRotationDAL
+  secretRotationDAL,
+  secretApprovalRequestSecretDAL,
+  snapshotDAL,
+  snapshotSecretV2BridgeDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -869,7 +881,81 @@ export const secretQueueFactory = ({
             }),
             tx
           );
-          await secretV2BridgeDAL.upsertSecretReferences(secretReferences);
+          await secretV2BridgeDAL.upsertSecretReferences(secretReferences, tx);
+        }
+
+        const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, 10, tx);
+        const projectV3SecretVersions: Record<string, TSecretVersionsV2> = {};
+        const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
+        const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
+        snapshots.forEach(({ secretVersions = [], ...snapshot }) => {
+          secretVersions.forEach((el) => {
+            projectV3SnapshotSecrets.push({
+              secretVersionId: el.id,
+              snapshotId: snapshot.id,
+              createdAt: snapshot.createdAt,
+              updatedAt: snapshot.updatedAt,
+              envId: el.snapshotEnvId
+            });
+            if (projectV3SecretVersions[el.id]) return;
+
+            const key = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretKeyCiphertext,
+              iv: el.secretKeyIV,
+              tag: el.secretKeyTag,
+              key: botKey
+            });
+            const value = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretValueCiphertext,
+              iv: el.secretValueIV,
+              tag: el.secretValueTag,
+              key: botKey
+            });
+            const comment =
+              el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+                ? decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: el.secretCommentCiphertext,
+                    iv: el.secretCommentIV,
+                    tag: el.secretCommentTag,
+                    key: botKey
+                  })
+                : "";
+            const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+
+            const encryptedComment = comment
+              ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+              : null;
+            projectV3SecretVersions[el.id] = {
+              id: el.id,
+              createdAt: el.createdAt,
+              updatedAt: el.updatedAt,
+              skipMultilineEncoding: el.skipMultilineEncoding,
+              encryptedComment,
+              encryptedValue,
+              key,
+              version: el.version,
+              type: el.type,
+              userId: el.userId,
+              folderId: el.folderId,
+              metadata: el.metadata,
+              reminderNote: el.secretReminderNote,
+              reminderRepeatDays: el.secretReminderRepeatDays,
+              secretId: el.secretId,
+              envId: el.envId
+            };
+            el.tags.forEach(({ secretTagId }) => {
+              projectV3SecretVersionTags.push({ secret_tagsId: secretTagId, secret_versions_v2Id: el.id });
+            });
+          });
+        });
+        if (projectV3SecretVersionTags.length) {
+          await secretVersionV2BridgeDAL.insertMany(Object.values(projectV3SecretVersions), tx);
+        }
+        if (projectV3SecretVersionTags.length) {
+          await secretVersionTagV2BridgeDAL.insertMany(projectV3SecretVersionTags, tx);
+        }
+        if (projectV3SnapshotSecrets.length) {
+          await snapshotSecretV2BridgeDAL.insertMany(projectV3SnapshotSecrets, tx);
         }
       }
       /*
@@ -959,7 +1045,6 @@ export const secretQueueFactory = ({
        * Secret Rotation Secret Migration
        * Saving the new encrypted colum
        * */
-
       const projectV1SecretRotations = await secretRotationDAL.find({ projectId }, tx);
       await secretRotationDAL.secretOutputV2InsertMany(
         projectV1SecretRotations.flatMap((el) =>
@@ -967,6 +1052,69 @@ export const secretQueueFactory = ({
         ),
         tx
       );
+
+      /*
+       * approvals
+       * */
+      const projectV1ApprovalSecrets = await secretApprovalRequestSecretDAL.findByProjectId(projectId);
+      if (projectV1ApprovalSecrets.length) {
+        await secretApprovalRequestSecretDAL.insertV2Bridge(
+          projectV1ApprovalSecrets.map((el) => {
+            const key = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretKeyCiphertext,
+              iv: el.secretKeyIV,
+              tag: el.secretKeyTag,
+              key: botKey
+            });
+            const value = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretValueCiphertext,
+              iv: el.secretValueIV,
+              tag: el.secretValueTag,
+              key: botKey
+            });
+            const comment =
+              el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+                ? decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: el.secretCommentCiphertext,
+                    iv: el.secretCommentIV,
+                    tag: el.secretCommentTag,
+                    key: botKey
+                  })
+                : "";
+            const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+            const encryptedComment = comment
+              ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+              : null;
+            return {
+              id: el.id,
+              createdAt: el.createdAt,
+              updatedAt: el.updatedAt,
+              skipMultilineEncoding: el.skipMultilineEncoding,
+              encryptedComment,
+              encryptedValue,
+              key,
+              version: el.version,
+              metadata: el.metadata,
+              reminderNote: el.secretReminderNote,
+              reminderRepeatDays: el.secretReminderRepeatDays,
+              requestId: el.requestId,
+              op: el.op,
+              secretId: el.secretId,
+              secretVersion: el.secretVersion
+            };
+          }),
+          tx
+        );
+      }
+      const projectV1SecretApprovalSecretTags = projectV1ApprovalSecrets.flatMap((el) =>
+        el.tags.map((tag) => ({
+          secretId: tag.secretApprovalTagSecretId,
+          tagId: tag.secretApprovalTagId
+        }))
+      );
+      if (projectV1SecretApprovalSecretTags.length) {
+        await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(projectV1SecretApprovalSecretTags, tx);
+      }
       await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
     });
   });
