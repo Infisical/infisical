@@ -575,6 +575,10 @@ export const projectServiceFactory = ({
    */
   const listProjectCas = async ({
     status,
+    friendlyName,
+    commonName,
+    limit = 25,
+    offset = 0,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -596,10 +600,15 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const cas = await certificateAuthorityDAL.find({
-      projectId: project.id,
-      ...(status && { status })
-    });
+    const cas = await certificateAuthorityDAL.find(
+      {
+        projectId: project.id,
+        ...(status && { status }),
+        ...(friendlyName && { friendlyName }),
+        ...(commonName && { commonName })
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
 
     return cas;
   };
@@ -608,8 +617,10 @@ export const projectServiceFactory = ({
    * Return list of certificates for project
    */
   const listProjectCertificates = async ({
-    offset,
-    limit,
+    limit = 25,
+    offset = 0,
+    friendlyName,
+    commonName,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -634,12 +645,18 @@ export const projectServiceFactory = ({
       {
         $in: {
           caId: cas.map((ca) => ca.id)
-        }
+        },
+        ...(friendlyName && { friendlyName }),
+        ...(commonName && { commonName })
       },
       { offset, limit, sort: [["updatedAt", "desc"]] }
     );
 
-    const count = await certificateDAL.countCertificatesInProject(project.id);
+    const count = await certificateDAL.countCertificatesInProject({
+      projectId: project.id,
+      friendlyName,
+      commonName
+    });
 
     return {
       certificates,
