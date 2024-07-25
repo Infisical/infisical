@@ -9,7 +9,7 @@ export default function Role() {
   return (
     <>
       <Head>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+        <title>{t("common.head-title", { title: "Project Settings" })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <RolePage />

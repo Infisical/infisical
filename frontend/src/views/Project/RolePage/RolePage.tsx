@@ -5,8 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-// import { OrgPermissionCan } from "@app/components/permissions";
-// import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -18,10 +16,11 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-// import { withPermission } from "@app/hoc";
 import { withProjectPermission } from "@app/hoc";
-import { useDeleteOrgRole, useGetOrgRole, useGetProjectRoleBySlug } from "@app/hooks/api";
+import { useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+
+import { RoleDetailsSection, RolePermissionsSection } from "./components";
 
 // import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
 
@@ -32,24 +31,17 @@ export const RolePage = withProjectPermission(
     const { currentWorkspace } = useWorkspace();
     const projectId = currentWorkspace?.id || "";
 
-    console.log("RolePage currentWorkspace: ", currentWorkspace);
-
-    // const { currentOrg } = useOrganization();
-    // const orgId = currentOrg?.id || "";
-
     const { data } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
 
-    console.log("useGetProjectRoleBySlug data: ", data);
-
     // const { data } = useGetOrgRole(orgId, roleId); // TODO: get project role
-    const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
+    // const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "role",
-      "deleteOrgRole"
+      "deleteRole"
     ] as const);
 
-    const onDeleteOrgRoleSubmit = async () => {
+    const onDeleteRoleSubmit = async () => {
       try {
         // if (!orgId || !roleId) return;
         // await deleteOrgRole({
@@ -65,7 +57,7 @@ export const RolePage = withProjectPermission(
       } catch (err) {
         console.error(err);
         const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to delete organization role";
+        const text = error?.response?.data?.message ?? "Failed to delete project role";
 
         createNotification({
           text,
@@ -136,7 +128,7 @@ export const RolePage = withProjectPermission(
                               : "pointer-events-none cursor-not-allowed opacity-50"
                           )}
                           onClick={async () => {
-                            handlePopUpOpen("deleteOrgRole");
+                            handlePopUpOpen("deleteRole");
                           }}
                           disabled={!isAllowed}
                         >
@@ -150,21 +142,19 @@ export const RolePage = withProjectPermission(
             </div>
             <div className="flex">
               <div className="mr-4 w-96">
-                RoleDetailsSection here
-                {/* <RoleDetailsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} /> */}
+                <RoleDetailsSection roleSlug={roleSlug} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              RolePermissionsSection here
-              {/* <RolePermissionsSection roleId={roleId} /> */}
+              <RolePermissionsSection roleSlug={roleSlug} />
             </div>
           </div>
         )}
         {/* <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} /> */}
         <DeleteActionModal
-          isOpen={popUp.deleteOrgRole.isOpen}
+          isOpen={popUp.deleteRole.isOpen}
           title={`Are you sure want to delete the project role ${data?.name ?? ""}?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
           deleteKey="confirm"
-          onDeleteApproved={() => onDeleteOrgRoleSubmit()}
+          onDeleteApproved={() => onDeleteRoleSubmit()}
         />
       </div>
     );
