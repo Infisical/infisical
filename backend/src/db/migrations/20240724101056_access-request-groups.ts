@@ -54,7 +54,13 @@ export async function up(knex: Knex): Promise<void> {
     });
     // drop old fields
     await knex.schema.alterTable(TableName.AccessApprovalRequest, (tb) => {
-      if (hasRequestedBy) tb.dropColumn("requestedBy");
+      if (hasRequestedBy) {
+        // DROP AT A LATER TIME
+        // tb.dropColumn("requestedBy");
+
+        // ADD ALLOW NULLABLE FOR NOW
+        tb.uuid("requestedBy").nullable().alter();
+      }
       tb.uuid("requestedByUserId").notNullable().alter();
     });
   }
@@ -79,7 +85,13 @@ export async function up(knex: Knex): Promise<void> {
     });
     // drop table
     await knex.schema.alterTable(TableName.AccessApprovalRequestReviewer, (tb) => {
-      if (hasMemberId) tb.dropColumn("member");
+      if (hasMemberId) {
+        // DROP AT A LATER TIME
+        // tb.dropColumn("member");
+
+        // ADD ALLOW NULLABLE FOR NOW
+        tb.uuid("member").nullable().alter();
+      }
       tb.uuid("reviewerUserId").notNullable().alter();
     });
   }
@@ -121,7 +133,11 @@ export async function up(knex: Knex): Promise<void> {
 
   if (projectUserAdditionalPrivilegeHasProjectMembershipId) {
     await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (tb) => {
-      tb.dropColumn("projectMembershipId");
+      // DROP AT A LATER TIME
+      // tb.dropColumn("projectMembershipId");
+
+      // ADD ALLOW NULLABLE FOR NOW
+      tb.uuid("projectMembershipId").nullable().alter();
     });
   }
 }
@@ -166,8 +182,13 @@ export async function down(knex: Knex): Promise<void> {
     `);
 
     await knex.schema.alterTable(TableName.ProjectUserAdditionalPrivilege, (tb) => {
-      tb.dropColumn("userId");
-      tb.dropColumn("projectId");
+      // DROP AT A LATER TIME
+      // tb.dropColumn("userId");
+      // tb.dropColumn("projectId");
+
+      // ADD ALLOW NULLABLE FOR NOW
+      tb.uuid("userId").nullable().alter();
+      tb.string("projectId").nullable().alter();
 
       tb.uuid("projectMembershipId").notNullable().alter();
     });
@@ -194,7 +215,12 @@ export async function down(knex: Knex): Promise<void> {
           .where("userId", knex.raw("??", [`${TableName.AccessApprovalPolicyApprover}.approverUserId`]))
       });
       await knex.schema.alterTable(TableName.AccessApprovalPolicyApprover, (tb) => {
-        tb.dropColumn("approverUserId");
+        // DROP AT A LATER TIME
+        // tb.dropColumn("approverUserId");
+
+        // ADD ALLOW NULLABLE FOR NOW
+        tb.uuid("approverUserId").nullable().alter();
+
         tb.uuid("approverId").notNullable().alter();
       });
     }
@@ -221,7 +247,13 @@ export async function down(knex: Knex): Promise<void> {
       });
 
       await knex.schema.alterTable(TableName.AccessApprovalRequest, (tb) => {
-        if (hasRequestedByUserId) tb.dropColumn("requestedByUserId");
+        if (hasRequestedByUserId) {
+          // DROP AT A LATER TIME
+          tb.dropColumn("requestedByUserId");
+
+          // ADD ALLOW NULLABLE FOR NOW
+          tb.uuid("requestedByUserId").nullable().alter();
+        }
         if (hasRequestedBy) tb.uuid("requestedBy").notNullable().alter();
       });
     }
@@ -246,7 +278,11 @@ export async function down(knex: Knex): Promise<void> {
       });
       await knex.schema.alterTable(TableName.AccessApprovalRequestReviewer, (tb) => {
         tb.uuid("member").notNullable().alter();
+
+        // DROP AT A LATER TIME
         tb.dropColumn("reviewerUserId");
+
+        // ADD ALLOW NULLABLE FOR NOW
       });
     }
   }
