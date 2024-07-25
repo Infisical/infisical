@@ -22,6 +22,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.index(["folderId", "userId"]);
     });
   }
   await createOnUpdateTrigger(knex, TableName.SecretV2);
@@ -105,12 +106,12 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.SnapshotSecretV2))) {
     await knex.schema.createTable(TableName.SnapshotSecretV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.uuid("envId").notNullable();
+      t.uuid("envId").index().notNullable();
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       // not a relation kept like that to keep it when rolled back
-      t.uuid("secretVersionId").notNullable();
+      t.uuid("secretVersionId").index().notNullable();
       t.foreign("secretVersionId").references("id").inTable(TableName.SecretVersionV2).onDelete("CASCADE");
-      t.uuid("snapshotId").notNullable();
+      t.uuid("snapshotId").index().notNullable();
       t.foreign("snapshotId").references("id").inTable(TableName.Snapshot).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
