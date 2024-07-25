@@ -217,13 +217,6 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Native installation methods",
-          "pages": [
-            "self-hosting/deployment-options/native/standalone-binary",
-            "self-hosting/deployment-options/native/high-availability"
-          ]
-        },
-        {
           "group": "Containerized installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
