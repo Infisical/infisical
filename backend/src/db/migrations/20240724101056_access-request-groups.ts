@@ -116,19 +116,19 @@ export async function up(knex: Knex): Promise<void> {
       tb.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
 
-    const membershipQuery = knex(TableName.ProjectMembership)
-      .select("userId", "projectId")
-      .whereRaw(`${TableName.ProjectMembership}.id = ${TableName.ProjectUserAdditionalPrivilege}.projectMembershipId`)
-      .limit(1);
-
     await knex(TableName.ProjectUserAdditionalPrivilege)
       .update({
         // eslint-disable-next-line
         // @ts-ignore because generate schema happens after this
-        userId: membershipQuery.select("userId"),
+        userId: knex(TableName.ProjectMembership)
+          .select("userId")
+          .where("id", knex.raw("??", [`${TableName.ProjectUserAdditionalPrivilege}.projectMembershipId`])),
+
         // eslint-disable-next-line
         // @ts-ignore because generate schema happens after this
-        projectId: membershipQuery.select("projectId")
+        projectId: knex(TableName.ProjectMembership)
+          .select("projectId")
+          .where("id", knex.raw("??", [`${TableName.ProjectUserAdditionalPrivilege}.projectMembershipId`]))
       })
       .whereNotNull("projectMembershipId");
 
