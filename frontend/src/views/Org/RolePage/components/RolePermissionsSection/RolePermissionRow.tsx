@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { TFormSchema } from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleModifySection/OrgRoleModifySection.utils";
+import { TFormSchema } from "@app/views/Org/RolePage/components/OrgRoleModifySection.utils";
 
 const PERMISSIONS = [
   { action: "read", label: "View" },
