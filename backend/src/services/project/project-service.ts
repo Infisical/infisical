@@ -577,7 +577,7 @@ export const projectServiceFactory = ({
     status,
     friendlyName,
     commonName,
-    limit = 20,
+    limit = 25,
     offset = 0,
     actorId,
     actorOrgId,
@@ -617,8 +617,8 @@ export const projectServiceFactory = ({
    * Return list of certificates for project
    */
   const listProjectCertificates = async ({
-    offset = 20,
-    limit = 0,
+    limit = 25,
+    offset = 0,
     friendlyName,
     commonName,
     actorId,
