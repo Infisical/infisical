@@ -1935,15 +1935,21 @@ export const secretServiceFactory = ({
     offset = 0,
     secretId
   }: TGetSecretVersionsDTO) => {
-    const secretVersionV2 = await secretV2BridgeService.getSecretVersions({
-      actorId,
-      actor,
-      actorOrgId,
-      actorAuthMethod,
-      limit,
-      offset,
-      secretId
-    });
+    const secretVersionV2 = await secretV2BridgeService
+      .getSecretVersions({
+        actorId,
+        actor,
+        actorOrgId,
+        actorAuthMethod,
+        limit,
+        offset,
+        secretId
+      })
+      .catch((err) => {
+        if ((err as Error).message === "BadRequest: Failed to find secret") {
+          return null;
+        }
+      });
     if (secretVersionV2) return secretVersionV2;
 
     const secret = await secretDAL.findById(secretId);

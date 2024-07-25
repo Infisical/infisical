@@ -1016,7 +1016,8 @@ export const registerRoutes = async (
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
     identityAccessTokenDAL,
-    secretSharingDAL
+    secretSharingDAL,
+    secretVersionV2DAL: secretVersionV2BridgeDAL
   });
 
   const oidcService = oidcConfigServiceFactory({

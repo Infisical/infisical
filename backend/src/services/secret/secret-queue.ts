@@ -885,7 +885,7 @@ export const secretQueueFactory = ({
         }
 
         const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, 10, tx);
-        const projectV3SecretVersions: Record<string, TSecretVersionsV2> = {};
+        const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
         const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
         const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
         snapshots.forEach(({ secretVersions = [], ...snapshot }) => {
@@ -897,7 +897,7 @@ export const secretQueueFactory = ({
               updatedAt: snapshot.updatedAt,
               envId: el.snapshotEnvId
             });
-            if (projectV3SecretVersions[el.id]) return;
+            if (projectV3SecretVersionsGroupById[el.id]) return;
 
             const key = decryptSymmetric128BitHexKeyUTF8({
               ciphertext: el.secretKeyCiphertext,
@@ -925,7 +925,7 @@ export const secretQueueFactory = ({
             const encryptedComment = comment
               ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
               : null;
-            projectV3SecretVersions[el.id] = {
+            projectV3SecretVersionsGroupById[el.id] = {
               id: el.id,
               createdAt: el.createdAt,
               updatedAt: el.updatedAt,
@@ -948,12 +948,14 @@ export const secretQueueFactory = ({
             });
           });
         });
-        if (projectV3SecretVersionTags.length) {
-          await secretVersionV2BridgeDAL.insertMany(Object.values(projectV3SecretVersions), tx);
+        const projectV3SecretVersions = Object.values(projectV3SecretVersionsGroupById);
+        if (projectV3SecretVersions.length) {
+          await secretVersionV2BridgeDAL.insertMany(projectV3SecretVersions, tx);
         }
         if (projectV3SecretVersionTags.length) {
           await secretVersionTagV2BridgeDAL.insertMany(projectV3SecretVersionTags, tx);
         }
+
         if (projectV3SnapshotSecrets.length) {
           await snapshotSecretV2BridgeDAL.insertMany(projectV3SnapshotSecrets, tx);
         }
