@@ -30,8 +30,9 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { expandSecretReferencesFactory, getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -55,7 +56,7 @@ type TSecretQueueFactoryDep = {
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: TSecretDALFactory;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
@@ -249,7 +250,7 @@ export const secretQueueFactory = ({
     depth: number;
     decryptor: (value: Buffer | null | undefined) => string;
   }) => {
-    let content: TIntegrationSecret = {};
+    const content: TIntegrationSecret = {};
     if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
       logger.info(
         `getIntegrationSecrets: secret depth exceeded for [projectId=${dto.projectId}] [folderId=${dto.folderId}] [depth=${dto.depth}]`
@@ -272,38 +273,40 @@ export const secretQueueFactory = ({
       content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
     });
 
-    // TODO(akhilmhdh-sev2): change this to v2 expand secrets
+    const expandSecretReferences = expandSecretReferencesFactory({
+      decryptSecretValue: dto.decryptor,
+      secretDAL: secretV2BridgeDAL,
+      folderDAL,
+      projectId: dto.projectId
+    });
 
+    await expandSecretReferences(content);
     // check if current folder has any imports from other folders
-    const secretImport = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
+    const secretImports = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
 
     // if no imports then return secrets in the current folder
-    if (!secretImport) return content;
+    if (!secretImports.length) return content;
+    const importedSecrets = await fnSecretsV2FromImports({
+      decryptor: dto.decryptor,
+      folderDAL,
+      secretDAL: secretV2BridgeDAL,
+      expandSecretReferences,
+      secretImportDAL,
+      allowedImports: secretImports
+    });
 
-    const importedFolders = await folderDAL.findByManySecretPath(
-      secretImport.map(({ importEnv, importPath }) => ({
-        envId: importEnv.id,
-        secretPath: importPath
-      }))
-    );
-
-    for await (const folder of importedFolders) {
-      if (folder) {
-        // get secrets contained in each imported folder by recursively calling
-        // this function against the imported folder
-        const importedSecrets = await getIntegrationSecretsV2({
-          environment: dto.environment,
-          projectId: dto.projectId,
-          folderId: folder.id,
-          depth: dto.depth + 1,
-          decryptor: dto.decryptor
-        });
-
-        // add the imported secrets to the current folder secrets
-        content = { ...importedSecrets, ...content };
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
+      for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
+        const importedSecret = importedSecrets[i].secrets[j];
+        if (!content[importedSecret.key]) {
+          content[importedSecret.key] = {
+            skipMultilineEncoding: importedSecret.skipMultilineEncoding,
+            comment: importedSecret.secretComment,
+            value: importedSecret.secretValue || ""
+          };
+        }
       }
     }
-
     return content;
   };
 
@@ -628,6 +631,23 @@ export const secretQueueFactory = ({
     logger.info(
       `getIntegrationSecrets: secret integration sync started [jobId=${job.id}] [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${job.data.depth}]`
     );
+
+    const secrets = shouldUseSecretV2Bridge
+      ? await getIntegrationSecretsV2({
+          environment,
+          projectId,
+          folderId: folder.id,
+          depth: 1,
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+        })
+      : await getIntegrationSecrets({
+          environment,
+          projectId,
+          folderId: folder.id,
+          key: botKey as string,
+          depth: 1
+        });
+
     for (const integration of toBeSyncedIntegrations) {
       const integrationAuth = {
         ...integration.integrationAuth,
@@ -661,21 +681,6 @@ export const secretQueueFactory = ({
         });
       }
 
-      const secrets = shouldUseSecretV2Bridge
-        ? await getIntegrationSecretsV2({
-            environment,
-            projectId,
-            folderId: folder.id,
-            depth: 1,
-            decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
-          })
-        : await getIntegrationSecrets({
-            environment,
-            projectId,
-            folderId: folder.id,
-            key: botKey as string,
-            depth: 1
-          });
       const suffixedSecrets: typeof secrets = {};
       const metadata = integration.metadata as Record<string, string>;
       if (metadata) {

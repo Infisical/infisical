@@ -363,49 +363,60 @@ export const recursivelyGetSecretPaths = async ({
 
   return allowedPaths;
 };
+// used to convert multi line ones to quotes ones with \n
+const formatMultiValueEnv = (val?: string) => {
+  if (!val) return "";
+  if (!val.match("\n")) return val;
+  return `"${val.replace(/\n/g, "\\n")}"`;
+};
 
 type TInterpolateSecretArg = {
   projectId: string;
-  decryptSecret: (encryptedValue?: Buffer | null) => string | undefined;
+  decryptSecretValue: (encryptedValue?: Buffer | null) => string | undefined;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
 
-export const interpolateSecrets = ({ projectId, decryptSecret, secretDAL, folderDAL }: TInterpolateSecretArg) => {
-  const fetchSecretsCrossEnv = () => {
-    const fetchCache: Record<string, Record<string, string>> = {};
+export const expandSecretReferencesFactory = ({
+  projectId,
+  decryptSecretValue: decryptSecret,
+  secretDAL,
+  folderDAL
+}: TInterpolateSecretArg) => {
+  const fetchSecretFactory = () => {
+    const secretCache: Record<string, Record<string, string>> = {};
 
     return async (secRefEnv: string, secRefPath: string[], secRefKey: string) => {
-      const secRefPathUrl = path.join("/", ...secRefPath);
-      const uniqKey = `${secRefEnv}-${secRefPathUrl}`;
+      const referredSecretPathURL = path.join("/", ...secRefPath);
+      const uniqueKey = `${secRefEnv}-${referredSecretPathURL}`;
 
-      if (fetchCache?.[uniqKey]) {
-        return fetchCache[uniqKey][secRefKey];
+      if (secretCache?.[uniqueKey]) {
+        return secretCache[uniqueKey][secRefKey];
       }
 
-      const folder = await folderDAL.findBySecretPath(projectId, secRefEnv, secRefPathUrl);
+      const folder = await folderDAL.findBySecretPath(projectId, secRefEnv, referredSecretPathURL);
       if (!folder) return "";
       const secrets = await secretDAL.findByFolderId(folder.id);
 
-      const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
+      const decryptedSecret = secrets.reduce<Record<string, string>>((prev, secret) => {
         // eslint-disable-next-line
         prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
         return prev;
       }, {});
 
-      fetchCache[uniqKey] = decryptedSec;
+      secretCache[uniqueKey] = decryptedSecret;
 
-      return fetchCache[uniqKey][secRefKey];
+      return secretCache[uniqueKey][secRefKey];
     };
   };
 
   const recursivelyExpandSecret = async (
-    expandedSec: Record<string, string>,
-    interpolatedSec: Record<string, string>,
-    fetchCrossEnv: (env: string, secPath: string[], secKey: string) => Promise<string>,
+    expandedSec: Record<string, string | undefined>,
+    interpolatedSec: Record<string, string | undefined>,
+    fetchSecret: (env: string, secPath: string[], secKey: string) => Promise<string>,
     recursionChainBreaker: Record<string, boolean>,
     key: string
-  ) => {
+  ): Promise<string | undefined> => {
     if (expandedSec?.[key] !== undefined) {
       return expandedSec[key];
     }
@@ -433,7 +444,7 @@ export const interpolateSecrets = ({ projectId, decryptSecret, secretDAL, folder
           const val = await recursivelyExpandSecret(
             expandedSec,
             interpolatedSec,
-            fetchCrossEnv,
+            fetchSecret,
             recursionChainBreaker,
             interpolationKey
           );
@@ -450,7 +461,7 @@ export const interpolateSecrets = ({ projectId, decryptSecret, secretDAL, folder
           const secRefKey = entities[entities.length - 1];
 
           // eslint-disable-next-line
-          const val = await fetchCrossEnv(secRefEnv, secRefPath, secRefKey);
+          const val = await fetchSecret(secRefEnv, secRefPath, secRefKey);
           if (val) {
             interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
           }
@@ -463,36 +474,28 @@ export const interpolateSecrets = ({ projectId, decryptSecret, secretDAL, folder
     return interpolatedValue;
   };
 
-  // used to convert multi line ones to quotes ones with \n
-  const formatMultiValueEnv = (val?: string) => {
-    if (!val) return "";
-    if (!val.match("\n")) return val;
-    return `"${val.replace(/\n/g, "\\n")}"`;
-  };
-
+  const fetchSecret = fetchSecretFactory();
   const expandSecrets = async (
-    secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean | null }>
+    inputSecrets: Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
   ) => {
-    const expandedSec: Record<string, string> = {};
-    const interpolatedSec: Record<string, string> = {};
+    const expandedSecrets: Record<string, string | undefined> = {};
+    const toBeExpandedSecrets: Record<string, string | undefined> = {};
 
-    const crossSecEnvFetch = fetchSecretsCrossEnv();
-
-    Object.keys(secrets).forEach((key) => {
-      if (secrets[key].value.match(INTERPOLATION_SYNTAX_REG)) {
-        interpolatedSec[key] = secrets[key].value;
+    Object.keys(inputSecrets).forEach((key) => {
+      if (inputSecrets[key].value?.match(INTERPOLATION_SYNTAX_REG)) {
+        toBeExpandedSecrets[key] = inputSecrets[key].value;
       } else {
-        expandedSec[key] = secrets[key].value;
+        expandedSecrets[key] = inputSecrets[key].value;
       }
     });
 
-    for (const key of Object.keys(secrets)) {
-      if (expandedSec?.[key]) {
+    for (const key of Object.keys(inputSecrets)) {
+      if (expandedSecrets?.[key]) {
         // should not do multi line encoding if user has set it to skip
         // eslint-disable-next-line
-        secrets[key].value = secrets[key].skipMultilineEncoding
-          ? formatMultiValueEnv(expandedSec[key])
-          : expandedSec[key];
+        inputSecrets[key].value = inputSecrets[key].skipMultilineEncoding
+          ? formatMultiValueEnv(expandedSecrets[key])
+          : expandedSecrets[key];
         // eslint-disable-next-line
         continue;
       }
@@ -502,18 +505,20 @@ export const interpolateSecrets = ({ projectId, decryptSecret, secretDAL, folder
       const recursionChainBreaker: Record<string, boolean> = {};
       // eslint-disable-next-line
       const expandedVal = await recursivelyExpandSecret(
-        expandedSec,
-        interpolatedSec,
-        crossSecEnvFetch,
+        expandedSecrets,
+        toBeExpandedSecrets,
+        fetchSecret,
         recursionChainBreaker,
         key
       );
 
       // eslint-disable-next-line
-      secrets[key].value = secrets[key].skipMultilineEncoding ? formatMultiValueEnv(expandedVal) : expandedVal;
+      inputSecrets[key].value = inputSecrets[key].skipMultilineEncoding
+        ? formatMultiValueEnv(expandedVal)
+        : expandedVal;
     }
 
-    return secrets;
+    return inputSecrets;
   };
   return expandSecrets;
 };
