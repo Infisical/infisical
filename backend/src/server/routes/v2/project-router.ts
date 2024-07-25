@@ -320,7 +320,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to list CAs.")
       }),
       querystring: z.object({
-        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional()
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional(),
+        friendlyName: z.string().optional(),
+        commonName: z.string().optional(),
+        offset: z.coerce.number().min(0).max(100).default(0),
+        limit: z.coerce.number().min(1).max(100).default(25)
       }),
       response: {
         200: z.object({
@@ -336,11 +340,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           type: ProjectFilterType.SLUG
         },
-        status: req.query.status,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission.type,
+        ...req.query
       });
       return { cas };
     }
@@ -357,6 +361,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to list certificates.")
       }),
       querystring: z.object({
+        friendlyName: z.string().optional(),
+        commonName: z.string().optional(),
         offset: z.coerce.number().min(0).max(100).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
       }),
