@@ -123,7 +123,7 @@ export const RowPermissionSecretsRow = ({
             className={`bg-bunker-600 px-0 py-0 ${isCustom && " border-mineshaft-500 p-8"}`}
           >
             <div>
-              <TableContainer className="mt-6 border-mineshaft-500">
+              <TableContainer className="border-mineshaft-500">
                 <Table>
                   <THead>
                     <Tr>
