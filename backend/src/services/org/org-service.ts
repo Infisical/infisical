@@ -10,6 +10,7 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
@@ -67,6 +68,7 @@ type TOrgServiceFactoryDep = {
     TLicenseServiceFactory,
     "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
   >;
+  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -84,6 +86,7 @@ export const orgServiceFactory = ({
   projectMembershipDAL,
   projectKeyDAL,
   orgMembershipDAL,
+  projectUserAdditionalPrivilegeDAL,
   tokenService,
   orgBotDAL,
   licenseService,
@@ -632,6 +635,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       projectMembershipDAL,
+      projectUserAdditionalPrivilegeDAL,
       projectKeyDAL,
       userAliasDAL,
       licenseService

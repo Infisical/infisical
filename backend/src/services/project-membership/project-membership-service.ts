@@ -12,6 +12,7 @@ import {
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
@@ -55,6 +56,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
 };
 
@@ -68,6 +70,7 @@ export const projectMembershipServiceFactory = ({
   projectRoleDAL,
   projectBotDAL,
   orgDAL,
+  projectUserAdditionalPrivilegeDAL,
   userDAL,
   userGroupMembershipDAL,
   groupProjectDAL,
@@ -524,6 +527,16 @@ export const projectMembershipServiceFactory = ({
     );
 
     const memberships = await projectMembershipDAL.transaction(async (tx) => {
+      await projectUserAdditionalPrivilegeDAL.delete(
+        {
+          projectId,
+          $in: {
+            userId: projectMembers.map((membership) => membership.user.id)
+          }
+        },
+        tx
+      );
+
       const deletedMemberships = await projectMembershipDAL.delete(
         {
           projectId,
@@ -586,12 +599,25 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const deletedMembership = (
-      await projectMembershipDAL.delete({
-        projectId: project.id,
-        userId: actorId
-      })
-    )?.[0];
+    const deletedMembership = await projectMembershipDAL.transaction(async (tx) => {
+      await projectUserAdditionalPrivilegeDAL.delete(
+        {
+          projectId: project.id,
+          userId: actorId
+        },
+        tx
+      );
+      const membership = (
+        await projectMembershipDAL.delete(
+          {
+            projectId: project.id,
+            userId: actorId
+          },
+          tx
+        )
+      )?.[0];
+      return membership;
+    });
 
     if (!deletedMembership) {
       throw new BadRequestError({ message: "Failed to leave project" });
