@@ -139,7 +139,7 @@ export const SecretV2MigrationSection = () => {
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
                     >
-                      Operator version: v0.25.0 or above
+                      Operator version: v0.7.0 or above
                     </Checkbox>
                   )}
                 />
