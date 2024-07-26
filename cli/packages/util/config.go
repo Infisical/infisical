@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,10 +51,11 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 	}
 
 	configFile := models.ConfigFile{
-		LoggedInUserEmail:  userCredentials.Email,
-		LoggedInUserDomain: config.INFISICAL_URL,
-		LoggedInUsers:      existingConfigFile.LoggedInUsers,
-		VaultBackendType:   existingConfigFile.VaultBackendType,
+		LoggedInUserEmail:      userCredentials.Email,
+		LoggedInUserDomain:     config.INFISICAL_URL,
+		LoggedInUsers:          existingConfigFile.LoggedInUsers,
+		VaultBackendType:       existingConfigFile.VaultBackendType,
+		VaultBackendPassphrase: existingConfigFile.VaultBackendPassphrase,
 	}
 
 	configFileMarshalled, err := json.Marshal(configFile)
@@ -213,6 +215,14 @@ func GetConfigFile() (models.ConfigFile, error) {
 	err = json.Unmarshal(configFileAsBytes, &configFile)
 	if err != nil {
 		return models.ConfigFile{}, err
+	}
+
+	if configFile.VaultBackendPassphrase != "" {
+		decodedPassphrase, err := base64.StdEncoding.DecodeString(configFile.VaultBackendPassphrase)
+		if err != nil {
+			return models.ConfigFile{}, fmt.Errorf("GetConfigFile: Unable to decode base64 passphrase [err=%s]", err)
+		}
+		os.Setenv("INFISICAL_VAULT_FILE_PASSPHRASE", string(decodedPassphrase))
 	}
 
 	return configFile, nil

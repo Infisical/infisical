@@ -4,6 +4,7 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -16,10 +17,49 @@ import (
 var AvailableVaultsAndDescriptions = []string{"auto (automatically select native vault on system)", "file (encrypted file vault)"}
 var AvailableVaults = []string{"auto", "file"}
 
+var vaultSetPassphraseCmd = &cobra.Command{
+	Example:               `infisical vault set-passphrase [your-passphrase]`,
+	Use:                   "set-passphrase [your-passphrase]",
+	Short:                 "Used to set the passphrase for the file vault",
+	DisableFlagsInUseLine: true,
+	Args:                  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 1 {
+			log.Error().Msgf("Please provide a passphrase to set for the file vault")
+			return
+		}
+
+		passphrase := args[0]
+
+		configFile, err := util.GetConfigFile()
+		if err != nil {
+			log.Error().Msgf("Unable to set passphrase for file vault because of [err=%s]", err)
+			return
+		}
+
+		if configFile.VaultBackendType != "file" {
+			log.Error().Msgf("You are not using file vault to store your login details. You can only set passphrase for file vault")
+			return
+		}
+
+		// encode with base64
+		encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
+		configFile.VaultBackendPassphrase = encodedPassphrase
+
+		err = util.WriteConfigFile(&configFile)
+		if err != nil {
+			log.Error().Msgf("Unable to set passphrase for file vault because of [err=%s]", err)
+			return
+		}
+
+		fmt.Printf("\nSuccessfully, set passphrase for file vault. You can now store your login details securely at rest\n")
+	},
+}
+
 var vaultSetCmd = &cobra.Command{
-	Example:               `infisical vault set pass`,
-	Use:                   "set [vault-name]",
-	Short:                 "Used to set the vault backend to store your login details securely at rest",
+	Example:               `infisical vault set [file|auto]`,
+	Use:                   "set [file|auto]",
+	Short:                 "Used to set the type of vault backend to store your login details securely at rest",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -89,5 +129,6 @@ func printAvailableVaultBackends() {
 
 func init() {
 	vaultCmd.AddCommand(vaultSetCmd)
+	vaultCmd.AddCommand(vaultSetPassphraseCmd)
 	rootCmd.AddCommand(vaultCmd)
 }
