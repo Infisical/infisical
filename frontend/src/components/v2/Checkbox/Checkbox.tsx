@@ -14,6 +14,7 @@ export type CheckboxProps = Omit<
   isChecked?: boolean;
   isRequired?: boolean;
   checkIndicatorBg?: string | undefined;
+  isError?: boolean;
 };
 
 export const Checkbox = ({
@@ -24,6 +25,7 @@ export const Checkbox = ({
   isDisabled,
   isRequired,
   checkIndicatorBg,
+  isError,
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
@@ -46,7 +48,10 @@ export const Checkbox = ({
           <FontAwesomeIcon icon={faCheck} size="sm" />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
-      <label className="truncate whitespace-nowrap text-sm" htmlFor={id}>
+      <label
+        className={twMerge("truncate whitespace-nowrap text-sm", isError && "text-red-400")}
+        htmlFor={id}
+      >
         {children}
         {isRequired && <span className="pl-1 text-red">*</span>}
       </label>

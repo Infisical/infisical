@@ -743,7 +743,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("envId").withSchema(TableName.SnapshotSecret).as("snapshotEnvId"),
           db.ref("id").withSchema(TableName.SecretVersionTag).as("secretVersionTagId"),
           db.ref("secret_versionsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretId"),
-          db.ref("secret_versionsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretTagId"),
+          db.ref("secret_tagsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretTagId"),
           db.raw(
             `DENSE_RANK() OVER (partition by ${TableName.Snapshot}."id" ORDER BY ${TableName.SecretVersion}."createdAt") as rank`
           )
@@ -789,6 +789,19 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteSnapshotsAboveLimit = async (folderId: string, n = 15, tx?: Knex) => {
+    try {
+      const query = await (tx || db.replicaNode())(TableName.Snapshot)
+        .orderBy(`${TableName.Snapshot}.createdAt`, "desc")
+        .where(`${TableName.Snapshot}.folderId`, folderId)
+        .offset(n)
+        .delete();
+      return query;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteSnapshotsAboveLimit" });
+    }
+  };
+
   return {
     ...secretSnapshotOrm,
     findById,
@@ -799,6 +812,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
     findSecretSnapshotDataById,
     findSecretSnapshotV2DataById,
     pruneExcessSnapshots,
-    findNSecretV1SnapshotByFolderId
+    findNSecretV1SnapshotByFolderId,
+    deleteSnapshotsAboveLimit
   };
 };

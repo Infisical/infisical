@@ -2,7 +2,7 @@
 import { AxiosError } from "axios";
 
 import { ProjectUpgradeStatus, ProjectVersion, TSecretSnapshotSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
@@ -76,11 +76,8 @@ type TSecretQueueFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretRotationDAL: Pick<TSecretRotationDALFactory, "secretOutputV2InsertMany" | "find">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "findByProjectId" | "insertV2Bridge" | "insertApprovalSecretV2Tags"
-  >;
-  snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
+  snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
   snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany">;
 };
 
@@ -123,9 +120,9 @@ export const secretQueueFactory = ({
   kmsService,
   secretVersionTagV2BridgeDAL,
   secretRotationDAL,
-  secretApprovalRequestSecretDAL,
   snapshotDAL,
-  snapshotSecretV2BridgeDAL
+  snapshotSecretV2BridgeDAL,
+  secretApprovalRequestDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -792,11 +789,6 @@ export const secretQueueFactory = ({
       QueueJobs.ProjectV3Migration,
       { projectId },
       {
-        attempts: 2,
-        backoff: {
-          type: "exponential",
-          delay: 3000
-        },
         removeOnComplete: true,
         removeOnFail: true
       }
@@ -805,12 +797,17 @@ export const secretQueueFactory = ({
 
   queueService.start(QueueName.ProjectV3Migration, async (job) => {
     const { projectId } = job.data;
-    const { botKey, shouldUseSecretV2Bridge: isProjectUpgradedToV3 } = await projectBotService.getBotKey(projectId);
-    if (isProjectUpgradedToV3) {
+    const {
+      botKey,
+      shouldUseSecretV2Bridge: isProjectUpgradedToV3,
+      project
+    } = await projectBotService.getBotKey(projectId);
+    if (isProjectUpgradedToV3 || project.upgradeStatus === ProjectUpgradeStatus.InProgress) {
       return;
     }
     if (!botKey) throw new BadRequestError({ message: "Bot not found" });
     await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
+
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       projectId,
       type: KmsDataKey.SecretManager
@@ -884,7 +881,8 @@ export const secretQueueFactory = ({
           await secretV2BridgeDAL.upsertSecretReferences(secretReferences, tx);
         }
 
-        const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, 10, tx);
+        const SNAPSHOT_BATCH_SIZE = 15;
+        const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, SNAPSHOT_BATCH_SIZE, tx);
         const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
         const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
         const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
@@ -959,6 +957,7 @@ export const secretQueueFactory = ({
         if (projectV3SnapshotSecrets.length) {
           await snapshotSecretV2BridgeDAL.insertMany(projectV3SnapshotSecrets, tx);
         }
+        await snapshotDAL.deleteSnapshotsAboveLimit(folderId, SNAPSHOT_BATCH_SIZE, tx);
       }
       /*
        * Secret Tag Migration
@@ -1056,67 +1055,70 @@ export const secretQueueFactory = ({
       );
 
       /*
-       * approvals
+       * approvals: we will delete all approvals this is because some secret versions may not be added yet
+       * Thus doesn't make sense for rest to be there
        * */
-      const projectV1ApprovalSecrets = await secretApprovalRequestSecretDAL.findByProjectId(projectId);
-      if (projectV1ApprovalSecrets.length) {
-        await secretApprovalRequestSecretDAL.insertV2Bridge(
-          projectV1ApprovalSecrets.map((el) => {
-            const key = decryptSymmetric128BitHexKeyUTF8({
-              ciphertext: el.secretKeyCiphertext,
-              iv: el.secretKeyIV,
-              tag: el.secretKeyTag,
-              key: botKey
-            });
-            const value = decryptSymmetric128BitHexKeyUTF8({
-              ciphertext: el.secretValueCiphertext,
-              iv: el.secretValueIV,
-              tag: el.secretValueTag,
-              key: botKey
-            });
-            const comment =
-              el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                ? decryptSymmetric128BitHexKeyUTF8({
-                    ciphertext: el.secretCommentCiphertext,
-                    iv: el.secretCommentIV,
-                    tag: el.secretCommentTag,
-                    key: botKey
-                  })
-                : "";
-            const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
-            const encryptedComment = comment
-              ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
-              : null;
-            return {
-              id: el.id,
-              createdAt: el.createdAt,
-              updatedAt: el.updatedAt,
-              skipMultilineEncoding: el.skipMultilineEncoding,
-              encryptedComment,
-              encryptedValue,
-              key,
-              version: el.version,
-              metadata: el.metadata,
-              reminderNote: el.secretReminderNote,
-              reminderRepeatDays: el.secretReminderRepeatDays,
-              requestId: el.requestId,
-              op: el.op,
-              secretId: el.secretId,
-              secretVersion: el.secretVersion
-            };
-          }),
-          tx
-        );
-      }
-      const projectV1SecretApprovalSecretTags = projectV1ApprovalSecrets.flatMap((el) =>
-        el.tags.map((tag) => ({
-          secretId: tag.secretApprovalTagSecretId,
-          tagId: tag.secretApprovalTagId
-        }))
-      );
-      if (projectV1SecretApprovalSecretTags.length) {
-        await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(projectV1SecretApprovalSecretTags, tx);
-      }
+      await secretApprovalRequestDAL.deleteByProjectId(projectId, tx);
+      // const projectV1ApprovalSecrets = await secretApprovalRequestSecretDAL.findByProjectId(projectId);
+      // if (projectV1ApprovalSecrets.length) {
+      //   await secretApprovalRequestSecretDAL.insertV2Bridge(
+      //     projectV1ApprovalSecrets.map((el) => {
+      //       const key = decryptSymmetric128BitHexKeyUTF8({
+      //         ciphertext: el.secretKeyCiphertext,
+      //         iv: el.secretKeyIV,
+      //         tag: el.secretKeyTag,
+      //         key: botKey
+      //       });
+      //       const value = decryptSymmetric128BitHexKeyUTF8({
+      //         ciphertext: el.secretValueCiphertext,
+      //         iv: el.secretValueIV,
+      //         tag: el.secretValueTag,
+      //         key: botKey
+      //       });
+      //       const comment =
+      //         el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+      //           ? decryptSymmetric128BitHexKeyUTF8({
+      //               ciphertext: el.secretCommentCiphertext,
+      //               iv: el.secretCommentIV,
+      //               tag: el.secretCommentTag,
+      //               key: botKey
+      //             })
+      //           : "";
+      //       const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+      //       const encryptedComment = comment
+      //         ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+      //         : null;
+      //       return {
+      //         id: el.id,
+      //         createdAt: el.createdAt,
+      //         updatedAt: el.updatedAt,
+      //         skipMultilineEncoding: el.skipMultilineEncoding,
+      //         encryptedComment,
+      //         encryptedValue,
+      //         key,
+      //         version: el.version,
+      //         metadata: el.metadata,
+      //         reminderNote: el.secretReminderNote,
+      //         reminderRepeatDays: el.secretReminderRepeatDays,
+      //         requestId: el.requestId,
+      //         op: el.op,
+      //         secretId: el.secretId,
+      //         secretVersion: el.secretVersion
+      //       };
+      //     }),
+      //     tx
+      //   );
+      // }
+      // const projectV1SecretApprovalSecretTags = projectV1ApprovalSecrets.flatMap((el) =>
+      //   el.tags.map((tag) => ({
+      //     secretId: tag.secretApprovalTagSecretId,
+      //     tagId: tag.secretApprovalTagId
+      //   }))
+      // );
+      // if (projectV1SecretApprovalSecretTags.length) {
+      //   await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(projectV1SecretApprovalSecretTags, tx);
+      // }
+
       await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
     });
   });

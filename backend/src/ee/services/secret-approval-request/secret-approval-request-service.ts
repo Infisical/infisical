@@ -1230,7 +1230,7 @@ export const secretApprovalRequestServiceFactory = ({
 
       const commitsGroupByKey = groupBy(approvalCommits, (i) => i.key);
       if (tagIds.length) {
-        await secretApprovalRequestSecretDAL.insertApprovalSecretTags(
+        await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(
           Object.keys(commitTagIds).flatMap((blindIndex) =>
             commitTagIds[blindIndex]
               ? commitTagIds[blindIndex].map((tagId) => ({
