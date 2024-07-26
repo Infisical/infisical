@@ -8,7 +8,7 @@ import { twMerge } from "tailwind-merge";
 import { Checkbox, Select, SelectItem } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "./OrgRoleModifySection.utils";
+import { TFormSchema } from "../../../../RolePage/components/OrgRoleModifySection.utils";
 
 type Props = {
   isNonEditable?: boolean;

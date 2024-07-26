@@ -89,6 +89,10 @@ export type AddUserToWsDTO = {
 
 export type TListProjectCasDTO = {
   status?: CaStatus;
+  friendlyName?: string;
+  offset?: number;
+  limit?: number;
+  commonName?: string;
   filter: Filter;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -96,4 +100,6 @@ export type TListProjectCertsDTO = {
   filter: Filter;
   offset: number;
   limit: number;
+  friendlyName?: string;
+  commonName?: string;
 } & Omit<TProjectPermission, "projectId">;
