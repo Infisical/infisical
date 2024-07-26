@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -11,6 +12,8 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { SecretType } from "@app/hooks/api/types";
+
+import { DeleteSecretModal } from "../ManageSecretModals";
 
 type Props = {
   defaultValue?: string | null;
@@ -59,6 +62,11 @@ export const SecretEditRow = ({
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  const toggleModal = useCallback(() => {
+    setIsModalOpen((prev) => !prev)
+  }, [])
 
   const handleFormReset = () => {
     reset();
@@ -94,18 +102,23 @@ export const SecretEditRow = ({
     reset({ value });
   };
 
-  const handleDeleteSecret = async () => {
+  const handleDeleteSecret = useCallback(async () => {
     setIsDeleting.on();
+    setIsModalOpen(false);
+
     try {
       await onSecretDelete(environment, secretName, secretId);
       reset({ value: null });
     } finally {
       setIsDeleting.off();
     }
-  };
+  }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
   return (
     <div className="group flex w-full cursor-text items-center space-x-2">
+
+      <DeleteSecretModal isModalOpen={isModalOpen} toggleModal={toggleModal} handleDeleteSecret={handleDeleteSecret} />
+
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
           disabled={isImportedSecret && !defaultValue}
@@ -193,7 +206,7 @@ export const SecretEditRow = ({
                       variant="plain"
                       ariaLabel="delete-value"
                       className="h-full"
-                      onClick={handleDeleteSecret}
+                      onClick={toggleModal}
                       isDisabled={isDeleting || !isAllowed}
                     >
                       <FontAwesomeIcon icon={faTrash} />
