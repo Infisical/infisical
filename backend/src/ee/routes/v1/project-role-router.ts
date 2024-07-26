@@ -101,7 +101,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
             message: "Slug must be a valid"
           }),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
-        permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.UPDATE.permissions)
+        permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {
         200: z.object({
@@ -120,7 +120,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: req.params.roleId,
         data: {
           ...req.body,
-          permissions: JSON.stringify(packRules(req.body.permissions))
+          permissions: req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined
         }
       });
       return { role };

@@ -1,14 +1,17 @@
-import { useState } from "react";
-import { faEdit, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "next/router";
+import { faEllipsis, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
-  IconButton,
-  Input,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Table,
   TableContainer,
   TableSkeleton,
@@ -22,17 +25,17 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
+import { RoleModal } from "@app/views/Project/RolePage/components";
 
-type Props = {
-  onSelectRole: (slug?: string) => void;
-};
-
-export const ProjectRoleList = ({ onSelectRole }: Props) => {
-  const [searchRoles, setSearchRoles] = useState("");
-
-  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
+export const ProjectRoleList = () => {
+  const router = useRouter();
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "role",
+    "deleteRole"
+  ] as const);
   const { currentWorkspace } = useWorkspace();
   const projectSlug = currentWorkspace?.slug || "";
+  const projectId = currentWorkspace?.id || "";
 
   const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
 
@@ -54,21 +57,16 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-4 flex">
-        <div className="mr-4 flex-1">
-          <Input
-            value={searchRoles}
-            onChange={(e) => setSearchRoles(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            placeholder="Search roles..."
-          />
-        </div>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-4 flex justify-between">
+        <p className="text-xl font-semibold text-mineshaft-100">Project Roles</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
+              colorSchema="primary"
+              type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => onSelectRole()}
+              onClick={() => handlePopUpOpen("role")}
               isDisabled={!isAllowed}
             >
               Add Role
@@ -76,77 +74,94 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
           )}
         </ProjectPermissionCan>
       </div>
-      <div>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Slug</Th>
-                <Th aria-label="actions" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {roles?.map((role) => {
-                const { id, name, slug } = role;
-                const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
+      <TableContainer>
+        <Table>
+          <THead>
+            <Tr>
+              <Th>Name</Th>
+              <Th>Slug</Th>
+              <Th aria-label="actions" className="w-5" />
+            </Tr>
+          </THead>
+          <TBody>
+            {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
+            {roles?.map((role) => {
+              const { id, name, slug } = role;
+              const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
 
-                return (
-                  <Tr key={`role-list-${id}`}>
-                    <Td>{name}</Td>
-                    <Td>{slug}</Td>
-                    <Td>
-                      <div className="flex justify-end space-x-2">
+              return (
+                <Tr
+                  key={`role-list-${id}`}
+                  className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                  onClick={() => router.push(`/project/${projectId}/roles/${slug}`)}
+                >
+                  <Td>{name}</Td>
+                  <Td>{slug}</Td>
+                  <Td>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="rounded-lg">
+                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="p-1">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
                           a={ProjectPermissionSub.Role}
-                          renderTooltip
-                          allowedLabel="Edit"
                         >
                           {(isAllowed) => (
-                            <IconButton
-                              isDisabled={!isAllowed}
-                              ariaLabel="edit"
-                              onClick={() => onSelectRole(role.slug)}
-                              variant="plain"
+                            <DropdownMenuItem
+                              className={twMerge(
+                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/project/${projectId}/roles/${slug}`);
+                              }}
+                              disabled={!isAllowed}
                             >
-                              <FontAwesomeIcon icon={faEdit} />
-                            </IconButton>
+                              {`${isNonMutatable ? "View" : "Edit"} Role`}
+                            </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
-                          a={ProjectPermissionSub.Role}
-                          renderTooltip
-                          allowedLabel={
-                            isNonMutatable ? "Reserved roles are non-removable" : "Delete"
-                          }
-                        >
-                          {(isAllowed) => (
-                            <IconButton
-                              ariaLabel="delete"
-                              onClick={() => handlePopUpOpen("deleteRole", role)}
-                              variant="plain"
-                              isDisabled={isNonMutatable || !isAllowed}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          )}
-                        </ProjectPermissionCan>
-                      </div>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableContainer>
-      </div>
+                        {!isNonMutatable && (
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Delete}
+                            a={ProjectPermissionSub.Role}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  isAllowed
+                                    ? "hover:!bg-red-500 hover:!text-white"
+                                    : "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteRole", role);
+                                }}
+                                disabled={!isAllowed}
+                              >
+                                Delete Role
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </TBody>
+        </Table>
+      </TableContainer>
+      <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
-        title={`Are you sure want to delete ${(popUp?.deleteRole?.data as TProjectRole)?.name || " "
-          } role?`}
+        title={`Are you sure want to delete ${
+          (popUp?.deleteRole?.data as TProjectRole)?.name || " "
+        } role?`}
         deleteKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}

@@ -162,12 +162,19 @@ export const projectRoleServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
+
     if (data?.slug) {
       const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
-    const [updatedRole] = await projectRoleDAL.update({ id: roleId, projectId }, data);
+    const [updatedRole] = await projectRoleDAL.update(
+      { id: roleId, projectId },
+      {
+        ...data,
+        permissions: data.permissions ? data.permissions : undefined
+      }
+    );
     if (!updatedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
     return { ...updatedRole, permissions: unpackPermissions(updatedRole.permissions) };
   };
