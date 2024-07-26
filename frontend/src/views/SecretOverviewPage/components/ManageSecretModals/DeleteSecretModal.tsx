@@ -13,7 +13,7 @@ export const DeleteSecretModal: FC<Props> = ( { isModalOpen, toggleModal, handle
       <Modal isOpen={isModalOpen}>
       <ModalContent
         title="Confirm Secret Deletion"
-        subTitle="Are you sure you want to delete this secret ?"
+        onClose={toggleModal}
         footerContent={
           <div className="flex items-center gap-4">
             <Button colorSchema="primary" onClick={() => toggleModal()}>
@@ -24,8 +24,8 @@ export const DeleteSecretModal: FC<Props> = ( { isModalOpen, toggleModal, handle
               Delete
             </Button>
           </div>
-        }
-        onClose={toggleModal} >
+        }> 
+        <p>Are you sure you want to delete this secret ?</p>
       </ModalContent>
       </Modal>
     </>
