@@ -4,6 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import {
   ProjectMembershipRole,
+  ProjectUpgradeStatus,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
@@ -2666,8 +2667,11 @@ export const secretServiceFactory = ({
     if (!hasRole(ProjectMembershipRole.Admin))
       throw new BadRequestError({ message: "Only admins are allowed to take this action" });
 
-    const { shouldUseSecretV2Bridge: isProjectV3 } = await projectBotService.getBotKey(projectId);
+    const { shouldUseSecretV2Bridge: isProjectV3, project } = await projectBotService.getBotKey(projectId);
     if (isProjectV3) throw new BadRequestError({ message: "project is already in v3" });
+    if (project.upgradeStatus === ProjectUpgradeStatus.InProgress)
+      throw new BadRequestError({ message: "project is upgrading" });
+
     await secretQueueService.startSecretV2Migration(projectId);
     return { message: "Migrating project to new KMS architecture" };
   };

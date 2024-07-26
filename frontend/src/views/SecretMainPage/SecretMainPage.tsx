@@ -28,6 +28,7 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 
+import { SecretV2MigrationSection } from "../SecretOverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
@@ -231,6 +232,7 @@ export const SecretMainPage = () => {
   return (
     <StoreProvider>
       <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+        <SecretV2MigrationSection />
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
             pageName={t("dashboard.title")}
