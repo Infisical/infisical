@@ -79,7 +79,7 @@ export const useUpdateOrgRole = () => {
         data: { role }
       } = await apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
         ...dto,
-        permissions: permissions?.length ? packRules(permissions) : []
+        permissions: permissions?.length ? packRules(permissions) : undefined
       });
 
       return role;
