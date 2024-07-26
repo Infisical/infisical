@@ -30,8 +30,10 @@ func SetValueInKeyring(key, value string) error {
 	err = keyring.Set(currentVaultBackend, MAIN_KEYRING_SERVICE, key, value)
 
 	if err == keyring.ErrUnsupportedPlatform || keyringNotConfigured(err) {
-		boldGreen := color.New(color.FgGreen).Add(color.Bold)
-		boldGreen.Printf("Warning: Fallback file keyring is being used")
+		boldYellow := color.New(color.FgYellow).Add(color.Bold)
+		boldYellow.Printf("Warning: Fallback file keyring is being used\n\n")
+		boldYellow.Printf("You can persist your file passphrase by running the following command:\n")
+		boldYellow.Printf("infisical vault set file passphrase <your-passphrase>\n\n")
 		err = keyring.Set(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key, value)
 	}
 
