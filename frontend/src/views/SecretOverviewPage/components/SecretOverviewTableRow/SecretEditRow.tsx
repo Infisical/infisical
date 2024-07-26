@@ -7,13 +7,11 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip, DeleteActionModal } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { SecretType } from "@app/hooks/api/types";
-
-import { DeleteSecretModal } from "../ManageSecretModals";
 
 type Props = {
   defaultValue?: string | null;
@@ -117,7 +115,13 @@ export const SecretEditRow = ({
   return (
     <div className="group flex w-full cursor-text items-center space-x-2">
 
-      <DeleteSecretModal isModalOpen={isModalOpen} toggleModal={toggleModal} handleDeleteSecret={handleDeleteSecret} />
+      <DeleteActionModal
+        isOpen={isModalOpen}
+        onClose={toggleModal}
+        title="Confirm Secret Deletion"
+        deleteKey="Delete"
+        onDeleteApproved={handleDeleteSecret}
+      />
 
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller

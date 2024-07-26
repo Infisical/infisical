@@ -1,1 +1,0 @@
-export { DeleteSecretModal } from './DeleteSecretModal';
