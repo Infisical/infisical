@@ -2,27 +2,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
+import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
+import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import {
-  Button,
-  Table,
-  TableContainer,
-  TBody,
-  Th,
-  THead,
-  Tr
-  // Td
-} from "@app/components/v2";
-import { ProjectPermissionSub,useWorkspace  } from "@app/context";
-import {
-  // useUpdateOrgRole,
-  useGetProjectRoleBySlug
-} from "@app/hooks/api";
-import {
-  formSchema,
+formRolePermission2API,  formSchema,
   rolePermission2Form,
-  TFormSchema} from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
+  TFormSchema
+ } from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
 
 import { RolePermissionRow } from "./RolePermissionRow";
+import { RowPermissionSecretsRow } from "./RolePermissionSecretsRow";
 
 const SINGLE_PERMISSION_LIST = [
   {
@@ -99,16 +89,15 @@ type Props = {
   roleSlug: string;
 };
 
-// TODO: fill table
-
+// note: isEditable should also depend on if user has edit role permission
 export const RolePermissionsSection = ({ roleSlug }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const projectSlug = currentWorkspace?.slug || "";
   const { data: role } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
-
-  console.log("RolePermissionsSection role data: ", role);
 
   const {
     setValue,
+    getValues,
     control,
     handleSubmit,
     formState: { isDirty, isSubmitting },
@@ -118,16 +107,19 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
     resolver: zodResolver(formSchema)
   });
 
-  //   const { mutateAsync: updateRole } = useUpdateOrgRole();
+  const { mutateAsync: updateRole } = useUpdateProjectRole();
 
-  const onSubmit = async () => {
+  const onSubmit = async (el: TFormSchema) => {
     try {
-      //   await updateRole({
-      //     orgId,
-      //     id: roleId,
-      //     ...el,
-      //     permissions: formRolePermission2API(el.permissions)
-      //   });
+      if (!projectSlug || !role?.id) return;
+
+      await updateRole({
+        id: role?.id as string,
+        projectSlug,
+        ...el,
+        permissions: formRolePermission2API(el.permissions)
+      });
+
       createNotification({ type: "success", text: "Successfully updated role" });
     } catch (err) {
       console.log(err);
@@ -177,8 +169,15 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
               </Tr>
             </THead>
             <TBody>
+              <RowPermissionSecretsRow
+                title="Secrets"
+                formName={ProjectPermissionSub.Secrets}
+                isEditable={isCustomRole}
+                setValue={setValue}
+                getValue={getValues}
+                control={control}
+              />
               {SINGLE_PERMISSION_LIST.map((permission) => {
-                console.log("permission: ", permission);
                 return (
                   <RolePermissionRow
                     title={permission.title}

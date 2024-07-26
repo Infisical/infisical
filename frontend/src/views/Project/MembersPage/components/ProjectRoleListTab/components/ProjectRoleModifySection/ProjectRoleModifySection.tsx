@@ -14,7 +14,8 @@ import {
   faShield,
   faTags,
   faUser,
-  faUsers} from "@fortawesome/free-solid-svg-icons";
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 

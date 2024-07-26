@@ -6,17 +6,14 @@ import { IconButton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetProjectRoleBySlug } from "@app/hooks/api";
-// import { UsePopUpState } from "@app/hooks/usePopUp";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   roleSlug: string;
-  //   handlePopUpOpen: (popUpName: keyof UsePopUpState<["role"]>, data?: {}) => void;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<["role"]>, data?: {}) => void;
 };
 
-export const RoleDetailsSection = ({
-  roleSlug
-}: // handlePopUpOpen
-Props) => {
+export const RoleDetailsSection = ({ roleSlug, handlePopUpOpen }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -41,10 +38,9 @@ Props) => {
                     variant="plain"
                     className="group relative"
                     onClick={() => {
-                      // TODO
-                      //   handlePopUpOpen("role", {
-                      //     roleId
-                      //   })
+                      handlePopUpOpen("role", {
+                        roleSlug
+                      });
                     }}
                   >
                     <FontAwesomeIcon icon={faPencil} />

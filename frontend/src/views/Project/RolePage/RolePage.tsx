@@ -20,9 +20,7 @@ import { withProjectPermission } from "@app/hoc";
 import { useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { RoleDetailsSection, RolePermissionsSection } from "./components";
-
-// import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
+import { RoleDetailsSection, RoleModal,RolePermissionsSection } from "./components";
 
 export const RolePage = withProjectPermission(
   () => {
@@ -66,7 +64,7 @@ export const RolePage = withProjectPermission(
       }
     };
 
-    const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
+    const isCustomRole = !["admin", "member", "viewer", "no-access"].includes(data?.slug ?? "");
 
     return (
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -148,7 +146,7 @@ export const RolePage = withProjectPermission(
             </div>
           </div>
         )}
-        {/* <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} /> */}
+        <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteRole.isOpen}
           title={`Are you sure want to delete the project role ${data?.name ?? ""}?`}
