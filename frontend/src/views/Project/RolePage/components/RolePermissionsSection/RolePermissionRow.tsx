@@ -78,22 +78,9 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
   });
 
   const selectedPermissionCategory = useMemo(() => {
-    // TODO: re-check
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
 
     switch (formName) {
-      case "secret-rollback":
-      case "workspace": {
-        const totalActions = WORKSPACE_PERMISSIONS.length;
-        const score = actions
-          .map((key) => (rule?.[key] ? 1 : 0))
-          .reduce((a, b) => a + b, 0 as number);
-        if (isCustom) return Permission.Custom;
-        if (score === 0) return Permission.NoAccess;
-        if (score === totalActions) return Permission.FullAccess;
-
-        return Permission.Custom; // TODO: update
-      }
       default: {
         const totalActions = GENERAL_PERMISSIONS.length;
         const score = actions

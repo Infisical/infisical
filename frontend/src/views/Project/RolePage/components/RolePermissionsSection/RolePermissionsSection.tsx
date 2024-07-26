@@ -6,10 +6,11 @@ import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/compon
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import {
-formRolePermission2API,  formSchema,
+  formRolePermission2API,
+  formSchema,
   rolePermission2Form,
   TFormSchema
- } from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
+} from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
 
 import { RolePermissionRow } from "./RolePermissionRow";
 import { RowPermissionSecretsRow } from "./RolePermissionSecretsRow";
@@ -89,7 +90,6 @@ type Props = {
   roleSlug: string;
 };
 
-// note: isEditable should also depend on if user has edit role permission
 export const RolePermissionsSection = ({ roleSlug }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectSlug = currentWorkspace?.slug || "";

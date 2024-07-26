@@ -25,14 +25,14 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
+import { RoleModal } from "@app/views/Project/RolePage/components";
 
-type Props = {
-  onSelectRole: (slug?: string) => void;
-};
-
-export const ProjectRoleList = ({ onSelectRole }: Props) => {
+export const ProjectRoleList = () => {
   const router = useRouter();
-  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "role",
+    "deleteRole"
+  ] as const);
   const { currentWorkspace } = useWorkspace();
   const projectSlug = currentWorkspace?.slug || "";
   const projectId = currentWorkspace?.id || "";
@@ -66,11 +66,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
               colorSchema="primary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => onSelectRole()}
-              // onClick={() => {
-              //   TODO
-              //   handlePopUpOpen("role");
-              // }}
+              onClick={() => handlePopUpOpen("role")}
               isDisabled={!isAllowed}
             >
               Add Role
@@ -120,10 +116,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();
-
-                                // TODO: remove/replace
-                                onSelectRole(role.slug);
-                                // router.push(`/project/${projectId}/roles/${id}`);
+                                router.push(`/project/${projectId}/roles/${slug}`);
                               }}
                               disabled={!isAllowed}
                             >
@@ -157,52 +150,13 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </Td>
-                  {/* <Td>
-                      <div className="flex justify-end space-x-2">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Edit}
-                          a={ProjectPermissionSub.Role}
-                          renderTooltip
-                          allowedLabel="Edit"
-                        >
-                          {(isAllowed) => (
-                            <IconButton
-                              isDisabled={!isAllowed}
-                              ariaLabel="edit"
-                              onClick={() => onSelectRole(role.slug)}
-                              variant="plain"
-                            >
-                              <FontAwesomeIcon icon={faEdit} />
-                            </IconButton>
-                          )}
-                        </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
-                          a={ProjectPermissionSub.Role}
-                          renderTooltip
-                          allowedLabel={
-                            isNonMutatable ? "Reserved roles are non-removable" : "Delete"
-                          }
-                        >
-                          {(isAllowed) => (
-                            <IconButton
-                              ariaLabel="delete"
-                              onClick={() => handlePopUpOpen("deleteRole", role)}
-                              variant="plain"
-                              isDisabled={isNonMutatable || !isAllowed}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          )}
-                        </ProjectPermissionCan>
-                      </div>
-                    </Td> */}
                 </Tr>
               );
             })}
           </TBody>
         </Table>
       </TableContainer>
+      <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure want to delete ${

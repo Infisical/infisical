@@ -1,23 +1,16 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-// import { useRouter } from "next/router";
+import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import { useWorkspace } from "@app/context";
 import {
-  // useOrganization,
-  useWorkspace
-} from "@app/context";
-import {
-  //   useCreateProjectRole,
-  //   useUpdateProjectRole,
-  useGetProjectRoleBySlug
-  // useCreateOrgRole,
-  // useGetOrgRole,
-  // useUpdateOrgRole
-} from "@app/hooks/api";
+  useCreateProjectRole,
+  useGetProjectRoleBySlug,
+  useUpdateProjectRole} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -36,7 +29,7 @@ type Props = {
 };
 
 export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
-  //   const router = useRouter();
+  const router = useRouter();
 
   const popupData = popUp?.role?.data as {
     roleSlug: string;
@@ -47,10 +40,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: role } = useGetProjectRoleBySlug(projectSlug, popupData?.roleSlug ?? "");
 
-  console.log("Project RoleModal role: ", role);
-
-  //   const { mutateAsync: createProjectRole } = useCreateProjectRole();
-  //   const { mutateAsync: updateProjectRole } = useUpdateProjectRole();
+  const { mutateAsync: createProjectRole } = useCreateProjectRole();
+  const { mutateAsync: updateProjectRole } = useUpdateProjectRole();
 
   const {
     control,
@@ -83,58 +74,32 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     try {
-      console.log("onFormSubmit args: ", {
-        name,
-        description,
-        slug
-      });
-
-      if (!projectSlug || !role?.id) return;
+      if (!projectSlug) return;
 
       if (role) {
         // update
-        console.log("update");
-        // const u1 = await updateProjectRole({
-        //   id: role.id,
-        //   projectSlug,
-        //   name,
-        //   description,
-        //   slug
-        // });
-        // console.log("u1: ", u1);
+        await updateProjectRole({
+          id: role.id,
+          projectSlug,
+          name,
+          description,
+          slug
+        });
+
+        handlePopUpToggle("role", false);
       } else {
         // create
-        console.log("create");
+        const newRole = await createProjectRole({
+          projectSlug,
+          name,
+          description,
+          slug,
+          permissions: []
+        });
+
+        router.push(`/project/${currentWorkspace?.id}/roles/${newRole.slug}`);
+        handlePopUpToggle("role", false);
       }
-
-      //   if (!orgId) return;
-
-      //   if (role) {
-      //     // update
-
-      //     await updateOrgRole({
-      //       orgId,
-      //       id: role.id,
-      //       name,
-      //       description,
-      //       slug
-      //     });
-
-      //     handlePopUpToggle("role", false);
-      //   } else {
-      //     // create
-
-      //     const newRole = await createOrgRole({
-      //       orgId,
-      //       name,
-      //       description,
-      //       slug,
-      //       permissions: []
-      //     });
-
-      //     handlePopUpToggle("role", false);
-      //     router.push(`/org/${orgId}/roles/${newRole.id}`);
-      //   }
 
       createNotification({
         text: `Successfully ${popUp?.role?.data ? "updated" : "created"} role`,

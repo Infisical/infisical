@@ -17,10 +17,10 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { useGetProjectRoleBySlug } from "@app/hooks/api";
+import { useDeleteProjectRole,useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { RoleDetailsSection, RoleModal,RolePermissionsSection } from "./components";
+import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
 
 export const RolePage = withProjectPermission(
   () => {
@@ -31,8 +31,7 @@ export const RolePage = withProjectPermission(
 
     const { data } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
 
-    // const { data } = useGetOrgRole(orgId, roleId); // TODO: get project role
-    // const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
+    const { mutateAsync: deleteProjectRole } = useDeleteProjectRole();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "role",
@@ -41,17 +40,19 @@ export const RolePage = withProjectPermission(
 
     const onDeleteRoleSubmit = async () => {
       try {
-        // if (!orgId || !roleId) return;
-        // await deleteOrgRole({
-        //   orgId,
-        //   id: roleId
-        // });
-        // createNotification({
-        //   text: "Successfully deleted organization role",
-        //   type: "success"
-        // });
-        // handlePopUpClose("deleteOrgRole");
-        // router.push(`/org/${orgId}/members`);
+        if (!currentWorkspace?.slug || !data?.id) return;
+
+        await deleteProjectRole({
+          projectSlug: currentWorkspace.slug,
+          id: data.id
+        });
+
+        createNotification({
+          text: "Successfully deleted project role",
+          type: "success"
+        });
+        handlePopUpClose("deleteRole");
+        router.push(`/project/${projectId}/members`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -74,9 +75,7 @@ export const RolePage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => {
-                router.push(`/project/${projectId}/members`);
-              }}
+              onClick={() => router.push(`/project/${projectId}/members`)}
               className="mb-4"
             >
               Roles
@@ -102,12 +101,11 @@ export const RolePage = withProjectPermission(
                           className={twMerge(
                             !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                           )}
-                          onClick={async () => {
-                            // TODO
-                            // handlePopUpOpen("role", {
-                            //   roleId
-                            // });
-                          }}
+                          onClick={() =>
+                            handlePopUpOpen("role", {
+                              roleSlug
+                            })
+                          }
                           disabled={!isAllowed}
                         >
                           Edit Role
@@ -125,9 +123,7 @@ export const RolePage = withProjectPermission(
                               ? "hover:!bg-red-500 hover:!text-white"
                               : "pointer-events-none cursor-not-allowed opacity-50"
                           )}
-                          onClick={async () => {
-                            handlePopUpOpen("deleteRole");
-                          }}
+                          onClick={() => handlePopUpOpen("deleteRole")}
                           disabled={!isAllowed}
                         >
                           Delete Role
