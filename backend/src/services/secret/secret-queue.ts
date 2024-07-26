@@ -946,6 +946,62 @@ export const secretQueueFactory = ({
             });
           });
         });
+        // this is corner case in which some times the snapshot may not have the secret version of an existing secret
+        // example: on some integration it will pull values from 3rd party on integration but snapshot is not taken
+        // Thus it won't have secret version
+        const latestSecretVersionByFolder = await secretVersionDAL.findLatestVersionMany(
+          folderId,
+          projectV1Secrets.map((el) => el.id),
+          tx
+        );
+        Object.values(latestSecretVersionByFolder).forEach((el) => {
+          if (projectV3SecretVersionsGroupById[el.id]) return;
+          const key = decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: el.secretKeyCiphertext,
+            iv: el.secretKeyIV,
+            tag: el.secretKeyTag,
+            key: botKey
+          });
+          const value = decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: el.secretValueCiphertext,
+            iv: el.secretValueIV,
+            tag: el.secretValueTag,
+            key: botKey
+          });
+          const comment =
+            el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.secretCommentCiphertext,
+                  iv: el.secretCommentIV,
+                  tag: el.secretCommentTag,
+                  key: botKey
+                })
+              : "";
+          const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+
+          const encryptedComment = comment
+            ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+            : null;
+          projectV3SecretVersionsGroupById[el.id] = {
+            id: el.id,
+            createdAt: el.createdAt,
+            updatedAt: el.updatedAt,
+            skipMultilineEncoding: el.skipMultilineEncoding,
+            encryptedComment,
+            encryptedValue,
+            key,
+            version: el.version,
+            type: el.type,
+            userId: el.userId,
+            folderId: el.folderId,
+            metadata: el.metadata,
+            reminderNote: el.secretReminderNote,
+            reminderRepeatDays: el.secretReminderRepeatDays,
+            secretId: el.secretId,
+            envId: el.envId
+          };
+        });
+
         const projectV3SecretVersions = Object.values(projectV3SecretVersionsGroupById);
         if (projectV3SecretVersions.length) {
           await secretVersionV2BridgeDAL.insertMany(projectV3SecretVersions, tx);
