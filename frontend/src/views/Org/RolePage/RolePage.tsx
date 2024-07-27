@@ -76,7 +76,7 @@ export const RolePage = withPermission(
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
-                router.push(`/org/${orgId}/members`);
+                router.push(`/org/${orgId}/members?selectedTab=${TabSections.Roles}`);
               }}
               className="mb-4"
             >

@@ -76,7 +76,7 @@ export const IdentityPage = withPermission(
         });
 
         handlePopUpClose("deleteIdentity");
-        router.push(`/org/${orgId}/members`);
+        router.push(`/org/${orgId}/members?selectedTab=${TabSections.Identities}`);
       } catch (err) {
         console.error(err);
         const error = err as any;

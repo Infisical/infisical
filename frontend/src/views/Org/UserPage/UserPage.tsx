@@ -91,7 +91,7 @@ export const UserPage = withPermission(
         });
 
         handlePopUpClose("removeMember");
-        router.push(`/org/${orgId}/members`);
+        router.push(`/org/${orgId}/members?selectedTab=${TabSections.Member}`);
       } catch (err) {
         console.error(err);
         createNotification({
