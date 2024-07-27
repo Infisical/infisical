@@ -118,8 +118,8 @@ export const SecretEditRow = ({
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
-        title="Confirm Secret Deletion"
-        deleteKey="Delete"
+        title="Do you want to delete the selected secret?"
+        deleteKey="delete"
         onDeleteApproved={handleDeleteSecret}
       />
 
