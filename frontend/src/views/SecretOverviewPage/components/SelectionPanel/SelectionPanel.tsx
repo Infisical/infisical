@@ -49,8 +49,9 @@ export const SelectionPanel = ({
     "bulkDeleteEntries"
   ] as const);
 
-  const selectedCount =
-    Object.keys(selectedEntries.folder).length + Object.keys(selectedEntries.secret).length;
+  const selectedFolderCount = Object.keys(selectedEntries.folder).length
+  const selectedKeysCount = Object.keys(selectedEntries.secret).length
+  const selectedCount = selectedFolderCount + selectedKeysCount
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -67,6 +68,16 @@ export const SelectionPanel = ({
       subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
     )
   );
+
+  const getDeleteModalTitle = () => {
+    if (selectedFolderCount > 0 && selectedKeysCount > 0) {
+      return "Do you want to delete the selected secrets and folders across envs?";
+    } else if (selectedFolderCount > 0 && selectedKeysCount === 0) {
+      return "Do you want to delete the selected folders across envs?";
+    } else {
+      return "Do you want to delete the selected secrets across envs?";
+    }
+  }
 
   const handleBulkDelete = async () => {
     let processedEntries = 0;
@@ -180,7 +191,7 @@ export const SelectionPanel = ({
       <DeleteActionModal
         isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"
-        title="Do you want to delete the selected secrets and folders across envs?"
+        title={getDeleteModalTitle()}
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
       />
