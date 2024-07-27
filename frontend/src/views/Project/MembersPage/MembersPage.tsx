@@ -22,7 +22,7 @@ export const MembersPage = withProjectPermission(
       }
     }, [selectedTab]);
 
-    const updateSelectedTab = (tab: TabSections) => {
+    const updateSelectedTab = (tab: string) => {
       router.push({
         pathname: router.pathname,
         query: { ...router.query, selectedTab: tab },
