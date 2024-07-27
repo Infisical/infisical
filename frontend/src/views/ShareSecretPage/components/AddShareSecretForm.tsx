@@ -128,7 +128,7 @@ export const AddShareSecretForm = ({
     >
       <div
         className={`w-full ${
-          !inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+          !inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"
         }`}
       >
         <div>
