@@ -95,7 +95,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         tag: z.string(),
         hashedHex: z.string(),
         expiresAt: z.string(),
-        expiresAfterViews: z.number()
+        expiresAfterViews: z.number().optional()
       }),
       response: {
         200: z.object({
@@ -110,7 +110,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         iv,
         tag,
         hashedHex,
-        expiresAt: new Date(expiresAt),
+        expiresAt,
         expiresAfterViews,
         accessType: SecretSharingAccessType.Anyone
       });
@@ -131,7 +131,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         tag: z.string(),
         hashedHex: z.string(),
         expiresAt: z.string(),
-        expiresAfterViews: z.number(),
+        expiresAfterViews: z.number().optional(),
         accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
       }),
       response: {
@@ -153,7 +153,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         iv,
         tag,
         hashedHex,
-        expiresAt: new Date(expiresAt),
+        expiresAt,
         expiresAfterViews,
         accessType: req.body.accessType
       });

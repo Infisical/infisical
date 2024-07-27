@@ -16,8 +16,8 @@ export type TCreatePublicSharedSecretDTO = {
   iv: string;
   tag: string;
   hashedHex: string;
-  expiresAt: Date;
-  expiresAfterViews: number;
+  expiresAt: string;
+  expiresAfterViews?: number;
   accessType: SecretSharingAccessType;
 };
 

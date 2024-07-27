@@ -12,9 +12,8 @@ import { ViewAndCopySharedSecret } from "./ViewAndCopySharedSecret";
 
 const schema = yup.object({
   value: yup.string().max(10000).required().label("Shared Secret Value"),
-  expiresAfterViews: yup.number().min(1).required().label("Expires After Views"),
-  expiresInValue: yup.number().min(1).required().label("Expiration Value"),
-  expiresInUnit: yup.string().required().label("Expiration Unit")
+  expiresInValue: yup.string().required().label("Expiration Value"),
+  expiresAfterViews: yup.string().required().label("Expires After Views")
 });
 
 export type FormData = yup.InferType<typeof schema>;

@@ -31,38 +31,25 @@ type Props = {
 
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const { isLoading, data = [] } = useGetSharedSecrets();
-
-  let tableData = data.filter(
-    (secret) => new Date(secret.expiresAt) > new Date() && secret.expiresAfterViews > 0
-  );
-  const handleSecretExpiration = () => {
-    tableData = data.filter(
-      (secret) => new Date(secret.expiresAt) > new Date() && secret.expiresAfterViews > 0
-    );
-  };
-
   return (
     <TableContainer>
       <Table>
         <THead>
           <Tr>
-            <Th>Encrypted Secret</Th> <Th>Created</Th> <Th>Valid Until</Th> <Th>Views Left</Th>
-            <Th aria-label="button" />
+            <Th>Encrypted Secret</Th>
+            <Th>Created</Th>
+            <Th>Valid Until</Th>
+            <Th>Views Left</Th>
+            <Th aria-label="button" className="w-5" />
           </Tr>
         </THead>
         <TBody>
           {isLoading && <TableSkeleton columns={4} innerKey="shared-secrets" />}
           {!isLoading &&
-            tableData &&
-            tableData.map((row) => (
-              <ShareSecretsRow
-                key={row.id}
-                row={row}
-                handlePopUpOpen={handlePopUpOpen}
-                onSecretExpiration={handleSecretExpiration}
-              />
+            data?.map((row) => (
+              <ShareSecretsRow key={row.id} row={row} handlePopUpOpen={handlePopUpOpen} />
             ))}
-          {!isLoading && tableData && tableData?.length === 0 && (
+          {!isLoading && data?.length === 0 && (
             <Tr>
               <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
                 <EmptyState title="No secrets shared yet" icon={faKey} />

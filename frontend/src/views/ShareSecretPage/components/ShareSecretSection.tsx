@@ -46,9 +46,8 @@ export const ShareSecretSection = () => {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Head>
-      <div className="mb-2 flex justify-between">
+      <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Shared Secrets</p>
-
         <Button
           colorSchema="primary"
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
