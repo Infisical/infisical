@@ -12,7 +12,7 @@ export type TCreateSharedSecretRequest = {
   tag: string;
   hashedHex: string;
   expiresAt: Date;
-  expiresAfterViews: number;
+  expiresAfterViews?: number;
   accessType: SecretSharingAccessType;
 };
 

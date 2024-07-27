@@ -64,12 +64,13 @@ export const secretSharingServiceFactory = ({
       iv,
       tag,
       hashedHex,
-      expiresAt,
+      expiresAt: new Date(expiresAt),
       expiresAfterViews,
       userId: actorId,
       orgId,
       accessType
     });
+
     return { id: newSharedSecret.id };
   };
 
@@ -97,7 +98,7 @@ export const secretSharingServiceFactory = ({
       iv,
       tag,
       hashedHex,
-      expiresAt,
+      expiresAt: new Date(expiresAt),
       expiresAfterViews,
       accessType
     });

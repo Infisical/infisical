@@ -14,6 +14,8 @@ import { useGetActiveSharedSecretByIdAndHashedHex } from "@app/hooks/api/secretS
 import { AddShareSecretModal } from "../ShareSecretPage/components/AddShareSecretModal";
 import { SecretTable } from "./components";
 
+// note: isNewSession: controls if the user is sharing a new secret or viewing a shared secret
+
 export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean }) => {
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
@@ -55,7 +57,7 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
   return (
     <div className="flex h-screen flex-col overflow-y-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
       <Head>
-        <title>Secret Shared | Infisical</title>
+        <title>Infisical | Secret Sharing</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex w-full flex-grow items-center justify-center dark:[color-scheme:dark]">
@@ -94,7 +96,6 @@ export const ShareSecretPublicPage = ({ isNewSession }: { isNewSession: boolean 
               />
             )}
           </div>
-
           {isNewSession && (
             <div className="px-0 sm:px-6">
               <AddShareSecretModal

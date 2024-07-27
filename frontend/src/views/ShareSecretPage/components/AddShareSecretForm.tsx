@@ -7,18 +7,37 @@ import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
 import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
-import { Button, Checkbox, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { SecretSharingAccessType, useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api/secretSharing";
+import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
+import {
+  SecretSharingAccessType,
+  useCreatePublicSharedSecret,
+  useCreateSharedSecret
+} from "@app/hooks/api/secretSharing";
 
 const schema = yup.object({
   value: yup.string().max(10000).required().label("Shared Secret Value"),
-  expiresAfterSingleView: yup.boolean().required().label("Expires After Views"),
-  expiresInValue: yup.number().min(1).required().label("Expiration Value"),
-  expiresInUnit: yup.string().required().label("Expiration Unit"),
+  expiresAfterViews: yup.string().required().label("Expires After Views"),
+  expiresInValue: yup.string().min(1).required().label("Expiration Value"),
   accessType: yup.string().required().label("General Access")
 });
 
 export type FormData = yup.InferType<typeof schema>;
+
+// values in ms
+const expiresInOptions = [
+  { label: "5 min", value: 5 * 60 * 1000 },
+  { label: "30 min", value: 30 * 60 * 1000 },
+  { label: "1 hour", value: 60 * 60 * 1000 },
+  { label: "1 day", value: 24 * 60 * 60 * 1000 },
+  { label: "7 days", value: 7 * 24 * 60 * 60 * 1000 },
+  { label: "14 days", value: 14 * 24 * 60 * 60 * 1000 },
+  { label: "30 days", value: 30 * 24 * 60 * 60 * 1000 }
+];
+
+const viewLimitOptions = [
+  { label: "1", value: 1 },
+  { label: "Unlimited", value: -1 }
+];
 
 export const AddShareSecretForm = ({
   isPublic,
@@ -49,36 +68,15 @@ export const AddShareSecretForm = ({
   const privateSharedSecretCreator = useCreateSharedSecret();
   const createSharedSecret = isPublic ? publicSharedSecretCreator : privateSharedSecretCreator;
 
-  const expirationUnitsAndActions = [
-    {
-      unit: "Minutes",
-      action: (expiresAt: Date, expiresInValue: number) =>
-        expiresAt.setMinutes(expiresAt.getMinutes() + expiresInValue)
-    },
-    {
-      unit: "Hours",
-      action: (expiresAt: Date, expiresInValue: number) =>
-        expiresAt.setHours(expiresAt.getHours() + expiresInValue)
-    },
-    {
-      unit: "Days",
-      action: (expiresAt: Date, expiresInValue: number) =>
-        expiresAt.setDate(expiresAt.getDate() + expiresInValue)
-    },
-    {
-      unit: "Weeks",
-      action: (expiresAt: Date, expiresInValue: number) =>
-        expiresAt.setDate(expiresAt.getDate() + expiresInValue * 7)
-    }
-  ];
   const onFormSubmit = async ({
     value,
     expiresInValue,
-    expiresInUnit,
-    expiresAfterSingleView,
+    expiresAfterViews,
     accessType
   }: FormData) => {
     try {
+      const expiresAt = new Date(new Date().getTime() + Number(expiresInValue));
+
       const key = crypto.randomBytes(16).toString("hex");
       const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
       const { ciphertext, iv, tag } = encryptSymmetric({
@@ -86,21 +84,13 @@ export const AddShareSecretForm = ({
         key
       });
 
-      const expiresAt = new Date();
-      const updateExpiresAt = expirationUnitsAndActions.find(
-        (item) => item.unit === expiresInUnit
-      )?.action;
-      if (updateExpiresAt && expiresInValue) {
-        updateExpiresAt(expiresAt, expiresInValue);
-      }
-
       const { id } = await createSharedSecret.mutateAsync({
         encryptedValue: ciphertext,
         iv,
         tag,
         hashedHex,
         expiresAt,
-        expiresAfterViews: expiresAfterSingleView ? 1 : 1000,
+        expiresAfterViews: expiresAfterViews === "-1" ? undefined : Number(expiresAfterViews),
         accessType: accessType as SecretSharingAccessType
       });
 
@@ -132,9 +122,14 @@ export const AddShareSecretForm = ({
     }
   };
   return (
-    <form className="flex w-full flex-col items-center px-4 sm:px-0" onSubmit={handleSubmit(onFormSubmit)}>
+    <form
+      className="flex w-full max-w-7xl flex-col items-center"
+      onSubmit={handleSubmit(onFormSubmit)}
+    >
       <div
-        className={`w-full ${!inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"}`}
+        className={`w-full ${
+          !inModal && "rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6"
+        }`}
       >
         <div>
           <Controller
@@ -142,7 +137,7 @@ export const AddShareSecretForm = ({
             name="value"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Shared Secret"
+                label="Your Secret"
                 isError={Boolean(error)}
                 errorText={error?.message}
                 className="mb-2"
@@ -157,90 +152,48 @@ export const AddShareSecretForm = ({
             )}
           />
         </div>
-        <div className="flex w-full flex-col md:flex-row justify-stretch">
-          <div className="flex justify-start">
-            <div className="flex justify-start">
-              <div className="flex w-full justify-center pr-2">
-                <Controller
-                  control={control}
-                  name="expiresInValue"
-                  defaultValue={1}
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Expires after Time"
-                      isError={Boolean(error)}
-                      errorText="Please enter a valid time duration"
-                      className="w-32"
-                    >
-                      <Input {...field} type="number" min={0} />
-                    </FormControl>
-                  )}
-                />
-              </div>
-              <div className="flex justify-center">
-                <Controller
-                  control={control}
-                  name="expiresInUnit"
-                  defaultValue={expirationUnitsAndActions[1].unit}
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl label="Unit" errorText={error?.message} isError={Boolean(error)}>
-                      <Select
-                        defaultValue={field.value}
-                        {...field}
-                        onValueChange={(e) => onChange(e)}
-                        className="w-full border border-mineshaft-600"
-                      >
-                        {expirationUnitsAndActions.map(({ unit }) => (
-                          <SelectItem value={unit} key={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="sm:w-1/7 mx-auto items-center justify-center hidden md:flex">
-            <p className="mt-2 text-sm text-gray-400">AND</p>
-          </div>
-          <div className="items-center pb-4 md:pb-0 md:pt-2 flex">
-            <Controller
-              control={control}
-              name="expiresAfterViews"
-              defaultValue={1}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="mb-4 w-full hidden"
-                  label="Expires after Views"
-                  isError={Boolean(error)}
-                  errorText="Please enter a valid number of views"
-                >
-                  <Input {...field} type="number" min={1} />
-                </FormControl>
-              )}
-            />
-            <div className="bg-mineshaft-900 py-2 h-max rounded-md border border-mineshaft-600 px-4">
-              <Controller
-                control={control}
-                name="expiresAfterSingleView"
-                defaultValue={false}
-                render={({ field: { onBlur, value, onChange } }) => (
-                  <Checkbox
-                    id="is-single-view"
-                    isChecked={value}
-                    onCheckedChange={onChange}
-                    isDisabled={false}
-                    onBlur={onBlur}
-                  >
-                    Can be viewed only 1 time
-                  </Checkbox>
-                )}
-              />
-            </div>
-          </div>
-        </div>
+        <Controller
+          control={control}
+          name="expiresInValue"
+          defaultValue="3600000"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <FormControl label="Expires In" errorText={error?.message} isError={Boolean(error)}>
+              <Select
+                defaultValue={field.value}
+                {...field}
+                onValueChange={(e) => onChange(e)}
+                className="w-full"
+              >
+                {expiresInOptions.map(({ label, value }) => (
+                  <SelectItem value={String(value || "")} key={label}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="expiresAfterViews"
+          defaultValue="-1"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <FormControl label="Max Views" errorText={error?.message} isError={Boolean(error)}>
+              <Select
+                defaultValue={field.value}
+                {...field}
+                onValueChange={(e) => onChange(e)}
+                className="w-full"
+              >
+                {viewLimitOptions.map(({ label, value }) => (
+                  <SelectItem value={String(value || "")} key={label}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        />
         {!isPublic && (
           <Controller
             control={control}
@@ -248,10 +201,7 @@ export const AddShareSecretForm = ({
             defaultValue="organization"
             render={({ field: { onChange, ...field } }) => (
               <FormControl label="General Access">
-                <Select
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                >
+                <Select {...field} onValueChange={(e) => onChange(e)} className="w-full">
                   <SelectItem value="organization">People within your organization</SelectItem>
                   <SelectItem value="anyone">Anyone</SelectItem>
                 </Select>
@@ -261,7 +211,7 @@ export const AddShareSecretForm = ({
         )}
         <div className={`flex items-center space-x-4 pt-2 ${!inModal && ""}`}>
           <Button className="mr-0" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
-            {inModal ? "Create" : "Share Secret"}
+            {inModal ? "Create" : "Create secret link"}
           </Button>
           {inModal && (
             <ModalClose asChild>
