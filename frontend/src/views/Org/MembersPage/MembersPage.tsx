@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
@@ -17,7 +18,7 @@ export const MembersPage = withPermission(
 
     useEffect(() => {
       if (selectedTab && isTabSection(selectedTab)) {
-        setActiveTab(selectedTab as TabSections);
+        setActiveTab(selectedTab);
       }
     }, [isTabSection, selectedTab]);
 

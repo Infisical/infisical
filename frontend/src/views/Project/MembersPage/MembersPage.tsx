@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
+import { TabSections, isTabSection } from '@app/types';
 
 import { IdentityTab, MembersTab,ProjectRoleListTab, ServiceTokenTab } from "./components";
 
-import { TabSections, isTabSection } from '@app/types';
 
 export const MembersPage = withProjectPermission(
   () => {
@@ -18,7 +19,7 @@ export const MembersPage = withProjectPermission(
 
     useEffect(() => {
       if (selectedTab && isTabSection(selectedTab)) {
-        setActiveTab(selectedTab as TabSections);
+        setActiveTab(selectedTab);
       }
     }, [isTabSection, selectedTab]);
 

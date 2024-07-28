@@ -6,7 +6,7 @@ enum TabSections {
   ServiceTokens = "service-tokens"
 }
 
-const isTabSection = (value: any): boolean => {
+const isTabSection = (value: any): value is TabSections => {
   return Object.values(TabSections).includes(value);
 }
 
