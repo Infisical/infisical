@@ -6,4 +6,8 @@ enum TabSections {
   ServiceTokens = "service-tokens"
 }
 
-export default TabSections
+const isTabSection = (value: any): boolean => {
+  return Object.values(TabSections).includes(value);
+}
+
+export { TabSections, isTabSection }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { TabSections } from "@app/types";
+import { isTabSection, TabSections } from "@app/types";
 
 import { OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 
@@ -16,10 +16,10 @@ export const MembersPage = withPermission(
     const [activeTab, setActiveTab] = useState<TabSections>(TabSections.Member);
 
     useEffect(() => {
-      if (selectedTab && Object.values(TabSections).includes(selectedTab as TabSections)) {
+      if (selectedTab && isTabSection(selectedTab)) {
         setActiveTab(selectedTab as TabSections);
       }
-    }, [selectedTab]);
+    }, [isTabSection, selectedTab]);
 
     const updateSelectedTab = (tab: string) => {
       router.push({

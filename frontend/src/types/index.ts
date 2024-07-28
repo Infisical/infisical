@@ -1,2 +1,3 @@
-import TabSections from "./TabSections";
-export { TabSections };
+import { TabSections, isTabSection } from "./TabSections";
+
+export { TabSections, isTabSection };

@@ -7,7 +7,7 @@ import { withProjectPermission } from "@app/hoc";
 
 import { IdentityTab, MembersTab,ProjectRoleListTab, ServiceTokenTab } from "./components";
 
-import { TabSections } from '@app/types';
+import { TabSections, isTabSection } from '@app/types';
 
 export const MembersPage = withProjectPermission(
   () => {
@@ -17,10 +17,10 @@ export const MembersPage = withProjectPermission(
     const [activeTab, setActiveTab] = useState<TabSections>(TabSections.Member);
 
     useEffect(() => {
-      if (selectedTab && Object.values(TabSections).includes(selectedTab as TabSections)) {
+      if (selectedTab && isTabSection(selectedTab)) {
         setActiveTab(selectedTab as TabSections);
       }
-    }, [selectedTab]);
+    }, [isTabSection, selectedTab]);
 
     const updateSelectedTab = (tab: string) => {
       router.push({
