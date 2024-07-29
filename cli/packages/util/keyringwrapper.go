@@ -2,11 +2,9 @@ package util
 
 import (
 	"encoding/base64"
-	"fmt"
-	"os"
 
+	"github.com/manifoldco/promptui"
 	"github.com/zalando/go-keyring"
-	"golang.org/x/term"
 )
 
 const MAIN_KEYRING_SERVICE = "infisical-cli"
@@ -32,12 +30,15 @@ func SetValueInKeyring(key, value string) error {
 		PrintWarning("Fallback file keyring is being used\n\nYou can persist your file passphrase by running the following command:\ninfisical vault set file --passphrase <your-passphrase>\n")
 
 		if configFile.VaultBackendPassphrase == "" {
-			fmt.Print("\n\nEnter the passphrase to use for keyring encryption: ")
-			bytePassphrase, err := term.ReadPassword(int(os.Stdin.Fd()))
+			passphrasePrompt := promptui.Prompt{
+				Label: "\nEnter the passphrase to use for keyring encryption: ",
+			}
+			passphrase, err := passphrasePrompt.Run()
 			if err != nil {
 				return err
 			}
-			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(string(bytePassphrase)))
+
+			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
 			configFile.VaultBackendPassphrase = encodedPassphrase
 			err = WriteConfigFile(&configFile)
 			if err != nil {
