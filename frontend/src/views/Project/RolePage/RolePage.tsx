@@ -21,7 +21,7 @@ import { useDeleteProjectRole,useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
-import { TabSections } from "@app/types";
+import { TabSections } from '../types';
 
 export const RolePage = withProjectPermission(
   () => {

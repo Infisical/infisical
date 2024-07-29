@@ -19,7 +19,7 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { withPermission } from "@app/hoc";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/types";
+import { TabSections } from "@app/views/Org/types";
 
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
 

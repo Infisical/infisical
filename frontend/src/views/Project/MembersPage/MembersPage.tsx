@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { TabSections, isTabSection } from '@app/types';
 
 import { IdentityTab, MembersTab,ProjectRoleListTab, ServiceTokenTab } from "./components";
+import { TabSections, isTabSection } from '../types';
 
 
 export const MembersPage = withProjectPermission(
