@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -234,30 +234,18 @@ export const EncryptionTab = () => {
     "createBackupConfirmation",
     "loadBackup"
   ] as const);
-  const [kmsKeyId, setKmsKeyId] = useState("");
+  const kmsKeyId = activeKms?.isExternal ? activeKms.id : INTERNAL_KMS_KEY_ID;
 
   const {
     handleSubmit,
     control,
-    setValue,
     formState: { isSubmitting, isDirty }
   } = useForm<TForm>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    values: {
+      kmsKeyId
+    }
   });
-
-  useEffect(() => {
-    if (activeKms) {
-      setKmsKeyId(activeKms.isExternal ? activeKms.id : INTERNAL_KMS_KEY_ID);
-    } else {
-      setKmsKeyId(INTERNAL_KMS_KEY_ID);
-    }
-  }, [activeKms]);
-
-  useEffect(() => {
-    if (kmsKeyId) {
-      setValue("kmsKeyId", kmsKeyId);
-    }
-  }, [kmsKeyId]);
 
   const onUpdateProjectKms = async (data: TForm) => {
     try {
@@ -277,10 +265,7 @@ export const EncryptionTab = () => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onUpdateProjectKms)}
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex justify-between">
         <h2 className="mb-2 flex-1 text-xl font-semibold text-mineshaft-100">Key Management</h2>
         {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
@@ -304,34 +289,36 @@ export const EncryptionTab = () => {
         Select which Key Management System to use for encrypting your project data
       </p>
       <div className="mb-6 max-w-md">
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Kms}>
-          {(isAllowed) => (
-            <Controller
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl errorText={error?.message} isError={Boolean(error)}>
-                  <Select
-                    {...field}
-                    isDisabled={!isAllowed || isUpdatingProjectKms}
-                    onValueChange={onChange}
-                    isLoading={isUpdatingProjectKms}
-                    className="w-3/4 bg-mineshaft-600"
-                  >
-                    <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
-                      Default Infisical KMS
-                    </SelectItem>
-                    {externalKmsList?.map((kms) => (
-                      <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                        {kms.slug}
+        <form onSubmit={handleSubmit(onUpdateProjectKms)}>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Kms}>
+            {(isAllowed) => (
+              <Controller
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl errorText={error?.message} isError={Boolean(error)}>
+                    <Select
+                      {...field}
+                      isDisabled={!isAllowed || isUpdatingProjectKms}
+                      onValueChange={onChange}
+                      isLoading={isUpdatingProjectKms}
+                      className="w-3/4 bg-mineshaft-600"
+                    >
+                      <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                        Default Infisical KMS
                       </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-              control={control}
-              name="kmsKeyId"
-            />
-          )}
-        </ProjectPermissionCan>
+                      {externalKmsList?.map((kms) => (
+                        <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                          {kms.slug}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+                control={control}
+                name="kmsKeyId"
+              />
+            )}
+          </ProjectPermissionCan>
+        </form>
       </div>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
         {(isAllowed) => (
@@ -357,6 +344,6 @@ export const EncryptionTab = () => {
         org={currentOrg}
         workspace={currentWorkspace}
       />
-    </form>
+    </div>
   );
 };
