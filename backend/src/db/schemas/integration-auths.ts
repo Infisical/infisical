@@ -35,7 +35,6 @@ export const IntegrationAuthsSchema = z.object({
   awsAssumeIamRoleArnCipherText: z.string().nullable().optional(),
   awsAssumeIamRoleArnIV: z.string().nullable().optional(),
   awsAssumeIamRoleArnTag: z.string().nullable().optional(),
-  encryptedAwsIamAssumRole: zodBuffer.nullable().optional(),
   encryptedAccess: zodBuffer.nullable().optional(),
   encryptedAccessId: zodBuffer.nullable().optional(),
   encryptedRefresh: zodBuffer.nullable().optional(),

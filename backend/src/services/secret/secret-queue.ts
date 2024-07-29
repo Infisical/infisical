@@ -1,13 +1,21 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { ProjectUpgradeStatus, ProjectVersion, TSecretSnapshotSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import {
+  ProjectUpgradeStatus,
+  ProjectVersion,
+  SecretKeyEncoding,
+  TSecretSnapshotSecretsV2,
+  TSecretVersionsV2
+} from "@app/db/schemas";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, isSamePath, unique } from "@app/lib/fn";
@@ -60,7 +68,7 @@ type TSecretQueueFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   secretDAL: TSecretDALFactory;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
-  webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
+  webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "find" | "transaction" | "update" | "bulkUpdate" | "upsert">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
   projectBotDAL: TProjectBotDALFactory;
@@ -79,6 +87,7 @@ type TSecretQueueFactoryDep = {
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
   snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
   snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "find" | "upsert">;
 };
 
 export type TGetSecrets = {
@@ -122,7 +131,8 @@ export const secretQueueFactory = ({
   secretRotationDAL,
   snapshotDAL,
   snapshotSecretV2BridgeDAL,
-  secretApprovalRequestDAL
+  secretApprovalRequestDAL,
+  dynamicSecretDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -881,6 +891,37 @@ export const secretQueueFactory = ({
           await secretV2BridgeDAL.upsertSecretReferences(secretReferences, tx);
         }
 
+        const dynamicSecrets = await dynamicSecretDAL.find({ folderId }, { tx });
+        if (dynamicSecrets.length) {
+          await dynamicSecretDAL.upsert(
+            dynamicSecrets.map((el) => {
+              let { encryptedConfig } = el;
+              if (!encryptedConfig) {
+                if (el.keyEncoding && el.inputCiphertext && el.inputTag && el.inputIV) {
+                  const decryptedConfig = infisicalSymmetricDecrypt({
+                    keyEncoding: el.keyEncoding as SecretKeyEncoding,
+                    ciphertext: el.inputCiphertext,
+                    tag: el.inputTag,
+                    iv: el.inputIV
+                  });
+                  encryptedConfig = secretManagerEncryptor({ plainText: Buffer.from(decryptedConfig) }).cipherTextBlob;
+                }
+              }
+              return {
+                ...el,
+                encryptedConfig,
+                keyEncoding: null,
+                inputCiphertext: null,
+                inputTag: null,
+                inputIV: null,
+                algorithm: null
+              };
+            }),
+            "id",
+            tx
+          );
+        }
+
         const SNAPSHOT_BATCH_SIZE = 15;
         const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, SNAPSHOT_BATCH_SIZE, tx);
         const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
@@ -1111,6 +1152,71 @@ export const secretQueueFactory = ({
       );
 
       /*
+       * webhooks
+       * */
+      const projectV1Webhooks = await webhookDAL.find({ projectId }, tx);
+      if (projectV1Webhooks.length) {
+        await webhookDAL.upsert(
+          projectV1Webhooks.map((el) => {
+            let { encryptedSecretKeyWithKms, encryptedUrl } = el;
+            if (!encryptedSecretKeyWithKms) {
+              if (el.encryptedSecretKey && el.iv && el.tag) {
+                const webhookSecretKey = infisicalSymmetricDecrypt({
+                  keyEncoding: el.keyEncoding as SecretKeyEncoding,
+                  ciphertext: el.encryptedSecretKey,
+                  iv: el.iv,
+                  tag: el.tag
+                });
+                encryptedSecretKeyWithKms = secretManagerEncryptor({
+                  plainText: Buffer.from(webhookSecretKey)
+                }).cipherTextBlob;
+              }
+            }
+            if (!encryptedUrl) {
+              if (el.urlTag && el.urlCipherText && el.urlIV) {
+                const webhookUrl = infisicalSymmetricDecrypt({
+                  keyEncoding: el.keyEncoding as SecretKeyEncoding,
+                  ciphertext: el.urlCipherText,
+                  iv: el.urlIV,
+                  tag: el.urlTag
+                });
+                encryptedUrl = secretManagerEncryptor({
+                  plainText: Buffer.from(webhookUrl)
+                }).cipherTextBlob;
+              } else {
+                encryptedUrl = secretManagerEncryptor({
+                  plainText: Buffer.from(el.url)
+                }).cipherTextBlob;
+              }
+            }
+
+            return {
+              id: el.id,
+              url: el.url,
+              envId: el.envId,
+              type: el.type,
+              isDisabled: el.isDisabled,
+              lastStatus: el.lastStatus,
+              secretPath: el.secretPath,
+              lastRunErrorMessage: el.lastRunErrorMessage,
+              encryptedSecretKeyWithKms,
+              encryptedUrl,
+              urlCipherText: null,
+              urlIV: null,
+              urlTag: null,
+              encryptedSecretKey: null,
+              iv: null,
+              tag: null,
+              keyEncoding: null,
+              algorithm: null
+            };
+          }),
+          "id",
+          tx
+        );
+      }
+
+      /*
        * approvals: we will delete all approvals this is because some secret versions may not be added yet
        * Thus doesn't make sense for rest to be there
        * */
@@ -1193,7 +1299,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL });
+    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL, kmsService });
   });
 
   return {

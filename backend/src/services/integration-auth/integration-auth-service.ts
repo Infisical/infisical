@@ -269,7 +269,7 @@ export const integrationAuthServiceFactory = ({
           const awsAssumeIamRoleArnEncrypted = secretManagerEncryptor({
             plainText: Buffer.from(awsAssumeIamRoleArn)
           }).cipherTextBlob;
-          updateDoc.encryptedAwsIamAssumRole = awsAssumeIamRoleArnEncrypted;
+          updateDoc.encryptedAwsAssumeIamRoleArn = awsAssumeIamRoleArnEncrypted;
         }
       }
     } else {

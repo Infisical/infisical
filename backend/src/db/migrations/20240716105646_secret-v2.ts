@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { SecretType, TableName } from "../schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding, SecretType, TableName } from "../schemas";
 import { createJunctionTable, createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
@@ -143,6 +143,32 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("rotationId").references("id").inTable(TableName.SecretRotation).onDelete("CASCADE");
     });
   }
+
+  if (await knex.schema.hasTable(TableName.Webhook)) {
+    const hasEncryptedWebhookSecretKey = await knex.schema.hasColumn(TableName.Webhook, "encryptedSecretKeyWithKms");
+    const hasEncryptedWebhookUrl = await knex.schema.hasColumn(TableName.Webhook, "encryptedUrl");
+    await knex.schema.alterTable(TableName.Webhook, (t) => {
+      if (!hasEncryptedWebhookSecretKey) t.binary("encryptedSecretKeyWithKms");
+      if (!hasEncryptedWebhookUrl) t.binary("encryptedUrl");
+    });
+  }
+
+  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+    const hasInputIV = await knex.schema.hasColumn(TableName.DynamicSecret, "inputIV");
+    const hasInputCipherText = await knex.schema.hasColumn(TableName.DynamicSecret, "inputCiphertext");
+    const hasInputTag = await knex.schema.hasColumn(TableName.DynamicSecret, "inputTag");
+    const hasAlgorithm = await knex.schema.hasColumn(TableName.DynamicSecret, "algorithm");
+    const hasKeyEncoding = await knex.schema.hasColumn(TableName.DynamicSecret, "keyEncoding");
+    const hasEncryptedConfig = await knex.schema.hasColumn(TableName.DynamicSecret, "encryptedConfig");
+    await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
+      if (hasInputIV) t.string("inputIV").alter();
+      if (hasInputCipherText) t.text("inputCiphertext").alter();
+      if (hasInputTag) t.string("inputTag").alter();
+      if (hasAlgorithm) t.string("algorithm").defaultTo(SecretEncryptionAlgo.AES_256_GCM).alter();
+      if (hasKeyEncoding) t.string("keyEncoding").defaultTo(SecretKeyEncoding.UTF8).alter();
+      if (!hasEncryptedConfig) t.binary("encryptedConfig");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -175,6 +201,21 @@ export async function down(knex: Knex): Promise<void> {
       if (hasEncryptedAccessId) t.dropColumn("encryptedAccessId");
       if (hasEncryptedRefresh) t.dropColumn("encryptedRefresh");
       if (hasEncryptedAwsIamAssumRole) t.dropColumn("encryptedAwsAssumeIamRoleArn");
+    });
+  }
+  if (await knex.schema.hasTable(TableName.Webhook)) {
+    const hasEncryptedWebhookSecretKey = await knex.schema.hasColumn(TableName.Webhook, "encryptedSecretKeyWithKms");
+    const hasEncryptedWebhookUrl = await knex.schema.hasColumn(TableName.Webhook, "encryptedUrl");
+    await knex.schema.alterTable(TableName.Webhook, (t) => {
+      if (hasEncryptedWebhookSecretKey) t.dropColumn("encryptedSecretKeyWithKms");
+      if (hasEncryptedWebhookUrl) t.dropColumn("encryptedUrl");
+    });
+  }
+
+  if (await knex.schema.hasTable(TableName.DynamicSecret)) {
+    const hasEncryptedConfig = await knex.schema.hasColumn(TableName.DynamicSecret, "encryptedConfig");
+    await knex.schema.alterTable(TableName.DynamicSecret, (t) => {
+      if (hasEncryptedConfig) t.dropColumn("encryptedConfig");
     });
   }
 }

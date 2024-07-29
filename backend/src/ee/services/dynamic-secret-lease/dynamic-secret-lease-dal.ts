@@ -48,6 +48,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           db.ref("folderId").withSchema(TableName.DynamicSecret).as("dynFolderId"),
           db.ref("status").withSchema(TableName.DynamicSecret).as("dynStatus"),
           db.ref("statusDetails").withSchema(TableName.DynamicSecret).as("dynStatusDetails"),
+          db.ref("encryptedConfig").withSchema(TableName.DynamicSecret).as("dynEncryptedConfig"),
           db.ref("createdAt").withSchema(TableName.DynamicSecret).as("dynCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.DynamicSecret).as("dynUpdatedAt")
         );
@@ -71,7 +72,8 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           status: doc.dynStatus,
           statusDetails: doc.dynStatusDetails,
           createdAt: doc.dynCreatedAt,
-          updatedAt: doc.dynUpdatedAt
+          updatedAt: doc.dynUpdatedAt,
+          encryptedConfig: doc.dynEncryptedConfig
         }
       };
     } catch (error) {

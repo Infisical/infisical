@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const WebhooksSchema = z.object({
@@ -25,7 +27,9 @@ export const WebhooksSchema = z.object({
   urlCipherText: z.string().nullable().optional(),
   urlIV: z.string().nullable().optional(),
   urlTag: z.string().nullable().optional(),
-  type: z.string().default("general").nullable().optional()
+  type: z.string().default("general").nullable().optional(),
+  encryptedSecretKeyWithKms: zodBuffer.nullable().optional(),
+  encryptedUrl: zodBuffer.nullable().optional()
 });
 
 export type TWebhooks = z.infer<typeof WebhooksSchema>;
