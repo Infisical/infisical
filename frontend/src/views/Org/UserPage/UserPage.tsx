@@ -29,7 +29,7 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/views/Org/types";
+import { TabSections } from "@app/views/Org/Types";
 
 import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 

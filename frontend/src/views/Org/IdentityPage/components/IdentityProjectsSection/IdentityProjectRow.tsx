@@ -10,7 +10,7 @@ import { useWorkspace } from "@app/context";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/views/Org/types";
+import { TabSections } from "@app/views/Org/Types";
 
 type Props = {
   membership: IdentityMembership;

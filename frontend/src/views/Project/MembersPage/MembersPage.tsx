@@ -7,7 +7,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
 import { IdentityTab, MembersTab,ProjectRoleListTab, ServiceTokenTab } from "./components";
-import { TabSections, isTabSection } from '../types';
+import { TabSections, isTabSection } from '../Types';
 
 
 export const MembersPage = withProjectPermission(

@@ -24,7 +24,7 @@ import {
   useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from"@app/views/Org/types";
+import { TabSections } from"@app/views/Org/Types";
 
 import { IdentityAuthMethodModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
