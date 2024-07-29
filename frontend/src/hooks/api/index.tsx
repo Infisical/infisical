@@ -29,6 +29,7 @@ export * from "./secretFolders";
 export * from "./secretImports";
 export * from "./secretRotation";
 export * from "./secrets";
+export * from "./secretSharing";
 export * from "./secretSnapshots";
 export * from "./serverDetails";
 export * from "./serviceTokens";

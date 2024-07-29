@@ -19,21 +19,31 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      querystring: z.object({
+        offset: z.coerce.number().min(0).max(100).default(0),
+        limit: z.coerce.number().min(1).max(100).default(25)
+      }),
       response: {
-        200: z.array(SecretSharingSchema)
+        200: z.object({
+          secrets: z.array(SecretSharingSchema),
+          totalCount: z.number()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const sharedSecrets = await req.server.services.secretSharing.getSharedSecrets({
+      const { secrets, totalCount } = await req.server.services.secretSharing.getSharedSecrets({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        ...req.query
       });
 
-      return sharedSecrets;
+      return {
+        secrets,
+        totalCount
+      };
     }
   });
 
@@ -46,9 +56,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     schema: {
       params: z.object({
         id: z.string().uuid()
-      }),
-      querystring: z.object({
-        hashedHex: z.string()
       }),
       response: {
         200: SecretSharingSchema.pick({
@@ -64,9 +71,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretByIdAndHashedHex(
+      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById(
         req.params.id,
-        req.query.hashedHex,
         req.permission?.orgId
       );
       if (!sharedSecret) return undefined;
@@ -93,9 +99,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         encryptedValue: z.string(),
         iv: z.string(),
         tag: z.string(),
-        hashedHex: z.string(),
         expiresAt: z.string(),
-        expiresAfterViews: z.number().optional()
+        expiresAfterViews: z.number().min(1).optional()
       }),
       response: {
         200: z.object({
@@ -104,12 +109,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = req.body;
+      const { encryptedValue, iv, tag, expiresAt, expiresAfterViews } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createPublicSharedSecret({
         encryptedValue,
         iv,
         tag,
-        hashedHex,
         expiresAt,
         expiresAfterViews,
         accessType: SecretSharingAccessType.Anyone
@@ -126,12 +130,12 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       body: z.object({
+        name: z.string().max(50).optional(),
         encryptedValue: z.string(),
         iv: z.string(),
         tag: z.string(),
-        hashedHex: z.string(),
         expiresAt: z.string(),
-        expiresAfterViews: z.number().optional(),
+        expiresAfterViews: z.number().min(1).optional(),
         accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
       }),
       response: {
@@ -142,20 +146,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        encryptedValue,
-        iv,
-        tag,
-        hashedHex,
-        expiresAt,
-        expiresAfterViews,
-        accessType: req.body.accessType
+        ...req.body
       });
       return { id: sharedSecret.id };
     }

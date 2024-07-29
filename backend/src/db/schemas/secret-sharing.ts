@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { SecretSharingAccessType } from "@app/lib/types";
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSharingSchema = z.object({
@@ -14,14 +12,15 @@ export const SecretSharingSchema = z.object({
   encryptedValue: z.string(),
   iv: z.string(),
   tag: z.string(),
-  hashedHex: z.string(),
   expiresAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),
-  accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization),
   createdAt: z.date(),
   updatedAt: z.date(),
-  expiresAfterViews: z.number().nullable().optional()
+  expiresAfterViews: z.number().nullable().optional(),
+  accessType: z.string().default("anyone"),
+  name: z.string().nullable().optional(),
+  lastViewedAt: z.date().nullable().optional()
 });
 
 export type TSecretSharing = z.infer<typeof SecretSharingSchema>;

@@ -13,7 +13,7 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret, SecretType } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
-import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
+import { AddShareSecretModal2 } from "@app/views/ShareSecretPage/components/AddShareSecretModal2";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
@@ -404,12 +404,7 @@ export const SecretListView = ({
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
       />
-      <AddShareSecretModal
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        isPublic={false}
-        inModal
-      />
+      <AddShareSecretModal2 popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
 };

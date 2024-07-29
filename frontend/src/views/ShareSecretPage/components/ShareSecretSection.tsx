@@ -7,7 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSharedSecret } from "@app/hooks/api/secretSharing";
 
-import { AddShareSecretModal } from "./AddShareSecretModal";
+import { AddShareSecretModal2 } from "./AddShareSecretModal2";
 import { ShareSecretsTable } from "./ShareSecretsTable";
 
 type DeleteModalData = { name: string; id: string };
@@ -59,12 +59,7 @@ export const ShareSecretSection = () => {
         </Button>
       </div>
       <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
-      <AddShareSecretModal
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        isPublic={false}
-        inModal
-      />
+      <AddShareSecretModal2 popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
         title={`Delete ${

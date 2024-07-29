@@ -88,7 +88,6 @@ export const AddShareSecretForm = ({
         encryptedValue: ciphertext,
         iv,
         tag,
-        hashedHex,
         expiresAt,
         expiresAfterViews: expiresAfterViews === "-1" ? undefined : Number(expiresAfterViews),
         accessType: accessType as SecretSharingAccessType

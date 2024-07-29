@@ -13,7 +13,7 @@ const ShareNewPublicSecretPage = () => {
         <meta name="og:description" content="" />
       </Head>
       <div className="dark h-full">
-        <ShareSecretPublicPage isNewSession />
+        <ShareSecretPublicPage />
       </div>
     </>
   );
