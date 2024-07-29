@@ -82,11 +82,6 @@ func setFileVaultPassphrase(passphrase string) {
 		return
 	}
 
-	if configFile.VaultBackendType != "file" {
-		log.Error().Msgf("You are not using file vault to store your login details. You can only set passphrase for file vault. Use 'infisical vault use file' to switch to file vault")
-		return
-	}
-
 	// encode with base64
 	encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
 	configFile.VaultBackendPassphrase = encodedPassphrase
@@ -97,7 +92,7 @@ func setFileVaultPassphrase(passphrase string) {
 		return
 	}
 
-	fmt.Printf("\nSuccessfully, set passphrase for file vault. You can now store your login details securely at rest\n")
+	util.PrintSuccessMessage("\nSuccessfully, set passphrase for file vault.\n")
 }
 
 func printAvailableVaultBackends() {
