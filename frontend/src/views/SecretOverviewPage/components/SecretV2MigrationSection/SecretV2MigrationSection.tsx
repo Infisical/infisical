@@ -83,7 +83,7 @@ export const SecretV2MigrationSection = () => {
       )}
       <p className="mb-2 text-lg font-semibold">Action Required</p>
       <p className="mb-4 leading-7 text-gray-400">
-        Your project can now leverage Infisical KMS! Ready to enhance your security?
+        Infisical secrets engine is now 10x faster and allows you to encrypt secrets with your own KMS. Upgrade your project to receive these improvements.
         <b>{!isAdmin && "This is an admin only operation."}</b>
       </p>
       <Button
@@ -92,7 +92,7 @@ export const SecretV2MigrationSection = () => {
         color="mineshaft"
         isLoading={migrateProjectToV3.isLoading}
       >
-        Update Now
+        Upgrade Project
       </Button>
       {didProjectUpgradeFailed && (
         <p className="mt-2 text-sm leading-7 text-red-400">
@@ -106,7 +106,7 @@ export const SecretV2MigrationSection = () => {
       >
         <ModalContent
           title="Upgrade Checklist"
-          subTitle="Before proceeding with the upgrade, please ensure the following requirements are met:"
+          subTitle="To ensure smooth transition, please ensure the following requirements are met before upgrading this project."
         >
           <div>
             <form onSubmit={handleSubmit(handleMigrationSecretV2)}>
@@ -123,7 +123,7 @@ export const SecretV2MigrationSection = () => {
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
                     >
-                      CLI version: v0.25.0 or above
+                      Infisical CLI version is v0.25.0 or above.
                     </Checkbox>
                   )}
                 />
@@ -139,7 +139,7 @@ export const SecretV2MigrationSection = () => {
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
                     >
-                      Operator version: v0.7.0 or above
+                      Infisical Kubernetes Operator version is v0.7.0 or above.
                     </Checkbox>
                   )}
                 />
@@ -171,17 +171,13 @@ export const SecretV2MigrationSection = () => {
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
                     >
-                      Close/Merge all open approval requests as it will be reset.
+                      Close/merge all open approval/access requests.
                     </Checkbox>
                   )}
                 />
               </div>
-              <div className="mt-4 text-sm">
-                Meeting these prerequisites will ensure system compatibility and a smooth upgrade
-                process.
-              </div>
               <div className="mt-8 flex space-x-4">
-                <Button type="submit">Update</Button>
+                <Button type="submit">Confirm Upgrade</Button>
                 <Button variant="outline_bg" onClick={() => handlePopUpToggle("migrationInfo")}>
                   Cancel
                 </Button>
