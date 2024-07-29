@@ -19,6 +19,7 @@ import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@a
 import { withPermission } from "@app/hoc";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { TabSections } from "@app/views/Org/Types";
 
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
 
@@ -51,7 +52,7 @@ export const RolePage = withPermission(
         });
 
         handlePopUpClose("deleteOrgRole");
-        router.push(`/org/${orgId}/members`);
+        router.push(`/org/${orgId}/members?selectedTab=${TabSections.Roles}`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -75,7 +76,7 @@ export const RolePage = withPermission(
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
-                router.push(`/org/${orgId}/members`);
+                router.push(`/org/${orgId}/members?selectedTab=${TabSections.Roles}`);
               }}
               className="mb-4"
             >

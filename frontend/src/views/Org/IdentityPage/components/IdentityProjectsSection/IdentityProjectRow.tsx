@@ -10,6 +10,7 @@ import { useWorkspace } from "@app/context";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { TabSections } from "@app/views/Org/Types";
 
 type Props = {
   membership: IdentityMembership;
@@ -51,7 +52,7 @@ export const IdentityProjectRow = ({
       key={`identity-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
-          router.push(`/project/${project.id}/members`);
+          router.push(`/project/${project.id}/members?selectedTab=${TabSections.Identities}`);
           return;
         }
 
