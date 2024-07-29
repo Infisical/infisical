@@ -1,15 +1,17 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TWebhooksInsert } from "@app/db/schemas";
+import { SecretKeyEncoding, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
-import { decryptWebhookDetails, getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
+import { getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
 import {
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
@@ -23,6 +25,7 @@ type TWebhookServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
@@ -31,7 +34,8 @@ export const webhookServiceFactory = ({
   webhookDAL,
   projectEnvDAL,
   permissionService,
-  projectDAL
+  projectDAL,
+  kmsService
 }: TWebhookServiceFactoryDep) => {
   const createWebhook = async ({
     actor,
@@ -64,22 +68,23 @@ export const webhookServiceFactory = ({
       type
     };
 
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      projectId,
+      type: KmsDataKey.SecretManager
+    });
     if (webhookSecretKey) {
-      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookSecretKey);
-      insertDoc.encryptedSecretKey = ciphertext;
-      insertDoc.iv = iv;
-      insertDoc.tag = tag;
-      insertDoc.algorithm = algorithm;
-      insertDoc.keyEncoding = encoding;
+      const encryptedSecretKeyWithKms = secretManagerEncryptor({
+        plainText: Buffer.from(webhookSecretKey)
+      }).cipherTextBlob;
+      insertDoc.encryptedSecretKeyWithKms = encryptedSecretKeyWithKms;
     }
 
     if (webhookUrl) {
-      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookUrl);
-      insertDoc.urlCipherText = ciphertext;
-      insertDoc.urlIV = iv;
-      insertDoc.urlTag = tag;
-      insertDoc.algorithm = algorithm;
-      insertDoc.keyEncoding = encoding;
+      const encryptedUrl = secretManagerEncryptor({
+        plainText: Buffer.from(webhookUrl)
+      }).cipherTextBlob;
+
+      insertDoc.encryptedUrl = encryptedUrl;
     }
 
     const webhook = await webhookDAL.create(insertDoc);
@@ -136,9 +141,35 @@ export const webhookServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
     let webhookError: string | undefined;
+    const { decryptor: kmsDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      projectId: project.id,
+      type: KmsDataKey.SecretManager
+    });
+    let webhookUrl = webhook.url;
+    let webhookSecretKey;
+    if (webhook.urlTag && webhook.urlCipherText && webhook.urlIV) {
+      webhookUrl = infisicalSymmetricDecrypt({
+        keyEncoding: webhook.keyEncoding as SecretKeyEncoding,
+        ciphertext: webhook.urlCipherText,
+        iv: webhook.urlIV,
+        tag: webhook.urlTag
+      });
+    } else if (webhook.encryptedUrl) {
+      webhookUrl = kmsDataKeyDecryptor({ cipherTextBlob: webhook.encryptedUrl }).toString();
+    }
+    if (webhook.encryptedSecretKey && webhook.iv && webhook.tag) {
+      webhookSecretKey = infisicalSymmetricDecrypt({
+        keyEncoding: webhook.keyEncoding as SecretKeyEncoding,
+        ciphertext: webhook.encryptedSecretKey,
+        iv: webhook.iv,
+        tag: webhook.tag
+      });
+    } else if (webhook.encryptedSecretKeyWithKms) {
+      webhookSecretKey = kmsDataKeyDecryptor({ cipherTextBlob: webhook.encryptedSecretKeyWithKms }).toString();
+    }
     try {
       await triggerWebhookRequest(
-        webhook,
+        { webhookUrl, webhookSecretKey },
         getWebhookPayload("test", {
           workspaceName: project.name,
           workspaceId: webhook.projectId,
@@ -177,11 +208,25 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
     const webhooks = await webhookDAL.findAllWebhooks(projectId, environment, secretPath);
+    const { decryptor: kmsDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     return webhooks.map((w) => {
-      const { url } = decryptWebhookDetails(w);
+      let decryptedUrl = w.url;
+      if (w.urlTag && w.urlCipherText && w.urlIV) {
+        decryptedUrl = infisicalSymmetricDecrypt({
+          keyEncoding: w.keyEncoding as SecretKeyEncoding,
+          ciphertext: w.urlCipherText,
+          iv: w.urlIV,
+          tag: w.urlTag
+        });
+      } else if (w.encryptedUrl) {
+        decryptedUrl = kmsDataKeyDecryptor({ cipherTextBlob: w.encryptedUrl }).toString();
+      }
       return {
         ...w,
-        url
+        url: decryptedUrl
       };
     });
   };

@@ -676,7 +676,8 @@ export const registerRoutes = async (
     permissionService,
     webhookDAL,
     projectEnvDAL,
-    projectDAL
+    projectDAL,
+    kmsService
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
@@ -723,7 +724,8 @@ export const registerRoutes = async (
     integrationAuthDAL,
     snapshotDAL,
     snapshotSecretV2BridgeDAL,
-    secretApprovalRequestDAL
+    secretApprovalRequestDAL,
+    dynamicSecretDAL
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,
@@ -982,7 +984,9 @@ export const registerRoutes = async (
     queueService,
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
-    dynamicSecretDAL
+    dynamicSecretDAL,
+    kmsService,
+    folderDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     projectDAL,
@@ -992,7 +996,8 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     folderDAL,
     permissionService,
-    licenseService
+    licenseService,
+    kmsService
   });
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
@@ -1002,7 +1007,8 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
     folderDAL,
-    licenseService
+    licenseService,
+    kmsService
   });
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,

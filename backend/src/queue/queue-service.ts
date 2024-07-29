@@ -216,6 +216,7 @@ export const queueServiceFactory = (redisUrl: string) => {
     const job = await q.getJob(jobId);
     if (!job) return true;
     if (!job.repeatJobKey) return true;
+    await job.remove();
     return q.removeRepeatableByKey(job.repeatJobKey);
   };
 

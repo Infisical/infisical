@@ -3,12 +3,14 @@ import crypto from "node:crypto";
 import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
-import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
+import { SecretKeyEncoding } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
@@ -16,40 +18,12 @@ import { WebhookType } from "./webhook-types";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 
-export const decryptWebhookDetails = (webhook: TWebhooks) => {
-  const { keyEncoding, iv, encryptedSecretKey, tag, urlCipherText, urlIV, urlTag, url } = webhook;
-
-  let decryptedSecretKey = "";
-  let decryptedUrl = url;
-
-  if (encryptedSecretKey) {
-    decryptedSecretKey = infisicalSymmetricDecrypt({
-      keyEncoding: keyEncoding as SecretKeyEncoding,
-      ciphertext: encryptedSecretKey,
-      iv: iv as string,
-      tag: tag as string
-    });
-  }
-
-  if (urlCipherText) {
-    decryptedUrl = infisicalSymmetricDecrypt({
-      keyEncoding: keyEncoding as SecretKeyEncoding,
-      ciphertext: urlCipherText,
-      iv: urlIV as string,
-      tag: urlTag as string
-    });
-  }
-
-  return {
-    secretKey: decryptedSecretKey,
-    url: decryptedUrl
-  };
-};
-
-export const triggerWebhookRequest = async (webhook: TWebhooks, data: Record<string, unknown>) => {
+export const triggerWebhookRequest = async (
+  { webhookSecretKey: secretKey, webhookUrl: url }: { webhookSecretKey?: string; webhookUrl: string },
+  data: Record<string, unknown>
+) => {
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
-  const { secretKey, url } = decryptWebhookDetails(webhook);
 
   if (secretKey) {
     const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
@@ -124,6 +98,7 @@ export type TFnTriggerWebhookDTO = {
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 // this is reusable function
@@ -134,7 +109,8 @@ export const fnTriggerWebhook = async ({
   projectId,
   webhookDAL,
   projectEnvDAL,
-  projectDAL
+  projectDAL,
+  kmsService
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(
@@ -144,10 +120,38 @@ export const fnTriggerWebhook = async ({
   if (!toBeTriggeredHooks.length) return;
   logger.info("Secret webhook job started", { environment, secretPath, projectId });
   const project = await projectDAL.findById(projectId);
+  const { decryptor: kmsDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+    projectId,
+    type: KmsDataKey.SecretManager
+  });
+
   const webhooksTriggered = await Promise.allSettled(
-    toBeTriggeredHooks.map((hook) =>
-      triggerWebhookRequest(
-        hook,
+    toBeTriggeredHooks.map((hook) => {
+      let webhookUrl = hook.url;
+      let webhookSecretKey;
+      if (hook.urlTag && hook.urlCipherText && hook.urlIV) {
+        webhookUrl = infisicalSymmetricDecrypt({
+          keyEncoding: hook.keyEncoding as SecretKeyEncoding,
+          ciphertext: hook.urlCipherText,
+          iv: hook.urlIV,
+          tag: hook.urlTag
+        });
+      } else if (hook.encryptedUrl) {
+        webhookUrl = kmsDataKeyDecryptor({ cipherTextBlob: hook.encryptedUrl }).toString();
+      }
+      if (hook.encryptedSecretKey && hook.iv && hook.tag) {
+        webhookSecretKey = infisicalSymmetricDecrypt({
+          keyEncoding: hook.keyEncoding as SecretKeyEncoding,
+          ciphertext: hook.encryptedSecretKey,
+          iv: hook.iv,
+          tag: hook.tag
+        });
+      } else if (hook.encryptedSecretKeyWithKms) {
+        webhookSecretKey = kmsDataKeyDecryptor({ cipherTextBlob: hook.encryptedSecretKeyWithKms }).toString();
+      }
+
+      return triggerWebhookRequest(
+        { webhookUrl, webhookSecretKey },
         getWebhookPayload("secrets.modified", {
           workspaceName: project.name,
           workspaceId: projectId,
@@ -155,8 +159,8 @@ export const fnTriggerWebhook = async ({
           secretPath,
           type: hook.type
         })
-      )
-    )
+      );
+    })
   );
 
   // filter hooks by status

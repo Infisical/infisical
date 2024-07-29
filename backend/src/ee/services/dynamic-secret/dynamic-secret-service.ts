@@ -4,8 +4,10 @@ import { SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -34,6 +36,7 @@ type TDynamicSecretServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TDynamicSecretServiceFactory = ReturnType<typeof dynamicSecretServiceFactory>;
@@ -46,7 +49,8 @@ export const dynamicSecretServiceFactory = ({
   dynamicSecretProviders,
   permissionService,
   dynamicSecretQueueService,
-  projectDAL
+  projectDAL,
+  kmsService
 }: TDynamicSecretServiceFactoryDep) => {
   const create = async ({
     path,
@@ -96,16 +100,16 @@ export const dynamicSecretServiceFactory = ({
 
     const isConnected = await selectedProvider.validateConnection(provider.inputs);
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
-    const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(inputs));
+    const encryptedConfig = secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(inputs)) }).cipherTextBlob;
     const dynamicSecretCfg = await dynamicSecretDAL.create({
       type: provider.type,
       version: 1,
-      inputIV: encryptedInput.iv,
-      inputTag: encryptedInput.tag,
-      inputCiphertext: encryptedInput.ciphertext,
-      algorithm: encryptedInput.algorithm,
-      keyEncoding: encryptedInput.encoding,
+      encryptedConfig,
       maxTTL,
       defaultTTL,
       folderId: folder.id,
@@ -164,28 +168,51 @@ export const dynamicSecretServiceFactory = ({
         throw new BadRequestError({ message: "Provided dynamic secret already exist under the folder" });
     }
 
+    let dynamicSecretInputConfig = "";
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    if (
+      dynamicSecretCfg.keyEncoding &&
+      dynamicSecretCfg.inputCiphertext &&
+      dynamicSecretCfg.inputTag &&
+      dynamicSecretCfg.inputIV
+    ) {
+      dynamicSecretInputConfig = infisicalSymmetricDecrypt({
         keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
         ciphertext: dynamicSecretCfg.inputCiphertext,
         tag: dynamicSecretCfg.inputTag,
         iv: dynamicSecretCfg.inputIV
-      })
-    ) as object;
+      });
+    } else if (dynamicSecretCfg.encryptedConfig) {
+      dynamicSecretInputConfig = secretManagerDecryptor({
+        cipherTextBlob: dynamicSecretCfg.encryptedConfig
+      }).toString();
+    } else {
+      throw new BadRequestError({ message: "Missing secret input config" });
+    }
+
+    const decryptedStoredInput = JSON.parse(dynamicSecretInputConfig) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
     const updatedInput = await selectedProvider.validateProviderInputs(newInput);
 
     const isConnected = await selectedProvider.validateConnection(newInput);
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
-    const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(updatedInput));
+    const encryptedConfig = secretManagerEncryptor({
+      plainText: Buffer.from(JSON.stringify(updatedInput))
+    }).cipherTextBlob;
+
     const updatedDynamicCfg = await dynamicSecretDAL.updateById(dynamicSecretCfg.id, {
-      inputIV: encryptedInput.iv,
-      inputTag: encryptedInput.tag,
-      inputCiphertext: encryptedInput.ciphertext,
-      algorithm: encryptedInput.algorithm,
-      keyEncoding: encryptedInput.encoding,
+      encryptedConfig,
+      inputIV: null,
+      inputTag: null,
+      keyEncoding: null,
+      algorithm: null,
+      inputCiphertext: null,
       maxTTL,
       defaultTTL,
       name: newName ?? name,
@@ -286,14 +313,33 @@ export const dynamicSecretServiceFactory = ({
 
     const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
-    const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    let dynamicSecretInputConfig = "";
+    if (
+      dynamicSecretCfg.keyEncoding &&
+      dynamicSecretCfg.inputCiphertext &&
+      dynamicSecretCfg.inputTag &&
+      dynamicSecretCfg.inputIV
+    ) {
+      dynamicSecretInputConfig = infisicalSymmetricDecrypt({
         keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
         ciphertext: dynamicSecretCfg.inputCiphertext,
         tag: dynamicSecretCfg.inputTag,
         iv: dynamicSecretCfg.inputIV
-      })
-    ) as object;
+      });
+    } else if (dynamicSecretCfg.encryptedConfig) {
+      dynamicSecretInputConfig = secretManagerDecryptor({
+        cipherTextBlob: dynamicSecretCfg.encryptedConfig
+      }).toString();
+    } else {
+      throw new BadRequestError({ message: "Missing secret input config" });
+    }
+
+    const decryptedStoredInput = JSON.parse(dynamicSecretInputConfig) as object;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput)) as object;
     return { ...dynamicSecretCfg, inputs: providerInputs };
