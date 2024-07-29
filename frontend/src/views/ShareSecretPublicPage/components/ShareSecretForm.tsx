@@ -220,8 +220,8 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
     </form>
   ) : (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <h2>Secret Link</h2>
+      <div className="mr-2 flex items-center justify-end rounded-md bg-white/[0.05] p-2 text-base text-gray-400">
+        <p className="mr-4 break-all">{secretLink}</p>
         <IconButton
           ariaLabel="copy icon"
           colorSchema="secondary"
@@ -233,9 +233,6 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         >
           <FontAwesomeIcon icon={isCopyingSecret ? faCheck : faCopy} />
         </IconButton>
-      </div>
-      <div className="mr-2 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-        <p className="mr-4 break-all">{secretLink}</p>
       </div>
       <Button
         className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"

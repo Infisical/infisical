@@ -43,8 +43,10 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h2>Shared Secret</h2>
+      <div className="flex items-center justify-between rounded-md bg-white/[0.05] p-2 text-base text-gray-400">
+        <p className="whitespace-pre-wrap break-all">
+          {isVisible ? decryptedSecret : hiddenSecret}
+        </p>
         <div className="flex">
           <IconButton
             ariaLabel="copy icon"
@@ -66,11 +68,6 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
             <FontAwesomeIcon icon={isVisible ? faEyeSlash : faEye} />
           </IconButton>
         </div>
-      </div>
-      <div className="flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-        <p className="whitespace-pre-wrap break-all">
-          {isVisible ? decryptedSecret : hiddenSecret}
-        </p>
       </div>
       <Button
         className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
