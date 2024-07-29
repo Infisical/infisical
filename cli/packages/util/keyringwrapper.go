@@ -1,17 +1,10 @@
 package util
 
 import (
-	"strings"
-
-	"github.com/fatih/color"
 	"github.com/zalando/go-keyring"
 )
 
 const MAIN_KEYRING_SERVICE = "infisical-cli"
-
-func keyringNotConfigured(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "was not provided by any .service files")
-}
 
 type TimeoutError struct {
 	message string
@@ -29,11 +22,9 @@ func SetValueInKeyring(key, value string) error {
 
 	err = keyring.Set(currentVaultBackend, MAIN_KEYRING_SERVICE, key, value)
 
-	if err == keyring.ErrUnsupportedPlatform || keyringNotConfigured(err) {
-		boldYellow := color.New(color.FgYellow).Add(color.Bold)
-		boldYellow.Printf("Warning: Fallback file keyring is being used\n\n")
-		boldYellow.Printf("You can persist your file passphrase by running the following command:\n")
-		boldYellow.Printf("infisical vault set file passphrase <your-passphrase>\n\n")
+	if err != nil {
+
+		PrintWarning("Fallback file keyring is being used\n\nYou can persist your file passphrase by running the following command:\ninfisical vault set file passphrase <your-passphrase>\n")
 		err = keyring.Set(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key, value)
 	}
 
@@ -48,7 +39,7 @@ func GetValueInKeyring(key string) (string, error) {
 
 	value, err := keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 
-	if err == keyring.ErrUnsupportedPlatform || keyringNotConfigured(err) {
+	if err != nil {
 		value, err = keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 	}
 	return value, err
@@ -63,7 +54,7 @@ func DeleteValueInKeyring(key string) error {
 
 	err = keyring.Delete(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 
-	if err == keyring.ErrUnsupportedPlatform || keyringNotConfigured(err) {
+	if err != nil {
 		err = keyring.Delete(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 	}
 
