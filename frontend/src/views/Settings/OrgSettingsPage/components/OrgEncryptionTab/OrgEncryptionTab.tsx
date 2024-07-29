@@ -94,7 +94,7 @@ export const OrgEncryptionTab = withPermission(
           </OrgPermissionCan>
         </div>
         <p className="mb-4 text-gray-400">
-          Integrate with external KMS for encrypting your organization&apos;s data
+          Encrypt your organization&apos;s data with external KMS.
         </p>
         <TableContainer>
           <Table>
