@@ -7,9 +7,9 @@ import { ShareSecretForm } from "./components";
 
 export const ShareSecretPublicPage = () => {
   return (
-    <div className="flex h-screen flex-col justify-between bg-gradient-to-tr from-mineshaft-700 to-bunker-800 px-4 text-gray-200 dark:[color-scheme:dark]">
+    <div className="flex h-screen flex-col justify-between bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
       <div />
-      <div className="mx-auto w-full max-w-xl">
+      <div className="mx-auto w-full max-w-xl px-4">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center pt-8">
             <Link href="https://infisical.com">
@@ -22,7 +22,7 @@ export const ShareSecretPublicPage = () => {
               />
             </Link>
           </div>
-          <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text px-4 text-center text-4xl font-medium text-transparent">
+          <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
             Share a secret
           </h1>
           <p className="text-md">
