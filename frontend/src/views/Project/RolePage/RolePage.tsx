@@ -21,6 +21,7 @@ import { useDeleteProjectRole,useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
+import { TabSections } from '../Types';
 
 export const RolePage = withProjectPermission(
   () => {
@@ -52,7 +53,7 @@ export const RolePage = withProjectPermission(
           type: "success"
         });
         handlePopUpClose("deleteRole");
-        router.push(`/project/${projectId}/members`);
+        router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -75,7 +76,7 @@ export const RolePage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => router.push(`/project/${projectId}/members`)}
+              onClick={() => router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`)}
               className="mb-4"
             >
               Roles
