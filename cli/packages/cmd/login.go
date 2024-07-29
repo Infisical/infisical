@@ -728,8 +728,6 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 
 	infisicalPastedToken := strings.TrimSpace(string(bytePassword))
 
-	fmt.Printf("\n\nToken 1: %s\n", infisicalPastedToken)
-
 	userCredentials, err := decodePastedBase64Token(infisicalPastedToken)
 	if err != nil {
 		failure <- err
@@ -744,8 +742,6 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 
 	isAuthenticated := api.CallIsAuthenticated(httpClient)
 	if !isAuthenticated {
-		fmt.Printf("\n\nToken 2: %s\n", infisicalPastedToken)
-
 		fmt.Println("Invalid user credentials provided", err)
 		failure <- err
 		os.Exit(1)
