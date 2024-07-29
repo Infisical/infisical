@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/manifoldco/promptui"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -23,7 +22,7 @@ type VaultBackendType struct {
 var AvailableVaults = []VaultBackendType{
 	{
 		Name:        "auto",
-		Description: "automatically select native vault on system",
+		Description: "automatically select the system keyring",
 	},
 	{
 		Name:        "file",
@@ -32,52 +31,26 @@ var AvailableVaults = []VaultBackendType{
 }
 
 var vaultSetCmd = &cobra.Command{
-	Example:               `infisical vault set [file|auto] [option]`,
+	Example:               `infisical vault set [file|auto]`,
 	Use:                   "set [file|auto] [option]",
-	Short:                 "Used to set the type of vault backend to store your login details securely at rest",
-	Long:                  "Used to set the type of vault backend to store your login details securely at rest",
+	Short:                 "Used to set the type of vault backend to store sensitive data securely at rest",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
-		if len(args) >= 2 {
-			vaultType := args[0]
-			option := args[1]
+		vaultType := args[0]
 
-			// Todo, add more vault types / configurations
-			if vaultType != util.VAULT_BACKEND_FILE_MODE {
-				log.Error().Msgf("No configuration options are available for vault type [%s]\n", vaultType)
-				return
-			}
+		passphrase, err := cmd.Flags().GetString("passphrase")
+		if err != nil {
+			util.HandleError(err, "Unable to get passphrase flag")
+		}
 
-			switch option {
-			case "passphrase":
-				{
-
-					passphrasePrompt := promptui.Prompt{
-						Label: "File vault passphrase",
-					}
-
-					passphrase, err := passphrasePrompt.Run()
-					if err != nil {
-						log.Error().Msgf("Unable to set passphrase for file vault because of [err=%s]", err)
-						return
-					}
-
-					if passphrase == "" || len(passphrase) < 8 {
-						log.Error().Msgf("Passphrase must be at least 8 characters long")
-						return
-					}
-					setFileVaultPassphrase(passphrase)
-				}
-			default:
-				log.Error().Msgf("Unknown option [%s] for vault set command", option)
-			}
-
+		if vaultType == util.VAULT_BACKEND_FILE_MODE && passphrase != "" {
+			setFileVaultPassphrase(passphrase)
 			return
 		}
 
-		fmt.Printf("Warning: This command has been deprecated. Please use 'infisical vault use [file|auto]' to select which vault to use.\n")
+		util.PrintWarning("This command has been deprecated. Please use 'infisical vault use [file|auto]' to select which vault to use.\n")
 		selectVaultTypeCmd(cmd, args)
 	},
 }
@@ -110,7 +83,7 @@ func setFileVaultPassphrase(passphrase string) {
 	}
 
 	if configFile.VaultBackendType != "file" {
-		log.Error().Msgf("You are not using file vault to store your login details. You can only set passphrase for file vault")
+		log.Error().Msgf("You are not using file vault to store your login details. You can only set passphrase for file vault. Use 'infisical vault use file' to switch to file vault")
 		return
 	}
 
@@ -185,6 +158,9 @@ func selectVaultTypeCmd(cmd *cobra.Command, args []string) {
 }
 
 func init() {
+
+	vaultSetCmd.Flags().StringP("passphrase", "p", "", "Set the passphrase for the file vault")
+
 	vaultCmd.AddCommand(vaultSetCmd)
 	vaultCmd.AddCommand(vaultUseCmd)
 
