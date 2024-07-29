@@ -1,9 +1,7 @@
 export enum TabSections {
   Member = "members",
   Roles = "roles",
-  Groups = "groups",
-  Identities = "identities",
-  ServiceTokens = "service-tokens"
+  Identities = "identities"
 }
 
 export const isTabSection = (value: string): value is TabSections => {
