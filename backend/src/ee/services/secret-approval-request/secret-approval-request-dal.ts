@@ -491,7 +491,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
   const deleteByProjectId = async (projectId: string, tx?: Knex) => {
     try {
-      const query = await (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+      const query = await (tx || db)(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where({ projectId })
