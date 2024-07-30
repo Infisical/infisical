@@ -1,7 +1,4 @@
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { DisableRotationErrors } from "@app/ee/services/secret-rotation/secret-rotation-queue";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -94,27 +91,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           projectId
         });
 
-        let dynamicSecretInputConfig = "";
-        if (
-          dynamicSecretCfg.keyEncoding &&
-          dynamicSecretCfg.inputCiphertext &&
-          dynamicSecretCfg.inputTag &&
-          dynamicSecretCfg.inputIV
-        ) {
-          dynamicSecretInputConfig = infisicalSymmetricDecrypt({
-            keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-            ciphertext: dynamicSecretCfg.inputCiphertext,
-            tag: dynamicSecretCfg.inputTag,
-            iv: dynamicSecretCfg.inputIV
-          });
-        } else if (dynamicSecretCfg.encryptedConfig) {
-          dynamicSecretInputConfig = secretManagerDecryptor({
-            cipherTextBlob: dynamicSecretCfg.encryptedConfig
-          }).toString();
-        } else {
-          throw new BadRequestError({ message: "Missing secret input config" });
-        }
-
+        const dynamicSecretInputConfig = secretManagerDecryptor({
+          cipherTextBlob: dynamicSecretCfg.encryptedConfig
+        }).toString();
         const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
         const decryptedStoredInput = JSON.parse(dynamicSecretInputConfig) as object;
 
@@ -142,27 +121,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         const dynamicSecretLeases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfgId });
         if (dynamicSecretLeases.length) {
           const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-          let dynamicSecretInputConfig = "";
 
-          if (
-            dynamicSecretCfg.keyEncoding &&
-            dynamicSecretCfg.inputCiphertext &&
-            dynamicSecretCfg.inputTag &&
-            dynamicSecretCfg.inputIV
-          ) {
-            dynamicSecretInputConfig = infisicalSymmetricDecrypt({
-              keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-              ciphertext: dynamicSecretCfg.inputCiphertext,
-              tag: dynamicSecretCfg.inputTag,
-              iv: dynamicSecretCfg.inputIV
-            });
-          } else if (dynamicSecretCfg.encryptedConfig) {
-            dynamicSecretInputConfig = secretManagerDecryptor({
-              cipherTextBlob: dynamicSecretCfg.encryptedConfig
-            }).toString();
-          } else {
-            throw new BadRequestError({ message: "Missing secret input config" });
-          }
+          const dynamicSecretInputConfig = secretManagerDecryptor({
+            cipherTextBlob: dynamicSecretCfg.encryptedConfig
+          }).toString();
           const decryptedStoredInput = JSON.parse(dynamicSecretInputConfig) as object;
 
           await Promise.all(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));

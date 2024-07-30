@@ -791,10 +791,19 @@ export const snapshotDALFactory = (db: TDbClient) => {
 
   const deleteSnapshotsAboveLimit = async (folderId: string, n = 15, tx?: Knex) => {
     try {
-      const query = await (tx || db.replicaNode())(TableName.Snapshot)
-        .orderBy(`${TableName.Snapshot}.createdAt`, "desc")
-        .where(`${TableName.Snapshot}.folderId`, folderId)
-        .offset(n)
+      const query = await (tx || db)
+        .with("to_delete", (qb) => {
+          void qb
+            .select("id")
+            .from(TableName.Snapshot)
+            .where("folderId", folderId)
+            .orderBy("createdAt", "desc")
+            .offset(n);
+        })
+        .from(TableName.Snapshot)
+        .whereIn("id", (qb) => {
+          void qb.select("id").from("to_delete");
+        })
         .delete();
       return query;
     } catch (error) {

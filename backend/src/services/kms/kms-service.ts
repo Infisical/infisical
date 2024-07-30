@@ -575,6 +575,7 @@ export const kmsServiceFactory = ({
 
   // by keeping the decrypted data key in inner scope
   // none of the entities outside can interact directly or expose the data key
+  // NOTICE: If changing here update migrations/utils/kms
   const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO) => {
     const dataKey = await $getDataKey(encryptionContext);
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
@@ -753,6 +754,7 @@ export const kmsServiceFactory = ({
     return { id, slug, orgId, isExternal };
   };
 
+  // akhilmhdh: a copy of this is made in migrations/utils/kms
   const startService = async () => {
     const appCfg = getConfig();
     // This will switch to a seal process and HMS flow in future

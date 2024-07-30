@@ -8,25 +8,24 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
-export const sanitizedWebhookSchema = WebhooksSchema.omit({
-  encryptedSecretKey: true,
-  iv: true,
-  tag: true,
-  algorithm: true,
-  keyEncoding: true,
-  urlCipherText: true,
-  urlIV: true,
-  urlTag: true
-}).merge(
-  z.object({
-    projectId: z.string(),
-    environment: z.object({
-      id: z.string(),
-      name: z.string(),
-      slug: z.string()
-    })
+export const sanitizedWebhookSchema = WebhooksSchema.pick({
+  id: true,
+  secretPath: true,
+  lastStatus: true,
+  lastRunErrorMessage: true,
+  isDisabled: true,
+  createdAt: true,
+  updatedAt: true,
+  envId: true,
+  type: true
+}).extend({
+  projectId: z.string(),
+  environment: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string()
   })
-);
+});
 
 export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -228,7 +227,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          webhooks: sanitizedWebhookSchema.array()
+          webhooks: sanitizedWebhookSchema.extend({ url: z.string() }).array()
         })
       }
     },

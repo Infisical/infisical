@@ -3,9 +3,7 @@ import crypto from "node:crypto";
 import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -127,28 +125,10 @@ export const fnTriggerWebhook = async ({
 
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) => {
-      let webhookUrl = hook.url;
-      let webhookSecretKey;
-      if (hook.urlTag && hook.urlCipherText && hook.urlIV) {
-        webhookUrl = infisicalSymmetricDecrypt({
-          keyEncoding: hook.keyEncoding as SecretKeyEncoding,
-          ciphertext: hook.urlCipherText,
-          iv: hook.urlIV,
-          tag: hook.urlTag
-        });
-      } else if (hook.encryptedUrl) {
-        webhookUrl = kmsDataKeyDecryptor({ cipherTextBlob: hook.encryptedUrl }).toString();
-      }
-      if (hook.encryptedSecretKey && hook.iv && hook.tag) {
-        webhookSecretKey = infisicalSymmetricDecrypt({
-          keyEncoding: hook.keyEncoding as SecretKeyEncoding,
-          ciphertext: hook.encryptedSecretKey,
-          iv: hook.iv,
-          tag: hook.tag
-        });
-      } else if (hook.encryptedSecretKeyWithKms) {
-        webhookSecretKey = kmsDataKeyDecryptor({ cipherTextBlob: hook.encryptedSecretKeyWithKms }).toString();
-      }
+      const webhookUrl = kmsDataKeyDecryptor({ cipherTextBlob: hook.encryptedUrl }).toString();
+      const webhookSecretKey = hook.encryptedSecretKeyWithKms
+        ? kmsDataKeyDecryptor({ cipherTextBlob: hook.encryptedSecretKeyWithKms }).toString()
+        : undefined;
 
       return triggerWebhookRequest(
         { webhookUrl, webhookSecretKey },

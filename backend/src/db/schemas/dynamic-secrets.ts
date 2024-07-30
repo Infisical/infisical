@@ -16,17 +16,12 @@ export const DynamicSecretsSchema = z.object({
   type: z.string(),
   defaultTTL: z.string(),
   maxTTL: z.string().nullable().optional(),
-  inputIV: z.string().nullable().optional(),
-  inputCiphertext: z.string().nullable().optional(),
-  inputTag: z.string().nullable().optional(),
-  algorithm: z.string().default("aes-256-gcm").nullable().optional(),
-  keyEncoding: z.string().default("utf8").nullable().optional(),
   folderId: z.string().uuid(),
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  encryptedConfig: zodBuffer.nullable().optional()
+  encryptedConfig: zodBuffer
 });
 
 export type TDynamicSecrets = z.infer<typeof DynamicSecretsSchema>;

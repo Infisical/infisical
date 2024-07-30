@@ -725,8 +725,7 @@ export const registerRoutes = async (
     integrationAuthDAL,
     snapshotDAL,
     snapshotSecretV2BridgeDAL,
-    secretApprovalRequestDAL,
-    dynamicSecretDAL
+    secretApprovalRequestDAL
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,

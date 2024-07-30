@@ -1,9 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretKeyEncoding, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -60,34 +58,28 @@ export const webhookServiceFactory = ({
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Env not found" });
 
-    const insertDoc: TWebhooksInsert = {
-      url: "", // deprecated - we are moving away from plaintext URLs
-      envId: env.id,
-      isDisabled: false,
-      secretPath: secretPath || "/",
-      type
-    };
-
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       projectId,
       type: KmsDataKey.SecretManager
     });
-    if (webhookSecretKey) {
-      const encryptedSecretKeyWithKms = secretManagerEncryptor({
-        plainText: Buffer.from(webhookSecretKey)
-      }).cipherTextBlob;
-      insertDoc.encryptedSecretKeyWithKms = encryptedSecretKeyWithKms;
-    }
 
-    if (webhookUrl) {
-      const encryptedUrl = secretManagerEncryptor({
-        plainText: Buffer.from(webhookUrl)
-      }).cipherTextBlob;
+    const encryptedSecretKeyWithKms = webhookSecretKey
+      ? secretManagerEncryptor({
+          plainText: Buffer.from(webhookSecretKey)
+        }).cipherTextBlob
+      : null;
+    const encryptedUrl = secretManagerEncryptor({
+      plainText: Buffer.from(webhookUrl)
+    }).cipherTextBlob;
 
-      insertDoc.encryptedUrl = encryptedUrl;
-    }
-
-    const webhook = await webhookDAL.create(insertDoc);
+    const webhook = await webhookDAL.create({
+      encryptedUrl,
+      encryptedSecretKeyWithKms,
+      envId: env.id,
+      isDisabled: false,
+      secretPath: secretPath || "/",
+      type
+    });
     return { ...webhook, projectId, environment: env };
   };
 
@@ -145,28 +137,11 @@ export const webhookServiceFactory = ({
       projectId: project.id,
       type: KmsDataKey.SecretManager
     });
-    let webhookUrl = webhook.url;
-    let webhookSecretKey;
-    if (webhook.urlTag && webhook.urlCipherText && webhook.urlIV) {
-      webhookUrl = infisicalSymmetricDecrypt({
-        keyEncoding: webhook.keyEncoding as SecretKeyEncoding,
-        ciphertext: webhook.urlCipherText,
-        iv: webhook.urlIV,
-        tag: webhook.urlTag
-      });
-    } else if (webhook.encryptedUrl) {
-      webhookUrl = kmsDataKeyDecryptor({ cipherTextBlob: webhook.encryptedUrl }).toString();
-    }
-    if (webhook.encryptedSecretKey && webhook.iv && webhook.tag) {
-      webhookSecretKey = infisicalSymmetricDecrypt({
-        keyEncoding: webhook.keyEncoding as SecretKeyEncoding,
-        ciphertext: webhook.encryptedSecretKey,
-        iv: webhook.iv,
-        tag: webhook.tag
-      });
-    } else if (webhook.encryptedSecretKeyWithKms) {
-      webhookSecretKey = kmsDataKeyDecryptor({ cipherTextBlob: webhook.encryptedSecretKeyWithKms }).toString();
-    }
+    const webhookUrl = kmsDataKeyDecryptor({ cipherTextBlob: webhook.encryptedUrl }).toString();
+    const webhookSecretKey = webhook.encryptedSecretKeyWithKms
+      ? kmsDataKeyDecryptor({ cipherTextBlob: webhook.encryptedSecretKeyWithKms }).toString()
+      : undefined;
+
     try {
       await triggerWebhookRequest(
         { webhookUrl, webhookSecretKey },
@@ -213,17 +188,7 @@ export const webhookServiceFactory = ({
       projectId
     });
     return webhooks.map((w) => {
-      let decryptedUrl = w.url;
-      if (w.urlTag && w.urlCipherText && w.urlIV) {
-        decryptedUrl = infisicalSymmetricDecrypt({
-          keyEncoding: w.keyEncoding as SecretKeyEncoding,
-          ciphertext: w.urlCipherText,
-          iv: w.urlIV,
-          tag: w.urlTag
-        });
-      } else if (w.encryptedUrl) {
-        decryptedUrl = kmsDataKeyDecryptor({ cipherTextBlob: w.encryptedUrl }).toString();
-      }
+      const decryptedUrl = kmsDataKeyDecryptor({ cipherTextBlob: w.encryptedUrl }).toString();
       return {
         ...w,
         url: decryptedUrl
