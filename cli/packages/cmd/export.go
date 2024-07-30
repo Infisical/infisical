@@ -12,7 +12,6 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -234,7 +233,7 @@ func formatAsYaml(envs []models.SingleEnvironmentVariable) (string, error) {
 
 	yamlBytes, err := yaml.Marshal(m)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to format env variables as yaml")
+		return "", fmt.Errorf("failed to format environment variables as YAML: %w", err)
 	}
 
 	return string(yamlBytes), nil
