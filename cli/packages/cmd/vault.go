@@ -31,9 +31,9 @@ var AvailableVaults = []VaultBackendType{
 }
 
 var vaultSetCmd = &cobra.Command{
-	Example:               `infisical vault set [file|auto]`,
-	Use:                   "set [file|auto] [option]",
-	Short:                 "Used to set the type of vault backend to store sensitive data securely at rest",
+	Example:               `infisical vault set file --passphrase <your-passphrase>`,
+	Use:                   "set [file|auto] [flags]",
+	Short:                 "Used to configure the vault backends",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -58,7 +58,7 @@ var vaultSetCmd = &cobra.Command{
 var vaultUseCmd = &cobra.Command{
 	Example:               `infisical vault use [file|auto]`,
 	Use:                   "use [file|auto]",
-	Short:                 "Used to set the type of vault backend to store your login details securely at rest",
+	Short:                 "Used to select the the type of vault backend to store sensitive data securely at rest",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
 	Run:                   selectVaultTypeCmd,
