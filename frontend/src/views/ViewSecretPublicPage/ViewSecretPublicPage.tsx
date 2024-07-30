@@ -91,11 +91,10 @@ export const ViewSecretPublicPage = () => {
       </div>
       <div className="w-full bg-mineshaft-600 p-2">
         <p className="text-center text-sm text-mineshaft-300">
-          © 2024{" "}
+          Made with ❤️ by{" "}
           <a className="text-primary" href="https://infisical.com">
             Infisical
           </a>
-          . All rights reserved.
           <br />
           156 2nd st, 3rd Floor, San Francisco, California, 94105, United States. 🇺🇸
         </p>
