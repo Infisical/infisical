@@ -258,6 +258,9 @@
         "copy-service-token": "Copy your service token",
         "copy-service-token-description": "Once you close this popup, you will never see your service token again"
       }
+    },
+    "glob-tool": {
+      "title": "Secrets (glob tool)"
     }
   },
   "settings": {
