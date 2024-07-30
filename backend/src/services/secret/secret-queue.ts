@@ -1115,66 +1115,6 @@ export const secretQueueFactory = ({
        * Thus doesn't make sense for rest to be there
        * */
       await secretApprovalRequestDAL.deleteByProjectId(projectId, tx);
-      // const projectV1ApprovalSecrets = await secretApprovalRequestSecretDAL.findByProjectId(projectId);
-      // if (projectV1ApprovalSecrets.length) {
-      //   await secretApprovalRequestSecretDAL.insertV2Bridge(
-      //     projectV1ApprovalSecrets.map((el) => {
-      //       const key = decryptSymmetric128BitHexKeyUTF8({
-      //         ciphertext: el.secretKeyCiphertext,
-      //         iv: el.secretKeyIV,
-      //         tag: el.secretKeyTag,
-      //         key: botKey
-      //       });
-      //       const value = decryptSymmetric128BitHexKeyUTF8({
-      //         ciphertext: el.secretValueCiphertext,
-      //         iv: el.secretValueIV,
-      //         tag: el.secretValueTag,
-      //         key: botKey
-      //       });
-      //       const comment =
-      //         el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-      //           ? decryptSymmetric128BitHexKeyUTF8({
-      //               ciphertext: el.secretCommentCiphertext,
-      //               iv: el.secretCommentIV,
-      //               tag: el.secretCommentTag,
-      //               key: botKey
-      //             })
-      //           : "";
-      //       const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
-      //       const encryptedComment = comment
-      //         ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
-      //         : null;
-      //       return {
-      //         id: el.id,
-      //         createdAt: el.createdAt,
-      //         updatedAt: el.updatedAt,
-      //         skipMultilineEncoding: el.skipMultilineEncoding,
-      //         encryptedComment,
-      //         encryptedValue,
-      //         key,
-      //         version: el.version,
-      //         metadata: el.metadata,
-      //         reminderNote: el.secretReminderNote,
-      //         reminderRepeatDays: el.secretReminderRepeatDays,
-      //         requestId: el.requestId,
-      //         op: el.op,
-      //         secretId: el.secretId,
-      //         secretVersion: el.secretVersion
-      //       };
-      //     }),
-      //     tx
-      //   );
-      // }
-      // const projectV1SecretApprovalSecretTags = projectV1ApprovalSecrets.flatMap((el) =>
-      //   el.tags.map((tag) => ({
-      //     secretId: tag.secretApprovalTagSecretId,
-      //     tagId: tag.secretApprovalTagId
-      //   }))
-      // );
-      // if (projectV1SecretApprovalSecretTags.length) {
-      //   await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(projectV1SecretApprovalSecretTags, tx);
-      // }
-
       await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
     });
   });

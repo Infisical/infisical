@@ -38,8 +38,6 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
@@ -49,6 +47,8 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -413,10 +413,10 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalRequest.policy.approvers.filter(
         ({ userId: approverId }) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
       ).length;
-      const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
+    const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
 
-      if (!hasMinApproval && !isSoftEnforcement)
-        throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
+    if (!hasMinApproval && !isSoftEnforcement)
+      throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     let mergeStatus;

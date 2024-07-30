@@ -422,6 +422,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
+          db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
@@ -447,7 +448,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             id: el.policyId,
             name: el.policyName,
             approvals: el.policyApprovals,
-            secretPath: el.policySecretPath
+            secretPath: el.policySecretPath,
+            enforcementLevel: el.policyEnforcementLevel
           },
           committerUser: {
             userId: el.committerUserId,
