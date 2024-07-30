@@ -1,4 +1,5 @@
-import { useState, useCallback, ChangeEvent } from 'react';
+import { useRouter } from 'next/router';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import picomatch from "picomatch";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -11,6 +12,16 @@ export const GlobTestSection = () => {
   const [path, setPath] = useState<string>('');
   const [glob, setGlob] = useState<string>('');
   const [output, setOutput] = useState<string>('');
+
+  const router = useRouter();
+  const { query } = router;
+  const secretPath = query.secretPath as string;
+
+  useEffect(() => {
+    if (secretPath) {
+      setPath(secretPath)
+    }
+  }, [secretPath]);
 
   const handleCopyPathToClipboard = async (value: string) => {
     if (value) {
@@ -32,11 +43,11 @@ export const GlobTestSection = () => {
     setGlob(e.target.value);
   }, []);
 
-  const validateStrings = useCallback((glob: string, testStrings: string) => {
-    if (!glob || !testStrings) return;
+  const validateStrings = useCallback((path: string, glob: string) => {
+    if (!path || !glob) return;
 
-    const matcher = picomatch(glob, { dot: true });
-    const lines = testStrings.split('\n')
+    const matcher = picomatch(path, { dot: true });
+    const lines = glob.split('\n')
 
     const output = lines.map(line => {
       const isMatch = matcher(line);
