@@ -14,9 +14,11 @@ export type FormLabelProps = {
   icon?: ReactNode;
   className?: string;
   tooltipText?: string;
+  hyperLinkText?: string;
+  hyperLinkPath?: () => void;
 };
 
-export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, tooltipText }: FormLabelProps) => (
+export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, tooltipText, hyperLinkText, hyperLinkPath }: FormLabelProps) => (
   <Label.Root
     className={twMerge(
       "mb-0.5 ml-1 flex items-center text-sm font-normal text-mineshaft-400",
@@ -24,8 +26,19 @@ export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, t
     )}
     htmlFor={id}
   >
-    {label}
-    {isRequired && <span className="ml-1 text-red">*</span>}
+    <div className="flex gap-1">
+      <span>
+        {label} 
+        {isRequired && <span className="ml-1 text-red">*</span>}
+      </span>
+
+      {hyperLinkText && hyperLinkPath && (
+        <span className="text-primary-500" onClick={hyperLinkPath}>
+          {hyperLinkText}
+        </span>
+      )}
+    </div>
+
     {isOptional && <span className="ml-1 text-gray-500 italic text-xs">- Optional</span>}
     {icon && !tooltipText && (
       <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
@@ -77,6 +90,8 @@ export type FormControlProps = {
   className?: string;
   icon?: ReactNode;
   tooltipText?: string;
+  hyperLinkText?: string,
+  hyperLinkPath: () => void;
 };
 
 export const FormControl = ({
@@ -90,7 +105,9 @@ export const FormControl = ({
   isError,
   icon,
   className,
-  tooltipText
+  tooltipText,
+  hyperLinkText,
+  hyperLinkPath,
 }: FormControlProps): JSX.Element => {
   return (
     <div className={twMerge("mb-4", className)}>
@@ -102,6 +119,8 @@ export const FormControl = ({
           id={id}
           icon={icon}
           tooltipText={tooltipText}
+          hyperLinkText={hyperLinkText}
+          hyperLinkPath={hyperLinkPath}
         />
       ) : (
         label
