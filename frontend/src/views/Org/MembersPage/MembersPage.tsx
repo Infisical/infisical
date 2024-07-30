@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { isTabSection, TabSections } from "@app/views/Org/Types";;
+import { isTabSection, TabSections } from "@app/views/Org/Types";
 
 import { OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
 

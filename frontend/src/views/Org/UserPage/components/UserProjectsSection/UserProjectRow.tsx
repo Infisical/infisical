@@ -9,7 +9,7 @@ import { useWorkspace } from "@app/context";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/views/Org/Types";;
+import { TabSections } from "@app/views/Org/Types";
 
 type Props = {
   membership: TWorkspaceUser;

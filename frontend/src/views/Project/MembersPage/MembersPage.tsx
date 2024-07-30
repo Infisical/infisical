@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
+import { isTabSection,TabSections } from "../Types";
 import { IdentityTab, MembersTab,ProjectRoleListTab, ServiceTokenTab } from "./components";
-import { TabSections, isTabSection } from '../Types';
 
 
 export const MembersPage = withProjectPermission(

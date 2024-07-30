@@ -72,11 +72,11 @@ export const SelectionPanel = ({
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
       return "Do you want to delete the selected secrets and folders across environments?";
-    } else if (selectedKeysCount > 0 && selectedFolderCount === 0) {
-      return "Do you want to delete the selected secrets across environments?";
-    } else {
-      return "Do you want to delete the selected folders across environments?";
     }
+    if (selectedKeysCount > 0) {
+      return "Do you want to delete the selected secrets across environments?";
+    }
+    return "Do you want to delete the selected folders across environments?";
   }
 
   const handleBulkDelete = async () => {
