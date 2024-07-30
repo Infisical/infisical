@@ -15,7 +15,7 @@ export const GlobTestSection = () => {
 
   const router = useRouter();
   const { query } = router;
-  const secretPath = decodeURIComponent(query.secretPath);
+  const secretPath = decodeURIComponent(query.secretPath ?? '');
 
   useEffect(() => {
     if (secretPath) {
