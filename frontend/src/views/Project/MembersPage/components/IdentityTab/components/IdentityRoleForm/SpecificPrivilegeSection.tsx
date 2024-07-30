@@ -1,4 +1,3 @@
-import { useRouter } from 'next/router';
 import { Controller, useForm } from "react-hook-form";
 import {
   faArrowRotateLeft,
@@ -192,11 +191,9 @@ const SpecificPrivilegeSecretForm = ({
     return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
   };
 
-  const router = useRouter();
-
   const navigateToPath = () => {
     const path =  `/glob-tool?secretPath=${encodeURIComponent(secretPath ?? '')}`;
-    router.push(path);
+    window.open(path, '_blank');
   };
 
   return (
