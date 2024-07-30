@@ -9,7 +9,7 @@ export const ShareSecretPublicPage = () => {
   return (
     <div className="flex h-screen flex-col justify-between overflow-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
       <div />
-      <div className="mx-auto w-full max-w-xl p-4">
+      <div className="mx-auto w-full max-w-xl px-4 py-4 md:px-0">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center pt-8">
             <Link href="https://infisical.com">
