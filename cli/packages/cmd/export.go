@@ -12,8 +12,10 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -188,7 +190,7 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 	case FormatCSV:
 		return formatAsCSV(envs), nil
 	case FormatYaml:
-		return formatAsYaml(envs), nil
+		return formatAsYaml(envs)
 	default:
 		return "", fmt.Errorf("invalid format type: %s. Available format types are [%s]", format, []string{FormatDotenv, FormatJson, FormatCSV, FormatYaml, FormatDotEnvExport})
 	}
@@ -224,12 +226,18 @@ func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable) string {
 	return dotenv
 }
 
-func formatAsYaml(envs []models.SingleEnvironmentVariable) string {
-	var dotenv string
+func formatAsYaml(envs []models.SingleEnvironmentVariable) (string, error) {
+	m := make(map[string]string)
 	for _, env := range envs {
-		dotenv += fmt.Sprintf("%s: %s\n", env.Key, env.Value)
+		m[env.Key] = env.Value
 	}
-	return dotenv
+
+	yamlBytes, err := yaml.Marshal(m)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to format env variables as yaml")
+	}
+
+	return string(yamlBytes), nil
 }
 
 // Format environment variables as a JSON file
