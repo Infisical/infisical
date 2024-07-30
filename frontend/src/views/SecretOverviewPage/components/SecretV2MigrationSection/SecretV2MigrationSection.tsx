@@ -47,7 +47,15 @@ export const SecretV2MigrationSection = () => {
 
   const isProjectUpgraded = workspaceDetails?.version === ProjectVersion.V3;
 
+  useEffect(() => {
+    if (isProjectUpgraded && migrateProjectToV3.data) {
+      createNotification({ type: "success", text: "Project upgrade completed successfully" });
+      migrateProjectToV3.reset();
+    }
+  }, [isProjectUpgraded, Boolean(migrateProjectToV3.data)]);
+
   if (isProjectUpgraded || currentWorkspace?.version === ProjectVersion.V3) return null;
+
   const isUpgrading = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.InProgress;
   const didProjectUpgradeFailed = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.Failed;
 
@@ -82,7 +90,8 @@ export const SecretV2MigrationSection = () => {
       )}
       <p className="mb-2 text-lg font-semibold">Action Required</p>
       <p className="mb-4 leading-7 text-gray-400">
-        Infisical secrets engine is now 10x faster and allows you to encrypt secrets with your own KMS. Upgrade your project to receive these improvements.
+        Infisical secrets engine is now 10x faster and allows you to encrypt secrets with your own
+        KMS. Upgrade your project to receive these improvements.
         <b>{!isAdmin && "This is an admin only operation."}</b>
       </p>
       <Button
