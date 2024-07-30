@@ -48,7 +48,7 @@ export const IdentityProjectRow = ({
 
   return (
     <Tr
-      className="group h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+      className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
       key={`identity-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {

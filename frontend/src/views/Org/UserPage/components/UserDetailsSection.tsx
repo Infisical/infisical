@@ -3,7 +3,8 @@ import {
   faCheckCircle,
   faCircleXmark,
   faCopy,
-  faPencil} from "@fortawesome/free-solid-svg-icons";
+  faPencil
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -82,7 +83,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   return membership ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Details</h3>
+        <h3 className="text-lg font-semibold text-mineshaft-100">User Details</h3>
         {userId !== membership.user.id && (
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Identity}>
             {(isAllowed) => {

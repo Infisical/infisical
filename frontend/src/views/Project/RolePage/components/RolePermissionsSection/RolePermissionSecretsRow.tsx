@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { TFormSchema } from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
+import { TFormSchema } from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
 
 type Props = {
   title: string;

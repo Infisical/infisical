@@ -92,7 +92,7 @@ export const ProjectRoleList = () => {
               return (
                 <Tr
                   key={`role-list-${id}`}
-                  className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                  className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() => router.push(`/project/${projectId}/roles/${slug}`)}
                 >
                   <Td>{name}</Td>

@@ -10,7 +10,7 @@ import {
   formSchema,
   rolePermission2Form,
   TFormSchema
-} from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
+} from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
 
 import { RolePermissionRow } from "./RolePermissionRow";
 import { RowPermissionSecretsRow } from "./RolePermissionSecretsRow";
@@ -33,15 +33,15 @@ const SINGLE_PERMISSION_LIST = [
     formName: "role"
   },
   {
-    title: "User management",
+    title: "User Management",
     formName: "member"
   },
   {
-    title: "Group management",
+    title: "Group Management",
     formName: "groups"
   },
   {
-    title: "Machine identity management",
+    title: "Machine Identity Management",
     formName: "identity"
   },
   {

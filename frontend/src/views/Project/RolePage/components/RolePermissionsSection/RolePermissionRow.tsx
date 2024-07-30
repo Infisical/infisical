@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { TFormSchema } from "@app/views/Project/MembersPage/components/ProjectRoleListTab/components/ProjectRoleModifySection/ProjectRoleModifySection.utils";
+import { TFormSchema } from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
 
 const GENERAL_PERMISSIONS = [
   { action: "read", label: "View" },
@@ -153,7 +153,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
   return (
     <>
       <Tr
-        className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
         onClick={() => setIsRowExpanded.toggle()}
       >
         <Td>

@@ -16,23 +16,23 @@ import { RolePermissionRow } from "./RolePermissionRow";
 
 const SIMPLE_PERMISSION_OPTIONS = [
   {
-    title: "User management",
+    title: "User Management",
     formName: "member"
   },
   {
-    title: "Group management",
+    title: "Group Management",
     formName: "groups"
   },
   {
-    title: "Machine identity management",
+    title: "Machine Identity Management",
     formName: "identity"
   },
   {
-    title: "Billing & usage",
+    title: "Usage & Billing",
     formName: "billing"
   },
   {
-    title: "Role management",
+    title: "Role Management",
     formName: "role"
   },
   {
@@ -40,7 +40,7 @@ const SIMPLE_PERMISSION_OPTIONS = [
     formName: "incident-contact"
   },
   {
-    title: "Organization profile",
+    title: "Organization Profile",
     formName: "settings"
   },
   {

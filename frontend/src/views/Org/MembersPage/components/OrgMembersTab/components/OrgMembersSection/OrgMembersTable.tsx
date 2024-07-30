@@ -184,7 +184,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                   return (
                     <Tr
                       key={`org-membership-${orgMembershipId}`}
-                      className="h-10 w-full cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                      className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       onClick={() => router.push(`/org/${orgId}/memberships/${orgMembershipId}`)}
                     >
                       <Td className={isActive ? "" : "text-mineshaft-400"}>{name}</Td>
