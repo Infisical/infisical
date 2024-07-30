@@ -122,6 +122,10 @@ public class App {
             Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
         </ParamField>
 
+        <ParamField query="setSSLCertificatePath()">
+          Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
+        </ParamField>
+
         <ParamField query="setAuth()" type="AuthenticationOptions">
           The authentication object to use for the client. This is required unless you're using environment variables.
       </ParamField>

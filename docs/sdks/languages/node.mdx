@@ -137,6 +137,10 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
             The level of logs you wish to log The logs are derived from Rust, as we have written our base SDK in Rust.
         </ParamField>
 
+        <ParamField query="sslCertificatePath" optional>
+            Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
+        </ParamField>
+
         <ParamField query="auth" type="AuthenticationOptions">
             The authentication object to use for the client. This is required unless you're using environment variables.
         </ParamField>
