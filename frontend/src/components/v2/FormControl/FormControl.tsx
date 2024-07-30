@@ -91,7 +91,7 @@ export type FormControlProps = {
   icon?: ReactNode;
   tooltipText?: string;
   hyperLinkText?: string,
-  hyperLinkPath: () => void;
+  hyperLinkPath?: () => void;
 };
 
 export const FormControl = ({
