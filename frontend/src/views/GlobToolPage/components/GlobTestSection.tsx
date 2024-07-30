@@ -105,7 +105,7 @@ export const GlobTestSection = () => {
           <div>
             <Button
                 variant="solid"
-                type="btn"
+                type="button"
                 onClick={() => validateStrings(path, glob)}
                 className="mb-4"
               >
