@@ -1,4 +1,4 @@
-package cmd // Replace with your actual package name
+package cmd
 
 import (
 	"testing"
