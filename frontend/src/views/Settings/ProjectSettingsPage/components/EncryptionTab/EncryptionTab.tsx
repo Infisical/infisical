@@ -318,20 +318,23 @@ export const EncryptionTab = () => {
               />
             )}
           </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={ProjectPermissionSub.Workspace}
+          >
+            {(isAllowed) => (
+              <Button
+                colorSchema="secondary"
+                type="submit"
+                isDisabled={!isAllowed || isSubmitting || !isDirty}
+                isLoading={isSubmitting}
+              >
+                Save
+              </Button>
+            )}
+          </ProjectPermissionCan>
         </form>
       </div>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Workspace}>
-        {(isAllowed) => (
-          <Button
-            colorSchema="secondary"
-            type="submit"
-            isDisabled={!isAllowed || isSubmitting || !isDirty}
-            isLoading={isSubmitting}
-          >
-            Save
-          </Button>
-        )}
-      </ProjectPermissionCan>
       <BackupConfirmationModal
         isOpen={popUp.createBackupConfirmation.isOpen}
         onOpenChange={(state: boolean) => handlePopUpToggle("createBackupConfirmation", state)}
