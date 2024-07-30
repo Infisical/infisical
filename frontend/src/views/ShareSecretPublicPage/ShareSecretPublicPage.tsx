@@ -7,9 +7,9 @@ import { ShareSecretForm } from "./components";
 
 export const ShareSecretPublicPage = () => {
   return (
-    <div className="flex h-screen flex-col justify-between bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
+    <div className="flex h-screen flex-col justify-between overflow-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
       <div />
-      <div className="mx-auto w-full max-w-xl px-4">
+      <div className="mx-auto w-full max-w-xl p-4">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center pt-8">
             <Link href="https://infisical.com">
@@ -43,36 +43,34 @@ export const ShareSecretPublicPage = () => {
         <div className="m-auto my-8 flex w-full">
           <div className="w-full border-t border-mineshaft-600" />
         </div>
-        <div className="m-auto flex max-w-2xl flex-col items-center justify-center">
-          <div className="m-auto mb-12 flex w-full max-w-2xl flex-col justify-center rounded-md border border-primary-500/30 bg-primary/5 p-6 pt-5">
-            <p className="w-full pb-2 text-lg font-semibold text-mineshaft-100 md:pb-3 md:text-xl">
-              Open source{" "}
-              <span className="bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent">
-                secret management
-              </span>{" "}
-              for developers
+        <div className="m-auto flex w-full flex-col rounded-md border border-primary-500/30 bg-primary/5 p-6 pt-5">
+          <p className="w-full pb-2 text-lg font-semibold text-mineshaft-100 md:pb-3 md:text-xl">
+            Open source{" "}
+            <span className="bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent">
+              secret management
+            </span>{" "}
+            for developers
+          </p>
+          <div className="flex flex-col items-start sm:flex-row sm:items-center">
+            <p className="md:text-md text-md mr-4">
+              <a
+                href="https://github.com/infisical/infisical"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-bold bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
+              >
+                Infisical
+              </a>{" "}
+              is the all-in-one secret management platform to securely manage secrets, configs, and
+              certificates across your team and infrastructure.
             </p>
-            <div className="flex items-center">
-              <p className="md:text-md text-md mr-4">
-                <a
-                  href="https://github.com/infisical/infisical"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-bold bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
-                >
-                  Infisical
-                </a>{" "}
-                is the all-in-one secret management platform to securely manage secrets, configs,
-                and certificates across your team and infrastructure.
-              </p>
-              <div className="cursor-pointer">
-                <Link href="https://infisical.com">
-                  <div className="flex items-center justify-between rounded-md border border-mineshaft-400/40 bg-mineshaft-600 py-2 px-3 duration-200 hover:border-primary/60 hover:bg-primary/20 hover:text-white">
-                    <p className="mr-4 whitespace-nowrap">Try Infisical</p>
-                    <FontAwesomeIcon icon={faArrowRight} />
-                  </div>
-                </Link>
-              </div>
+            <div className="mt-4 cursor-pointer sm:mt-0">
+              <Link href="https://infisical.com">
+                <div className="flex items-center justify-between rounded-md border border-mineshaft-400/40 bg-mineshaft-600 py-2 px-3 duration-200 hover:border-primary/60 hover:bg-primary/20 hover:text-white">
+                  <p className="mr-4 whitespace-nowrap">Try Infisical</p>
+                  <FontAwesomeIcon icon={faArrowRight} />
+                </div>
+              </Link>
             </div>
           </div>
         </div>
