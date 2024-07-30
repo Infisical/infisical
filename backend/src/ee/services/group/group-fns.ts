@@ -336,31 +336,36 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      // TODO: this part can be optimized
-      for await (const userId of userIds) {
-        const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
-        const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
+      const promises: Array<Promise<void>> = [];
+      for (const userId of userIds) {
+        promises.push(
+          (async () => {
+            const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
+            const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
 
-        if (projectsToDeleteKeyFor.length) {
-          await projectKeyDAL.delete(
-            {
-              receiverId: userId,
-              $in: {
-                projectId: projectsToDeleteKeyFor
-              }
-            },
-            tx
-          );
-        }
+            if (projectsToDeleteKeyFor.length) {
+              await projectKeyDAL.delete(
+                {
+                  receiverId: userId,
+                  $in: {
+                    projectId: projectsToDeleteKeyFor
+                  }
+                },
+                tx
+              );
+            }
 
-        await userGroupMembershipDAL.delete(
-          {
-            groupId: group.id,
-            userId
-          },
-          tx
+            await userGroupMembershipDAL.delete(
+              {
+                groupId: group.id,
+                userId
+              },
+              tx
+            );
+          })()
         );
       }
+      await Promise.all(promises);
     }
 
     if (membersToRemoveFromGroupPending.length) {
