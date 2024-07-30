@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import picomatch from "picomatch";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy, faBarcodeRead } from "@fortawesome/free-solid-svg-icons";
+import { faCopy } from "@fortawesome/free-solid-svg-icons";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Input, TextArea, Tooltip, TooltipProvider, Button } from "@app/components/v2";
@@ -90,7 +90,7 @@ export const GlobTestSection = () => {
             <TextArea
               value={glob}
               onChange={handleGlobChange}
-              rows={5}
+              rows={4}
             />
           </div>
 
@@ -98,7 +98,7 @@ export const GlobTestSection = () => {
             <p>Output</p>
             <TextArea 
               value={output}
-              rows={5}
+              rows={4}
             />
           </div>
 
@@ -106,7 +106,6 @@ export const GlobTestSection = () => {
             <Button
                 variant="solid"
                 type="btn"
-                leftIcon={<FontAwesomeIcon icon={faBarcodeRead} />}
                 onClick={() => validateStrings(path, glob)}
                 className="mb-4"
               >
