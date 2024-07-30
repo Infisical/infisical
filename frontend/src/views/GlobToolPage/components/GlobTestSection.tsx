@@ -10,6 +10,7 @@ import { IconButton, Input, TextArea, Tooltip, TooltipProvider } from "@app/comp
 export const GlobTestSection = () => {
   const [path, setPath] = useState<string>('');
   const [textStrings, setTextStrings] = useState<string>('');
+  const [output, setOutput] = useState<string>('');
 
   const handleCopyPathToClipboard = async (value: string) => {
     if (value) {
@@ -30,21 +31,22 @@ export const GlobTestSection = () => {
 
   const handleGlobChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setTextStrings(e.target.value);
-    validateStrings(path, textStrings);
   };
 
   const validateStrings = (glob: string, testStrings: string) => {
-    if (!glob) return;
+    if (!glob || !testStrings) return;
 
     const matcher = picomatch(glob, { dot: true });
     const lines = testStrings.split('\n')
+
+    console.log(lines)
 
     const output = lines.map(line => {
       const isMatch = matcher(line);
       return `${line} - ${isMatch ? 'Match' : 'No Match'}`;
     });
 
-    setTextStrings(output.join('\n'));
+    setOutput(output.join('\n'));
   };
 
   return (
@@ -52,7 +54,7 @@ export const GlobTestSection = () => {
       <div className="flex flex-col gap-4 w-full max-w-7xl">
         <p className="text-xl font-semibold text-mineshaft-100">Glob Tool</p>
         <div className="flex flex-col gap-6 mt-4">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-3">
             <span>Path</span>
             <Input
               value={path}
@@ -80,6 +82,11 @@ export const GlobTestSection = () => {
               value={textStrings}
               onChange={handleGlobChange}
             />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <p>Output</p>
+            <TextArea value={output}/>
           </div>
         </div>
       </div>
