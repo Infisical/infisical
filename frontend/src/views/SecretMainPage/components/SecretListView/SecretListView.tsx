@@ -404,12 +404,7 @@ export const SecretListView = ({
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
       />
-      <AddShareSecretModal
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        isPublic={false}
-        inModal
-      />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
 };

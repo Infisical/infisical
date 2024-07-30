@@ -4,16 +4,24 @@ export type TSharedSecret = {
   orgId: string;
   createdAt: Date;
   updatedAt: Date;
-} & TCreateSharedSecretRequest;
-
-export type TCreateSharedSecretRequest = {
+  name: string | null;
+  lastViewedAt?: Date;
+  expiresAt: Date;
+  expiresAfterViews: number | null;
   encryptedValue: string;
   iv: string;
   tag: string;
+};
+
+export type TCreateSharedSecretRequest = {
+  name?: string;
+  encryptedValue: string;
   hashedHex: string;
+  iv: string;
+  tag: string;
   expiresAt: Date;
   expiresAfterViews?: number;
-  accessType: SecretSharingAccessType;
+  accessType?: SecretSharingAccessType;
 };
 
 export type TViewSharedSecretResponse = {

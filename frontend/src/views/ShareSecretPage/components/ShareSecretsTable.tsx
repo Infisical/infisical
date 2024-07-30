@@ -1,12 +1,13 @@
+import { useState } from "react";
 import { faKey } from "@fortawesome/free-solid-svg-icons";
 
 import {
   EmptyState,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
   TBody,
-  Td,
   Th,
   THead,
   Tr
@@ -30,34 +31,49 @@ type Props = {
 };
 
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
-  const { isLoading, data = [] } = useGetSharedSecrets();
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const { isLoading, data } = useGetSharedSecrets({
+    offset: (page - 1) * perPage,
+    limit: perPage
+  });
   return (
     <TableContainer>
       <Table>
         <THead>
           <Tr>
-            <Th>Encrypted Secret</Th>
-            <Th>Created</Th>
+            <Th className="w-5" />
+            <Th>Name</Th>
+            <Th>Status</Th>
+            <Th>Created At</Th>
             <Th>Valid Until</Th>
             <Th>Views Left</Th>
             <Th aria-label="button" className="w-5" />
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} innerKey="shared-secrets" />}
+          {isLoading && <TableSkeleton columns={7} innerKey="shared-secrets" />}
           {!isLoading &&
-            data?.map((row) => (
+            data?.secrets?.map((row) => (
               <ShareSecretsRow key={row.id} row={row} handlePopUpOpen={handlePopUpOpen} />
             ))}
-          {!isLoading && data?.length === 0 && (
-            <Tr>
-              <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
-                <EmptyState title="No secrets shared yet" icon={faKey} />
-              </Td>
-            </Tr>
-          )}
         </TBody>
       </Table>
+      {!isLoading &&
+        data?.secrets &&
+        data.secrets.length >= perPage &&
+        data?.totalCount !== undefined && (
+          <Pagination
+            count={data.totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+          />
+        )}
+      {!isLoading && !data?.secrets?.length && (
+        <EmptyState title="No secrets shared yet" icon={faKey} />
+      )}
     </TableContainer>
   );
 };

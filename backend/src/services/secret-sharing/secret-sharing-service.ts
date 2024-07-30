@@ -1,5 +1,5 @@
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 
 import { TOrgDALFactory } from "../org/org-dal";
@@ -8,7 +8,8 @@ import {
   TCreatePublicSharedSecretDTO,
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
-  TSharedSecretPermission
+  TGetActiveSharedSecretByIdDTO,
+  TGetSharedSecretsDTO
 } from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
@@ -24,21 +25,21 @@ export const secretSharingServiceFactory = ({
   secretSharingDAL,
   orgDAL
 }: TSecretSharingServiceFactoryDep) => {
-  const createSharedSecret = async (createSharedSecretInput: TCreateSharedSecretDTO) => {
-    const {
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      encryptedValue,
-      iv,
-      tag,
-      accessType,
-      hashedHex,
-      expiresAt,
-      expiresAfterViews
-    } = createSharedSecretInput;
+  const createSharedSecret = async ({
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId,
+    encryptedValue,
+    hashedHex,
+    iv,
+    tag,
+    name,
+    accessType,
+    expiresAt,
+    expiresAfterViews
+  }: TCreateSharedSecretDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
 
@@ -60,10 +61,11 @@ export const secretSharingServiceFactory = ({
     }
 
     const newSharedSecret = await secretSharingDAL.create({
+      name,
       encryptedValue,
+      hashedHex,
       iv,
       tag,
-      hashedHex,
       expiresAt: new Date(expiresAt),
       expiresAfterViews,
       userId: actorId,
@@ -74,8 +76,15 @@ export const secretSharingServiceFactory = ({
     return { id: newSharedSecret.id };
   };
 
-  const createPublicSharedSecret = async (createSharedSecretInput: TCreatePublicSharedSecretDTO) => {
-    const { encryptedValue, iv, tag, hashedHex, expiresAt, expiresAfterViews, accessType } = createSharedSecretInput;
+  const createPublicSharedSecret = async ({
+    encryptedValue,
+    hashedHex,
+    iv,
+    tag,
+    expiresAt,
+    expiresAfterViews,
+    accessType
+  }: TCreatePublicSharedSecretDTO) => {
     if (new Date(expiresAt) < new Date()) {
       throw new BadRequestError({ message: "Expiration date cannot be in the past" });
     }
@@ -95,9 +104,9 @@ export const secretSharingServiceFactory = ({
 
     const newSharedSecret = await secretSharingDAL.create({
       encryptedValue,
+      hashedHex,
       iv,
       tag,
-      hashedHex,
       expiresAt: new Date(expiresAt),
       expiresAfterViews,
       accessType
@@ -105,43 +114,93 @@ export const secretSharingServiceFactory = ({
     return { id: newSharedSecret.id };
   };
 
-  const getSharedSecrets = async (getSharedSecretsInput: TSharedSecretPermission) => {
-    const { actor, actorId, orgId, actorAuthMethod, actorOrgId } = getSharedSecretsInput;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+  const getSharedSecrets = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    offset,
+    limit
+  }: TGetSharedSecretsDTO) => {
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
-    const userSharedSecrets = await secretSharingDAL.findActiveSharedSecrets({ userId: actorId, orgId });
-    return userSharedSecrets;
+
+    const secrets = await secretSharingDAL.find(
+      {
+        userId: actorId,
+        orgId: actorOrgId
+      },
+      { offset, limit, sort: [["createdAt", "desc"]] }
+    );
+
+    const count = await secretSharingDAL.countAllUserOrgSharedSecrets({
+      orgId: actorOrgId,
+      userId: actorId
+    });
+
+    return {
+      secrets,
+      totalCount: count
+    };
   };
 
-  const getActiveSharedSecretByIdAndHashedHex = async (sharedSecretId: string, hashedHex: string, orgId?: string) => {
-    const sharedSecret = await secretSharingDAL.findOne({ id: sharedSecretId, hashedHex });
-    if (!sharedSecret) return;
+  const getActiveSharedSecretById = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
+    const sharedSecret = await secretSharingDAL.findOne({
+      id: sharedSecretId,
+      hashedHex
+    });
+    if (!sharedSecret)
+      throw new NotFoundError({
+        message: "Shared secret not found"
+      });
+
+    const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
 
     const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
-    // Support organization level access for secret sharing
-    if (sharedSecret.accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId) {
-      return {
-        ...sharedSecret,
-        encryptedValue: "",
-        iv: "",
-        tag: "",
-        orgName
-      };
+
+    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
+      throw new UnauthorizedError();
+
+    if (expiresAt !== null && expiresAt < new Date()) {
+      // check lifetime expiry
+      await secretSharingDAL.softDeleteById(sharedSecretId);
+      throw new ForbiddenRequestError({
+        message: "Access denied: Secret has expired by lifetime"
+      });
     }
-    if (sharedSecret.expiresAt && sharedSecret.expiresAt < new Date()) {
-      return;
+
+    if (expiresAfterViews !== null && expiresAfterViews === 0) {
+      // check view count expiry
+      await secretSharingDAL.softDeleteById(sharedSecretId);
+      throw new ForbiddenRequestError({
+        message: "Access denied: Secret has expired by view count"
+      });
     }
-    if (sharedSecret.expiresAfterViews != null && sharedSecret.expiresAfterViews >= 0) {
-      if (sharedSecret.expiresAfterViews === 0) {
-        await secretSharingDAL.softDeleteById(sharedSecretId);
-        return;
-      }
+
+    if (expiresAfterViews) {
+      // decrement view count if view count expiry set
       await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
     }
-    if (sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId) {
-      return { ...sharedSecret, orgName };
-    }
-    return { ...sharedSecret, orgName: undefined };
+
+    await secretSharingDAL.updateById(sharedSecretId, {
+      lastViewedAt: new Date()
+    });
+
+    return {
+      ...sharedSecret,
+      orgName:
+        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
+          ? orgName
+          : undefined
+    };
   };
 
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
@@ -157,6 +216,6 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getActiveSharedSecretByIdAndHashedHex
+    getActiveSharedSecretById
   };
 };
