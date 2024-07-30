@@ -20,8 +20,8 @@ import { withProjectPermission } from "@app/hoc";
 import { useDeleteProjectRole,useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { TabSections } from "../Types";
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
-import { TabSections } from '../Types';
 
 export const RolePage = withProjectPermission(
   () => {
