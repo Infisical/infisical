@@ -10,7 +10,7 @@ type Props = {
   ) => void;
 };
 
-export const AddShareSecretModal2 = ({ popUp, handlePopUpToggle }: Props) => {
+export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
     <Modal
       isOpen={popUp?.createSharedSecret?.isOpen}

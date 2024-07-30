@@ -57,6 +57,9 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         id: z.string().uuid()
       }),
+      querystring: z.object({
+        hashedHex: z.string().min(1)
+      }),
       response: {
         200: SecretSharingSchema.pick({
           encryptedValue: true,
@@ -71,10 +74,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById(
-        req.params.id,
-        req.permission?.orgId
-      );
+      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById({
+        sharedSecretId: req.params.id,
+        hashedHex: req.query.hashedHex,
+        orgId: req.permission?.orgId
+      });
       if (!sharedSecret) return undefined;
       return {
         encryptedValue: sharedSecret.encryptedValue,
@@ -97,6 +101,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z.object({
         encryptedValue: z.string(),
+        hashedHex: z.string(),
         iv: z.string(),
         tag: z.string(),
         expiresAt: z.string(),
@@ -109,13 +114,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const { encryptedValue, iv, tag, expiresAt, expiresAfterViews } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createPublicSharedSecret({
-        encryptedValue,
-        iv,
-        tag,
-        expiresAt,
-        expiresAfterViews,
+        ...req.body,
         accessType: SecretSharingAccessType.Anyone
       });
       return { id: sharedSecret.id };
@@ -132,6 +132,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       body: z.object({
         name: z.string().max(50).optional(),
         encryptedValue: z.string(),
+        hashedHex: z.string(),
         iv: z.string(),
         tag: z.string(),
         expiresAt: z.string(),

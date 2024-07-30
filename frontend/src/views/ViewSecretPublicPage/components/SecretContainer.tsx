@@ -18,8 +18,6 @@ type Props = {
   secretKey: string;
 };
 
-// note: implementation currently doesn't account
-// for in-org (authenticated) secret sharing
 export const SecretContainer = ({ secret, secretKey: key }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({

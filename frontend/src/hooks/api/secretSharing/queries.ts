@@ -36,12 +36,25 @@ export const useGetSharedSecrets = ({
   });
 };
 
-export const useGetActiveSharedSecretById = (secretId: string) => {
+export const useGetActiveSharedSecretById = ({
+  sharedSecretId,
+  hashedHex
+}: {
+  sharedSecretId: string;
+  hashedHex: string;
+}) => {
   return useQuery<TViewSharedSecretResponse, [string]>({
-    enabled: Boolean(secretId),
+    enabled: Boolean(sharedSecretId) && Boolean(hashedHex),
     queryFn: async () => {
+      const params = new URLSearchParams({
+        hashedHex
+      });
+
       const { data } = await apiRequest.get<TViewSharedSecretResponse>(
-        `/api/v1/secret-sharing/public/${secretId}`
+        `/api/v1/secret-sharing/public/${sharedSecretId}`,
+        {
+          params
+        }
       );
       return {
         encryptedValue: data.encryptedValue,

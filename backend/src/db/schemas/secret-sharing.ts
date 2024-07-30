@@ -12,6 +12,7 @@ export const SecretSharingSchema = z.object({
   encryptedValue: z.string(),
   iv: z.string(),
   tag: z.string(),
+  hashedHex: z.string(),
   expiresAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),

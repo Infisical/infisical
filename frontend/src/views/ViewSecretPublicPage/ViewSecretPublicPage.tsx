@@ -11,9 +11,15 @@ import { SecretContainer, SecretErrorContainer } from "./components";
 export const ViewSecretPublicPage = () => {
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
-  const key = decodeURIComponent(urlEncodedPublicKey as string);
 
-  const { data: secret, error } = useGetActiveSharedSecretById(id as string);
+  const [hashedHex, key] = urlEncodedPublicKey
+    ? urlEncodedPublicKey.toString().split("-")
+    : ["", ""];
+
+  const { data: secret, error } = useGetActiveSharedSecretById({
+    sharedSecretId: id as string,
+    hashedHex
+  });
 
   return (
     <div className="flex h-screen flex-col justify-between bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">

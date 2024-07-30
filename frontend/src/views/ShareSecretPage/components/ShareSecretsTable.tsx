@@ -59,15 +59,18 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
             ))}
         </TBody>
       </Table>
-      {!isLoading && data?.totalCount !== undefined && (
-        <Pagination
-          count={data.totalCount}
-          page={page}
-          perPage={perPage}
-          onChangePage={(newPage) => setPage(newPage)}
-          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-        />
-      )}
+      {!isLoading &&
+        data?.secrets &&
+        data.secrets.length >= perPage &&
+        data?.totalCount !== undefined && (
+          <Pagination
+            count={data.totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+          />
+        )}
       {!isLoading && !data?.secrets?.length && (
         <EmptyState title="No secrets shared yet" icon={faKey} />
       )}

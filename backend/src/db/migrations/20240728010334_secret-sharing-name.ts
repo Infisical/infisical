@@ -17,13 +17,6 @@ export async function up(knex: Knex): Promise<void> {
         t.timestamp("lastViewedAt").nullable();
       });
     }
-
-    const doesHashedHexExist = await knex.schema.hasColumn(TableName.SecretSharing, "hashedHex");
-    if (doesHashedHexExist) {
-      await knex.schema.alterTable(TableName.SecretSharing, (t) => {
-        t.dropColumn("hashedHex");
-      });
-    }
   }
 }
 

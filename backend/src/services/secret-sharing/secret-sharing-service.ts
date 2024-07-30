@@ -8,6 +8,7 @@ import {
   TCreatePublicSharedSecretDTO,
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
+  TGetActiveSharedSecretByIdDTO,
   TGetSharedSecretsDTO
 } from "./secret-sharing-types";
 
@@ -24,21 +25,21 @@ export const secretSharingServiceFactory = ({
   secretSharingDAL,
   orgDAL
 }: TSecretSharingServiceFactoryDep) => {
-  const createSharedSecret = async (createSharedSecretInput: TCreateSharedSecretDTO) => {
-    const {
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      encryptedValue,
-      iv,
-      tag,
-      name,
-      accessType,
-      expiresAt,
-      expiresAfterViews
-    } = createSharedSecretInput;
+  const createSharedSecret = async ({
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId,
+    encryptedValue,
+    hashedHex,
+    iv,
+    tag,
+    name,
+    accessType,
+    expiresAt,
+    expiresAfterViews
+  }: TCreateSharedSecretDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
 
@@ -62,6 +63,7 @@ export const secretSharingServiceFactory = ({
     const newSharedSecret = await secretSharingDAL.create({
       name,
       encryptedValue,
+      hashedHex,
       iv,
       tag,
       expiresAt: new Date(expiresAt),
@@ -74,8 +76,15 @@ export const secretSharingServiceFactory = ({
     return { id: newSharedSecret.id };
   };
 
-  const createPublicSharedSecret = async (createSharedSecretInput: TCreatePublicSharedSecretDTO) => {
-    const { encryptedValue, iv, tag, expiresAt, expiresAfterViews, accessType } = createSharedSecretInput;
+  const createPublicSharedSecret = async ({
+    encryptedValue,
+    hashedHex,
+    iv,
+    tag,
+    expiresAt,
+    expiresAfterViews,
+    accessType
+  }: TCreatePublicSharedSecretDTO) => {
     if (new Date(expiresAt) < new Date()) {
       throw new BadRequestError({ message: "Expiration date cannot be in the past" });
     }
@@ -95,6 +104,7 @@ export const secretSharingServiceFactory = ({
 
     const newSharedSecret = await secretSharingDAL.create({
       encryptedValue,
+      hashedHex,
       iv,
       tag,
       expiresAt: new Date(expiresAt),
@@ -142,8 +152,11 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const getActiveSharedSecretById = async (sharedSecretId: string, orgId?: string) => {
-    const sharedSecret = await secretSharingDAL.findOne({ id: sharedSecretId });
+  const getActiveSharedSecretById = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
+    const sharedSecret = await secretSharingDAL.findOne({
+      id: sharedSecretId,
+      hashedHex
+    });
     if (!sharedSecret)
       throw new NotFoundError({
         message: "Shared secret not found"

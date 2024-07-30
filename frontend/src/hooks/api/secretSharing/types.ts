@@ -16,6 +16,7 @@ export type TSharedSecret = {
 export type TCreateSharedSecretRequest = {
   name?: string;
   encryptedValue: string;
+  hashedHex: string;
   iv: string;
   tag: string;
   expiresAt: Date;

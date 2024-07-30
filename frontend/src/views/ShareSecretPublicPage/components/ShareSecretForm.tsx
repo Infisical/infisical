@@ -72,6 +72,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
       const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
       const key = crypto.randomBytes(16).toString("hex");
+      const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
       const { ciphertext, iv, tag } = encryptSymmetric({
         plaintext: secret,
         key
@@ -80,6 +81,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
       const { id } = await createSharedSecret.mutateAsync({
         name,
         encryptedValue: ciphertext,
+        hashedHex,
         iv,
         tag,
         expiresAt,
@@ -87,8 +89,11 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         accessType
       });
 
-      setSecretLink(`${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(key)}`);
-
+      setSecretLink(
+        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
+          hashedHex
+        )}-${encodeURIComponent(key)}`
+      );
       reset();
 
       setCopyTextSecret("secret");
