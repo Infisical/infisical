@@ -105,9 +105,9 @@
     "vitest": "^1.2.2"
   },
   "dependencies": {
-    "@aws-sdk/client-iam": "^3.525.0",
+    "@aws-sdk/client-iam": "^3.529.0",
     "@aws-sdk/client-kms": "^3.609.0",
-    "@aws-sdk/client-secrets-manager": "^3.504.0",
+    "@aws-sdk/client-secrets-manager": "^3.529.0",
     "@aws-sdk/client-sts": "^3.600.0",
     "@casl/ability": "^6.5.0",
     "@fastify/cookie": "^9.3.1",
