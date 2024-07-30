@@ -118,6 +118,36 @@ func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentNa
 	}, nil
 }
 
+func GetSinglePlainTextSecretByNameV3(accessToken string, workspaceId string, environmentName string, secretsPath string, secretName string) (models.SingleEnvironmentVariable, string, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	getSecretsRequest := api.GetRawSecretV3ByNameRequest{
+		WorkspaceID: workspaceId,
+		Environment: environmentName,
+		SecretName:  secretName,
+		SecretPath:  secretsPath,
+	}
+
+	rawSecret, err := api.CallFetchSingleSecretByName(httpClient, getSecretsRequest)
+
+	if err != nil {
+		return models.SingleEnvironmentVariable{}, "", err
+	}
+
+	formattedSecrets := models.SingleEnvironmentVariable{
+		Key:         rawSecret.Secret.SecretKey,
+		WorkspaceId: rawSecret.Secret.Workspace,
+		Value:       rawSecret.Secret.SecretValue,
+		Type:        rawSecret.Secret.Type,
+		ID:          rawSecret.Secret.ID,
+		Comment:     rawSecret.Secret.SecretComment,
+	}
+
+	return formattedSecrets, rawSecret.ETag, nil
+}
+
 func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string, ttl string) (models.DynamicSecretLease, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).

@@ -434,6 +434,34 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 	return getRawSecretsV3Response, nil
 }
 
+func CallFetchSingleSecretByName(httpClient *resty.Client, request GetRawSecretV3ByNameRequest) (GetRawSecretV3ByNameResponse, error) {
+	var getRawSecretV3ByNameResponse GetRawSecretV3ByNameResponse
+	response, err := httpClient.
+		R().
+		SetHeader("User-Agent", USER_AGENT).
+		SetResult(&getRawSecretV3ByNameResponse).
+		SetBody(request).
+		SetQueryParam("expandSecretReferences", "true").
+		SetQueryParam("include_imports", "true").
+		SetQueryParam("environment", request.Environment).
+		SetQueryParam("secretPath", request.SecretPath).
+		SetQueryParam("workspaceId", request.WorkspaceID).
+		SetQueryParam("type", "shared").
+		Get(fmt.Sprintf("%v/v3/secrets/raw/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return GetRawSecretV3ByNameResponse{}, fmt.Errorf("CallFetchSingleSecretByName: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return GetRawSecretV3ByNameResponse{}, fmt.Errorf("CallFetchSingleSecretByName: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	getRawSecretV3ByNameResponse.ETag = response.Header().Get(("etag"))
+
+	return getRawSecretV3ByNameResponse, nil
+}
+
 func CallCreateDynamicSecretLeaseV1(httpClient *resty.Client, request CreateDynamicSecretLeaseV1Request) (CreateDynamicSecretLeaseV1Response, error) {
 	var createDynamicSecretLeaseResponse CreateDynamicSecretLeaseV1Response
 	response, err := httpClient.
