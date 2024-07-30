@@ -22,7 +22,6 @@ enum ProjectUpgradeStatus {
 const formSchema = z.object({
   isCLIChecked: z.literal(true),
   isOperatorChecked: z.literal(true),
-  doesKnowSnapshotLimit: z.literal(true),
   shouldCloseOpenApprovals: z.literal(true)
 });
 
@@ -140,22 +139,6 @@ export const SecretV2MigrationSection = () => {
                       isError={Boolean(error?.message)}
                     >
                       Infisical Kubernetes Operator version is v0.7.0 or above.
-                    </Checkbox>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="doesKnowSnapshotLimit"
-                  defaultValue={false}
-                  render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
-                    <Checkbox
-                      id="is-snapshot-checked"
-                      isChecked={value}
-                      onCheckedChange={onChange}
-                      onBlur={onBlur}
-                      isError={Boolean(error?.message)}
-                    >
-                      Folders keep 10 latest snapshots due to migration time limit.
                     </Checkbox>
                   )}
                 />

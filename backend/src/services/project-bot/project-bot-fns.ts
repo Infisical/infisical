@@ -36,8 +36,7 @@ export const getBotKeyFnFactory = (
     if (!bot || !bot.isActive || !bot.encryptedProjectKey || !bot.encryptedProjectKeyNonce) {
       // trying to set bot automatically
       const projectV1Keys = await projectBotDAL.findProjectUserWorkspaceKey(projectId);
-      if (!projectV1Keys)
-        throw new BadRequestError({ message: "Bot not found. [no-private-key]. Please ask admin user to login" });
+      if (!projectV1Keys) throw new BadRequestError({ message: "Bot not found. Please ask admin user to login" });
 
       let userPrivateKey = "";
       if (

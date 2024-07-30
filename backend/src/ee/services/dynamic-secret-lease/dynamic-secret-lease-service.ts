@@ -1,12 +1,10 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
-import { SecretKeyEncoding, TDynamicSecrets } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -52,29 +50,6 @@ export const dynamicSecretLeaseServiceFactory = ({
   licenseService,
   kmsService
 }: TDynamicSecretLeaseServiceFactoryDep) => {
-  const $getDynamicSecretInputConfig = (dynamicSecretCfg: TDynamicSecrets, decryptValue: (arg: Buffer) => string) => {
-    if (
-      dynamicSecretCfg.keyEncoding &&
-      dynamicSecretCfg.inputCiphertext &&
-      dynamicSecretCfg.inputTag &&
-      dynamicSecretCfg.inputIV
-    ) {
-      return JSON.parse(
-        infisicalSymmetricDecrypt({
-          keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-          ciphertext: dynamicSecretCfg.inputCiphertext,
-          tag: dynamicSecretCfg.inputTag,
-          iv: dynamicSecretCfg.inputIV
-        })
-      ) as object;
-    }
-    if (dynamicSecretCfg.encryptedConfig) {
-      return JSON.parse(decryptValue(dynamicSecretCfg.encryptedConfig)) as object;
-    }
-
-    throw new BadRequestError({ message: "Missing secret input config" });
-  };
-
   const create = async ({
     environmentSlug,
     path,
@@ -125,9 +100,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const decryptedStoredInput = $getDynamicSecretInputConfig(dynamicSecretCfg, (value) =>
-      kmsDecryptor({ cipherTextBlob: value }).toString()
-    );
+    const decryptedStoredInputJson = kmsDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedConfig }).toString();
+    const decryptedStoredInput = JSON.parse(decryptedStoredInputJson) as object;
 
     const selectedTTL = ttl ?? dynamicSecretCfg.defaultTTL;
     const { maxTTL } = dynamicSecretCfg;
@@ -194,9 +168,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const decryptedStoredInput = $getDynamicSecretInputConfig(dynamicSecretCfg, (value) =>
-      kmsDecryptor({ cipherTextBlob: value }).toString()
-    );
+    const decryptedStoredInputJson = kmsDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedConfig }).toString();
+    const decryptedStoredInput = JSON.parse(decryptedStoredInputJson) as object;
 
     const selectedTTL = ttl ?? dynamicSecretCfg.defaultTTL;
     const { maxTTL } = dynamicSecretCfg;
@@ -260,9 +233,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const decryptedStoredInput = $getDynamicSecretInputConfig(dynamicSecretCfg, (value) =>
-      kmsDecryptor({ cipherTextBlob: value }).toString()
-    );
+    const decryptedStoredInputJson = kmsDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedConfig }).toString();
+    const decryptedStoredInput = JSON.parse(decryptedStoredInputJson) as object;
 
     const revokeResponse = await selectedProvider
       .revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId)
