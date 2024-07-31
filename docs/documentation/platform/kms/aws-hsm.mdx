@@ -1,0 +1,83 @@
+---
+title: "AWS CloudHSM"
+description: "Learn how to manage encryption using AWS CloudHSM"
+---
+
+You can configure your projects to use AWS CloudHSM for encryption, enhancing the security of your secrets. This guide will demonstrate the use of AWS CloudHSM as a custom key store for AWS KMS.
+
+### Prepare AWS CloudHSM Cluster
+
+The AWS CloudHSM cluster should meet the following criteria:
+
+- The cluster must be active.
+- The cluster must not be associated with any other AWS KMS custom key store.
+- The cluster must be configured with private subnets in at least two Availability Zones in the Region.
+- The security group for the cluster must include inbound rules and outbound rules that allow TCP traffic on ports 2223-2225
+- The cluster must contain at least two active HSMs in different Availability Zones.
+
+For more details on setting up your cluster, refer to the following [AWS documentation](https://docs.aws.amazon.com/kms/latest/developerguide/create-keystore.html#before-keystore).
+
+### Setup AWS KMS Custom Key Store
+
+To setup an AWS KMS custom key store with AWS CloudHSM, you will need the following:
+
+- The trust anchor certificate of your AWS CloudHSM cluster.
+- A `kmsuser` user in the AWS CloudHSM cluster with the crypto-user role.
+
+<Steps>
+  <Step title="Navigate to Key store creation page">
+    Proceed to AWS KMS > AWS CloudHSM key stores and click **Create key store**.
+  </Step>
+  <Step title="Add key store name">
+    Input custom key store name. ![Set key store
+    name](../../../images/platform/kms/aws-hsm/create-key-store-name.png)
+  </Step>
+  <Step title="Select HSM cluster">
+    Select the AWS CloudHSM cluster. You should be able to select the cluster if
+    it meets the required criteria. ![Set key store
+    cluster](../../../images/platform/kms/aws-hsm/create-key-store-cluster.png)
+  </Step>
+  <Step title="Upload trust anchor certificate">
+    Upload your CloudHSM's cluster trust anchor certificate file. ![Set key
+    store cert](../../../images/platform/kms/aws-hsm/create-key-store-cert.png)
+  </Step>
+  <Step title="Provide cluster user password">
+    Input the password of the `kmsuser` crypto-user in your cluster. ![Set key
+    store
+    password](../../../images/platform/kms/aws-hsm/create-key-store-password.png)
+  </Step>
+  <Step title="Finish key store creation">
+    Proceed with creating the AWS CloudHSM key store.
+  </Step>
+</Steps>
+
+For more details, refer to the following [AWS documentation](https://docs.aws.amazon.com/kms/latest/developerguide/create-keystore.html#create-keystore-console).
+
+### Create AWS KMS Key
+
+<Steps>
+  <Step title="Navigate to AWS KMS key creation page">
+    Proceed to AWS KMS > Customer managed keys and click Create.
+  </Step>
+  <Step title="Set key options">
+    Set Key type to **Symmetric** and Key usage to **Encrypt and decrypt**.
+    ![Set key options
+    1](../../../images/platform/kms/aws-hsm/create-kms-key-1.png)
+  </Step>
+  <Step title="Select key material origin">
+    In the advanced options, for the Key material origin field, select **AWS
+    CloudHSM key store**. Click next. ![Set key options
+    2](../../../images/platform/kms/aws-hsm/create-kms-key-2.png)
+  </Step>
+  <Step title="Choose key store">
+    Select the AWS CloudHSM key store. ![Select HSM
+    1](../../../images/platform/kms/aws-hsm/create-kms-select-hsm.png)
+  </Step>
+  <Step title="Finish KMS key creation">
+    Proceed with creating the AWS KMS Key.
+  </Step>
+</Steps>
+
+### Connect Infisical to AWS KMS Key
+
+Now all that's left is to connect the AWS KMS key to your Infisical organization. Refer to the documentation [here](./aws-kms).
