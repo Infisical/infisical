@@ -27,9 +27,9 @@ func SetValueInKeyring(key, value string) error {
 
 	if err != nil {
 		configFile, _ := GetConfigFile()
-		PrintWarning("System keyring could not be used, switching to `file` vault for local token storage\n\nYou can persist your file vault passphrase by running the following command:\ninfisical vault set file --passphrase <your-passphrase>\n")
 
 		if configFile.VaultBackendPassphrase == "" {
+			PrintWarning("System keyring could not be used, falling back to `file` vault for sensitive data storage.")
 			passphrasePrompt := promptui.Prompt{
 				Label: "Enter the passphrase to use for keyring encryption",
 			}
