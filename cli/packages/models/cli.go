@@ -35,6 +35,7 @@ type SingleEnvironmentVariable struct {
 		Workspace string `json:"workspace"`
 	} `json:"tags"`
 	Comment string `json:"comment"`
+	Etag    string `json:"Etag"`
 }
 
 type PlaintextSecretResult struct {
