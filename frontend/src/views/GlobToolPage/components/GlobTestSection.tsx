@@ -11,11 +11,11 @@ import { IconButton, Input, TextArea, Tooltip, TooltipProvider, Button } from "@
 export const GlobTestSection = () => {
   const [path, setPath] = useState<string>('');
   const [glob, setGlob] = useState<string>('');
-  const [output, setOutput] = useState<string>('');
+  const [output, setOutput] = useState<HTMLDivElement>('');
 
   const router = useRouter();
   const { query } = router;
-  const secretPath = decodeURIComponent(query.secretPath ?? '');
+  const secretPath = query.secretPath ?? '';
 
   useEffect(() => {
     if (secretPath) {
@@ -47,12 +47,18 @@ export const GlobTestSection = () => {
     if (!path || !glob) return;
 
     const matcher = picomatch(path, { dot: true });
-    const lines = glob.split('\n')
+    const patterns = glob.split('\n')
 
-    const output = lines.map(line => {
-      const isMatch = matcher(line);
-      return `${line} - ${isMatch ? 'Match' : 'No Match'}`;
-    }).join('\n');
+    const output = patterns.map((pattern, idx) => {
+      const isMatch = matcher(pattern);
+      const color = isMatch ? 'text-green-500' : 'text-red-500';
+
+      return (
+        <div key={idx + pattern} className={color}>
+          {isMatch ? "✓" : "✕"} - {pattern}
+        </div>
+      )
+    })
 
     setOutput(output)
   }, []);
@@ -96,10 +102,9 @@ export const GlobTestSection = () => {
 
           <div className="flex flex-col gap-3">
             <p>Output</p>
-            <TextArea 
-              value={output}
-              rows={4}
-            />
+            <div className="rounded-md w-full p-2 border border-solid border-mineshaft-400 bg-bunker-800 text-gray-400 font-inter whitespace-pre-wrap h-24 overflow-y-auto">
+              {output}
+            </div>
           </div>
 
           <div>
