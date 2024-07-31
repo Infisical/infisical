@@ -33,7 +33,7 @@ export const SecretV2MigrationSection = () => {
     currentWorkspace?.version === ProjectVersion.V3 ? "" : currentWorkspace?.id || "",
     {
       refetchInterval:
-        currentWorkspace?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 3000 : false
+        currentWorkspace?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 2000 : false
     }
   );
   const { membership } = useProjectPermission();
