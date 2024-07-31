@@ -308,8 +308,12 @@ infisical agent --config example-agent-config-file.yaml
   {{- end }}
   {{- end }}
   ```
-  This function can be used to render the full list of secrets within a given project, environment and secret path. 
 
+  **Function name**: listSecrets
+
+  **Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
+
+  **Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`  
 </Accordion>
 
 <Accordion title="getSecretByName">
@@ -325,5 +329,10 @@ infisical agent --config example-agent-config-file.yaml
   {{ end }}
   ```
 
-  This function can be used to render a single secret by it's name. 
+  **Function name**: getSecretByName
+
+  **Description**: This function can be used to render a single secret by it's name.
+
+  **Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
+
 </Accordion>
