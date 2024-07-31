@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,13 +11,19 @@ import {
   faCircleInfo
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import queryString from "query-string";
+import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
+import { isValidPath } from "@app/helpers/string";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
   Card,
+  CardBody,
   CardTitle,
   FormControl,
   Input,
@@ -25,6 +32,29 @@ import {
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+const generateFormSchema = (availableEnvironmentNames: string[]) => {
+  return z.object({
+    secretPath: z.string().min(1).refine((val) => isValidPath(val), {
+      message: "Vault secret path has to be a valid path"
+    }),
+    vaultEnginePath: z
+      .string()
+      .min(1)
+      .refine((val) => isValidPath(val), {
+        message: "Vault engine path has to be a valid path"
+      }),
+    vaultSecretPath: z
+      .string()
+      .min(1)
+      .refine((val) => isValidPath(val), {
+        message: "Vault secret path has to be a valid path"
+      }),
+    selectedSourceEnvironment: z.enum(availableEnvironmentNames as any as [string, ...string[]])
+  });
+};
+
+type TForm = z.infer<ReturnType<typeof generateFormSchema>>;
 
 export default function HashiCorpVaultCreateIntegrationPage() {
   const router = useRouter();
@@ -37,54 +67,48 @@ export default function HashiCorpVaultCreateIntegrationPage() {
     (integrationAuthId as string) ?? ""
   );
 
-  const [vaultEnginePath, setVaultEnginePath] = useState("");
-  const [vaultEnginePathErrorText, setVaultEnginePathErrorText] = useState("");
+  const formSchema = useMemo(() => {
+    return generateFormSchema(workspace?.environments.map((env) => env.slug) ?? []);
+  }, [workspace?.environments]);
 
-  const [vaultSecretPath, setVaultSecretPath] = useState("");
-  const [vaultSecretPathErrorText, setVaultSecretPathErrorText] = useState("");
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting }
+  } = useForm<TForm>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      secretPath: "/",
+      vaultEnginePath: "",
+      vaultSecretPath: "",
+      selectedSourceEnvironment: ""
+    }
+  });
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const isValidVaultPath = (vaultPath: string) => {
-    return !(vaultPath.length === 0 || vaultPath.startsWith("/") || vaultPath.endsWith("/"));
-  };
-
-  const handleButtonClick = async () => {
+  const handleFormSubmit = async (formData: TForm) => {
     try {
       if (!integrationAuth?.id) return;
-
-      if (!isValidVaultPath(vaultEnginePath)) {
-        setVaultEnginePathErrorText("Vault KV Secrets Engine Path must be valid like kv");
-      } else {
-        setVaultEnginePathErrorText("");
-      }
-
-      if (!isValidVaultPath(vaultSecretPath)) {
-        setVaultSecretPathErrorText("Vault Secret(s) Path must be valid like machine/dev");
-      } else {
-        setVaultSecretPathErrorText("");
-      }
-
-      if (!isValidVaultPath || !isValidVaultPath(vaultSecretPath)) return;
-
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: vaultEnginePath,
-        sourceEnvironment: selectedSourceEnvironment,
-        path: vaultSecretPath,
-        secretPath
+        app: formData.vaultEnginePath,
+        sourceEnvironment: formData.selectedSourceEnvironment,
+        path: formData.vaultSecretPath,
+        secretPath: formData.secretPath
       });
-
-      setIsLoading(false);
-
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
+      let errorMessage: string = "Something went wrong!";
+      if (axios.isAxiosError(err)) {
+        const { message } = err?.response?.data as { message: string };
+        errorMessage = message;
+      }
+
+      createNotification({
+        text: errorMessage,
+        type: "error"
+      });
     }
   };
 
@@ -100,7 +124,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
           subTitle="Select which environment or folder in Infisical you want to sync to which path in HashiCorp Vault."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center">
+            <div className="inline-flex items-center">
               <Image
                 src="/images/integrations/Vault.png"
                 height={30}
@@ -123,63 +147,83 @@ export default function HashiCorpVaultCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`vault-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl
-          label="Vault KV Secrets Engine Path"
-          errorText={vaultEnginePathErrorText}
-          isError={vaultEnginePathErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder="kv"
-            value={vaultEnginePath}
-            onChange={(e) => setVaultEnginePath(e.target.value)}
-          />
-        </FormControl>
-        <FormControl
-          label="Vault Secret(s) Path"
-          errorText={vaultSecretPathErrorText}
-          isError={vaultSecretPathErrorText !== "" ?? false}
-          className="px-6"
-        >
-          <Input
-            placeholder="machine/dev"
-            value={vaultSecretPath}
-            onChange={(e) => setVaultSecretPath(e.target.value)}
-          />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6 w-min"
-          isLoading={isLoading}
-          isDisabled={!(isValidVaultPath(vaultEnginePath) && isValidVaultPath(vaultSecretPath))}
-        >
-          Create Integration
-        </Button>
+        <CardBody>
+          <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+            <Controller
+              control={control}
+              name="selectedSourceEnvironment"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl errorText={error?.message}
+                isError={Boolean(error)} isRequired label="Project Environment" >
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    className="w-full border border-mineshaft-500"
+                  >
+                    {workspace?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`vault-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="secretPath"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl errorText={error?.message}
+                isError={Boolean(error)} isRequired label="Secrets Path" helperText="A path to your secrets in Infisical.">
+                  <Input {...field} autoCorrect="off" spellCheck={false} placeholder="/" />
+                </FormControl>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="vaultEnginePath"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Vault KV Secrets Engine Path"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  helperText="A path where your KV Secrets Engine is enabled."
+                  isRequired
+                >
+                  <Input autoCorrect="off" spellCheck={false} {...field} placeholder="kv" />
+                </FormControl>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="vaultSecretPath"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Vault Secret(s) Path"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  helperText="A path for storing secrets within the KV Secrets Engine."
+                  isRequired
+                >
+                  <Input autoCorrect="off" spellCheck={false} {...field} placeholder="machine/dev" />
+                </FormControl>
+              )}
+            />
+
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+            >
+              Create Integration
+            </Button>
+          </form>
+        </CardBody>
       </Card>
       <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
