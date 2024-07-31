@@ -31,7 +31,7 @@ func SetValueInKeyring(key, value string) error {
 
 		if configFile.VaultBackendPassphrase == "" {
 			passphrasePrompt := promptui.Prompt{
-				Label: "Enter the passphrase to use for keyring encryption: ",
+				Label: "Enter the passphrase to use for keyring encryption",
 			}
 			passphrase, err := passphrasePrompt.Run()
 			if err != nil {
