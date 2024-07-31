@@ -219,7 +219,7 @@ export const IntegrationsSection = ({
                       }
                     >
                       <div className="flex items-center space-x-2 text-white">
-                        <div>Sync Status</div>
+                        <div>{integration.isSynced ? "Synced" : "Not synced"}</div>
                         {!integration.isSynced && <FontAwesomeIcon icon={faWarning} />}
                       </div>
                     </Tooltip>
