@@ -38,6 +38,7 @@ export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, t
           role="button"
           tabIndex={0}
           onClick={hyperLinkPath}
+          aria-hidden="true"
         >
           {hyperLinkText}
         </span>
