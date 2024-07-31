@@ -1,3 +1,4 @@
+import { ReactNode } from 'react'
 import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import picomatch from "picomatch";
@@ -11,11 +12,11 @@ import { IconButton, Input, TextArea, Tooltip, TooltipProvider, Button } from "@
 export const GlobTestSection = () => {
   const [path, setPath] = useState<string>('');
   const [glob, setGlob] = useState<string>('');
-  const [output, setOutput] = useState<HTMLDivElement>('');
+  const [output, setOutput] = useState<ReactNode>(null);
 
   const router = useRouter();
   const { query } = router;
-  const secretPath = query.secretPath ?? '';
+  const secretPath = decodeURIComponent(query.secretPath ?? '') as string;
 
   useEffect(() => {
     if (secretPath) {
