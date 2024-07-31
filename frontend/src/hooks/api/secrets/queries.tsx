@@ -1,8 +1,11 @@
 /* eslint-disable no-param-reassign */
 import { useCallback, useMemo } from "react";
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import axios from "axios";
 
+import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { useToggle } from "@app/hooks/useToggle";
 
 import {
   GetSecretVersionsDTO,
@@ -113,10 +116,24 @@ export const useGetProjectSecretsAllEnv = ({
   envs,
   secretPath
 }: TGetProjectSecretsAllEnvDTO) => {
+  const [isErrorHandled, setIsErrorHandled] = useToggle(false);
+
   const secrets = useQueries({
     queries: envs.map((environment) => ({
       queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
       enabled: Boolean(workspaceId && environment),
+      onError: (error: unknown) => {
+        if (axios.isAxiosError(error) && !isErrorHandled) {
+          const serverResponse = error.response?.data as { message: string };
+          createNotification({
+            title: "Error fetching secrets",
+            type: "error",
+            text: serverResponse.message
+          });
+
+          setIsErrorHandled.on();
+        }
+      },
       queryFn: async () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
       select: (el: SecretV3RawResponse) =>
         mergePersonalSecrets(el.secrets).reduce<Record<string, SecretV3RawSanitized>>(

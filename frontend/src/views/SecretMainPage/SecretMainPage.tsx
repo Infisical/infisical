@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import axios from "axios";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
@@ -93,7 +94,12 @@ export const SecretMainPage = () => {
   }, [isWorkspaceLoading, currentWorkspace, environment, router.isReady]);
 
   // fetch secrets
-  const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
+  const {
+    data: secrets,
+    isLoading: isSecretsLoading,
+    isError: isErrorFetchingSecrets,
+    error: fetchSecretsError
+  } = useGetProjectSecrets({
     environment,
     workspaceId,
     secretPath,
@@ -101,6 +107,17 @@ export const SecretMainPage = () => {
       enabled: canReadSecret
     }
   });
+
+  if (isErrorFetchingSecrets) {
+    if (axios.isAxiosError(fetchSecretsError)) {
+      const serverResponse = fetchSecretsError.response?.data as { message: string };
+      createNotification({
+        title: "Error fetching secrets",
+        type: "error",
+        text: serverResponse.message
+      });
+    }
+  }
 
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
