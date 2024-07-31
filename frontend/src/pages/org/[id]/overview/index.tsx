@@ -36,6 +36,10 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   Checkbox,
   FormControl,
@@ -43,6 +47,8 @@ import {
   Input,
   Modal,
   ModalContent,
+  Select,
+  SelectItem,
   Skeleton,
   UpgradePlanModal
 } from "@app/components/v2";
@@ -59,8 +65,10 @@ import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
   useCreateWorkspace,
+  useGetExternalKmsList,
   useRegisterUserAction
 } from "@app/hooks/api";
+import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 // import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { Workspace } from "@app/hooks/api/types";
@@ -473,7 +481,8 @@ const formSchema = yup.object({
     .label("Project Name")
     .trim()
     .max(64, "Too long, maximum length is 64 characters"),
-  addMembers: yup.bool().required().label("Add Members")
+  addMembers: yup.bool().required().label("Add Members"),
+  kmsKeyId: yup.string().label("KMS Key ID")
 });
 
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
@@ -506,7 +515,10 @@ const OrganizationPage = withPermission(
       reset,
       handleSubmit
     } = useForm<TAddProjectFormData>({
-      resolver: yupResolver(formSchema)
+      resolver: yupResolver(formSchema),
+      defaultValues: {
+        kmsKeyId: INTERNAL_KMS_KEY_ID
+      }
     });
 
     const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
@@ -521,7 +533,9 @@ const OrganizationPage = withPermission(
       (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
     );
 
-    const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
+    const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
+
+    const onCreateProject = async ({ name, addMembers, kmsKeyId }: TAddProjectFormData) => {
       // type check
       if (!currentOrg) return;
       if (!user) return;
@@ -531,7 +545,8 @@ const OrganizationPage = withPermission(
             project: { id: newProjectId }
           }
         } = await createWs.mutateAsync({
-          projectName: name
+          projectName: name,
+          kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined
         });
 
         if (addMembers) {
@@ -1064,24 +1079,64 @@ const OrganizationPage = withPermission(
                   )}
                 />
               </div>
-              <div className="mt-7 flex items-center">
-                <Button
-                  isDisabled={isSubmitting}
-                  isLoading={isSubmitting}
-                  key="layout-create-project-submit"
-                  className="mr-4"
-                  type="submit"
-                >
-                  Create Project
-                </Button>
-                <Button
-                  key="layout-cancel-create-project"
-                  onClick={() => handlePopUpClose("addNewWs")}
-                  variant="plain"
-                  colorSchema="secondary"
-                >
-                  Cancel
-                </Button>
+              <div className="mt-14 flex">
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
+                    <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                      <div className="order-1 ml-3">Advanced Settings</div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <Controller
+                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                          <FormControl
+                            errorText={error?.message}
+                            isError={Boolean(error)}
+                            label="KMS"
+                          >
+                            <Select
+                              {...field}
+                              onValueChange={(e) => {
+                                onChange(e);
+                              }}
+                              className="mb-12 w-full bg-mineshaft-600"
+                            >
+                              <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                                Default Infisical KMS
+                              </SelectItem>
+                              {externalKmsList?.map((kms) => (
+                                <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                                  {kms.slug}
+                                </SelectItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        )}
+                        control={control}
+                        name="kmsKeyId"
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+                <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
+                  <Button
+                    key="layout-cancel-create-project"
+                    onClick={() => handlePopUpClose("addNewWs")}
+                    colorSchema="secondary"
+                    variant="plain"
+                    className="py-2"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    isDisabled={isSubmitting}
+                    isLoading={isSubmitting}
+                    key="layout-create-project-submit"
+                    className="ml-4"
+                    type="submit"
+                  >
+                    Create Project
+                  </Button>
+                </div>
               </div>
             </form>
           </ModalContent>

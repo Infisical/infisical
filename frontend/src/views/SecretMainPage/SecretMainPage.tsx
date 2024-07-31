@@ -23,13 +23,12 @@ import {
   useGetProjectSecrets,
   useGetSecretApprovalPolicyOfABoard,
   useGetSecretImports,
-  useGetUserWsKey,
   useGetWorkspaceSnapshotList,
   useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
 
-import { ProjectIndexSecretsSection } from "../SecretOverviewPage/components/ProjectIndexSecretsSection";
+import { SecretV2MigrationSection } from "../SecretOverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
@@ -93,14 +92,11 @@ export const SecretMainPage = () => {
     }
   }, [isWorkspaceLoading, currentWorkspace, environment, router.isReady]);
 
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
-
   // fetch secrets
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     environment,
     workspaceId,
     secretPath,
-    decryptFileKey: decryptFileKey!,
     options: {
       enabled: canReadSecret
     }
@@ -131,7 +127,6 @@ export const SecretMainPage = () => {
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
     projectId: workspaceId,
     environment,
-    decryptFileKey: decryptFileKey!,
     path: secretPath,
     options: {
       enabled: canReadSecret
@@ -237,6 +232,7 @@ export const SecretMainPage = () => {
   return (
     <StoreProvider>
       <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+        <SecretV2MigrationSection />
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
             pageName={t("dashboard.title")}
@@ -250,12 +246,10 @@ export const SecretMainPage = () => {
             protectionPolicyName={boardPolicy?.name}
           />
         </div>
-        <ProjectIndexSecretsSection decryptFileKey={decryptFileKey!} />
         {!isRollbackMode ? (
           <>
             <ActionBar
               secrets={secrets}
-              importedSecrets={importedSecrets}
               environment={environment}
               workspaceId={workspaceId}
               projectSlug={projectSlug}
@@ -333,7 +327,6 @@ export const SecretMainPage = () => {
                     environment={environment}
                     workspaceId={workspaceId}
                     secretPath={secretPath}
-                    decryptFileKey={decryptFileKey!}
                     isProtectedBranch={isProtectedBranch}
                   />
                 )}
@@ -343,7 +336,6 @@ export const SecretMainPage = () => {
             <CreateSecretForm
               environment={environment}
               workspaceId={workspaceId}
-              decryptFileKey={decryptFileKey!}
               secretPath={secretPath}
               autoCapitalize={currentWorkspace?.autoCapitalization}
               isProtectedBranch={isProtectedBranch}
@@ -352,7 +344,6 @@ export const SecretMainPage = () => {
               secrets={secrets}
               environment={environment}
               workspaceId={workspaceId}
-              decryptFileKey={decryptFileKey!}
               secretPath={secretPath}
               isSmaller={isNotEmtpy}
               environments={currentWorkspace?.environments}
@@ -372,7 +363,6 @@ export const SecretMainPage = () => {
         ) : (
           <SnapshotView
             snapshotId={snapshotId || ""}
-            decryptFileKey={decryptFileKey!}
             environment={environment}
             workspaceId={workspaceId}
             secretPath={secretPath}

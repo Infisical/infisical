@@ -1,14 +1,14 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -34,6 +34,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TDynamicSecretLeaseServiceFactory = ReturnType<typeof dynamicSecretLeaseServiceFactory>;
@@ -46,7 +47,8 @@ export const dynamicSecretLeaseServiceFactory = ({
   permissionService,
   dynamicSecretQueueService,
   projectDAL,
-  licenseService
+  licenseService,
+  kmsService
 }: TDynamicSecretLeaseServiceFactoryDep) => {
   const create = async ({
     environmentSlug,
@@ -94,14 +96,12 @@ export const dynamicSecretLeaseServiceFactory = ({
       throw new BadRequestError({ message: `Max lease limit reached. Limit: ${appCfg.MAX_LEASE_LIMIT}` });
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
-        keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-        ciphertext: dynamicSecretCfg.inputCiphertext,
-        tag: dynamicSecretCfg.inputTag,
-        iv: dynamicSecretCfg.inputIV
-      })
-    ) as object;
+    const { decryptor: kmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const decryptedStoredInputJson = kmsDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedConfig }).toString();
+    const decryptedStoredInput = JSON.parse(decryptedStoredInputJson) as object;
 
     const selectedTTL = ttl ?? dynamicSecretCfg.defaultTTL;
     const { maxTTL } = dynamicSecretCfg;
@@ -164,14 +164,12 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
-        keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-        ciphertext: dynamicSecretCfg.inputCiphertext,
-        tag: dynamicSecretCfg.inputTag,
-        iv: dynamicSecretCfg.inputIV
-      })
-    ) as object;
+    const { decryptor: kmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const decryptedStoredInputJson = kmsDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedConfig }).toString();
+    const decryptedStoredInput = JSON.parse(decryptedStoredInputJson) as object;
 
     const selectedTTL = ttl ?? dynamicSecretCfg.defaultTTL;
     const { maxTTL } = dynamicSecretCfg;
@@ -231,14 +229,12 @@ export const dynamicSecretLeaseServiceFactory = ({
 
     const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    const decryptedStoredInput = JSON.parse(
-      infisicalSymmetricDecrypt({
-        keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
-        ciphertext: dynamicSecretCfg.inputCiphertext,
-        tag: dynamicSecretCfg.inputTag,
-        iv: dynamicSecretCfg.inputIV
-      })
-    ) as object;
+    const { decryptor: kmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const decryptedStoredInputJson = kmsDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedConfig }).toString();
+    const decryptedStoredInput = JSON.parse(decryptedStoredInputJson) as object;
 
     const revokeResponse = await selectedProvider
       .revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId)

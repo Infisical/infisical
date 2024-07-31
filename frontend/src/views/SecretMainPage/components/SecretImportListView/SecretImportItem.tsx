@@ -19,13 +19,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  EmptyState,
-  IconButton,
-  SecretInput,
-  TableContainer,
-  Tooltip
-} from "@app/components/v2";
+import { EmptyState, IconButton, SecretInput, TableContainer, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
@@ -37,7 +31,11 @@ type Props = {
   secretPath?: string;
   secretImport?: TSecretImport;
   isReplicationExpand?: boolean;
-  importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
+  importedSecrets: {
+    key: string;
+    value?: string;
+    overriden: { env: string; secretPath: string };
+  }[];
   searchTerm: string;
   onExpandReplicateSecrets: (id: string) => void;
 };
@@ -45,9 +43,9 @@ type Props = {
 // to show the environment and folder icon
 export const EnvFolderIcon = ({
   env,
-  secretPath,
-  // isReplication 
-}: {
+  secretPath
+}: // isReplication
+{
   env: string;
   secretPath: string;
   // isReplication?: boolean;

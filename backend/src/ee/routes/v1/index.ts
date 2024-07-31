@@ -4,6 +4,7 @@ import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerExternalKmsRouter } from "./external-kms-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerLdapRouter } from "./ldap-router";
@@ -87,4 +88,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/additional-privilege" }
   );
+
+  await server.register(registerExternalKmsRouter, {
+    prefix: "/external-kms"
+  });
 };

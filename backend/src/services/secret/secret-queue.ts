@@ -1,6 +1,11 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
+import { ProjectUpgradeStatus, ProjectVersion, TSecretSnapshotSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
+import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
+import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -16,8 +21,11 @@ import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/se
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
@@ -25,6 +33,11 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { expandSecretReferencesFactory, getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
@@ -41,13 +54,14 @@ export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2" | "updateById">;
+  integrationAuthDAL: Pick<TIntegrationAuthDALFactory, "upsert" | "find">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: TSecretDALFactory;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
@@ -57,6 +71,14 @@ type TSecretQueueFactoryDep = {
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretV2BridgeDAL: TSecretV2BridgeDALFactory;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  secretRotationDAL: Pick<TSecretRotationDALFactory, "secretOutputV2InsertMany" | "find">;
+  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
+  snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
+  snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany">;
 };
 
 export type TGetSecrets = {
@@ -76,6 +98,7 @@ type TIntegrationSecret = Record<
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
+  integrationAuthDAL,
   projectBotService,
   integrationAuthService,
   secretDAL,
@@ -91,7 +114,15 @@ export const secretQueueFactory = ({
   secretVersionDAL,
   secretBlindIndexDAL,
   secretTagDAL,
-  secretVersionTagDAL
+  secretVersionTagDAL,
+  secretV2BridgeDAL,
+  secretVersionV2BridgeDAL,
+  kmsService,
+  secretVersionTagV2BridgeDAL,
+  secretRotationDAL,
+  snapshotDAL,
+  snapshotSecretV2BridgeDAL,
+  secretApprovalRequestDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -195,7 +226,11 @@ export const secretQueueFactory = ({
     secretBlindIndexDAL,
     secretTagDAL,
     secretVersionTagDAL,
-    folderDAL
+    folderDAL,
+    kmsService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -206,8 +241,83 @@ export const secretQueueFactory = ({
     secretBlindIndexDAL,
     secretTagDAL,
     secretVersionTagDAL,
-    folderDAL
+    folderDAL,
+    kmsService,
+    secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    secretVersionTagV2BridgeDAL
   });
+
+  /**
+   * Return the secrets in a given [folderId] including secrets from
+   * nested imported folders recursively.
+   */
+  const getIntegrationSecretsV2 = async (dto: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+    depth: number;
+    decryptor: (value: Buffer | null | undefined) => string;
+  }) => {
+    const content: TIntegrationSecret = {};
+    if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
+      logger.info(
+        `getIntegrationSecrets: secret depth exceeded for [projectId=${dto.projectId}] [folderId=${dto.folderId}] [depth=${dto.depth}]`
+      );
+      return content;
+    }
+
+    // process secrets in current folder
+    const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
+    secrets.forEach((secret) => {
+      const secretKey = secret.key;
+      const secretValue = dto.decryptor(secret.encryptedValue);
+      content[secretKey] = { value: secretValue };
+
+      if (secret.encryptedComment) {
+        const commentValue = dto.decryptor(secret.encryptedComment);
+        content[secretKey].comment = commentValue;
+      }
+
+      content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+    });
+
+    const expandSecretReferences = expandSecretReferencesFactory({
+      decryptSecretValue: dto.decryptor,
+      secretDAL: secretV2BridgeDAL,
+      folderDAL,
+      projectId: dto.projectId
+    });
+
+    await expandSecretReferences(content);
+    // check if current folder has any imports from other folders
+    const secretImports = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
+
+    // if no imports then return secrets in the current folder
+    if (!secretImports.length) return content;
+    const importedSecrets = await fnSecretsV2FromImports({
+      decryptor: dto.decryptor,
+      folderDAL,
+      secretDAL: secretV2BridgeDAL,
+      expandSecretReferences,
+      secretImportDAL,
+      allowedImports: secretImports
+    });
+
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
+      for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
+        const importedSecret = importedSecrets[i].secrets[j];
+        if (!content[importedSecret.key]) {
+          content[importedSecret.key] = {
+            skipMultilineEncoding: importedSecret.skipMultilineEncoding,
+            comment: importedSecret.secretComment,
+            value: importedSecret.secretValue || ""
+          };
+        }
+      }
+    }
+    return content;
+  };
 
   /**
    * Return the secrets in a given [folderId] including secrets from
@@ -467,24 +577,39 @@ export const secretQueueFactory = ({
       );
     }
 
-    const secretReferences = await secretDAL.findReferencedSecretReferences(
-      projectId,
-      folder.environment.slug,
-      secretPath
-    );
-    if (secretReferences.length) {
-      const referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    let referencedFolderIds;
+    if (shouldUseSecretV2Bridge) {
+      const secretReferences = await secretV2BridgeDAL.findReferencedSecretReferences(
+        projectId,
+        folder.environment.slug,
+        secretPath
+      );
+      referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+    } else {
+      const secretReferences = await secretDAL.findReferencedSecretReferences(
+        projectId,
+        folder.environment.slug,
+        secretPath
+      );
+      referencedFolderIds = unique(secretReferences, (i) => i.folderId).map(({ folderId }) => folderId);
+    }
+    if (referencedFolderIds.length) {
       const referencedFolders = await folderDAL.findSecretPathByFolderIds(projectId, referencedFolderIds);
       const referencedFoldersGroupedById = groupBy(referencedFolders.filter(Boolean), (i) => i?.id as string);
       logger.info(
         `getIntegrationSecrets: Syncing secret due to reference change [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
       );
       await Promise.all(
-        secretReferences
-          .filter(({ folderId }) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
+        referencedFolderIds
+          .filter((folderId) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
           // filter out already synced ones
           .filter(
-            ({ folderId }) =>
+            (folderId) =>
               !deDupeQueue[
                 uniqueSecretQueueKey(
                   referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
@@ -492,7 +617,7 @@ export const secretQueueFactory = ({
                 )
               ]
           )
-          .map(({ folderId }) =>
+          .map((folderId) =>
             syncSecrets({
               projectId,
               secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
@@ -515,6 +640,23 @@ export const secretQueueFactory = ({
     logger.info(
       `getIntegrationSecrets: secret integration sync started [jobId=${job.id}] [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}] [depth=${job.data.depth}]`
     );
+
+    const secrets = shouldUseSecretV2Bridge
+      ? await getIntegrationSecretsV2({
+          environment,
+          projectId,
+          folderId: folder.id,
+          depth: 1,
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+        })
+      : await getIntegrationSecrets({
+          environment,
+          projectId,
+          folderId: folder.id,
+          key: botKey as string,
+          depth: 1
+        });
+
     for (const integration of toBeSyncedIntegrations) {
       const integrationAuth = {
         ...integration.integrationAuth,
@@ -523,27 +665,31 @@ export const secretQueueFactory = ({
         projectId: integration.projectId
       };
 
-      const botKey = await projectBotService.getBotKey(projectId);
-      const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(integrationAuth, botKey);
-      const awsAssumeRoleArn =
+      const { accessToken, accessId } = await integrationAuthService.getIntegrationAccessToken(
+        integrationAuth,
+        shouldUseSecretV2Bridge,
+        botKey
+      );
+      let awsAssumeRoleArn = null;
+      if (shouldUseSecretV2Bridge) {
+        if (integrationAuth.encryptedAwsAssumeIamRoleArn) {
+          awsAssumeRoleArn = secretManagerDecryptor({
+            cipherTextBlob: Buffer.from(integrationAuth.encryptedAwsAssumeIamRoleArn)
+          }).toString();
+        }
+      } else if (
         integrationAuth.awsAssumeIamRoleArnTag &&
         integrationAuth.awsAssumeIamRoleArnIV &&
         integrationAuth.awsAssumeIamRoleArnCipherText
-          ? decryptSymmetric128BitHexKeyUTF8({
-              ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
-              iv: integrationAuth.awsAssumeIamRoleArnIV,
-              tag: integrationAuth.awsAssumeIamRoleArnTag,
-              key: botKey
-            })
-          : null;
+      ) {
+        awsAssumeRoleArn = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
+          iv: integrationAuth.awsAssumeIamRoleArnIV,
+          tag: integrationAuth.awsAssumeIamRoleArnTag,
+          key: botKey as string
+        });
+      }
 
-      const secrets = await getIntegrationSecrets({
-        environment,
-        projectId,
-        folderId: folder.id,
-        key: botKey,
-        depth: 1
-      });
       const suffixedSecrets: typeof secrets = {};
       const metadata = integration.metadata as Record<string, string>;
       if (metadata) {
@@ -637,17 +783,363 @@ export const secretQueueFactory = ({
     });
   });
 
+  const startSecretV2Migration = async (projectId: string) => {
+    await queueService.queue(
+      QueueName.ProjectV3Migration,
+      QueueJobs.ProjectV3Migration,
+      { projectId },
+      {
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+  };
+
+  queueService.start(QueueName.ProjectV3Migration, async (job) => {
+    const { projectId } = job.data;
+    const {
+      botKey,
+      shouldUseSecretV2Bridge: isProjectUpgradedToV3,
+      project
+    } = await projectBotService.getBotKey(projectId);
+    if (isProjectUpgradedToV3 || project.upgradeStatus === ProjectUpgradeStatus.InProgress) {
+      return;
+    }
+    if (!botKey) throw new BadRequestError({ message: "Bot not found" });
+    await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
+
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      projectId,
+      type: KmsDataKey.SecretManager
+    });
+
+    const folders = await folderDAL.findByProjectId(projectId);
+    // except secret version and snapshot migrate rest of everything first in a transaction
+    await secretDAL.transaction(async (tx) => {
+      for (const folder of folders) {
+        const folderId = folder.id;
+        /*
+         * Secrets Migration
+         * */
+        // eslint-disable-next-line no-await-in-loop
+        const projectV1Secrets = await secretDAL.find({ folderId }, { tx });
+        if (projectV1Secrets.length) {
+          const secretReferences: {
+            secretId: string;
+            references: { environment: string; secretPath: string; secretKey: string }[];
+          }[] = [];
+          await secretV2BridgeDAL.insertMany(
+            projectV1Secrets.map((el) => {
+              const key = decryptSymmetric128BitHexKeyUTF8({
+                ciphertext: el.secretKeyCiphertext,
+                iv: el.secretKeyIV,
+                tag: el.secretKeyTag,
+                key: botKey
+              });
+              const value = decryptSymmetric128BitHexKeyUTF8({
+                ciphertext: el.secretValueCiphertext,
+                iv: el.secretValueIV,
+                tag: el.secretValueTag,
+                key: botKey
+              });
+              const comment =
+                el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+                  ? decryptSymmetric128BitHexKeyUTF8({
+                      ciphertext: el.secretCommentCiphertext,
+                      iv: el.secretCommentIV,
+                      tag: el.secretCommentTag,
+                      key: botKey
+                    })
+                  : "";
+              const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+              // create references
+              const references = getAllNestedSecretReferences(value);
+              secretReferences.push({ secretId: el.id, references });
+
+              const encryptedComment = comment
+                ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+                : null;
+              return {
+                id: el.id,
+                createdAt: el.createdAt,
+                updatedAt: el.updatedAt,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                encryptedComment,
+                encryptedValue,
+                key,
+                version: el.version,
+                type: el.type,
+                userId: el.userId,
+                folderId: el.folderId,
+                metadata: el.metadata,
+                reminderNote: el.secretReminderNote,
+                reminderRepeatDays: el.secretReminderRepeatDays
+              };
+            }),
+            tx
+          );
+          await secretV2BridgeDAL.upsertSecretReferences(secretReferences, tx);
+        }
+
+        const SNAPSHOT_BATCH_SIZE = 10;
+        const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, SNAPSHOT_BATCH_SIZE, tx);
+        const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
+        const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
+        const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
+        snapshots.forEach(({ secretVersions = [], ...snapshot }) => {
+          secretVersions.forEach((el) => {
+            projectV3SnapshotSecrets.push({
+              secretVersionId: el.id,
+              snapshotId: snapshot.id,
+              createdAt: snapshot.createdAt,
+              updatedAt: snapshot.updatedAt,
+              envId: el.snapshotEnvId
+            });
+            if (projectV3SecretVersionsGroupById[el.id]) return;
+
+            const key = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretKeyCiphertext,
+              iv: el.secretKeyIV,
+              tag: el.secretKeyTag,
+              key: botKey
+            });
+            const value = decryptSymmetric128BitHexKeyUTF8({
+              ciphertext: el.secretValueCiphertext,
+              iv: el.secretValueIV,
+              tag: el.secretValueTag,
+              key: botKey
+            });
+            const comment =
+              el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+                ? decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: el.secretCommentCiphertext,
+                    iv: el.secretCommentIV,
+                    tag: el.secretCommentTag,
+                    key: botKey
+                  })
+                : "";
+            const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+
+            const encryptedComment = comment
+              ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+              : null;
+            projectV3SecretVersionsGroupById[el.id] = {
+              id: el.id,
+              createdAt: el.createdAt,
+              updatedAt: el.updatedAt,
+              skipMultilineEncoding: el.skipMultilineEncoding,
+              encryptedComment,
+              encryptedValue,
+              key,
+              version: el.version,
+              type: el.type,
+              userId: el.userId,
+              folderId: el.folderId,
+              metadata: el.metadata,
+              reminderNote: el.secretReminderNote,
+              reminderRepeatDays: el.secretReminderRepeatDays,
+              secretId: el.secretId,
+              envId: el.envId
+            };
+            el.tags.forEach(({ secretTagId }) => {
+              projectV3SecretVersionTags.push({ secret_tagsId: secretTagId, secret_versions_v2Id: el.id });
+            });
+          });
+        });
+        // this is corner case in which some times the snapshot may not have the secret version of an existing secret
+        // example: on some integration it will pull values from 3rd party on integration but snapshot is not taken
+        // Thus it won't have secret version
+        const latestSecretVersionByFolder = await secretVersionDAL.findLatestVersionMany(
+          folderId,
+          projectV1Secrets.map((el) => el.id),
+          tx
+        );
+        Object.values(latestSecretVersionByFolder).forEach((el) => {
+          if (projectV3SecretVersionsGroupById[el.id]) return;
+          const key = decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: el.secretKeyCiphertext,
+            iv: el.secretKeyIV,
+            tag: el.secretKeyTag,
+            key: botKey
+          });
+          const value = decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: el.secretValueCiphertext,
+            iv: el.secretValueIV,
+            tag: el.secretValueTag,
+            key: botKey
+          });
+          const comment =
+            el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.secretCommentCiphertext,
+                  iv: el.secretCommentIV,
+                  tag: el.secretCommentTag,
+                  key: botKey
+                })
+              : "";
+          const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+
+          const encryptedComment = comment
+            ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
+            : null;
+          projectV3SecretVersionsGroupById[el.id] = {
+            id: el.id,
+            createdAt: el.createdAt,
+            updatedAt: el.updatedAt,
+            skipMultilineEncoding: el.skipMultilineEncoding,
+            encryptedComment,
+            encryptedValue,
+            key,
+            version: el.version,
+            type: el.type,
+            userId: el.userId,
+            folderId: el.folderId,
+            metadata: el.metadata,
+            reminderNote: el.secretReminderNote,
+            reminderRepeatDays: el.secretReminderRepeatDays,
+            secretId: el.secretId,
+            envId: el.envId
+          };
+        });
+
+        const projectV3SecretVersions = Object.values(projectV3SecretVersionsGroupById);
+        if (projectV3SecretVersions.length) {
+          await secretVersionV2BridgeDAL.insertMany(projectV3SecretVersions, tx);
+        }
+        if (projectV3SecretVersionTags.length) {
+          await secretVersionTagV2BridgeDAL.insertMany(projectV3SecretVersionTags, tx);
+        }
+
+        if (projectV3SnapshotSecrets.length) {
+          await snapshotSecretV2BridgeDAL.insertMany(projectV3SnapshotSecrets, tx);
+        }
+        await snapshotDAL.deleteSnapshotsAboveLimit(folderId, SNAPSHOT_BATCH_SIZE, tx);
+      }
+      /*
+       * Secret Tag Migration
+       * */
+      // eslint-disable-next-line no-await-in-loop
+      const projectV1SecretTags = await secretTagDAL.findSecretTagsByProjectId(projectId, tx);
+      if (projectV1SecretTags.length) {
+        await secretTagDAL.saveTagsToSecretV2(
+          projectV1SecretTags.map((el) => ({
+            secrets_v2Id: el.secretsId,
+            secret_tagsId: el.secret_tagsId
+          })),
+          tx
+        );
+      }
+
+      /*
+       * Integration Auth Migration
+       * Saving the new encrypted colum
+       * */
+      // eslint-disable-next-line no-await-in-loop
+      const projectV1IntegrationAuths = await integrationAuthDAL.find({ projectId }, { tx });
+      await integrationAuthDAL.upsert(
+        projectV1IntegrationAuths.map((el) => {
+          const accessToken =
+            el.accessIV && el.accessTag && el.accessCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.accessCiphertext,
+                  iv: el.accessIV,
+                  tag: el.accessTag,
+                  key: botKey
+                })
+              : undefined;
+          const accessId =
+            el.accessIdIV && el.accessIdTag && el.accessIdCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.accessIdCiphertext,
+                  iv: el.accessIdIV,
+                  tag: el.accessIdTag,
+                  key: botKey
+                })
+              : undefined;
+          const refreshToken =
+            el.refreshIV && el.refreshTag && el.refreshCiphertext
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.refreshCiphertext,
+                  iv: el.refreshIV,
+                  tag: el.refreshTag,
+                  key: botKey
+                })
+              : undefined;
+          const awsAssumeRoleArn =
+            el.awsAssumeIamRoleArnCipherText && el.awsAssumeIamRoleArnIV && el.awsAssumeIamRoleArnTag
+              ? decryptSymmetric128BitHexKeyUTF8({
+                  ciphertext: el.awsAssumeIamRoleArnCipherText,
+                  iv: el.awsAssumeIamRoleArnIV,
+                  tag: el.awsAssumeIamRoleArnTag,
+                  key: botKey
+                })
+              : undefined;
+
+          const encryptedAccess = accessToken
+            ? secretManagerEncryptor({ plainText: Buffer.from(accessToken) }).cipherTextBlob
+            : null;
+          const encryptedAccessId = accessId
+            ? secretManagerEncryptor({ plainText: Buffer.from(accessId) }).cipherTextBlob
+            : null;
+          const encryptedRefresh = refreshToken
+            ? secretManagerEncryptor({ plainText: Buffer.from(refreshToken) }).cipherTextBlob
+            : null;
+          const encryptedAwsAssumeIamRoleArn = awsAssumeRoleArn
+            ? secretManagerEncryptor({ plainText: Buffer.from(awsAssumeRoleArn) }).cipherTextBlob
+            : null;
+          return {
+            ...el,
+            encryptedAccess,
+            encryptedRefresh,
+            encryptedAccessId,
+            encryptedAwsAssumeIamRoleArn
+          };
+        }),
+        "id",
+        tx
+      );
+      /*
+       * Secret Rotation Secret Migration
+       * Saving the new encrypted colum
+       * */
+      const projectV1SecretRotations = await secretRotationDAL.find({ projectId }, tx);
+      await secretRotationDAL.secretOutputV2InsertMany(
+        projectV1SecretRotations.flatMap((el) =>
+          el.outputs.map((output) => ({ rotationId: el.id, key: output.key, secretId: output.secret.id }))
+        ),
+        tx
+      );
+
+      /*
+       * approvals: we will delete all approvals this is because some secret versions may not be added yet
+       * Thus doesn't make sense for rest to be there
+       * */
+      await secretApprovalRequestDAL.deleteByProjectId(projectId, tx);
+      await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
+    });
+  });
+
+  // eslint-disable-next-line
+  queueService.listen(QueueName.ProjectV3Migration, "failed", async (job, err) => {
+    if (job?.data) {
+      const { projectId } = job.data;
+      await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.Failed });
+      logger.error(err, `Failed to migrate project to v3: ${projectId}`);
+    }
+  });
+
   queueService.listen(QueueName.IntegrationSync, "failed", (job, err) => {
     logger.error(err, "Failed to sync integration %s", job?.id);
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL });
+    await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL, projectDAL, kmsService });
   });
 
   return {
     // depth is internal only field thus no need to make it available outside
     syncSecrets,
+    startSecretV2Migration,
     syncIntegrations,
     addSecretReminder,
     removeSecretReminder,

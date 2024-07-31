@@ -37,7 +37,7 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
-import { DecryptedSecret, UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
@@ -48,12 +48,11 @@ type Props = {
   secretPath: string;
   onToggle: (isOpen: boolean) => void;
   onClose: () => void;
-  secret: DecryptedSecret;
-  decryptFileKey: UserWsKeyPair;
+  secret: SecretV3RawSanitized;
   onDeleteSecret: () => void;
   onSaveSecret: (
-    orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
+    orgSec: SecretV3RawSanitized,
+    modSec: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
     cb?: () => void
   ) => Promise<void>;
   tags: WsTag[];
@@ -64,7 +63,6 @@ type Props = {
 export const SecretDetailSidebar = ({
   isOpen,
   onToggle,
-  decryptFileKey,
   secret,
   onDeleteSecret,
   onSaveSecret,
@@ -101,7 +99,7 @@ export const SecretDetailSidebar = ({
     control,
     name: "tags"
   });
-  const selectedTags = watch("tags", []);
+  const selectedTags = watch("tags", []) || [];
   const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
     (prev, curr) => ({ ...prev, [curr.id]: true }),
     {}
@@ -114,8 +112,7 @@ export const SecretDetailSidebar = ({
   const { data: secretVersion } = useGetSecretVersion({
     limit: 10,
     offset: 0,
-    secretId: secret?.id,
-    decryptFileKey
+    secretId: secret?.id
   });
 
   const handleOverrideClick = () => {
@@ -420,7 +417,12 @@ export const SecretDetailSidebar = ({
                   className="px-2 py-1"
                   variant="outline_bg"
                   leftIcon={<FontAwesomeIcon icon={faShare} />}
-                  onClick={() => handleSecretShare(secret.valueOverride ?? secret.value)}
+                  onClick={() => {
+                    const value = secret?.valueOverride ?? secret?.value;
+                    if (value) {
+                      handleSecretShare(value);
+                    }
+                  }}
                 >
                   Share Secret
                 </Button>
@@ -428,7 +430,7 @@ export const SecretDetailSidebar = ({
               <div className="dark mt-4 mb-4 flex-grow text-sm text-bunker-300">
                 <div className="mb-2">Version History</div>
                 <div className="flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
-                  {secretVersion?.map(({ createdAt, value, id }, i) => (
+                  {secretVersion?.map(({ createdAt, secretValue, id }, i) => (
                     <div key={id} className="flex flex-col space-y-1">
                       <div className="flex items-center space-x-2">
                         <div>
@@ -438,7 +440,7 @@ export const SecretDetailSidebar = ({
                       </div>
                       <div className="ml-1.5 flex items-center space-x-2 border-l border-bunker-300 pl-4">
                         <div className="self-start rounded-sm bg-primary-500/30 px-1">Value:</div>
-                        <div className="break-all font-mono">{value}</div>
+                        <div className="break-all font-mono">{secretValue}</div>
                       </div>
                     </div>
                   ))}

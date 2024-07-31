@@ -11,7 +11,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
@@ -53,8 +54,8 @@ type TIntegrationAuthServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "delete">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;
@@ -63,8 +64,8 @@ export const integrationAuthServiceFactory = ({
   permissionService,
   integrationAuthDAL,
   integrationDAL,
-  projectBotDAL,
-  projectBotService
+  projectBotService,
+  kmsService
 }: TIntegrationAuthServiceFactoryDep) => {
   const listIntegrationAuthByProjectId = async ({
     actorId,
@@ -122,9 +123,6 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
-    if (!bot) throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
-
     const tokenExchange = await exchangeCode({ integration, code, url });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -145,18 +143,38 @@ export const integrationAuthServiceFactory = ({
       };
     }
 
-    const key = await projectBotService.getBotKey(projectId);
-    if (tokenExchange.refreshToken) {
-      const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.refreshToken, key);
-      updateDoc.refreshIV = refreshEncToken.iv;
-      updateDoc.refreshTag = refreshEncToken.tag;
-      updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
-    }
-    if (tokenExchange.accessToken) {
-      const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.accessToken, key);
-      updateDoc.accessIV = accessEncToken.iv;
-      updateDoc.accessTag = accessEncToken.tag;
-      updateDoc.accessCiphertext = accessEncToken.ciphertext;
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      if (tokenExchange.refreshToken) {
+        const refreshEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenExchange.refreshToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedRefresh = refreshEncToken;
+      }
+      if (tokenExchange.accessToken) {
+        const accessToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenExchange.accessToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedAccess = accessToken;
+      }
+    } else {
+      if (!botKey) throw new BadRequestError({ message: "Bot key not found" });
+      if (tokenExchange.refreshToken) {
+        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.refreshToken, botKey);
+        updateDoc.refreshIV = refreshEncToken.iv;
+        updateDoc.refreshTag = refreshEncToken.tag;
+        updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+      }
+      if (tokenExchange.accessToken) {
+        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenExchange.accessToken, botKey);
+        updateDoc.accessIV = accessEncToken.iv;
+        updateDoc.accessTag = accessEncToken.tag;
+        updateDoc.accessCiphertext = accessEncToken.ciphertext;
+      }
     }
     return integrationAuthDAL.transaction(async (tx) => {
       const doc = await integrationAuthDAL.findOne({ projectId, integration }, tx);
@@ -193,9 +211,6 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
-    if (!bot) throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
-
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       namespace,
@@ -212,109 +227,210 @@ export const integrationAuthServiceFactory = ({
         : {})
     };
 
-    const key = await projectBotService.getBotKey(projectId);
-    if (refreshToken) {
-      const tokenDetails = await exchangeRefresh(
-        integration,
-        refreshToken,
-        url,
-        updateDoc.metadata as Record<string, string>
-      );
-      const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, key);
-      updateDoc.refreshIV = refreshEncToken.iv;
-      updateDoc.refreshTag = refreshEncToken.tag;
-      updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
-      const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, key);
-      updateDoc.accessIV = accessEncToken.iv;
-      updateDoc.accessTag = accessEncToken.tag;
-      updateDoc.accessCiphertext = accessEncToken.ciphertext;
-      updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
-    }
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.refreshToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedRefresh = refreshEncToken;
 
-    if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
-      if (accessToken) {
-        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, key);
+        const accessEncToken = secretManagerEncryptor({
+          plainText: Buffer.from(tokenDetails.accessToken)
+        }).cipherTextBlob;
+        updateDoc.encryptedAccess = accessEncToken;
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
+      }
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessToken)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccess = accessEncToken;
+        }
+        if (accessId) {
+          const accessEncToken = secretManagerEncryptor({
+            plainText: Buffer.from(accessId)
+          }).cipherTextBlob;
+          updateDoc.encryptedAccessId = accessEncToken;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEncrypted = secretManagerEncryptor({
+            plainText: Buffer.from(awsAssumeIamRoleArn)
+          }).cipherTextBlob;
+          updateDoc.encryptedAwsAssumeIamRoleArn = awsAssumeIamRoleArnEncrypted;
+        }
+      }
+    } else {
+      if (!botKey) throw new BadRequestError({ message: "Bot key not found" });
+      if (refreshToken) {
+        const tokenDetails = await exchangeRefresh(
+          integration,
+          refreshToken,
+          url,
+          updateDoc.metadata as Record<string, string>
+        );
+        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
+        updateDoc.refreshIV = refreshEncToken.iv;
+        updateDoc.refreshTag = refreshEncToken.tag;
+        updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
+        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
         updateDoc.accessIV = accessEncToken.iv;
         updateDoc.accessTag = accessEncToken.tag;
         updateDoc.accessCiphertext = accessEncToken.ciphertext;
+
+        updateDoc.accessExpiresAt = tokenDetails.accessExpiresAt;
       }
-      if (accessId) {
-        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessId, key);
-        updateDoc.accessIdIV = accessEncToken.iv;
-        updateDoc.accessIdTag = accessEncToken.tag;
-        updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
-      }
-      if (awsAssumeIamRoleArn) {
-        const awsAssumeIamRoleArnEnc = encryptSymmetric128BitHexKeyUTF8(awsAssumeIamRoleArn, key);
-        updateDoc.awsAssumeIamRoleArnCipherText = awsAssumeIamRoleArnEnc.ciphertext;
-        updateDoc.awsAssumeIamRoleArnIV = awsAssumeIamRoleArnEnc.iv;
-        updateDoc.awsAssumeIamRoleArnTag = awsAssumeIamRoleArnEnc.tag;
+
+      if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
+        if (accessToken) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessToken, botKey);
+          updateDoc.accessIV = accessEncToken.iv;
+          updateDoc.accessTag = accessEncToken.tag;
+          updateDoc.accessCiphertext = accessEncToken.ciphertext;
+        }
+        if (accessId) {
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(accessId, botKey);
+          updateDoc.accessIdIV = accessEncToken.iv;
+          updateDoc.accessIdTag = accessEncToken.tag;
+          updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
+        }
+        if (awsAssumeIamRoleArn) {
+          const awsAssumeIamRoleArnEnc = encryptSymmetric128BitHexKeyUTF8(awsAssumeIamRoleArn, botKey);
+          updateDoc.awsAssumeIamRoleArnCipherText = awsAssumeIamRoleArnEnc.ciphertext;
+          updateDoc.awsAssumeIamRoleArnIV = awsAssumeIamRoleArnEnc.iv;
+          updateDoc.awsAssumeIamRoleArnTag = awsAssumeIamRoleArnEnc.tag;
+        }
       }
     }
     return integrationAuthDAL.create(updateDoc);
   };
 
   // helper function
-  const getIntegrationAccessToken = async (integrationAuth: TIntegrationAuths, botKey: string) => {
+  const getIntegrationAccessToken = async (
+    integrationAuth: TIntegrationAuths,
+    shouldUseSecretV2Bridge: boolean,
+    botKey?: string
+  ) => {
     let accessToken: string | undefined;
     let accessId: string | undefined;
     // this means its not access token based
     if (
       integrationAuth.integration === Integrations.AWS_SECRET_MANAGER &&
-      integrationAuth.awsAssumeIamRoleArnCipherText
+      (shouldUseSecretV2Bridge
+        ? integrationAuth.encryptedAwsAssumeIamRoleArn
+        : integrationAuth.awsAssumeIamRoleArnCipherText)
     ) {
       return { accessToken: "", accessId: "" };
     }
+    if (shouldUseSecretV2Bridge) {
+      const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: integrationAuth.projectId
+        });
+      if (integrationAuth.encryptedAccess) {
+        accessToken = secretManagerDecryptor({ cipherTextBlob: integrationAuth.encryptedAccess }).toString();
+      }
 
-    if (integrationAuth.accessTag && integrationAuth.accessIV && integrationAuth.accessCiphertext) {
-      accessToken = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: integrationAuth.accessCiphertext,
-        iv: integrationAuth.accessIV,
-        tag: integrationAuth.accessTag,
-        key: botKey
-      });
-    }
+      if (integrationAuth.encryptedRefresh) {
+        const refreshToken = secretManagerDecryptor({ cipherTextBlob: integrationAuth.encryptedRefresh }).toString();
 
-    if (integrationAuth.refreshCiphertext && integrationAuth.refreshIV && integrationAuth.refreshTag) {
-      const refreshToken = decryptSymmetric128BitHexKeyUTF8({
-        key: botKey,
-        ciphertext: integrationAuth.refreshCiphertext,
-        iv: integrationAuth.refreshIV,
-        tag: integrationAuth.refreshTag
-      });
+        if (integrationAuth.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
+          // refer above it contains same logic except not saving
+          const tokenDetails = await exchangeRefresh(
+            integrationAuth.integration,
+            refreshToken,
+            integrationAuth?.url,
+            integrationAuth.metadata as Record<string, string>
+          );
+          const encryptedRefresh = secretManagerEncryptor({
+            plainText: Buffer.from(tokenDetails.refreshToken)
+          }).cipherTextBlob;
+          const encryptedAccess = secretManagerEncryptor({
+            plainText: Buffer.from(tokenDetails.accessToken)
+          }).cipherTextBlob;
+          accessToken = tokenDetails.accessToken;
+          await integrationAuthDAL.updateById(integrationAuth.id, {
+            accessExpiresAt: tokenDetails.accessExpiresAt,
+            encryptedRefresh,
+            encryptedAccess
+          });
+        }
+      }
+      if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
 
-      if (integrationAuth.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
-        // refer above it contains same logic except not saving
-        const tokenDetails = await exchangeRefresh(
-          integrationAuth.integration,
-          refreshToken,
-          integrationAuth?.url,
-          integrationAuth.metadata as Record<string, string>
-        );
-        const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
-        const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
-        accessToken = tokenDetails.accessToken;
-        await integrationAuthDAL.updateById(integrationAuth.id, {
-          refreshIV: refreshEncToken.iv,
-          refreshTag: refreshEncToken.tag,
-          refreshCiphertext: refreshEncToken.ciphertext,
-          accessExpiresAt: tokenDetails.accessExpiresAt,
-          accessIV: accessEncToken.iv,
-          accessTag: accessEncToken.tag,
-          accessCiphertext: accessEncToken.ciphertext
+      if (integrationAuth.encryptedAccessId) {
+        accessId = secretManagerDecryptor({
+          cipherTextBlob: integrationAuth.encryptedAccessId
+        }).toString();
+      }
+
+      // the old bot key is else
+    } else {
+      if (!botKey) throw new BadRequestError({ message: "bot key is missing" });
+      if (integrationAuth.accessTag && integrationAuth.accessIV && integrationAuth.accessCiphertext) {
+        accessToken = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: integrationAuth.accessCiphertext,
+          iv: integrationAuth.accessIV,
+          tag: integrationAuth.accessTag,
+          key: botKey
+        });
+      }
+
+      if (integrationAuth.refreshCiphertext && integrationAuth.refreshIV && integrationAuth.refreshTag) {
+        const refreshToken = decryptSymmetric128BitHexKeyUTF8({
+          key: botKey,
+          ciphertext: integrationAuth.refreshCiphertext,
+          iv: integrationAuth.refreshIV,
+          tag: integrationAuth.refreshTag
+        });
+
+        if (integrationAuth.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
+          // refer above it contains same logic except not saving
+          const tokenDetails = await exchangeRefresh(
+            integrationAuth.integration,
+            refreshToken,
+            integrationAuth?.url,
+            integrationAuth.metadata as Record<string, string>
+          );
+          const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
+          const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
+          accessToken = tokenDetails.accessToken;
+          await integrationAuthDAL.updateById(integrationAuth.id, {
+            refreshIV: refreshEncToken.iv,
+            refreshTag: refreshEncToken.tag,
+            refreshCiphertext: refreshEncToken.ciphertext,
+            accessExpiresAt: tokenDetails.accessExpiresAt,
+            accessIV: accessEncToken.iv,
+            accessTag: accessEncToken.tag,
+            accessCiphertext: accessEncToken.ciphertext
+          });
+        }
+      }
+      if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
+
+      if (integrationAuth.accessIdTag && integrationAuth.accessIdIV && integrationAuth.accessIdCiphertext) {
+        accessId = decryptSymmetric128BitHexKeyUTF8({
+          key: botKey,
+          ciphertext: integrationAuth.accessIdCiphertext,
+          iv: integrationAuth.accessIdIV,
+          tag: integrationAuth.accessIdTag
         });
       }
     }
-    if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
 
-    if (integrationAuth.accessIdTag && integrationAuth.accessIdIV && integrationAuth.accessIdCiphertext) {
-      accessId = decryptSymmetric128BitHexKeyUTF8({
-        key: botKey,
-        ciphertext: integrationAuth.accessIdCiphertext,
-        iv: integrationAuth.accessIdIV,
-        tag: integrationAuth.accessIdTag
-      });
-    }
     return { accessId, accessToken };
   };
 
@@ -339,8 +455,8 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const apps = await getApps({
       integration: integrationAuth.integration,
       accessToken,
@@ -371,8 +487,8 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const teams = await getTeams({
       integration: integrationAuth.integration,
       accessToken,
@@ -400,8 +516,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     if (appId) {
       const { data } = await request.get<TVercelBranches[]>(
@@ -441,8 +557,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (accountId) {
       const { data } = await request.get<TChecklyGroups[]>(`${IntegrationUrls.CHECKLY_API_URL}/v1/check-groups`, {
         headers: {
@@ -468,8 +584,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     const octokit = new Octokit({
       auth: accessToken
@@ -505,8 +621,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     const octokit = new Octokit({
       auth: accessToken
@@ -537,8 +653,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const { data } = await request.get<{ results: Array<{ id: string; name: string }> }>(
       `${IntegrationUrls.QOVERY_API_URL}/organization`,
       {
@@ -571,8 +687,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     const kms = new AWS.KMS({
       region,
@@ -629,8 +745,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (orgId) {
       const { data } = await request.get<{ results: Array<{ id: string; name: string }> }>(
         `${IntegrationUrls.QOVERY_API_URL}/organization/${orgId}/project`,
@@ -665,8 +781,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (projectId && projectId !== "none") {
       // TODO: fix
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
@@ -706,8 +822,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (environmentId) {
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
         `${IntegrationUrls.QOVERY_API_URL}/environment/${environmentId}/application`,
@@ -746,8 +862,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (environmentId) {
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
         `${IntegrationUrls.QOVERY_API_URL}/environment/${environmentId}/container`,
@@ -786,8 +902,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (environmentId) {
       const { data } = await request.get<{ results: { id: string; name: string }[] }>(
         `${IntegrationUrls.QOVERY_API_URL}/environment/${environmentId}/job`,
@@ -825,8 +941,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     const { data } = await request.get<THerokuPipelineCoupling[]>(
       `${IntegrationUrls.HEROKU_API_URL}/pipeline-couplings`,
@@ -865,8 +981,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (appId) {
       const query = `
 			query GetEnvironments($projectId: String!, $after: String, $before: String, $first: Int, $isEphemeral: Boolean, $last: Int) {
@@ -933,8 +1049,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
     if (appId && appId !== "") {
       const query = `
@@ -1007,8 +1123,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const workspaces: TBitbucketWorkspace[] = [];
     let hasNextPage = true;
     let workspaceUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces`;
@@ -1056,8 +1172,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const secretGroups: { name: string; groupId: string }[] = [];
 
     if (appId) {
@@ -1124,8 +1240,8 @@ export const integrationAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-    const botKey = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, botKey);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     if (appId) {
       const {
         data: { buildType }

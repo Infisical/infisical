@@ -17,9 +17,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -47,8 +51,11 @@ type TSecretRotationQueueFactoryDep = {
   secretRotationDAL: TSecretRotationDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "find">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionMany">;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 // These error should stop the repeatable job and ask user to reconfigure rotation
@@ -70,7 +77,10 @@ export const secretRotationQueueFactory = ({
   projectBotService,
   secretDAL,
   secretVersionDAL,
-  telemetryService
+  telemetryService,
+  secretV2BridgeDAL,
+  secretVersionV2BridgeDAL,
+  kmsService
 }: TSecretRotationQueueFactoryDep) => {
   const addToQueue = async (rotationId: string, interval: number) => {
     const appCfg = getConfig();
@@ -111,7 +121,13 @@ export const secretRotationQueueFactory = ({
     try {
       if (!rotationProvider || !secretRotation) throw new DisableRotationErrors({ message: "Provider not found" });
 
-      const rotationOutputs = await secretRotationDAL.findRotationOutputsByRotationId(rotationId);
+      const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(secretRotation.projectId);
+      let rotationOutputs;
+      if (shouldUseSecretV2Bridge) {
+        rotationOutputs = await secretRotationDAL.findRotationOutputsV2ByRotationId(rotationId);
+      } else {
+        rotationOutputs = await secretRotationDAL.findRotationOutputsByRotationId(rotationId);
+      }
       if (!rotationOutputs.length) throw new DisableRotationErrors({ message: "Secrets not found" });
 
       // deep copy
@@ -267,62 +283,112 @@ export const secretRotationQueueFactory = ({
         internal: newCredential.internal
       });
       const encVarData = infisicalSymmetricEncypt(JSON.stringify(variables));
-      const key = await projectBotService.getBotKey(secretRotation.projectId);
-      const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
-        secretId,
-        value: encryptSymmetric128BitHexKeyUTF8(
-          typeof newCredential.outputs[outputKey] === "object"
-            ? JSON.stringify(newCredential.outputs[outputKey])
-            : String(newCredential.outputs[outputKey]),
-          key
-        )
-      }));
-      // map the final values to output keys in the board
-      await secretRotationDAL.transaction(async (tx) => {
-        await secretRotationDAL.updateById(
-          rotationId,
-          {
-            encryptedData: encVarData.ciphertext,
-            encryptedDataIV: encVarData.iv,
-            encryptedDataTag: encVarData.tag,
-            keyEncoding: encVarData.encoding,
-            algorithm: encVarData.algorithm,
-            lastRotatedAt: new Date(),
-            statusMessage: "Rotated successfull",
-            status: "success"
-          },
-          tx
-        );
-        const updatedSecrets = await secretDAL.bulkUpdate(
-          encryptedSecrets.map(({ secretId, value }) => ({
-            // this secret id is validated when user is inserted
-            filter: { id: secretId, type: SecretType.Shared },
-            data: {
-              secretValueCiphertext: value.ciphertext,
-              secretValueIV: value.iv,
-              secretValueTag: value.tag
-            }
-          })),
-          tx
-        );
-        await secretVersionDAL.insertMany(
-          updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => {
-            if (!el.secretBlindIndex) throw new BadRequestError({ message: "Missing blind index" });
-            return {
-              ...el,
-              secretId: id,
-              secretBlindIndex: el.secretBlindIndex
-            };
-          }),
-          tx
-        );
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: secretRotation.projectId
       });
+
+      const numberOfSecretsRotated = rotationOutputs.length;
+      if (shouldUseSecretV2Bridge) {
+        const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
+          secretId,
+          value:
+            typeof newCredential.outputs[outputKey] === "object"
+              ? JSON.stringify(newCredential.outputs[outputKey])
+              : String(newCredential.outputs[outputKey])
+        }));
+        // map the final values to output keys in the board
+        await secretRotationDAL.transaction(async (tx) => {
+          await secretRotationDAL.updateById(
+            rotationId,
+            {
+              encryptedData: encVarData.ciphertext,
+              encryptedDataIV: encVarData.iv,
+              encryptedDataTag: encVarData.tag,
+              keyEncoding: encVarData.encoding,
+              algorithm: encVarData.algorithm,
+              lastRotatedAt: new Date(),
+              statusMessage: "Rotated successfull",
+              status: "success"
+            },
+            tx
+          );
+          const updatedSecrets = await secretV2BridgeDAL.bulkUpdate(
+            encryptedSecrets.map(({ secretId, value }) => ({
+              // this secret id is validated when user is inserted
+              filter: { id: secretId, type: SecretType.Shared },
+              data: {
+                encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              }
+            })),
+            tx
+          );
+          await secretVersionV2BridgeDAL.insertMany(
+            updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
+              ...el,
+              secretId: id
+            })),
+            tx
+          );
+        });
+      } else {
+        if (!botKey) throw new BadRequestError({ message: "Bot not found" });
+        const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
+          secretId,
+          value: encryptSymmetric128BitHexKeyUTF8(
+            typeof newCredential.outputs[outputKey] === "object"
+              ? JSON.stringify(newCredential.outputs[outputKey])
+              : String(newCredential.outputs[outputKey]),
+            botKey
+          )
+        }));
+        // map the final values to output keys in the board
+        await secretRotationDAL.transaction(async (tx) => {
+          await secretRotationDAL.updateById(
+            rotationId,
+            {
+              encryptedData: encVarData.ciphertext,
+              encryptedDataIV: encVarData.iv,
+              encryptedDataTag: encVarData.tag,
+              keyEncoding: encVarData.encoding,
+              algorithm: encVarData.algorithm,
+              lastRotatedAt: new Date(),
+              statusMessage: "Rotated successfull",
+              status: "success"
+            },
+            tx
+          );
+          const updatedSecrets = await secretDAL.bulkUpdate(
+            encryptedSecrets.map(({ secretId, value }) => ({
+              // this secret id is validated when user is inserted
+              filter: { id: secretId, type: SecretType.Shared },
+              data: {
+                secretValueCiphertext: value.ciphertext,
+                secretValueIV: value.iv,
+                secretValueTag: value.tag
+              }
+            })),
+            tx
+          );
+          await secretVersionDAL.insertMany(
+            updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => {
+              if (!el.secretBlindIndex) throw new BadRequestError({ message: "Missing blind index" });
+              return {
+                ...el,
+                secretId: id,
+                secretBlindIndex: el.secretBlindIndex
+              };
+            }),
+            tx
+          );
+        });
+      }
 
       await telemetryService.sendPostHogEvents({
         event: PostHogEventTypes.SecretRotated,
         distinctId: "",
         properties: {
-          numberOfSecrets: encryptedSecrets.length,
+          numberOfSecrets: numberOfSecretsRotated,
           environment: secretRotation.environment.slug,
           secretPath: secretRotation.secretPath,
           workspaceId: secretRotation.projectId

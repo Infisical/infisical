@@ -5,6 +5,7 @@ import {
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   ProjectRolesSchema,
+  ProjectsSchema,
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -62,8 +63,14 @@ export const secretRawSchema = z.object({
   version: z.number(),
   type: z.string(),
   secretKey: z.string(),
-  secretValue: z.string(),
-  secretComment: z.string().optional()
+  secretValue: z.string().optional(),
+  secretComment: z.string().optional(),
+  secretReminderNote: z.string().nullable().optional(),
+  secretReminderRepeatDays: z.number().nullable().optional(),
+  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  metadata: z.unknown().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export const ProjectPermissionSchema = z.object({
@@ -122,11 +129,7 @@ export const SanitizedRoleSchema = ProjectRolesSchema.extend({
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
-  inputIV: true,
-  inputTag: true,
-  inputCiphertext: true,
-  keyEncoding: true,
-  algorithm: true
+  encryptedConfig: true
 });
 
 export const SanitizedAuditLogStreamSchema = z.object({
@@ -134,4 +137,19 @@ export const SanitizedAuditLogStreamSchema = z.object({
   url: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
+});
+
+export const SanitizedProjectSchema = ProjectsSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  autoCapitalization: true,
+  orgId: true,
+  createdAt: true,
+  updatedAt: true,
+  version: true,
+  upgradeStatus: true,
+  pitVersionLimit: true,
+  kmsCertificateKeyId: true,
+  auditLogsRetentionDays: true
 });

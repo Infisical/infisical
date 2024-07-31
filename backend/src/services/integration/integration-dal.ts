@@ -123,7 +123,11 @@ export const integrationDALFactory = (db: TDbClient) => {
         db.ref("keyEncoding").withSchema(TableName.IntegrationAuth).as("keyEncodingAu"),
         db.ref("awsAssumeIamRoleArnCipherText").withSchema(TableName.IntegrationAuth),
         db.ref("awsAssumeIamRoleArnIV").withSchema(TableName.IntegrationAuth),
-        db.ref("awsAssumeIamRoleArnTag").withSchema(TableName.IntegrationAuth)
+        db.ref("awsAssumeIamRoleArnTag").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedRefresh").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedAccess").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedAccessId").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedAwsAssumeIamRoleArn").withSchema(TableName.IntegrationAuth)
       );
     return docs.map(
       ({
@@ -152,6 +156,10 @@ export const integrationDALFactory = (db: TDbClient) => {
         awsAssumeIamRoleArnIV,
         awsAssumeIamRoleArnCipherText,
         awsAssumeIamRoleArnTag,
+        encryptedAccess,
+        encryptedRefresh,
+        encryptedAccessId,
+        encryptedAwsAssumeIamRoleArn,
         ...el
       }) => ({
         ...el,
@@ -183,7 +191,11 @@ export const integrationDALFactory = (db: TDbClient) => {
           accessExpiresAt,
           awsAssumeIamRoleArnIV,
           awsAssumeIamRoleArnCipherText,
-          awsAssumeIamRoleArnTag
+          awsAssumeIamRoleArnTag,
+          encryptedAccess,
+          encryptedRefresh,
+          encryptedAccessId,
+          encryptedAwsAssumeIamRoleArn
         }
       })
     );

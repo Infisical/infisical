@@ -59,7 +59,6 @@ import {
   useGetFoldersByEnv,
   useGetImportedSecretsAllEnvs,
   useGetProjectSecretsAllEnv,
-  useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
@@ -70,10 +69,10 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
-import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
+import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 
 export enum EntryType {
@@ -103,7 +102,6 @@ export const SecretOverviewPage = () => {
   const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?.id as string;
   const projectSlug = currentWorkspace?.slug as string;
-  const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
 
@@ -178,8 +176,7 @@ export const SecretOverviewPage = () => {
   } = useGetProjectSecretsAllEnv({
     workspaceId,
     envs: userAvailableEnvs.map(({ slug }) => slug),
-    secretPath,
-    decryptFileKey: latestFileKey!
+    secretPath
   });
 
   const { folders, folderNames, isFolderPresentInEnv, getFolderByNameAndEnv } = useGetFoldersByEnv({
@@ -190,7 +187,6 @@ export const SecretOverviewPage = () => {
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
-    decryptFileKey: latestFileKey!,
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
@@ -317,11 +313,10 @@ export const SecretOverviewPage = () => {
         environment: env,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value,
         secretComment: "",
-        type: SecretType.Shared,
-        latestFileKey: latestFileKey!
+        type: SecretType.Shared
       });
       createNotification({
         type: "success",
@@ -348,19 +343,16 @@ export const SecretOverviewPage = () => {
     env: string,
     key: string,
     value: string,
-    type = SecretType.Shared,
-    secretId?: string
+    type = SecretType.Shared
   ) => {
     try {
       await updateSecretV3({
         environment: env,
         workspaceId,
         secretPath,
-        secretId,
-        secretName: key,
+        secretKey: key,
         secretValue: value,
-        type,
-        latestFileKey: latestFileKey!
+        type
       });
       createNotification({
         type: "success",
@@ -381,7 +373,7 @@ export const SecretOverviewPage = () => {
         environment: env,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretId,
         type: SecretType.Shared
       });
@@ -481,7 +473,7 @@ export const SecretOverviewPage = () => {
   return (
     <>
       <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-        <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} />
+        <SecretV2MigrationSection />
         <div className="relative right-5 ml-4">
           <NavHeader pageName={t("dashboard.title")} isProjectRelated />
         </div>
@@ -861,7 +853,6 @@ export const SecretOverviewPage = () => {
         getSecretByKey={getSecretByKey}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
         onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
-        decryptFileKey={latestFileKey!}
       />
       <Modal
         isOpen={popUp.addFolder.isOpen}

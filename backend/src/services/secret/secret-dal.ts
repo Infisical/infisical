@@ -20,8 +20,6 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  // the idea is to use postgres specific function
-  // insert with id this will cause a conflict then merge the data
   const bulkUpdate = async (
     data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
 

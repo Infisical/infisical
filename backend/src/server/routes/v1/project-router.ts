@@ -1,22 +1,16 @@
 import { z } from "zod";
 
-import {
-  IntegrationsSchema,
-  ProjectMembershipsSchema,
-  ProjectsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { IntegrationsSchema, ProjectMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
 
-import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
-const projectWithEnv = ProjectsSchema.merge(
+const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
     environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
@@ -78,7 +72,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               lastName: true,
               id: true
             }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
-            project: ProjectsSchema.pick({ name: true, id: true }),
+            project: SanitizedProjectSchema.pick({ name: true, id: true }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -188,7 +182,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema.optional()
+          workspace: SanitizedProjectSchema.optional()
         })
       }
     },
@@ -224,7 +218,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -272,7 +266,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -314,7 +308,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -351,7 +345,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -389,7 +383,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },

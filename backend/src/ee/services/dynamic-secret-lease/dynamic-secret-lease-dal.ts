@@ -40,14 +40,10 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           db.ref("type").withSchema(TableName.DynamicSecret).as("dynType"),
           db.ref("defaultTTL").withSchema(TableName.DynamicSecret).as("dynDefaultTTL"),
           db.ref("maxTTL").withSchema(TableName.DynamicSecret).as("dynMaxTTL"),
-          db.ref("inputIV").withSchema(TableName.DynamicSecret).as("dynInputIV"),
-          db.ref("inputTag").withSchema(TableName.DynamicSecret).as("dynInputTag"),
-          db.ref("inputCiphertext").withSchema(TableName.DynamicSecret).as("dynInputCiphertext"),
-          db.ref("algorithm").withSchema(TableName.DynamicSecret).as("dynAlgorithm"),
-          db.ref("keyEncoding").withSchema(TableName.DynamicSecret).as("dynKeyEncoding"),
           db.ref("folderId").withSchema(TableName.DynamicSecret).as("dynFolderId"),
           db.ref("status").withSchema(TableName.DynamicSecret).as("dynStatus"),
           db.ref("statusDetails").withSchema(TableName.DynamicSecret).as("dynStatusDetails"),
+          db.ref("encryptedConfig").withSchema(TableName.DynamicSecret).as("dynEncryptedConfig"),
           db.ref("createdAt").withSchema(TableName.DynamicSecret).as("dynCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.DynamicSecret).as("dynUpdatedAt")
         );
@@ -62,16 +58,12 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           type: doc.dynType,
           defaultTTL: doc.dynDefaultTTL,
           maxTTL: doc.dynMaxTTL,
-          inputIV: doc.dynInputIV,
-          inputTag: doc.dynInputTag,
-          inputCiphertext: doc.dynInputCiphertext,
-          algorithm: doc.dynAlgorithm,
-          keyEncoding: doc.dynKeyEncoding,
           folderId: doc.dynFolderId,
           status: doc.dynStatus,
           statusDetails: doc.dynStatusDetails,
           createdAt: doc.dynCreatedAt,
-          updatedAt: doc.dynUpdatedAt
+          updatedAt: doc.dynUpdatedAt,
+          encryptedConfig: doc.dynEncryptedConfig
         }
       };
     } catch (error) {

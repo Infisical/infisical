@@ -26,7 +26,7 @@ import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
+import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -275,8 +275,8 @@ const syncSecretsAzureKeyVault = async ({
   };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
 }) => {
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
@@ -903,8 +903,8 @@ const syncSecretsHeroku = async ({
   secrets,
   accessToken
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -2464,8 +2464,8 @@ const syncSecretsTerraformCloud = async ({
   accessToken,
   integrationDAL
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -3612,8 +3612,8 @@ export const syncIntegrationSecrets = async ({
   appendices,
   projectId
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   integration: TIntegrations & {
     projectId: string;

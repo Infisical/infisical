@@ -22,8 +22,14 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import {
+  fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
+  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -407,7 +413,12 @@ export const decryptSecretRaw = (
     id: secret.id,
     user: secret.userId,
     tags: secret.tags,
-    skipMultilineEncoding: secret.skipMultilineEncoding
+    skipMultilineEncoding: secret.skipMultilineEncoding,
+    secretReminderRepeatDays: secret.secretReminderRepeatDays,
+    secretReminderNote: secret.secretReminderNote,
+    metadata: secret.metadata,
+    createdAt: secret.createdAt,
+    updatedAt: secret.updatedAt
   };
 };
 
@@ -536,10 +547,51 @@ export const fnSecretBulkInsert = async ({
   secretVersionTagDAL,
   tx
 }: TFnSecretBulkInsert) => {
-  const newSecrets = await secretDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({ ...el, folderId })),
-    tx
+  const sanitizedInputSecrets = inputSecrets.map(
+    ({
+      skipMultilineEncoding,
+      type,
+      userId,
+      version,
+      metadata,
+      algorithm,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueIV,
+      keyEncoding,
+      secretValueTag,
+      secretCommentIV,
+      secretBlindIndex,
+      secretCommentTag,
+      secretKeyCiphertext,
+      secretReminderNote,
+      secretValueCiphertext,
+      secretCommentCiphertext,
+      secretReminderRepeatDays
+    }) => ({
+      skipMultilineEncoding,
+      folderId,
+      type,
+      userId,
+      version,
+      metadata,
+      algorithm,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueIV,
+      keyEncoding,
+      secretValueTag,
+      secretCommentIV,
+      secretBlindIndex,
+      secretCommentTag,
+      secretKeyCiphertext,
+      secretReminderNote,
+      secretValueCiphertext,
+      secretCommentCiphertext,
+      secretReminderRepeatDays
+    })
   );
+  const newSecrets = await secretDAL.insertMany(sanitizedInputSecrets, tx);
   const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex as string);
   const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
     secretTags.map((tag) => ({
@@ -548,9 +600,8 @@ export const fnSecretBulkInsert = async ({
     }))
   );
   const secretVersions = await secretVersionDAL.insertMany(
-    inputSecrets.map(({ tags, references, ...el }) => ({
+    sanitizedInputSecrets.map((el) => ({
       ...el,
-      folderId,
       secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
     })),
     tx
@@ -585,13 +636,55 @@ export const fnSecretBulkUpdate = async ({
   secretTagDAL,
   secretVersionTagDAL
 }: TFnSecretBulkUpdate) => {
-  const newSecrets = await secretDAL.bulkUpdate(
-    inputSecrets.map(({ filter, data: { tags, references, ...data } }) => ({
+  const sanitizedInputSecrets = inputSecrets.map(
+    ({
+      filter,
+      data: {
+        skipMultilineEncoding,
+        type,
+        userId,
+        metadata,
+        algorithm,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        keyEncoding,
+        secretValueTag,
+        secretCommentIV,
+        secretBlindIndex,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretReminderNote,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        secretReminderRepeatDays
+      }
+    }) => ({
       filter: { ...filter, folderId },
-      data
-    })),
-    tx
+      data: {
+        skipMultilineEncoding,
+        type,
+        userId,
+        metadata,
+        algorithm,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        keyEncoding,
+        secretValueTag,
+        secretCommentIV,
+        secretBlindIndex,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretReminderNote,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        secretReminderRepeatDays
+      }
+    })
   );
+
+  const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const secretVersions = await secretVersionDAL.insertMany(
     newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
       ...el,
@@ -674,7 +767,11 @@ export const createManySecretsRawFnFactory = ({
   secretBlindIndexDAL,
   secretTagDAL,
   secretVersionTagDAL,
-  folderDAL
+  folderDAL,
+  secretVersionV2BridgeDAL,
+  secretV2BridgeDAL,
+  secretVersionTagV2BridgeDAL,
+  kmsService
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const createManySecretsRawFn = async ({
@@ -684,10 +781,7 @@ export const createManySecretsRawFnFactory = ({
     secrets,
     userId
   }: TCreateManySecretsRawFn) => {
-    const botKey = await getBotKeyFn(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
-
-    await projectDAL.checkProjectUpgradeStatus(projectId);
+    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -696,6 +790,62 @@ export const createManySecretsRawFnFactory = ({
         name: "Create secret"
       });
     const folderId = folder.id;
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+      const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
+        folderId,
+        secrets.map((el) => ({
+          key: el.secretName,
+          type: SecretType.Shared
+        }))
+      );
+      if (secretsStoredInDB.length)
+        throw new BadRequestError({
+          message: `Secret already exist: ${secretsStoredInDB.map((el) => el.key).join(",")}`
+        });
+
+      const inputSecrets = secrets.map((secret) => {
+        return {
+          type: secret.type,
+          userId: secret.type === SecretType.Personal ? userId : null,
+          key: secret.secretName,
+          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedComent: secret.secretComment
+            ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
+            : null,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          tags: secret.tags,
+          references: getAllNestedSecretReferencesV2Bridge(secret.secretValue)
+        };
+      });
+
+      // get all tags
+      const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+      const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+      if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
+
+      const newSecrets = await secretDAL.transaction(async (tx) =>
+        fnSecretV2BridgeBulkInsert({
+          inputSecrets: inputSecrets.map((el) => ({
+            ...el,
+            version: 1,
+            tagIds: el.tags
+          })),
+          folderId,
+          secretDAL: secretV2BridgeDAL,
+          secretVersionDAL: secretVersionV2BridgeDAL,
+          secretTagDAL,
+          secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+          tx
+        })
+      );
+
+      return newSecrets;
+    }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
     if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
@@ -710,6 +860,7 @@ export const createManySecretsRawFnFactory = ({
       secretDAL
     });
 
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
     const inputSecrets = secrets.map((secret) => {
       const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
       const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
@@ -742,7 +893,7 @@ export const createManySecretsRawFnFactory = ({
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
+        inputSecrets: inputSecrets.map(({ secretName, tags: _, ...el }) => ({
           ...el,
           version: 0,
           secretBlindIndex: keyName2BlindIndex[secretName],
@@ -772,7 +923,11 @@ export const updateManySecretsRawFnFactory = ({
   secretBlindIndexDAL,
   secretTagDAL,
   secretVersionTagDAL,
-  folderDAL
+  folderDAL,
+  secretVersionTagV2BridgeDAL,
+  secretVersionV2BridgeDAL,
+  secretV2BridgeDAL,
+  kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -781,11 +936,8 @@ export const updateManySecretsRawFnFactory = ({
     path: secretPath,
     secrets, // consider accepting instead ciphertext secrets
     userId
-  }: TUpdateManySecretsRawFn): Promise<Array<TSecrets & { _id: string }>> => {
-    const botKey = await getBotKeyFn(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
-
-    await projectDAL.checkProjectUpgradeStatus(projectId);
+  }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
+    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -794,7 +946,82 @@ export const updateManySecretsRawFnFactory = ({
         name: "Update secret"
       });
     const folderId = folder.id;
+    if (shouldUseSecretV2Bridge) {
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
+      const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
+        folderId,
+        secrets.map((el) => ({
+          key: el.secretName,
+          type: SecretType.Shared
+        }))
+      );
+      if (secretsToUpdate.length !== secrets.length)
+        throw new BadRequestError({ message: `Secret not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+
+      // now find any secret that needs to update its name
+      // same process as above
+      const secretsWithNewName = secrets.filter(({ newSecretName }) => Boolean(newSecretName));
+      if (secretsWithNewName.length) {
+        const secretsWithNewNameInDB = await secretV2BridgeDAL.findBySecretKeys(
+          folderId,
+          secrets.map((el) => ({
+            key: el.secretName,
+            type: SecretType.Shared
+          }))
+        );
+        if (secretsWithNewNameInDB.length)
+          throw new BadRequestError({
+            message: `Secret not exist: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
+          });
+      }
+
+      const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
+      const inputSecrets = secrets.map((secret) => {
+        if (secret.newSecretName === "") {
+          throw new BadRequestError({ message: "New secret name cannot be empty" });
+        }
+
+        return {
+          type: secret.type,
+          userId: secret.type === SecretType.Personal ? userId : null,
+          key: secret.newSecretName || secret.secretName,
+          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedComent: secret.secretComment
+            ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
+            : null,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          tags: secret.tags,
+          references: getAllNestedSecretReferencesV2Bridge(secret.secretValue)
+        };
+      });
+
+      const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+      const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+      if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
+      const updatedSecrets = await secretDAL.transaction(async (tx) =>
+        fnSecretV2BridgeBulkUpdate({
+          folderId,
+          tx,
+          inputSecrets: inputSecrets.map((el) => ({
+            filter: { id: secretsToUpdateInDBGroupedByKey[el.key][0].id, type: SecretType.Shared },
+            data: el
+          })),
+          secretDAL: secretV2BridgeDAL,
+          secretVersionDAL: secretVersionV2BridgeDAL,
+          secretTagDAL,
+          secretVersionTagDAL: secretVersionTagV2BridgeDAL
+        })
+      );
+
+      return updatedSecrets;
+    }
+
+    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
     if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
@@ -881,4 +1108,51 @@ export const updateManySecretsRawFnFactory = ({
   };
 
   return updateManySecretsRawFn;
+};
+
+export const decryptSecretWithBot = (
+  secret: Pick<
+    TSecrets,
+    | "secretKeyIV"
+    | "secretKeyTag"
+    | "secretKeyCiphertext"
+    | "secretValueIV"
+    | "secretValueTag"
+    | "secretValueCiphertext"
+    | "secretCommentIV"
+    | "secretCommentTag"
+    | "secretCommentCiphertext"
+  >,
+  key: string
+) => {
+  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretKeyCiphertext,
+    iv: secret.secretKeyIV,
+    tag: secret.secretKeyTag,
+    key
+  });
+
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key
+  });
+
+  let secretComment = "";
+
+  if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    secretComment = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretCommentCiphertext,
+      iv: secret.secretCommentIV,
+      tag: secret.secretCommentTag,
+      key
+    });
+  }
+
+  return {
+    secretKey,
+    secretValue,
+    secretComment
+  };
 };

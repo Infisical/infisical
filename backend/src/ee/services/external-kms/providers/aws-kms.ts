@@ -50,17 +50,26 @@ type TAwsKmsProviderFactoryReturn = TExternalKmsProviderFns & {
 };
 
 export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Promise<TAwsKmsProviderFactoryReturn> => {
-  const providerInputs = await ExternalKmsAwsSchema.parseAsync(inputs);
-  const awsClient = await getAwsKmsClient(providerInputs);
+  let providerInputs = await ExternalKmsAwsSchema.parseAsync(inputs);
+  let awsClient = await getAwsKmsClient(providerInputs);
 
   const generateInputKmsKey = async () => {
     if (providerInputs.kmsKeyId) return providerInputs;
 
     const command = new CreateKeyCommand({ Tags: [{ TagKey: "author", TagValue: "infisical" }] });
     const kmsKey = await awsClient.send(command);
+
     if (!kmsKey.KeyMetadata?.KeyId) throw new Error("Failed to generate kms key");
 
-    return { ...providerInputs, kmsKeyId: kmsKey.KeyMetadata?.KeyId };
+    const updatedProviderInputs = await ExternalKmsAwsSchema.parseAsync({
+      ...providerInputs,
+      kmsKeyId: kmsKey.KeyMetadata?.KeyId
+    });
+
+    providerInputs = updatedProviderInputs;
+    awsClient = await getAwsKmsClient(providerInputs);
+
+    return updatedProviderInputs;
   };
 
   const validateConnection = async () => {

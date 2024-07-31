@@ -2,8 +2,8 @@ export {
   useAddGroupToWorkspace,
   useDeleteGroupFromWorkspace,
   useLeaveProject,
-  useUpdateGroupWorkspaceRole
-} from "./mutations";
+  useMigrateProjectToV3,
+  useUpdateGroupWorkspaceRole} from "./mutations";
 export {
   useAddIdentityToWorkspace,
   useCreateWorkspace,

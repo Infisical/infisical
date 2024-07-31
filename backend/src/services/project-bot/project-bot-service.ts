@@ -60,7 +60,7 @@ export const projectBotServiceFactory = ({
 
       const project = await projectDAL.findById(projectId, tx);
 
-      if (project.version === ProjectVersion.V2) {
+      if (project.version === ProjectVersion.V2 || project.version === ProjectVersion.V3) {
         throw new BadRequestError({ message: "Failed to create bot, project is upgraded." });
       }
 

@@ -91,7 +91,7 @@ export const certificateAuthorityQueueFactory = ({
     const kmsDecryptor = await kmsService.decryptWithKmsKey({
       kmsId: keyId
     });
-    const privateKey = kmsDecryptor({
+    const privateKey = await kmsDecryptor({
       cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
@@ -125,7 +125,7 @@ export const certificateAuthorityQueueFactory = ({
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
       kmsId: keyId
     });
-    const { cipherTextBlob: encryptedCrl } = kmsEncryptor({
+    const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(crl.rawData))
     });
 

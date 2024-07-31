@@ -14,8 +14,8 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import {
-  DecryptedSecret,
   SecretType,
+  SecretV3RawSanitized,
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
@@ -27,7 +27,7 @@ export enum EntryType {
 
 type Props = {
   secretPath: string;
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   getFolderByNameAndEnv: (name: string, env: string) => TSecretFolder | undefined;
   resetSelectedEntries: () => void;
   selectedEntries: {
@@ -115,7 +115,7 @@ export const SelectionPanel = ({
             return [
               ...accum,
               {
-                secretName: entry.key,
+                secretKey: entry.key,
                 type: SecretType.Shared
               }
             ];

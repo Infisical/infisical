@@ -21,7 +21,8 @@ export enum OrgPermissionSubjects {
   Groups = "groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
-  Identity = "identity"
+  Identity = "identity",
+  Kms = "kms"
 }
 
 export type OrgPermissionSet =
@@ -37,7 +38,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
-  | [OrgPermissionActions, OrgPermissionSubjects.Identity];
+  | [OrgPermissionActions, OrgPermissionSubjects.Identity]
+  | [OrgPermissionActions, OrgPermissionSubjects.Kms];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -99,6 +101,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
   return build({ conditionsMatcher });
 };

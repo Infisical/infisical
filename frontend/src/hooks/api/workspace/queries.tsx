@@ -150,11 +150,15 @@ export const useGetWorkspaceSecrets = (workspaceId: string) => {
   });
 };
 
-export const useGetWorkspaceById = (workspaceId: string) => {
+export const useGetWorkspaceById = (
+  workspaceId: string,
+  dto?: { refetchInterval?: number | false }
+) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceById(workspaceId),
     queryFn: () => fetchWorkspaceById(workspaceId),
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(workspaceId),
+    refetchInterval: dto?.refetchInterval
   });
 };
 
@@ -226,18 +230,20 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
   });
 
 export const createWorkspace = ({
-  projectName
+  projectName,
+  kmsKeyId
 }: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v2/workspace", { projectName });
+  return apiRequest.post("/api/v2/workspace", { projectName, kmsKeyId });
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ projectName }) =>
+    mutationFn: async ({ projectName, kmsKeyId }) =>
       createWorkspace({
-        projectName
+        projectName,
+        kmsKeyId
       }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
