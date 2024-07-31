@@ -375,7 +375,8 @@ func ProcessTemplate(templateId int, templatePath string, data interface{}, acce
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretManager, templateId)
 	getSingleSecretFunction := getSingleSecretTemplateFunction(accessToken, existingEtag, currentEtag)
 	funcs := template.FuncMap{
-		"secret":          secretFunction,
+		"secret":          secretFunction, // depreciated
+		"listSecrets":     secretFunction,
 		"dynamic_secret":  dynamicSecretFunction,
 		"getSecretByName": getSingleSecretFunction,
 		"minus": func(a, b int) int {
