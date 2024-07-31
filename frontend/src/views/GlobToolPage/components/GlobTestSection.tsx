@@ -1,13 +1,12 @@
-import { ReactNode } from 'react'
+import { ReactNode, useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { useRouter } from 'next/router';
-import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import picomatch from "picomatch";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
 
-import { createNotification } from "@app/components/notifications";
-import { IconButton, Input, TextArea, Tooltip, TooltipProvider, Button } from "@app/components/v2";
+import { createNotification } from '@app/components/notifications';
+import { IconButton, Input, TextArea, Tooltip, TooltipProvider, Button } from '@app/components/v2';
 
 export const GlobTestSection = () => {
   const [path, setPath] = useState<string>('');
@@ -22,7 +21,7 @@ export const GlobTestSection = () => {
 
   useEffect(() => {
     if (secretPath) {
-      setPath(secretPath as string)
+      setPath(secretPath)
     }
   }, [secretPath]);
 
@@ -46,24 +45,24 @@ export const GlobTestSection = () => {
     setGlob(e.target.value);
   }, []);
 
-  const validateStrings = useCallback((path: string, glob: string) => {
-    if (!path || !glob) return;
+  const validateStrings = useCallback((secret: string, testStrings: string) => {
+    if (!secret || !testStrings) return;
 
-    const matcher = picomatch(path, { dot: true });
-    const patterns = glob.split('\n')
+    const matcher = picomatch(secret, { dot: true });
+    const patterns = testStrings.split('\n');
 
-    const output = patterns.map((pattern, idx) => {
+    const newOutput = patterns.map((pattern) => {
       const isMatch = matcher(pattern);
       const color = isMatch ? 'text-green-500' : 'text-red-500';
 
       return (
-        <div key={idx + pattern} className={color}>
+        <div key={pattern} className={color}>
           {isMatch ? "✓" : "✕"} - {pattern}
         </div>
       )
     })
 
-    setOutput(output)
+    setOutput(newOutput)
   }, []);
 
   return (

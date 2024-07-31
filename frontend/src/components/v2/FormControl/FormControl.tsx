@@ -33,7 +33,12 @@ export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, t
       </span>
 
       {hyperLinkText && hyperLinkPath && (
-        <span className="text-primary-400/90 cursor-pointer" onClick={hyperLinkPath}>
+        <span 
+          className="text-primary-400/90 cursor-pointer"  
+          role="button"
+          tabIndex="0" 
+          onClick={hyperLinkPath}
+        >
           {hyperLinkText}
         </span>
       )}
