@@ -97,14 +97,12 @@ client = InfisicalClient(ClientSettings(
             If manually set to 0, caching will be disabled, this is not recommended.
         </ParamField>
 
-
-        <ParamField
-          query="site_url"
-          type="string"
-          default="https://app.infisical.com"
-          optional
-        >
+        <ParamField query="site_url" type="string" default="https://app.infisical.com" optional>
           Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
+        </ParamField>
+
+        <ParamField query="ssl_certificate_path" optional>
+          Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
         </ParamField>
 
         <ParamField query="auth" type="AuthenticationOptions">
