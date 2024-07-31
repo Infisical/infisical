@@ -92,7 +92,6 @@ export const SecretV2MigrationSection = () => {
       <p className="mb-4 leading-7 text-gray-400">
         Infisical secrets engine is now 10x faster and allows you to encrypt secrets with your own
         KMS. Upgrade your project to receive these improvements.
-        <b>{!isAdmin && "This is an admin only operation."}</b>
       </p>
       <Button
         onClick={() => handlePopUpOpen("migrationInfo")}
@@ -100,7 +99,7 @@ export const SecretV2MigrationSection = () => {
         color="mineshaft"
         isLoading={migrateProjectToV3.isLoading}
       >
-        Upgrade Project
+        { isAdmin ? "Upgrade Project" : "Upgrade requires admin privilege"}
       </Button>
       {didProjectUpgradeFailed && (
         <p className="mt-2 text-sm leading-7 text-red-400">
