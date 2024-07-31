@@ -1056,7 +1056,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   SIGN_INTERMEDIATE: {
     caId: "The ID of the CA to sign the intermediate certificate with",
-    csr: "The CSR to sign with the CA",
+    csr: "The pem-encoded CSR to sign with the CA",
     notBefore: "The date and time when the intermediate CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
     notAfter: "The date and time when the intermediate CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
     maxPathLength:
@@ -1084,6 +1084,21 @@ export const CERTIFICATE_AUTHORITIES = {
     issuingCaCertificate: "The certificate of the issuing CA",
     certificateChain: "The certificate chain of the issued certificate",
     privateKey: "The private key of the issued certificate",
+    serialNumber: "The serial number of the issued certificate"
+  },
+  SIGN_CERT: {
+    caId: "The ID of the CA to issue the certificate from",
+    csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
+    friendlyName: "A friendly name for the certificate",
+    commonName: "The common name (CN) for the certificate",
+    altNames:
+      "A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
+    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    certificate: "The issued certificate",
+    issuingCaCertificate: "The certificate of the issuing CA",
+    certificateChain: "The certificate chain of the issued certificate",
     serialNumber: "The serial number of the issued certificate"
   },
   GET_CRL: {

@@ -18,6 +18,43 @@ export const createDistinguishedName = (parts: TDNParts) => {
   return dnParts.join(", ");
 };
 
+export const parseDistinguishedName = (dn: string): TDNParts => {
+  const parts: TDNParts = {};
+  const dnRegex = /(?:^|,\s*)([A-Z]+)=([^,]+)/g;
+  let match: RegExpExecArray | null;
+
+  while (true) {
+    match = dnRegex.exec(dn);
+    if (match === null) break;
+
+    const [, key, value] = match;
+    switch (key) {
+      case "C":
+        parts.country = value;
+        break;
+      case "O":
+        parts.organization = value;
+        break;
+      case "OU":
+        parts.ou = value;
+        break;
+      case "ST":
+        parts.province = value;
+        break;
+      case "CN":
+        parts.commonName = value;
+        break;
+      case "L":
+        parts.locality = value;
+        break;
+      default:
+        // Ignore unrecognized keys
+        break;
+    }
+  }
+  return parts;
+};
+
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   switch (keyAlgorithm) {
     case CertKeyAlgorithm.RSA_4096:
