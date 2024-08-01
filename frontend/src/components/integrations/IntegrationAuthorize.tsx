@@ -86,10 +86,10 @@ export default function IntegrationAuth<FormSchemaT extends z.ZodType>({
           logoHeight={logoHeight}
           logoWidth={logoWidth}
         />
-        <CardBody className="px-6 pb-6 pt-0">
-          <form onSubmit={handleSubmit(onFormSubmit)} noValidate>
+        <CardBody className="pb-0">
+          <form className="flex flex-col" onSubmit={handleSubmit(onFormSubmit)} noValidate>
             {renderFormFieldsRef(control)}
-            <Button type="submit" isLoading={isSubmitting}>
+            <Button colorSchema="primary" className="mb-6 mt-2 ml-auto w-min" type="submit" isLoading={isSubmitting}>
               Connect to {integrationName}
             </Button>
           </form>

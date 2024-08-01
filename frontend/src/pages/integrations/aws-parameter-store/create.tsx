@@ -396,7 +396,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
           </motion.div>
         </TabPanel>
       </Tabs>
-      <Button type="submit" isLoading={isSubmitting}>
+      <Button className="mb-6 mt-2 ml-auto mr-6 w-min" type="submit" isLoading={isSubmitting}>
         Create Integration
       </Button>
     </IntegrationCreate>

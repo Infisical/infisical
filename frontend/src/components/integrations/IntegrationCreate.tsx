@@ -84,8 +84,8 @@ export default function IntegrationCreate<FormSchemaT extends z.ZodType>({
           logoHeight={logoHeight}
           logoWidth={logoWidth}
         />
-        <CardBody>
-          <form onSubmit={handleSubmit(onFormSubmit)} noValidate>
+        <CardBody className="px-0 pb-0">
+          <form className="flex flex-col" onSubmit={handleSubmit(onFormSubmit)} noValidate>
             {children}
           </form>
         </CardBody>
