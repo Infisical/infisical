@@ -1,4 +1,3 @@
-import { UserWsKeyPair } from "../keys/types";
 import { TSecretApprovalPolicy } from "../secretApproval/types";
 import { SecretV3Raw } from "../secrets/types";
 import { WsTag } from "../tags/types";
@@ -110,7 +109,6 @@ export type TGetSecretApprovalRequestCount = {
 
 export type TGetSecretApprovalRequestDetails = {
   id: string;
-  decryptKey: UserWsKeyPair;
 };
 
 export type TUpdateSecretApprovalReviewStatusDTO = {

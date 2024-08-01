@@ -540,7 +540,7 @@ export const projectMembershipServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
-    if (project.version !== ProjectVersion.V2) {
+    if (project.version === ProjectVersion.V1) {
       throw new BadRequestError({
         message: "Please ask your project administrator to upgrade the project before leaving."
       });

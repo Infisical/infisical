@@ -22,6 +22,7 @@ import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/id
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -74,6 +75,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "create">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -106,7 +108,8 @@ export const projectServiceFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   keyStore,
-  kmsService
+  kmsService,
+  projectBotDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -206,7 +209,26 @@ export const projectServiceFactory = ({
         tx
       );
 
-      // const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
+      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
+
+      // 5. Create & a bot for the project
+      await projectBotDAL.create(
+        {
+          name: "Infisical Bot (Ghost)",
+          projectId: project.id,
+          tag,
+          iv,
+          encryptedProjectKey,
+          encryptedProjectKeyNonce: encryptedProjectKeyIv,
+          encryptedPrivateKey: ciphertext,
+          isActive: true,
+          publicKey: ghostUser.keys.publicKey,
+          senderId: ghostUser.user.id,
+          algorithm,
+          keyEncoding: encoding
+        },
+        tx
+      );
 
       // Find the ghost users latest key
       const latestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.user.id, project.id, tx);

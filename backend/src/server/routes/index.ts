@@ -635,7 +635,8 @@ export const registerRoutes = async (
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
-    kmsService
+    kmsService,
+    projectBotDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({
