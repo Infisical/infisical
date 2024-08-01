@@ -80,7 +80,7 @@ export const CreateSecretForm = ({
     const pastedContent = e.clipboardData.getData('text');
     const splitIndex = pastedContent.indexOf("=");
 
-    if (splitIndex == -1) return
+    if (splitIndex === -1) return
 
     const key = pastedContent.slice(0, splitIndex)
     const value = pastedContent.slice(splitIndex + 1);
