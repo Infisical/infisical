@@ -42,7 +42,6 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { UpgradeProjectAlert } from "@app/components/v2/UpgradeProjectAlert";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -64,7 +63,6 @@ import {
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { SecretType, TSecretFolder } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
@@ -520,11 +518,6 @@ export const SecretOverviewPage = () => {
               .
             </p>
           </div>
-
-          {currentWorkspace?.version === ProjectVersion.V1 && (
-            <UpgradeProjectAlert project={currentWorkspace} />
-          )}
-
           <div className="flex items-center justify-between">
             <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
             <div className="flex flex-row items-center justify-center space-x-2">

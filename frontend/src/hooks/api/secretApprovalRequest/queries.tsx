@@ -194,7 +194,6 @@ const fetchSecretApprovalRequestDetails = async ({
 
 export const useGetSecretApprovalRequestDetails = ({
   id,
-  decryptKey,
   options = {}
 }: TGetSecretApprovalRequestDetails & {
   options?: Omit<
@@ -210,7 +209,7 @@ export const useGetSecretApprovalRequestDetails = ({
   useQuery({
     queryKey: secretApprovalRequestKeys.detail({ id }),
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
-    enabled: Boolean(id && decryptKey) && (options?.enabled ?? true)
+    enabled: Boolean(id) && (options?.enabled ?? true)
   });
 
 const fetchSecretApprovalRequestCount = async ({ workspaceId }: TGetSecretApprovalRequestCount) => {

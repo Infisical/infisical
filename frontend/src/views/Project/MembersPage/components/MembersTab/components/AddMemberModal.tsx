@@ -74,19 +74,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           decryptKey: wsKey,
           members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
         });
-      } else if (currentWorkspace.version === ProjectVersion.V2) {
+      } else {
         await addUserToWorkspaceNonE2EE({
           projectId: workspaceId,
           usernames: [orgUser.user.username],
           orgId
         });
-      } else {
-        createNotification({
-          text: "Failed to add user to project, unknown project type",
-          type: "error"
-        });
-
-        return;
       }
       createNotification({
         text: "Successfully added user to the project",
