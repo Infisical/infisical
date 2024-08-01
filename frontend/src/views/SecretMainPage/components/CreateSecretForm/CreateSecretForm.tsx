@@ -82,8 +82,8 @@ export const CreateSecretForm = ({
         title="Create secret"
         subTitle="Add a secret to the particular environment and folder"
       >
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <FormControl label="Key" isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
+        <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+          <FormControl label="Key" isRequired isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
             <Input
               {...register("key")}
               placeholder="Type your secret name"
