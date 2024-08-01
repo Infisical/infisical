@@ -140,8 +140,8 @@ export const CreateSecretForm = ({
         title="Bulk Create & Update"
         subTitle="Create & update a secret across many environments"
       >
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <FormControl label="Key" isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
+        <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+          <FormControl label="Key" isRequired isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
             <Input
               {...register("key")}
               placeholder="Type your secret name"
