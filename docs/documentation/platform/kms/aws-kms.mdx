@@ -1,24 +1,26 @@
 ---
-title: "AWS Key Management Service (KMS)"
+title: "AWS Key Management Service"
 description: "Learn how to manage encryption using AWS KMS"
 ---
 
-You can configure your projects to use AWS KMS keys for encryption, enhancing the security and management of your secrets.
+To enhance the security of your Infisical projects, you can now encrypt your secrets using an external Key Management Service (KMS).
+When external KMS is configured for your project, all encryption and decryption operations will be handled by the chosen KMS, providing you with complete control. 
+This guide will walk you through the steps needed to configure AWS KMS.
 
 ## Prerequisites
 
-Depending on the AWS Authentication Method you intend to use, you will have to do either of the following:
+Before you begin, you'll first need to choose a method of authentication with AWS from below.
 
 <Tabs>
-  <Tab title="Assume Role (Recommended)">
+  <Tab title="Method 1: Assume Role (Recommended)">
   <Steps>
     <Step title="Create the Managing User IAM Role">
       1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
         ![IAM Role Creation](../../images/integrations/aws/integration-aws-iam-assume-role.png)
 
       2. Select **AWS Account** as the **Trusted Entity Type**.
-      3. Choose **Another AWS Account** and enter **381492033652** (Infisical AWS Account ID). This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
-      4. Optionally, enable **Require external ID** and enter your **project ID** to further enhance security.
+      3. Choose **Another AWS Account** and enter **381492033652** (Infisical AWS Account ID). This restricts the role to be assumed only by Infisical. If you are self-hosting, provide the AWS account number where Infisical is hosted.
+      4. Optionally, enable **Require external ID** and enter your Infisical **project ID** to further enhance security.
     </Step>
     <Step title="Add Required Permissions for the IAM Role">
       Use the following custom policy to grant the minimum permissions required by Infisical to integrate with AWS KMS
@@ -44,7 +46,7 @@ Depending on the AWS Authentication Method you intend to use, you will have to d
 
   </Steps>
   </Tab>
-  <Tab title="Access Key">
+  <Tab title="Method 2: Access Key">
       Navigate to your IAM user and add a policy to grant the following permissions:
       ```json
       {
@@ -68,10 +70,10 @@ Depending on the AWS Authentication Method you intend to use, you will have to d
 
 ## Setup AWS KMS in the Organization Settings
 
-Follow these steps to set up AWS KMS for your organization:
+Next, you will need to follow the steps listed below to add AWS KMS for your organization.
 
 <Steps>
-  <Step title="Navigate to the organization settings and select the Encryption tab.">
+  <Step title="Navigate to the organization settings and select the 'Encryption' tab.">
 	![Open encryption org settings](../../../images/platform/kms/aws/encryption-org-settings.png)
   </Step>
   <Step title="Click on the 'Add' button">
@@ -83,7 +85,8 @@ Follow these steps to set up AWS KMS for your organization:
      Choose 'AWS KMS' from the list of encryption providers.
   </Step>
   <Step title="Provide the inputs for AWS KMS">
-    Fill in the required details for AWS KMS:
+    Selecting AWS as the provider will require you input the following fields. 
+
 	<ParamField path="Alias" type="string" required>
 		Name for referencing the AWS KMS key within the organization.
 	</ParamField>
@@ -96,7 +99,7 @@ Follow these steps to set up AWS KMS for your organization:
     	Authentication mode for AWS, either "AWS Assume Role" or "Access Key".
     </ParamField>
 
-    <ParamField path="IAM Role ARN For Role Assumption" type="string" required>
+    <ParamField path="IAM Role ARN For Role Assumption" type="string">
         ARN of the AWS role to assume for providing Infisical access to the AWS KMS Key (required if Authentication Mode is "AWS Assume Role")
     </ParamField>
 
@@ -104,11 +107,11 @@ Follow these steps to set up AWS KMS for your organization:
     	Custom identifier for additional validation during role assumption.
     </ParamField>
 
-    <ParamField path="Access Key ID" type="string" required>
+    <ParamField path="Access Key ID" type="string">
     	AWS IAM Access Key ID for authentication (required if Authentication Mode is "Access Key").
     </ParamField>
 
-    <ParamField path="Secret Access Key" type="string" required>
+    <ParamField path="Secret Access Key" type="string">
         AWS IAM Secret Access Key for authentication (required if Authentication Mode is "Access Key").
     </ParamField>
 
@@ -126,14 +129,14 @@ Follow these steps to set up AWS KMS for your organization:
   </Step>
 </Steps>
 
-You now have an AWS KMS Key configured at the organization level. You can assign these keys to existing projects via the Project Settings page.
+You now have an AWS KMS Key configured at the organization level. You can assign these AWS KMS keys to existing Infisical projects by visiting the 'Project Settings' page.
 
 ## Assign AWS KMS Key to an Existing Project
 
-Follow these steps to assign an AWS KMS key to a project:
+To assign the AWS KMS key you added to your organization, follow the steps below.
 
 <Steps>
-  <Step title="Open Project Settings and proceed to the Encryption Tab">
+  <Step title="Open Project Settings and select to the Encryption Tab">
     ![Open encryption project
     settings](../../../images/platform/kms/aws/encryption-project-settings.png)
   </Step>
@@ -143,6 +146,6 @@ Follow these steps to assign an AWS KMS key to a project:
     Choose the AWS KMS key you configured earlier.
   </Step>
   <Step title="Click Save">
-    Save the changes to apply the new encryption settings to your project.
+    Once you have selected the KMS of choice, click save.
   </Step>
 </Steps>
