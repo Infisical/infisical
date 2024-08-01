@@ -44,7 +44,12 @@ import {
   Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -120,6 +125,12 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+
+  const { permission } = useProjectPermission();
+
+  const shouldCheckFolderPermission = permission.rules.some((rule) =>
+    (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
+  );
 
   const debouncedOnSearch = debounce(onSearchChange, 500);
 
@@ -411,7 +422,12 @@ export const ActionBar = ({
               <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  a={subject(
+                    shouldCheckFolderPermission
+                      ? ProjectPermissionSub.SecretFolders
+                      : ProjectPermissionSub.Secrets,
+                    { environment, secretPath }
+                  )}
                 >
                   {(isAllowed) => (
                     <Button
