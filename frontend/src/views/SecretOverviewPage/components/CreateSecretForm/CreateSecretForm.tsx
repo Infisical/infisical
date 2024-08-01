@@ -1,3 +1,4 @@
+import { ClipboardEvent } from 'react';
 import { Controller, useForm } from "react-hook-form";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -54,6 +55,7 @@ export const CreateSecretForm = ({
     control,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const newSecretKey = watch("key");
@@ -133,6 +135,21 @@ export const CreateSecretForm = ({
       });
     }
   };
+
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedContent = e.clipboardData.getData('text');
+    const splitIndex = pastedContent.indexOf("=");
+
+    if (splitIndex == -1) return
+
+    const key = pastedContent.slice(0, splitIndex)
+    const value = pastedContent.slice(splitIndex + 1);
+
+    setValue('key', key);
+    setValue('value', value);
+  }
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onTogglePopUp}>
       <ModalContent
@@ -145,6 +162,7 @@ export const CreateSecretForm = ({
             <Input
               {...register("key")}
               placeholder="Type your secret name"
+              onPaste={handlePaste}
               autoCapitalization={currentWorkspace?.autoCapitalization}
             />
           </FormControl>

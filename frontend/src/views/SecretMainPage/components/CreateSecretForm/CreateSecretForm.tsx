@@ -1,3 +1,4 @@
+import { ClipboardEvent } from 'react';
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,6 +39,7 @@ export const CreateSecretForm = ({
     handleSubmit,
     control,
     reset,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const { isOpen } = usePopUpState(PopUpNames.CreateSecretForm);
@@ -73,6 +75,20 @@ export const CreateSecretForm = ({
     }
   };
 
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedContent = e.clipboardData.getData('text');
+    const splitIndex = pastedContent.indexOf("=");
+
+    if (splitIndex == -1) return
+
+    const key = pastedContent.slice(0, splitIndex)
+    const value = pastedContent.slice(splitIndex + 1);
+
+    setValue('key', key);
+    setValue('value', value);
+  }
+
   return (
     <Modal
       isOpen={isOpen}
@@ -87,6 +103,7 @@ export const CreateSecretForm = ({
             <Input
               {...register("key")}
               placeholder="Type your secret name"
+              onPaste={handlePaste}
               autoCapitalization={autoCapitalize}
             />
           </FormControl>
