@@ -77,6 +77,7 @@ export type FormControlProps = {
   className?: string;
   icon?: ReactNode;
   tooltipText?: string;
+  autoFocus?: boolean;
 };
 
 export const FormControl = ({
@@ -90,7 +91,8 @@ export const FormControl = ({
   isError,
   icon,
   className,
-  tooltipText
+  tooltipText,
+  autoFocus = false
 }: FormControlProps): JSX.Element => {
   return (
     <div className={twMerge("mb-4", className)}>
@@ -106,7 +108,7 @@ export const FormControl = ({
       ) : (
         label
       )}
-      {cloneElement(children, { isRequired, "data-required": isRequired, isError })}
+      {cloneElement(children, { isRequired, "data-required": isRequired, isError, autoFocus })}
       {!isError && helperText && <FormHelperText isError={isError} text={helperText} />}
       {isError && errorText && <FormHelperText isError={isError} text={errorText} />}
     </div>

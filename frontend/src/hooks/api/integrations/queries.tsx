@@ -6,6 +6,40 @@ import { apiRequest } from "@app/config/request";
 import { workspaceKeys } from "../workspace/queries";
 import { TCloudIntegration } from "./types";
 
+export interface CreateIntegrationPayload {
+  integrationAuthId: string;
+  isActive: boolean;
+  secretPath: string;
+  app?: string;
+  appId?: string;
+  sourceEnvironment: string;
+  targetEnvironment?: string;
+  targetEnvironmentId?: string;
+  targetService?: string;
+  targetServiceId?: string;
+  owner?: string;
+  url?: string;
+  path?: string;
+  region?: string;
+  scope?: string;
+  metadata?: {
+    secretPrefix?: string;
+    secretSuffix?: string;
+    initialSyncBehavior?: string;
+    shouldAutoRedeploy?: boolean;
+    mappingBehavior?: string;
+    secretAWSTag?: {
+      key: string;
+      value: string;
+    }[];
+    kmsKeyId?: string;
+    shouldDisableDelete?: boolean;
+    shouldMaskSecrets?: boolean;
+    shouldProtectSecrets?: boolean;
+    shouldEnableDelete?: boolean;
+  };
+}
+
 export const integrationQueryKeys = {
   getIntegrations: () => ["integrations"] as const
 };
@@ -45,39 +79,7 @@ export const useCreateIntegration = () => {
       scope,
       secretPath,
       metadata
-    }: {
-      integrationAuthId: string;
-      isActive: boolean;
-      secretPath: string;
-      app?: string;
-      appId?: string;
-      sourceEnvironment: string;
-      targetEnvironment?: string;
-      targetEnvironmentId?: string;
-      targetService?: string;
-      targetServiceId?: string;
-      owner?: string;
-      url?: string;
-      path?: string;
-      region?: string;
-      scope?: string;
-      metadata?: {
-        secretPrefix?: string;
-        secretSuffix?: string;
-        initialSyncBehavior?: string;
-        shouldAutoRedeploy?: boolean;
-        mappingBehavior?: string;
-        secretAWSTag?: {
-          key: string;
-          value: string;
-        }[];
-        kmsKeyId?: string;
-        shouldDisableDelete?: boolean;
-        shouldMaskSecrets?: boolean;
-        shouldProtectSecrets?: boolean;
-        shouldEnableDelete?: boolean;
-      };
-    }) => {
+    }: CreateIntegrationPayload) => {
       const {
         data: { integration }
       } = await apiRequest.post("/api/v1/integration", {
