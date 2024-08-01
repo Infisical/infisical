@@ -1,5 +1,6 @@
 import React from "react";
 import { type Control, useForm } from "react-hook-form";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { UseMutateAsyncFunction } from "@tanstack/react-query";
@@ -77,6 +78,10 @@ export default function IntegrationAuth<FormSchemaT extends z.ZodType>({
 
   return (
     <div className="flex h-full w-full items-center justify-center">
+      <Head>
+        <title>Authorize {integrationName} Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <IntegrationCardHeading
           docsLink={documentationLink}

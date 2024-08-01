@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
@@ -190,6 +191,10 @@ export default function AWSParameterStoreCreateIntegrationPage() {
       createIntegration={createIntegration}
       areIntegrationResourcesLoading={isIntegrationAuthAwsKmsKeysLoading}
     >
+      <Head>
+        <title>Authorize AWS Parameter Store Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
       <Tabs defaultValue={TabSections.Connection} className="px-6">
         <TabList>
           <div className="flex w-full flex-row border-b border-mineshaft-600">
