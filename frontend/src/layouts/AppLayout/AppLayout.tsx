@@ -286,12 +286,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
       // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
       await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-      createNotification({ text: "Workspace created", type: "success" });
+      createNotification({ text: "Project created", type: "success" });
       handlePopUpClose("addNewWs");
       router.push(`/project/${newProjectId}/secrets/overview`);
     } catch (err) {
       console.error(err);
-      createNotification({ text: "Failed to create workspace", type: "error" });
+      createNotification({ text: "Failed to create project", type: "error" });
     }
   };
 
