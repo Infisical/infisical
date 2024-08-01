@@ -192,7 +192,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
       areIntegrationResourcesLoading={isIntegrationAuthAwsKmsKeysLoading}
     >
       <Head>
-        <title>Authorize AWS Parameter Store Integration</title>
+        <title>Set Up AWS Parameter Store Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <Tabs defaultValue={TabSections.Connection} className="px-6">
