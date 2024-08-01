@@ -26,26 +26,20 @@ export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, t
     )}
     htmlFor={id}
   >
-    <div className="flex gap-1">
-      <span>
-        {label} 
-        {isRequired && <span className="ml-1 text-red">*</span>}
-      </span>
-
-      {hyperLinkText && hyperLinkPath && (
-        <span 
-          className="text-primary-400/90 cursor-pointer"  
-          role="button"
-          tabIndex={0}
-          onClick={hyperLinkPath}
-          aria-hidden="true"
-        >
-          {hyperLinkText}
-        </span>
-      )}
-    </div>
-
+    {label} 
+    {isRequired && <span className="ml-1 text-red">*</span>}
     {isOptional && <span className="ml-1 text-gray-500 italic text-xs">- Optional</span>}
+    {hyperLinkText && hyperLinkPath && (
+      <span 
+        className="ml-1 text-primary-400/90 cursor-pointer"  
+        role="button"
+        tabIndex={0}
+        onClick={hyperLinkPath}
+        aria-hidden="true"
+      >
+        {hyperLinkText}
+      </span>
+    )}
     {icon && !tooltipText && (
       <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
         {icon}
