@@ -129,7 +129,11 @@ export const SanitizedRoleSchema = ProjectRolesSchema.extend({
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
-  encryptedConfig: true
+  inputIV: true,
+  inputTag: true,
+  inputCiphertext: true,
+  keyEncoding: true,
+  algorithm: true
 });
 
 export const SanitizedAuditLogStreamSchema = z.object({
