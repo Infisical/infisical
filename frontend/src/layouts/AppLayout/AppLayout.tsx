@@ -479,7 +479,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         {user?.superAdmin && (
                           <Link href="/admin" legacyBehavior>
                             <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                              Admin Panel
+                              Server Admin Panel
                             </DropdownMenuItem>
                           </Link>
                         )}
@@ -758,7 +758,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               isSelected={router.asPath === `/org/${currentOrg?.id}/admin`}
                               icon="system-outline-109-slider-toggle-settings"
                             >
-                              Admin
+                              Admin Panel
                             </MenuItem>
                           </a>
                         </Link>
