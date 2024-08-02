@@ -13,6 +13,7 @@ import {
 } from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
 
 import { RolePermissionRow } from "./RolePermissionRow";
+import { RowPermissionSecretFoldersRow } from "./RolePermissionSecretFoldersRow";
 import { RowPermissionSecretsRow } from "./RolePermissionSecretsRow";
 
 const SINGLE_PERMISSION_LIST = [
@@ -175,6 +176,11 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
                 isEditable={isCustomRole}
                 setValue={setValue}
                 getValue={getValues}
+                control={control}
+              />
+              <RowPermissionSecretFoldersRow
+                isEditable={isCustomRole}
+                setValue={setValue}
                 control={control}
               />
               {SINGLE_PERMISSION_LIST.map((permission) => {

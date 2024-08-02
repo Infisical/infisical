@@ -36,6 +36,7 @@ export const formSchema = z.object({
   permissions: z
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),
+      "secret-folders": generalPermissionSchema.optional(),
       member: generalPermissionSchema,
       groups: generalPermissionSchema,
       identity: generalPermissionSchema,
@@ -158,7 +159,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   Object.entries(formVal || {}).forEach(([rule, actions]) => {
     if (rule === "secrets") {
       multiEnvForm2Api(permissions, JSON.parse(JSON.stringify(actions || {})), rule);
-    } else {
+    } else if (actions) {
       Object.entries(actions).forEach(([action, isAllowed]) => {
         if (isAllowed) {
           permissions.push({ subject: rule, action });
