@@ -9,7 +9,7 @@ export const injectRateLimits = fp(async (server) => {
     const appCfg = getConfig();
 
     const instanceRateLimiterConfig = getRateLimiterConfig();
-    if (!req.auth) {
+    if (!req.auth?.orgId) {
       // for public endpoints, we always use the instance-wide default rate limits
       req.rateLimits = instanceRateLimiterConfig;
       return;
