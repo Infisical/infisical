@@ -8,6 +8,7 @@ import { Button, FormControl, Input, Modal, ModalContent } from "@app/components
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useCreateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
+import { getKeyValue } from '@app/helpers/parseEnvVar';
 
 import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
 
@@ -77,16 +78,12 @@ export const CreateSecretForm = ({
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedContent = e.clipboardData.getData('text');
-    const splitIndex = pastedContent.indexOf("=");
+    const delimitters = [":", "="];
+    const pastedContent = e.clipboardData.getData("text");
+    const { key, value } = getKeyValue(pastedContent, delimitters);
 
-    if (splitIndex === -1) return
-
-    const key = pastedContent.slice(0, splitIndex)
-    const value = pastedContent.slice(splitIndex + 1);
-
-    setValue('key', key);
-    setValue('value', value);
+    setValue("key", key);
+    setValue("value", value);
   }
 
   return (
