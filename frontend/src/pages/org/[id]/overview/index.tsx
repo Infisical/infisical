@@ -565,11 +565,11 @@ const OrganizationPage = withPermission(
         await new Promise((resolve) => setTimeout(resolve, 2_000));
 
         handlePopUpClose("addNewWs");
-        createNotification({ text: "Workspace created", type: "success" });
+        createNotification({ text: "Project created", type: "success" });
         router.push(`/project/${newProjectId}/secrets/overview`);
       } catch (err) {
         console.error(err);
-        createNotification({ text: "Failed to create workspace", type: "error" });
+        createNotification({ text: "Failed to create project", type: "error" });
       }
     };
 

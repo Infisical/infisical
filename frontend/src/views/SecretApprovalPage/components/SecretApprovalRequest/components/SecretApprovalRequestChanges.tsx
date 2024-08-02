@@ -16,7 +16,6 @@ import { Button, ContentLoader, EmptyState, IconButton, Tooltip } from "@app/com
 import { useUser } from "@app/context";
 import {
   useGetSecretApprovalRequestDetails,
-  useGetUserWsKey,
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType } from "@app/hooks/api/types";
@@ -81,14 +80,12 @@ export const SecretApprovalRequestChanges = ({
   workspaceId
 }: Props) => {
   const { user: userSession } = useUser();
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
   const {
     data: secretApprovalRequestDetails,
     isSuccess: isSecretApprovalRequestSuccess,
     isLoading: isSecretApprovalRequestLoading
   } = useGetSecretApprovalRequestDetails({
-    id: approvalRequestId,
-    decryptKey: decryptFileKey!
+    id: approvalRequestId
   });
 
   const {

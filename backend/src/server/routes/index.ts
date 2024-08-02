@@ -635,7 +635,8 @@ export const registerRoutes = async (
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
-    kmsService
+    kmsService,
+    projectBotDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -677,8 +678,7 @@ export const registerRoutes = async (
     permissionService,
     webhookDAL,
     projectEnvDAL,
-    projectDAL,
-    kmsService
+    projectDAL
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
@@ -988,9 +988,7 @@ export const registerRoutes = async (
     queueService,
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
-    dynamicSecretDAL,
-    kmsService,
-    folderDAL
+    dynamicSecretDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     projectDAL,
@@ -1000,8 +998,7 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     folderDAL,
     permissionService,
-    licenseService,
-    kmsService
+    licenseService
   });
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
@@ -1011,8 +1008,7 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
     folderDAL,
-    licenseService,
-    kmsService
+    licenseService
   });
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,

@@ -23,6 +23,7 @@ export enum ProjectPermissionSub {
   IpAllowList = "ip-allowlist",
   Project = "workspace",
   Secrets = "secrets",
+  SecretFolders = "secret-folders",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
@@ -41,6 +42,10 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.SecretFolders | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
