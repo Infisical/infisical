@@ -81,6 +81,17 @@ export type TIssueCertFromCaDTO = {
   notAfter?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TSignCertFromCaDTO = {
+  caId: string;
+  csr: string;
+  friendlyName?: string;
+  commonName?: string;
+  altNames: string;
+  ttl: string;
+  notBefore?: string;
+  notAfter?: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TDNParts = {
   commonName?: string;
   organization?: string;
