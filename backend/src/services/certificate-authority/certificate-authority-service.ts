@@ -22,7 +22,8 @@ import {
   createDistinguishedName,
   getCaCertChain,
   getCaCredentials,
-  keyAlgorithmToAlgCfg
+  keyAlgorithmToAlgCfg,
+  parseDistinguishedName
 } from "./certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "./certificate-authority-queue";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -36,6 +37,7 @@ import {
   TGetCaDTO,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
+  TSignCertFromCaDTO,
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./certificate-authority-types";
@@ -651,7 +653,8 @@ export const certificateAuthorityServiceFactory = ({
   };
 
   /**
-   * Return new leaf certificate issued by CA with id [caId]
+   * Return new leaf certificate issued by CA with id [caId] and private key.
+   * Note: private key and CSR are generated within Infisical.
    */
   const issueCertFromCa = async ({
     caId,
@@ -851,6 +854,204 @@ export const certificateAuthorityServiceFactory = ({
     };
   };
 
+  /**
+   * Return new leaf certificate issued by CA with id [caId].
+   * Note: CSR is generated externally and submitted to Infisical.
+   */
+  const signCertFromCa = async ({
+    caId,
+    csr,
+    friendlyName,
+    commonName,
+    altNames,
+    ttl,
+    notBefore,
+    notAfter,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TSignCertFromCaDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+
+    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+
+    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+    if (!caCert) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const decryptedCaCert = await kmsDecryptor({
+      cipherTextBlob: caCert.encryptedCertificate
+    });
+
+    const caCertObj = new x509.X509Certificate(decryptedCaCert);
+
+    const notBeforeDate = notBefore ? new Date(notBefore) : new Date();
+
+    let notAfterDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1));
+    if (notAfter) {
+      notAfterDate = new Date(notAfter);
+    } else if (ttl) {
+      notAfterDate = new Date(new Date().getTime() + ms(ttl));
+    }
+
+    const caCertNotBeforeDate = new Date(caCertObj.notBefore);
+    const caCertNotAfterDate = new Date(caCertObj.notAfter);
+
+    // check not before constraint
+    if (notBeforeDate < caCertNotBeforeDate) {
+      throw new BadRequestError({ message: "notBefore date is before CA certificate's notBefore date" });
+    }
+
+    if (notBeforeDate > notAfterDate) throw new BadRequestError({ message: "notBefore date is after notAfter date" });
+
+    // check not after constraint
+    if (notAfterDate > caCertNotAfterDate) {
+      throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
+    }
+
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+
+    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+
+    const dn = parseDistinguishedName(csrObj.subject);
+    const cn = commonName || dn.commonName;
+
+    if (!cn)
+      throw new BadRequestError({
+        message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
+      });
+
+    const { caPrivateKey } = await getCaCredentials({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const extensions: x509.Extension[] = [
+      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
+      new x509.BasicConstraintsExtension(false),
+      await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
+      await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
+    ];
+
+    if (altNames) {
+      const altNamesArray: {
+        type: "email" | "dns";
+        value: string;
+      }[] = altNames
+        .split(",")
+        .map((name) => name.trim())
+        .map((altName) => {
+          // check if the altName is a valid email
+          if (z.string().email().safeParse(altName).success) {
+            return {
+              type: "email",
+              value: altName
+            };
+          }
+
+          // check if the altName is a valid hostname
+          if (hostnameRegex.test(altName)) {
+            return {
+              type: "dns",
+              value: altName
+            };
+          }
+
+          // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
+          throw new Error(`Invalid altName: ${altName}`);
+        });
+
+      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
+      extensions.push(altNamesExtension);
+    }
+
+    const serialNumber = crypto.randomBytes(32).toString("hex");
+    const leafCert = await x509.X509CertificateGenerator.create({
+      serialNumber,
+      subject: csrObj.subject,
+      issuer: caCertObj.subject,
+      notBefore: notBeforeDate,
+      notAfter: notAfterDate,
+      signingKey: caPrivateKey,
+      publicKey: csrObj.publicKey,
+      signingAlgorithm: alg,
+      extensions
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+    const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+      plainText: Buffer.from(new Uint8Array(leafCert.rawData))
+    });
+
+    await certificateDAL.transaction(async (tx) => {
+      const cert = await certificateDAL.create(
+        {
+          caId: ca.id,
+          status: CertStatus.ACTIVE,
+          friendlyName: friendlyName || csrObj.subject,
+          commonName: cn,
+          altNames,
+          serialNumber,
+          notBefore: notBeforeDate,
+          notAfter: notAfterDate
+        },
+        tx
+      );
+
+      await certificateBodyDAL.create(
+        {
+          certId: cert.id,
+          encryptedCertificate
+        },
+        tx
+      );
+
+      return cert;
+    });
+
+    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate: leafCert.toString("pem"),
+      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      issuingCaCertificate,
+      serialNumber,
+      ca
+    };
+  };
+
   return {
     createCa,
     getCaById,
@@ -860,6 +1061,7 @@ export const certificateAuthorityServiceFactory = ({
     getCaCert,
     signIntermediate,
     importCertToCa,
-    issueCertFromCa
+    issueCertFromCa,
+    signCertFromCa
   };
 };
