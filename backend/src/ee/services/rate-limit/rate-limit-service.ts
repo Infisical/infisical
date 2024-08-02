@@ -4,9 +4,9 @@ import { logger } from "@app/lib/logger";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TRateLimitDALFactory } from "./rate-limit-dal";
-import { TRateLimit, TRateLimitUpdateDTO } from "./rate-limit-types";
+import { RateLimitConfiguration, TRateLimit, TRateLimitUpdateDTO } from "./rate-limit-types";
 
-let rateLimitMaxConfiguration = {
+let rateLimitMaxConfiguration: RateLimitConfiguration = {
   readLimit: 60,
   publicEndpointLimit: 30,
   writeLimit: 200,

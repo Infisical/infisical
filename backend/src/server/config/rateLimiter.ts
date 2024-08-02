@@ -1,7 +1,6 @@
 import type { RateLimitOptions, RateLimitPluginOptions } from "@fastify/rate-limit";
 import { Redis } from "ioredis";
 
-import { getRateLimiterConfig } from "@app/ee/services/rate-limit/rate-limit-service";
 import { getConfig } from "@app/lib/config/env";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
@@ -22,14 +21,16 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
 // GET endpoints
 export const readLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().readLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.readLimit,
   keyGenerator: (req) => req.realIp
 };
 
 // POST, PATCH, PUT, DELETE endpoints
 export const writeLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().writeLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.writeLimit,
   keyGenerator: (req) => req.realIp
 };
 
@@ -37,25 +38,29 @@ export const writeLimit: RateLimitOptions = {
 export const secretsLimit: RateLimitOptions = {
   // secrets, folders, secret imports
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().secretsLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.secretsLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().authRateLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.authRateLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const inviteUserRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().inviteUserRateLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.inviteUserRateLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const mfaRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().mfaRateLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.mfaRateLimit,
   keyGenerator: (req) => {
     return req.headers.authorization?.split(" ")[1] || req.realIp;
   }
@@ -64,7 +69,8 @@ export const mfaRateLimit: RateLimitOptions = {
 export const creationLimit: RateLimitOptions = {
   // identity, project, org
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().creationLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.creationLimit,
   keyGenerator: (req) => req.realIp
 };
 
@@ -72,7 +78,8 @@ export const creationLimit: RateLimitOptions = {
 export const publicEndpointLimit: RateLimitOptions = {
   // Read Shared Secrets
   timeWindow: 60 * 1000,
-  max: () => getRateLimiterConfig().publicEndpointLimit,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.publicEndpointLimit,
   keyGenerator: (req) => req.realIp
 };
 

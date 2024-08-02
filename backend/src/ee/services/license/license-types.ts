@@ -1,5 +1,7 @@
 import { TOrgPermission } from "@app/lib/types";
 
+import { RateLimitConfiguration } from "../rate-limit/rate-limit-types";
+
 export enum InstanceType {
   OnPrem = "self-hosted",
   EnterpriseOnPrem = "enterprise-self-hosted",
@@ -58,6 +60,7 @@ export type TFeatureSet = {
   caCrl: false;
   instanceUserManagement: false;
   externalKms: false;
+  rateLimits: RateLimitConfiguration;
 };
 
 export type TOrgPlansTableDTO = {

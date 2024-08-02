@@ -40,7 +40,17 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretRotation: true,
   caCrl: false,
   instanceUserManagement: false,
-  externalKms: false
+  externalKms: false,
+  rateLimits: {
+    readLimit: 60,
+    publicEndpointLimit: 30,
+    writeLimit: 200,
+    secretsLimit: 60,
+    authRateLimit: 60,
+    inviteUserRateLimit: 30,
+    mfaRateLimit: 20,
+    creationLimit: 30
+  }
 });
 
 export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
