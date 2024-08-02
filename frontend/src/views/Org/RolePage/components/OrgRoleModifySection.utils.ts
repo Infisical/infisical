@@ -23,7 +23,6 @@ export const formSchema = z.object({
     .object({
       workspace: z
         .object({
-          read: z.boolean().optional(),
           create: z.boolean().optional()
         })
         .optional(),
