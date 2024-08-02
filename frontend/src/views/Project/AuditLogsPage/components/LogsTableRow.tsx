@@ -317,6 +317,12 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             })}
           </Td>
         );
+      case EventType.ORG_ADMIN_ACCESS_PROJECT:
+        return (
+          <Td>
+            <p>{`Email: ${event.metadata.email}`}</p>
+          </Td>
+        );
       case EventType.CREATE_CA:
       case EventType.GET_CA:
       case EventType.UPDATE_CA:

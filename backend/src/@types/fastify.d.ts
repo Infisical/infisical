@@ -50,6 +50,7 @@ import { TIntegrationServiceFactory } from "@app/services/integration/integratio
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
+import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -165,6 +166,7 @@ declare module "fastify" {
       rateLimit: TRateLimitServiceFactory;
       userEngagement: TUserEngagementServiceFactory;
       externalKms: TExternalKmsServiceFactory;
+      orgAdmin: TOrgAdminServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

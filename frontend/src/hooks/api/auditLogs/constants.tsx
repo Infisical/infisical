@@ -56,7 +56,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERT]: "Get certificate",
   [EventType.DELETE_CERT]: "Delete certificate",
   [EventType.REVOKE_CERT]: "Revoke certificate",
-  [EventType.GET_CERT_BODY]: "Get certificate body"
+  [EventType.GET_CERT_BODY]: "Get certificate body",
+  [EventType.ORG_ADMIN_ACCESS_PROJECT]: "Org admin accessed project"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

@@ -59,6 +59,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription,
   useUser,
   useWorkspace
@@ -131,6 +132,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
+  const { membership } = useOrgPermission();
+  const isOrgAdmin = membership?.role === "admin";
 
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
@@ -744,6 +747,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               icon="system-outline-103-coin-cash-monetization"
                             >
                               Usage & Billing
+                            </MenuItem>
+                          </a>
+                        </Link>
+                      )}
+                      {isOrgAdmin && (
+                        <Link href={`/org/${currentOrg?.id}/admin`} passHref>
+                          <a>
+                            <MenuItem
+                              isSelected={router.asPath === `/org/${currentOrg?.id}/admin`}
+                              icon="system-outline-109-slider-toggle-settings"
+                            >
+                              Admin
                             </MenuItem>
                           </a>
                         </Link>

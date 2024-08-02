@@ -129,6 +129,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
+import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
@@ -498,6 +499,16 @@ export const registerRoutes = async (
     keyStore,
     licenseService
   });
+  const orgAdminService = orgAdminServiceFactory({
+    projectDAL,
+    permissionService,
+    projectUserMembershipRoleDAL,
+    userDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    projectMembershipDAL
+  });
+
   const rateLimitService = rateLimitServiceFactory({
     rateLimitDAL,
     licenseService
@@ -1113,7 +1124,8 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
-    externalKms: externalKmsService
+    externalKms: externalKmsService,
+    orgAdmin: orgAdminService
   });
 
   const cronJobs: CronJob[] = [];

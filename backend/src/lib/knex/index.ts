@@ -19,23 +19,43 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
 
 export type TFindFilter<R extends object = object> = Partial<R> & {
   $in?: Partial<{ [k in keyof R]: R[k][] }>;
+  $search?: Partial<{ [k in keyof R]: R[k] }>;
 };
 export const buildFindFilter =
-  <R extends object = object>({ $in, ...filter }: TFindFilter<R>) =>
+  <R extends object = object>({ $in, $search, ...filter }: TFindFilter<R>) =>
   (bd: Knex.QueryBuilder<R, R>) => {
     void bd.where(filter);
     if ($in) {
       Object.entries($in).forEach(([key, val]) => {
-        void bd.whereIn(key as never, val as never);
+        if (val) {
+          void bd.whereIn(key as never, val as never);
+        }
+      });
+    }
+    if ($search) {
+      Object.entries($search).forEach(([key, val]) => {
+        if (val) {
+          void bd.whereILike(key as never, val as never);
+        }
       });
     }
     return bd;
   };
 
-export type TFindOpt<R extends object = object> = {
+export type TFindReturn<TQuery extends Knex.QueryBuilder, TCount extends boolean = false> = Array<
+  Awaited<TQuery>[0] &
+    (TCount extends true
+      ? {
+          count: string;
+        }
+      : unknown)
+>;
+
+export type TFindOpt<R extends object = object, TCount extends boolean = boolean> = {
   limit?: number;
   offset?: number;
   sort?: Array<[keyof R, "asc" | "desc"] | [keyof R, "asc" | "desc", "first" | "last"]>;
+  count?: TCount;
   tx?: Knex;
 };
 
@@ -66,18 +86,22 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
-  find: async (
+  find: async <TCount extends boolean = false>(
     filter: TFindFilter<Tables[Tname]["base"]>,
-    { offset, limit, sort, tx }: TFindOpt<Tables[Tname]["base"]> = {}
+    { offset, limit, sort, count, tx }: TFindOpt<Tables[Tname]["base"], TCount> = {}
   ) => {
     try {
       const query = (tx || db.replicaNode())(tableName).where(buildFindFilter(filter));
+      if (count) {
+        void query.select(db.raw("COUNT(*) OVER() AS count"));
+        void query.select("*");
+      }
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
-      const res = await query;
+      const res = (await query) as TFindReturn<typeof query, TCount>;
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
