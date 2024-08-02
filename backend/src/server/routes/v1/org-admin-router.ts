@@ -61,14 +61,14 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { membership, isExistingMember } = await server.services.orgAdmin.accessProject({
+      const { membership } = await server.services.orgAdmin.accessProject({
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         projectId: req.params.projectId
       });
-      if (!isExistingMember && req.auth.authMode === AuthMode.JWT) {
+      if (req.auth.authMode === AuthMode.JWT) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           projectId: req.params.projectId,

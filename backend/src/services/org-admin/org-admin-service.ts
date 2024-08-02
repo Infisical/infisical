@@ -169,7 +169,7 @@ export const orgAdminServiceFactory = ({
         },
         tx
       );
-      return projectMembership;
+      return newProjectMembership;
     });
     return { isExistingMember: false, membership: updatedMembership };
   };
