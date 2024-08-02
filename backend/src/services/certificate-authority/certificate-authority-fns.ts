@@ -20,15 +20,11 @@ export const createDistinguishedName = (parts: TDNParts) => {
 
 export const parseDistinguishedName = (dn: string): TDNParts => {
   const parts: TDNParts = {};
-  const dnRegex = /(?:^|,\s*)([A-Z]+)=([^,]+)/g;
-  let match: RegExpExecArray | null;
+  const dnParts = dn.split(/,\s*/);
 
-  while (true) {
-    match = dnRegex.exec(dn);
-    if (match === null) break;
-
-    const [, key, value] = match;
-    switch (key) {
+  for (const part of dnParts) {
+    const [key, value] = part.split("=");
+    switch (key.toUpperCase()) {
       case "C":
         parts.country = value;
         break;
@@ -52,6 +48,7 @@ export const parseDistinguishedName = (dn: string): TDNParts => {
         break;
     }
   }
+
   return parts;
 };
 
