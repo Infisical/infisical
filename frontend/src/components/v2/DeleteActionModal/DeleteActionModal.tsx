@@ -94,7 +94,7 @@ export const DeleteActionModal = ({
             <Input
               value={inputData}
               onChange={(e) => setInputData(e.target.value)}
-              placeholder="Type confirm..."
+              placeholder={`Type ${deleteKey} here`}
             />
           </FormControl>
         </form>
