@@ -490,10 +490,10 @@ export const secretV2BridgeServiceFactory = ({
         ...secret,
         value: secret.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-          : undefined,
+          : "",
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-          : undefined
+          : ""
       })
     );
     const expandSecretReferences = expandSecretReferencesFactory({
