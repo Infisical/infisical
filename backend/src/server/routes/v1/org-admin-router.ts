@@ -45,7 +45,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/projects/:projectId/access",
+    url: "/projects/:projectId/grant-admin-access",
     config: {
       rateLimit: readLimit
     },
@@ -61,7 +61,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { membership } = await server.services.orgAdmin.accessProject({
+      const { membership } = await server.services.orgAdmin.grantProjectAdminAccess({
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,

@@ -59,7 +59,6 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
   useSubscription,
   useUser,
   useWorkspace
@@ -132,8 +131,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
-  const { membership } = useOrgPermission();
-  const isOrgAdmin = membership?.role === "admin";
 
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
@@ -483,6 +480,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             </DropdownMenuItem>
                           </Link>
                         )}
+                        <Link href={`/org/${currentOrg?.id}/admin`} legacyBehavior>
+                          <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
+                            Admin Panel
+                          </DropdownMenuItem>
+                        </Link>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
@@ -747,18 +749,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               icon="system-outline-103-coin-cash-monetization"
                             >
                               Usage & Billing
-                            </MenuItem>
-                          </a>
-                        </Link>
-                      )}
-                      {isOrgAdmin && (
-                        <Link href={`/org/${currentOrg?.id}/admin`} passHref>
-                          <a>
-                            <MenuItem
-                              isSelected={router.asPath === `/org/${currentOrg?.id}/admin`}
-                              icon="system-outline-109-slider-toggle-settings"
-                            >
-                              Admin Panel
                             </MenuItem>
                           </a>
                         </Link>

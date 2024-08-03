@@ -51,7 +51,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerOrgRouter, { prefix: "/organization" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
-  await server.register(registerOrgAdminRouter, { prefix: "/org-admin" });
+  await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });

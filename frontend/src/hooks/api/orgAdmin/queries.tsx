@@ -14,7 +14,7 @@ export const useOrgAdminGetProjects = ({ search, offset, limit = 50 }: TOrgAdmin
     queryKey: orgAdminQueryKeys.getProjects({ search, offset, limit }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ projects: Workspace[]; count: number }>(
-        "/api/v1/org-admin/projects",
+        "/api/v1/organization-admin/projects",
         {
           params: {
             limit,

@@ -1,7 +1,10 @@
-import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion, SecretKeyEncoding } from "@app/db/schemas";
+import { ForbiddenError } from "@casl/ability";
+
+import { ProjectMembershipRole, ProjectVersion, SecretKeyEncoding } from "@app/db/schemas";
+import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
@@ -42,15 +45,17 @@ export const orgAdminServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TListOrgProjectsDTO) => {
-    const { membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    const isAdmin = membership.role === OrgMembershipRole.Admin;
-    if (!isAdmin) throw new UnauthorizedError({ message: "Admin only operation" });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAdminConsoleAction.GrantAccessProjects,
+      OrgPermissionSubjects.AdminConsole
+    );
     const projects = await projectDAL.find(
       {
         orgId: actorOrgId,
@@ -65,16 +70,24 @@ export const orgAdminServiceFactory = ({
     return { projects, count };
   };
 
-  const accessProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, projectId }: TAccessProjectDTO) => {
-    const { membership } = await permissionService.getOrgPermission(
+  const grantProjectAdminAccess = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TAccessProjectDTO) => {
+    const { permission, membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    const isAdmin = membership.role === OrgMembershipRole.Admin;
-    if (!isAdmin) throw new UnauthorizedError({ message: "Admin only operation" });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAdminConsoleAction.GrantAccessProjects,
+      OrgPermissionSubjects.AdminConsole
+    );
 
     const project = await projectDAL.findById(projectId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
@@ -174,5 +187,5 @@ export const orgAdminServiceFactory = ({
     return { isExistingMember: false, membership: updatedMembership };
   };
 
-  return { listOrgProjects, accessProject };
+  return { listOrgProjects, grantProjectAdminAccess };
 };
