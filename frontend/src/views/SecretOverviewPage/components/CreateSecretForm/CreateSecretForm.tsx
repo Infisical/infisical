@@ -1,4 +1,4 @@
-import { ClipboardEvent } from 'react';
+import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,9 +18,9 @@ import {
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useWorkspace } from "@app/context";
+import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
-import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/types";
-import { getKeyValue } from '@app/helpers/parseEnvVar';
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 
 const typeSchema = z
   .object({
@@ -145,7 +145,7 @@ export const CreateSecretForm = ({
 
     setValue("key", key);
     setValue("value", value);
-  }
+  };
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onTogglePopUp}>
@@ -155,7 +155,12 @@ export const CreateSecretForm = ({
         subTitle="Create & update a secret across many environments"
       >
         <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
-          <FormControl label="Key" isRequired isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
+          <FormControl
+            label="Key"
+            isRequired
+            isError={Boolean(errors?.key)}
+            errorText={errors?.key?.message}
+          >
             <Input
               {...register("key")}
               placeholder="Type your secret name"

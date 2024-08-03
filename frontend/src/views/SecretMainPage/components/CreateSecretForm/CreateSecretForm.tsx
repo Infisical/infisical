@@ -1,4 +1,4 @@
-import { ClipboardEvent } from 'react';
+import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,9 +6,9 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
+import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
-import { getKeyValue } from '@app/helpers/parseEnvVar';
 
 import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
 
@@ -84,7 +84,7 @@ export const CreateSecretForm = ({
 
     setValue("key", key);
     setValue("value", value);
-  }
+  };
 
   return (
     <Modal
@@ -96,7 +96,12 @@ export const CreateSecretForm = ({
         subTitle="Add a secret to the particular environment and folder"
       >
         <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
-          <FormControl label="Key" isRequired isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
+          <FormControl
+            label="Key"
+            isRequired
+            isError={Boolean(errors?.key)}
+            errorText={errors?.key?.message}
+          >
             <Input
               {...register("key")}
               placeholder="Type your secret name"
