@@ -482,7 +482,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         )}
                         <Link href={`/org/${currentOrg?.id}/admin`} legacyBehavior>
                           <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                            Admin Panel
+                          Organization Admin Console
                           </DropdownMenuItem>
                         </Link>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
