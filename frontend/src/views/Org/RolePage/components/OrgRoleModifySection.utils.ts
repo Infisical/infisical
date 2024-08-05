@@ -44,7 +44,7 @@ export const formSchema = z.object({
       ldap: generalPermissionSchema,
       billing: generalPermissionSchema,
       identity: generalPermissionSchema,
-      "admin-console": adminConsolePermissionSchmea
+      "organization-admin-console": adminConsolePermissionSchmea
     })
     .optional()
 });

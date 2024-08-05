@@ -112,7 +112,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
                           }
                           field.onChange(e);
                         }}
-                        id={`permissions.admin-console.${action}`}
+                        id={`permissions.organization-admin-console.${action}`}
                       >
                         {label}
                       </Checkbox>

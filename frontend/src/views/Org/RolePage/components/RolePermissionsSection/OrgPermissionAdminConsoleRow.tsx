@@ -29,7 +29,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
 
   const rule = useWatch({
     control,
-    name: "permissions.admin-console"
+    name: "permissions.organization-admin-console"
   });
 
   const selectedPermissionCategory = useMemo(() => {
@@ -62,7 +62,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
 
     if (val === Permission.NoAccess) {
       setValue(
-        "permissions.admin-console",
+        "permissions.organization-admin-console",
         { "access-all-projects": false },
         { shouldDirty: true }
       );
@@ -102,8 +102,8 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
               {PERMISSION_ACTIONS.map(({ action, label }) => {
                 return (
                   <Controller
-                    name={`permissions.admin-console.${action}`}
-                    key={`permissions.admin-console.${action}`}
+                    name={`permissions.organization-admin-console.${action}`}
+                    key={`permissions.organization-admin-console.${action}`}
                     control={control}
                     render={({ field }) => (
                       <Checkbox
@@ -118,7 +118,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
                           }
                           field.onChange(e);
                         }}
-                        id={`permissions.admin-console.${action}`}
+                        id={`permissions.organization-admin-console.${action}`}
                       >
                         {label}
                       </Checkbox>

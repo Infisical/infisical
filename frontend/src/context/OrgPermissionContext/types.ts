@@ -21,7 +21,7 @@ export enum OrgPermissionSubjects {
   SecretScanning = "secret-scanning",
   Identity = "identity",
   Kms = "kms",
-  AdminConsole = "admin-console"
+  AdminConsole = "organization-admin-console"
 }
 
 export enum OrgPermissionAdminConsoleAction {
