@@ -61,6 +61,8 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
  * Return the public and private key of CA with id [caId]
  * Note: credentials are returned as crypto.webcrypto.CryptoKey
  * suitable for use with @peculiar/x509 module
+ *
+ * TODO: Update to get latest CA Secret once support for CA renewal with new key pair is added
  */
 export const getCaCredentials = async ({
   caId,

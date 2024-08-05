@@ -387,6 +387,8 @@ export const certificateAuthorityServiceFactory = ({
   /**
    * Renew certificate for CA with id [caId]
    * Note: Currently implements CA renewal with same key-pair only
+   *
+   * TODO: check rebuilt chain?
    */
   const renewCaCert = async ({ caId, notAfter, actorId, actorAuthMethod, actor, actorOrgId }: TRenewCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
@@ -607,8 +609,18 @@ export const certificateAuthorityServiceFactory = ({
           plainText: Buffer.from(new Uint8Array(intermediateCert.rawData))
         });
 
+        const { caCert: parentCaCertificate, caCertChain: parentCaCertChain } = await getCaCertChain({
+          caId: parentCa.id,
+          certificateAuthorityDAL,
+          certificateAuthorityCertDAL,
+          projectDAL,
+          kmsService
+        });
+
+        certificateChain = `${parentCaCertificate}\n${parentCaCertChain}`.trim();
+
         const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
-          plainText: Buffer.alloc(0)
+          plainText: Buffer.from(certificateChain)
         });
 
         await certificateAuthorityDAL.transaction(async (tx) => {
@@ -635,16 +647,7 @@ export const certificateAuthorityServiceFactory = ({
           );
         });
 
-        const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-          caId,
-          certificateAuthorityDAL,
-          certificateAuthorityCertDAL,
-          projectDAL,
-          kmsService
-        });
-
         certificate = intermediateCert.toString("pem");
-        certificateChain = `${issuingCaCertificate}\n${caCertChain}`.trim();
         break;
       }
       default: {
@@ -657,7 +660,8 @@ export const certificateAuthorityServiceFactory = ({
     return {
       certificate,
       certificateChain,
-      serialNumber
+      serialNumber,
+      ca
     };
   };
 
@@ -938,13 +942,31 @@ export const certificateAuthorityServiceFactory = ({
       plainText: Buffer.from(certificateChain)
     });
 
+    // TODO: validate that >latest< public-private key of CA is used to sign the certificate
+    const { caSecret, caPublicKey } = await getCaCredentials({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const isCaAndCertPublicKeySame = Buffer.from(await crypto.subtle.exportKey("spki", caPublicKey)).equals(
+      Buffer.from(certObj.publicKey.rawData)
+    );
+
+    if (!isCaAndCertPublicKeySame) {
+      throw new BadRequestError({ message: "CA and certificate public key do not match" });
+    }
+
     await certificateAuthorityCertDAL.transaction(async (tx) => {
       await certificateAuthorityCertDAL.create(
         {
           caId: ca.id,
           encryptedCertificate,
           encryptedCertificateChain,
-          version: 1
+          version: 1,
+          caSecretId: caSecret.id
         },
         tx
       );

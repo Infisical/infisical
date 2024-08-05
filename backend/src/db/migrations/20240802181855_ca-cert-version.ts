@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
     if (!hasVersionColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthorityCert, (t) => {
         t.integer("version").nullable();
-        // t.dropUnique(["caId"]);
+        t.dropUnique(["caId"]);
       });
 
       await knex(TableName.CertificateAuthorityCert).update({ version: 1 }).whereNull("version");
@@ -48,45 +48,17 @@ export async function up(knex: Knex): Promise<void> {
         )
       `);
 
-      //   await knex.raw(`
-      //       UPDATE ${TableName.CertificateAuthorityCert} cert
-      //       SET caSecretId = (
-      //         SELECT sec.id
-      //         FROM ${TableName.CertificateAuthoritySecret} sec
-      //         WHERE sec."caId" = cert."caId"
-      //       )
-      //     `);
-
-      //   await knex(TableName.CertificateAuthorityCert).update({
-      //     caSecretId: knex(TableName.CertificateAuthoritySecret)
-      //       .select("id")
-      //       .whereRaw("?? = ??", ["CertificateAuthoritySecret.caId", "CertificateAuthorityCert.caId"])
-      //   });
-
-      //   await knex(TableName.CertificateAuthorityCert).update({
-      //     caSecretId: function () {
-      //       this.select("id")
-      //         .from(TableName.CertificateAuthoritySecret)
-      //         .whereRaw("??.?? = ??.??", [
-      //           TableName.CertificateAuthoritySecret,
-      //           "caId",
-      //           TableName.CertificateAuthorityCert,
-      //           "caId"
-      //         ]);
-      //     }
-      //   });
-
       await knex.schema.alterTable(TableName.CertificateAuthorityCert, (t) => {
         t.uuid("caSecretId").notNullable().alter();
       });
     }
   }
 
-  //   if (await knex.schema.hasTable(TableName.CertificateAuthoritySecret)) {
-  //     await knex.schema.alterTable(TableName.CertificateAuthoritySecret, (t) => {
-  //       t.dropUnique(["caId"]);
-  //     });
-  //   }
+  if (await knex.schema.hasTable(TableName.CertificateAuthoritySecret)) {
+    await knex.schema.alterTable(TableName.CertificateAuthoritySecret, (t) => {
+      t.dropUnique(["caId"]);
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

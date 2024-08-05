@@ -1,9 +1,13 @@
 import { faCertificate, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as x509 from "@peculiar/x509";
+import { format } from "date-fns";
+import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,7 +20,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetCaCerts } from "@app/hooks/api";
 
@@ -24,43 +29,45 @@ type Props = {
   caId: string;
 };
 
-// TODO: not before
-
-// created at
-// expires on
-
 export const CaCertificatesTable = ({ caId }: Props) => {
   const { data: caCerts, isLoading } = useGetCaCerts(caId);
-  console.log("CaCertificatesTable data: ", caCerts);
+
+  const downloadTxtFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(blob, filename);
+  };
+
   return (
     <TableContainer>
       <Table>
         <THead>
           <Tr>
-            <Th>Name</Th>
-            <Th>Created At</Th>
-            <Th>Valid Until</Th>
+            <Th>CA Certificate #</Th>
+            <Th>Not Before</Th>
+            <Th>Not After</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
           {isLoading && <TableSkeleton columns={4} innerKey="ca-certificates" />}
           {!isLoading &&
-            caCerts?.map((caCert) => {
-              //   console.log("caCert index: ", index);
-              //   const isLastItem = index === caCerts.length - 1;
+            caCerts?.map((caCert, index) => {
+              const isLastItem = index === caCerts.length - 1;
+              const caCertObj = new x509.X509Certificate(caCert.certificate);
               return (
                 <Tr key={`ca-cert=${caCert.serialNumber}`}>
                   <Td>
                     <div className="flex items-center">
-                      Certificate {caCert.version}
-                      {/* <Badge variant="success" className="ml-4">
-                        Current
-                      </Badge> */}
+                      CA Certificate {caCert.version}
+                      {isLastItem && (
+                        <Badge variant="success" className="ml-4">
+                          Current
+                        </Badge>
+                      )}
                     </div>
                   </Td>
-                  <Td>Test</Td>
-                  <Td>Test</Td>
+                  <Td>{format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}</Td>
+                  <Td>{format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}</Td>
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
@@ -80,8 +87,7 @@ export const CaCertificatesTable = ({ caId }: Props) => {
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // TODO
-                                // router.push(`/org/${orgId}/identities/${id}`);
+                                downloadTxtFile("cert.pem", caCert.certificate);
                               }}
                               disabled={!isAllowed}
                             >
@@ -100,11 +106,7 @@ export const CaCertificatesTable = ({ caId }: Props) => {
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // TODO
-                                // handlePopUpOpen("deleteIdentity", {
-                                //   identityId: id,
-                                //   name
-                                // });
+                                downloadTxtFile("chain.pem", caCert.certificateChain);
                               }}
                               disabled={!isAllowed}
                             >

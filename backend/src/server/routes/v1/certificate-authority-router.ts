@@ -277,7 +277,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:caId/renew", // TODO
+    url: "/:caId/renew",
     config: {
       rateLimit: writeLimit
     },
@@ -300,27 +300,27 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber } = await server.services.certificateAuthority.renewCaCert({
-        caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body
-      });
+      const { certificate, certificateChain, serialNumber, ca } =
+        await server.services.certificateAuthority.renewCaCert({
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body
+        });
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: ca.projectId,
-      //   event: {
-      //     type: EventType.SIGN_INTERMEDIATE,
-      //     metadata: {
-      //       caId: ca.id,
-      //       dn: ca.dn,
-      //       serialNumber
-      //     }
-      //   }
-      // });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.RENEW_CA,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
 
       return {
         certificate,

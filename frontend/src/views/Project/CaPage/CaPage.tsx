@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { useDeleteCa,useGetCaById } from "@app/hooks/api";
+import { useDeleteCa, useGetCaById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { CaModal } from "@app/views/Project/CertificatesPage/components/CaTab/components/CaModal";
 
@@ -73,9 +73,7 @@ export const CaPage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() =>
-                router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`)
-              }
+              onClick={() => router.push(`/project/${projectId}/certificates`)}
               className="mb-4"
             >
               Certificate Authorities

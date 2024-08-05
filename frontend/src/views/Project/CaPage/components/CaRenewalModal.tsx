@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+// import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,10 +16,11 @@ import {
 import { useWorkspace } from "@app/context";
 import {
   CaRenewalType,
+  useRenewCa
+  //   useGetCaById,
   // CaType,
-  CaStatus,
-  useGetCaById,
-  useRenewCa} from "@app/hooks/api/ca";
+  //   CaStatus
+} from "@app/hooks/api/ca";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const caRenewalTypes = [{ label: "Renew with same key pair", value: CaRenewalType.EXISTING }];
@@ -28,13 +29,6 @@ const isValidDate = (dateString: string) => {
   const date = new Date(dateString);
   return !Number.isNaN(date.getTime());
 };
-
-// const getMiddleDate = (date1: Date, date2: Date): Date => {
-//   const timestamp1 = date1.getTime();
-//   const timestamp2 = date2.getTime();
-//   const middleTimestamp = (timestamp1 + timestamp2) / 2;
-//   return new Date(middleTimestamp);
-// };
 
 const schema = z
   .object({
@@ -58,56 +52,36 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
     caId: string;
   };
 
-  const { data: ca } = useGetCaById(popUpData?.caId || "");
-  const { data: parentCa } = useGetCaById(ca?.parentCaId || "");
+  //   const { data: ca } = useGetCaById(popUpData?.caId || "");
+  //   const { data: parentCa } = useGetCaById(ca?.parentCaId || "");
   const { mutateAsync: renewCa } = useRenewCa();
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
-    setValue
+    formState: { isSubmitting }
+    // setValue
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       type: CaRenewalType.EXISTING,
-      notAfter: "" // TODO: set sensible default
+      notAfter: "" // TODO: consider setting a default value
     }
   });
 
-  useEffect(() => {
-    if (ca && ca.status === CaStatus.ACTIVE) {
-      //   if (ca.type === CaType.ROOT) {
-      //     // extend Root CA validity by the same amount of time
-      //     const notBeforeDate = new Date(ca.notBefore as string);
-      //     const notAfterDate = new Date(ca.notAfter as string);
+  //   useEffect(() => {
+  //     if (ca && ca.status === CaStatus.ACTIVE) {
+  //       const notBeforeDate = new Date(ca.notBefore as string);
+  //       const notAfterDate = new Date(ca.notAfter as string);
 
-      //     const newNotAfterDate = new Date(
-      //       notAfterDate.getTime() + notAfterDate.getTime() - notBeforeDate.getTime()
-      //     );
+  //       const newNotAfterDate = new Date(
+  //         notAfterDate.getTime() + notAfterDate.getTime() - notBeforeDate.getTime()
+  //       );
 
-      //     setValue("notAfter", newNotAfterDate.toISOString().split("T")[0]);
-      //   } else if (ca.type === CaType.INTERMEDIATE && parentCa) {
-      //   }
-      // extend Root CA validity by the same amount of time
-      const notBeforeDate = new Date(ca.notBefore as string);
-      const notAfterDate = new Date(ca.notAfter as string);
-
-      const newNotAfterDate = new Date(
-        notAfterDate.getTime() + notAfterDate.getTime() - notBeforeDate.getTime()
-      );
-
-      setValue("notAfter", newNotAfterDate.toISOString().split("T")[0]);
-    }
-
-    // if (ca && parentCa) {
-    //   // intermediate CA
-    // } else if (ca && ca.notAfter && !parentCa) {
-    //   // root CA
-    //   const timeDifference = new Date(ca.).getTime() - startDate.getTime();
-    // }
-  }, [ca, parentCa]);
+  //       setValue("notAfter", newNotAfterDate.toISOString().split("T")[0]);
+  //     }
+  //   }, [ca, parentCa]);
 
   const onFormSubmit = async ({ type, notAfter }: FormData) => {
     try {
@@ -130,13 +104,6 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
       reset();
     } catch (err) {
       console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to renew CA";
-
-      createNotification({
-        text,
-        type: "error"
-      });
     }
   };
 
