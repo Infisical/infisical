@@ -147,7 +147,8 @@ export enum EventType {
   GET_KMS = "get-kms",
   UPDATE_PROJECT_KMS = "update-project-kms",
   GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
-  LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup"
+  LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project"
 }
 
 interface UserActorMetadata {
@@ -1245,6 +1246,16 @@ interface LoadProjectKmsBackupEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+interface OrgAdminAccessProjectEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PROJECT;
+  metadata: {
+    userId: string;
+    username: string;
+    email: string;
+    projectId: string;
+  }; // no metadata yet
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1354,4 +1365,5 @@ export type Event =
   | GetKmsEvent
   | UpdateProjectKmsEvent
   | GetProjectKmsBackupEvent
-  | LoadProjectKmsBackupEvent;
+  | LoadProjectKmsBackupEvent
+  | OrgAdminAccessProjectEvent;

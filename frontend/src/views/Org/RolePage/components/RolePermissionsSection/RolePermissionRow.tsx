@@ -61,7 +61,10 @@ const getPermissionList = (option: string) => {
 type Props = {
   isEditable: boolean;
   title: string;
-  formName: keyof Omit<Exclude<TFormSchema["permissions"], undefined>, "workspace">;
+  formName: keyof Omit<
+    Exclude<TFormSchema["permissions"], undefined>,
+    "workspace" | "organization-admin-console"
+  >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
 };

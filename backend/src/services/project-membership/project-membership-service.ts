@@ -256,7 +256,6 @@ export const projectMembershipServiceFactory = ({
     }
 
     const bot = await projectBotDAL.findOne({ projectId });
-
     if (!bot) {
       throw new BadRequestError({
         message: "Failed to find bot"

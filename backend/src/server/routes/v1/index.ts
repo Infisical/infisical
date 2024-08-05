@@ -15,6 +15,7 @@ import { registerIdentityUaRouter } from "./identity-universal-auth-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
+import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerProjectEnvRouter } from "./project-env-router";
@@ -50,6 +51,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerOrgRouter, { prefix: "/organization" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
+  await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });

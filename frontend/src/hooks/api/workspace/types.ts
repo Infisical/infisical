@@ -21,6 +21,7 @@ export type Workspace = {
   pitVersionLimit: number;
   auditLogsRetentionDays: number;
   slug: string;
+  createdAt: string;
 };
 
 export type WorkspaceEnv = {
