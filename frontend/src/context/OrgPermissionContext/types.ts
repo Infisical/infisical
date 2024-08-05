@@ -25,7 +25,7 @@ export enum OrgPermissionSubjects {
 }
 
 export enum OrgPermissionAdminConsoleAction {
-  GrantAccessProjects = "grant-access-projects"
+  AccessAllProjects = "access-all-projects"
 }
 
 export type OrgPermissionSet =

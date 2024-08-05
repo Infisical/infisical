@@ -10,7 +10,7 @@ export enum OrgPermissionActions {
 }
 
 export enum OrgPermissionAdminConsoleAction {
-  GrantAccessProjects = "grant-access-projects"
+  AccessAllProjects = "access-all-projects"
 }
 
 export enum OrgPermissionSubjects {
@@ -113,7 +113,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-  can(OrgPermissionAdminConsoleAction.GrantAccessProjects, OrgPermissionSubjects.AdminConsole);
+  can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   return build({ conditionsMatcher });
 };

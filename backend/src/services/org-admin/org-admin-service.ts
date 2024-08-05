@@ -53,7 +53,7 @@ export const orgAdminServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.GrantAccessProjects,
+      OrgPermissionAdminConsoleAction.AccessAllProjects,
       OrgPermissionSubjects.AdminConsole
     );
     const projects = await projectDAL.find(
@@ -85,7 +85,7 @@ export const orgAdminServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.GrantAccessProjects,
+      OrgPermissionAdminConsoleAction.AccessAllProjects,
       OrgPermissionSubjects.AdminConsole
     );
 

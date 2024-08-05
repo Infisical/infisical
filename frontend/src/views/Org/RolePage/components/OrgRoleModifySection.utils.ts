@@ -14,7 +14,7 @@ const generalPermissionSchema = z
 
 const adminConsolePermissionSchmea = z
   .object({
-    "grant-access-projects": z.boolean().optional()
+    "access-all-projects": z.boolean().optional()
   })
   .optional();
 

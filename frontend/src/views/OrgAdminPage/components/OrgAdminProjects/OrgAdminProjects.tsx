@@ -161,7 +161,7 @@ export const OrgAdminProjects = withPermission(
     );
   },
   {
-    action: OrgPermissionAdminConsoleAction.GrantAccessProjects,
+    action: OrgPermissionAdminConsoleAction.AccessAllProjects,
     subject: OrgPermissionSubjects.AdminConsole
   }
 );

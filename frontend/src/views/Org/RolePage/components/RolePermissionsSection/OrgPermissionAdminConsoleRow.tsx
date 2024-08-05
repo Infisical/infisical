@@ -20,7 +20,7 @@ enum Permission {
 }
 
 const PERMISSION_ACTIONS = [
-  { action: "grant-access-projects", label: "Grant access projects" }
+  { action: "access-all-projects", label: "Access all organization projects" }
 ] as const;
 
 export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: Props) => {
@@ -33,7 +33,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
   });
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.["grant-access-projects"]) {
+    if (rule?.["access-all-projects"]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -63,7 +63,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
     if (val === Permission.NoAccess) {
       setValue(
         "permissions.admin-console",
-        { "grant-access-projects": false },
+        { "access-all-projects": false },
         { shouldDirty: true }
       );
     }
@@ -78,7 +78,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
         <Td>
           <FontAwesomeIcon icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
-        <Td>Admin Console</Td>
+        <Td>Organization Admin Console</Td>
         <Td>
           <Select
             value={selectedPermissionCategory}
