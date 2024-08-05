@@ -8,3 +8,7 @@ export enum CaStatus {
   DISABLED = "disabled",
   PENDING_CERTIFICATE = "pending-certificate"
 }
+
+export enum CaRenewalType {
+  EXISTING = "existing"
+}

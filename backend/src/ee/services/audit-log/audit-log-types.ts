@@ -131,6 +131,7 @@ export enum EventType {
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
   GET_CA_CSR = "get-certificate-authority-csr",
+  GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
@@ -1101,6 +1102,14 @@ interface GetCaCsr {
   };
 }
 
+interface GetCaCerts {
+  type: EventType.GET_CA_CERTS;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
 interface GetCaCert {
   type: EventType.GET_CA_CERT;
   metadata: {
@@ -1328,6 +1337,7 @@ export type Event =
   | UpdateCa
   | DeleteCa
   | GetCaCsr
+  | GetCaCerts
   | GetCaCert
   | SignIntermediate
   | ImportCaCert

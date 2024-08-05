@@ -5,7 +5,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
-import { TDNParts, TGetCaCertChainDTO, TGetCaCredentialsDTO, TRebuildCaCrlDTO } from "./certificate-authority-types";
+import {
+  TDNParts,
+  TGetCaCertChainDTO,
+  TGetCaCertChainsDTO,
+  TGetCaCredentialsDTO,
+  TRebuildCaCrlDTO
+} from "./certificate-authority-types";
 
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];
@@ -98,9 +104,57 @@ export const getCaCredentials = async ({
   ]);
 
   return {
+    caSecret,
     caPrivateKey,
     caPublicKey
   };
+};
+
+/**
+ * Return the list of decrypted pem-encoded certificates and certificate chains
+ * for CA with id [caId].
+ */
+export const getCaCertChains = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
+  projectDAL,
+  kmsService
+}: TGetCaCertChainsDTO) => {
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+  const keyId = await getProjectKmsCertificateKeyId({
+    projectId: ca.projectId,
+    projectDAL,
+    kmsService
+  });
+
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    kmsId: keyId
+  });
+
+  const caCerts = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "asc"]] });
+
+  const decryptedChains = await Promise.all(
+    caCerts.map(async (caCert) => {
+      const decryptedCaCert = await kmsDecryptor({
+        cipherTextBlob: caCert.encryptedCertificate
+      });
+      const caCertObj = new x509.X509Certificate(decryptedCaCert);
+      const decryptedChain = await kmsDecryptor({
+        cipherTextBlob: caCert.encryptedCertificateChain
+      });
+      return {
+        certificate: caCertObj.toString("pem"),
+        certificateChain: decryptedChain.toString("utf-8"),
+        serialNumber: caCertObj.serialNumber,
+        version: caCert.version
+      };
+    })
+  );
+
+  return decryptedChains;
 };
 
 /**

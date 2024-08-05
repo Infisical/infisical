@@ -20,7 +20,8 @@ import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cer
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   createDistinguishedName,
-  getCaCertChain,
+  getCaCertChain, // TODO: consider rename
+  getCaCertChains,
   getCaCredentials,
   keyAlgorithmToAlgCfg
 } from "./certificate-authority-fns";
@@ -32,10 +33,12 @@ import {
   TCreateCaDTO,
   TDeleteCaDTO,
   TGetCaCertDTO,
+  TGetCaCertsDTO,
   TGetCaCsrDTO,
   TGetCaDTO,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
+  TRenewCaCertDTO,
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./certificate-authority-types";
@@ -46,7 +49,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     TCertificateAuthorityDALFactory,
     "transaction" | "create" | "findById" | "updateById" | "deleteById" | "findOne"
   >;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "create" | "findOne" | "transaction">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "create" | "findOne" | "transaction" | "find">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
@@ -148,7 +151,8 @@ export const certificateAuthorityServiceFactory = ({
             maxPathLength,
             notBefore: notBeforeDate,
             notAfter: notAfterDate,
-            serialNumber
+            serialNumber,
+            activeCaCertVersion: 1
           })
         },
         tx
@@ -162,6 +166,24 @@ export const certificateAuthorityServiceFactory = ({
       const kmsEncryptor = await kmsService.encryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
+
+      // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
+      const skObj = KeyObject.from(keys.privateKey);
+
+      const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
+        plainText: skObj.export({
+          type: "pkcs8",
+          format: "der"
+        })
+      });
+
+      const caSecret = await certificateAuthoritySecretDAL.create(
+        {
+          caId: ca.id,
+          encryptedPrivateKey
+        },
+        tx
+      );
 
       if (type === CaType.ROOT) {
         // note: create self-signed cert only applicable for root CA
@@ -193,7 +215,9 @@ export const certificateAuthorityServiceFactory = ({
           {
             caId: ca.id,
             encryptedCertificate,
-            encryptedCertificateChain
+            encryptedCertificateChain,
+            version: 1,
+            caSecretId: caSecret.id
           },
           tx
         );
@@ -217,24 +241,6 @@ export const certificateAuthorityServiceFactory = ({
         {
           caId: ca.id,
           encryptedCrl
-        },
-        tx
-      );
-
-      // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
-      const skObj = KeyObject.from(keys.privateKey);
-
-      const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-        plainText: skObj.export({
-          type: "pkcs8",
-          format: "der"
-        })
-      });
-
-      await certificateAuthoritySecretDAL.create(
-        {
-          caId: ca.id,
-          encryptedPrivateKey
         },
         tx
       );
@@ -379,7 +385,316 @@ export const certificateAuthorityServiceFactory = ({
   };
 
   /**
-   * Return certificate and certificate chain for CA
+   * Renew certificate for CA with id [caId]
+   * Note: Currently implements CA renewal with same key-pair only
+   */
+  const renewCaCert = async ({ caId, notAfter, actorId, actorAuthMethod, actor, actorOrgId }: TRenewCaCertDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
+
+    // get latest CA certificate
+    const [caCert] = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "desc"]] });
+    if (!caCert) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+
+    const serialNumber = crypto.randomBytes(32).toString("hex");
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const { caPrivateKey, caPublicKey, caSecret } = await getCaCredentials({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+    const decryptedCaCert = await kmsDecryptor({
+      cipherTextBlob: caCert.encryptedCertificate
+    });
+
+    const caCertObj = new x509.X509Certificate(decryptedCaCert);
+
+    let certificate = "";
+    let certificateChain = "";
+
+    switch (ca.type) {
+      case CaType.ROOT: {
+        if (new Date(notAfter) <= new Date(caCertObj.notAfter)) {
+          throw new BadRequestError({
+            message:
+              "New Root CA certificate must have notAfter date that is greater than the current certificate notAfter date"
+          });
+        }
+
+        const notBeforeDate = new Date();
+        const cert = await x509.X509CertificateGenerator.createSelfSigned({
+          name: ca.dn,
+          serialNumber,
+          notBefore: notBeforeDate,
+          notAfter: new Date(notAfter),
+          signingAlgorithm: alg,
+          keys: {
+            privateKey: caPrivateKey,
+            publicKey: caPublicKey
+          },
+          extensions: [
+            new x509.BasicConstraintsExtension(
+              true,
+              ca.maxPathLength === -1 || !ca.maxPathLength ? undefined : ca.maxPathLength,
+              true
+            ),
+            new x509.ExtendedKeyUsageExtension(["1.2.3.4.5.6.7", "2.3.4.5.6.7.8"], true),
+            // eslint-disable-next-line no-bitwise
+            new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+            await x509.SubjectKeyIdentifierExtension.create(caPublicKey)
+          ]
+        });
+
+        const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+          plainText: Buffer.from(new Uint8Array(cert.rawData))
+        });
+
+        const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+          plainText: Buffer.alloc(0)
+        });
+
+        await certificateAuthorityDAL.transaction(async (tx) => {
+          const newActiveCaCertVersion = caCert.version + 1;
+          await certificateAuthorityCertDAL.create(
+            {
+              caId: ca.id,
+              encryptedCertificate,
+              encryptedCertificateChain,
+              version: newActiveCaCertVersion,
+              caSecretId: caSecret.id
+            },
+            tx
+          );
+
+          await certificateAuthorityDAL.updateById(
+            ca.id,
+            {
+              activeCaCertVersion: newActiveCaCertVersion,
+              notBefore: notBeforeDate,
+              notAfter: new Date(notAfter)
+            },
+            tx
+          );
+        });
+
+        certificate = cert.toString("pem");
+        break;
+      }
+      case CaType.INTERMEDIATE: {
+        if (!ca.parentCaId) {
+          // TODO: look into optimal way to support renewal of intermediate CA with external parent CA
+          throw new BadRequestError({
+            message: "Failed to renew intermediate CA certificate with external parent CA"
+          });
+        }
+
+        const parentCa = await certificateAuthorityDAL.findById(ca.parentCaId);
+        const { caPrivateKey: parentCaPrivateKey } = await getCaCredentials({
+          caId: parentCa.id,
+          certificateAuthorityDAL,
+          certificateAuthoritySecretDAL,
+          projectDAL,
+          kmsService
+        });
+
+        // get latest parent CA certificate
+        const [parentCaCert] = await certificateAuthorityCertDAL.find(
+          { caId: parentCa.id },
+          { sort: [["version", "desc"]] }
+        );
+
+        const decryptedParentCaCert = await kmsDecryptor({
+          cipherTextBlob: parentCaCert.encryptedCertificate
+        });
+
+        const parentCaCertObj = new x509.X509Certificate(decryptedParentCaCert);
+
+        if (new Date(notAfter) <= new Date(caCertObj.notAfter)) {
+          throw new BadRequestError({
+            message:
+              "New Intermediate CA certificate must have notAfter date that is greater than the current certificate notAfter date"
+          });
+        }
+
+        if (new Date(notAfter) > new Date(parentCaCertObj.notAfter)) {
+          throw new BadRequestError({
+            message:
+              "New Intermediate CA certificate must have notAfter date that is equal to or smaller than the notAfter date of the parent CA certificate current certificate notAfter date"
+          });
+        }
+
+        const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+          name: ca.dn,
+          keys: {
+            privateKey: caPrivateKey,
+            publicKey: caPublicKey
+          },
+          signingAlgorithm: alg,
+          extensions: [
+            // eslint-disable-next-line no-bitwise
+            new x509.KeyUsagesExtension(
+              x509.KeyUsageFlags.keyCertSign |
+                x509.KeyUsageFlags.cRLSign |
+                x509.KeyUsageFlags.digitalSignature |
+                x509.KeyUsageFlags.keyEncipherment
+            )
+          ],
+          attributes: [new x509.ChallengePasswordAttribute("password")]
+        });
+
+        const notBeforeDate = new Date();
+        const intermediateCert = await x509.X509CertificateGenerator.create({
+          serialNumber,
+          subject: csrObj.subject,
+          issuer: caCertObj.subject,
+          notBefore: notBeforeDate,
+          notAfter: new Date(notAfter),
+          signingKey: parentCaPrivateKey,
+          publicKey: csrObj.publicKey,
+          signingAlgorithm: alg,
+          extensions: [
+            new x509.KeyUsagesExtension(
+              x509.KeyUsageFlags.keyCertSign |
+                x509.KeyUsageFlags.cRLSign |
+                x509.KeyUsageFlags.digitalSignature |
+                x509.KeyUsageFlags.keyEncipherment,
+              true
+            ),
+            new x509.BasicConstraintsExtension(
+              true,
+              ca.maxPathLength === -1 || !ca.maxPathLength ? undefined : ca.maxPathLength,
+              true
+            ),
+            await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
+            await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
+          ]
+        });
+
+        const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+          plainText: Buffer.from(new Uint8Array(intermediateCert.rawData))
+        });
+
+        const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+          plainText: Buffer.alloc(0)
+        });
+
+        await certificateAuthorityDAL.transaction(async (tx) => {
+          const newActiveCaCertVersion = caCert.version + 1;
+          await certificateAuthorityCertDAL.create(
+            {
+              caId: ca.id,
+              encryptedCertificate,
+              encryptedCertificateChain,
+              version: newActiveCaCertVersion,
+              caSecretId: caSecret.id
+            },
+            tx
+          );
+
+          await certificateAuthorityDAL.updateById(
+            ca.id,
+            {
+              activeCaCertVersion: newActiveCaCertVersion,
+              notBefore: notBeforeDate,
+              notAfter: new Date(notAfter)
+            },
+            tx
+          );
+        });
+
+        const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+          caId,
+          certificateAuthorityDAL,
+          certificateAuthorityCertDAL,
+          projectDAL,
+          kmsService
+        });
+
+        certificate = intermediateCert.toString("pem");
+        certificateChain = `${issuingCaCertificate}\n${caCertChain}`.trim();
+        break;
+      }
+      default: {
+        throw new BadRequestError({
+          message: "Unrecognized CA type"
+        });
+      }
+    }
+
+    return {
+      certificate,
+      certificateChain,
+      serialNumber
+    };
+  };
+
+  const getCaCerts = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertsDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const caCertChains = await getCaCertChains({
+      caId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      ca,
+      caCerts: caCertChains
+    };
+  };
+
+  /**
+   * Return current certificate and certificate chain for CA
+   * get latest?? ca cert
    */
   const getCaCert = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
@@ -628,7 +943,8 @@ export const certificateAuthorityServiceFactory = ({
         {
           caId: ca.id,
           encryptedCertificate,
-          encryptedCertificateChain
+          encryptedCertificateChain,
+          version: 1
         },
         tx
       );
@@ -857,6 +1173,8 @@ export const certificateAuthorityServiceFactory = ({
     updateCaById,
     deleteCaById,
     getCaCsr,
+    renewCaCert,
+    getCaCerts,
     getCaCert,
     signIntermediate,
     importCertToCa,
