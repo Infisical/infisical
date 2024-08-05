@@ -15,10 +15,9 @@ export const injectRateLimits = fp(async (server) => {
       return;
     }
 
-    const plan = await server.services.license.getPlan(req.auth.orgId);
-    const { rateLimits } = plan;
+    const { rateLimits, customRateLimits } = await server.services.license.getPlan(req.auth.orgId);
 
-    if (plan.customRateLimits && !appCfg.isCloud) {
+    if (customRateLimits && !appCfg.isCloud) {
       // we do this because for self-hosted/dedicated instances, we want custom rate limits to be based on admin configuration
       // note that the syncing of custom rate limit happens on the instanceRateLimiterConfig object
       req.rateLimits = instanceRateLimiterConfig;
