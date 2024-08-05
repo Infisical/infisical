@@ -885,8 +885,15 @@ export const registerRoutes = async (
     folderDAL,
     integrationDAL,
     integrationAuthDAL,
-    secretQueueService
+    secretQueueService,
+    integrationAuthService,
+    projectBotService,
+    secretV2BridgeDAL,
+    secretImportDAL,
+    secretDAL,
+    kmsService
   });
+
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
