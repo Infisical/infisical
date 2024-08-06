@@ -415,11 +415,13 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		if value, ok := secretsMap[secretKeyFromArg]; ok {
 			requestedSecrets = append(requestedSecrets, value)
 		} else {
-			requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
-				Key:   secretKeyFromArg,
-				Type:  "*not found*",
-				Value: "*not found*",
-			})
+			if !(plainOutput || showOnlyValue) {
+				requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
+					Key:   secretKeyFromArg,
+					Type:  "*not found*",
+					Value: "*not found*",
+				})
+			}
 		}
 	}
 
