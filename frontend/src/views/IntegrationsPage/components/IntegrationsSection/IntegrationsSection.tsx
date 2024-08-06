@@ -311,7 +311,7 @@ export const IntegrationsSection = ({
               checkIndicatorBg="text-white"
               onCheckedChange={() => setShouldDeleteSecrets.toggle()}
             >
-              Delete secrets in destination
+              Delete previously synced secrets from the destination
             </Checkbox>
           </div>
         )}
@@ -321,7 +321,7 @@ export const IntegrationsSection = ({
         title={`Are you sure you also want to delete secrets on ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration
         }?`}
-        subTitle="By confirming, all secrets managed by this integration will be deleted in the destination. This action is irreversible."
+        subTitle="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
         onChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={async () => {
