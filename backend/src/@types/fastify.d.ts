@@ -18,6 +18,7 @@ import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-ser
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
+import { RateLimitConfiguration } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -89,6 +90,7 @@ declare module "fastify" {
       id: string;
       orgId: string;
     };
+    rateLimits: RateLimitConfiguration;
     // passport data
     passportUser: {
       isUserCompleted: string;
