@@ -15,6 +15,7 @@ export type TSharedSecretPermission = {
   orgId: string;
   accessType?: SecretSharingAccessType;
   name?: string;
+  password?: string;
 };
 
 export type TCreatePublicSharedSecretDTO = {
@@ -24,6 +25,7 @@ export type TCreatePublicSharedSecretDTO = {
   tag: string;
   expiresAt: string;
   expiresAfterViews?: number;
+  password?: string;
   accessType: SecretSharingAccessType;
 };
 
