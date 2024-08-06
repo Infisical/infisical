@@ -32,6 +32,7 @@ const viewLimitOptions = [
 
 const schema = z.object({
   name: z.string().optional(),
+  password: z.string().optional(),
   secret: z.string(),
   expiresIn: z.string(),
   viewLimit: z.string(),
@@ -67,7 +68,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
     }
   });
 
-  const onFormSubmit = async ({ name, secret, expiresIn, viewLimit, accessType }: FormData) => {
+  const onFormSubmit = async ({ name, password, secret, expiresIn, viewLimit, accessType }: FormData) => {
     try {
       const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
@@ -80,6 +81,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
 
       const { id } = await createSharedSecret.mutateAsync({
         name,
+        password,
         encryptedValue: ciphertext,
         hashedHex,
         iv,
@@ -146,6 +148,19 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
               className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 py-1.5 px-2 text-bunker-300 outline-none transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50 group-hover:mr-2"
               disabled={value !== undefined}
             />
+          </FormControl>
+        )}
+      />
+      <Controller
+        control={control}
+        name="password"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Password (Optional)"
+            isError={Boolean(error)}
+            errorText={error?.message}
+          >
+            <Input {...field} placeholder="Password" type="text" />
           </FormControl>
         )}
       />
