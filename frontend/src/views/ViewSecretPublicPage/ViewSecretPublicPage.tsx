@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react'
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -6,9 +7,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 
-import { SecretContainer, SecretErrorContainer } from "./components";
+import { SecretContainer, SecretErrorContainer, PasswordContainer } from "./components";
 
 export const ViewSecretPublicPage = () => {
+  const [passMatches, setPassMatch] = useState(false)
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
 
@@ -20,6 +22,10 @@ export const ViewSecretPublicPage = () => {
     sharedSecretId: id as string,
     hashedHex
   });
+
+  const handlePassMatch = useCallback((val: boolean) => {
+    setPassMatch(val)
+  }, [setPassMatch])
 
   return (
     <div className="flex h-screen flex-col justify-between overflow-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
@@ -52,7 +58,13 @@ export const ViewSecretPublicPage = () => {
             </a>
           </p>
         </div>
-        {secret && key && <SecretContainer secret={secret} secretKey={key} />}
+        {secret && (
+          !passMatches ? (
+            <PasswordContainer secret={secret} handlePassMatch={handlePassMatch} />
+          ) : (
+            key && <SecretContainer secret={secret} secretKey={key} />
+          )
+        )}
         {error && <SecretErrorContainer />}
         <div className="m-auto my-8 flex w-full">
           <div className="w-full border-t border-mineshaft-600" />
