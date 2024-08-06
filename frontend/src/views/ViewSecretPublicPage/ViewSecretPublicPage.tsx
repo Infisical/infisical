@@ -60,7 +60,7 @@ export const ViewSecretPublicPage = () => {
         </div>
         {secret && (
           !passMatches && secret.password ? (
-            <PasswordContainer secretId={id} hashedHex={hashedHex} handlePassMatch={handlePassMatch} />
+            <PasswordContainer secretId={id as string} hashedHex={hashedHex} handlePassMatch={handlePassMatch} />
           ) : (
             key && <SecretContainer secret={secret} secretKey={key} />
           )

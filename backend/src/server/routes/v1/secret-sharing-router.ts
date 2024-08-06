@@ -1,5 +1,5 @@
+import bcrypt from "bcrypt";
 import { z } from "zod";
-import bcrypt from "bcrypt"
 
 import { SecretSharingSchema } from "@app/db/schemas";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -124,11 +124,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex,
         orgId: req.permission?.orgId
       });
-  
+
       if (!sharedSecret) {
         return { isValid: false };
       }
-  
+
       if (sharedSecret.password) {
         const isMatch = await bcrypt.compare(password, sharedSecret.password);
         return { isValid: isMatch };

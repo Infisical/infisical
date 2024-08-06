@@ -160,7 +160,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
             isError={Boolean(error)}
             errorText={error?.message}
           >
-            <Input {...field} placeholder="Password" type="text" />
+            <Input {...field} placeholder="Password" type="password" />
           </FormControl>
         )}
       />

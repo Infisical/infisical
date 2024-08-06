@@ -1,7 +1,7 @@
 import { useState, ChangeEvent } from "react";
 
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon, faSpinner } from "@fortawesome/react-fontawesome";
+import { faArrowRight, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, IconButton, Input } from "@app/components/v2";
 import { useValidateSecretPassword } from "@app/hooks/api/secretSharing";
@@ -27,10 +27,12 @@ export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Prop
   }
 
   const validatePassword = async () => {
+    setLoading(true);
+
     try {
       const { data: freshData } = await refetch();
 
-      if (freshData.data.isValid === true) {
+      if (freshData?.isValid === true) {
         handlePassMatch(true);
       } else {
         createNotification({
@@ -62,7 +64,10 @@ export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Prop
               validatePassword()
             }}
           >
-            <FontAwesomeIcon icon={isLoading ? faSpinner : faArrowRight} />
+            <FontAwesomeIcon 
+              className={isLoading ? 'fa-spin' : ''} 
+              icon={isLoading ? faSpinner : faArrowRight} 
+            />
           </IconButton>
         </div>
       </div>
