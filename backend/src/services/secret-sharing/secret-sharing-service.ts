@@ -36,6 +36,7 @@ export const secretSharingServiceFactory = ({
     iv,
     tag,
     name,
+    password,
     accessType,
     expiresAt,
     expiresAfterViews
@@ -62,6 +63,7 @@ export const secretSharingServiceFactory = ({
 
     const newSharedSecret = await secretSharingDAL.create({
       name,
+      password,
       encryptedValue,
       hashedHex,
       iv,
@@ -77,6 +79,7 @@ export const secretSharingServiceFactory = ({
   };
 
   const createPublicSharedSecret = async ({
+    password,
     encryptedValue,
     hashedHex,
     iv,
@@ -103,6 +106,7 @@ export const secretSharingServiceFactory = ({
     }
 
     const newSharedSecret = await secretSharingDAL.create({
+      password,
       encryptedValue,
       hashedHex,
       iv,
@@ -111,6 +115,7 @@ export const secretSharingServiceFactory = ({
       expiresAfterViews,
       accessType
     });
+
     return { id: newSharedSecret.id };
   };
 
