@@ -20,7 +20,7 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool, tagSlugs string) ([]models.SingleEnvironmentVariable, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -53,6 +53,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 		SecretPath:    secretPath,
 		IncludeImport: includeImports,
 		Recursive:     recursive,
+		TagSlugs:      tagSlugs,
 	})
 
 	if err != nil {
@@ -76,7 +77,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 
 }
 
-func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool) (models.PlaintextSecretResult, error) {
+func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool, tagSlugs string) (models.PlaintextSecretResult, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
@@ -86,7 +87,7 @@ func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentNa
 		Environment:   environmentName,
 		IncludeImport: includeImports,
 		Recursive:     recursive,
-		// TagSlugs:    tagSlugs,
+		TagSlugs:      tagSlugs,
 	}
 
 	if secretsPath != "" {
@@ -281,7 +282,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		}
 
 		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, infisicalDotJson.WorkspaceId,
-			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
+			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", err)
 
 		if err == nil {
@@ -303,7 +304,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 	} else {
 		if params.InfisicalToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using service token")
-			secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
+			secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs)
 		} else if params.UniversalAuthAccessToken != "" {
 
 			if params.WorkspaceId == "" {
@@ -311,7 +312,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			}
 
 			log.Debug().Msg("Trying to fetch secrets using universal auth")
-			res, err := GetPlainTextSecretsV3(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
+			res, err := GetPlainTextSecretsV3(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs)
 
 			errorToReturn = err
 			secretsToReturn = res.Secrets

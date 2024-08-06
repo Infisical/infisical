@@ -404,6 +404,10 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		SetQueryParam("environment", request.Environment).
 		SetQueryParam("secretPath", request.SecretPath)
 
+	if request.TagSlugs != "" {
+		req.SetQueryParam("tagSlugs", request.TagSlugs)
+	}
+
 	if request.IncludeImport {
 		req.SetQueryParam("include_imports", "true")
 	}
