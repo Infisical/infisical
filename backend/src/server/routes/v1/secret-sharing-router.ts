@@ -1,4 +1,5 @@
 import { z } from "zod";
+import bcrypt from "bcrypt"
 
 import { SecretSharingSchema } from "@app/db/schemas";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -91,6 +92,49 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         accessType: sharedSecret.accessType,
         orgName: sharedSecret.orgName
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/public/:id/validate",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      body: z.object({
+        password: z.string().min(1),
+        hashedHex: z.string()
+      }),
+      response: {
+        200: z.object({
+          isValid: z.boolean()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { id } = req.params;
+      const { password, hashedHex } = req.body;
+
+      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById({
+        sharedSecretId: id,
+        hashedHex,
+        orgId: req.permission?.orgId
+      });
+  
+      if (!sharedSecret) {
+        return { isValid: false };
+      }
+  
+      if (sharedSecret.password) {
+        const isMatch = await bcrypt.compare(password, sharedSecret.password);
+        return { isValid: isMatch };
+      }
+
+      return { isValid: false };
     }
   });
 

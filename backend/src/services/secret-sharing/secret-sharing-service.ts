@@ -1,3 +1,5 @@
+import bcrypt from "bcrypt";
+
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -61,9 +63,10 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     const newSharedSecret = await secretSharingDAL.create({
       name,
-      password,
+      password: hashedPassword,
       encryptedValue,
       hashedHex,
       iv,
