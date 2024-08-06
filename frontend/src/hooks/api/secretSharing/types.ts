@@ -15,6 +15,7 @@ export type TSharedSecret = {
 
 export type TCreateSharedSecretRequest = {
   name?: string;
+  password?: string;
   encryptedValue: string;
   hashedHex: string;
   iv: string;
