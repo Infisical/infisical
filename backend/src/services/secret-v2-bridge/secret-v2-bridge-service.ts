@@ -522,7 +522,7 @@ export const secretV2BridgeServiceFactory = ({
           await expandSecretReferences(secretsGroupByKey);
           secretsGroupByPath[secretPathKey].forEach((decryptedSecret) => {
             // eslint-disable-next-line no-param-reassign
-            decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value;
+            decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value || "";
           });
         }
       }
