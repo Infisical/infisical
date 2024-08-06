@@ -30,6 +30,7 @@ export type TViewSharedSecretResponse = {
   tag: string;
   accessType: SecretSharingAccessType;
   orgName?: string;
+  password?: string;
 };
 
 export type TDeleteSharedSecretRequest = {

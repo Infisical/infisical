@@ -58,6 +58,7 @@ export const useGetActiveSharedSecretById = ({
       );
       return {
         encryptedValue: data.encryptedValue,
+        password: data.password,
         iv: data.iv,
         tag: data.tag,
         accessType: data.accessType,
