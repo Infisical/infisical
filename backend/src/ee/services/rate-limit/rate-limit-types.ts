@@ -5,7 +5,6 @@ export type TRateLimitUpdateDTO = {
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
-  creationLimit: number;
   publicEndpointLimit: number;
 };
 

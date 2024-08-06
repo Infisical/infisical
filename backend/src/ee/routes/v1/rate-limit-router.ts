@@ -58,7 +58,6 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
         authRateLimit: z.number(),
         inviteUserRateLimit: z.number(),
         mfaRateLimit: z.number(),
-        creationLimit: z.number(),
         publicEndpointLimit: z.number()
       }),
       response: {

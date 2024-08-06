@@ -5,6 +5,5 @@ export type TRateLimit = {
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
-  creationLimit: number;
   publicEndpointLimit: number;
 };
