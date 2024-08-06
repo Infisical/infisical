@@ -15,12 +15,14 @@ import {
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -135,23 +137,6 @@ export const SecretOverviewPage = () => {
     });
   }, []);
 
-  const selectAllEntries = useCallback(() => {
-    const folderRecord: Record<string, boolean> = {};
-    folderNames.forEach((folder: string) => {
-      folderRecord[folder] = true;
-    })
-
-    const secretRecord: Record<string, boolean> = {};
-    secKeys.forEach((secret: string) => {
-      secretRecord[secret] = true;
-    })
-
-    setSelectedEntries({
-      [EntryType.FOLDER]: folderRecord,
-      [EntryType.SECRET]: secretRecord
-    })
-  }, []);
-
   useEffect(() => {
     const handleParentTableWidthResize = () => {
       setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
@@ -199,6 +184,43 @@ export const SecretOverviewPage = () => {
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
+
+  const selectAllEntries = () => {
+    const folderRecord: Record<string, boolean> = {};
+    folderNames.forEach((folder: string) => {
+      folderRecord[folder] = true;
+    })
+
+    const secretRecord: Record<string, boolean> = {};
+    secKeys.forEach((secret: string) => {
+      secretRecord[secret] = true;
+    })
+
+    setSelectedEntries({
+      [EntryType.FOLDER]: folderRecord,
+      [EntryType.SECRET]: secretRecord
+    })
+  };
+
+  const getAllSelections = () => {
+    const selectedFolders = Object.keys(selectedEntries[EntryType.FOLDER])
+      .filter((key) => selectedEntries[EntryType.FOLDER][key]);
+    const selectedSecrets = Object.keys(selectedEntries[EntryType.SECRET])
+      .filter((key) => selectedEntries[EntryType.SECRET][key]);
+    return [...selectedFolders, ...selectedSecrets];
+  }
+
+  const checkAllEntriesSelected = () => {
+    const allSelections = getAllSelections();
+    return folderNames.every((folder:string) => allSelections.includes(folder)) 
+      && secKeys.every((secret: string) => allSelections.includes(secret));
+  };
+
+  const checkAnyOneEntrySelected = () => {
+    const allSelections = getAllSelections();
+    return folderNames.some((folder:string) => allSelections.includes(folder)) 
+      || secKeys.some((secret: string) => allSelections.includes(secret));
+  };
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
@@ -666,7 +688,6 @@ export const SecretOverviewPage = () => {
           getFolderByNameAndEnv={getFolderByNameAndEnv}
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
-          selectAllEntries={selectAllEntries}
         />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
@@ -674,11 +695,16 @@ export const SecretOverviewPage = () => {
               <THead>
                 <Tr className="sticky top-0 z-20 border-0">
                   <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                    <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
+                    <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3 gap-x-2">
+                      <Checkbox
+                        id={`select-all-checkbox`}
+                        isChecked={checkAllEntriesSelected()}
+                        onCheckedChange={selectAllEntries}
+                        className={twMerge("hidden", checkAnyOneEntrySelected() && "flex")}
+                      />
                       Name
                       <IconButton
                         variant="plain"
-                        className="ml-2"
                         ariaLabel="sort"
                         onClick={() => setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
                       >
