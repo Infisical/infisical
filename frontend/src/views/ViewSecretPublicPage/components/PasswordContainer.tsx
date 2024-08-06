@@ -22,9 +22,6 @@ export const PasswordContainer = ({ secret, handlePassMatch }: Props) => {
   const validatePassword = () => {
     if (secret.password === password) {
       handlePassMatch(true)
-      console.log('match')
-    } else {
-      console.log({secret})
     }
   }
 
