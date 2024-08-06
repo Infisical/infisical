@@ -155,22 +155,24 @@ var secretsSetCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		util.RequireLocalWorkspaceFile()
-
-		environmentName, _ := cmd.Flags().GetString("env")
-		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
-			if environmentFromWorkspace != "" {
-				environmentName = environmentFromWorkspace
-			}
-		}
-
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		if (token == nil) {
+			util.RequireLocalWorkspaceFile()
+		}
+
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()	
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
+		}
+
+				projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
