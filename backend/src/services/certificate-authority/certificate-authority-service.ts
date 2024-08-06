@@ -348,7 +348,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.type === CaType.ROOT) throw new BadRequestError({ message: "Root CA cannot generate CSR" });
 
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+    const [caCert] = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "desc"]] });
     if (caCert) throw new BadRequestError({ message: "CA already has a certificate installed" });
 
     const { caPrivateKey, caPublicKey } = await getCaCredentials({
@@ -767,6 +767,13 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
+    const [caCert] = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "desc"]] });
+    if (!caCert) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+
+    if (ca.notAfter && new Date() > new Date(ca.notAfter)) {
+      throw new BadRequestError({ message: "CA is expired" });
+    }
+
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -778,7 +785,6 @@ export const certificateAuthorityServiceFactory = ({
       kmsId: certificateManagerKmsId
     });
 
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
     const decryptedCaCert = await kmsDecryptor({
       cipherTextBlob: caCert.encryptedCertificate
     });
@@ -896,7 +902,7 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+    const [caCert] = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "desc"]] });
     if (caCert) throw new BadRequestError({ message: "CA has already imported a certificate" });
 
     const certObj = new x509.X509Certificate(certificate);
@@ -1022,8 +1028,12 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+    const [caCert] = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "desc"]] });
     if (!caCert) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+
+    if (ca.notAfter && new Date() > new Date(ca.notAfter)) {
+      throw new BadRequestError({ message: "CA is expired" });
+    }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -1225,8 +1235,12 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
-    const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+    const [caCert] = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "desc"]] });
     if (!caCert) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+
+    if (ca.notAfter && new Date() > new Date(ca.notAfter)) {
+      throw new BadRequestError({ message: "CA is expired" });
+    }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
