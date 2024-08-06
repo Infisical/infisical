@@ -11,10 +11,11 @@ type UserCredentials struct {
 
 // The file struct for Infisical config file
 type ConfigFile struct {
-	LoggedInUserEmail  string         `json:"loggedInUserEmail"`
-	LoggedInUserDomain string         `json:"LoggedInUserDomain,omitempty"`
-	LoggedInUsers      []LoggedInUser `json:"loggedInUsers,omitempty"`
-	VaultBackendType   string         `json:"vaultBackendType,omitempty"`
+	LoggedInUserEmail      string         `json:"loggedInUserEmail"`
+	LoggedInUserDomain     string         `json:"LoggedInUserDomain,omitempty"`
+	LoggedInUsers          []LoggedInUser `json:"loggedInUsers,omitempty"`
+	VaultBackendType       string         `json:"vaultBackendType,omitempty"`
+	VaultBackendPassphrase string         `json:"vaultBackendPassphrase,omitempty"`
 }
 
 type LoggedInUser struct {
@@ -35,6 +36,7 @@ type SingleEnvironmentVariable struct {
 		Workspace string `json:"workspace"`
 	} `json:"tags"`
 	Comment string `json:"comment"`
+	Etag    string `json:"Etag"`
 }
 
 type PlaintextSecretResult struct {

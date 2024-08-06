@@ -13,11 +13,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { CommitType, DecryptedSecret, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
+import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
 
 export type Props = {
   op: CommitType;
-  secretVersion?: DecryptedSecret;
+  secretVersion?: SecretV3Raw;
   newVersion?: Omit<TSecretApprovalSecChange, "tags"> & { tags?: WsTag[] };
   presentSecretVersionNumber: number;
   hasMerged?: Boolean;
@@ -91,11 +91,11 @@ export const SecretApprovalRequestChangeItem = ({
             <TBody>
               <Tr>
                 <Td className="text-red-600">OLD</Td>
-                <Td>{secretVersion?.key}</Td>
+                <Td>{secretVersion?.secretKey}</Td>
                 <Td>
-                  <SecretInput isReadOnly value={secretVersion?.value} />
+                  <SecretInput isReadOnly value={secretVersion?.secretValue} />
                 </Td>
-                <Td>{secretVersion?.comment}</Td>
+                <Td>{secretVersion?.secretComment}</Td>
                 <Td>
                   {secretVersion?.tags?.map(({ name, id: tagId, color }) => (
                     <Tag
@@ -137,17 +137,23 @@ export const SecretApprovalRequestChangeItem = ({
           ) : (
             <TBody>
               <Tr>
-                <Td>{op === CommitType.CREATE ? newVersion?.secretKey : secretVersion?.key}</Td>
+                <Td>
+                  {op === CommitType.CREATE ? newVersion?.secretKey : secretVersion?.secretKey}
+                </Td>
                 <Td>
                   <SecretInput
                     isReadOnly
                     value={
-                      op === CommitType.CREATE ? newVersion?.secretValue : secretVersion?.value
+                      op === CommitType.CREATE
+                        ? newVersion?.secretValue
+                        : secretVersion?.secretValue
                     }
                   />
                 </Td>
                 <Td>
-                  {op === CommitType.CREATE ? newVersion?.secretComment : secretVersion?.comment}
+                  {op === CommitType.CREATE
+                    ? newVersion?.secretComment
+                    : secretVersion?.secretComment}
                 </Td>
                 <Td>
                   {(op === CommitType.CREATE ? newVersion?.tags : secretVersion?.tags)?.map(

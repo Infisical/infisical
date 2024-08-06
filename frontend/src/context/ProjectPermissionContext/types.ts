@@ -21,12 +21,14 @@ export enum ProjectPermissionSub {
   IpAllowList = "ip-allowlist",
   Workspace = "workspace",
   Secrets = "secrets",
+  SecretFolders = "secret-folders",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
-  Certificates = "certificates"
+  Certificates = "certificates",
+  Kms = "kms"
 }
 
 type SubjectFields = {

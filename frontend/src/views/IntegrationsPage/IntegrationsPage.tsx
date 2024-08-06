@@ -1,49 +1,38 @@
 import { useCallback, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
 import {
   useDeleteIntegration,
   useDeleteIntegrationAuths,
   useGetCloudIntegrations,
-  useGetUserWsKey,
   useGetWorkspaceAuthorizations,
-  useGetWorkspaceBot,
-  useGetWorkspaceIntegrations,
-  useUpdateBotActiveStatus
+  useGetWorkspaceIntegrations
 } from "@app/hooks/api";
 import { IntegrationAuth } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
 import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
 import { InfrastructureIntegrationSection } from "./components/InfrastructureIntegrationSection/InfrastructureIntegrationSection";
 import { IntegrationsSection } from "./components/IntegrationsSection";
-import { generateBotKey, redirectForProviderAuth } from "./IntegrationPage.utils";
+import { redirectForProviderAuth } from "./IntegrationPage.utils";
 
 type Props = {
   frameworkIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
-  infrastructureIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
+  infrastructureIntegrations: Array<{
+    name: string;
+    slug: string;
+    image: string;
+    docsLink: string;
+  }>;
 };
 
 export const IntegrationsPage = withProjectPermission(
   ({ frameworkIntegrations, infrastructureIntegrations }: Props) => {
-    const { t } = useTranslation();
-    
-
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
     const environments = currentWorkspace?.environments || [];
-
-    const { data: latestWsKey } = useGetUserWsKey(workspaceId);
-
-    const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-      "activeBot"
-    ] as const);
 
     const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
       useGetCloudIntegrations();
@@ -70,11 +59,6 @@ export const IntegrationsPage = withProjectPermission(
       isFetching: isIntegrationFetching
     } = useGetWorkspaceIntegrations(workspaceId);
 
-    const { data: bot } = useGetWorkspaceBot(workspaceId);
-
-    // mutation
-    const { mutateAsync: updateBotActiveStatus, mutate: updateBotActiveStatusSync } =
-      useUpdateBotActiveStatus();
     const { mutateAsync: deleteIntegration } = useDeleteIntegration();
     const {
       mutateAsync: deleteIntegrationAuths,
@@ -95,12 +79,6 @@ export const IntegrationsPage = withProjectPermission(
         isIntegrationsAuthorizedEmpty &&
         isIntegrationsEmpty
       ) {
-        if (bot?.id && currentWorkspace?.version === ProjectVersion.V1)
-          updateBotActiveStatusSync({
-            isActive: false,
-            botId: bot.id,
-            workspaceId
-          });
         resetDeleteIntegrationAuths();
       }
     }, [
@@ -116,16 +94,6 @@ export const IntegrationsPage = withProjectPermission(
       if (!selectedCloudIntegration) return;
 
       try {
-        if (bot && !bot.isActive && currentWorkspace?.version === ProjectVersion.V1) {
-          const botKey = generateBotKey(bot.publicKey, latestWsKey!);
-          await updateBotActiveStatus({
-            workspaceId,
-            botKey,
-            isActive: true,
-            botId: bot.id
-          });
-        }
-
         redirectForProviderAuth(selectedCloudIntegration);
       } catch (error) {
         console.error(error);
@@ -135,17 +103,7 @@ export const IntegrationsPage = withProjectPermission(
     // function to strat integration for a provider
     // confirmation to user passing the bot key for provider to get secret access
     const handleProviderIntegrationStart = (provider: string) => {
-      if (!bot?.isActive) {
-        handlePopUpOpen("activeBot", { provider });
-        return;
-      }
       handleProviderIntegration(provider);
-    };
-
-    const handleUserAcceptBotCondition = () => {
-      const { provider } = popUp.activeBot?.data as { provider: string };
-      handleProviderIntegration(provider);
-      handlePopUpClose("activeBot");
     };
 
     const handleIntegrationDelete = async (integrationId: string, cb: () => void) => {
@@ -195,7 +153,6 @@ export const IntegrationsPage = withProjectPermission(
           integrations={integrations}
           environments={environments}
           onIntegrationDelete={({ id }, cb) => handleIntegrationDelete(id, cb)}
-          isBotActive={bot?.isActive}
           workspaceId={workspaceId}
         />
         <CloudIntegrationSection
@@ -205,30 +162,6 @@ export const IntegrationsPage = withProjectPermission(
           onIntegrationStart={handleProviderIntegrationStart}
           onIntegrationRevoke={handleIntegrationAuthRevoke}
         />
-        <Modal
-          isOpen={popUp.activeBot?.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("activeBot", isOpen)}
-        >
-          <ModalContent
-            title={t("integrations.grant-access-to-secrets") as string}
-            footerContent={
-              <div className="flex items-center space-x-2">
-                <Button onClick={() => handleUserAcceptBotCondition()}>
-                  {t("integrations.grant-access-button") as string}
-                </Button>
-                <Button
-                  onClick={() => handlePopUpClose("activeBot")}
-                  variant="outline_bg"
-                  colorSchema="secondary"
-                >
-                  Cancel
-                </Button>
-              </div>
-            }
-          >
-            {t("integrations.why-infisical-needs-access")}
-          </ModalContent>
-        </Modal>
         <FrameworkIntegrationSection frameworks={frameworkIntegrations} />
         <InfrastructureIntegrationSection integrations={infrastructureIntegrations} />
       </div>

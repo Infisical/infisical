@@ -356,5 +356,161 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretApprovalRequestOrm, findById, findProjectRequestCount, findByProjectId };
+  const findByProjectIdBridgeSecretV2 = async (
+    { status, limit = 20, offset = 0, projectId, committer, environment, userId }: TFindQueryFilter,
+    tx?: Knex
+  ) => {
+    try {
+      // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
+      // this is the place u wanna look at.
+      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+        .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(
+          TableName.SecretApprovalPolicy,
+          `${TableName.SecretApprovalRequest}.policyId`,
+          `${TableName.SecretApprovalPolicy}.id`
+        )
+        .join(
+          TableName.SecretApprovalPolicyApprover,
+          `${TableName.SecretApprovalPolicy}.id`,
+          `${TableName.SecretApprovalPolicyApprover}.policyId`
+        )
+        .join<TUsers>(
+          db(TableName.Users).as("committerUser"),
+          `${TableName.SecretApprovalRequest}.committerUserId`,
+          `committerUser.id`
+        )
+        .leftJoin(
+          TableName.SecretApprovalRequestReviewer,
+          `${TableName.SecretApprovalRequest}.id`,
+          `${TableName.SecretApprovalRequestReviewer}.requestId`
+        )
+        .leftJoin<TSecretApprovalRequestsSecrets>(
+          TableName.SecretApprovalRequestSecretV2,
+          `${TableName.SecretApprovalRequestSecretV2}.requestId`,
+          `${TableName.SecretApprovalRequest}.id`
+        )
+        .where(
+          stripUndefinedInWhere({
+            projectId,
+            [`${TableName.Environment}.slug` as "slug"]: environment,
+            [`${TableName.SecretApprovalRequest}.status`]: status,
+            committerUserId: committer
+          })
+        )
+        .andWhere(
+          (bd) =>
+            void bd
+              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
+              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
+        )
+        .select(selectAllTableCols(TableName.SecretApprovalRequest))
+        .select(
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("slug").withSchema(TableName.Environment).as("environment"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerId"),
+          db.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
+          db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
+          db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
+          db.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
+          db.ref("op").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitOp"),
+          db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitSecretId"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitId"),
+          db.raw(
+            `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
+          ),
+          db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+          db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
+          db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
+          db.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
+          db.ref("email").withSchema("committerUser").as("committerUserEmail"),
+          db.ref("username").withSchema("committerUser").as("committerUserUsername"),
+          db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
+        )
+        .orderBy("createdAt", "desc");
+
+      const docs = await (tx || db)
+        .with("w", query)
+        .select("*")
+        .from<Awaited<typeof query>[number]>("w")
+        .where("w.rank", ">=", offset)
+        .andWhere("w.rank", "<", offset + limit);
+      const formatedDoc = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          ...SecretApprovalRequestsSchema.parse(el),
+          environment: el.environment,
+          projectId: el.projectId,
+          policy: {
+            id: el.policyId,
+            name: el.policyName,
+            approvals: el.policyApprovals,
+            secretPath: el.policySecretPath,
+            enforcementLevel: el.policyEnforcementLevel
+          },
+          committerUser: {
+            userId: el.committerUserId,
+            email: el.committerUserEmail,
+            firstName: el.committerUserFirstName,
+            lastName: el.committerUserLastName,
+            username: el.committerUserUsername
+          }
+        }),
+        childrenMapper: [
+          {
+            key: "reviewerId",
+            label: "reviewers" as const,
+            mapper: ({ reviewerUserId, reviewerStatus: s }) =>
+              reviewerUserId ? { userId: reviewerUserId, status: s } : undefined
+          },
+          {
+            key: "approverUserId",
+            label: "approvers" as const,
+            mapper: ({ approverUserId }) => approverUserId
+          },
+          {
+            key: "commitId",
+            label: "commits" as const,
+            mapper: ({ commitSecretId: secretId, commitId: id, commitOp: op }) => ({
+              op,
+              id,
+              secretId
+            })
+          }
+        ]
+      });
+      return formatedDoc.map((el) => ({
+        ...el,
+        policy: { ...el.policy, approvers: el.approvers }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSAR" });
+    }
+  };
+
+  const deleteByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const query = await (tx || db)(TableName.SecretApprovalRequest)
+        .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where({ projectId })
+        .delete();
+
+      return query;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteByProjectId" });
+    }
+  };
+
+  return {
+    ...secretApprovalRequestOrm,
+    findById,
+    findProjectRequestCount,
+    findByProjectId,
+    findByProjectIdBridgeSecretV2,
+    deleteByProjectId
+  };
 };

@@ -168,16 +168,27 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
             const { token: newJwtToken } = await selectOrganization({ organizationId });
 
             const instance = axios.create();
-            await instance.post(cliUrl, {
+            const payload = {
               ...isCliLoginSuccessful.loginResponse,
               JTWToken: newJwtToken
+            };
+            await instance.post(cliUrl, payload).catch(() => {
+              // if error happens to communicate we set the token with an expiry in sessino storage
+              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+              sessionStorage.setItem(
+                SessionStorageKeys.CLI_TERMINAL_TOKEN,
+                JSON.stringify({
+                  expiry: formatISO(addSeconds(new Date(), 30)),
+                  data: window.btoa(JSON.stringify(payload))
+                })
+              );
             });
-
-            await navigateUserToOrg(router, organizationId);
+            router.push("/cli-redirect");
+            return;
           }
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
           // if the user has no orgs, navigate to the create org page
-          else {
+          
             const userOrgs = await fetchOrganizations();
 
             // case: user has orgs, so we navigate the user to select an org
@@ -189,7 +200,7 @@ export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
             else {
               await navigateUserToOrg(router);
             }
-          }
+          
         }
       } else {
         const isLoginSuccessful = await attemptLoginMfa({

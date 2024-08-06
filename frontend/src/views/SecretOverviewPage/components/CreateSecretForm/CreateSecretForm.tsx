@@ -1,3 +1,4 @@
+import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -17,8 +18,9 @@ import {
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useWorkspace } from "@app/context";
+import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
-import { DecryptedSecret, SecretType, UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 
 const typeSchema = z
   .object({
@@ -34,8 +36,7 @@ type TFormSchema = z.infer<typeof typeSchema>;
 
 type Props = {
   secretPath?: string;
-  decryptFileKey: UserWsKeyPair;
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   // modal props
   isOpen?: boolean;
   onClose: () => void;
@@ -44,7 +45,6 @@ type Props = {
 
 export const CreateSecretForm = ({
   secretPath = "/",
-  decryptFileKey,
   isOpen,
   getSecretByKey,
   onClose,
@@ -56,6 +56,7 @@ export const CreateSecretForm = ({
     control,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
   const newSecretKey = watch("key");
@@ -101,10 +102,9 @@ export const CreateSecretForm = ({
           environment,
           workspaceId,
           secretPath,
-          secretName: key,
+          secretKey: key,
           secretValue: value || "",
-          type: SecretType.Shared,
-          latestFileKey: decryptFileKey
+          type: SecretType.Shared
         });
       }
 
@@ -112,11 +112,10 @@ export const CreateSecretForm = ({
         environment,
         workspaceId,
         secretPath,
-        secretName: key,
+        secretKey: key,
         secretValue: value || "",
         secretComment: "",
-        type: SecretType.Shared,
-        latestFileKey: decryptFileKey
+        type: SecretType.Shared
       });
     });
 
@@ -137,6 +136,17 @@ export const CreateSecretForm = ({
       });
     }
   };
+
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const delimitters = [":", "="];
+    const pastedContent = e.clipboardData.getData("text");
+    const { key, value } = getKeyValue(pastedContent, delimitters);
+
+    setValue("key", key);
+    setValue("value", value);
+  };
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onTogglePopUp}>
       <ModalContent
@@ -144,11 +154,17 @@ export const CreateSecretForm = ({
         title="Bulk Create & Update"
         subTitle="Create & update a secret across many environments"
       >
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <FormControl label="Key" isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
+        <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+          <FormControl
+            label="Key"
+            isRequired
+            isError={Boolean(errors?.key)}
+            errorText={errors?.key?.message}
+          >
             <Input
               {...register("key")}
               placeholder="Type your secret name"
+              onPaste={handlePaste}
               autoCapitalization={currentWorkspace?.autoCapitalization}
             />
           </FormControl>

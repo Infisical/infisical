@@ -1,10 +1,6 @@
 import { useCallback } from "react";
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
-import {
-  decryptAssymmetric,
-  decryptSymmetric
-} from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
 import {
@@ -75,7 +71,7 @@ const fetchImportedSecrets = async (
   directory?: string
 ) => {
   const { data } = await apiRequest.get<{ secrets: TImportedSecrets[] }>(
-    "/api/v1/secret-imports/secrets",
+    "/api/v1/secret-imports/secrets/raw",
     {
       params: {
         workspaceId,
@@ -107,7 +103,6 @@ const fetchImportedFolders = async ({
 
 export const useGetImportedSecretsSingleEnv = ({
   environment,
-  decryptFileKey,
   path,
   projectId,
   options = {}
@@ -123,78 +118,40 @@ export const useGetImportedSecretsSingleEnv = ({
   >;
 }) =>
   useQuery({
-    enabled:
-      Boolean(projectId) &&
-      Boolean(environment) &&
-      Boolean(decryptFileKey) &&
-      (options?.enabled ?? true),
+    enabled: Boolean(projectId) && Boolean(environment) && (options?.enabled ?? true),
     queryKey: secretImportKeys.getSecretImportSecrets({
       environment,
       path,
       projectId
     }),
     queryFn: () => fetchImportedSecrets(projectId, environment, path),
-    select: useCallback(
-      (data: TImportedSecrets[]) => {
-        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-        const latestKey = decryptFileKey;
-        const key = decryptAssymmetric({
-          ciphertext: latestKey.encryptedKey,
-          nonce: latestKey.nonce,
-          publicKey: latestKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        });
-
-        return data.map((el) => ({
-          environment: el.environment,
-          secretPath: el.secretPath,
-          environmentInfo: el.environmentInfo,
-          folderId: el.folderId,
-          secrets: el.secrets.map((encSecret) => {
-            const secretKey = decryptSymmetric({
-              ciphertext: encSecret.secretKeyCiphertext,
-              iv: encSecret.secretKeyIV,
-              tag: encSecret.secretKeyTag,
-              key
-            });
-
-            const secretValue = decryptSymmetric({
-              ciphertext: encSecret.secretValueCiphertext,
-              iv: encSecret.secretValueIV,
-              tag: encSecret.secretValueTag,
-              key
-            });
-
-            const secretComment = decryptSymmetric({
-              ciphertext: encSecret.secretCommentCiphertext,
-              iv: encSecret.secretCommentIV,
-              tag: encSecret.secretCommentTag,
-              key
-            });
-
-            return {
-              id: encSecret.id,
-              env: encSecret.environment,
-              key: secretKey,
-              value: secretValue,
-              tags: encSecret.tags,
-              comment: secretComment,
-              createdAt: encSecret.createdAt,
-              updatedAt: encSecret.updatedAt,
-              version: encSecret.version
-            };
-          })
-        }));
-      },
-      [decryptFileKey]
-    )
+    select: (data: TImportedSecrets[]) => {
+      return data.map((el) => ({
+        environment: el.environment,
+        secretPath: el.secretPath,
+        environmentInfo: el.environmentInfo,
+        folderId: el.folderId,
+        secrets: el.secrets.map((encSecret) => {
+          return {
+            id: encSecret.id,
+            env: encSecret.environment,
+            key: encSecret.secretKey,
+            value: encSecret.secretValue,
+            tags: encSecret.tags,
+            comment: encSecret.secretComment,
+            createdAt: encSecret.createdAt,
+            updatedAt: encSecret.updatedAt,
+            version: encSecret.version
+          };
+        })
+      }));
+    }
   });
 
 export const useGetImportedSecretsAllEnvs = ({
   projectId,
   environments,
-  path = "/",
-  decryptFileKey
+  path = "/"
 }: TGetSecretImportsAllEnvs) => {
   const secretImports = useQueries({
     queries: environments.map((env) => ({
@@ -206,60 +163,27 @@ export const useGetImportedSecretsAllEnvs = ({
       queryFn: () => fetchImportedSecrets(projectId, env, path).catch(() => []),
       enabled: Boolean(projectId) && Boolean(env),
       // eslint-disable-next-line react-hooks/rules-of-hooks
-      select: useCallback(
-        (data: TImportedSecrets[]) => {
-          const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-          const latestKey = decryptFileKey;
-          const key = decryptAssymmetric({
-            ciphertext: latestKey.encryptedKey,
-            nonce: latestKey.nonce,
-            publicKey: latestKey.sender.publicKey,
-            privateKey: PRIVATE_KEY
-          });
-
-          return data.map((el) => ({
-            environment: el.environment,
-            secretPath: el.secretPath,
-            environmentInfo: el.environmentInfo,
-            folderId: el.folderId,
-            secrets: el.secrets.map((encSecret) => {
-              const secretKey = decryptSymmetric({
-                ciphertext: encSecret.secretKeyCiphertext,
-                iv: encSecret.secretKeyIV,
-                tag: encSecret.secretKeyTag,
-                key
-              });
-
-              const secretValue = decryptSymmetric({
-                ciphertext: encSecret.secretValueCiphertext,
-                iv: encSecret.secretValueIV,
-                tag: encSecret.secretValueTag,
-                key
-              });
-
-              const secretComment = decryptSymmetric({
-                ciphertext: encSecret.secretCommentCiphertext,
-                iv: encSecret.secretCommentIV,
-                tag: encSecret.secretCommentTag,
-                key
-              });
-
-              return {
-                id: encSecret.id,
-                env: encSecret.environment,
-                key: secretKey,
-                value: secretValue,
-                tags: encSecret.tags,
-                comment: secretComment,
-                createdAt: encSecret.createdAt,
-                updatedAt: encSecret.updatedAt,
-                version: encSecret.version
-              };
-            })
-          }));
-        },
-        [decryptFileKey]
-      )
+      select: (data: TImportedSecrets[]) => {
+        return data.map((el) => ({
+          environment: el.environment,
+          secretPath: el.secretPath,
+          environmentInfo: el.environmentInfo,
+          folderId: el.folderId,
+          secrets: el.secrets.map((encSecret) => {
+            return {
+              id: encSecret.id,
+              env: encSecret.environment,
+              key: encSecret.secretKey,
+              value: encSecret.secretValue,
+              tags: encSecret.tags,
+              comment: encSecret.secretComment,
+              createdAt: encSecret.createdAt,
+              updatedAt: encSecret.updatedAt,
+              version: encSecret.version
+            };
+          })
+        }));
+      }
     }))
   });
 

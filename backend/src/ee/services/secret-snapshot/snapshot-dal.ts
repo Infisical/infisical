@@ -1,14 +1,17 @@
 /* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { TDbClient } from "@app/db";
 import {
   SecretVersionsSchema,
+  SecretVersionsV2Schema,
   TableName,
   TSecretFolderVersions,
   TSecretSnapshotFolders,
   TSecretSnapshots,
-  TSecretVersions
+  TSecretVersions,
+  TSecretVersionsV2
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
@@ -24,12 +27,14 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const data = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.id`, id)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.Snapshot))
         .select(
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment).as("envName"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug")
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("version").withSchema(TableName.Project).as("projectVersion")
         )
         .first();
       if (data) {
@@ -123,6 +128,101 @@ export const snapshotDALFactory = (db: TDbClient) => {
             key: "id",
             label: "secretVersions" as const,
             mapper: (el) => SecretVersionsSchema.parse(el),
+            childrenMapper: [
+              {
+                key: "tagVersionId",
+                label: "tags" as const,
+                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                  id,
+                  name,
+                  slug,
+                  color,
+                  vId
+                })
+              }
+            ]
+          },
+          {
+            key: "folderVerId",
+            label: "folderVersion" as const,
+            mapper: ({ folderVerId: id, folderVerName: name }) => ({ id, name })
+          }
+        ]
+      })?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretSnapshotDataById" });
+    }
+  };
+
+  const findSecretSnapshotV2DataById = async (snapshotId: string, tx?: Knex) => {
+    try {
+      const data = await (tx || db.replicaNode())(TableName.Snapshot)
+        .where(`${TableName.Snapshot}.id`, snapshotId)
+        .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.SnapshotSecretV2, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecretV2}.snapshotId`)
+        .leftJoin(
+          TableName.SecretVersionV2,
+          `${TableName.SnapshotSecretV2}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin(
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(TableName.SnapshotFolder, `${TableName.SnapshotFolder}.snapshotId`, `${TableName.Snapshot}.id`)
+        .leftJoin<TSecretFolderVersions>(
+          TableName.SecretFolderVersion,
+          `${TableName.SnapshotFolder}.folderVersionId`,
+          `${TableName.SecretFolderVersion}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretVersionV2))
+        .select(
+          db.ref("id").withSchema(TableName.Snapshot).as("snapshotId"),
+          db.ref("createdAt").withSchema(TableName.Snapshot).as("snapshotCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.Snapshot).as("snapshotUpdatedAt"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderVerName"),
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+        );
+      return sqlNestRelationships({
+        data,
+        key: "snapshotId",
+        parentMapper: ({
+          snapshotId: id,
+          folderId,
+          projectId,
+          envId,
+          envSlug,
+          envName,
+          snapshotCreatedAt: createdAt,
+          snapshotUpdatedAt: updatedAt
+        }) => ({
+          id,
+          folderId,
+          projectId,
+          createdAt,
+          updatedAt,
+          environment: { id: envId, slug: envSlug, name: envName }
+        }),
+        childrenMapper: [
+          {
+            key: "id",
+            label: "secretVersions" as const,
+            mapper: (el) => SecretVersionsV2Schema.parse(el),
             childrenMapper: [
               {
                 key: "tagVersionId",
@@ -271,6 +371,161 @@ export const snapshotDALFactory = (db: TDbClient) => {
             label: "secretVersions" as const,
             mapper: (el) => ({
               ...SecretVersionsSchema.parse(el),
+              latestSecretVersion: el.latestSecretVersion as number
+            }),
+            childrenMapper: [
+              {
+                key: "tagVersionId",
+                label: "tags" as const,
+                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                  id,
+                  name,
+                  slug,
+                  color,
+                  vId
+                })
+              }
+            ]
+          },
+          {
+            key: "folderVerId",
+            label: "folderVersion" as const,
+            mapper: ({ folderVerId: id, folderVerName: name, latestFolderVersion }) => ({
+              id,
+              name,
+              latestFolderVersion: latestFolderVersion as number
+            })
+          }
+        ]
+      });
+      return formated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindRecursivelySnapshots" });
+    }
+  };
+
+  // this is used for rollback
+  // from a starting snapshot it will collect all the secrets and folder of that
+  // then it will start go through recursively the below folders latest snapshots then their child folder snapshot until leaf node
+  // the recursive part find all snapshot id
+  // then joins with respective secrets and folder
+  const findRecursivelySnapshotsV2Bridge = async (snapshotId: string, tx?: Knex) => {
+    try {
+      const data = await (tx || db)
+        .withRecursive("parent", (qb) => {
+          void qb
+            .from(TableName.Snapshot)
+            .leftJoin<TSecretSnapshotFolders>(
+              TableName.SnapshotFolder,
+              `${TableName.SnapshotFolder}.snapshotId`,
+              `${TableName.Snapshot}.id`
+            )
+            .leftJoin<TSecretFolderVersions>(
+              TableName.SecretFolderVersion,
+              `${TableName.SnapshotFolder}.folderVersionId`,
+              `${TableName.SecretFolderVersion}.id`
+            )
+            .select(selectAllTableCols(TableName.Snapshot))
+            .select({ depth: 1 })
+            .select(
+              db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderVerName"),
+              db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId")
+            )
+            .where(`${TableName.Snapshot}.id`, snapshotId)
+            .union(
+              (cb) =>
+                void cb
+                  .select(selectAllTableCols(TableName.Snapshot))
+                  .select({ depth: db.raw("parent.depth + 1") })
+                  .select(
+                    db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderVerName"),
+                    db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId")
+                  )
+                  .from(TableName.Snapshot)
+                  .join<TSecretSnapshots, TSecretSnapshots & { secretId: string; max: number }>(
+                    db(TableName.Snapshot).groupBy("folderId").max("createdAt").select("folderId").as("latestVersion"),
+                    `${TableName.Snapshot}.createdAt`,
+                    "latestVersion.max"
+                  )
+                  .leftJoin<TSecretSnapshotFolders>(
+                    TableName.SnapshotFolder,
+                    `${TableName.SnapshotFolder}.snapshotId`,
+                    `${TableName.Snapshot}.id`
+                  )
+                  .leftJoin<TSecretFolderVersions>(
+                    TableName.SecretFolderVersion,
+                    `${TableName.SnapshotFolder}.folderVersionId`,
+                    `${TableName.SecretFolderVersion}.id`
+                  )
+                  .join("parent", "parent.folderVerId", `${TableName.Snapshot}.folderId`)
+            );
+        })
+        .orderBy("depth", "asc")
+        .from<TSecretSnapshots & { folderVerId: string; folderVerName: string }>("parent")
+        .leftJoin<TSecretSnapshots>(TableName.SnapshotSecretV2, `parent.id`, `${TableName.SnapshotSecretV2}.snapshotId`)
+        .leftJoin<TSecretVersionsV2>(
+          TableName.SecretVersionV2,
+          `${TableName.SnapshotSecretV2}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin(
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin<{ latestSecretVersion: number }>(
+          (tx || db)(TableName.SecretVersionV2)
+            .groupBy("secretId")
+            .select("secretId")
+            .max("version")
+            .as("secGroupByMaxVersion"),
+          `${TableName.SecretVersionV2}.secretId`,
+          "secGroupByMaxVersion.secretId"
+        )
+        .leftJoin<{ latestFolderVersion: number }>(
+          (tx || db)(TableName.SecretFolderVersion)
+            .groupBy("folderId")
+            .select("folderId")
+            .max("version")
+            .as("folderGroupByMaxVersion"),
+          `parent.folderId`,
+          "folderGroupByMaxVersion.folderId"
+        )
+        .select(selectAllTableCols(TableName.SecretVersionV2))
+        .select(
+          db.ref("id").withSchema("parent").as("snapshotId"),
+          db.ref("folderId").withSchema("parent").as("snapshotFolderId"),
+          db.ref("parentFolderId").withSchema("parent").as("snapshotParentFolderId"),
+          db.ref("folderVerName").withSchema("parent"),
+          db.ref("folderVerId").withSchema("parent"),
+          db.ref("max").withSchema("secGroupByMaxVersion").as("latestSecretVersion"),
+          db.ref("max").withSchema("folderGroupByMaxVersion").as("latestFolderVersion"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+        );
+
+      const formated = sqlNestRelationships({
+        data,
+        key: "snapshotId",
+        parentMapper: ({ snapshotId: id, snapshotFolderId: folderId, snapshotParentFolderId: parentFolderId }) => ({
+          id,
+          folderId,
+          parentFolderId
+        }),
+        childrenMapper: [
+          {
+            key: "id",
+            label: "secretVersions" as const,
+            mapper: (el) => ({
+              ...SecretVersionsV2Schema.parse(el),
               latestSecretVersion: el.latestSecretVersion as number
             }),
             childrenMapper: [
@@ -465,13 +720,108 @@ export const snapshotDALFactory = (db: TDbClient) => {
     }
   };
 
+  // special query for migration for secret v2
+  const findNSecretV1SnapshotByFolderId = async (folderId: string, n = 15, tx?: Knex) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Snapshot)
+        .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
+        .leftJoin(
+          TableName.SecretVersion,
+          `${TableName.SnapshotSecret}.secretVersionId`,
+          `${TableName.SecretVersion}.id`
+        )
+        .leftJoin(
+          TableName.SecretVersionTag,
+          `${TableName.SecretVersionTag}.${TableName.SecretVersion}Id`,
+          `${TableName.SecretVersion}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretVersion))
+        .select(
+          db.ref("id").withSchema(TableName.Snapshot).as("snapshotId"),
+          db.ref("createdAt").withSchema(TableName.Snapshot).as("snapshotCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.Snapshot).as("snapshotUpdatedAt"),
+          db.ref("envId").withSchema(TableName.SnapshotSecret).as("snapshotEnvId"),
+          db.ref("id").withSchema(TableName.SecretVersionTag).as("secretVersionTagId"),
+          db.ref("secret_versionsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretId"),
+          db.ref("secret_tagsId").withSchema(TableName.SecretVersionTag).as("secretVersionTagSecretTagId"),
+          db.raw(
+            `DENSE_RANK() OVER (partition by ${TableName.Snapshot}."id" ORDER BY ${TableName.SecretVersion}."createdAt") as rank`
+          )
+        )
+        .orderBy(`${TableName.Snapshot}.createdAt`, "desc")
+        .where(`${TableName.Snapshot}.folderId`, folderId);
+      const data = await (tx || db)
+        .with("w", query)
+        .select("*")
+        .from<Awaited<typeof query>[number]>("w")
+        .andWhere("w.rank", "<", n);
+
+      return sqlNestRelationships({
+        data,
+        key: "snapshotId",
+        parentMapper: ({ snapshotId: id, snapshotCreatedAt: createdAt, snapshotUpdatedAt: updatedAt }) => ({
+          id,
+          folderId,
+          createdAt,
+          updatedAt
+        }),
+        childrenMapper: [
+          {
+            key: "id",
+            label: "secretVersions" as const,
+            mapper: (el) => SecretVersionsSchema.extend({ snapshotEnvId: z.string() }).parse(el),
+            childrenMapper: [
+              {
+                key: "secretVersionTagId",
+                label: "tags" as const,
+                mapper: ({ secretVersionTagId, secretVersionTagSecretId, secretVersionTagSecretTagId }) => ({
+                  id: secretVersionTagId,
+                  secretVersionId: secretVersionTagSecretId,
+                  secretTagId: secretVersionTagSecretTagId
+                })
+              }
+            ]
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretSnapshotDataById" });
+    }
+  };
+
+  const deleteSnapshotsAboveLimit = async (folderId: string, n = 15, tx?: Knex) => {
+    try {
+      const query = await (tx || db)
+        .with("to_delete", (qb) => {
+          void qb
+            .select("id")
+            .from(TableName.Snapshot)
+            .where("folderId", folderId)
+            .orderBy("createdAt", "desc")
+            .offset(n);
+        })
+        .from(TableName.Snapshot)
+        .whereIn("id", (qb) => {
+          void qb.select("id").from("to_delete");
+        })
+        .delete();
+      return query;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteSnapshotsAboveLimit" });
+    }
+  };
+
   return {
     ...secretSnapshotOrm,
     findById,
     findLatestSnapshotByFolderId,
     findRecursivelySnapshots,
+    findRecursivelySnapshotsV2Bridge,
     countOfSnapshotsByFolderId,
     findSecretSnapshotDataById,
-    pruneExcessSnapshots
+    findSecretSnapshotV2DataById,
+    pruneExcessSnapshots,
+    findNSecretV1SnapshotByFolderId,
+    deleteSnapshotsAboveLimit
   };
 };

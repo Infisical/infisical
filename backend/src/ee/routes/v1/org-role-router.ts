@@ -107,7 +107,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           }),
         name: z.string().trim().optional(),
         description: z.string().trim().optional(),
-        permissions: z.any().array()
+        permissions: z.any().array().optional()
       }),
       response: {
         200: z.object({

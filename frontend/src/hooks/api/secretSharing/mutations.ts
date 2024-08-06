@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { secretSharingKeys } from "./queries";
 import { TCreateSharedSecretRequest, TDeleteSharedSecretRequest, TSharedSecret } from "./types";
 
 export const useCreateSharedSecret = () => {
@@ -11,7 +12,7 @@ export const useCreateSharedSecret = () => {
       const { data } = await apiRequest.post<TSharedSecret>("/api/v1/secret-sharing", inputData);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries(["sharedSecrets"])
+    onSuccess: () => queryClient.invalidateQueries(secretSharingKeys.allSharedSecrets())
   });
 };
 
@@ -25,7 +26,7 @@ export const useCreatePublicSharedSecret = () => {
       );
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries(["sharedSecrets"])
+    onSuccess: () => queryClient.invalidateQueries(secretSharingKeys.allSharedSecrets())
   });
 };
 
@@ -38,8 +39,6 @@ export const useDeleteSharedSecret = () => {
       );
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(["sharedSecrets"]);
-    }
+    onSuccess: () => queryClient.invalidateQueries(secretSharingKeys.allSharedSecrets())
   });
 };

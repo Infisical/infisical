@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button , Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
+import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import {
@@ -10,29 +10,31 @@ import {
   formSchema,
   rolePermission2Form,
   TFormSchema
-} from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleModifySection/OrgRoleModifySection.utils";
+} from "@app/views/Org/RolePage/components/OrgRoleModifySection.utils";
 
+import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
 
 const SIMPLE_PERMISSION_OPTIONS = [
   {
-    title: "User management",
+    title: "User Management",
     formName: "member"
   },
   {
-    title: "Group management",
+    title: "Group Management",
     formName: "groups"
   },
   {
-    title: "Machine identity management",
+    title: "Machine Identity Management",
     formName: "identity"
   },
   {
-    title: "Billing & usage",
+    title: "Usage & Billing",
     formName: "billing"
   },
   {
-    title: "Role management",
+    title: "Role Management",
     formName: "role"
   },
   {
@@ -40,7 +42,7 @@ const SIMPLE_PERMISSION_OPTIONS = [
     formName: "incident-contact"
   },
   {
-    title: "Organization profile",
+    title: "Organization Profile",
     formName: "settings"
   },
   {
@@ -153,6 +155,16 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgRoleWorkspaceRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionAdminConsoleRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
             </TBody>
           </Table>
         </TableContainer>

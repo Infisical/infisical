@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,12 +12,12 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const projectWithEnv = ProjectsSchema.merge(
-  z.object({
-    _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
-  })
-);
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
+
+const projectWithEnv = SanitizedProjectSchema.extend({
+  _id: z.string(),
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+});
 
 const slugSchema = z
   .string()
@@ -161,7 +161,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             message: "Slug must be a valid slug"
           })
           .optional()
-          .describe(PROJECTS.CREATE.slug)
+          .describe(PROJECTS.CREATE.slug),
+        kmsKeyId: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -177,7 +178,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
-        slug: req.body.slug
+        slug: req.body.slug,
+        kmsKeyId: req.body.kmsKeyId
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -212,7 +214,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to delete.")
       }),
       response: {
-        200: ProjectsSchema
+        200: SanitizedProjectSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -283,7 +285,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         autoCapitalization: z.boolean().optional().describe("The new auto-capitalization setting.")
       }),
       response: {
-        200: ProjectsSchema
+        200: SanitizedProjectSchema
       }
     },
 
@@ -317,10 +319,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to list CAs.")
+        slug: slugSchema.describe(PROJECTS.LIST_CAS.slug)
       }),
       querystring: z.object({
-        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional()
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CAS.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CAS.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CAS.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CAS.limit)
       }),
       response: {
         200: z.object({
@@ -336,11 +342,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           type: ProjectFilterType.SLUG
         },
-        status: req.query.status,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission.type,
+        ...req.query
       });
       return { cas };
     }
@@ -354,11 +360,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        slug: slugSchema.describe("The slug of the project to list certificates.")
+        slug: slugSchema.describe(PROJECTS.LIST_CERTIFICATES.slug)
       }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0),
-        limit: z.coerce.number().min(1).max(100).default(25)
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit)
       }),
       response: {
         200: z.object({

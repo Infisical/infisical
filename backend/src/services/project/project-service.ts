@@ -8,8 +8,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { getConfig } from "@app/lib/config/env";
-import { createSecretBlindIndex } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -21,6 +19,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -28,7 +27,6 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
-import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
@@ -38,11 +36,14 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TGetProjectDTO,
+  TGetProjectKmsKey,
   TListProjectCasDTO,
   TListProjectCertsDTO,
+  TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
   TUpdateProjectDTO,
+  TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
   TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
@@ -65,10 +66,8 @@ type TProjectServiceFactoryDep = {
   identityProjectDAL: TIdentityProjectDALFactory;
   identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "create" | "findById" | "delete" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
-  secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   permissionService: TPermissionServiceFactory;
@@ -76,6 +75,16 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "create">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    | "updateProjectSecretManagerKmsKey"
+    | "getProjectKeyBackup"
+    | "loadProjectKeyBackup"
+    | "getKmsById"
+    | "getProjectSecretManagerKmsKeyId"
+    | "deleteInternalKms"
+  >;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -90,9 +99,7 @@ export const projectServiceFactory = ({
   folderDAL,
   orgService,
   identityProjectDAL,
-  projectBotDAL,
   identityOrgMembershipDAL,
-  secretBlindIndexDAL,
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
@@ -100,7 +107,9 @@ export const projectServiceFactory = ({
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
-  keyStore
+  keyStore,
+  kmsService,
+  projectBotDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -111,7 +120,8 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     workspaceName,
-    slug: projectSlug
+    slug: projectSlug,
+    kmsKeyId
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
 
@@ -123,9 +133,6 @@ export const projectServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
-
-    const appCfg = getConfig();
-    const blindIndex = createSecretBlindIndex(appCfg.ROOT_ENCRYPTION_KEY, appCfg.ENCRYPTION_KEY);
 
     const plan = await licenseService.getPlan(organization.id);
     if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
@@ -139,16 +146,28 @@ export const projectServiceFactory = ({
     const results = await projectDAL.transaction(async (tx) => {
       const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
+      if (kmsKeyId) {
+        const kms = await kmsService.getKmsById(kmsKeyId, tx);
+
+        if (kms.orgId !== organization.id) {
+          throw new BadRequestError({
+            message: "KMS does not belong in the organization"
+          });
+        }
+      }
+
       const project = await projectDAL.create(
         {
           name: workspaceName,
           orgId: organization.id,
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
-          version: ProjectVersion.V2,
+          kmsSecretManagerKeyId: kmsKeyId,
+          version: ProjectVersion.V3,
           pitVersionLimit: 10
         },
         tx
       );
+
       // set ghost user as admin of project
       const projectMembership = await projectMembershipDAL.create(
         {
@@ -162,18 +181,6 @@ export const projectServiceFactory = ({
         tx
       );
 
-      // generate the blind index for project
-      await secretBlindIndexDAL.create(
-        {
-          projectId: project.id,
-          keyEncoding: blindIndex.keyEncoding,
-          saltIV: blindIndex.iv,
-          saltTag: blindIndex.tag,
-          algorithm: blindIndex.algorithm,
-          encryptedSaltCipherText: blindIndex.ciphertext
-        },
-        tx
-      );
       // set default environments and root folder for provided environments
       const envs = await projectEnvDAL.insertMany(
         DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
@@ -353,7 +360,12 @@ export const projectServiceFactory = ({
     const deletedProject = await projectDAL.transaction(async (tx) => {
       const delProject = await projectDAL.deleteById(project.id, tx);
       const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
-
+      if (delProject.kmsCertificateKeyId) {
+        await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
+      }
+      if (delProject.kmsSecretManagerKeyId) {
+        await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
+      }
       // Delete the org membership for the ghost user if it's found.
       if (projectGhostUser) {
         await userDAL.deleteById(projectGhostUser.id, tx);
@@ -575,6 +587,10 @@ export const projectServiceFactory = ({
    */
   const listProjectCas = async ({
     status,
+    friendlyName,
+    commonName,
+    limit = 25,
+    offset = 0,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -596,10 +612,15 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const cas = await certificateAuthorityDAL.find({
-      projectId: project.id,
-      ...(status && { status })
-    });
+    const cas = await certificateAuthorityDAL.find(
+      {
+        projectId: project.id,
+        ...(status && { status }),
+        ...(friendlyName && { friendlyName }),
+        ...(commonName && { commonName })
+      },
+      { offset, limit, sort: [["updatedAt", "desc"]] }
+    );
 
     return cas;
   };
@@ -608,8 +629,10 @@ export const projectServiceFactory = ({
    * Return list of certificates for project
    */
   const listProjectCertificates = async ({
-    offset,
-    limit,
+    limit = 25,
+    offset = 0,
+    friendlyName,
+    commonName,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -634,17 +657,129 @@ export const projectServiceFactory = ({
       {
         $in: {
           caId: cas.map((ca) => ca.id)
-        }
+        },
+        ...(friendlyName && { friendlyName }),
+        ...(commonName && { commonName })
       },
       { offset, limit, sort: [["updatedAt", "desc"]] }
     );
 
-    const count = await certificateDAL.countCertificatesInProject(project.id);
+    const count = await certificateDAL.countCertificatesInProject({
+      projectId: project.id,
+      friendlyName,
+      commonName
+    });
 
     return {
       certificates,
       totalCount: count
     };
+  };
+
+  const updateProjectKmsKey = async ({
+    projectId,
+    kms,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateProjectKmsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+
+    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey({
+      projectId,
+      kms
+    });
+
+    return {
+      secretManagerKmsKey
+    };
+  };
+
+  const getProjectKmsBackup = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
+      });
+    }
+
+    const kmsBackup = await kmsService.getProjectKeyBackup(projectId);
+    return kmsBackup;
+  };
+
+  const loadProjectKmsBackup = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    backup
+  }: TLoadProjectKmsBackupDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
+      });
+    }
+
+    const kmsBackup = await kmsService.loadProjectKeyBackup(projectId, backup);
+    return kmsBackup;
+  };
+
+  const getProjectKmsKeys = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TGetProjectKmsKey) => {
+    const { membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (!membership) {
+      throw new ForbiddenRequestError({
+        message: "User is not a member of the project"
+      });
+    }
+
+    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsService.getKmsById(kmsKeyId);
+
+    return { secretManagerKmsKey: kmsKey };
   };
 
   return {
@@ -660,6 +795,10 @@ export const projectServiceFactory = ({
     listProjectCas,
     listProjectCertificates,
     updateVersionLimit,
-    updateAuditLogsRetention
+    updateAuditLogsRetention,
+    updateProjectKmsKey,
+    getProjectKmsBackup,
+    loadProjectKmsBackup,
+    getProjectKmsKeys
   };
 };

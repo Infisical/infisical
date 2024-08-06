@@ -154,6 +154,14 @@
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
+        {
+          "group": "Key Management (KMS)",
+          "pages": [
+            "documentation/platform/kms/overview",
+            "documentation/platform/kms/aws-kms",
+            "documentation/platform/kms/aws-hsm"
+          ]
+        },
         "documentation/platform/secret-sharing"
       ]
     },
@@ -654,6 +662,7 @@
         {
           "group": "Certificate Authorities",
           "pages": [
+            "api-reference/endpoints/certificate-authorities/list",
             "api-reference/endpoints/certificate-authorities/create",
             "api-reference/endpoints/certificate-authorities/read",
             "api-reference/endpoints/certificate-authorities/update",
@@ -663,12 +672,14 @@
             "api-reference/endpoints/certificate-authorities/sign-intermediate",
             "api-reference/endpoints/certificate-authorities/import-cert",
             "api-reference/endpoints/certificate-authorities/issue-cert",
+            "api-reference/endpoints/certificate-authorities/sign-cert",
             "api-reference/endpoints/certificate-authorities/crl"
           ]
         },
         {
           "group": "Certificates",
           "pages": [
+            "api-reference/endpoints/certificates/list",
             "api-reference/endpoints/certificates/read",
             "api-reference/endpoints/certificates/revoke",
             "api-reference/endpoints/certificates/delete",

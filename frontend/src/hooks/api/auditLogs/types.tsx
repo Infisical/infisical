@@ -579,6 +579,16 @@ interface GetCertBody {
   };
 }
 
+interface OrgAdminAccessProjectEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PROJECT;
+  metadata: {
+    userId: string;
+    username: string;
+    email: string;
+    projectId: string;
+  }; // no metadata yet
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -635,7 +645,8 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
-  | GetCertBody;
+  | GetCertBody
+  | OrgAdminAccessProjectEvent;
 
 export type AuditLog = {
   id: string;

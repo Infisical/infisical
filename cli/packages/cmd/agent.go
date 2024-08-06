@@ -327,6 +327,21 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 	}
 }
 
+func getSingleSecretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string, string) (models.SingleEnvironmentVariable, error) {
+	return func(projectID, envSlug, secretPath, secretName string) (models.SingleEnvironmentVariable, error) {
+		secret, requestEtag, err := util.GetSinglePlainTextSecretByNameV3(accessToken, projectID, envSlug, secretPath, secretName)
+		if err != nil {
+			return models.SingleEnvironmentVariable{}, err
+		}
+
+		if existingEtag != requestEtag {
+			*currentEtag = requestEtag
+		}
+
+		return secret, nil
+	}
+}
+
 func dynamicSecretTemplateFunction(accessToken string, dynamicSecretManager *DynamicSecretLeaseManager, templateId int) func(...string) (map[string]interface{}, error) {
 	return func(args ...string) (map[string]interface{}, error) {
 		argLength := len(args)
@@ -358,9 +373,12 @@ func ProcessTemplate(templateId int, templatePath string, data interface{}, acce
 	// custom template function to fetch secrets from Infisical
 	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag)
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretManager, templateId)
+	getSingleSecretFunction := getSingleSecretTemplateFunction(accessToken, existingEtag, currentEtag)
 	funcs := template.FuncMap{
-		"secret":         secretFunction,
-		"dynamic_secret": dynamicSecretFunction,
+		"secret":          secretFunction, // depreciated
+		"listSecrets":     secretFunction,
+		"dynamic_secret":  dynamicSecretFunction,
+		"getSecretByName": getSingleSecretFunction,
 		"minus": func(a, b int) int {
 			return a - b
 		},

@@ -24,7 +24,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/chzyer/readline"
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
@@ -205,6 +204,7 @@ var loginCmd = &cobra.Command{
 				if !overrideDomain {
 					domainQuery = false
 					config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL_MANUAL_OVERRIDE)
+					config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", strings.TrimSuffix(config.INFISICAL_URL, "/api"))
 				}
 
 			}
@@ -713,7 +713,7 @@ func askForMFACode() string {
 	return mfaVerifyCode
 }
 
-func askToPasteJwtToken(stdin *readline.CancelableStdin, success chan models.UserCredentials, failure chan error) {
+func askToPasteJwtToken(success chan models.UserCredentials, failure chan error) {
 	time.Sleep(time.Second * 5)
 	fmt.Println("\n\nOnce login is completed via browser, the CLI should be authenticated automatically.")
 	fmt.Println("However, if browser fails to communicate with the CLI, please paste the token from the browser below.")
@@ -807,26 +807,22 @@ func browserCliLogin() (models.UserCredentials, error) {
 
 	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
 
-	stdin := readline.NewCancelableStdin(os.Stdin)
 	go http.Serve(listener, corsHandler)
-	go askToPasteJwtToken(stdin, success, failure)
+	go askToPasteJwtToken(success, failure)
 
 	for {
 		select {
 		case loginResponse := <-success:
 			_ = closeListener(&listener)
-			_ = stdin.Close()
 			fmt.Println("Browser login successful")
 			return loginResponse, nil
 
 		case err := <-failure:
 			serverErr := closeListener(&listener)
-			stdErr := stdin.Close()
-			return models.UserCredentials{}, errors.Join(err, serverErr, stdErr)
+			return models.UserCredentials{}, errors.Join(err, serverErr)
 
 		case <-timeout:
 			_ = closeListener(&listener)
-			_ = stdin.Close()
 			return models.UserCredentials{}, errors.New("server timeout")
 		}
 	}

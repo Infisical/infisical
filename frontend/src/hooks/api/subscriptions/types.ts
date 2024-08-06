@@ -40,4 +40,5 @@ export type SubscriptionPlan = {
   has_used_trial: boolean;
   caCrl: boolean;
   instanceUserManagement: boolean;
+  externalKms: boolean;
 };

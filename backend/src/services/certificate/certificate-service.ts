@@ -173,7 +173,7 @@ export const certificateServiceFactory = ({
     const kmsDecryptor = await kmsService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
-    const decryptedCert = kmsDecryptor({
+    const decryptedCert = await kmsDecryptor({
       cipherTextBlob: certBody.encryptedCertificate
     });
 

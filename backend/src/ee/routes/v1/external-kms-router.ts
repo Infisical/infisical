@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ExternalKmsAwsSchema,
   ExternalKmsInputSchema,
@@ -18,6 +19,23 @@ const sanitizedExternalSchema = KmsKeysSchema.extend({
     provider: true
   })
 });
+
+const sanitizedExternalSchemaForGetAll = KmsKeysSchema.pick({
+  id: true,
+  description: true,
+  isDisabled: true,
+  createdAt: true,
+  updatedAt: true,
+  slug: true
+})
+  .extend({
+    externalKms: ExternalKmsSchema.pick({
+      provider: true,
+      status: true,
+      statusDetails: true
+    })
+  })
+  .array();
 
 const sanitizedExternalSchemaForGetById = KmsKeysSchema.extend({
   external: ExternalKmsSchema.pick({
@@ -39,8 +57,8 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        slug: z.string().min(1).trim().toLowerCase().optional(),
-        description: z.string().min(1).trim().optional(),
+        slug: z.string().min(1).trim().toLowerCase(),
+        description: z.string().trim().optional(),
         provider: ExternalKmsInputSchema
       }),
       response: {
@@ -60,6 +78,21 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         provider: req.body.provider,
         description: req.body.description
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            provider: req.body.provider.type,
+            slug: req.body.slug,
+            description: req.body.description
+          }
+        }
+      });
+
       return { externalKms };
     }
   });
@@ -76,7 +109,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         slug: z.string().min(1).trim().toLowerCase().optional(),
-        description: z.string().min(1).trim().optional(),
+        description: z.string().trim().optional(),
         provider: ExternalKmsInputUpdateSchema
       }),
       response: {
@@ -97,6 +130,21 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         description: req.body.description,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            provider: req.body.provider.type,
+            slug: req.body.slug,
+            description: req.body.description
+          }
+        }
+      });
+
       return { externalKms };
     }
   });
@@ -126,6 +174,19 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            slug: externalKms.slug
+          }
+        }
+      });
+
       return { externalKms };
     }
   });
@@ -155,7 +216,45 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_KMS,
+          metadata: {
+            kmsId: externalKms.id,
+            slug: externalKms.slug
+          }
+        }
+      });
+
       return { externalKms };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          externalKmsList: sanitizedExternalSchemaForGetAll
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const externalKmsList = await server.services.externalKms.list({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { externalKmsList };
     }
   });
 

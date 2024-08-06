@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   SecretApprovalRequestsSecretsSchema,
+  SecretApprovalRequestsSecretsV2Schema,
   TableName,
   TSecretApprovalRequestsSecrets,
   TSecretTags
@@ -15,6 +16,8 @@ export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApp
 export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
   const secretApprovalRequestSecretTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTag);
+  const secretApprovalRequestSecretV2TagOrm = ormify(db, TableName.SecretApprovalRequestSecretTagV2);
+  const secretApprovalRequestSecretV2Orm = ormify(db, TableName.SecretApprovalRequestSecretV2);
 
   const bulkUpdateNoVersionIncrement = async (data: TSecretApprovalRequestsSecrets[], tx?: Knex) => {
     try {
@@ -221,10 +224,197 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "FindByRequestId" });
     }
   };
+
+  const findByRequestIdBridgeSecretV2 = async (requestId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())({
+        secVerTag: TableName.SecretTag
+      })
+        .from(TableName.SecretApprovalRequestSecretV2)
+        .where({ requestId })
+        .leftJoin(
+          TableName.SecretApprovalRequestSecretTagV2,
+          `${TableName.SecretApprovalRequestSecretV2}.id`,
+          `${TableName.SecretApprovalRequestSecretTagV2}.secretId`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretApprovalRequestSecretTagV2}.tagId`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(TableName.SecretV2, `${TableName.SecretApprovalRequestSecretV2}.secretId`, `${TableName.SecretV2}.id`)
+        .leftJoin(
+          TableName.SecretVersionV2,
+          `${TableName.SecretVersionV2}.id`,
+          `${TableName.SecretApprovalRequestSecretV2}.secretVersion`
+        )
+        .leftJoin(
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .leftJoin<TSecretTags>(
+          db.ref(TableName.SecretTag).as("secVerTag"),
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+          db.ref("id").withSchema("secVerTag")
+        )
+        .select(selectAllTableCols(TableName.SecretApprovalRequestSecretV2))
+        .select({
+          secVerTagId: "secVerTag.id",
+          secVerTagColor: "secVerTag.color",
+          secVerTagSlug: "secVerTag.slug",
+          secVerTagName: "secVerTag.name"
+        })
+        .select(
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTagV2).as("tagJnId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+        )
+        .select(
+          db.ref("version").withSchema(TableName.SecretV2).as("orgSecVersion"),
+          db.ref("key").withSchema(TableName.SecretV2).as("orgSecKey"),
+          db.ref("encryptedValue").withSchema(TableName.SecretV2).as("orgSecValue"),
+          db.ref("encryptedComment").withSchema(TableName.SecretV2).as("orgSecComment")
+        )
+        .select(
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secVerVersion"),
+          db.ref("key").withSchema(TableName.SecretVersionV2).as("secVerKey"),
+          db.ref("encryptedValue").withSchema(TableName.SecretVersionV2).as("secVerValue"),
+          db.ref("encryptedComment").withSchema(TableName.SecretVersionV2).as("secVerComment")
+        );
+      const formatedDoc = sqlNestRelationships({
+        data: doc,
+        key: "id",
+        parentMapper: (data) => SecretApprovalRequestsSecretsV2Schema.omit({ secretVersion: true }).parse(data),
+        childrenMapper: [
+          {
+            key: "tagJnId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color }) => ({
+              id,
+              name,
+              slug,
+              color
+            })
+          },
+          {
+            key: "secretId",
+            label: "secret" as const,
+            mapper: ({ orgSecVersion, orgSecKey, orgSecValue, orgSecComment, secretId }) =>
+              secretId
+                ? {
+                    id: secretId,
+                    version: orgSecVersion,
+                    key: orgSecKey,
+                    encryptedValue: orgSecValue,
+                    encryptedComment: orgSecComment
+                  }
+                : undefined
+          },
+          {
+            key: "secretVersion",
+            label: "secretVersion" as const,
+            mapper: ({ secretVersion, secVerVersion, secVerKey, secVerValue, secVerComment }) =>
+              secretVersion
+                ? {
+                    version: secVerVersion,
+                    id: secretVersion,
+                    key: secVerKey,
+                    encryptedValue: secVerValue,
+                    encryptedComment: secVerComment
+                  }
+                : undefined,
+            childrenMapper: [
+              {
+                key: "secVerTagId",
+                label: "tags" as const,
+                mapper: ({ secVerTagId: id, secVerTagName: name, secVerTagSlug: slug, secVerTagColor: color }) => ({
+                  // eslint-disable-next-line
+                  id,
+                  // eslint-disable-next-line
+                  name,
+                  // eslint-disable-next-line
+                  slug,
+                  // eslint-disable-next-line
+                  color
+                })
+              }
+            ]
+          }
+        ]
+      });
+      return formatedDoc?.map(({ secret, secretVersion, ...el }) => ({
+        ...el,
+        secret: secret?.[0],
+        secretVersion: secretVersion?.[0]
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByRequestId" });
+    }
+  };
+  // special query for migration to v2 secret
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.SecretApprovalRequestSecret)
+        .join(
+          TableName.SecretApprovalRequest,
+          `${TableName.SecretApprovalRequest}.id`,
+          `${TableName.SecretApprovalRequestSecret}.requestId`
+        )
+        .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(
+          TableName.SecretApprovalRequestSecretTag,
+          `${TableName.SecretApprovalRequestSecret}.id`,
+          `${TableName.SecretApprovalRequestSecretTag}.secretId`
+        )
+        .where({ projectId })
+        .select(selectAllTableCols(TableName.SecretApprovalRequestSecret))
+        .select(
+          db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagId"),
+          db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagSecretId"),
+          db.ref("tagId").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagSecretTagId"),
+          db.ref("createdAt").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.SecretApprovalRequestSecretTag).as("secretApprovalTagUpdatedAt")
+        );
+      const formatedDoc = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (data) => SecretApprovalRequestsSecretsSchema.parse(data),
+        childrenMapper: [
+          {
+            key: "secretApprovalTagId",
+            label: "tags" as const,
+            mapper: ({
+              secretApprovalTagSecretId,
+              secretApprovalTagId,
+              secretApprovalTagUpdatedAt,
+              secretApprovalTagCreatedAt
+            }) => ({
+              secretApprovalTagSecretId,
+              secretApprovalTagId,
+              secretApprovalTagUpdatedAt,
+              secretApprovalTagCreatedAt
+            })
+          }
+        ]
+      });
+      return formatedDoc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByRequestId" });
+    }
+  };
+
   return {
     ...secretApprovalRequestSecretOrm,
+    insertV2Bridge: secretApprovalRequestSecretV2Orm.insertMany,
     findByRequestId,
+    findByRequestIdBridgeSecretV2,
     bulkUpdateNoVersionIncrement,
-    insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany
+    findByProjectId,
+    insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany,
+    insertApprovalSecretV2Tags: secretApprovalRequestSecretV2TagOrm.insertMany
   };
 };

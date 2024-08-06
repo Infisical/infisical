@@ -1,1 +1,1 @@
-export { SecretTable } from "./SecretTable";
+export { ShareSecretForm } from "./ShareSecretForm";

@@ -58,7 +58,7 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
 
     return (workspaces || []).filter(
       ({ id, orgId: projectOrgId, version }) =>
-        !wsWorkspaceIds.has(id) && projectOrgId === currentOrg?.id && version === ProjectVersion.V2
+        !wsWorkspaceIds.has(id) && projectOrgId === currentOrg?.id && version !== ProjectVersion.V1
     );
   }, [workspaces, projectMemberships]);
 
