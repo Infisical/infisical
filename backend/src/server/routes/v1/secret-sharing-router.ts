@@ -63,6 +63,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       response: {
         200: SecretSharingSchema.pick({
           encryptedValue: true,
+          password: true,
           iv: true,
           tag: true,
           expiresAt: true,
@@ -84,6 +85,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         encryptedValue: sharedSecret.encryptedValue,
         iv: sharedSecret.iv,
         tag: sharedSecret.tag,
+        password: sharedSecret.password,
         expiresAt: sharedSecret.expiresAt,
         expiresAfterViews: sharedSecret.expiresAfterViews,
         accessType: sharedSecret.accessType,
