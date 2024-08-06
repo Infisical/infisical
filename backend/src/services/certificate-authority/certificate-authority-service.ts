@@ -389,8 +389,6 @@ export const certificateAuthorityServiceFactory = ({
   /**
    * Renew certificate for CA with id [caId]
    * Note: Currently implements CA renewal with same key-pair only
-   *
-   * TODO: check rebuilt chain?
    */
   const renewCaCert = async ({ caId, notAfter, actorId, actorAuthMethod, actor, actorOrgId }: TRenewCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
@@ -950,7 +948,8 @@ export const certificateAuthorityServiceFactory = ({
       plainText: Buffer.from(certificateChain)
     });
 
-    // TODO: validate that >latest< public-private key of CA is used to sign the certificate
+    // TODO: validate that latest key-pair of CA is used to sign the certificate
+    // once renewal with new key pair is supported
     const { caSecret, caPublicKey } = await getCaCredentials({
       caId: ca.id,
       certificateAuthorityDAL,
