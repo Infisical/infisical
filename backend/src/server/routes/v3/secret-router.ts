@@ -180,7 +180,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
-          .describe(RAW_SECRETS.LIST.includeImports)
+          .describe(RAW_SECRETS.LIST.includeImports),
+        tagSlugs: z
+          .string()
+          .describe(RAW_SECRETS.LIST.tagSlugs)
+          .optional()
+          // split by comma and trim the strings
+          .transform((el) => (el ? el.split(",").map((i) => i.trim()) : []))
       }),
       response: {
         200: z.object({
@@ -251,7 +257,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: workspaceId,
         path: secretPath,
         includeImports: req.query.include_imports,
-        recursive: req.query.recursive
+        recursive: req.query.recursive,
+        tagSlugs: req.query.tagSlugs
       });
 
       await server.services.auditLog.createAuditLog({
