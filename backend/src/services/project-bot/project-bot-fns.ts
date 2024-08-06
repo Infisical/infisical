@@ -66,10 +66,10 @@ export const getBotKeyFnFactory = (
         await projectBotDAL.create({
           name: "Infisical Bot (Ghost)",
           projectId,
+          isActive: true,
           tag,
           iv,
           encryptedPrivateKey: ciphertext,
-          isActive: true,
           publicKey: botKey.publicKey,
           algorithm,
           keyEncoding: encoding,
@@ -80,6 +80,12 @@ export const getBotKeyFnFactory = (
       } else {
         await projectBotDAL.updateById(bot.id, {
           isActive: true,
+          tag,
+          iv,
+          encryptedPrivateKey: ciphertext,
+          publicKey: botKey.publicKey,
+          algorithm,
+          keyEncoding: encoding,
           encryptedProjectKey: encryptedWorkspaceKey.ciphertext,
           encryptedProjectKeyNonce: encryptedWorkspaceKey.nonce,
           senderId: projectV1Keys.userId
@@ -89,7 +95,6 @@ export const getBotKeyFnFactory = (
     }
 
     const botPrivateKey = getBotPrivateKey({ bot });
-
     const botKey = decryptAsymmetric({
       ciphertext: bot.encryptedProjectKey,
       privateKey: botPrivateKey,

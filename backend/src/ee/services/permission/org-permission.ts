@@ -9,6 +9,10 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionAdminConsoleAction {
+  AccessAllProjects = "access-all-projects"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -22,7 +26,8 @@ export enum OrgPermissionSubjects {
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity",
-  Kms = "kms"
+  Kms = "kms",
+  AdminConsole = "organization-admin-console"
 }
 
 export type OrgPermissionSet =
@@ -39,7 +44,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity]
-  | [OrgPermissionActions, OrgPermissionSubjects.Kms];
+  | [OrgPermissionActions, OrgPermissionSubjects.Kms]
+  | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -106,6 +112,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
+
+  can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   return build({ conditionsMatcher });
 };

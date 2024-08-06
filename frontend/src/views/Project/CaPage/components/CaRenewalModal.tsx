@@ -165,7 +165,7 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
               isLoading={isSubmitting}
               isDisabled={isSubmitting}
             >
-              Create
+              Renew
             </Button>
             <Button
               colorSchema="secondary"

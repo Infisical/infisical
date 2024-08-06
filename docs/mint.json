@@ -155,7 +155,7 @@
           ]
         },
         {
-          "group": "Key Management",
+          "group": "Key Management (KMS)",
           "pages": [
             "documentation/platform/kms/overview",
             "documentation/platform/kms/aws-kms",
@@ -667,11 +667,14 @@
             "api-reference/endpoints/certificate-authorities/read",
             "api-reference/endpoints/certificate-authorities/update",
             "api-reference/endpoints/certificate-authorities/delete",
+            "api-reference/endpoints/certificate-authorities/renew",
+            "api-reference/endpoints/certificate-authorities/list-ca-certs",
             "api-reference/endpoints/certificate-authorities/csr",
             "api-reference/endpoints/certificate-authorities/cert",
             "api-reference/endpoints/certificate-authorities/sign-intermediate",
             "api-reference/endpoints/certificate-authorities/import-cert",
             "api-reference/endpoints/certificate-authorities/issue-cert",
+            "api-reference/endpoints/certificate-authorities/sign-cert",
             "api-reference/endpoints/certificate-authorities/crl"
           ]
         },

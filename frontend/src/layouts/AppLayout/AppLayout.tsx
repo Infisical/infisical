@@ -476,10 +476,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         {user?.superAdmin && (
                           <Link href="/admin" legacyBehavior>
                             <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                              Admin Panel
+                              Server Admin Panel
                             </DropdownMenuItem>
                           </Link>
                         )}
+                        <Link href={`/org/${currentOrg?.id}/admin`} legacyBehavior>
+                          <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
+                          Organization Admin Console
+                          </DropdownMenuItem>
+                        </Link>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>

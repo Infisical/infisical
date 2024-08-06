@@ -317,6 +317,7 @@ export const useDeleteWorkspace = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+      queryClient.invalidateQueries(["org-admin-projects"]);
     }
   });
 };

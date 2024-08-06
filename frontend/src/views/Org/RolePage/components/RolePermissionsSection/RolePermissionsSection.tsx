@@ -12,6 +12,8 @@ import {
   TFormSchema
 } from "@app/views/Org/RolePage/components/OrgRoleModifySection.utils";
 
+import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
 
 const SIMPLE_PERMISSION_OPTIONS = [
@@ -153,6 +155,16 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgRoleWorkspaceRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionAdminConsoleRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
             </TBody>
           </Table>
         </TableContainer>

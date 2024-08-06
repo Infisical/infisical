@@ -20,7 +20,12 @@ export enum OrgPermissionSubjects {
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity",
-  Kms = "kms"
+  Kms = "kms",
+  AdminConsole = "organization-admin-console"
+}
+
+export enum OrgPermissionAdminConsoleAction {
+  AccessAllProjects = "access-all-projects"
 }
 
 export type OrgPermissionSet =
@@ -37,6 +42,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity]
-  | [OrgPermissionActions, OrgPermissionSubjects.Kms];
+  | [OrgPermissionActions, OrgPermissionSubjects.Kms]
+  | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

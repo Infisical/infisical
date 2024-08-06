@@ -19,6 +19,7 @@ export * from "./keys";
 export * from "./kms";
 export * from "./ldapConfig";
 export * from "./oidcConfig";
+export * from "./orgAdmin";
 export * from "./organization";
 export * from "./projectUserAdditionalPrivilege";
 export * from "./rateLimit";
