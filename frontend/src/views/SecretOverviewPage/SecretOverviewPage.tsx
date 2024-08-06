@@ -135,6 +135,23 @@ export const SecretOverviewPage = () => {
     });
   }, []);
 
+  const selectAllEntries = useCallback(() => {
+    const folderRecord: Record<string, boolean> = {};
+    folderNames.forEach((folder: string) => {
+      folderRecord[folder] = true;
+    })
+
+    const secretRecord: Record<string, boolean> = {};
+    secKeys.forEach((secret: string) => {
+      secretRecord[secret] = true;
+    })
+
+    setSelectedEntries({
+      [EntryType.FOLDER]: folderRecord,
+      [EntryType.SECRET]: secretRecord
+    })
+  }, []);
+
   useEffect(() => {
     const handleParentTableWidthResize = () => {
       setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
@@ -649,6 +666,7 @@ export const SecretOverviewPage = () => {
           getFolderByNameAndEnv={getFolderByNameAndEnv}
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
+          selectAllEntries={selectAllEntries}
         />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">

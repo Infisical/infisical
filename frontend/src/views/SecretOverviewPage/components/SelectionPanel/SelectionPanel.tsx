@@ -1,5 +1,5 @@
 import { subject } from "@casl/ability";
-import { faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faMinusSquare, faSquareCheck, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -30,6 +30,7 @@ type Props = {
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   getFolderByNameAndEnv: (name: string, env: string) => TSecretFolder | undefined;
   resetSelectedEntries: () => void;
+  selectAllEntries: () => void;
   selectedEntries: {
     [EntryType.FOLDER]: Record<string, boolean>;
     [EntryType.SECRET]: Record<string, boolean>;
@@ -41,6 +42,7 @@ export const SelectionPanel = ({
   getSecretByKey,
   secretPath,
   resetSelectedEntries,
+  selectAllEntries,
   selectedEntries
 }: Props) => {
   const { permission } = useProjectPermission();
@@ -171,6 +173,11 @@ export const SelectionPanel = ({
           <Tooltip content="Clear">
             <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedEntries}>
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content="Select All">
+            <IconButton variant="plain" ariaLabel="clear-selection" onClick={selectAllEntries}>
+              <FontAwesomeIcon icon={faSquareCheck} size="lg" />
             </IconButton>
           </Tooltip>
           <div className="ml-4 flex-grow px-2 text-sm">{selectedCount} Selected</div>
