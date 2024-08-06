@@ -42,3 +42,7 @@ export enum SecretSharingAccessType {
   Anyone = "anyone",
   Organization = "organization"
 }
+
+export type ValidateSecretPassword = {
+  isValid: boolean
+}

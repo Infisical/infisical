@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TSharedSecret, TViewSharedSecretResponse } from "./types";
+import { TSharedSecret, TViewSharedSecretResponse, ValidateSecretPassword } from "./types";
 
 export const secretSharingKeys = {
   allSharedSecrets: () => ["sharedSecrets"] as const,
@@ -67,3 +67,29 @@ export const useGetActiveSharedSecretById = ({
     }
   });
 };
+
+export const useValidateSecretPassword = ({
+  sharedSecretId,
+  hashedHex,
+  userPassword,
+}: {
+  sharedSecretId: string;
+  hashedHex: string;
+  userPassword: string;
+}) => {
+  return useQuery({
+    enabled: Boolean(sharedSecretId) && Boolean(userPassword),
+    queryKey: `validateSecretPass-${sharedSecretId}`,
+    queryFn: async () => {
+      const { data, isLoading, refetch } = await apiRequest.post<ValidateSecretPassword>(
+        `/api/v1/secret-sharing/public/${sharedSecretId}/validate`,
+        {
+          hashedHex,
+          password: userPassword
+        }
+      );
+
+      return { data, isLoading, refetch }
+    }
+  })
+}

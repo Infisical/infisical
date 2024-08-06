@@ -1,27 +1,51 @@
 import { useState, ChangeEvent } from "react";
-import {
-  faArrowRight,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon, faSpinner } from "@fortawesome/react-fontawesome";
 
 import { Button, IconButton, Input } from "@app/components/v2";
-import { TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
+import { useValidateSecretPassword } from "@app/hooks/api/secretSharing";
+import { createNotification } from "@app/components/notifications";
 
 type Props = {
-  secret: TViewSharedSecretResponse;
+  secretId: string;
+  hashedHex: string;
   handlePassMatch: (val: boolean) => void;
 };
 
-export const PasswordContainer = ({ secret, handlePassMatch }: Props) => {
+export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Props) => {
   const [password, setPassword] = useState<string>('')
+  const [isLoading, setLoading] = useState(false)
+  const { refetch } = useValidateSecretPassword({
+    sharedSecretId: secretId,
+    hashedHex,
+    userPassword: password,
+  })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value)
   }
 
-  const validatePassword = () => {
-    if (secret.password === password) {
-      handlePassMatch(true)
+  const validatePassword = async () => {
+    try {
+      const { data: freshData } = await refetch();
+
+      if (freshData.data.isValid === true) {
+        handlePassMatch(true);
+      } else {
+        createNotification({
+          text: "Password is Invalid. Try again",
+          type: "error"
+        })
+      }
+    } catch (error) {
+      console.error("Failed to validate password:", error);
+      createNotification({
+        text: "Failed to validate password",
+        type: "error"
+      })
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -38,7 +62,7 @@ export const PasswordContainer = ({ secret, handlePassMatch }: Props) => {
               validatePassword()
             }}
           >
-            <FontAwesomeIcon icon={faArrowRight} />
+            <FontAwesomeIcon icon={isLoading ? faSpinner : faArrowRight} />
           </IconButton>
         </div>
       </div>
