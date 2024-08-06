@@ -9,7 +9,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { ORGANIZATIONS } from "@app/lib/api-docs";
-import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -307,7 +307,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     config: {
-      rateLimit: creationLimit
+      rateLimit: writeLimit
     },
     schema: {
       body: z.object({

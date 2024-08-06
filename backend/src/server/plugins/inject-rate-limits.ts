@@ -27,13 +27,12 @@ export const injectRateLimits = fp(async (server) => {
     // we're using the null coalescing operator in order to handle outdated licenses
     req.rateLimits = {
       readLimit: rateLimits?.readLimit ?? instanceRateLimiterConfig.readLimit,
-      publicEndpointLimit: rateLimits?.publicEndpointLimit ?? instanceRateLimiterConfig.publicEndpointLimit,
       writeLimit: rateLimits?.writeLimit ?? instanceRateLimiterConfig.writeLimit,
       secretsLimit: rateLimits?.secretsLimit ?? instanceRateLimiterConfig.secretsLimit,
-      authRateLimit: rateLimits?.authRateLimit ?? instanceRateLimiterConfig.authRateLimit,
-      inviteUserRateLimit: rateLimits?.inviteUserRateLimit ?? instanceRateLimiterConfig.inviteUserRateLimit,
-      mfaRateLimit: rateLimits?.mfaRateLimit ?? instanceRateLimiterConfig.mfaRateLimit,
-      creationLimit: rateLimits?.creationLimit ?? instanceRateLimiterConfig.creationLimit
+      publicEndpointLimit: instanceRateLimiterConfig.publicEndpointLimit,
+      authRateLimit: instanceRateLimiterConfig.authRateLimit,
+      inviteUserRateLimit: instanceRateLimiterConfig.inviteUserRateLimit,
+      mfaRateLimit: instanceRateLimiterConfig.mfaRateLimit
     };
   });
 });

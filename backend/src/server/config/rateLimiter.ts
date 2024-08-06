@@ -66,14 +66,6 @@ export const mfaRateLimit: RateLimitOptions = {
   }
 };
 
-export const creationLimit: RateLimitOptions = {
-  // identity, project, org
-  timeWindow: 60 * 1000,
-  hook: "preValidation",
-  max: (req) => req.rateLimits.creationLimit,
-  keyGenerator: (req) => req.realIp
-};
-
 // Public endpoints to avoid brute force attacks
 export const publicEndpointLimit: RateLimitOptions = {
   // Read Shared Secrets

@@ -23,5 +23,4 @@ export type RateLimitConfiguration = {
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
-  creationLimit: number;
 };

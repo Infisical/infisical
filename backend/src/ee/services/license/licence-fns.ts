@@ -43,13 +43,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   externalKms: false,
   rateLimits: {
     readLimit: 60,
-    publicEndpointLimit: 30,
     writeLimit: 200,
-    secretsLimit: 40,
-    authRateLimit: 60,
-    inviteUserRateLimit: 30,
-    mfaRateLimit: 20,
-    creationLimit: 30
+    secretsLimit: 40
   }
 });
 

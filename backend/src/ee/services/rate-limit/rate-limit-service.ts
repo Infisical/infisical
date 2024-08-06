@@ -13,8 +13,7 @@ let rateLimitMaxConfiguration: RateLimitConfiguration = {
   secretsLimit: 60,
   authRateLimit: 60,
   inviteUserRateLimit: 30,
-  mfaRateLimit: 20,
-  creationLimit: 30
+  mfaRateLimit: 20
 };
 
 Object.freeze(rateLimitMaxConfiguration);
@@ -67,8 +66,7 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
           secretsLimit: rateLimit.secretsRateLimit,
           authRateLimit: rateLimit.authRateLimit,
           inviteUserRateLimit: rateLimit.inviteUserRateLimit,
-          mfaRateLimit: rateLimit.mfaRateLimit,
-          creationLimit: rateLimit.creationLimit
+          mfaRateLimit: rateLimit.mfaRateLimit
         };
 
         logger.info(`syncRateLimitConfiguration: rate limit configuration: %o`, newRateLimitMaxConfiguration);
