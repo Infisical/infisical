@@ -121,6 +121,7 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^2.1.0",
     "@node-saml/passport-saml": "^4.0.4",
+    "@octokit/plugin-retry": "^5.0.5",
     "@octokit/rest": "^20.0.2",
     "@octokit/webhooks-types": "^7.3.1",
     "@peculiar/asn1-schema": "^2.3.8",

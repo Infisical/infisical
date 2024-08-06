@@ -1,3 +1,4 @@
+import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
@@ -79,7 +80,7 @@ const getIntegrationSecretsV2 = async (
  * Return the secrets in a given [folderId] including secrets from
  * nested imported folders recursively.
  */
-const getIntegrationSecrets = async (
+const getIntegrationSecretsV1 = async (
   dto: {
     projectId: string;
     environment: string;
@@ -129,7 +130,7 @@ const getIntegrationSecrets = async (
     if (folder) {
       // get secrets contained in each imported folder by recursively calling
       // this function against the imported folder
-      const importedSecrets = await getIntegrationSecrets(
+      const importedSecrets = await getIntegrationSecretsV1(
         {
           environment: dto.environment,
           projectId: dto.projectId,
@@ -167,7 +168,8 @@ export const deleteGithubSecrets = async ({
     selected_repositories_url?: string | undefined;
   }
 
-  const octokit = new Octokit({
+  const OctokitWithRetry = Octokit.plugin(retry);
+  const octokit = new OctokitWithRetry({
     auth: accessToken
   });
 
@@ -177,11 +179,11 @@ export const deleteGithubSecrets = async ({
     Env = "github-env"
   }
 
-  let encryptedSecrets: GitHubSecret[];
+  let encryptedGithubSecrets: GitHubSecret[];
 
   switch (integration.scope) {
     case GithubScope.Org: {
-      encryptedSecrets = (
+      encryptedGithubSecrets = (
         await octokit.request("GET /orgs/{org}/actions/secrets", {
           org: integration.owner as string
         })
@@ -189,7 +191,7 @@ export const deleteGithubSecrets = async ({
       break;
     }
     case GithubScope.Env: {
-      encryptedSecrets = (
+      encryptedGithubSecrets = (
         await octokit.request("GET /repositories/{repository_id}/environments/{environment_name}/secrets", {
           repository_id: Number(integration.appId),
           environment_name: integration.targetEnvironmentId as string
@@ -198,7 +200,7 @@ export const deleteGithubSecrets = async ({
       break;
     }
     default: {
-      encryptedSecrets = (
+      encryptedGithubSecrets = (
         await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
           owner: integration.owner as string,
           repo: integration.app as string
@@ -208,7 +210,7 @@ export const deleteGithubSecrets = async ({
     }
   }
 
-  for await (const encryptedSecret of encryptedSecrets) {
+  for await (const encryptedSecret of encryptedGithubSecrets) {
     if (encryptedSecret.name in secrets) {
       switch (integration.scope) {
         case GithubScope.Org: {
@@ -238,6 +240,11 @@ export const deleteGithubSecrets = async ({
           break;
         }
       }
+
+      // small delay to prevent hitting API rate limits
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
     }
   }
 };
@@ -308,7 +315,7 @@ export const deleteIntegrationSecrets = async ({
         folderDAL,
         secretImportDAL
       )
-    : await getIntegrationSecrets(
+    : await getIntegrationSecretsV1(
         {
           environment: integration.environment.id,
           projectId: integration.projectId,
