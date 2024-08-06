@@ -70,5 +70,6 @@ export enum EventType {
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
-  GET_CERT_BODY = "get-cert-body"
+  GET_CERT_BODY = "get-cert-body",
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project"
 }

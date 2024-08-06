@@ -12,6 +12,12 @@ const generalPermissionSchema = z
   })
   .optional();
 
+const adminConsolePermissionSchmea = z
+  .object({
+    "access-all-projects": z.boolean().optional()
+  })
+  .optional();
+
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
@@ -23,7 +29,6 @@ export const formSchema = z.object({
     .object({
       workspace: z
         .object({
-          read: z.boolean().optional(),
           create: z.boolean().optional()
         })
         .optional(),
@@ -38,7 +43,8 @@ export const formSchema = z.object({
       scim: generalPermissionSchema,
       ldap: generalPermissionSchema,
       billing: generalPermissionSchema,
-      identity: generalPermissionSchema
+      identity: generalPermissionSchema,
+      "organization-admin-console": adminConsolePermissionSchmea
     })
     .optional()
 });

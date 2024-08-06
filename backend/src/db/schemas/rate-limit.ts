@@ -15,7 +15,6 @@ export const RateLimitSchema = z.object({
   authRateLimit: z.number().default(60),
   inviteUserRateLimit: z.number().default(30),
   mfaRateLimit: z.number().default(20),
-  creationLimit: z.number().default(30),
   publicEndpointLimit: z.number().default(30),
   createdAt: z.date(),
   updatedAt: z.date()

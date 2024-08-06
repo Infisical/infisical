@@ -490,10 +490,10 @@ export const secretV2BridgeServiceFactory = ({
         ...secret,
         value: secret.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-          : undefined,
+          : "",
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-          : undefined
+          : ""
       })
     );
     const expandSecretReferences = expandSecretReferencesFactory({
@@ -522,7 +522,7 @@ export const secretV2BridgeServiceFactory = ({
           await expandSecretReferences(secretsGroupByKey);
           secretsGroupByPath[secretPathKey].forEach((decryptedSecret) => {
             // eslint-disable-next-line no-param-reassign
-            decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value;
+            decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value || "";
           });
         }
       }

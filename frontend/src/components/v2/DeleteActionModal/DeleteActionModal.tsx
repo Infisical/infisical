@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 import { useToggle } from "@app/hooks";
 
@@ -16,6 +16,7 @@ type Props = {
   subTitle?: string;
   onDeleteApproved: () => Promise<void>;
   buttonText?: string;
+  children?: ReactNode;
 };
 
 export const DeleteActionModal = ({
@@ -26,7 +27,8 @@ export const DeleteActionModal = ({
   onDeleteApproved,
   title,
   subTitle = "This action is irreversible.",
-  buttonText = "Delete"
+  buttonText = "Delete",
+  children
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
   const [isLoading, setIsLoading] = useToggle();
@@ -97,6 +99,7 @@ export const DeleteActionModal = ({
               placeholder={`Type ${deleteKey} here`}
             />
           </FormControl>
+          {children}
         </form>
       </ModalContent>
     </Modal>

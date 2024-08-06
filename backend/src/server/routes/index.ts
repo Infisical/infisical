@@ -129,6 +129,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
+import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
@@ -183,6 +184,7 @@ import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
+import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
@@ -498,6 +500,16 @@ export const registerRoutes = async (
     keyStore,
     licenseService
   });
+  const orgAdminService = orgAdminServiceFactory({
+    projectDAL,
+    permissionService,
+    projectUserMembershipRoleDAL,
+    userDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    projectMembershipDAL
+  });
+
   const rateLimitService = rateLimitServiceFactory({
     rateLimitDAL,
     licenseService
@@ -885,8 +897,15 @@ export const registerRoutes = async (
     folderDAL,
     integrationDAL,
     integrationAuthDAL,
-    secretQueueService
+    secretQueueService,
+    integrationAuthService,
+    projectBotService,
+    secretV2BridgeDAL,
+    secretImportDAL,
+    secretDAL,
+    kmsService
   });
+
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
@@ -1113,7 +1132,8 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
-    externalKms: externalKmsService
+    externalKms: externalKmsService,
+    orgAdmin: orgAdminService
   });
 
   const cronJobs: CronJob[] = [];
@@ -1130,6 +1150,7 @@ export const registerRoutes = async (
 
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });
   await server.register(injectPermission);
+  await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
 
   server.route({

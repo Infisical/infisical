@@ -60,7 +60,6 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
-import { withPermission } from "@app/hoc";
 import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
@@ -488,673 +487,659 @@ const formSchema = yup.object({
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
 
 // #TODO: Update all the workspaceIds
-const OrganizationPage = withPermission(
-  () => {
-    const { t } = useTranslation();
+const OrganizationPage = () => {
+  const { t } = useTranslation();
 
-    const router = useRouter();
+  const router = useRouter();
 
-    const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
-    const { currentOrg } = useOrganization();
-    const routerOrgId = String(router.query.id);
-    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
-    const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
-      useGetUserProjectFavorites(currentOrg?.id!);
-    const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+  const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
+  const { currentOrg } = useOrganization();
+  const routerOrgId = String(router.query.id);
+  const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
+  const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
+    useGetUserProjectFavorites(currentOrg?.id!);
+  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
-    const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
-    const addUsersToProject = useAddUserToWsNonE2EE();
+  const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
+  const addUsersToProject = useAddUserToWsNonE2EE();
 
-    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-      "addNewWs",
-      "upgradePlan"
-    ] as const);
-    const {
-      control,
-      formState: { isSubmitting },
-      reset,
-      handleSubmit
-    } = useForm<TAddProjectFormData>({
-      resolver: yupResolver(formSchema),
-      defaultValues: {
-        kmsKeyId: INTERNAL_KMS_KEY_ID
-      }
-    });
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "addNewWs",
+    "upgradePlan"
+  ] as const);
+  const {
+    control,
+    formState: { isSubmitting },
+    reset,
+    handleSubmit
+  } = useForm<TAddProjectFormData>({
+    resolver: yupResolver(formSchema),
+    defaultValues: {
+      kmsKeyId: INTERNAL_KMS_KEY_ID
+    }
+  });
 
-    const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
-    const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
-    const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
-    const [usersInOrg, setUsersInOrg] = useState(false);
-    const [searchFilter, setSearchFilter] = useState("");
-    const createWs = useCreateWorkspace();
-    const { user } = useUser();
-    const { data: serverDetails } = useFetchServerStatus();
-    const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
-      (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
-    );
+  const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
+  const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
+  const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
+  const [usersInOrg, setUsersInOrg] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const createWs = useCreateWorkspace();
+  const { user } = useUser();
+  const { data: serverDetails } = useFetchServerStatus();
+  const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
+    (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
+  );
 
-    const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
+  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
 
-    const onCreateProject = async ({ name, addMembers, kmsKeyId }: TAddProjectFormData) => {
-      // type check
-      if (!currentOrg) return;
-      if (!user) return;
-      try {
-        const {
-          data: {
-            project: { id: newProjectId }
-          }
-        } = await createWs.mutateAsync({
-          projectName: name,
-          kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined
-        });
-
-        if (addMembers) {
-          const orgUsers = await fetchOrgUsers(currentOrg.id);
-
-          await addUsersToProject.mutateAsync({
-            usernames: orgUsers
-              .map((member) => member.user.username)
-              .filter((username) => username !== user.username),
-            projectId: newProjectId,
-            orgId: currentOrg.id
-          });
+  const onCreateProject = async ({ name, addMembers, kmsKeyId }: TAddProjectFormData) => {
+    // type check
+    if (!currentOrg) return;
+    if (!user) return;
+    try {
+      const {
+        data: {
+          project: { id: newProjectId }
         }
-
-        // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
-        await new Promise((resolve) => setTimeout(resolve, 2_000));
-
-        handlePopUpClose("addNewWs");
-        createNotification({ text: "Project created", type: "success" });
-        router.push(`/project/${newProjectId}/secrets/overview`);
-      } catch (err) {
-        console.error(err);
-        createNotification({ text: "Failed to create project", type: "error" });
-      }
-    };
-
-    const { subscription } = useSubscription();
-
-    const isAddingProjectsAllowed = subscription?.workspaceLimit
-      ? subscription.workspacesUsed < subscription.workspaceLimit
-      : true;
-
-    useEffect(() => {
-      onboardingCheck({
-        orgId: routerOrgId,
-        setHasUserClickedIntro,
-        setHasUserClickedSlack,
-        setHasUserPushedSecrets,
-        setUsersInOrg
+      } = await createWs.mutateAsync({
+        projectName: name,
+        kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined
       });
-    }, []);
 
-    const isWorkspaceEmpty = !isWorkspaceLoading && orgWorkspaces?.length === 0;
-    const filteredWorkspaces = orgWorkspaces.filter((ws) =>
-      ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
-    );
+      if (addMembers) {
+        const orgUsers = await fetchOrgUsers(currentOrg.id);
 
-    const { workspacesWithFaveProp, favoriteWorkspaces, nonFavoriteWorkspaces } = useMemo(() => {
-      const workspacesWithFav = filteredWorkspaces
-        .map((w): Workspace & { isFavorite: boolean } => ({
-          ...w,
-          isFavorite: Boolean(projectFavorites?.includes(w.id))
-        }))
-        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
-
-      const favWorkspaces = workspacesWithFav.filter((w) => w.isFavorite);
-      const nonFavWorkspaces = workspacesWithFav.filter((w) => !w.isFavorite);
-
-      return {
-        workspacesWithFaveProp: workspacesWithFav,
-        favoriteWorkspaces: favWorkspaces,
-        nonFavoriteWorkspaces: nonFavWorkspaces
-      };
-    }, [filteredWorkspaces, projectFavorites]);
-
-    const addProjectToFavorites = async (projectId: string) => {
-      try {
-        if (currentOrg?.id) {
-          await updateUserProjectFavorites({
-            orgId: currentOrg?.id,
-            projectFavorites: [...(projectFavorites || []), projectId]
-          });
-        }
-      } catch (err) {
-        createNotification({
-          text: "Failed to add project to favorites.",
-          type: "error"
+        await addUsersToProject.mutateAsync({
+          usernames: orgUsers
+            .map((member) => member.user.username)
+            .filter((username) => username !== user.username),
+          projectId: newProjectId,
+          orgId: currentOrg.id
         });
       }
-    };
 
-    const removeProjectFromFavorites = async (projectId: string) => {
-      try {
-        if (currentOrg?.id) {
-          await updateUserProjectFavorites({
-            orgId: currentOrg?.id,
-            projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
-          });
-        }
-      } catch (err) {
-        createNotification({
-          text: "Failed to remove project from favorites.",
-          type: "error"
+      // eslint-disable-next-line no-promise-executor-return -- We do this because the function returns too fast, which sometimes causes an error when the user is redirected.
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+      handlePopUpClose("addNewWs");
+      createNotification({ text: "Project created", type: "success" });
+      router.push(`/project/${newProjectId}/secrets/overview`);
+    } catch (err) {
+      console.error(err);
+      createNotification({ text: "Failed to create project", type: "error" });
+    }
+  };
+
+  const { subscription } = useSubscription();
+
+  const isAddingProjectsAllowed = subscription?.workspaceLimit
+    ? subscription.workspacesUsed < subscription.workspaceLimit
+    : true;
+
+  useEffect(() => {
+    onboardingCheck({
+      orgId: routerOrgId,
+      setHasUserClickedIntro,
+      setHasUserClickedSlack,
+      setHasUserPushedSecrets,
+      setUsersInOrg
+    });
+  }, []);
+
+  const isWorkspaceEmpty = !isWorkspaceLoading && orgWorkspaces?.length === 0;
+  const filteredWorkspaces = orgWorkspaces.filter((ws) =>
+    ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
+  const { workspacesWithFaveProp, favoriteWorkspaces, nonFavoriteWorkspaces } = useMemo(() => {
+    const workspacesWithFav = filteredWorkspaces
+      .map((w): Workspace & { isFavorite: boolean } => ({
+        ...w,
+        isFavorite: Boolean(projectFavorites?.includes(w.id))
+      }))
+      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
+
+    const favWorkspaces = workspacesWithFav.filter((w) => w.isFavorite);
+    const nonFavWorkspaces = workspacesWithFav.filter((w) => !w.isFavorite);
+
+    return {
+      workspacesWithFaveProp: workspacesWithFav,
+      favoriteWorkspaces: favWorkspaces,
+      nonFavoriteWorkspaces: nonFavWorkspaces
+    };
+  }, [filteredWorkspaces, projectFavorites]);
+
+  const addProjectToFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []), projectId]
         });
       }
-    };
+    } catch (err) {
+      createNotification({
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
+    }
+  };
 
-    const renderProjectGridItem = (workspace: Workspace, isFavorite: boolean) => (
-      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-      <div
-        onClick={() => {
-          router.push(`/project/${workspace.id}/secrets/overview`);
-          localStorage.setItem("projectData.id", workspace.id);
-        }}
-        key={workspace.id}
-        className="min-w-72 flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-      >
-        <div className="flex flex-row justify-between">
-          <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
-          {isFavorite ? (
-            <FontAwesomeIcon
-              icon={faSolidStar}
-              className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeProjectFromFavorites(workspace.id);
-              }}
-            />
-          ) : (
-            <FontAwesomeIcon
-              icon={faStar}
-              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
-              onClick={(e) => {
-                e.stopPropagation();
-                addProjectToFavorites(workspace.id);
-              }}
-            />
-          )}
+  const removeProjectFromFavorites = async (projectId: string) => {
+    try {
+      if (currentOrg?.id) {
+        await updateUserProjectFavorites({
+          orgId: currentOrg?.id,
+          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text: "Failed to remove project from favorites.",
+        type: "error"
+      });
+    }
+  };
+
+  const renderProjectGridItem = (workspace: Workspace, isFavorite: boolean) => (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+    <div
+      onClick={() => {
+        router.push(`/project/${workspace.id}/secrets/overview`);
+        localStorage.setItem("projectData.id", workspace.id);
+      }}
+      key={workspace.id}
+      className="min-w-72 flex h-40 cursor-pointer flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+    >
+      <div className="flex flex-row justify-between">
+        <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
+        {isFavorite ? (
+          <FontAwesomeIcon
+            icon={faSolidStar}
+            className="text-sm text-mineshaft-300 hover:text-mineshaft-400"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeProjectFromFavorites(workspace.id);
+            }}
+          />
+        ) : (
+          <FontAwesomeIcon
+            icon={faStar}
+            className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+            onClick={(e) => {
+              e.stopPropagation();
+              addProjectToFavorites(workspace.id);
+            }}
+          />
+        )}
+      </div>
+      <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+        {workspace.environments?.length || 0} environments
+      </div>
+      <button type="button">
+        <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+          Explore{" "}
+          <FontAwesomeIcon
+            icon={faArrowRight}
+            className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
+          />
         </div>
-        <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+      </button>
+    </div>
+  );
+
+  const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+    <div
+      onClick={() => {
+        router.push(`/project/${workspace.id}/secrets/overview`);
+        localStorage.setItem("projectData.id", workspace.id);
+      }}
+      key={workspace.id}
+      className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+        index === 0 && "rounded-t-md"
+      } ${index === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
+    >
+      <div className="flex items-center sm:col-span-3 lg:col-span-4">
+        <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
+        <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
+      </div>
+      <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+        <div className="text-center text-sm text-mineshaft-300">
           {workspace.environments?.length || 0} environments
         </div>
-        <button type="button">
-          <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
-            Explore{" "}
-            <FontAwesomeIcon
-              icon={faArrowRight}
-              className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
-            />
-          </div>
-        </button>
-      </div>
-    );
-
-    const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
-      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-      <div
-        onClick={() => {
-          router.push(`/project/${workspace.id}/secrets/overview`);
-          localStorage.setItem("projectData.id", workspace.id);
-        }}
-        key={workspace.id}
-        className={`min-w-72 group grid h-14 cursor-pointer grid-cols-6 border-t border-l border-r border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-          index === 0 && "rounded-t-md"
-        } ${index === filteredWorkspaces.length - 1 && "rounded-b-md border-b"}`}
-      >
-        <div className="flex items-center sm:col-span-3 lg:col-span-4">
-          <FontAwesomeIcon icon={faFileShield} className="text-sm text-primary/70" />
-          <div className="ml-5 truncate text-sm text-mineshaft-100">{workspace.name}</div>
-        </div>
-        <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
-          <div className="text-center text-sm text-mineshaft-300">
-            {workspace.environments?.length || 0} environments
-          </div>
-          {isFavorite ? (
-            <FontAwesomeIcon
-              icon={faSolidStar}
-              className="ml-6 text-sm text-mineshaft-300 hover:text-mineshaft-400"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeProjectFromFavorites(workspace.id);
-              }}
-            />
-          ) : (
-            <FontAwesomeIcon
-              icon={faStar}
-              className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
-              onClick={(e) => {
-                e.stopPropagation();
-                addProjectToFavorites(workspace.id);
-              }}
-            />
-          )}
-        </div>
-      </div>
-    );
-
-    const projectsGridView = (
-      <>
-        {favoriteWorkspaces.length > 0 && (
-          <>
-            <p className="mt-6 text-xl font-semibold text-white">Favorites</p>
-            <div
-              className={`b grid w-full grid-cols-1 gap-4 ${
-                nonFavoriteWorkspaces.length > 0 && "border-b border-mineshaft-600"
-              } py-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
-            >
-              {favoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, true))}
-            </div>
-          </>
+        {isFavorite ? (
+          <FontAwesomeIcon
+            icon={faSolidStar}
+            className="ml-6 text-sm text-mineshaft-300 hover:text-mineshaft-400"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeProjectFromFavorites(workspace.id);
+            }}
+          />
+        ) : (
+          <FontAwesomeIcon
+            icon={faStar}
+            className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
+            onClick={(e) => {
+              e.stopPropagation();
+              addProjectToFavorites(workspace.id);
+            }}
+          />
         )}
-        <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {isProjectViewLoading &&
-            Array.apply(0, Array(3)).map((_x, i) => (
-              <div
-                key={`workspace-cards-loading-${i + 1}`}
-                className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-              >
-                <div className="mt-0 text-lg text-mineshaft-100">
-                  <Skeleton className="w-3/4 bg-mineshaft-600" />
-                </div>
-                <div className="mt-0 pb-6 text-sm text-mineshaft-300">
-                  <Skeleton className="w-1/2 bg-mineshaft-600" />
-                </div>
-                <div className="flex justify-end">
-                  <Skeleton className="w-1/2 bg-mineshaft-600" />
-                </div>
-              </div>
-            ))}
-          {!isProjectViewLoading &&
-            nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
-        </div>
-      </>
-    );
+      </div>
+    </div>
+  );
 
-    const projectsListView = (
-      <div className="mt-4 w-full rounded-md">
+  const projectsGridView = (
+    <>
+      {favoriteWorkspaces.length > 0 && (
+        <>
+          <p className="mt-6 text-xl font-semibold text-white">Favorites</p>
+          <div
+            className={`b grid w-full grid-cols-1 gap-4 ${
+              nonFavoriteWorkspaces.length > 0 && "border-b border-mineshaft-600"
+            } py-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
+          >
+            {favoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, true))}
+          </div>
+        </>
+      )}
+      <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {isProjectViewLoading &&
           Array.apply(0, Array(3)).map((_x, i) => (
             <div
               key={`workspace-cards-loading-${i + 1}`}
-              className={`min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-                i === 0 && "rounded-t-md"
-              } ${i === 2 && "rounded-b-md border-b"}`}
+              className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
             >
-              <Skeleton className="w-full bg-mineshaft-600" />
+              <div className="mt-0 text-lg text-mineshaft-100">
+                <Skeleton className="w-3/4 bg-mineshaft-600" />
+              </div>
+              <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+                <Skeleton className="w-1/2 bg-mineshaft-600" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="w-1/2 bg-mineshaft-600" />
+              </div>
             </div>
           ))}
         {!isProjectViewLoading &&
-          workspacesWithFaveProp.map((workspace, ind) =>
-            renderProjectListItem(workspace, workspace.isFavorite, ind)
-          )}
+          nonFavoriteWorkspaces.map((workspace) => renderProjectGridItem(workspace, false))}
       </div>
-    );
+    </>
+  );
 
-    return (
-      <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
-        <Head>
-          <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-          <link rel="icon" href="/infisical.ico" />
-        </Head>
-        {!serverDetails?.redisConfigured && (
-          <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-            <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
-            <div className="flex w-full items-center rounded-md border border-blue-400/70 bg-blue-900/70 p-2 text-base text-mineshaft-100">
-              <FontAwesomeIcon
-                icon={faExclamationCircle}
-                className="mr-4 p-4 text-2xl text-mineshaft-50"
-              />
-              Attention: Updated versions of Infisical now require Redis for full functionality.
-              Learn how to configure it
-              <Link
-                href="https://infisical.com/docs/self-hosting/configuration/redis"
-                target="_blank"
+  const projectsListView = (
+    <div className="mt-4 w-full rounded-md">
+      {isProjectViewLoading &&
+        Array.apply(0, Array(3)).map((_x, i) => (
+          <div
+            key={`workspace-cards-loading-${i + 1}`}
+            className={`min-w-72 group flex h-12 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+              i === 0 && "rounded-t-md"
+            } ${i === 2 && "rounded-b-md border-b"}`}
+          >
+            <Skeleton className="w-full bg-mineshaft-600" />
+          </div>
+        ))}
+      {!isProjectViewLoading &&
+        workspacesWithFaveProp.map((workspace, ind) =>
+          renderProjectListItem(workspace, workspace.isFavorite, ind)
+        )}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
+      <Head>
+        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
+      {!serverDetails?.redisConfigured && (
+        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+          <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
+          <div className="flex w-full items-center rounded-md border border-blue-400/70 bg-blue-900/70 p-2 text-base text-mineshaft-100">
+            <FontAwesomeIcon
+              icon={faExclamationCircle}
+              className="mr-4 p-4 text-2xl text-mineshaft-50"
+            />
+            Attention: Updated versions of Infisical now require Redis for full functionality. Learn
+            how to configure it
+            <Link
+              href="https://infisical.com/docs/self-hosting/configuration/redis"
+              target="_blank"
+            >
+              <span className="cursor-pointer pl-1 text-white underline underline-offset-2 duration-100 hover:text-blue-200 hover:decoration-blue-400">
+                here
+              </span>
+            </Link>
+            .
+          </div>
+        </div>
+      )}
+      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+        <div className="flex w-full justify-between">
+          <p className="mr-4 font-semibold text-white">Projects</p>
+        </div>
+        <div className="mt-6 flex w-full flex-row">
+          <Input
+            className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+            placeholder="Search by project name..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          />
+          <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <IconButton
+              variant="outline_bg"
+              onClick={() => {
+                localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
+                setProjectsViewMode(ProjectsViewMode.GRID);
+              }}
+              ariaLabel="grid"
+              size="xs"
+              className={`${
+                projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+            >
+              <FontAwesomeIcon icon={faBorderAll} />
+            </IconButton>
+            <IconButton
+              variant="outline_bg"
+              onClick={() => {
+                localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
+                setProjectsViewMode(ProjectsViewMode.LIST);
+              }}
+              ariaLabel="list"
+              size="xs"
+              className={`${
+                projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+            >
+              <FontAwesomeIcon icon={faList} />
+            </IconButton>
+          </div>
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+            {(isAllowed) => (
+              <Button
+                isDisabled={!isAllowed}
+                colorSchema="primary"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => {
+                  if (isAddingProjectsAllowed) {
+                    handlePopUpOpen("addNewWs");
+                  } else {
+                    handlePopUpOpen("upgradePlan");
+                  }
+                }}
+                className="ml-2"
               >
-                <span className="cursor-pointer pl-1 text-white underline underline-offset-2 duration-100 hover:text-blue-200 hover:decoration-blue-400">
-                  here
-                </span>
-              </Link>
-              .
+                Add New Project
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </div>
+        {projectsViewMode === ProjectsViewMode.LIST ? projectsListView : projectsGridView}
+        {isWorkspaceEmpty && (
+          <div className="w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
+            <FontAwesomeIcon
+              icon={faFolderOpen}
+              className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
+            />
+            <div className="text-center font-light">
+              You are not part of any projects in this organization yet. When you are, they will
+              appear here.
+            </div>
+            <div className="mt-0.5 text-center font-light">
+              Create a new project, or ask other organization members to give you necessary
+              permissions.
             </div>
           </div>
         )}
-        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-          <div className="flex w-full justify-between">
-            <p className="mr-4 font-semibold text-white">Projects</p>
-          </div>
-          <div className="mt-6 flex w-full flex-row">
-            <Input
-              className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-              placeholder="Search by project name..."
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            />
-            <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-              <IconButton
-                variant="outline_bg"
-                onClick={() => {
-                  localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
-                  setProjectsViewMode(ProjectsViewMode.GRID);
-                }}
-                ariaLabel="grid"
-                size="xs"
-                className={`${
-                  projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
-                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-              >
-                <FontAwesomeIcon icon={faBorderAll} />
-              </IconButton>
-              <IconButton
-                variant="outline_bg"
-                onClick={() => {
-                  localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
-                  setProjectsViewMode(ProjectsViewMode.LIST);
-                }}
-                ariaLabel="list"
-                size="xs"
-                className={`${
-                  projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
-                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-              >
-                <FontAwesomeIcon icon={faList} />
-              </IconButton>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed}
-                  colorSchema="primary"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      handlePopUpOpen("addNewWs");
-                    } else {
-                      handlePopUpOpen("upgradePlan");
-                    }
-                  }}
-                  className="ml-2"
+      </div>
+      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-6 text-3xl">
+        <p className="mr-4 font-semibold text-white">Explore Infisical</p>
+        <div className="mt-4 grid w-full grid-cols-3 gap-4">
+          {features.map((feature) => (
+            <div
+              key={feature.id}
+              className="relative flex h-full w-full flex-col gap-2 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+            >
+              <div className="mt-0 text-lg text-mineshaft-100">{feature.name}</div>
+              <div className="line-clamp overflwo-auto mb-4 mt-2 h-full text-[15px] font-light text-mineshaft-300">
+                {feature.description}
+              </div>
+              <div className="flex w-full flex-col items-start gap-2 xl:flex-row xl:items-center">
+                <p className="left-0 text-[15px] font-light text-mineshaft-300">
+                  Setup time: 20 min
+                </p>
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group ml-0 w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200 xl:ml-auto"
+                  href={feature.link}
                 >
-                  Add New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          </div>
-          {projectsViewMode === ProjectsViewMode.LIST ? projectsListView : projectsGridView}
-          {isWorkspaceEmpty && (
-            <div className="w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
-              <FontAwesomeIcon
-                icon={faFolderOpen}
-                className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
-              />
-              <div className="text-center font-light">
-                You are not part of any projects in this organization yet. When you are, they will
-                appear here.
-              </div>
-              <div className="mt-0.5 text-center font-light">
-                Create a new project, or ask other organization members to give you necessary
-                permissions.
+                  Learn more{" "}
+                  <FontAwesomeIcon
+                    icon={faArrowRight}
+                    className="s pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
+                  />
+                </a>
               </div>
             </div>
-          )}
+          ))}
         </div>
-        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-6 text-3xl">
-          <p className="mr-4 font-semibold text-white">Explore Infisical</p>
-          <div className="mt-4 grid w-full grid-cols-3 gap-4">
-            {features.map((feature) => (
-              <div
-                key={feature.id}
-                className="relative flex h-full w-full flex-col gap-2 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-              >
-                <div className="mt-0 text-lg text-mineshaft-100">{feature.name}</div>
-                <div className="line-clamp overflwo-auto mb-4 mt-2 h-full text-[15px] font-light text-mineshaft-300">
-                  {feature.description}
-                </div>
-                <div className="flex w-full flex-col items-start gap-2 xl:flex-row xl:items-center">
-                  <p className="left-0 text-[15px] font-light text-mineshaft-300">
-                    Setup time: 20 min
-                  </p>
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group ml-0 w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200 xl:ml-auto"
-                    href={feature.link}
-                  >
-                    Learn more{" "}
-                    <FontAwesomeIcon
-                      icon={faArrowRight}
-                      className="s pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
-                    />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {!(
-          new Date().getTime() - new Date(user?.createdAt).getTime() <
-          30 * 24 * 60 * 60 * 1000
-        ) && (
-          <div className="mb-4 flex flex-col items-start justify-start px-6 pb-0 text-3xl">
-            <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
-            <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              <LearningItemSquare
-                text="Watch Infisical demo"
-                subText="Set up Infisical in 3 min."
-                complete={hasUserClickedIntro}
-                icon={faHandPeace}
-                time="3 min"
-                userAction="intro_cta_clicked"
-                link="https://www.youtube.com/watch?v=PK23097-25I"
-              />
-              {orgWorkspaces.length !== 0 && (
-                <>
-                  <LearningItemSquare
-                    text="Add your secrets"
-                    subText="Drop a .env file or type your secrets."
-                    complete={hasUserPushedSecrets}
-                    icon={faPlus}
-                    time="1 min"
-                    userAction="first_time_secrets_pushed"
-                    link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
-                  />
-                  <LearningItemSquare
-                    text="Invite your teammates"
-                    subText="Infisical is better used as a team."
-                    complete={usersInOrg}
-                    icon={faUserPlus}
-                    time="2 min"
-                    link={`/org/${router.query.id}/members?action=invite`}
-                  />
-                </>
-              )}
-              <div className="block xl:hidden 2xl:block">
-                <LearningItemSquare
-                  text="Join Infisical Slack"
-                  subText="Have any questions? Ask us!"
-                  complete={hasUserClickedSlack}
-                  icon={faSlack}
-                  time="1 min"
-                  userAction="slack_cta_clicked"
-                  link="https://infisical.com/slack"
-                />
-              </div>
-            </div>
+      </div>
+      {!(new Date().getTime() - new Date(user?.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000) && (
+        <div className="mb-4 flex flex-col items-start justify-start px-6 pb-0 text-3xl">
+          <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
+          <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <LearningItemSquare
+              text="Watch Infisical demo"
+              subText="Set up Infisical in 3 min."
+              complete={hasUserClickedIntro}
+              icon={faHandPeace}
+              time="3 min"
+              userAction="intro_cta_clicked"
+              link="https://www.youtube.com/watch?v=PK23097-25I"
+            />
             {orgWorkspaces.length !== 0 && (
-              <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 text-mineshaft-100 shadow-xl duration-200">
-                <div className="mb-4 flex w-full flex-row items-center pr-4">
-                  <div className="mr-4 flex w-full flex-row items-center">
-                    <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
-                    {false && (
-                      <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
-                        <FontAwesomeIcon
-                          icon={faCheckCircle}
-                          className="h-5 w-5 text-4xl text-green"
-                        />
-                      </div>
-                    )}
-                    <div className="flex flex-col items-start pl-0.5">
-                      <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
-                      <div className="text-sm font-normal">
-                        Replace .env files with a more secure and efficient alternative.
-                      </div>
+              <>
+                <LearningItemSquare
+                  text="Add your secrets"
+                  subText="Drop a .env file or type your secrets."
+                  complete={hasUserPushedSecrets}
+                  icon={faPlus}
+                  time="1 min"
+                  userAction="first_time_secrets_pushed"
+                  link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
+                />
+                <LearningItemSquare
+                  text="Invite your teammates"
+                  subText="Infisical is better used as a team."
+                  complete={usersInOrg}
+                  icon={faUserPlus}
+                  time="2 min"
+                  link={`/org/${router.query.id}/members?action=invite`}
+                />
+              </>
+            )}
+            <div className="block xl:hidden 2xl:block">
+              <LearningItemSquare
+                text="Join Infisical Slack"
+                subText="Have any questions? Ask us!"
+                complete={hasUserClickedSlack}
+                icon={faSlack}
+                time="1 min"
+                userAction="slack_cta_clicked"
+                link="https://infisical.com/slack"
+              />
+            </div>
+          </div>
+          {orgWorkspaces.length !== 0 && (
+            <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 text-mineshaft-100 shadow-xl duration-200">
+              <div className="mb-4 flex w-full flex-row items-center pr-4">
+                <div className="mr-4 flex w-full flex-row items-center">
+                  <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
+                  {false && (
+                    <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
+                      <FontAwesomeIcon
+                        icon={faCheckCircle}
+                        className="h-5 w-5 text-4xl text-green"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col items-start pl-0.5">
+                    <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
+                    <div className="text-sm font-normal">
+                      Replace .env files with a more secure and efficient alternative.
                     </div>
                   </div>
-                  <div
-                    className={`w-28 pr-4 text-right text-sm font-semibold ${
-                      false && "text-green"
-                    }`}
-                  >
-                    About 2 min
-                  </div>
                 </div>
-                <TabsObject />
-                {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
+                <div
+                  className={`w-28 pr-4 text-right text-sm font-semibold ${false && "text-green"}`}
+                >
+                  About 2 min
+                </div>
               </div>
-            )}
-            {orgWorkspaces.length !== 0 && (
-              <LearningItem
-                text="Integrate Infisical with your infrastructure"
-                subText="Connect Infisical to various 3rd party services and platforms."
-                complete={false}
-                icon={faPlug}
-                time="15 min"
-                link="https://infisical.com/docs/integrations/overview"
-              />
-            )}
-          </div>
-        )}
-        <Modal
-          isOpen={popUp.addNewWs.isOpen}
-          onOpenChange={(isModalOpen) => {
-            handlePopUpToggle("addNewWs", isModalOpen);
-            reset();
-          }}
+              <TabsObject />
+              {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
+            </div>
+          )}
+          {orgWorkspaces.length !== 0 && (
+            <LearningItem
+              text="Integrate Infisical with your infrastructure"
+              subText="Connect Infisical to various 3rd party services and platforms."
+              complete={false}
+              icon={faPlug}
+              time="15 min"
+              link="https://infisical.com/docs/integrations/overview"
+            />
+          )}
+        </div>
+      )}
+      <Modal
+        isOpen={popUp.addNewWs.isOpen}
+        onOpenChange={(isModalOpen) => {
+          handlePopUpToggle("addNewWs", isModalOpen);
+          reset();
+        }}
+      >
+        <ModalContent
+          title="Create a new project"
+          subTitle="This project will contain your secrets and configurations."
         >
-          <ModalContent
-            title="Create a new project"
-            subTitle="This project will contain your secrets and configurations."
-          >
-            <form onSubmit={handleSubmit(onCreateProject)}>
+          <form onSubmit={handleSubmit(onCreateProject)}>
+            <Controller
+              control={control}
+              name="name"
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Project Name"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="Type your project name" />
+                </FormControl>
+              )}
+            />
+            <div className="mt-4 pl-1">
               <Controller
                 control={control}
-                name="name"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Project Name"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="Type your project name" />
-                  </FormControl>
+                name="addMembers"
+                defaultValue={false}
+                render={({ field: { onBlur, value, onChange } }) => (
+                  <OrgPermissionCan I={OrgPermissionActions.Read} a={OrgPermissionSubjects.Member}>
+                    {(isAllowed) => (
+                      <div>
+                        <Checkbox
+                          id="add-project-layout"
+                          isChecked={value}
+                          onCheckedChange={onChange}
+                          isDisabled={!isAllowed}
+                          onBlur={onBlur}
+                        >
+                          Add all members of my organization to this project
+                        </Checkbox>
+                      </div>
+                    )}
+                  </OrgPermissionCan>
                 )}
               />
-              <div className="mt-4 pl-1">
-                <Controller
-                  control={control}
-                  name="addMembers"
-                  defaultValue={false}
-                  render={({ field: { onBlur, value, onChange } }) => (
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Read}
-                      a={OrgPermissionSubjects.Member}
-                    >
-                      {(isAllowed) => (
-                        <div>
-                          <Checkbox
-                            id="add-project-layout"
-                            isChecked={value}
-                            onCheckedChange={onChange}
-                            isDisabled={!isAllowed}
-                            onBlur={onBlur}
+            </div>
+            <div className="mt-14 flex">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
+                  <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                    <div className="order-1 ml-3">Advanced Settings</div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Controller
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                          label="KMS"
+                        >
+                          <Select
+                            {...field}
+                            onValueChange={(e) => {
+                              onChange(e);
+                            }}
+                            className="mb-12 w-full bg-mineshaft-600"
                           >
-                            Add all members of my organization to this project
-                          </Checkbox>
-                        </div>
-                      )}
-                    </OrgPermissionCan>
-                  )}
-                />
-              </div>
-              <div className="mt-14 flex">
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
-                    <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                      <div className="order-1 ml-3">Advanced Settings</div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <Controller
-                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                          <FormControl
-                            errorText={error?.message}
-                            isError={Boolean(error)}
-                            label="KMS"
-                          >
-                            <Select
-                              {...field}
-                              onValueChange={(e) => {
-                                onChange(e);
-                              }}
-                              className="mb-12 w-full bg-mineshaft-600"
-                            >
-                              <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
-                                Default Infisical KMS
+                            <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                              Default Infisical KMS
+                            </SelectItem>
+                            {externalKmsList?.map((kms) => (
+                              <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                                {kms.slug}
                               </SelectItem>
-                              {externalKmsList?.map((kms) => (
-                                <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                                  {kms.slug}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        )}
-                        control={control}
-                        name="kmsKeyId"
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
-                  <Button
-                    key="layout-cancel-create-project"
-                    onClick={() => handlePopUpClose("addNewWs")}
-                    colorSchema="secondary"
-                    variant="plain"
-                    className="py-2"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    isDisabled={isSubmitting}
-                    isLoading={isSubmitting}
-                    key="layout-create-project-submit"
-                    className="ml-4"
-                    type="submit"
-                  >
-                    Create Project
-                  </Button>
-                </div>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                      control={control}
+                      name="kmsKeyId"
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+              <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
+                <Button
+                  key="layout-cancel-create-project"
+                  onClick={() => handlePopUpClose("addNewWs")}
+                  colorSchema="secondary"
+                  variant="plain"
+                  className="py-2"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  isDisabled={isSubmitting}
+                  isLoading={isSubmitting}
+                  key="layout-create-project-submit"
+                  className="ml-4"
+                  type="submit"
+                >
+                  Create Project
+                </Button>
               </div>
-            </form>
-          </ModalContent>
-        </Modal>
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="You have exceeded the number of projects allowed on the free plan."
-        />
-        {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      </div>
-    );
-  },
-  {
-    action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Workspace
-  }
-);
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You have exceeded the number of projects allowed on the free plan."
+      />
+      {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
+    </div>
+  );
+};
 
 Object.assign(OrganizationPage, { requireAuth: true });
 

@@ -18,6 +18,7 @@ import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-ser
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
+import { RateLimitConfiguration } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -50,6 +51,7 @@ import { TIntegrationServiceFactory } from "@app/services/integration/integratio
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
+import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -88,6 +90,7 @@ declare module "fastify" {
       id: string;
       orgId: string;
     };
+    rateLimits: RateLimitConfiguration;
     // passport data
     passportUser: {
       isUserCompleted: string;
@@ -165,6 +168,7 @@ declare module "fastify" {
       rateLimit: TRateLimitServiceFactory;
       userEngagement: TUserEngagementServiceFactory;
       externalKms: TExternalKmsServiceFactory;
+      orgAdmin: TOrgAdminServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
