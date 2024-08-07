@@ -172,12 +172,76 @@ export const secretSharingServiceFactory = ({
         message: "Shared secret not found"
       });
 
-    const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
+    const { accessType } = sharedSecret;
 
     const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
 
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
+
+    if (sharedSecret.password) return undefined;
+
+    // we only update the view count when secret has no password, when password is set view count is updated when we validate the password.
+    manageSecretViewCount(sharedSecret, sharedSecretId);
+
+    return {
+      ...sharedSecret,
+      orgName:
+        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
+          ? orgName
+          : undefined
+    };
+  };
+
+  const validateSecretPassword = async ({
+    sharedSecretId,
+    hashedHex,
+    orgId,
+    password
+  }: TValidateActiveSharedSecretDTO) => {
+    const sharedSecret = await secretSharingDAL.findOne({
+      id: sharedSecretId,
+      hashedHex
+    });
+    if (!sharedSecret)
+      throw new NotFoundError({
+        message: "Shared secret not found"
+      });
+
+    const { accessType } = sharedSecret;
+
+    const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
+
+    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
+      throw new UnauthorizedError();
+
+    if (!sharedSecret.password) return undefined;
+
+    const isMatch = await bcrypt.compare(password, sharedSecret.password);
+    if (!isMatch) return undefined;
+
+    // reduce view count when we are sure the password matches.
+    manageSecretViewCount(sharedSecret, sharedSecretId)
+
+    return {
+      ...sharedSecret,
+      orgName:
+        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
+          ? orgName
+          : undefined
+    };
+  };
+
+  const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
+    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
+    return deletedSharedSecret;
+  };
+
+  const manageSecretViewCount = async (sharedSecret: any, sharedSecretId: string) => {
+    const { expiresAt, expiresAfterViews } = sharedSecret;
 
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
@@ -203,39 +267,7 @@ export const secretSharingServiceFactory = ({
     await secretSharingDAL.updateById(sharedSecretId, {
       lastViewedAt: new Date()
     });
-
-    return {
-      ...sharedSecret,
-      orgName:
-        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
-          ? orgName
-          : undefined
-    };
-  };
-
-  const validateSecretPassword = async ({
-    sharedSecretId,
-    hashedHex,
-    orgId,
-    password
-  }: TValidateActiveSharedSecretDTO) => {
-    const sharedSecret = await getActiveSharedSecretById({ sharedSecretId, hashedHex, orgId });
-
-    if (!sharedSecret || !sharedSecret.password) return undefined;
-
-    const isMatch = await bcrypt.compare(password, sharedSecret.password);
-
-    if (!isMatch) return undefined;
-    return sharedSecret
-  };
-
-  const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
-    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
-    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
-    return deletedSharedSecret;
-  };
+  }
 
   return {
     createSharedSecret,

@@ -90,9 +90,8 @@ export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) 
           )}
         />
       </form>
-
       <Button
-        className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
+        className="w-full bg-mineshaft-700 py-3 text-bunker-200"
         colorSchema="primary"
         variant="outline_bg"
         size="sm"
