@@ -1,8 +1,8 @@
 package util
 
 import (
-	"encoding/base64"
 	"fmt"
+	"os"
 
 	"github.com/manifoldco/promptui"
 	"github.com/rs/zerolog/log"
@@ -33,23 +33,19 @@ func SetValueInKeyring(key, value string) error {
 
 		if configFile.VaultBackendPassphrase == "" {
 			passphrasePrompt := promptui.Prompt{
-				Label: "Enter a passphrase to protect your local secret backups & login access token",
+				Label: "Enter a passphrase to encrypt sensitive CLI data at rest",
 			}
 			passphrase, err := passphrasePrompt.Run()
 			if err != nil {
 				return err
 			}
-
-			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
-			configFile.VaultBackendPassphrase = encodedPassphrase
 			configFile.VaultBackendType = VAULT_BACKEND_FILE_MODE
 			err = WriteConfigFile(&configFile)
 			if err != nil {
 				return err
 			}
 
-			// We call this function at last to trigger the environment variable to be set
-			GetConfigFile()
+			os.Setenv("INFISICAL_VAULT_FILE_PASSPHRASE", passphrase)
 		}
 
 		err = keyring.Set(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key, value)
