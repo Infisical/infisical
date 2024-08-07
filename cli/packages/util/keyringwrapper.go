@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/manifoldco/promptui"
 	"github.com/rs/zerolog/log"
