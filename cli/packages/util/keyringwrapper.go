@@ -39,13 +39,15 @@ func SetValueInKeyring(key, value string) error {
 			if err != nil {
 				return err
 			}
+			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
+			configFile.VaultBackendPassphrase = encodedPassphrase
 			configFile.VaultBackendType = VAULT_BACKEND_FILE_MODE
-			err = WriteConfigFile(&configFile)
 			if err != nil {
 				return err
 			}
 
-			os.Setenv("INFISICAL_VAULT_FILE_PASSPHRASE", passphrase)
+			// We call this function at last to trigger the environment variable to be set
+			GetConfigFile()
 		}
 
 		err = keyring.Set(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key, value)
