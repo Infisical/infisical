@@ -1,5 +1,5 @@
 ---
-title: "Kubernetes"
+title: "Kubernetes Operator"
 description: "How to use Infisical to inject secrets into Kubernetes clusters."
 ---
 
@@ -8,6 +8,10 @@ description: "How to use Infisical to inject secrets into Kubernetes clusters."
 The Infisical Secrets Operator is a Kubernetes controller that retrieves secrets from Infisical and stores them in a designated cluster.
 It uses an `InfisicalSecret` resource to specify authentication and storage methods.
 The operator continuously updates secrets and can also reload dependent deployments automatically.
+
+<Note>
+  If you are already using the External Secrets operator, you can you can view the integration documentation for it [here](https://external-secrets.io/latest/provider/infisical/).
+</Note>
 
 ## Install Operator
 
