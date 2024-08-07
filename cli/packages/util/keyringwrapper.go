@@ -2,8 +2,10 @@ package util
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"github.com/manifoldco/promptui"
+	"github.com/rs/zerolog/log"
 	"github.com/zalando/go-keyring"
 )
 
@@ -26,6 +28,7 @@ func SetValueInKeyring(key, value string) error {
 	err = keyring.Set(currentVaultBackend, MAIN_KEYRING_SERVICE, key, value)
 
 	if err != nil {
+		log.Debug().Msg(fmt.Sprintf("Error while setting default keyring: %v", err))
 		configFile, _ := GetConfigFile()
 
 		if configFile.VaultBackendPassphrase == "" {
@@ -50,6 +53,7 @@ func SetValueInKeyring(key, value string) error {
 		}
 
 		err = keyring.Set(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key, value)
+		log.Debug().Msg(fmt.Sprintf("Error while setting file keyring: %v", err))
 	}
 
 	return err
