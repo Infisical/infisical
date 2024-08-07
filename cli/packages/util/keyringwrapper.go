@@ -33,7 +33,7 @@ func SetValueInKeyring(key, value string) error {
 
 		if configFile.VaultBackendPassphrase == "" {
 			passphrasePrompt := promptui.Prompt{
-				Label: "Enter a passphrase to protect your local backup secrets & login access token",
+				Label: "Enter a passphrase to protect your local secret backups & login access token",
 			}
 			passphrase, err := passphrasePrompt.Run()
 			if err != nil {
