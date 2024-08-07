@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 
 import { TOrgDALFactory } from "../org/org-dal";
@@ -217,7 +217,12 @@ export const secretSharingServiceFactory = ({
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
 
-    const isMatch = await bcrypt.compare(password, sharedSecret.password);
+    if (!sharedSecret.password)
+      throw new InternalServerError({
+        message: "Something went wrong"
+      });
+
+    const isMatch = await bcrypt.compare(password, sharedSecret.password as string);
     if (!isMatch) return undefined
 
     // we reduce the view count when we are sure the password matches.

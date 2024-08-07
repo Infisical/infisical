@@ -80,7 +80,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         orgId: req.permission?.orgId
       });
 
-      // return undefined if it does not exist, has password set or has no more views allowed.
       if (!sharedSecret || sharedSecret.password) return undefined;
 
       return {

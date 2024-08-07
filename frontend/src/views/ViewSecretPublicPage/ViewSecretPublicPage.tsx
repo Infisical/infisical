@@ -10,8 +10,7 @@ import { TViewSharedSecretResponse, useGetActiveSharedSecretById } from "@app/ho
 import { SecretContainer, SecretErrorContainer, PasswordContainer } from "./components";
 
 export const ViewSecretPublicPage = () => {
-  const [secret, setSecret] = useState(null)
-  const [error, setError] = useState(null)
+  const [secret, setSecret] = useState<TViewSharedSecretResponse | null>(null);
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
 
@@ -19,15 +18,14 @@ export const ViewSecretPublicPage = () => {
     ? urlEncodedPublicKey.toString().split("-")
     : ["", ""];
 
-  const { data: fetchSecret, error: fetchError, isLoading } = useGetActiveSharedSecretById({
+  const { data: fetchSecret, error, isLoading } = useGetActiveSharedSecretById({
     sharedSecretId: id as string,
     hashedHex
   });
 
   useEffect(() => {
     if (fetchSecret) setSecret(fetchSecret)
-    if (fetchError) setError(fetchError)
-  }, [fetchSecret, fetchError])
+  }, [fetchSecret, error])
 
   const handleSecret = useCallback((value: TViewSharedSecretResponse) => {
     setSecret(value)

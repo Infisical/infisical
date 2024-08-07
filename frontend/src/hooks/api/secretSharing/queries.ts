@@ -43,32 +43,31 @@ export const useGetActiveSharedSecretById = ({
   sharedSecretId: string;
   hashedHex: string;
 }) => {
-  return useQuery<TViewSharedSecretResponse, [string]>({
-    enabled: Boolean(sharedSecretId) && Boolean(hashedHex),
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        hashedHex
-      });
-
+  return useQuery<TViewSharedSecretResponse | null>(
+    [`sharedSecret-${sharedSecretId}`],
+    async () => {
+      const params = new URLSearchParams({ hashedHex });
       const { data } = await apiRequest.get<TViewSharedSecretResponse>(
         `/api/v1/secret-sharing/public/${sharedSecretId}`,
         {
           params
         }
       );
-
-      if (!data) return null;
-
+  
+      if (!data) return null
+  
       return {
         encryptedValue: data.encryptedValue,
-        password: data.password,
         iv: data.iv,
         tag: data.tag,
         accessType: data.accessType,
         orgName: data.orgName
       };
+    },
+    {
+      enabled: Boolean(sharedSecretId) && Boolean(hashedHex)
     }
-  });
+  );
 };
 
 // returns a secret (secret or undefined if password doesn't match)
