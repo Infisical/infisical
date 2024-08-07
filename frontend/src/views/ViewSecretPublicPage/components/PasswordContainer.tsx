@@ -1,43 +1,52 @@
-import { useState, ChangeEvent } from "react";
+import { z } from "zod";
+import { Controller, useForm } from "react-hook-form";
 
 import { faArrowRight, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Button, IconButton, Input } from "@app/components/v2";
-import { fetchIsSecretPasswordValid } from "@app/hooks/api/secretSharing";
+import { Button, FormControl, IconButton, Input } from "@app/components/v2";
+import { fetchSecretIfPasswordIsValid } from "@app/hooks/api/secretSharing";
 import { createNotification } from "@app/components/notifications";
 
 type Props = {
   secretId: string;
   hashedHex: string;
-  handlePassMatch: (val: boolean) => void;
+  handleSecret: (val: any) => void;
 };
 
-export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Props) => {
-  const [password, setPassword] = useState<string>('')
-  const [isLoading, setLoading] = useState(false)
+const formSchema = z.object({
+  password: z.string()
+})
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value)
-  }
+export type FormData = z.infer<typeof formSchema>;
 
-  const validatePassword = async () => {
-    setLoading(true);
+export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) => {
+  const {
+    control,
+    reset,
+    handleSubmit,
+    formState: { isSubmitting }
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
 
+  const onFormSubmit = async ({ password }: FormData) => {
     try {
-      const data = await fetchIsSecretPasswordValid(
+      const secret = await fetchSecretIfPasswordIsValid(
         secretId,
         hashedHex,
         password,
       )
 
-      if (data?.isValid === true) {
-        handlePassMatch(true);
+      if (secret) {
+        handleSecret(secret);
       } else {
         createNotification({
           text: "Password is Invalid. Try again",
           type: "error"
         })
+        reset();
       }
     } catch (error) {
       console.error("Failed to validate password:", error);
@@ -45,31 +54,43 @@ export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Prop
         text: "Failed to validate password",
         type: "error"
       })
-    } finally {
-      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-      <div className="flex items-center gap-2 justify-between rounded-md">
-        <Input onChange={handleChange} placeholder="Enter Password to view secret"></Input>
-        <div className="flex">
-        <IconButton
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="group relative"
-            onClick={() => {
-              validatePassword()
-            }}
-          >
-            <FontAwesomeIcon 
-              className={isLoading ? 'fa-spin' : ''} 
-              icon={isLoading ? faSpinner : faArrowRight} 
-            />
-          </IconButton>
-        </div>
-      </div>
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        <Controller
+          control={control}
+          name="password"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              isError={Boolean(error)}
+              errorText={error?.message}
+              isRequired
+              label="Password"
+            >
+              <div className="flex items-center gap-2 justify-between rounded-md">
+                <Input {...field} placeholder="Enter Password to view secret"></Input>
+                <div className="flex">
+                  <IconButton
+                    ariaLabel="copy icon"
+                    colorSchema="secondary"
+                    className="group relative"
+                    onClick={handleSubmit(onFormSubmit)}
+                  >
+                    <FontAwesomeIcon 
+                      className={isSubmitting ? 'fa-spin' : ''} 
+                      icon={isSubmitting ? faSpinner : faArrowRight} 
+                    />
+                  </IconButton>
+                </div>
+              </div>
+            </FormControl>
+          )}
+        />
+      </form>
+
       <Button
         className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
         colorSchema="primary"

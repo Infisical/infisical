@@ -56,6 +56,9 @@ export const useGetActiveSharedSecretById = ({
           params
         }
       );
+
+      if (!data) return null;
+
       return {
         encryptedValue: data.encryptedValue,
         password: data.password,
@@ -68,7 +71,8 @@ export const useGetActiveSharedSecretById = ({
   });
 };
 
-export const fetchIsSecretPasswordValid = async (
+// returns a secret (secret or undefined if password doesn't match)
+export const fetchSecretIfPasswordIsValid = async (
   sharedSecretId: string,
   hashedHex: string,
   password: string,

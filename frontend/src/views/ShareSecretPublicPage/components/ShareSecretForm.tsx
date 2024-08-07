@@ -156,9 +156,10 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         name="password"
         render={({ field, fieldState: { error } }) => (
           <FormControl
-            label="Password (Optional)"
+            label="Password"
             isError={Boolean(error)}
             errorText={error?.message}
+            isOptional={true}
           >
             <Input {...field} placeholder="Password" type="password" />
           </FormControl>

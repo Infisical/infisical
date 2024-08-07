@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -10,7 +10,7 @@ import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 import { SecretContainer, SecretErrorContainer, PasswordContainer } from "./components";
 
 export const ViewSecretPublicPage = () => {
-  const [passMatches, setPassMatch] = useState(false)
+  const [secret, setSecret] = useState(null)
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
 
@@ -18,14 +18,18 @@ export const ViewSecretPublicPage = () => {
     ? urlEncodedPublicKey.toString().split("-")
     : ["", ""];
 
-  const { data: secret, error } = useGetActiveSharedSecretById({
+  const { data, error } = useGetActiveSharedSecretById({
     sharedSecretId: id as string,
     hashedHex
   });
 
-  const handlePassMatch = useCallback((val: boolean) => {
-    setPassMatch(val)
-  }, [setPassMatch])
+  useEffect(() => {
+    if (data) setSecret(data)
+  }, [data])
+
+  const handleSecret = useCallback((val: any) => {
+    setSecret(val)
+  }, [setSecret])
 
   return (
     <div className="flex h-screen flex-col justify-between overflow-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
@@ -58,13 +62,12 @@ export const ViewSecretPublicPage = () => {
             </a>
           </p>
         </div>
-        {secret && (
-          !passMatches && secret.password ? (
-            <PasswordContainer secretId={id as string} hashedHex={hashedHex} handlePassMatch={handlePassMatch} />
+        {!secret ? (
+            <PasswordContainer secretId={id as string} hashedHex={hashedHex} handleSecret={handleSecret} />
           ) : (
             key && <SecretContainer secret={secret} secretKey={key} />
           )
-        )}
+        }
         {error && <SecretErrorContainer />}
         <div className="m-auto my-8 flex w-full">
           <div className="w-full border-t border-mineshaft-600" />
