@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -202,25 +202,23 @@ export const SecretOverviewPage = () => {
     })
   };
 
-  const getAllSelections = () => {
+  const allSelections = useMemo(() => {
     const selectedFolders = Object.keys(selectedEntries[EntryType.FOLDER])
       .filter((key) => selectedEntries[EntryType.FOLDER][key]);
     const selectedSecrets = Object.keys(selectedEntries[EntryType.SECRET])
       .filter((key) => selectedEntries[EntryType.SECRET][key]);
     return [...selectedFolders, ...selectedSecrets];
-  }
+  }, [selectedEntries]);
 
-  const checkAllEntriesSelected = () => {
-    const allSelections = getAllSelections();
+  const areAllEntriesSelected = useMemo(() => {
     return folderNames.every((folder:string) => allSelections.includes(folder)) 
       && secKeys.every((secret: string) => allSelections.includes(secret));
-  };
+  }, [allSelections, folderNames, secKeys]);
 
-  const checkAnyOneEntrySelected = () => {
-    const allSelections = getAllSelections();
+  const isAnyOneEntrySelected = useMemo(() => {
     return folderNames.some((folder:string) => allSelections.includes(folder)) 
       || secKeys.some((secret: string) => allSelections.includes(secret));
-  };
+  }, [allSelections, folderNames, secKeys]);
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
@@ -698,9 +696,9 @@ export const SecretOverviewPage = () => {
                     <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3 gap-x-2">
                       <Checkbox
                         id={`select-all-checkbox`}
-                        isChecked={checkAllEntriesSelected()}
+                        isChecked={areAllEntriesSelected}
                         onCheckedChange={selectAllEntries}
-                        className={twMerge("hidden", checkAnyOneEntrySelected() && "flex")}
+                        className={twMerge("hidden", isAnyOneEntrySelected && "flex")}
                       />
                       Name
                       <IconButton
