@@ -2,11 +2,12 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
-import { CaTab, CertificatesTab } from "./components";
+import { AlertsTab,CaTab, CertificatesTab } from "./components";
 
 enum TabSections {
   Ca = "certificate-authorities",
-  Certificates = "certificates"
+  Certificates = "certificates",
+  Alerts = "alerts"
 }
 
 export const CertificatesPage = withProjectPermission(
@@ -19,12 +20,16 @@ export const CertificatesPage = withProjectPermission(
             <TabList>
               <Tab value={TabSections.Certificates}>Certificates</Tab>
               <Tab value={TabSections.Ca}>Certificate Authorities</Tab>
+              <Tab value={TabSections.Alerts}>Alerting</Tab>
             </TabList>
             <TabPanel value={TabSections.Certificates}>
               <CertificatesTab />
             </TabPanel>
             <TabPanel value={TabSections.Ca}>
               <CaTab />
+            </TabPanel>
+            <TabPanel value={TabSections.Alerts}>
+              <AlertsTab />
             </TabPanel>
           </Tabs>
         </div>

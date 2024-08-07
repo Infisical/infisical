@@ -106,6 +106,8 @@ export type TListProjectCertsDTO = {
   commonName?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TListProjectAlertsDTO = TProjectPermission;
+
 export type TUpdateProjectKmsDTO = {
   kms: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string };
 } & TProjectPermission;

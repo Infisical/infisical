@@ -9,6 +9,7 @@ export enum TableName {
   Certificate = "certificates",
   CertificateBody = "certificate_bodies",
   CertificateSecret = "certificate_secrets",
+  Alert = "alerts",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",

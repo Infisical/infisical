@@ -1,5 +1,6 @@
 export * from "./accessApproval";
 export * from "./admin";
+export * from "./alerts";
 export * from "./apiKeys";
 export * from "./auditLogs";
 export * from "./auditLogStreams";

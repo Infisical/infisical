@@ -27,6 +27,7 @@ import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
@@ -114,6 +115,7 @@ declare module "fastify" {
       group: TGroupServiceFactory;
       groupProject: TGroupProjectServiceFactory;
       apiKey: TApiKeyServiceFactory;
+      alert: TAlertServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;
       projectEnv: TProjectEnvServiceFactory;

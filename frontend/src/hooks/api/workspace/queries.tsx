@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TAlert } from "../alerts/types";
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
@@ -62,7 +63,8 @@ export const workspaceKeys = {
     slug: string;
     offset: number;
     limit: number;
-  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const
+  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
+  getWorkspaceAlerts: (workspaceId: string) => [{ workspaceId }, "workspace-alerts"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -599,5 +601,19 @@ export const useListWorkspaceCertificates = ({
       return { certificates, totalCount };
     },
     enabled: Boolean(projectSlug)
+  });
+};
+
+export const useListWorkspaceAlerts = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceAlerts(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { alerts }
+      } = await apiRequest.get<{ alerts: TAlert[] }>(`/api/v2/workspace/${workspaceId}/alerts`);
+
+      return { alerts };
+    },
+    enabled: Boolean(workspaceId)
   });
 };

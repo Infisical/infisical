@@ -73,6 +73,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { alertDALFactory } from "@app/services/alert/alert-dal";
+import { alertServiceFactory } from "@app/services/alert/alert-service";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -216,6 +218,7 @@ export const registerRoutes = async (
   const superAdminDAL = superAdminDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
+  const alertDAL = alertDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
@@ -514,6 +517,10 @@ export const registerRoutes = async (
     licenseService
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
+  const alertService = alertServiceFactory({
+    alertDAL,
+    permissionService
+  });
 
   const secretScanningQueue = secretScanningQueueFactory({
     telemetryService,
@@ -643,6 +650,7 @@ export const registerRoutes = async (
     licenseService,
     certificateAuthorityDAL,
     certificateDAL,
+    alertDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1071,6 +1079,7 @@ export const registerRoutes = async (
     orgRole: orgRoleService,
     oidc: oidcService,
     apiKey: apiKeyService,
+    alert: alertService,
     authToken: tokenService,
     superAdmin: superAdminService,
     project: projectService,

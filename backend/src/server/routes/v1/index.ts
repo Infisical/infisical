@@ -1,4 +1,5 @@
 import { registerAdminRouter } from "./admin-router";
+import { registerAlertRouter } from "./alert-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
@@ -48,6 +49,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/auth" }
   );
+  await server.register(registerAlertRouter, { prefix: "/alerts" });
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerOrgRouter, { prefix: "/organization" });
   await server.register(registerAdminRouter, { prefix: "/admin" });

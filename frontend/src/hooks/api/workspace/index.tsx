@@ -3,7 +3,8 @@ export {
   useDeleteGroupFromWorkspace,
   useLeaveProject,
   useMigrateProjectToV3,
-  useUpdateGroupWorkspaceRole} from "./mutations";
+  useUpdateGroupWorkspaceRole
+} from "./mutations";
 export {
   useAddIdentityToWorkspace,
   useCreateWorkspace,
@@ -22,6 +23,7 @@ export {
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
   useGetWorkspaceUsers,
+  useListWorkspaceAlerts,
   useListWorkspaceCas,
   useListWorkspaceCertificates,
   useListWorkspaceGroups,
@@ -31,5 +33,4 @@ export {
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject
-} from "./queries";
+  useUpgradeProject} from "./queries";

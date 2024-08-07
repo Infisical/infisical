@@ -1,0 +1,1 @@
+export { AlertsTab } from "./AlertsTab";

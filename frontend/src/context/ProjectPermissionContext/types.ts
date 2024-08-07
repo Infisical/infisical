@@ -8,6 +8,7 @@ export enum ProjectPermissionActions {
 }
 
 export enum ProjectPermissionSub {
+  Alerts = "alerts",
   Role = "role",
   Member = "member",
   Groups = "groups",
@@ -41,6 +42,7 @@ export type ProjectPermissionSet =
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
     ]
+  | [ProjectPermissionActions, ProjectPermissionSub.Alerts]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionActions, ProjectPermissionSub.Member]

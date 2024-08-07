@@ -13,6 +13,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
+import { TAlertDALFactory } from "../alert/alert-dal";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -37,6 +38,7 @@ import {
   TDeleteProjectDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
+  TListProjectAlertsDTO,
   TListProjectCasDTO,
   TListProjectCertsDTO,
   TLoadProjectKmsBackupDTO,
@@ -70,6 +72,7 @@ type TProjectServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
+  alertDAL: Pick<TAlertDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -107,6 +110,7 @@ export const projectServiceFactory = ({
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
+  alertDAL,
   keyStore,
   kmsService,
   projectBotDAL
@@ -676,6 +680,33 @@ export const projectServiceFactory = ({
     };
   };
 
+  /**
+   * Return list of alerts configured for project
+   */
+  const listProjectAlerts = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectAlertsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Alerts);
+
+    const alerts = await alertDAL.find({ projectId });
+
+    return {
+      alerts
+    };
+  };
+
   const updateProjectKmsKey = async ({
     projectId,
     kms,
@@ -794,6 +825,7 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    listProjectAlerts,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,
