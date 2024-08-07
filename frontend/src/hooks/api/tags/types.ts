@@ -2,7 +2,6 @@ export type UserWsTags = WsTag[];
 
 export type WsTag = {
   id: string;
-  name: string;
   slug: string;
   color?: string;
   projectId: string;
@@ -16,7 +15,6 @@ export type WorkspaceTag = { id: string; name: string; slug: string };
 export type CreateTagDTO = {
   workspaceID: string;
   tagSlug: string;
-  tagName: string;
   tagColor: string;
 };
 
