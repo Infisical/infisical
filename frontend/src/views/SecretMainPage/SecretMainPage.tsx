@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { ContentLoader } from "@app/components/v2";
+import { Checkbox, ContentLoader } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -38,8 +38,10 @@ import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
-import { StoreProvider } from "./SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
+import { useSelectedSecretActions, useSelectedSecrets } from "./SecretMainPage.store";
+import { SecretV3RawSanitized } from "@app/hooks/api/types";
+import { twMerge } from "tailwind-merge";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
@@ -101,6 +103,28 @@ export const SecretMainPage = () => {
       enabled: canReadSecret
     }
   });
+
+  //selectAll functionality
+  const { selectAll: selectAllSecrets } = useSelectedSecretActions();
+  const selectedSecret = useSelectedSecrets();
+
+  const areAllSecretsSelected = useMemo(() => {
+    if(!secrets || !selectedSecret) {
+      return false;
+    }
+    const selectedSecretKeys = Object.keys(selectedSecret);
+    const secretIds = [...secrets?.map((secret: SecretV3RawSanitized) => secret.id)];
+    return secretIds.every((secret: string) => selectedSecretKeys.includes(secret));
+  }, [selectedSecret, secrets]);
+
+  const isAnyOneSecretSelected = useMemo(() => {
+    if(!secrets || !selectedSecret) {
+      return false;
+    }
+    const selectedSecretKeys = Object.keys(selectedSecret);
+    const secretIds = [...secrets?.map((secret: SecretV3RawSanitized) => secret.id)];
+    return secretIds.some((secret: string) => selectedSecretKeys.includes(secret));
+  }, [selectedSecret, secrets])
 
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
@@ -230,7 +254,7 @@ export const SecretMainPage = () => {
   }
 
   return (
-    <StoreProvider>
+    <>
       <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <SecretV2MigrationSection />
         <div className="relative right-6 -top-2 mb-2 ml-6">
@@ -269,9 +293,8 @@ export const SecretMainPage = () => {
               <div className="flex flex-col" id="dashboard">
                 {isNotEmtpy && (
                   <div className="flex border-b border-mineshaft-600 font-medium">
-                    <div style={{ width: "2.8rem" }} className="flex-shrink-0 px-4 py-3" />
                     <div
-                      className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
+                      className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-5 gap-x-2 py-2"
                       role="button"
                       tabIndex={0}
                       onClick={handleSortToggle}
@@ -279,10 +302,21 @@ export const SecretMainPage = () => {
                         if (evt.key === "Enter") handleSortToggle();
                       }}
                     >
+                      <Checkbox
+                        id={`select-all-secrets-checkbox`}
+                        isChecked={areAllSecretsSelected}
+                        onClick={(e) => {e.stopPropagation()}}
+                        onCheckedChange={() => {
+                          if(!secrets) {
+                            return;
+                          }
+                          selectAllSecrets([...secrets?.map((secret: SecretV3RawSanitized) => secret.id)])
+                        }}
+                        className={twMerge("hidden", isAnyOneSecretSelected && "flex")}
+                      />
                       Key
                       <FontAwesomeIcon
                         icon={sortDir === SortDir.ASC ? faArrowDown : faArrowUp}
-                        className="ml-2"
                       />
                     </div>
                     <div className="flex-grow px-4 py-2">Value</div>
@@ -374,6 +408,6 @@ export const SecretMainPage = () => {
           />
         )}
       </div>
-    </StoreProvider>
+    </>
   );
 };
