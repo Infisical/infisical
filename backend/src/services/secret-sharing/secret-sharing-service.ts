@@ -1,12 +1,19 @@
 import bcrypt from "bcrypt";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  InternalServerError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
+  SharedSecretWithDate,
   TCreatePublicSharedSecretDTO,
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
@@ -162,6 +169,40 @@ export const secretSharingServiceFactory = ({
     };
   };
 
+  /** Checks if secret is expired and throws error if true */
+  const checkIfExpired = async (sharedSecret: SharedSecretWithDate, sharedSecretId: string) => {
+    const { expiresAt, expiresAfterViews } = sharedSecret;
+
+    if (expiresAt !== null && expiresAt < new Date()) {
+      // check lifetime expiry
+      await secretSharingDAL.softDeleteById(sharedSecretId);
+      throw new ForbiddenRequestError({
+        message: "Access denied: Secret has expired by lifetime"
+      });
+    }
+
+    if (expiresAfterViews !== null && expiresAfterViews === 0) {
+      // check view count expiry
+      await secretSharingDAL.softDeleteById(sharedSecretId);
+      throw new ForbiddenRequestError({
+        message: "Access denied: Secret has expired by view count"
+      });
+    }
+  };
+
+  const decrementSecretViewCount = async (sharedSecret: SharedSecretWithDate, sharedSecretId: string) => {
+    const { expiresAfterViews } = sharedSecret;
+
+    if (expiresAfterViews) {
+      // decrement view count if view count expiry set
+      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+    }
+
+    await secretSharingDAL.updateById(sharedSecretId, {
+      lastViewedAt: new Date()
+    });
+  };
+
   const getActiveSharedSecretById = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = await secretSharingDAL.findOne({
       id: sharedSecretId,
@@ -180,7 +221,7 @@ export const secretSharingServiceFactory = ({
       throw new UnauthorizedError();
 
     await checkIfExpired(sharedSecret, sharedSecretId);
-  
+
     if (sharedSecret.password !== null) return undefined;
 
     // decrement when we are sure the user will view secret.
@@ -223,7 +264,7 @@ export const secretSharingServiceFactory = ({
       });
 
     const isMatch = await bcrypt.compare(password, sharedSecret.password as string);
-    if (!isMatch) return undefined
+    if (!isMatch) return undefined;
 
     // we reduce the view count when we are sure the password matches.
     await decrementSecretViewCount(sharedSecret, sharedSecretId);
@@ -244,40 +285,6 @@ export const secretSharingServiceFactory = ({
     const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
     return deletedSharedSecret;
   };
-
-  /** Checks if secret is expired and throws error if true */
-  const checkIfExpired = async (sharedSecret: any, sharedSecretId: string) => {
-    const { expiresAt, expiresAfterViews } = sharedSecret;
-
-    if (expiresAt !== null && expiresAt < new Date()) {
-      // check lifetime expiry
-      await secretSharingDAL.softDeleteById(sharedSecretId);
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret has expired by lifetime"
-      });
-    }
-
-    if (expiresAfterViews !== null && expiresAfterViews === 0) {
-      // check view count expiry
-      await secretSharingDAL.softDeleteById(sharedSecretId);
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret has expired by view count"
-      });
-    }
-  }
-
-  const decrementSecretViewCount = async (sharedSecret: any, sharedSecretId: string) => {
-    const { expiresAfterViews } = sharedSecret;
-
-    if (expiresAfterViews) {
-      // decrement view count if view count expiry set
-      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
-    }
-
-    await secretSharingDAL.updateById(sharedSecretId, {
-      lastViewedAt: new Date()
-    });
-  }
 
   return {
     createSharedSecret,

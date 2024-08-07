@@ -115,7 +115,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
           tag: true,
           expiresAt: true,
           expiresAfterViews: true,
-          accessType: true,
+          accessType: true
         }).extend({
           orgName: z.string().optional()
         })

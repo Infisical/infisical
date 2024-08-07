@@ -42,11 +42,11 @@ export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) 
       if (secret) {
         handleSecret(secret);
       } else {
+        reset({ password: "" });
         createNotification({
           text: "Password is Invalid. Try again",
           type: "error"
         })
-        reset();
       }
     } catch (error) {
       console.error("Failed to validate password:", error);
