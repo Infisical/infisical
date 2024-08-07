@@ -377,9 +377,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                mapper: ({ tagId: id, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
                   id,
-                  name,
+                  name: slug,
                   slug,
                   color,
                   vId
@@ -532,9 +532,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                mapper: ({ tagId: id, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
                   id,
-                  name,
+                  name: slug,
                   slug,
                   color,
                   vId

@@ -124,9 +124,9 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "tagJnId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color }) => ({
+            mapper: ({ tagId: id, tagSlug: slug, tagColor: color }) => ({
               id,
-              name,
+              name: slug,
               slug,
               color
             })
@@ -292,9 +292,9 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "tagJnId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color }) => ({
+            mapper: ({ tagId: id, tagSlug: slug, tagColor: color }) => ({
               id,
-              name,
+              name: slug,
               slug,
               color
             })

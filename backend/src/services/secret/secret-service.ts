@@ -2086,7 +2086,7 @@ export const secretServiceFactory = ({
 
     return {
       ...updatedSecret[0],
-      tags: [...existingSecretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color }))
+      tags: [...existingSecretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, color: t.color }))
     };
   };
 
