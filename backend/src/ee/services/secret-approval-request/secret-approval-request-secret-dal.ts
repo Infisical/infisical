@@ -88,8 +88,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTag).as("tagJnId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         )
         .select(
           db.ref("secretBlindIndex").withSchema(TableName.Secret).as("orgSecBlindIndex"),
@@ -269,8 +268,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTagV2).as("tagJnId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         )
         .select(
           db.ref("version").withSchema(TableName.SecretV2).as("orgSecVersion"),
