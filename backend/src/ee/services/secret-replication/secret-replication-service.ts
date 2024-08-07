@@ -449,7 +449,7 @@ export const secretReplicationServiceFactory = ({
                   });
                 }
                 if (locallyDeletedSecrets.length) {
-                  await secretDAL.delete(
+                  await secretV2BridgeDAL.delete(
                     {
                       $in: {
                         id: locallyDeletedSecrets.map(({ id }) => id)
