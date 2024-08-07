@@ -11,7 +11,8 @@ import {
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
   TGetActiveSharedSecretByIdDTO,
-  TGetSharedSecretsDTO
+  TGetSharedSecretsDTO,
+  TValidateActiveSharedSecretDTO
 } from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
@@ -108,8 +109,9 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     const newSharedSecret = await secretSharingDAL.create({
-      password,
+      password: hashedPassword,
       encryptedValue,
       hashedHex,
       iv,
@@ -211,6 +213,22 @@ export const secretSharingServiceFactory = ({
     };
   };
 
+  const validateSecretPassword = async ({
+    sharedSecretId,
+    hashedHex,
+    orgId,
+    password
+  }: TValidateActiveSharedSecretDTO) => {
+    const sharedSecret = await getActiveSharedSecretById({ sharedSecretId, hashedHex, orgId });
+
+    if (!sharedSecret || !sharedSecret.password) return undefined;
+
+    const isMatch = await bcrypt.compare(password, sharedSecret.password);
+
+    if (!isMatch) return undefined;
+    return sharedSecret
+  };
+
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -224,6 +242,7 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getActiveSharedSecretById
+    getActiveSharedSecretById,
+    validateSecretPassword
   };
 };

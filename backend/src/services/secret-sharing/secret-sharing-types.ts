@@ -35,6 +35,10 @@ export type TGetActiveSharedSecretByIdDTO = {
   orgId?: string;
 };
 
+export type TValidateActiveSharedSecretDTO = TGetActiveSharedSecretByIdDTO & {
+  password: string;
+};
+
 export type TCreateSharedSecretDTO = TSharedSecretPermission & TCreatePublicSharedSecretDTO;
 
 export type TDeleteSharedSecretDTO = {

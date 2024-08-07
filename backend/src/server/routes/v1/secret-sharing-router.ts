@@ -1,4 +1,3 @@
-import bcrypt from "bcrypt";
 import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
@@ -64,7 +63,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       response: {
         200: SecretSharingSchema.pick({
           encryptedValue: true,
-          password: true,
           iv: true,
           tag: true,
           expiresAt: true,
@@ -81,12 +79,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex: req.query.hashedHex,
         orgId: req.permission?.orgId
       });
-      if (!sharedSecret) return undefined;
+
+      // only return secret if it exists and has no password set
+      if (!sharedSecret || sharedSecret.password) return undefined;
+
       return {
         encryptedValue: sharedSecret.encryptedValue,
         iv: sharedSecret.iv,
         tag: sharedSecret.tag,
-        password: sharedSecret.password,
         expiresAt: sharedSecret.expiresAt,
         expiresAfterViews: sharedSecret.expiresAfterViews,
         accessType: sharedSecret.accessType,
@@ -110,8 +110,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         hashedHex: z.string()
       }),
       response: {
-        200: z.object({
-          isValid: z.boolean()
+        200: SecretSharingSchema.pick({
+          encryptedValue: true,
+          iv: true,
+          tag: true,
+          expiresAt: true,
+          expiresAfterViews: true,
+          accessType: true,
+        }).extend({
+          orgName: z.string().optional()
         })
       }
     },
@@ -119,22 +126,24 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       const { id } = req.params;
       const { password, hashedHex } = req.body;
 
-      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById({
+      const sharedSecret = await req.server.services.secretSharing.validateSecretPassword({
         sharedSecretId: id,
         hashedHex,
-        orgId: req.permission?.orgId
+        orgId: req.permission?.orgId,
+        password
       });
 
-      if (!sharedSecret) {
-        return { isValid: false };
-      }
+      if (!sharedSecret) return undefined;
 
-      if (sharedSecret.password) {
-        const isMatch = await bcrypt.compare(password, sharedSecret.password);
-        return { isValid: isMatch };
-      }
-
-      return { isValid: false };
+      return {
+        encryptedValue: sharedSecret.encryptedValue,
+        iv: sharedSecret.iv,
+        tag: sharedSecret.tag,
+        expiresAt: sharedSecret.expiresAt,
+        expiresAfterViews: sharedSecret.expiresAfterViews,
+        accessType: sharedSecret.accessType,
+        orgName: sharedSecret.orgName
+      };
     }
   });
 
