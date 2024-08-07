@@ -32,9 +32,8 @@ func SetValueInKeyring(key, value string) error {
 		configFile, _ := GetConfigFile()
 
 		if configFile.VaultBackendPassphrase == "" {
-			PrintWarning("System keyring could not be used, falling back to `file` vault for sensitive data storage.")
 			passphrasePrompt := promptui.Prompt{
-				Label: "Enter the passphrase to use for keyring encryption",
+				Label: "Enter a passphrase to protect your local backup secrets & login access token",
 			}
 			passphrase, err := passphrasePrompt.Run()
 			if err != nil {
@@ -43,6 +42,7 @@ func SetValueInKeyring(key, value string) error {
 
 			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
 			configFile.VaultBackendPassphrase = encodedPassphrase
+			configFile.VaultBackendType = VAULT_BACKEND_FILE_MODE
 			err = WriteConfigFile(&configFile)
 			if err != nil {
 				return err
@@ -65,12 +65,7 @@ func GetValueInKeyring(key string) (string, error) {
 		PrintErrorAndExit(1, err, "Unable to get current vault. Tip: run [infisical reset] then try again")
 	}
 
-	value, err := keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
-
-	if err != nil {
-		value, err = keyring.Get(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key)
-	}
-	return value, err
+	return keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 
 }
 
@@ -80,11 +75,6 @@ func DeleteValueInKeyring(key string) error {
 		return err
 	}
 
-	err = keyring.Delete(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
+	return keyring.Delete(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 
-	if err != nil {
-		err = keyring.Delete(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key)
-	}
-
-	return err
 }
