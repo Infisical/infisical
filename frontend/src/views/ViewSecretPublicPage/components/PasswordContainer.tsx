@@ -4,7 +4,7 @@ import { faArrowRight, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, IconButton, Input } from "@app/components/v2";
-import { useValidateSecretPassword } from "@app/hooks/api/secretSharing";
+import { fetchIsSecretPasswordValid } from "@app/hooks/api/secretSharing";
 import { createNotification } from "@app/components/notifications";
 
 type Props = {
@@ -16,11 +16,6 @@ type Props = {
 export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Props) => {
   const [password, setPassword] = useState<string>('')
   const [isLoading, setLoading] = useState(false)
-  const { refetch } = useValidateSecretPassword({
-    sharedSecretId: secretId,
-    hashedHex,
-    userPassword: password,
-  })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value)
@@ -30,9 +25,13 @@ export const PasswordContainer = ({ secretId, hashedHex, handlePassMatch }: Prop
     setLoading(true);
 
     try {
-      const { data: freshData } = await refetch();
+      const data = await fetchIsSecretPasswordValid(
+        secretId,
+        hashedHex,
+        password,
+      )
 
-      if (freshData?.isValid === true) {
+      if (data?.isValid === true) {
         handlePassMatch(true);
       } else {
         createNotification({

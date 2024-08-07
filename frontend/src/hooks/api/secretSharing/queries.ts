@@ -68,29 +68,18 @@ export const useGetActiveSharedSecretById = ({
   });
 };
 
-export const useValidateSecretPassword = ({
-  sharedSecretId,
-  hashedHex,
-  userPassword,
-}: {
-  sharedSecretId: string;
-  hashedHex: string;
-  userPassword: string;
-}) => {
-  return useQuery(
-    [`validateSecretPass-${sharedSecretId}`],
-    async () => {
-      const { data } = await apiRequest.post<ValidateSecretPassword>(
-        `/api/v1/secret-sharing/public/${sharedSecretId}/validate`,
-        {
-          hashedHex,
-          password: userPassword
-        }
-      );
-      return data;
-    },
+export const fetchIsSecretPasswordValid = async (
+  sharedSecretId: string,
+  hashedHex: string,
+  password: string,
+) => {
+  const { data } = await apiRequest.post<ValidateSecretPassword>(
+    `/api/v1/secret-sharing/public/${sharedSecretId}/validate`,
     {
-      enabled: Boolean(sharedSecretId) && Boolean(userPassword),
+      hashedHex,
+      password
     }
-  )
-}
+  );
+
+  return data;
+};
