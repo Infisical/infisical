@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
-import { fetchSecretIfPasswordIsValid } from "@app/hooks/api/secretSharing";
+import { fetchSecretIfPasswordIsValid, TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
 import { createNotification } from "@app/components/notifications";
 
 type Props = {
@@ -33,7 +33,7 @@ export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) 
 
   const onFormSubmit = async ({ password }: FormData) => {
     try {
-      const secret = await fetchSecretIfPasswordIsValid(
+      const secret: TViewSharedSecretResponse = await fetchSecretIfPasswordIsValid(
         secretId,
         hashedHex,
         password,
@@ -71,7 +71,7 @@ export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) 
               label="Password"
             >
               <div className="flex items-center gap-2 justify-between rounded-md">
-                <Input {...field} placeholder="Enter Password to view secret"></Input>
+                <Input {...field} placeholder="Enter Password to view secret" type="password"></Input>
                 <div className="flex">
                   <IconButton
                     ariaLabel="copy icon"

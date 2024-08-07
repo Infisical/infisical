@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TSharedSecret, TViewSharedSecretResponse, ValidateSecretPassword } from "./types";
+import { TSharedSecret, TViewSharedSecretResponse } from "./types";
 
 export const secretSharingKeys = {
   allSharedSecrets: () => ["sharedSecrets"] as const,
@@ -77,7 +77,7 @@ export const fetchSecretIfPasswordIsValid = async (
   hashedHex: string,
   password: string,
 ) => {
-  const { data } = await apiRequest.post<ValidateSecretPassword>(
+  const { data } = await apiRequest.post<TViewSharedSecretResponse>(
     `/api/v1/secret-sharing/public/${sharedSecretId}/validate`,
     {
       hashedHex,

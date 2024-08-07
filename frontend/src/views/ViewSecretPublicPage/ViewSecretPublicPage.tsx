@@ -5,12 +5,13 @@ import { useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
+import { TViewSharedSecretResponse, useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 
 import { SecretContainer, SecretErrorContainer, PasswordContainer } from "./components";
 
 export const ViewSecretPublicPage = () => {
   const [secret, setSecret] = useState(null)
+  const [error, setError] = useState(null)
   const router = useRouter();
   const { id, key: urlEncodedPublicKey } = router.query;
 
@@ -18,17 +19,18 @@ export const ViewSecretPublicPage = () => {
     ? urlEncodedPublicKey.toString().split("-")
     : ["", ""];
 
-  const { data, error } = useGetActiveSharedSecretById({
+  const { data: fetchSecret, error: fetchError, isLoading } = useGetActiveSharedSecretById({
     sharedSecretId: id as string,
     hashedHex
   });
 
   useEffect(() => {
-    if (data) setSecret(data)
-  }, [data])
+    if (fetchSecret) setSecret(fetchSecret)
+    if (fetchError) setError(fetchError)
+  }, [fetchSecret, fetchError])
 
-  const handleSecret = useCallback((val: any) => {
-    setSecret(val)
+  const handleSecret = useCallback((value: TViewSharedSecretResponse) => {
+    setSecret(value)
   }, [setSecret])
 
   return (
@@ -62,13 +64,19 @@ export const ViewSecretPublicPage = () => {
             </a>
           </p>
         </div>
-        {!secret ? (
-            <PasswordContainer secretId={id as string} hashedHex={hashedHex} handleSecret={handleSecret} />
-          ) : (
-            key && <SecretContainer secret={secret} secretKey={key} />
-          )
-        }
-        {error && <SecretErrorContainer />}
+        {!isLoading && (
+          <>
+            {!error && !secret && (
+              <PasswordContainer
+                secretId={id as string}
+                hashedHex={hashedHex}
+                handleSecret={handleSecret}
+              />
+            )}
+            {!error && secret && key && <SecretContainer secret={secret} secretKey={key} />}
+            {error && <SecretErrorContainer />}
+          </>
+        )}
         <div className="m-auto my-8 flex w-full">
           <div className="w-full border-t border-mineshaft-600" />
         </div>

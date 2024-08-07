@@ -31,7 +31,6 @@ export type TViewSharedSecretResponse = {
   tag: string;
   accessType: SecretSharingAccessType;
   orgName?: string;
-  password?: string;
 };
 
 export type TDeleteSharedSecretRequest = {
@@ -41,8 +40,4 @@ export type TDeleteSharedSecretRequest = {
 export enum SecretSharingAccessType {
   Anyone = "anyone",
   Organization = "organization"
-}
-
-export type ValidateSecretPassword = {
-  isValid: boolean
 }

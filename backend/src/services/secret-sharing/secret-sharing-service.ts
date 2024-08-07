@@ -179,10 +179,12 @@ export const secretSharingServiceFactory = ({
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
 
-    if (sharedSecret.password) return undefined;
+    await checkIfExpired(sharedSecret, sharedSecretId);
+  
+    if (sharedSecret.password !== null) return undefined;
 
-    // we only update the view count when secret has no password, when password is set view count is updated when we validate the password.
-    manageSecretViewCount(sharedSecret, sharedSecretId);
+    // decrement when we are sure the user will view secret.
+    await decrementSecretViewCount(sharedSecret, sharedSecretId);
 
     return {
       ...sharedSecret,
@@ -215,13 +217,11 @@ export const secretSharingServiceFactory = ({
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
 
-    if (!sharedSecret.password) return undefined;
-
     const isMatch = await bcrypt.compare(password, sharedSecret.password);
-    if (!isMatch) return undefined;
+    if (!isMatch) return undefined
 
-    // reduce view count when we are sure the password matches.
-    manageSecretViewCount(sharedSecret, sharedSecretId)
+    // we reduce the view count when we are sure the password matches.
+    await decrementSecretViewCount(sharedSecret, sharedSecretId);
 
     return {
       ...sharedSecret,
@@ -240,7 +240,8 @@ export const secretSharingServiceFactory = ({
     return deletedSharedSecret;
   };
 
-  const manageSecretViewCount = async (sharedSecret: any, sharedSecretId: string) => {
+  /** Checks if secret is expired and throws error if true */
+  const checkIfExpired = async (sharedSecret: any, sharedSecretId: string) => {
     const { expiresAt, expiresAfterViews } = sharedSecret;
 
     if (expiresAt !== null && expiresAt < new Date()) {
@@ -258,6 +259,10 @@ export const secretSharingServiceFactory = ({
         message: "Access denied: Secret has expired by view count"
       });
     }
+  }
+
+  const decrementSecretViewCount = async (sharedSecret: any, sharedSecretId: string) => {
+    const { expiresAfterViews } = sharedSecret;
 
     if (expiresAfterViews) {
       // decrement view count if view count expiry set
