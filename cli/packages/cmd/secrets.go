@@ -374,6 +374,11 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	request := models.GetAllSecretsParameters{
 		Environment:   environmentName,
 		WorkspaceId:   projectId,
@@ -392,6 +397,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	secrets, err := util.GetAllEnvironmentVariables(request, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
+	}
+
+	if secretOverriding {
+		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+	} else {
+		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 	}
 
 	if shouldExpand {
@@ -688,6 +699,7 @@ func init() {
 	secretsGetCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
 	secretsGetCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets, and process your referenced secrets")
 	secretsGetCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
+	secretsGetCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsGetCmd)
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
