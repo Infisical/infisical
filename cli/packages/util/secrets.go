@@ -299,10 +299,10 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 		if !isConnected {
 			backupEncryptionKey, _ := GetBackupEncryptionKey()
 			if backupEncryptionKey != nil {
-				backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey)
-				if len(backedSecrets) > 0 {
-					PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
-					secretsToReturn = backedSecrets
+				backedUpSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey)
+				if len(backedUpSecrets) > 0 {
+					PrintWarning("Unable to fetch the latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
+					secretsToReturn = backedUpSecrets
 					errorToReturn = err
 				}
 			}
@@ -525,6 +525,9 @@ func WriteBackupSecrets(workspace string, environment string, secretsPath string
 	}
 	marshaledSecrets, _ := json.Marshal(secrets)
 	result, err := crypto.EncryptSymmetric(marshaledSecrets, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("WriteBackupSecrets: Unable to encrypt local secret backup to file [err=%s]", err)
+	}
 	listOfSecretsMarshalled, _ := json.Marshal(result)
 	err = os.WriteFile(fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName), listOfSecretsMarshalled, 0600)
 	if err != nil {
@@ -557,9 +560,15 @@ func ReadBackupSecrets(workspace string, environment string, secretsPath string,
 	}
 
 	var encryptedBackUpSecrets models.SymmetricEncryptionResult
-	_ = json.Unmarshal(encryptedBackupSecretsAsBytes, &encryptedBackUpSecrets)
-	result, err := crypto.DecryptSymmetric(encryptionKey, encryptedBackUpSecrets.CipherText, encryptedBackUpSecrets.AuthTag, encryptedBackUpSecrets.Nonce)
+	err = json.Unmarshal(encryptedBackupSecretsAsBytes, &encryptedBackUpSecrets)
+	if err != nil {
+		return nil, fmt.Errorf("ReadBackupSecrets: unable to parse encrypted backup secrets. The secrets backup may be malformed [err=%s]", err)
+	}
 
+	result, err := crypto.DecryptSymmetric(encryptionKey, encryptedBackUpSecrets.CipherText, encryptedBackUpSecrets.AuthTag, encryptedBackUpSecrets.Nonce)
+	if err != nil {
+		return nil, fmt.Errorf("ReadBackupSecrets: unable to decrypt encrypted backup secrets [err=%s]", err)
+	}
 	var plainTextSecrets []models.SingleEnvironmentVariable
 	_ = json.Unmarshal(result, &plainTextSecrets)
 
