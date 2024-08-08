@@ -93,7 +93,7 @@ const createTagSchema = z.object({
     .trim()
     .toLowerCase()
     .refine((v) => slugify(v) === v, {
-      message: "Invalid slug. Should contain only characters, numbers and hyphen."
+      message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
     }),
   color: z.string().trim()
 });

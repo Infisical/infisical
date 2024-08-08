@@ -597,7 +597,7 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not.",
-    tagSlugs: "The comma seperated tag slugs to filter secrets"
+    tagSlugs: "The comma separated tag slugs to filter secrets"
   },
   CREATE: {
     secretName: "The name of the secret to create.",

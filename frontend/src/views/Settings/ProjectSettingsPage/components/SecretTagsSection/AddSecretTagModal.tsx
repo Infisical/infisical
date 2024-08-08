@@ -11,7 +11,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
   slug: z.string().refine((v) => slugify(v) === v, {
-    message: "Invalid slug. Should contain only characters, numbers and hyphen."
+    message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
   })
 });
 
