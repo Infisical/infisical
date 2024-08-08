@@ -221,7 +221,7 @@ export const secretSharingServiceFactory = ({
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
 
-    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification 
+    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
     // or can be safely sent to the client.
     await checkIfSecretIsExpired(sharedSecret, sharedSecretId);
 
@@ -267,7 +267,7 @@ export const secretSharingServiceFactory = ({
         message: "Something went wrong"
       });
 
-    const isMatch = await bcrypt.compare(password, sharedSecret.password as string);
+    const isMatch = await bcrypt.compare(password, sharedSecret.password);
     if (!isMatch) return undefined;
 
     // reduce the view count when the password matches (will be returned to the client).
