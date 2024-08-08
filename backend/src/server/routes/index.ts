@@ -133,6 +133,8 @@ import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
+import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -517,10 +519,6 @@ export const registerRoutes = async (
     licenseService
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
-  const alertService = alertServiceFactory({
-    alertDAL,
-    permissionService
-  });
 
   const secretScanningQueue = secretScanningQueueFactory({
     telemetryService,
@@ -590,6 +588,8 @@ export const registerRoutes = async (
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
 
+  const pkiCollectionDAL = pkiCollectionDALFactory(db);
+
   const certificateService = certificateServiceFactory({
     certificateDAL,
     certificateBodyDAL,
@@ -634,6 +634,17 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const alertService = alertServiceFactory({
+    alertDAL,
+    pkiCollectionDAL,
+    permissionService
+  });
+
+  const pkiCollectionService = pkiCollectionServiceFactory({
+    pkiCollectionDAL,
+    permissionService
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -651,6 +662,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateDAL,
     alertDAL,
+    pkiCollectionDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1123,6 +1135,7 @@ export const registerRoutes = async (
     certificate: certificateService,
     certificateAuthority: certificateAuthorityService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
+    pkiCollection: pkiCollectionService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,

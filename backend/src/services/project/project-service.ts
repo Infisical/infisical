@@ -23,6 +23,7 @@ import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/id
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -73,6 +74,7 @@ type TProjectServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
   alertDAL: Pick<TAlertDALFactory, "find">;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -110,6 +112,7 @@ export const projectServiceFactory = ({
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
+  pkiCollectionDAL,
   alertDAL,
   keyStore,
   kmsService,
@@ -698,12 +701,39 @@ export const projectServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Alerts);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
     const alerts = await alertDAL.find({ projectId });
 
     return {
       alerts
+    };
+  };
+
+  /**
+   * Return list of PKI collections for project
+   */
+  const listProjectPkiCollections = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectAlertsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+
+    const pkiCollections = await pkiCollectionDAL.find({ projectId });
+
+    return {
+      pkiCollections
     };
   };
 
@@ -826,6 +856,7 @@ export const projectServiceFactory = ({
     listProjectCas,
     listProjectCertificates,
     listProjectAlerts,
+    listProjectPkiCollections,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,

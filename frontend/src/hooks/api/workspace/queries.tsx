@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TAlert } from "../alerts/types";
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
@@ -11,6 +10,8 @@ import { identitiesKeys } from "../identities/queries";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
+import { TPkiAlert } from "../pkiAlerts/types";
+import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
 import { userKeys } from "../users/queries";
 import { TWorkspaceUser } from "../users/types";
@@ -64,7 +65,9 @@ export const workspaceKeys = {
     offset: number;
     limit: number;
   }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
-  getWorkspaceAlerts: (workspaceId: string) => [{ workspaceId }, "workspace-alerts"] as const
+  getWorkspacePkiAlerts: (workspaceId: string) => [{ workspaceId }, "workspace-alerts"] as const,
+  getWorkspacePkiCollections: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-pki-collections"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -606,13 +609,31 @@ export const useListWorkspaceCertificates = ({
 
 export const useListWorkspaceAlerts = ({ workspaceId }: { workspaceId: string }) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceAlerts(workspaceId),
+    queryKey: workspaceKeys.getWorkspacePkiAlerts(workspaceId),
     queryFn: async () => {
       const {
         data: { alerts }
-      } = await apiRequest.get<{ alerts: TAlert[] }>(`/api/v2/workspace/${workspaceId}/alerts`);
+      } = await apiRequest.get<{ alerts: TPkiAlert[] }>(
+        `/api/v2/workspace/${workspaceId}/pki-alerts`
+      );
 
       return { alerts };
+    },
+    enabled: Boolean(workspaceId)
+  });
+};
+
+export const useListWorkspacePkiCollections = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspacePkiCollections(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { collections }
+      } = await apiRequest.get<{ collections: TPkiCollection[] }>(
+        `/api/v2/workspace/${workspaceId}/pki-collections`
+      );
+
+      return { collections };
     },
     enabled: Boolean(workspaceId)
   });

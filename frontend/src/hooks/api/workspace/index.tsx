@@ -27,10 +27,12 @@ export {
   useListWorkspaceCas,
   useListWorkspaceCertificates,
   useListWorkspaceGroups,
+  useListWorkspacePkiCollections,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject} from "./queries";
+  useUpgradeProject
+} from "./queries";

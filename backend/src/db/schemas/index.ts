@@ -53,6 +53,7 @@ export * from "./org-bots";
 export * from "./org-memberships";
 export * from "./org-roles";
 export * from "./organizations";
+export * from "./pki-collections";
 export * from "./project-bots";
 export * from "./project-environments";
 export * from "./project-keys";

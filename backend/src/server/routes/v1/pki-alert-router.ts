@@ -5,7 +5,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerAlertRouter = async (server: FastifyZodProvider) => {
+export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
@@ -14,9 +14,10 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Create alert",
+      description: "Create PKI alert",
       body: z.object({
         projectId: z.string().trim(),
+        pkiCollectionId: z.string().trim(),
         name: z.string().trim(),
         alertBeforeDays: z.number(),
         emails: z.array(z.string())
@@ -26,7 +27,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.createAlert({
+      const alert = await server.services.alert.createPkiAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -61,7 +62,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Get alert",
+      description: "Get PKI alert",
       params: z.object({
         alertId: z.string().trim()
       }),
@@ -70,7 +71,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.getAlertById({
+      const alert = await server.services.alert.getPkiAlertById({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -104,13 +105,14 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Update alert",
+      description: "Update PKI alert",
       params: z.object({
         alertId: z.string().trim()
       }),
       body: z.object({
         name: z.string().trim().optional(),
         alertBeforeDays: z.number().optional(),
+        pkiCollectionId: z.string().trim().optional(),
         emails: z.array(z.string()).optional()
       }),
       response: {
@@ -118,7 +120,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.updateAlert({
+      const alert = await server.services.alert.updatePkiAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -153,7 +155,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Delete alert",
+      description: "Delete PKI alert",
       params: z.object({
         alertId: z.string().trim()
       }),
@@ -162,7 +164,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.deleteAlert({
+      const alert = await server.services.alert.deletePkiAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,

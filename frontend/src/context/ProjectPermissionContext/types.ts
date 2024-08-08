@@ -8,7 +8,6 @@ export enum ProjectPermissionActions {
 }
 
 export enum ProjectPermissionSub {
-  Alerts = "alerts",
   Role = "role",
   Member = "member",
   Groups = "groups",
@@ -29,6 +28,8 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
+  PkiAlerts = "pki-alerts",
+  PkiCollections = "pki-collections",
   Kms = "kms"
 }
 
@@ -42,7 +43,7 @@ export type ProjectPermissionSet =
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.Alerts]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionActions, ProjectPermissionSub.Member]

@@ -10,7 +10,6 @@ export enum ProjectPermissionActions {
 }
 
 export enum ProjectPermissionSub {
-  Alerts = "alerts",
   Role = "role",
   Member = "member",
   Groups = "groups",
@@ -31,6 +30,8 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
+  PkiAlerts = "pki-alerts",
+  PkiCollections = "pki-collections",
   Kms = "kms"
 }
 
@@ -64,7 +65,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Identity]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.Alerts]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -73,11 +75,6 @@ export type ProjectPermissionSet =
 
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Alerts);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Alerts);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Alerts);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Alerts);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
@@ -168,6 +165,16 @@ const buildAdminPermissionRules = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
 
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiCollections);
+
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
@@ -244,7 +251,8 @@ const buildMemberPermissionRules = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Alerts);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
 
   return rules;
 };

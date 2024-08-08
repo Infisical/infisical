@@ -12,6 +12,7 @@ export const AlertsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
+  pkiCollectionId: z.string().uuid(),
   name: z.string(),
   alertBeforeDays: z.number(),
   recipientEmails: z.string()

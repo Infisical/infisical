@@ -1,7 +1,13 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AlertsSchema, CertificateAuthoritiesSchema, CertificatesSchema, ProjectKeysSchema } from "@app/db/schemas";
+import {
+  AlertsSchema,
+  CertificateAuthoritiesSchema,
+  CertificatesSchema,
+  PkiCollectionsSchema,
+  ProjectKeysSchema
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -395,7 +401,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:projectId/alerts",
+    url: "/:projectId/pki-alerts",
     config: {
       rateLimit: readLimit
     },
@@ -420,6 +426,36 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { alerts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-collections",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          collections: z.array(PkiCollectionsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiCollections } = await server.services.project.listProjectPkiCollections({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { collections: pkiCollections };
     }
   });
 };

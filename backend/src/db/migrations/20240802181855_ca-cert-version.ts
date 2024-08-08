@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
     if (!hasVersionColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthorityCert, (t) => {
         t.integer("version").nullable();
-        t.dropUnique(["caId"]);
+        // t.dropUnique(["caId"]);
       });
 
       await knex(TableName.CertificateAuthorityCert).update({ version: 1 }).whereNull("version");
@@ -54,11 +54,11 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.CertificateAuthoritySecret)) {
-    await knex.schema.alterTable(TableName.CertificateAuthoritySecret, (t) => {
-      t.dropUnique(["caId"]);
-    });
-  }
+  // if (await knex.schema.hasTable(TableName.CertificateAuthoritySecret)) {
+  //   await knex.schema.alterTable(TableName.CertificateAuthoritySecret, (t) => {
+  //     t.dropUnique(["caId"]);
+  //   });
+  // }
 }
 
 export async function down(knex: Knex): Promise<void> {

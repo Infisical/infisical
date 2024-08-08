@@ -164,6 +164,9 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPkiCollections,
+  TPkiCollectionsInsert,
+  TPkiCollectionsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -367,6 +370,11 @@ declare module "knex/types/tables" {
       TCertificateSecrets,
       TCertificateSecretsInsert,
       TCertificateSecretsUpdate
+    >;
+    [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
+      TPkiCollections,
+      TPkiCollectionsInsert,
+      TPkiCollectionsUpdate
     >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,

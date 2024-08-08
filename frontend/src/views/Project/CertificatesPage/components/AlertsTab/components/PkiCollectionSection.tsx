@@ -5,41 +5,41 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useDeleteAlert } from "@app/hooks/api";
+import { useDeletePkiCollection } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AlertModal } from "./AlertModal";
-import { AlertsTable } from "./AlertsTable";
+import { PkiCollectionModal } from "./PkiCollectionModal";
+import { PkiCollectionTable } from "./PkiCollectionTable";
 
-export const AlertsSection = () => {
+export const PkiCollectionSection = () => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
-  const { mutateAsync: deleteAlert } = useDeleteAlert();
+  const { mutateAsync: deletePkiCollection } = useDeletePkiCollection();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "alert",
-    "deleteAlert"
+    "pkiCollection",
+    "deletePkiCollection"
   ] as const);
 
-  const onRemoveAlertSubmit = async (alertId: string) => {
+  const onRemovePkiCollectionSubmit = async (collectionId: string) => {
     try {
       if (!projectId) return;
 
-      await deleteAlert({
-        alertId,
+      await deletePkiCollection({
+        collectionId,
         projectId
       });
 
       await createNotification({
-        text: "Successfully deleted alert",
+        text: "Successfully deleted PKI collection",
         type: "success"
       });
 
-      handlePopUpClose("deleteAlert");
+      handlePopUpClose("deletePkiCollection");
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to delete alert",
+        text: "Failed to delete PKI collection",
         type: "error"
       });
     }
@@ -48,17 +48,17 @@ export const AlertsSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Alerts</p>
+        <p className="text-xl font-semibold text-mineshaft-100">PKI Collection</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
-          a={ProjectPermissionSub.PkiAlerts}
+          a={ProjectPermissionSub.PkiCollections}
         >
           {(isAllowed) => (
             <Button
               colorSchema="primary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("alert")}
+              onClick={() => handlePopUpOpen("pkiCollection")}
               isDisabled={!isAllowed}
             >
               Create
@@ -66,17 +66,19 @@ export const AlertsSection = () => {
           )}
         </ProjectPermissionCan>
       </div>
-      <AlertsTable handlePopUpOpen={handlePopUpOpen} />
-      <AlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <PkiCollectionTable handlePopUpOpen={handlePopUpOpen} />
+      <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
-        isOpen={popUp.deleteAlert.isOpen}
+        isOpen={popUp.deletePkiCollection.isOpen}
         title={`Are you sure want to remove the alert ${
-          (popUp?.deleteAlert?.data as { name: string })?.name || ""
+          (popUp?.deletePkiCollection?.data as { name: string })?.name || ""
         } from the project?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteAlert", isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onRemoveAlertSubmit((popUp?.deleteAlert?.data as { alertId: string })?.alertId)
+          onRemovePkiCollectionSubmit(
+            (popUp?.deletePkiCollection?.data as { collectionId: string })?.collectionId
+          )
         }
       />
     </div>
