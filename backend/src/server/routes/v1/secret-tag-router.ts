@@ -116,7 +116,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
           .trim()
           .describe(SECRET_TAGS.CREATE.slug)
           .refine((v) => slugify(v) === v, {
-            message: "Invalid slug. Should contain only characters, numbers and hyphen."
+            message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
           }),
         color: z.string().trim().describe(SECRET_TAGS.CREATE.color)
       }),
