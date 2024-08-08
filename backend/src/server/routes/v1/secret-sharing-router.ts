@@ -74,13 +74,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById({
+      const sharedSecret = await req.server.services.secretSharing.getPasswordlessSecretByID({
         sharedSecretId: req.params.id,
         hashedHex: req.query.hashedHex,
         orgId: req.permission?.orgId
       });
 
-      if (!sharedSecret || sharedSecret.password) return undefined;
+      if (!sharedSecret) return undefined;
 
       return {
         encryptedValue: sharedSecret.encryptedValue,
@@ -125,7 +125,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       const { id } = req.params;
       const { password, hashedHex } = req.body;
 
-      const sharedSecret = await req.server.services.secretSharing.validateSecretPassword({
+      const sharedSecret = await req.server.services.secretSharing.getValidatedSecretByID({
         sharedSecretId: id,
         hashedHex,
         orgId: req.permission?.orgId,

@@ -9,11 +9,11 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
+import { TSecretSharing } from "@app/db/schemas";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
-  SharedSecretWithDate,
   TCreatePublicSharedSecretDTO,
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
@@ -170,7 +170,7 @@ export const secretSharingServiceFactory = ({
   };
 
   /** Checks if secret is expired and throws error if true */
-  const checkIfExpired = async (sharedSecret: SharedSecretWithDate, sharedSecretId: string) => {
+  const checkIfSecretIsExpired = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
     const { expiresAt, expiresAfterViews } = sharedSecret;
 
     if (expiresAt !== null && expiresAt < new Date()) {
@@ -190,7 +190,7 @@ export const secretSharingServiceFactory = ({
     }
   };
 
-  const decrementSecretViewCount = async (sharedSecret: SharedSecretWithDate, sharedSecretId: string) => {
+  const decrementSecretViewCount = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
     const { expiresAfterViews } = sharedSecret;
 
     if (expiresAfterViews) {
@@ -203,7 +203,8 @@ export const secretSharingServiceFactory = ({
     });
   };
 
-  const getActiveSharedSecretById = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
+  /** Get's passwordless secret. validates all secret's requested (must be fresh). */
+  const getPasswordlessSecretByID = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = await secretSharingDAL.findOne({
       id: sharedSecretId,
       hashedHex
@@ -220,7 +221,9 @@ export const secretSharingServiceFactory = ({
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
 
-    await checkIfExpired(sharedSecret, sharedSecretId);
+    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification 
+    // or can be safely sent to the client.
+    await checkIfSecretIsExpired(sharedSecret, sharedSecretId);
 
     if (sharedSecret.password !== null) return undefined;
 
@@ -236,7 +239,8 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const validateSecretPassword = async ({
+  /** Get's the requested secret if password passed is valid */
+  const getValidatedSecretByID = async ({
     sharedSecretId,
     hashedHex,
     orgId,
@@ -266,7 +270,7 @@ export const secretSharingServiceFactory = ({
     const isMatch = await bcrypt.compare(password, sharedSecret.password as string);
     if (!isMatch) return undefined;
 
-    // we reduce the view count when we are sure the password matches.
+    // reduce the view count when the password matches (will be returned to the client).
     await decrementSecretViewCount(sharedSecret, sharedSecretId);
 
     return {
@@ -291,7 +295,7 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getActiveSharedSecretById,
-    validateSecretPassword
+    getPasswordlessSecretByID,
+    getValidatedSecretByID
   };
 };

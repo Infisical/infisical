@@ -41,8 +41,6 @@ export type TValidateActiveSharedSecretDTO = TGetActiveSharedSecretByIdDTO & {
 
 export type TCreateSharedSecretDTO = TSharedSecretPermission & TCreatePublicSharedSecretDTO;
 
-export type SharedSecretWithDate = Omit<TCreateSharedSecretDTO, 'expiresAt'> & { expiresAt: Date };
-
 export type TDeleteSharedSecretDTO = {
   sharedSecretId: string;
 } & TSharedSecretPermission;
