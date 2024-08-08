@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -24,6 +25,8 @@ type DecodedSymmetricEncryptionDetails = struct {
 	Tag    []byte
 	Key    []byte
 }
+
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV string, tag string) (DecodedSymmetricEncryptionDetails, error) {
 	cipherx, err := base64.StdEncoding.DecodeString(cipher)
@@ -286,4 +289,12 @@ func GetCmdFlagOrEnv(cmd *cobra.Command, flag, envName string) (string, error) {
 		return "", fmt.Errorf("please provide %s flag", flag)
 	}
 	return value, nil
+}
+
+func GenerateRandomString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }
