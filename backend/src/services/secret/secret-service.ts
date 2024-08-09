@@ -964,7 +964,8 @@ export const secretServiceFactory = ({
     environment,
     includeImports,
     expandSecretReferences,
-    recursive
+    recursive,
+    tagSlugs = []
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -978,7 +979,8 @@ export const secretServiceFactory = ({
         path,
         recursive,
         actorAuthMethod,
-        includeImports
+        includeImports,
+        tagSlugs
       });
       return { secrets, imports };
     }
@@ -998,6 +1000,9 @@ export const secretServiceFactory = ({
     });
 
     const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
+    const filteredSecrets = tagSlugs.length
+      ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
+      : decryptedSecrets;
     const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
       const decryptedImportSecrets = importedSecrets.map((sec) =>
         decryptSecretRaw(
@@ -1106,14 +1111,14 @@ export const secretServiceFactory = ({
       };
 
       // expand secrets
-      await batchSecretsExpand(decryptedSecrets);
+      await batchSecretsExpand(filteredSecrets);
 
       // expand imports by batch
       await Promise.all(processedImports.map((processedImport) => batchSecretsExpand(processedImport.secrets)));
     }
 
     return {
-      secrets: decryptedSecrets,
+      secrets: filteredSecrets,
       imports: processedImports
     };
   };
@@ -2081,7 +2086,7 @@ export const secretServiceFactory = ({
 
     return {
       ...updatedSecret[0],
-      tags: [...existingSecretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color }))
+      tags: [...existingSecretTags, ...tags].map((t) => ({ id: t.id, slug: t.slug, name: t.slug, color: t.color }))
     };
   };
 

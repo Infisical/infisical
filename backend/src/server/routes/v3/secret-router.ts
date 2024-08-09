@@ -59,9 +59,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
-                name: true,
                 color: true
-              }).array()
+              })
+                .extend({ name: z.string() })
+                .array()
             })
           )
         })
@@ -116,16 +117,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
-            z.object({
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                name: true,
-                color: true
-              }).array()
+          secret: SecretsSchema.omit({ secretBlindIndex: true }).extend({
+            tags: SecretTagsSchema.pick({
+              id: true,
+              slug: true,
+              color: true
             })
-          )
+              .extend({ name: z.string() })
+              .array()
+          })
         })
       }
     },
@@ -180,7 +180,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .enum(["true", "false"])
           .default("false")
           .transform((value) => value === "true")
-          .describe(RAW_SECRETS.LIST.includeImports)
+          .describe(RAW_SECRETS.LIST.includeImports),
+        tagSlugs: z
+          .string()
+          .describe(RAW_SECRETS.LIST.tagSlugs)
+          .optional()
+          // split by comma and trim the strings
+          .transform((el) => (el ? el.split(",").map((i) => i.trim()) : []))
       }),
       response: {
         200: z.object({
@@ -190,9 +196,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
-                name: true,
                 color: true
               })
+                .extend({ name: z.string() })
                 .array()
                 .optional()
             })
@@ -251,7 +257,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: workspaceId,
         path: secretPath,
         includeImports: req.query.include_imports,
-        recursive: req.query.recursive
+        recursive: req.query.recursive,
+        tagSlugs: req.query.tagSlugs
       });
 
       await server.services.auditLog.createAuditLog({
@@ -325,9 +332,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             tags: SecretTagsSchema.pick({
               id: true,
               slug: true,
-              name: true,
               color: true
             })
+              .extend({ name: z.string() })
               .array()
               .optional()
           })
@@ -731,9 +738,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
-                name: true,
                 color: true
-              }).array()
+              })
+                .extend({ name: z.string() })
+                .array()
             })
             .array(),
           imports: z

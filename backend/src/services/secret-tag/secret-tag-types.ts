@@ -1,14 +1,12 @@
 import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateTagDTO = {
-  name: string;
   color: string;
   slug: string;
 } & TProjectPermission;
 
 export type TUpdateTagDTO = {
   id: string;
-  name?: string;
   slug?: string;
   color?: string;
 } & Omit<TProjectPermission, "projectId">;

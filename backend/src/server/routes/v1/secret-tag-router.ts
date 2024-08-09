@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { SecretTagsSchema } from "@app/db/schemas";
@@ -49,7 +50,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspaceTag: SecretTagsSchema
+          // akhilmhdh: for terraform backward compatiability
+          workspaceTag: SecretTagsSchema.extend({ name: z.string() })
         })
       }
     },
@@ -79,7 +81,8 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspaceTag: SecretTagsSchema
+          // akhilmhdh: for terraform backward compatiability
+          workspaceTag: SecretTagsSchema.extend({ name: z.string() })
         })
       }
     },
@@ -108,8 +111,14 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
       }),
       body: z.object({
-        name: z.string().trim().describe(SECRET_TAGS.CREATE.name),
-        slug: z.string().trim().describe(SECRET_TAGS.CREATE.slug),
+        slug: z
+          .string()
+          .toLowerCase()
+          .trim()
+          .describe(SECRET_TAGS.CREATE.slug)
+          .refine((v) => slugify(v) === v, {
+            message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
+          }),
         color: z.string().trim().describe(SECRET_TAGS.CREATE.color)
       }),
       response: {
@@ -144,8 +153,14 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         tagId: z.string().trim().describe(SECRET_TAGS.UPDATE.tagId)
       }),
       body: z.object({
-        name: z.string().trim().describe(SECRET_TAGS.UPDATE.name),
-        slug: z.string().trim().describe(SECRET_TAGS.UPDATE.slug),
+        slug: z
+          .string()
+          .toLowerCase()
+          .trim()
+          .describe(SECRET_TAGS.UPDATE.slug)
+          .refine((v) => slugify(v) === v, {
+            message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
+          }),
         color: z.string().trim().describe(SECRET_TAGS.UPDATE.color)
       }),
       response: {

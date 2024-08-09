@@ -327,7 +327,7 @@ export const ActionBar = ({
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent className="rounded-l-none">
                   <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
-                  {tags.map(({ id, name, color }) => (
+                  {tags.map(({ id, slug, color }) => (
                     <DropdownMenuItem
                       onClick={(evt) => {
                         evt.preventDefault();
@@ -342,7 +342,7 @@ export const ActionBar = ({
                           className="mr-2 h-2 w-2 rounded-full"
                           style={{ background: color || "#bec2c8" }}
                         />
-                        {name}
+                        {slug}
                       </div>
                     </DropdownMenuItem>
                   ))}

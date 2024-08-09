@@ -370,7 +370,6 @@ export const decryptSecretRaw = (
       id: string;
       slug: string;
       color?: string | null;
-      name: string;
     }[];
   },
   key: string
@@ -412,7 +411,7 @@ export const decryptSecretRaw = (
     _id: secret.id,
     id: secret.id,
     user: secret.userId,
-    tags: secret.tags,
+    tags: secret.tags?.map((el) => ({ ...el, name: el.slug })),
     skipMultilineEncoding: secret.skipMultilineEncoding,
     secretReminderRepeatDays: secret.secretReminderRepeatDays,
     secretReminderNote: secret.secretReminderNote,

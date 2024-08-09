@@ -9,7 +9,6 @@ import { TImmutableDBKeys } from "./models";
 
 export const SecretTagsSchema = z.object({
   id: z.string().uuid(),
-  name: z.string(),
   slug: z.string(),
   color: z.string().nullable().optional(),
   createdAt: z.date(),

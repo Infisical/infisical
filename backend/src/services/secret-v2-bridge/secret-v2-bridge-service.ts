@@ -429,6 +429,7 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     includeImports,
     recursive,
+    tagSlugs = [],
     expandSecretReferences: shouldExpandSecretReferences
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
@@ -496,6 +497,9 @@ export const secretV2BridgeServiceFactory = ({
           : ""
       })
     );
+    const filteredSecrets = tagSlugs.length
+      ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
+      : decryptedSecrets;
     const expandSecretReferences = expandSecretReferencesFactory({
       projectId,
       folderDAL,
@@ -504,7 +508,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     if (shouldExpandSecretReferences) {
-      const secretsGroupByPath = groupBy(decryptedSecrets, (i) => i.secretPath);
+      const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
       for (const secretPathKey in secretsGroupByPath) {
         if (Object.hasOwn(secretsGroupByPath, secretPathKey)) {
           const secretsGroupByKey = secretsGroupByPath[secretPathKey].reduce(
@@ -530,7 +534,7 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!includeImports) {
       return {
-        secrets: decryptedSecrets
+        secrets: filteredSecrets
       };
     }
 
@@ -558,7 +562,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     return {
-      secrets: decryptedSecrets,
+      secrets: filteredSecrets,
       imports: importedSecrets
     };
   };
