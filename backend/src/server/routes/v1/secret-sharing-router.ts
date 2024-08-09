@@ -74,12 +74,66 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getActiveSharedSecretById({
+      const sharedSecret = await req.server.services.secretSharing.getPasswordlessSecretByID({
         sharedSecretId: req.params.id,
         hashedHex: req.query.hashedHex,
         orgId: req.permission?.orgId
       });
+
       if (!sharedSecret) return undefined;
+
+      return {
+        encryptedValue: sharedSecret.encryptedValue,
+        iv: sharedSecret.iv,
+        tag: sharedSecret.tag,
+        expiresAt: sharedSecret.expiresAt,
+        expiresAfterViews: sharedSecret.expiresAfterViews,
+        accessType: sharedSecret.accessType,
+        orgName: sharedSecret.orgName
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/public/:id/validate",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      body: z.object({
+        password: z.string().min(1),
+        hashedHex: z.string()
+      }),
+      response: {
+        200: SecretSharingSchema.pick({
+          encryptedValue: true,
+          iv: true,
+          tag: true,
+          expiresAt: true,
+          expiresAfterViews: true,
+          accessType: true
+        }).extend({
+          orgName: z.string().optional()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { id } = req.params;
+      const { password, hashedHex } = req.body;
+
+      const sharedSecret = await req.server.services.secretSharing.getValidatedSecretByID({
+        sharedSecretId: id,
+        hashedHex,
+        orgId: req.permission?.orgId,
+        password
+      });
+
+      if (!sharedSecret) return undefined;
+
       return {
         encryptedValue: sharedSecret.encryptedValue,
         iv: sharedSecret.iv,
@@ -101,6 +155,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z.object({
         encryptedValue: z.string(),
+        password: z.string().optional(),
         hashedHex: z.string(),
         iv: z.string(),
         tag: z.string(),
@@ -131,6 +186,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z.object({
         name: z.string().max(50).optional(),
+        password: z.string().optional(),
         encryptedValue: z.string(),
         hashedHex: z.string(),
         iv: z.string(),
