@@ -59,9 +59,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
-                name: true,
                 color: true
-              }).array()
+              })
+                .extend({ name: z.string() })
+                .array()
             })
           )
         })
@@ -116,16 +117,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
-            z.object({
-              tags: SecretTagsSchema.pick({
-                id: true,
-                slug: true,
-                name: true,
-                color: true
-              }).array()
+          secret: SecretsSchema.omit({ secretBlindIndex: true }).extend({
+            tags: SecretTagsSchema.pick({
+              id: true,
+              slug: true,
+              color: true
             })
-          )
+              .extend({ name: z.string() })
+              .array()
+          })
         })
       }
     },
@@ -196,9 +196,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
-                name: true,
                 color: true
               })
+                .extend({ name: z.string() })
                 .array()
                 .optional()
             })
@@ -332,9 +332,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             tags: SecretTagsSchema.pick({
               id: true,
               slug: true,
-              name: true,
               color: true
             })
+              .extend({ name: z.string() })
               .array()
               .optional()
           })
@@ -738,9 +738,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               tags: SecretTagsSchema.pick({
                 id: true,
                 slug: true,
-                name: true,
                 color: true
-              }).array()
+              })
+                .extend({ name: z.string() })
+                .array()
             })
             .array(),
           imports: z

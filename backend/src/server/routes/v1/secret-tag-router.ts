@@ -81,6 +81,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
+          // akhilmhdh: for terraform backward compatiability
           workspaceTag: SecretTagsSchema.extend({ name: z.string() })
         })
       }
