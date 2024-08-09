@@ -155,22 +155,24 @@ var secretsSetCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		util.RequireLocalWorkspaceFile()
-
-		environmentName, _ := cmd.Flags().GetString("env")
-		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
-			if environmentFromWorkspace != "" {
-				environmentName = environmentFromWorkspace
-			}
-		}
-
 		token, err := util.GetInfisicalToken(cmd)
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		if (token == nil) {
+			util.RequireLocalWorkspaceFile()
+		}
+
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()	
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
+		}
+
+				projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -424,11 +426,13 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		if value, ok := secretsMap[secretKeyFromArg]; ok {
 			requestedSecrets = append(requestedSecrets, value)
 		} else {
-			requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
-				Key:   secretKeyFromArg,
-				Type:  "*not found*",
-				Value: "*not found*",
-			})
+			if !(plainOutput || showOnlyValue) {
+				requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
+					Key:   secretKeyFromArg,
+					Type:  "*not found*",
+					Value: "*not found*",
+				})
+			}
 		}
 	}
 
