@@ -5,27 +5,22 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const WebhooksSchema = z.object({
   id: z.string().uuid(),
   secretPath: z.string().default("/"),
-  url: z.string(),
   lastStatus: z.string().nullable().optional(),
   lastRunErrorMessage: z.string().nullable().optional(),
   isDisabled: z.boolean().default(false),
-  encryptedSecretKey: z.string().nullable().optional(),
-  iv: z.string().nullable().optional(),
-  tag: z.string().nullable().optional(),
-  algorithm: z.string().nullable().optional(),
-  keyEncoding: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   envId: z.string().uuid(),
-  urlCipherText: z.string().nullable().optional(),
-  urlIV: z.string().nullable().optional(),
-  urlTag: z.string().nullable().optional(),
-  type: z.string().default("general").nullable().optional()
+  type: z.string().default("general").nullable().optional(),
+  encryptedSecretKeyWithKms: zodBuffer.nullable().optional(),
+  encryptedUrl: zodBuffer
 });
 
 export type TWebhooks = z.infer<typeof WebhooksSchema>;

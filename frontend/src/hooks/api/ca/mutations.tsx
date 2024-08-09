@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
+import { caKeys } from "./queries";
 import {
   TCertificateAuthority,
   TCreateCaDTO,
@@ -11,10 +12,11 @@ import {
   TDeleteCaDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
+  TRenewCaDTO,
+  TRenewCaResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
-  TUpdateCaDTO
-} from "./types";
+  TUpdateCaDTO} from "./types";
 
 export const useCreateCa = () => {
   const queryClient = useQueryClient();
@@ -84,8 +86,10 @@ export const useImportCaCertificate = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { caId, projectSlug }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
+      queryClient.invalidateQueries(caKeys.getCaCerts(caId));
+      queryClient.invalidateQueries(caKeys.getCaCert(caId));
     }
   });
 };
@@ -103,6 +107,26 @@ export const useCreateCertificate = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries(workspaceKeys.forWorkspaceCertificates(projectSlug));
+    }
+  });
+};
+
+export const useRenewCa = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TRenewCaResponse, {}, TRenewCaDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TRenewCaResponse>(
+        `/api/v1/pki/ca/${body.caId}/renew`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { caId, projectSlug }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
+      queryClient.invalidateQueries(caKeys.getCaCert(caId));
+      queryClient.invalidateQueries(caKeys.getCaCerts(caId));
+      queryClient.invalidateQueries(caKeys.getCaCsr(caId));
+      queryClient.invalidateQueries(caKeys.getCaCrl(caId));
     }
   });
 };

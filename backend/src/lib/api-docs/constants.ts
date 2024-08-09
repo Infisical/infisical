@@ -1049,11 +1049,26 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to generate CSR from",
     csr: "The generated CSR from the CA"
   },
+  RENEW_CA_CERT: {
+    caId: "The ID of the CA to renew the CA certificate for",
+    type: "The type of behavior to use for the renewal operation. Currently Infisical is only able to renew a CA certificate with the same key pair.",
+    notAfter: "The expiry date and time for the renewed CA certificate in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    certificate: "The renewed CA certificate body",
+    certificateChain: "The certificate chain of the CA",
+    serialNumber: "The serial number of the renewed CA certificate"
+  },
   GET_CERT: {
     caId: "The ID of the CA to get the certificate body and certificate chain from",
     certificate: "The certificate body of the CA",
     certificateChain: "The certificate chain of the CA",
     serialNumber: "The serial number of the CA certificate"
+  },
+  GET_CA_CERTS: {
+    caId: "The ID of the CA to get the CA certificates for",
+    certificate: "The certificate body of the CA certificate",
+    certificateChain: "The certificate chain of the CA certificate",
+    serialNumber: "The serial number of the CA certificate",
+    version: "The version of the CA certificate. The version is incremented for each CA renewal operation."
   },
   SIGN_INTERMEDIATE: {
     caId: "The ID of the CA to sign the intermediate certificate with",

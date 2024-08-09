@@ -15,7 +15,9 @@ export const CertificateAuthorityCertsSchema = z.object({
   updatedAt: z.date(),
   caId: z.string().uuid(),
   encryptedCertificate: zodBuffer,
-  encryptedCertificateChain: zodBuffer
+  encryptedCertificateChain: zodBuffer,
+  version: z.number(),
+  caSecretId: z.string().uuid()
 });
 
 export type TCertificateAuthorityCerts = z.infer<typeof CertificateAuthorityCertsSchema>;

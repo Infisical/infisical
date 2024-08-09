@@ -6,6 +6,7 @@ import { TCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
+  getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"]
@@ -24,6 +25,24 @@ export const useGetCaById = (caId: string) => {
   });
 };
 
+export const useGetCaCerts = (caId: string) => {
+  return useQuery({
+    queryKey: caKeys.getCaCerts(caId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<
+        {
+          certificate: string;
+          certificateChain: string;
+          serialNumber: string;
+          version: number;
+        }[]
+      >(`/api/v1/pki/ca/${caId}/ca-certificates`); // TODO: consider updating endpoint structure
+      return data;
+    },
+    enabled: Boolean(caId)
+  });
+};
+
 export const useGetCaCert = (caId: string) => {
   return useQuery({
     queryKey: caKeys.getCaCert(caId),
@@ -32,7 +51,7 @@ export const useGetCaCert = (caId: string) => {
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-      }>(`/api/v1/pki/ca/${caId}/certificate`);
+      }>(`/api/v1/pki/ca/${caId}/certificate`); // TODO: consider updating endpoint structure
       return data;
     },
     enabled: Boolean(caId)
