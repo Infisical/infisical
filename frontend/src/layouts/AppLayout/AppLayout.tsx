@@ -482,7 +482,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         )}
                         <Link href={`/org/${currentOrg?.id}/admin`} legacyBehavior>
                           <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                          Organization Admin Console
+                            Organization Admin Console
                           </DropdownMenuItem>
                         </Link>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
@@ -707,6 +707,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             icon="system-outline-165-view-carousel"
                           >
                             Overview
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/org/${currentOrg?.id}/user-secrets`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/user-secrets`}
+                            icon="system-outline-200-user"
+                          >
+                            User Secrets
                           </MenuItem>
                         </a>
                       </Link>
