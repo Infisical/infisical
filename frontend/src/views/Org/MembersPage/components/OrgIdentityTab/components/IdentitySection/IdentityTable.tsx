@@ -77,13 +77,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Role</Th>
+            <Th>Disabled</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
           {isLoading && <TableSkeleton columns={4} innerKey="org-identities" />}
           {!isLoading &&
-            data?.map(({ identity: { id, name }, role, customRole }) => {
+            data?.map(({ identity: { id, name, isDisabled }, role, customRole }) => {
               return (
                 <Tr
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -120,6 +121,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       }}
                     </OrgPermissionCan>
                   </Td>
+                  <Td>{isDisabled ? "true" : "false"}</Td>
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">

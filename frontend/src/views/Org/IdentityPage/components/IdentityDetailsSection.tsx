@@ -39,6 +39,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                     handlePopUpOpen("identity", {
                       identityId,
                       name: data.identity.name,
+                      isDisabled: data.identity.isDisabled,
                       role: data.role,
                       customRole: data.customRole
                     });
@@ -76,6 +77,10 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Disabled</p>
+          <p className="text-sm text-mineshaft-300">{data.identity.isDisabled ? "yes" : "no"}</p>
         </div>
         <div>
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
