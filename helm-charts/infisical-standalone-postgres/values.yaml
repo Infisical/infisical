@@ -18,6 +18,14 @@ infisical:
 
   affinity: {}
   kubeSecretRef: "infisical-secrets"
+  kubeSecretGenerate:
+    enabled: false
+    env:
+      AUTH_SECRET: "Requred" #genarate: `openssl rand -base64 32`
+      ENCRYPTION_KEY: "Requerd" #generate: `openssl rand -hex 16`
+      REDIS_URL: "Requerd" #redis://$user:$password@$service_domain:$service_port
+      DB_CONNECTION_URI: "Requerd" #postgresql://$user:$password@$service_domain:$service_port/$database
+
   service:
     annotations: {}
     type: ClusterIP
