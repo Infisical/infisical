@@ -21,11 +21,11 @@ jobs:
       matrix:
         include:
         - language: go
-          build-mode: manualbuild
+          build-mode: manual
         - language: javascript-typescript
-          build-mode: manualbuild
+          build-mode: manual
         - language: python
-          build-mode: manualbuild 
+          build-mode: manual
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
