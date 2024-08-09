@@ -10,6 +10,7 @@ type SelectedSecretState = {
   action: {
     toggle: (id: string) => void;
     reset: () => void;
+    selectAll: (allIds: string[]) => void;
   };
 };
 const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
@@ -24,7 +25,14 @@ const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
         else newChecks[id] = true;
         return { selectedSecret: newChecks };
       }),
-    reset: () => set({ selectedSecret: {} })
+    reset: () => set({ selectedSecret: {} }),
+    selectAll: (allIds) => {
+      set(() => {
+        const newChecks: Record<string, boolean> = {};
+        allIds.map((id: string) => newChecks[id] = true)
+        return { selectedSecret: newChecks};
+      })
+    }
   }
 });
 
