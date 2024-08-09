@@ -202,23 +202,22 @@ export const SecretOverviewPage = () => {
     })
   };
 
-  const allSelections = useMemo(() => {
+  const {areAllEntriesSelected, isAnyOneEntrySelected} = useMemo(() => {
     const selectedFolders = Object.keys(selectedEntries[EntryType.FOLDER])
       .filter((key) => selectedEntries[EntryType.FOLDER][key]);
     const selectedSecrets = Object.keys(selectedEntries[EntryType.SECRET])
       .filter((key) => selectedEntries[EntryType.SECRET][key]);
-    return [...selectedFolders, ...selectedSecrets];
-  }, [selectedEntries]);
-
-  const areAllEntriesSelected = useMemo(() => {
-    return folderNames.every((folder:string) => allSelections.includes(folder)) 
+    const allSelections =  [...selectedFolders, ...selectedSecrets];
+    const areAllEntriesSelected = folderNames.every((folder:string) => allSelections.includes(folder)) 
       && secKeys.every((secret: string) => allSelections.includes(secret));
-  }, [allSelections, folderNames, secKeys]);
-
-  const isAnyOneEntrySelected = useMemo(() => {
-    return folderNames.some((folder:string) => allSelections.includes(folder)) 
+    const isAnyOneEntrySelected = folderNames.some((folder:string) => allSelections.includes(folder)) 
       || secKeys.some((secret: string) => allSelections.includes(secret));
-  }, [allSelections, folderNames, secKeys]);
+
+    return {
+      areAllEntriesSelected,
+      isAnyOneEntrySelected
+    }
+  }, [selectedEntries, folderNames, secKeys])
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,

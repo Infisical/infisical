@@ -108,23 +108,23 @@ export const SecretMainPage = () => {
   const { selectAll: selectAllSecrets } = useSelectedSecretActions();
   const selectedSecret = useSelectedSecrets();
 
-  const areAllSecretsSelected = useMemo(() => {
+  const {areAllSecretsSelected, isAnyOneSecretSelected} = useMemo(() => {
     if(!secrets || !selectedSecret) {
-      return false;
+      return {
+        areAllSecretsSelected:false, 
+        isAnyOneSecretSelected: false
+      };
     }
     const selectedSecretKeys = Object.keys(selectedSecret);
     const secretIds = [...secrets?.map((secret: SecretV3RawSanitized) => secret.id)];
-    return secretIds.every((secret: string) => selectedSecretKeys.includes(secret));
-  }, [selectedSecret, secrets]);
+    const areAllSecretsSelected =  secretIds.every((secret: string) => selectedSecretKeys.includes(secret));
+    const isAnyOneSecretSelected = secretIds.some((secret: string) => selectedSecretKeys.includes(secret));
 
-  const isAnyOneSecretSelected = useMemo(() => {
-    if(!secrets || !selectedSecret) {
-      return false;
+    return {
+      areAllSecretsSelected,
+      isAnyOneSecretSelected
     }
-    const selectedSecretKeys = Object.keys(selectedSecret);
-    const secretIds = [...secrets?.map((secret: SecretV3RawSanitized) => secret.id)];
-    return secretIds.some((secret: string) => selectedSecretKeys.includes(secret));
-  }, [selectedSecret, secrets])
+  }, [selectedSecret, secrets]);
 
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
