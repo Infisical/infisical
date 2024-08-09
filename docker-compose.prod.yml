@@ -1,18 +1,16 @@
-version: "3"
-
+version: 3
 services:
   db-migration:
     container_name: infisical-db-migration
     depends_on:
       db:
-        condition: service_healthy
+      condition: service_healthy
     image: infisical/infisical:latest-postgres
     env_file: .env
     command: npm run migration:latest
     pull_policy: always
     networks:
       - infisical
-
   backend:
     container_name: infisical-backend
     restart: unless-stopped
@@ -32,7 +30,6 @@ services:
       - NODE_ENV=production
     networks:
       - infisical
-
   redis:
     image: redis
     container_name: infisical-dev-redis
@@ -40,12 +37,11 @@ services:
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
-      - 6379:6379
+      - 6379
     networks:
       - infisical
     volumes:
       - redis_data:/data
-
   db:
     container_name: infisical-db
     image: postgres:14-alpine
@@ -56,16 +52,15 @@ services:
     networks:
       - infisical
     healthcheck:
-      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      test: 
+  "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
       interval: 5s
       timeout: 10s
-      retries: 10
-
+      retries: 5
 volumes:
   pg_data:
     driver: local
   redis_data:
     driver: local
-
 networks:
   infisical:
