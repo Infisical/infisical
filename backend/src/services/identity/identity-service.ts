@@ -6,6 +6,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { shake } from "@app/lib/fn";
 import { TOrgPermission } from "@app/lib/types";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
@@ -87,6 +88,7 @@ export const identityServiceFactory = ({
     id,
     role,
     name,
+    isDisabled,
     actor,
     actorId,
     actorAuthMethod,
@@ -130,7 +132,10 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity = name ? await identityDAL.updateById(id, { name }, tx) : await identityDAL.findById(id, tx);
+      const dataForUpdate = shake({ isDisabled, name }, (v) => v === undefined);
+      const newIdentity = Object.keys(dataForUpdate).length
+        ? await identityDAL.updateById(id, dataForUpdate, tx)
+        : await identityDAL.findById(id, tx);
       if (role) {
         await identityOrgMembershipDAL.update(
           { identityId: id },

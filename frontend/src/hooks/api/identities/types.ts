@@ -13,6 +13,7 @@ export type Identity = {
   id: string;
   name: string;
   authMethod?: IdentityAuthMethod;
+  isDisabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -86,6 +87,7 @@ export type UpdateIdentityDTO = {
   name?: string;
   role?: string;
   organizationId: string;
+  isDisabled: boolean;
 };
 
 export type DeleteIdentityDTO = {

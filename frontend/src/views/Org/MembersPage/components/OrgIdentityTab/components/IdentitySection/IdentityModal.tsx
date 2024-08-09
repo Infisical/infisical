@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
+import Toggle from "@app/components/basic/Toggle";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -16,16 +17,14 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
-import {
-  // IdentityAuthMethod,
-  useAddIdentityUniversalAuth
-} from "@app/hooks/api/identities";
+import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup
   .object({
     name: yup.string().required("MI name is required"),
-    role: yup.string()
+    role: yup.string(),
+    isDisabled: yup.boolean().default(false)
   })
   .required();
 
@@ -63,7 +62,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
-      name: ""
+      name: "",
+      isDisabled: false
     }
   });
 
@@ -71,6 +71,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     const identity = popUp?.identity?.data as {
       identityId: string;
       name: string;
+      isDisabled: boolean;
       role: string;
       customRole: {
         name: string;
@@ -83,22 +84,25 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (identity) {
       reset({
         name: identity.name,
-        role: identity?.customRole?.slug ?? identity.role
+        role: identity?.customRole?.slug ?? identity.role,
+        isDisabled: identity.isDisabled
       });
     } else {
       reset({
         name: "",
-        role: roles[0].slug
+        role: roles[0].slug,
+        isDisabled: false
       });
     }
   }, [popUp?.identity?.data, roles]);
 
-  const onFormSubmit = async ({ name, role }: FormData) => {
+  const onFormSubmit = async ({ name, role, isDisabled }: FormData) => {
     try {
       const identity = popUp?.identity?.data as {
         identityId: string;
         name: string;
         role: string;
+        isDisabled: boolean;
       };
 
       if (identity) {
@@ -108,7 +112,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           identityId: identity.identityId,
           name,
           role: role || undefined,
-          organizationId: orgId
+          organizationId: orgId,
+          isDisabled
         });
 
         handlePopUpToggle("identity", false);
@@ -204,6 +209,16 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </SelectItem>
                   ))}
                 </Select>
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue={false}
+            name="isDisabled"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Disabled" isError={Boolean(error)} errorText={error?.message}>
+                <Toggle className="ml-1" enabled={field.value} setEnabled={field.onChange} />
               </FormControl>
             )}
           />

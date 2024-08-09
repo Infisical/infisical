@@ -93,7 +93,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         name: z.string().trim().optional().describe(IDENTITIES.UPDATE.name),
-        role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role)
+        role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role),
+        isDisabled: z.boolean().optional().describe(IDENTITIES.UPDATE.isDisabled)
       }),
       response: {
         200: z.object({
@@ -200,7 +201,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true, isDisabled: true })
           })
         })
       }

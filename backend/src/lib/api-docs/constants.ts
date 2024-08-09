@@ -38,7 +38,8 @@ export const IDENTITIES = {
   UPDATE: {
     identityId: "The ID of the identity to update.",
     name: "The new name of the identity.",
-    role: "The new role of the identity."
+    role: "The new role of the identity.",
+    isDisabled: "Indicates whether this identity is going to be disabled."
   },
   DELETE: {
     identityId: "The ID of the identity to delete."

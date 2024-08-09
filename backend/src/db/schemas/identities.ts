@@ -12,7 +12,8 @@ export const IdentitiesSchema = z.object({
   name: z.string(),
   authMethod: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isDisabled: z.boolean().default(false)
 });
 
 export type TIdentities = z.infer<typeof IdentitiesSchema>;
