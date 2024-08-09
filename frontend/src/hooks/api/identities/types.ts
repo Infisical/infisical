@@ -87,7 +87,7 @@ export type UpdateIdentityDTO = {
   name?: string;
   role?: string;
   organizationId: string;
-  isDisabled: boolean;
+  isDisabled?: boolean;
 };
 
 export type DeleteIdentityDTO = {
