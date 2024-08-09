@@ -82,6 +82,14 @@ const SINGLE_PERMISSION_LIST = [
     formName: "certificates"
   },
   {
+    title: "PKI Collections",
+    formName: "pki-collections"
+  },
+  {
+    title: "PKI Alerts",
+    formName: "pki-alerts"
+  },
+  {
     title: "Secret Rollback",
     formName: "secret-rollback"
   }
