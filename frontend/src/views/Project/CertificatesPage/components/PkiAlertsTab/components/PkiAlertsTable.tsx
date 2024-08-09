@@ -11,20 +11,23 @@ import {
   Tr
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { useListWorkspaceAlerts } from "@app/hooks/api";
+import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { AlertRow } from "./AlertRow";
+import { PkiAlertRow } from "./PkiAlertRow";
 
 type Props = {
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["alert", "deleteAlert"]>, data?: {}) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["pkiAlert", "deletePkiAlert"]>,
+    data?: {}
+  ) => void;
 };
 
-export const AlertsTable = ({ handlePopUpOpen }: Props) => {
+export const PkiAlertsTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
 
-  const { data, isLoading } = useListWorkspaceAlerts({
+  const { data, isLoading } = useListWorkspacePkiAlerts({
     workspaceId: projectId
   });
 
@@ -35,16 +38,16 @@ export const AlertsTable = ({ handlePopUpOpen }: Props) => {
           <Tr>
             <Th>Alert Name</Th>
             <Th>Alert Before Days</Th>
-            <Th>Bound PKI Collection</Th>
+            <Th>Certificate Collection</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} innerKey="project-alerts" />}
+          {isLoading && <TableSkeleton columns={4} innerKey="project-pki-alerts" />}
           {!isLoading &&
             data?.alerts.map((alert) => {
               return (
-                <AlertRow
+                <PkiAlertRow
                   key={`alert-${alert.id}`}
                   alert={alert}
                   handlePopUpOpen={handlePopUpOpen}
@@ -54,7 +57,7 @@ export const AlertsTable = ({ handlePopUpOpen }: Props) => {
         </TBody>
       </Table>
       {!isLoading && !data?.alerts?.length && (
-        <EmptyState title="No alerts have been created" icon={faExclamationCircle} />
+        <EmptyState title="No alerts have been created for any certificate collections" icon={faExclamationCircle} />
       )}
     </TableContainer>
   );

@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 
-import { AlertsSection,PkiCollectionSection } from "./components";
+import { PkiAlertsSection, PkiCollectionSection } from "./components";
 
-export const AlertsTab = () => {
+export const PkiAlertsTab = () => {
   return (
     <motion.div
       key="panel-alerts"
@@ -12,7 +12,7 @@ export const AlertsTab = () => {
       exit={{ opacity: 0, translateX: 30 }}
     >
       <PkiCollectionSection />
-      <AlertsSection />
+      <PkiAlertsSection />
     </motion.div>
   );
 };

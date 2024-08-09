@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AlertsSchema } from "@app/db/schemas";
+import { PkiAlertsSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -23,11 +23,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         emails: z.array(z.string())
       }),
       response: {
-        200: AlertsSchema
+        200: PkiAlertsSchema
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.createPkiAlert({
+      const alert = await server.services.pkiAlert.createPkiAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -67,11 +67,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         alertId: z.string().trim()
       }),
       response: {
-        200: AlertsSchema
+        200: PkiAlertsSchema
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.getPkiAlertById({
+      const alert = await server.services.pkiAlert.getPkiAlertById({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -116,11 +116,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         emails: z.array(z.string()).optional()
       }),
       response: {
-        200: AlertsSchema
+        200: PkiAlertsSchema
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.updatePkiAlert({
+      const alert = await server.services.pkiAlert.updatePkiAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -160,11 +160,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         alertId: z.string().trim()
       }),
       response: {
-        200: AlertsSchema
+        200: PkiAlertsSchema
       }
     },
     handler: async (req) => {
-      const alert = await server.services.alert.deletePkiAlert({
+      const alert = await server.services.pkiAlert.deletePkiAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,

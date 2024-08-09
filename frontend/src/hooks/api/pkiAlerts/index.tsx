@@ -1,2 +1,2 @@
-export { useCreateAlert, useDeleteAlert,useUpdateAlert } from "./mutations";
-export { useGetAlertById } from "./queries";
+export { useCreatePkiAlert, useDeletePkiAlert, useUpdatePkiAlert } from "./mutations";
+export { useGetPkiAlertById } from "./queries";

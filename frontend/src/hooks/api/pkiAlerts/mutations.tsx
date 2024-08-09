@@ -6,7 +6,7 @@ import { workspaceKeys } from "../workspace/queries";
 import { pkiAlertKeys } from "./queries";
 import { TCreatePkiAlertDTO, TDeletePkiAlertDTO, TPkiAlert, TUpdatePkiAlertDTO } from "./types";
 
-export const useCreateAlert = () => {
+export const useCreatePkiAlert = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiAlert, {}, TCreatePkiAlertDTO>({
     mutationFn: async (body) => {
@@ -19,7 +19,7 @@ export const useCreateAlert = () => {
   });
 };
 
-export const useUpdateAlert = () => {
+export const useUpdatePkiAlert = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiAlert, {}, TUpdatePkiAlertDTO>({
     mutationFn: async ({ alertId, ...body }) => {
@@ -36,7 +36,7 @@ export const useUpdateAlert = () => {
   });
 };
 
-export const useDeleteAlert = () => {
+export const useDeletePkiAlert = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiAlert, {}, TDeletePkiAlertDTO>({
     mutationFn: async ({ alertId }) => {

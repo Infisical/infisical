@@ -12,13 +12,15 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  TextArea} from "@app/components/v2";
+  TextArea
+} from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
-  useCreateAlert,
-  useGetAlertById,
+  useCreatePkiAlert,
+  useGetPkiAlertById,
   useListWorkspacePkiCollections,
-  useUpdateAlert} from "@app/hooks/api";
+  useUpdatePkiAlert
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum TimeUnit {
@@ -54,24 +56,24 @@ const convertToDays = (unit: TimeUnit, value: number) => {
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["alert"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["alert"]>, state?: boolean) => void;
+  popUp: UsePopUpState<["pkiAlert"]>;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["pkiAlert"]>, state?: boolean) => void;
 };
 
-export const AlertModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
 
-  const { data: alert } = useGetAlertById(
-    (popUp?.alert?.data as { alertId: string })?.alertId || ""
+  const { data: alert } = useGetPkiAlertById(
+    (popUp?.pkiAlert?.data as { alertId: string })?.alertId || ""
   );
 
   const { data: pkiCollections } = useListWorkspacePkiCollections({
     workspaceId: projectId
   });
 
-  const { mutateAsync: createAlert } = useCreateAlert();
-  const { mutateAsync: updateAlert } = useUpdateAlert();
+  const { mutateAsync: createPkiAlert } = useCreatePkiAlert();
+  const { mutateAsync: updatePkiAlert } = useUpdatePkiAlert();
 
   const {
     control,
@@ -95,11 +97,15 @@ export const AlertModal = ({ popUp, handlePopUpToggle }: Props) => {
         emails: alert.recipientEmails
       });
     } else {
+      // TODO: add default collection?
       reset({
-        name: ""
+        name: "",
+        ...(pkiCollections?.collections?.[0] && {
+          pkiCollectionId: pkiCollections.collections[0].id
+        })
       });
     }
-  }, [alert]);
+  }, [alert, pkiCollections]);
 
   const onFormSubmit = async ({
     name,
@@ -120,7 +126,7 @@ export const AlertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (alert) {
         // update
-        await updateAlert({
+        await updatePkiAlert({
           alertId: alert.id,
           pkiCollectionId,
           name,
@@ -130,7 +136,7 @@ export const AlertModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         // create
-        await createAlert({
+        await createPkiAlert({
           name,
           projectId,
           pkiCollectionId,
@@ -139,7 +145,7 @@ export const AlertModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       }
 
-      handlePopUpToggle("alert", false);
+      handlePopUpToggle("pkiAlert", false);
 
       reset();
 
@@ -158,9 +164,9 @@ export const AlertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   return (
     <Modal
-      isOpen={popUp?.alert?.isOpen}
+      isOpen={popUp?.pkiAlert?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("alert", isOpen);
+        handlePopUpToggle("pkiAlert", isOpen);
         reset();
       }}
     >

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
 
@@ -69,10 +71,12 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         // create
-        await createPkiCollection({
+        const { id: createdId } = await createPkiCollection({
           name,
           projectId
         });
+
+        router.push(`/project/${projectId}/pki-collections/${createdId}`);
       }
 
       handlePopUpToggle("pkiCollection", false);
@@ -100,7 +104,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         reset();
       }}
     >
-      <ModalContent title={`${pkiCollection ? "Edit" : "Create"} PKI Collection`}>
+      <ModalContent title={`${pkiCollection ? "Edit" : "Create"} Certificate Collection`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
@@ -125,7 +129,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
               isLoading={isSubmitting}
               isDisabled={isSubmitting}
             >
-              Create
+              {pkiCollection ? "Update" : "Create"}
             </Button>
             <Button colorSchema="secondary" variant="plain">
               Cancel

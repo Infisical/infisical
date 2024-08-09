@@ -73,8 +73,6 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
-import { alertDALFactory } from "@app/services/alert/alert-dal";
-import { alertServiceFactory } from "@app/services/alert/alert-service";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -133,7 +131,10 @@ import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
+import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
+import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
@@ -220,7 +221,6 @@ export const registerRoutes = async (
   const superAdminDAL = superAdminDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
-  const alertDAL = alertDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
@@ -588,7 +588,9 @@ export const registerRoutes = async (
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
 
+  const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
+  const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -634,14 +636,17 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const alertService = alertServiceFactory({
-    alertDAL,
+  const pkiAlertService = pkiAlertServiceFactory({
+    pkiAlertDAL,
     pkiCollectionDAL,
     permissionService
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
     pkiCollectionDAL,
+    pkiCollectionItemDAL,
+    certificateAuthorityDAL,
+    certificateDAL,
     permissionService
   });
 
@@ -661,7 +666,7 @@ export const registerRoutes = async (
     licenseService,
     certificateAuthorityDAL,
     certificateDAL,
-    alertDAL,
+    pkiAlertDAL,
     pkiCollectionDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
@@ -1091,7 +1096,6 @@ export const registerRoutes = async (
     orgRole: orgRoleService,
     oidc: oidcService,
     apiKey: apiKeyService,
-    alert: alertService,
     authToken: tokenService,
     superAdmin: superAdminService,
     project: projectService,
@@ -1135,6 +1139,7 @@ export const registerRoutes = async (
     certificate: certificateService,
     certificateAuthority: certificateAuthorityService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
+    pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     secretScanning: secretScanningService,
     license: licenseService,

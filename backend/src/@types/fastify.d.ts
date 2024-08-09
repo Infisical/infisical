@@ -27,7 +27,6 @@ import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
-import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
@@ -52,6 +51,7 @@ import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/i
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
+import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -116,7 +116,7 @@ declare module "fastify" {
       group: TGroupServiceFactory;
       groupProject: TGroupProjectServiceFactory;
       apiKey: TApiKeyServiceFactory;
-      alert: TAlertServiceFactory;
+      pkiAlert: TPkiAlertServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;
       projectEnv: TProjectEnvServiceFactory;

@@ -2,7 +2,7 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
-import { AlertsTab, CaTab, CertificatesTab } from "./components";
+import { CaTab, CertificatesTab,PkiAlertsTab } from "./components";
 
 enum TabSections {
   Ca = "certificate-authorities",
@@ -29,7 +29,7 @@ export const CertificatesPage = withProjectPermission(
               <CaTab />
             </TabPanel>
             <TabPanel value={TabSections.Alerting}>
-              <AlertsTab />
+              <PkiAlertsTab />
             </TabPanel>
           </Tabs>
         </div>

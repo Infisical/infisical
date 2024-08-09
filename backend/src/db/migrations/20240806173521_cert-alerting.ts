@@ -14,9 +14,21 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.Alert))) {
-    // TODO: rename to pki alert
-    await knex.schema.createTable(TableName.Alert, (t) => {
+  if (!(await knex.schema.hasTable(TableName.PkiCollectionItem))) {
+    await knex.schema.createTable(TableName.PkiCollectionItem, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+      t.uuid("pkiCollectionId").notNullable();
+      t.foreign("pkiCollectionId").references("id").inTable(TableName.PkiCollection).onDelete("CASCADE");
+      t.uuid("caId").nullable();
+      t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
+      t.uuid("certId").nullable();
+      t.foreign("certId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
+    });
+  }
+
+  if (!(await knex.schema.hasTable(TableName.PkiAlert))) {
+    await knex.schema.createTable(TableName.PkiAlert, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
       t.string("projectId").notNullable();
@@ -30,13 +42,16 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   await createOnUpdateTrigger(knex, TableName.PkiCollection);
-  await createOnUpdateTrigger(knex, TableName.Alert);
+  await createOnUpdateTrigger(knex, TableName.PkiAlert);
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.PkiAlert);
+  await dropOnUpdateTrigger(knex, TableName.PkiAlert);
+
+  await knex.schema.dropTableIfExists(TableName.PkiCollectionItem);
+  await dropOnUpdateTrigger(knex, TableName.PkiCollectionItem);
+
   await knex.schema.dropTableIfExists(TableName.PkiCollection);
   await dropOnUpdateTrigger(knex, TableName.PkiCollection);
-
-  await knex.schema.dropTableIfExists(TableName.Alert);
-  await dropOnUpdateTrigger(knex, TableName.Alert);
 }

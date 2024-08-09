@@ -1,19 +1,31 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TPkiCollectionItems } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 
 import { TPkiCollectionDALFactory } from "./pki-collection-dal";
+import { transformPkiCollectionItem } from "./pki-collection-fns";
+import { TPkiCollectionItemDALFactory } from "./pki-collection-item-dal";
 import {
+  PkiItemType,
+  TAddItemToPkiCollectionDTO,
   TCreatePkiCollectionDTO,
   TDeletePkiCollectionDTO,
   TGetPkiCollectionByIdDTO,
+  TGetPkiCollectionItems,
+  TRemoveItemFromPkiCollectionDTO,
   TUpdatePkiCollectionDTO
 } from "./pki-collection-types";
 
 type TPkiCollectionServiceFactoryDep = {
-  pkiCollectionDAL: TPkiCollectionDALFactory;
+  pkiCollectionDAL: TPkiCollectionDALFactory; // TODO: Pick
+  pkiCollectionItemDAL: TPkiCollectionItemDALFactory;
+  certificateAuthorityDAL: TCertificateAuthorityDALFactory;
+  certificateDAL: TCertificateDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -21,6 +33,9 @@ export type TPkiCollectionServiceFactory = ReturnType<typeof pkiCollectionServic
 
 export const pkiCollectionServiceFactory = ({
   pkiCollectionDAL,
+  pkiCollectionItemDAL,
+  certificateAuthorityDAL,
+  certificateDAL,
   permissionService
 }: TPkiCollectionServiceFactoryDep) => {
   const createPkiCollection = async ({
@@ -127,12 +142,168 @@ export const pkiCollectionServiceFactory = ({
     return pkiCollection;
   };
 
-  // TODO: add/remove pki collection items
+  const getPkiCollectionItems = async ({
+    collectionId,
+    offset = 0,
+    limit = 25,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetPkiCollectionItems) => {
+    const pkiCollection = await pkiCollectionDAL.findById(collectionId);
+    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      pkiCollection.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+
+    const pkiCollectionItems = await pkiCollectionItemDAL.find(
+      { pkiCollectionId: collectionId },
+      { offset, limit, sort: [["createdAt", "desc"]] }
+    );
+
+    const count = await pkiCollectionItemDAL.countItemsInPkiCollection(collectionId);
+
+    return {
+      pkiCollectionItems: pkiCollectionItems.map(transformPkiCollectionItem),
+      totalCount: count
+    };
+  };
+
+  const addItemToPkiCollection = async ({
+    collectionId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId,
+    type,
+    itemId
+  }: TAddItemToPkiCollectionDTO) => {
+    const pkiCollection = await pkiCollectionDAL.findById(collectionId);
+    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      pkiCollection.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.PkiCollections
+    );
+
+    let pkiCollectionItem: TPkiCollectionItems;
+    switch (type) {
+      case PkiItemType.CA: {
+        // validate that CA has not already been added to PKI collection
+        const isCaAdded = await pkiCollectionItemDAL.findOne({
+          pkiCollectionId: collectionId,
+          caId: itemId
+        });
+
+        if (isCaAdded) throw new BadRequestError({ message: "CA is already part of the PKI collection" });
+
+        // validate that there exists a CA in same project as PKI collection
+        const ca = await certificateAuthorityDAL.findOne({
+          id: itemId,
+          projectId: pkiCollection.projectId
+        });
+
+        if (!ca) throw new NotFoundError({ message: "CA not found" });
+
+        pkiCollectionItem = await pkiCollectionItemDAL.create({
+          pkiCollectionId: collectionId,
+          caId: itemId
+        });
+        break;
+      }
+      case PkiItemType.CERTIFICATE: {
+        // validate that certificate has not already been added to PKI collection
+        const isCertAdded = await pkiCollectionItemDAL.findOne({
+          pkiCollectionId: collectionId,
+          certId: itemId
+        });
+        if (isCertAdded) throw new BadRequestError({ message: "Certificate already part of the PKI collection" });
+
+        // validate that there exists a certificate in same project as PKI collection
+        const cas = await certificateAuthorityDAL.find({ projectId: pkiCollection.projectId });
+
+        // TODO: consider making this more efficient
+        const [certificate] = await certificateDAL.find({
+          $in: {
+            caId: cas.map((ca) => ca.id)
+          },
+          id: itemId
+        });
+        if (!certificate) throw new NotFoundError({ message: "Certificate not found" });
+
+        pkiCollectionItem = await pkiCollectionItemDAL.create({
+          pkiCollectionId: collectionId,
+          certId: itemId
+        });
+        break;
+      }
+      default: {
+        throw new BadRequestError({ message: "Invalid PKI item type" });
+      }
+    }
+
+    return transformPkiCollectionItem(pkiCollectionItem);
+  };
+
+  const removeItemFromPkiCollection = async ({
+    collectionId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId,
+    itemId
+  }: TRemoveItemFromPkiCollectionDTO) => {
+    const pkiCollection = await pkiCollectionDAL.findById(collectionId);
+    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+
+    let pkiCollectionItem = await pkiCollectionItemDAL.findOne({
+      pkiCollectionId: collectionId,
+      id: itemId
+    });
+
+    if (!pkiCollectionItem) throw new NotFoundError({ message: "PKI collection item not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      pkiCollection.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSub.PkiCollections
+    );
+
+    pkiCollectionItem = await pkiCollectionItemDAL.deleteById(itemId);
+
+    return transformPkiCollectionItem(pkiCollectionItem);
+  };
 
   return {
     createPkiCollection,
     getPkiCollectionById,
     updatePkiCollection,
-    deletePkiCollection
+    deletePkiCollection,
+    getPkiCollectionItems,
+    addItemToPkiCollection,
+    removeItemFromPkiCollection
   };
 };

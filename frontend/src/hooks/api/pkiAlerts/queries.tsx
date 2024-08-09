@@ -8,7 +8,7 @@ export const pkiAlertKeys = {
   getPkiAlertById: (alertId: string) => [{ alertId }, "alert"]
 };
 
-export const useGetAlertById = (alertId: string) => {
+export const useGetPkiAlertById = (alertId: string) => {
   return useQuery({
     queryKey: pkiAlertKeys.getPkiAlertById(alertId),
     queryFn: async () => {

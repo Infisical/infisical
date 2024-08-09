@@ -1,2 +1,2 @@
-export { AlertsSection } from "./AlertsSection";
+export { PkiAlertsSection } from "./PkiAlertsSection";
 export { PkiCollectionSection } from "./PkiCollectionSection";

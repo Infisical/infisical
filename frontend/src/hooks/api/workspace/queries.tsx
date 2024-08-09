@@ -65,7 +65,8 @@ export const workspaceKeys = {
     offset: number;
     limit: number;
   }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
-  getWorkspacePkiAlerts: (workspaceId: string) => [{ workspaceId }, "workspace-alerts"] as const,
+  getWorkspacePkiAlerts: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-pki-alerts"] as const,
   getWorkspacePkiCollections: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-collections"] as const
 };
@@ -607,7 +608,7 @@ export const useListWorkspaceCertificates = ({
   });
 };
 
-export const useListWorkspaceAlerts = ({ workspaceId }: { workspaceId: string }) => {
+export const useListWorkspacePkiAlerts = ({ workspaceId }: { workspaceId: string }) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspacePkiAlerts(workspaceId),
     queryFn: async () => {

@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import { faBoxesStacked, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
+  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
 
@@ -52,7 +54,13 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
             {!isLoading &&
               data?.collections.map((pkiCollection) => {
                 return (
-                  <Tr className="h-10" key={`pki-collection-${pkiCollection.id}`}>
+                  <Tr
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    key={`pki-collection-${pkiCollection.id}`}
+                    onClick={() =>
+                      router.push(`/project/${projectId}/pki-collections/${pkiCollection.id}`)
+                    }
+                  >
                     <Td>{pkiCollection.name}</Td>
                     <Td>
                       <DropdownMenu>
@@ -79,7 +87,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                                 }}
                                 disabled={!isAllowed}
                               >
-                                Edit PKI Collection
+                                Edit Collection
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -103,7 +111,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                                 }}
                                 disabled={!isAllowed}
                               >
-                                Delete PKI Collection
+                                Delete Collection
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
@@ -116,7 +124,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
           </TBody>
         </Table>
         {!isLoading && !data?.collections?.length && (
-          <EmptyState title="No collections have been created" icon={faBoxesStacked} />
+          <EmptyState title="No certificate collections have been created" icon={faBoxesStacked} />
         )}
       </TableContainer>
     </div>

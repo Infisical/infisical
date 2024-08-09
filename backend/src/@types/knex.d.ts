@@ -14,9 +14,6 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
-  TAlerts,
-  TAlertsInsert,
-  TAlertsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -164,6 +161,12 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPkiAlerts,
+  TPkiAlertsInsert,
+  TPkiAlertsUpdate,
+  TPkiCollectionItems,
+  TPkiCollectionItemsInsert,
+  TPkiCollectionItemsUpdate,
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
@@ -371,10 +374,16 @@ declare module "knex/types/tables" {
       TCertificateSecretsInsert,
       TCertificateSecretsUpdate
     >;
+    [TableName.PkiAlert]: KnexOriginal.CompositeTableType<TPkiAlerts, TPkiAlertsInsert, TPkiAlertsUpdate>;
     [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
       TPkiCollections,
       TPkiCollectionsInsert,
       TPkiCollectionsUpdate
+    >;
+    [TableName.PkiCollectionItem]: KnexOriginal.CompositeTableType<
+      TPkiCollectionItems,
+      TPkiCollectionItemsInsert,
+      TPkiCollectionItemsUpdate
     >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
@@ -427,7 +436,6 @@ declare module "knex/types/tables" {
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
-    [TableName.Alert]: KnexOriginal.CompositeTableType<TAlerts, TAlertsInsert, TAlertsUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
     [TableName.ProjectMembership]: KnexOriginal.CompositeTableType<
       TProjectMemberships,

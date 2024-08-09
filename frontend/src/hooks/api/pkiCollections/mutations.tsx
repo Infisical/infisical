@@ -3,13 +3,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-// import { alertKeys } from "./queries";
-// import { TAlert, TCreateAlertDTO, TDeleteAlertDTO, TUpdateAlertDTO } from "./types";
 import { pkiCollectionKeys } from "./queries";
 import {
+  TAddItemToPkiCollectionDTO,
   TCreatePkiCollectionDTO,
   TDeletePkiCollectionDTO,
   TPkiCollection,
+  TPkiCollectionItem,
+  TRemoveItemFromPkiCollectionDTO,
   TUpdatePkiCollectionTO} from "./types";
 
 export const useCreatePkiCollection = () => {
@@ -61,4 +62,36 @@ export const useDeletePkiCollection = () => {
   });
 };
 
-// TODO: add PKI Collection Item
+export const useAddItemToPkiCollection = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TPkiCollectionItem, {}, TAddItemToPkiCollectionDTO>({
+    mutationFn: async ({ collectionId, type, itemId }) => {
+      const { data: pkiCollectionItem } = await apiRequest.post<TPkiCollectionItem>(
+        `/api/v1/pki/collections/${collectionId}/items`,
+        {
+          type,
+          itemId
+        }
+      );
+      return pkiCollectionItem;
+    },
+    onSuccess: (_, { collectionId }) => {
+      queryClient.invalidateQueries(pkiCollectionKeys.getPkiCollectionItems(collectionId));
+    }
+  });
+};
+
+export const useRemoveItemFromPkiCollection = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TPkiCollectionItem, {}, TRemoveItemFromPkiCollectionDTO>({
+    mutationFn: async ({ collectionId, itemId }) => {
+      const { data: pkiCollectionItem } = await apiRequest.delete<TPkiCollectionItem>(
+        `/api/v1/pki/collections/${collectionId}/items/${itemId}`
+      );
+      return pkiCollectionItem;
+    },
+    onSuccess: (_, { collectionId }) => {
+      queryClient.invalidateQueries(pkiCollectionKeys.getPkiCollectionItems(collectionId));
+    }
+  });
+};

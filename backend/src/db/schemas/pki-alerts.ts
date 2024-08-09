@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const AlertsSchema = z.object({
+export const PkiAlertsSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -18,6 +18,6 @@ export const AlertsSchema = z.object({
   recipientEmails: z.string()
 });
 
-export type TAlerts = z.infer<typeof AlertsSchema>;
-export type TAlertsInsert = Omit<z.input<typeof AlertsSchema>, TImmutableDBKeys>;
-export type TAlertsUpdate = Partial<Omit<z.input<typeof AlertsSchema>, TImmutableDBKeys>>;
+export type TPkiAlerts = z.infer<typeof PkiAlertsSchema>;
+export type TPkiAlertsInsert = Omit<z.input<typeof PkiAlertsSchema>, TImmutableDBKeys>;
+export type TPkiAlertsUpdate = Partial<Omit<z.input<typeof PkiAlertsSchema>, TImmutableDBKeys>>;

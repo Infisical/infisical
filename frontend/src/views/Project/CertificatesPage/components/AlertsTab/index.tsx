@@ -1,1 +1,0 @@
-export { AlertsTab } from "./AlertsTab";

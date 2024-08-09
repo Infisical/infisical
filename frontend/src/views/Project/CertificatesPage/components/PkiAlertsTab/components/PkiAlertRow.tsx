@@ -18,13 +18,16 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   alert: TPkiAlert;
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["alert", "deleteAlert"]>, data?: {}) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["pkiAlert", "deletePkiAlert"]>,
+    data?: {}
+  ) => void;
 };
 
-export const AlertRow = ({ alert, handlePopUpOpen }: Props) => {
+export const PkiAlertRow = ({ alert, handlePopUpOpen }: Props) => {
   const { data: pkiCollection } = useGetPkiCollectionById(alert.pkiCollectionId || "");
   return (
-    <Tr className="h-10" key={`alert-${alert.id}`}>
+    <Tr className="h-10" key={`pki-alert-${alert.id}`}>
       <Td>{alert.name}</Td>
       <Td>{alert.alertBeforeDays}</Td>
       <Td>{pkiCollection ? pkiCollection.name : "-"}</Td>
@@ -47,7 +50,7 @@ export const AlertRow = ({ alert, handlePopUpOpen }: Props) => {
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handlePopUpOpen("alert", {
+                    handlePopUpOpen("pkiAlert", {
                       alertId: alert.id
                     });
                   }}
@@ -70,7 +73,7 @@ export const AlertRow = ({ alert, handlePopUpOpen }: Props) => {
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handlePopUpOpen("deleteAlert", {
+                    handlePopUpOpen("deletePkiAlert", {
                       alertId: alert.id,
                       name: alert.name
                     });

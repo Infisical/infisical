@@ -13,7 +13,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
-import { TAlertDALFactory } from "../alert/alert-dal";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -23,6 +22,7 @@ import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/id
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -73,7 +73,7 @@ type TProjectServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
-  alertDAL: Pick<TAlertDALFactory, "find">;
+  pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -113,7 +113,7 @@ export const projectServiceFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   pkiCollectionDAL,
-  alertDAL,
+  pkiAlertDAL,
   keyStore,
   kmsService,
   projectBotDAL
@@ -684,7 +684,7 @@ export const projectServiceFactory = ({
   };
 
   /**
-   * Return list of alerts configured for project
+   * Return list of (PKI) alerts configured for project
    */
   const listProjectAlerts = async ({
     projectId,
@@ -703,7 +703,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
-    const alerts = await alertDAL.find({ projectId });
+    const alerts = await pkiAlertDAL.find({ projectId });
 
     return {
       alerts

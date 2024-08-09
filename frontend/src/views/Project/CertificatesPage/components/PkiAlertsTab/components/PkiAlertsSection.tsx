@@ -5,37 +5,37 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useDeleteAlert } from "@app/hooks/api";
+import { useDeletePkiAlert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AlertModal } from "./AlertModal";
-import { AlertsTable } from "./AlertsTable";
+import { PkiAlertModal } from "./PkiAlertModal";
+import { PkiAlertsTable } from "./PkiAlertsTable";
 
-export const AlertsSection = () => {
+export const PkiAlertsSection = () => {
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
-  const { mutateAsync: deleteAlert } = useDeleteAlert();
+  const { mutateAsync: deletePkiAlert } = useDeletePkiAlert();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "alert",
-    "deleteAlert"
+    "pkiAlert",
+    "deletePkiAlert"
   ] as const);
 
   const onRemoveAlertSubmit = async (alertId: string) => {
     try {
       if (!projectId) return;
 
-      await deleteAlert({
+      await deletePkiAlert({
         alertId,
         projectId
       });
 
-      await createNotification({
+      createNotification({
         text: "Successfully deleted alert",
         type: "success"
       });
 
-      handlePopUpClose("deleteAlert");
+      handlePopUpClose("deletePkiAlert");
     } catch (err) {
       console.error(err);
       createNotification({
@@ -58,7 +58,7 @@ export const AlertsSection = () => {
               colorSchema="primary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("alert")}
+              onClick={() => handlePopUpOpen("pkiAlert")}
               isDisabled={!isAllowed}
             >
               Create
@@ -66,17 +66,17 @@ export const AlertsSection = () => {
           )}
         </ProjectPermissionCan>
       </div>
-      <AlertsTable handlePopUpOpen={handlePopUpOpen} />
-      <AlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <PkiAlertsTable handlePopUpOpen={handlePopUpOpen} />
+      <PkiAlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
-        isOpen={popUp.deleteAlert.isOpen}
+        isOpen={popUp.deletePkiAlert.isOpen}
         title={`Are you sure want to remove the alert ${
-          (popUp?.deleteAlert?.data as { name: string })?.name || ""
+          (popUp?.deletePkiAlert?.data as { name: string })?.name || ""
         } from the project?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteAlert", isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("deletePkiAlert", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onRemoveAlertSubmit((popUp?.deleteAlert?.data as { alertId: string })?.alertId)
+          onRemoveAlertSubmit((popUp?.deletePkiAlert?.data as { alertId: string })?.alertId)
         }
       />
     </div>

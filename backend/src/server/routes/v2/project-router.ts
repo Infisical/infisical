@@ -2,9 +2,9 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
-  AlertsSchema,
   CertificateAuthoritiesSchema,
   CertificatesSchema,
+  PkiAlertsSchema,
   PkiCollectionsSchema,
   ProjectKeysSchema
 } from "@app/db/schemas";
@@ -411,7 +411,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          alerts: z.array(AlertsSchema)
+          alerts: z.array(PkiAlertsSchema)
         })
       }
     },

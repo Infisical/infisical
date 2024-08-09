@@ -21,3 +21,23 @@ export type TDeletePkiCollectionDTO = {
   collectionId: string;
   projectId: string;
 };
+
+export type TPkiCollectionItem = {
+  id: string;
+  collectionId: string;
+  type: string;
+  itemId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TAddItemToPkiCollectionDTO = {
+  collectionId: string;
+  type: string;
+  itemId: string;
+};
+
+export type TRemoveItemFromPkiCollectionDTO = {
+  collectionId: string;
+  itemId: string;
+};

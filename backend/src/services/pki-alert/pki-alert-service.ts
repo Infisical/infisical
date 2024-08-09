@@ -5,18 +5,22 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 
-import { TAlertDALFactory } from "./alert-dal";
-import { TCreateAlertDTO, TDeleteAlertDTO, TGetAlertByIdDTO, TUpdateAlertDTO } from "./alert-types";
+import { TPkiAlertDALFactory } from "./pki-alert-dal";
+import { TCreateAlertDTO, TDeleteAlertDTO, TGetAlertByIdDTO, TUpdateAlertDTO } from "./pki-alert-types";
 
-type TAlertServiceFactoryDep = {
-  alertDAL: TAlertDALFactory;
+type TPkiAlertServiceFactoryDep = {
+  pkiAlertDAL: TPkiAlertDALFactory;
   pkiCollectionDAL: TPkiCollectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
-export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
+export type TPkiAlertServiceFactory = ReturnType<typeof pkiAlertServiceFactory>;
 
-export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionService }: TAlertServiceFactoryDep) => {
+export const pkiAlertServiceFactory = ({
+  pkiAlertDAL,
+  pkiCollectionDAL,
+  permissionService
+}: TPkiAlertServiceFactoryDep) => {
   const createPkiAlert = async ({
     projectId,
     name,
@@ -43,7 +47,7 @@ export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionServ
     if (pkiCollection.projectId !== projectId)
       throw new UnauthorizedError({ message: "PKI collection not found in project" });
 
-    const alert = await alertDAL.create({
+    const alert = await pkiAlertDAL.create({
       projectId,
       pkiCollectionId,
       name,
@@ -54,7 +58,7 @@ export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionServ
   };
 
   const getPkiAlertById = async ({ alertId, actorId, actorAuthMethod, actor, actorOrgId }: TGetAlertByIdDTO) => {
-    const alert = await alertDAL.findById(alertId);
+    const alert = await pkiAlertDAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: "Alert not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -80,7 +84,7 @@ export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionServ
     actor,
     actorOrgId
   }: TUpdateAlertDTO) => {
-    let alert = await alertDAL.findById(alertId);
+    let alert = await pkiAlertDAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: "Alert not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -100,7 +104,7 @@ export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionServ
         throw new UnauthorizedError({ message: "PKI collection not found in project" });
     }
 
-    alert = await alertDAL.updateById(alertId, {
+    alert = await pkiAlertDAL.updateById(alertId, {
       name,
       alertBeforeDays,
       ...(pkiCollectionId && { pkiCollectionId }),
@@ -111,7 +115,7 @@ export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionServ
   };
 
   const deletePkiAlert = async ({ alertId, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteAlertDTO) => {
-    let alert = await alertDAL.findById(alertId);
+    let alert = await pkiAlertDAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: "Alert not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -123,7 +127,7 @@ export const alertServiceFactory = ({ alertDAL, pkiCollectionDAL, permissionServ
     );
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
-    alert = await alertDAL.deleteById(alertId);
+    alert = await pkiAlertDAL.deleteById(alertId);
     return alert;
   };
 
