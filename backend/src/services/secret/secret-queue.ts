@@ -73,12 +73,12 @@ type TSecretQueueFactoryDep = {
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
-  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
-  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
+  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
   secretRotationDAL: Pick<TSecretRotationDALFactory, "secretOutputV2InsertMany" | "find">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
   snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
-  snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany">;
+  snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany" | "batchInsert">;
 };
 
 export type TGetSecrets = {
@@ -828,7 +828,7 @@ export const secretQueueFactory = ({
             secretId: string;
             references: { environment: string; secretPath: string; secretKey: string }[];
           }[] = [];
-          await secretV2BridgeDAL.insertMany(
+          await secretV2BridgeDAL.batchInsert(
             projectV1Secrets.map((el) => {
               const key = decryptSymmetric128BitHexKeyUTF8({
                 ciphertext: el.secretKeyCiphertext,
@@ -1004,14 +1004,14 @@ export const secretQueueFactory = ({
 
         const projectV3SecretVersions = Object.values(projectV3SecretVersionsGroupById);
         if (projectV3SecretVersions.length) {
-          await secretVersionV2BridgeDAL.insertMany(projectV3SecretVersions, tx);
+          await secretVersionV2BridgeDAL.batchInsert(projectV3SecretVersions, tx);
         }
         if (projectV3SecretVersionTags.length) {
-          await secretVersionTagV2BridgeDAL.insertMany(projectV3SecretVersionTags, tx);
+          await secretVersionTagV2BridgeDAL.batchInsert(projectV3SecretVersionTags, tx);
         }
 
         if (projectV3SnapshotSecrets.length) {
-          await snapshotSecretV2BridgeDAL.insertMany(projectV3SnapshotSecrets, tx);
+          await snapshotSecretV2BridgeDAL.batchInsert(projectV3SnapshotSecrets, tx);
         }
         await snapshotDAL.deleteSnapshotsAboveLimit(folderId, SNAPSHOT_BATCH_SIZE, tx);
       }
