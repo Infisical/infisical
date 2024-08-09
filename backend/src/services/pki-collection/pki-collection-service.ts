@@ -172,6 +172,7 @@ export const pkiCollectionServiceFactory = ({
     const count = await pkiCollectionItemDAL.countItemsInPkiCollection(collectionId);
 
     return {
+      pkiCollection,
       pkiCollectionItems: pkiCollectionItems.map(transformPkiCollectionItem),
       totalCount: count
     };
@@ -258,7 +259,10 @@ export const pkiCollectionServiceFactory = ({
       }
     }
 
-    return transformPkiCollectionItem(pkiCollectionItem);
+    return {
+      pkiCollection,
+      pkiCollectionItem: transformPkiCollectionItem(pkiCollectionItem)
+    };
   };
 
   const removeItemFromPkiCollection = async ({
@@ -294,7 +298,10 @@ export const pkiCollectionServiceFactory = ({
 
     pkiCollectionItem = await pkiCollectionItemDAL.deleteById(itemId);
 
-    return transformPkiCollectionItem(pkiCollectionItem);
+    return {
+      pkiCollection,
+      pkiCollectionItem: transformPkiCollectionItem(pkiCollectionItem)
+    };
   };
 
   return {

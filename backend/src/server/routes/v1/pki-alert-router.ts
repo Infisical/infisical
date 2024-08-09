@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { PkiAlertsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -35,20 +36,20 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.REVOKE_CERT,
-      //       metadata: {
-      //         certId: cert.id,
-      //         cn: cert.commonName,
-      //         serialNumber: cert.serialNumber
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.CREATE_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id,
+            pkiCollectionId: alert.pkiCollectionId,
+            name: alert.name,
+            alertBeforeDays: alert.alertBeforeDays,
+            recipientEmails: alert.recipientEmails
+          }
+        }
+      });
 
       return alert;
     }
@@ -79,19 +80,16 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.GET_CA,
-      //       metadata: {
-      //         caId: ca.id,
-      //         dn: ca.dn
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.GET_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id
+          }
+        }
+      });
 
       return alert;
     }
@@ -129,19 +127,20 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.GET_CA,
-      //       metadata: {
-      //         caId: ca.id,
-      //         dn: ca.dn
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id,
+            pkiCollectionId: alert.pkiCollectionId,
+            name: alert.name,
+            alertBeforeDays: alert.alertBeforeDays,
+            recipientEmails: alert.recipientEmails
+          }
+        }
+      });
 
       return alert;
     }
@@ -172,20 +171,16 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.DELETE_CERT,
-      //       metadata: {
-      //         certId: deletedCert.id,
-      //         cn: deletedCert.commonName,
-      //         serialNumber: deletedCert.serialNumber
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.DELETE_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id
+          }
+        }
+      });
 
       return alert;
     }

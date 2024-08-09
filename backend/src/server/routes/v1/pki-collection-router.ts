@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { PkiCollectionItemsSchema, PkiCollectionsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -33,20 +34,17 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         ...req.body
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.REVOKE_CERT,
-      //       metadata: {
-      //         certId: cert.id,
-      //         cn: cert.commonName,
-      //         serialNumber: cert.serialNumber
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.CREATE_PKI_COLLECTION,
+          metadata: {
+            pkiCollectionId: pkiCollection.id,
+            name: pkiCollection.name
+          }
+        }
+      });
 
       return pkiCollection;
     }
@@ -77,19 +75,16 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.GET_CA,
-      //       metadata: {
-      //         caId: ca.id,
-      //         dn: ca.dn
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.GET_PKI_COLLECTION,
+          metadata: {
+            pkiCollectionId: pkiCollection.id
+          }
+        }
+      });
 
       return pkiCollection;
     }
@@ -124,19 +119,17 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         ...req.body
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.GET_CA,
-      //       metadata: {
-      //         caId: ca.id,
-      //         dn: ca.dn
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_COLLECTION,
+          metadata: {
+            pkiCollectionId: pkiCollection.id,
+            name: pkiCollection.name
+          }
+        }
+      });
 
       return pkiCollection;
     }
@@ -167,20 +160,16 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.DELETE_CERT,
-      //       metadata: {
-      //         certId: deletedCert.id,
-      //         cn: deletedCert.commonName,
-      //         serialNumber: deletedCert.serialNumber
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.DELETE_PKI_COLLECTION,
+          metadata: {
+            pkiCollectionId: pkiCollection.id
+          }
+        }
+      });
 
       return pkiCollection;
     }
@@ -215,29 +204,26 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const { pkiCollectionItems, totalCount } = await server.services.pkiCollection.getPkiCollectionItems({
-        collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query
+      const { pkiCollection, pkiCollectionItems, totalCount } =
+        await server.services.pkiCollection.getPkiCollectionItems({
+          collectionId: req.params.collectionId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.GET_PKI_COLLECTION_ITEMS,
+          metadata: {
+            pkiCollectionId: pkiCollection.id
+          }
+        }
       });
-
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.REVOKE_CERT,
-      //       metadata: {
-      //         certId: cert.id,
-      //         cn: cert.commonName,
-      //         serialNumber: cert.serialNumber
-      //       }
-      //     }
-      //   });
 
       return {
         collectionItems: pkiCollectionItems,
@@ -270,7 +256,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const pkiCollectionItem = await server.services.pkiCollection.addItemToPkiCollection({
+      const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.addItemToPkiCollection({
         collectionId: req.params.collectionId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -279,20 +265,19 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         ...req.body
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.REVOKE_CERT,
-      //       metadata: {
-      //         certId: cert.id,
-      //         cn: cert.commonName,
-      //         serialNumber: cert.serialNumber
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.ADD_PKI_COLLECTION_ITEM,
+          metadata: {
+            pkiCollectionId: pkiCollection.id,
+            pkiCollectionItemId: pkiCollectionItem.id,
+            type: pkiCollectionItem.type,
+            itemId: pkiCollectionItem.itemId
+          }
+        }
+      });
 
       return pkiCollectionItem;
     }
@@ -319,7 +304,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      const pkiCollectionItem = await server.services.pkiCollection.removeItemFromPkiCollection({
+      const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.removeItemFromPkiCollection({
         collectionId: req.params.collectionId,
         itemId: req.params.itemId,
         actor: req.permission.type,
@@ -328,20 +313,17 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
-      // TODO: audit logging
-
-      //   await server.services.auditLog.createAuditLog({
-      //     ...req.auditLogInfo,
-      //     projectId: ca.projectId,
-      //     event: {
-      //       type: EventType.DELETE_CERT,
-      //       metadata: {
-      //         certId: deletedCert.id,
-      //         cn: deletedCert.commonName,
-      //         serialNumber: deletedCert.serialNumber
-      //       }
-      //     }
-      //   });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiCollection.projectId,
+        event: {
+          type: EventType.DELETE_PKI_COLLECTION_ITEM,
+          metadata: {
+            pkiCollectionId: pkiCollection.id,
+            pkiCollectionItemId: pkiCollectionItem.id
+          }
+        }
+      });
 
       return pkiCollectionItem;
     }
