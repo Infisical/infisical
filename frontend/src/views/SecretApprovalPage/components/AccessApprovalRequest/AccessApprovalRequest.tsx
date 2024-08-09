@@ -29,6 +29,7 @@ import {
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
+  useUser,
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -47,7 +48,7 @@ import { queryClient } from "@app/reactQuery";
 import { RequestAccessModal } from "./components/RequestAccessModal";
 import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 
-const generateRequestText = (request: TAccessApprovalRequest, membershipId: string) => {
+const generateRequestText = (request: TAccessApprovalRequest, userId: string) => {
   const { isTemporary } = request;
 
   return (
@@ -63,7 +64,7 @@ const generateRequestText = (request: TAccessApprovalRequest, membershipId: stri
         </code>
       </div>
       <div>
-        {request.requestedBy === membershipId && (
+        {request.requestedByUserId === userId && (
           <span className="text-xs text-gray-500">
             <Badge className="ml-1">Requested By You</Badge>
           </span>
@@ -81,11 +82,11 @@ export const AccessApprovalRequest = ({
   projectId: string;
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
-    (TAccessApprovalRequest & {
-      user: TWorkspaceUser["user"] | null;
-      isRequestedByCurrentUser: boolean;
-      isApprover: boolean;
-    })
+    | (TAccessApprovalRequest & {
+        user: TWorkspaceUser["user"] | null;
+        isRequestedByCurrentUser: boolean;
+        isApprover: boolean;
+      })
     | null
   >(null);
 
@@ -94,15 +95,18 @@ export const AccessApprovalRequest = ({
     "reviewRequest",
     "upgradePlan"
   ] as const);
-  const { membership, permission } = useProjectPermission();
+  const { permission } = useProjectPermission();
+  const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
 
-  const { data: members } = useGetWorkspaceUsers(projectId);
+  const { data: members } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
-    (prev, curr) => ({ ...prev, [curr.id]: curr }),
+    (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
     {}
   );
+
+  console.log("membersGroupById", membersGroupById);
 
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
@@ -140,19 +144,18 @@ export const AccessApprovalRequest = ({
   }, [requests, statusFilter, requestedByFilter, envFilter]);
 
   const generateRequestDetails = (request: TAccessApprovalRequest) => {
-    const isReviewedByUser =
-      request.reviewers.findIndex(({ member }) => member === membership.id) !== -1;
+    console.log(request);
+
+    const isReviewedByUser = request.reviewers.findIndex(({ member }) => member === user.id) !== -1;
     const isRejectedByAnyone = request.reviewers.some(
       ({ status }) => status === ApprovalStatus.REJECTED
     );
-    const isApprover = request.policy.approvers.indexOf(membership.id || "") !== -1;
+    const isApprover = request.policy.approvers.indexOf(user.id || "") !== -1;
     const isAccepted = request.isApproved;
     const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
-    const isRequestedByCurrentUser = request.requestedBy === membership.id;
+    const isRequestedByCurrentUser = request.requestedByUserId === user.id;
 
-    const userReviewStatus = request.reviewers.find(
-      ({ member }) => member === membership.id
-    )?.status;
+    const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
 
     let displayData: { label: string; type: "primary" | "danger" | "success" } = {
       label: "",
@@ -303,7 +306,7 @@ export const AccessApprovalRequest = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Select an author</DropdownMenuLabel>
-                    {members?.map(({ user, id }) => (
+                    {members?.map(({ user: membershipUser, id }) => (
                       <DropdownMenuItem
                         onClick={() =>
                           setRequestedByFilter((state) => (state === id ? undefined : id))
@@ -312,7 +315,7 @@ export const AccessApprovalRequest = ({
                         icon={requestedByFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
                         iconPos="right"
                       >
-                        {user.username}
+                        {membershipUser.username}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -341,22 +344,21 @@ export const AccessApprovalRequest = ({
                     tabIndex={0}
                     onClick={() => {
                       if (
-                        (
-                          !details.isApprover
-                          || details.isReviewedByUser
-                          || details.isRejectedByAnyone
-                          || details.isAccepted
-                        ) && !(
-                          details.isSoftEnforcement
-                          && details.isRequestedByCurrentUser
-                          && !details.isAccepted
+                        (!details.isApprover ||
+                          details.isReviewedByUser ||
+                          details.isRejectedByAnyone ||
+                          details.isAccepted) &&
+                        !(
+                          details.isSoftEnforcement &&
+                          details.isRequestedByCurrentUser &&
+                          !details.isAccepted
                         )
                       )
                         return;
 
                       setSelectedRequest({
                         ...request,
-                        user: membersGroupById?.[request.requestedBy].user!,
+                        user: membersGroupById?.[request.requestedByUserId].user!,
                         isRequestedByCurrentUser: details.isRequestedByCurrentUser,
                         isApprover: details.isApprover
                       });
@@ -373,7 +375,7 @@ export const AccessApprovalRequest = ({
                       if (evt.key === "Enter") {
                         setSelectedRequest({
                           ...request,
-                          user: membersGroupById?.[request.requestedBy].user!,
+                          user: membersGroupById?.[request.requestedByUserId].user!,
                           isRequestedByCurrentUser: details.isRequestedByCurrentUser,
                           isApprover: details.isApprover
                         });
@@ -385,16 +387,17 @@ export const AccessApprovalRequest = ({
                       <div className="flex w-full flex-col justify-between">
                         <div className="mb-1 flex w-full items-center">
                           <FontAwesomeIcon icon={faLock} className="mr-2" />
-                          {generateRequestText(request, membership.id)}
+                          {generateRequestText(request, user.id)}
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-gray-500">
-                            {membersGroupById?.[request.requestedBy]?.user && (
+                            {membersGroupById?.[request.requestedByUserId]?.user && (
                               <>
                                 Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
-                                ago by {membersGroupById?.[request.requestedBy]?.user?.firstName}{" "}
-                                {membersGroupById?.[request.requestedBy]?.user?.lastName} (
-                                {membersGroupById?.[request.requestedBy]?.user?.email}){" "}
+                                ago by{" "}
+                                {membersGroupById?.[request.requestedByUserId]?.user?.firstName}{" "}
+                                {membersGroupById?.[request.requestedByUserId]?.user?.lastName} (
+                                {membersGroupById?.[request.requestedByUserId]?.user?.email}){" "}
                               </>
                             )}
                           </div>

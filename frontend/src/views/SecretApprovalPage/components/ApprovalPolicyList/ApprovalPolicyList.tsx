@@ -1,5 +1,10 @@
-import { useMemo,useState } from "react";
-import { faCheckCircle,faChevronDown, faFileShield, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { useMemo, useState } from "react";
+import {
+  faCheckCircle,
+  faChevronDown,
+  faFileShield,
+  faPlus
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -32,7 +37,12 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteAccessApprovalPolicy, useDeleteSecretApprovalPolicy, useGetSecretApprovalPolicies, useGetWorkspaceUsers } from "@app/hooks/api";
+import {
+  useDeleteAccessApprovalPolicy,
+  useDeleteSecretApprovalPolicy,
+  useGetSecretApprovalPolicies,
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/queries";
 import { PolicyType } from "@app/hooks/api/policies/enums";
 import { TAccessApprovalPolicy, Workspace } from "@app/hooks/api/types";
@@ -45,27 +55,32 @@ interface IProps {
 }
 
 const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: Workspace) => {
-  const { data: accessPolicies, isLoading: isAccessPoliciesLoading } = useGetAccessApprovalPolicies({
-    projectSlug: currentWorkspace?.slug as string,
-    options: {
-      enabled:
-        permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-        !!currentWorkspace?.slug
+  const { data: accessPolicies, isLoading: isAccessPoliciesLoading } = useGetAccessApprovalPolicies(
+    {
+      projectSlug: currentWorkspace?.slug as string,
+      options: {
+        enabled:
+          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
+          !!currentWorkspace?.slug
+      }
     }
-  });
-  const { data: secretPolicies, isLoading: isSecretPoliciesLoading } = useGetSecretApprovalPolicies({
-    workspaceId: currentWorkspace?.id as string,
-    options: {
-      enabled:
-        permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-        !!currentWorkspace?.id
+  );
+  const { data: secretPolicies, isLoading: isSecretPoliciesLoading } = useGetSecretApprovalPolicies(
+    {
+      workspaceId: currentWorkspace?.id as string,
+      options: {
+        enabled:
+          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
+          !!currentWorkspace?.id
+      }
     }
-  });
+  );
 
   // merge data sorted by updatedAt
   const policies = [
-    ...(accessPolicies?.map(policy => ({ ...policy, policyType: PolicyType.AccessPolicy })) || []),
-    ...(secretPolicies?.map(policy => ({ ...policy, policyType: PolicyType.ChangePolicy })) || [])
+    ...(accessPolicies?.map((policy) => ({ ...policy, policyType: PolicyType.AccessPolicy })) ||
+      []),
+    ...(secretPolicies?.map((policy) => ({ ...policy, policyType: PolicyType.ChangePolicy })) || [])
   ].sort((a, b) => {
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
@@ -86,15 +101,16 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
 
-  const { data: members } = useGetWorkspaceUsers(workspaceId);
-  const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(permission, currentWorkspace);
+  const { data: members } = useGetWorkspaceUsers(workspaceId, true);
+  const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(
+    permission,
+    currentWorkspace
+  );
 
   const [filterType, setFilterType] = useState<string | null>(null);
 
   const filteredPolicies = useMemo(() => {
-    return filterType
-      ? policies.filter(policy => policy.policyType === filterType)
-      : policies;
+    return filterType ? policies.filter((policy) => policy.policyType === filterType) : policies;
   }, [policies, filterType]);
 
   const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
@@ -177,8 +193,10 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                     <Button
                       variant="plain"
                       colorSchema="secondary"
-                      className="text-bunker-300 uppercase text-xs font-semibold"
-                      rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
+                      className="text-xs font-semibold uppercase text-bunker-300"
+                      rightIcon={
+                        <FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />
+                      }
                     >
                       Type
                     </Button>
@@ -194,14 +212,22 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setFilterType(PolicyType.AccessPolicy)}
-                      icon={filterType === PolicyType.AccessPolicy && <FontAwesomeIcon icon={faCheckCircle} />}
+                      icon={
+                        filterType === PolicyType.AccessPolicy && (
+                          <FontAwesomeIcon icon={faCheckCircle} />
+                        )
+                      }
                       iconPos="right"
                     >
                       Access Policy
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setFilterType(PolicyType.ChangePolicy)}
-                      icon={filterType === PolicyType.ChangePolicy && <FontAwesomeIcon icon={faCheckCircle} />}
+                      icon={
+                        filterType === PolicyType.ChangePolicy && (
+                          <FontAwesomeIcon icon={faCheckCircle} />
+                        )
+                      }
                       iconPos="right"
                     >
                       Change Policy

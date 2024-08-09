@@ -1,9 +1,18 @@
 import { z } from "zod";
 
-import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
+import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const approvalRequestUser = z.object({ userId: z.string() }).merge(
+  UsersSchema.pick({
+    email: true,
+    firstName: true,
+    lastName: true,
+    username: true
+  })
+);
 
 export const registerAccessApprovalRequestRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -104,10 +113,11 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             }),
             reviewers: z
               .object({
-                member: z.string(),
+                userId: z.string(),
                 status: z.string()
               })
-              .array()
+              .array(),
+            requestedByUser: approvalRequestUser
           }).array()
         })
       }
