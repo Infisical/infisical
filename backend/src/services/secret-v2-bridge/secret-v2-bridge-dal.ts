@@ -287,7 +287,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }))
         );
       if (!newSecretReferences.length) return;
-      const secretReferences = await (tx || db)(TableName.SecretReferenceV2).insert(newSecretReferences);
+      const secretReferences = await (tx || db).batchInsert(TableName.SecretReferenceV2, newSecretReferences);
       return secretReferences;
     } catch (error) {
       throw new DatabaseError({ error, name: "UpsertSecretReference" });

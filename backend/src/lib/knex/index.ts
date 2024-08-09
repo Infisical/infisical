@@ -128,6 +128,16 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       throw new DatabaseError({ error, name: "Create" });
     }
   },
+  // This spilit the insert into multiple chunk
+  batchInsert: async (data: readonly Tables[Tname]["insert"][], tx?: Knex) => {
+    try {
+      if (!data.length) return [];
+      const res = await (tx || db).batchInsert(tableName, data as never).returning("*");
+      return res as Tables[Tname]["base"][];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "batchInsert" });
+    }
+  },
   upsert: async (data: readonly Tables[Tname]["insert"][], onConflictField: keyof Tables[Tname]["base"], tx?: Knex) => {
     try {
       if (!data.length) return [];
