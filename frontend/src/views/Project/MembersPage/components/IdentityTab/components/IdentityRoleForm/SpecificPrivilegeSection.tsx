@@ -117,6 +117,7 @@ const SpecificPrivilegeSecretForm = ({
 
   const temporaryAccessField = privilegeForm.watch("temporaryAccess");
   const selectedEnvironmentSlug = privilegeForm.watch("environmentSlug");
+  const secretPath = privilegeForm.watch("secretPath"); 
   const isTemporary = temporaryAccessField?.isTemporary;
   const isExpired =
     temporaryAccessField.isTemporary &&
@@ -190,6 +191,11 @@ const SpecificPrivilegeSecretForm = ({
     return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
   };
 
+  const navigateToPath = () => {
+    const path =  `/glob-tool?secretPath=${encodeURIComponent(secretPath ?? '')}`;
+    window.open(path, '_blank');
+  };
+
   return (
     <div className="mt-4">
       <form onSubmit={privilegeForm.handleSubmit(handleUpdatePrivilege)}>
@@ -218,7 +224,7 @@ const SpecificPrivilegeSecretForm = ({
             control={privilegeForm.control}
             name="secretPath"
             render={({ field }) => (
-              <FormControl label="Secret Path">
+              <FormControl label="Secret Path" hyperLinkText='(glob-tools)' hyperLinkPath={navigateToPath}>
                 <SecretPathInput
                   {...field}
                   isDisabled={isMemberEditDisabled}
