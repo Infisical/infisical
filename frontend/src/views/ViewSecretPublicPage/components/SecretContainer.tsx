@@ -14,7 +14,7 @@ import { useTimedReset, useToggle } from "@app/hooks";
 import { TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
 type Props = {
-  secret: TViewSharedSecretResponse;
+  secret: TViewSharedSecretResponse["secret"];
   secretKey: string;
 };
 

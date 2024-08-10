@@ -1,35 +1,42 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AxiosError } from "axios";
 
-import { TViewSharedSecretResponse, useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
+import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 
-import { SecretContainer, SecretErrorContainer, PasswordContainer } from "./components";
+import { PasswordContainer,SecretContainer, SecretErrorContainer } from "./components";
 
 export const ViewSecretPublicPage = () => {
-  const [secret, setSecret] = useState<TViewSharedSecretResponse | null>(null);
   const router = useRouter();
+  const [password, setPassword] = useState<string>();
   const { id, key: urlEncodedPublicKey } = router.query;
 
   const [hashedHex, key] = urlEncodedPublicKey
     ? urlEncodedPublicKey.toString().split("-")
     : ["", ""];
 
-  const { data: fetchSecret, error, isLoading } = useGetActiveSharedSecretById({
+  const {
+    data: fetchSecret,
+    error,
+    isLoading,
+    isFetching
+  } = useGetActiveSharedSecretById({
     sharedSecretId: id as string,
-    hashedHex
+    hashedHex,
+    password
   });
 
-  useEffect(() => {
-    if (fetchSecret) setSecret(fetchSecret)
-  }, [fetchSecret, error])
+  const isInvalidCredential =
+    ((error as AxiosError)?.response?.data as { message: string })?.message ===
+    "Invalid credentials";
 
-  const handleSecret = useCallback((value: TViewSharedSecretResponse) => {
-    setSecret(value)
-  }, [setSecret])
+  const shouldShowPasswordPrompt =
+    isInvalidCredential || (fetchSecret?.isPasswordProtected && !fetchSecret.secret);
+  const isValidatingPassword = Boolean(password) && isFetching;
 
   return (
     <div className="flex h-screen flex-col justify-between overflow-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
@@ -62,17 +69,21 @@ export const ViewSecretPublicPage = () => {
             </a>
           </p>
         </div>
+        {(shouldShowPasswordPrompt || isValidatingPassword) && (
+          <PasswordContainer
+            isSubmitting={isValidatingPassword}
+            onPasswordSubmit={(el) => {
+              setPassword(el);
+            }}
+            isInvalidCredential={!isFetching && isInvalidCredential}
+          />
+        )}
         {!isLoading && (
           <>
-            {!error && !secret && (
-              <PasswordContainer
-                secretId={id as string}
-                hashedHex={hashedHex}
-                handleSecret={handleSecret}
-              />
+            {!error && fetchSecret?.secret && key && (
+              <SecretContainer secret={fetchSecret.secret} secretKey={key} />
             )}
-            {!error && secret && key && <SecretContainer secret={secret} secretKey={key} />}
-            {error && <SecretErrorContainer />}
+            {error && !isInvalidCredential && <SecretErrorContainer />}
           </>
         )}
         <div className="m-auto my-8 flex w-full">

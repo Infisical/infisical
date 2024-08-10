@@ -1,60 +1,34 @@
-import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
-
 import { faArrowRight, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
-import { fetchSecretIfPasswordIsValid, TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
-import { createNotification } from "@app/components/notifications";
 
 type Props = {
-  secretId: string;
-  hashedHex: string;
-  handleSecret: (val: any) => void;
+  onPasswordSubmit: (val: any) => void;
+  isSubmitting?: boolean;
+  isInvalidCredential?: boolean;
 };
 
 const formSchema = z.object({
   password: z.string()
-})
+});
 
 export type FormData = z.infer<typeof formSchema>;
 
-export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) => {
-  const {
-    control,
-    reset,
-    handleSubmit,
-    formState: { isSubmitting }
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+export const PasswordContainer = ({
+  onPasswordSubmit,
+  isSubmitting,
+  isInvalidCredential
+}: Props) => {
+  const { control, handleSubmit } = useForm<FormData>({
+    resolver: zodResolver(formSchema)
   });
 
   const onFormSubmit = async ({ password }: FormData) => {
-    try {
-      const secret: TViewSharedSecretResponse = await fetchSecretIfPasswordIsValid(
-        secretId,
-        hashedHex,
-        password,
-      )
-
-      if (secret) {
-        handleSecret(secret);
-      } else {
-        reset({ password: "" });
-        createNotification({
-          text: "Password is Invalid. Try again",
-          type: "error"
-        })
-      }
-    } catch (error) {
-      console.error("Failed to validate password:", error);
-      createNotification({
-        text: "Failed to validate password",
-        type: "error"
-      })
-    }
+    onPasswordSubmit(password);
   };
 
   return (
@@ -63,15 +37,16 @@ export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) 
         <Controller
           control={control}
           name="password"
+          defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
+              isError={Boolean(error) || isInvalidCredential}
+              errorText={isInvalidCredential ? "Invalid credential" : error?.message}
               isRequired
               label="Password"
             >
-              <div className="flex items-center gap-2 justify-between rounded-md">
-                <Input {...field} placeholder="Enter Password to view secret" type="password"></Input>
+              <div className="flex items-center justify-between gap-2 rounded-md">
+                <Input {...field} placeholder="Enter Password to view secret" type="password" />
                 <div className="flex">
                   <IconButton
                     ariaLabel="copy icon"
@@ -79,9 +54,9 @@ export const PasswordContainer = ({ secretId, hashedHex, handleSecret }: Props) 
                     className="group relative"
                     onClick={handleSubmit(onFormSubmit)}
                   >
-                    <FontAwesomeIcon 
-                      className={isSubmitting ? 'fa-spin' : ''} 
-                      icon={isSubmitting ? faSpinner : faArrowRight} 
+                    <FontAwesomeIcon
+                      className={isSubmitting ? "fa-spin" : ""}
+                      icon={isSubmitting ? faSpinner : faArrowRight}
                     />
                   </IconButton>
                 </div>

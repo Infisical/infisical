@@ -33,7 +33,7 @@ const viewLimitOptions = [
 const schema = z.object({
   name: z.string().optional(),
   password: z.string().optional(),
-  secret: z.string(),
+  secret: z.string().min(1),
   expiresIn: z.string(),
   viewLimit: z.string(),
   accessType: z.nativeEnum(SecretSharingAccessType).optional()
@@ -68,7 +68,14 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
     }
   });
 
-  const onFormSubmit = async ({ name, password, secret, expiresIn, viewLimit, accessType }: FormData) => {
+  const onFormSubmit = async ({
+    name,
+    password,
+    secret,
+    expiresIn,
+    viewLimit,
+    accessType
+  }: FormData) => {
     try {
       const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
@@ -159,7 +166,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
             label="Password"
             isError={Boolean(error)}
             errorText={error?.message}
-            isOptional={true}
+            isOptional
           >
             <Input {...field} placeholder="Password" type="password" />
           </FormControl>
