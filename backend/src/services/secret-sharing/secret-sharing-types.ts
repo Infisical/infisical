@@ -33,6 +33,7 @@ export type TGetActiveSharedSecretByIdDTO = {
   sharedSecretId: string;
   hashedHex: string;
   orgId?: string;
+  password?: string;
 };
 
 export type TValidateActiveSharedSecretDTO = TGetActiveSharedSecretByIdDTO & {

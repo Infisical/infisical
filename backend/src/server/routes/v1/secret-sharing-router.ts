@@ -48,7 +48,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
   });
 
   server.route({
-    method: "GET",
+    method: "POST",
     url: "/public/:id",
     config: {
       rateLimit: publicEndpointLimit
@@ -57,92 +57,37 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         id: z.string().uuid()
       }),
-      querystring: z.object({
-        hashedHex: z.string().min(1)
+      body: z.object({
+        hashedHex: z.string().min(1),
+        password: z.string().optional()
       }),
       response: {
-        200: SecretSharingSchema.pick({
-          encryptedValue: true,
-          iv: true,
-          tag: true,
-          expiresAt: true,
-          expiresAfterViews: true,
-          accessType: true
-        }).extend({
-          orgName: z.string().optional()
+        200: z.object({
+          isPasswordProtected: z.boolean(),
+          secret: SecretSharingSchema.pick({
+            encryptedValue: true,
+            iv: true,
+            tag: true,
+            expiresAt: true,
+            expiresAfterViews: true,
+            accessType: true
+          })
+            .extend({
+              orgName: z.string().optional()
+            })
+            .optional()
         })
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getPasswordlessSecretByID({
+      const sharedSecret = await req.server.services.secretSharing.getSharedSecretById({
         sharedSecretId: req.params.id,
-        hashedHex: req.query.hashedHex,
+        hashedHex: req.body.hashedHex,
+        password: req.body.password,
         orgId: req.permission?.orgId
       });
 
-      if (!sharedSecret) return undefined;
-
-      return {
-        encryptedValue: sharedSecret.encryptedValue,
-        iv: sharedSecret.iv,
-        tag: sharedSecret.tag,
-        expiresAt: sharedSecret.expiresAt,
-        expiresAfterViews: sharedSecret.expiresAfterViews,
-        accessType: sharedSecret.accessType,
-        orgName: sharedSecret.orgName
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/public/:id/validate",
-    config: {
-      rateLimit: publicEndpointLimit
-    },
-    schema: {
-      params: z.object({
-        id: z.string().uuid()
-      }),
-      body: z.object({
-        password: z.string().min(1),
-        hashedHex: z.string()
-      }),
-      response: {
-        200: SecretSharingSchema.pick({
-          encryptedValue: true,
-          iv: true,
-          tag: true,
-          expiresAt: true,
-          expiresAfterViews: true,
-          accessType: true
-        }).extend({
-          orgName: z.string().optional()
-        })
-      }
-    },
-    handler: async (req) => {
-      const { id } = req.params;
-      const { password, hashedHex } = req.body;
-
-      const sharedSecret = await req.server.services.secretSharing.getValidatedSecretByID({
-        sharedSecretId: id,
-        hashedHex,
-        orgId: req.permission?.orgId,
-        password
-      });
-
-      if (!sharedSecret) return undefined;
-
-      return {
-        encryptedValue: sharedSecret.encryptedValue,
-        iv: sharedSecret.iv,
-        tag: sharedSecret.tag,
-        expiresAt: sharedSecret.expiresAt,
-        expiresAfterViews: sharedSecret.expiresAfterViews,
-        accessType: sharedSecret.accessType,
-        orgName: sharedSecret.orgName
-      };
+      return sharedSecret;
     }
   });
 

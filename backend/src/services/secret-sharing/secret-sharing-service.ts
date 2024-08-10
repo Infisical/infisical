@@ -1,15 +1,9 @@
 import bcrypt from "bcrypt";
 
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  InternalServerError,
-  NotFoundError,
-  UnauthorizedError
-} from "@app/lib/errors";
-import { SecretSharingAccessType } from "@app/lib/types";
 import { TSecretSharing } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { SecretSharingAccessType } from "@app/lib/types";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
@@ -18,8 +12,7 @@ import {
   TCreateSharedSecretDTO,
   TDeleteSharedSecretDTO,
   TGetActiveSharedSecretByIdDTO,
-  TGetSharedSecretsDTO,
-  TValidateActiveSharedSecretDTO
+  TGetSharedSecretsDTO
 } from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
@@ -169,10 +162,39 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  /** Checks if secret is expired and throws error if true */
-  const checkIfSecretIsExpired = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
-    const { expiresAt, expiresAfterViews } = sharedSecret;
+  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
+    const { expiresAfterViews } = sharedSecret;
 
+    if (expiresAfterViews) {
+      // decrement view count if view count expiry set
+      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+    }
+
+    await secretSharingDAL.updateById(sharedSecretId, {
+      lastViewedAt: new Date()
+    });
+  };
+
+  /** Get's passwordless secret. validates all secret's requested (must be fresh). */
+  const getSharedSecretById = async ({ sharedSecretId, hashedHex, orgId, password }: TGetActiveSharedSecretByIdDTO) => {
+    const sharedSecret = await secretSharingDAL.findOne({
+      id: sharedSecretId,
+      hashedHex
+    });
+    if (!sharedSecret)
+      throw new NotFoundError({
+        message: "Shared secret not found"
+      });
+
+    const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
+
+    const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
+
+    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
+      throw new UnauthorizedError();
+
+    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
+    // or can be safely sent to the client.
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
       await secretSharingDAL.softDeleteById(sharedSecretId);
@@ -188,97 +210,30 @@ export const secretSharingServiceFactory = ({
         message: "Access denied: Secret has expired by view count"
       });
     }
-  };
 
-  const decrementSecretViewCount = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
-    const { expiresAfterViews } = sharedSecret;
-
-    if (expiresAfterViews) {
-      // decrement view count if view count expiry set
-      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+    const isPasswordProtected = Boolean(sharedSecret.password);
+    const hasProvidedPassword = Boolean(password);
+    if (isPasswordProtected) {
+      if (hasProvidedPassword) {
+        const isMatch = await bcrypt.compare(password as string, sharedSecret.password as string);
+        if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
+      } else {
+        return { isPasswordProtected };
+      }
     }
 
-    await secretSharingDAL.updateById(sharedSecretId, {
-      lastViewedAt: new Date()
-    });
-  };
-
-  /** Get's passwordless secret. validates all secret's requested (must be fresh). */
-  const getPasswordlessSecretByID = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
-    const sharedSecret = await secretSharingDAL.findOne({
-      id: sharedSecretId,
-      hashedHex
-    });
-    if (!sharedSecret)
-      throw new NotFoundError({
-        message: "Shared secret not found"
-      });
-
-    const { accessType } = sharedSecret;
-
-    const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
-
-    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
-      throw new UnauthorizedError();
-
-    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
-    // or can be safely sent to the client.
-    await checkIfSecretIsExpired(sharedSecret, sharedSecretId);
-
-    if (sharedSecret.password !== null) return undefined;
-
     // decrement when we are sure the user will view secret.
-    await decrementSecretViewCount(sharedSecret, sharedSecretId);
+    await $decrementSecretViewCount(sharedSecret, sharedSecretId);
 
     return {
-      ...sharedSecret,
-      orgName:
-        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
-          ? orgName
-          : undefined
-    };
-  };
-
-  /** Get's the requested secret if password passed is valid */
-  const getValidatedSecretByID = async ({
-    sharedSecretId,
-    hashedHex,
-    orgId,
-    password
-  }: TValidateActiveSharedSecretDTO) => {
-    const sharedSecret = await secretSharingDAL.findOne({
-      id: sharedSecretId,
-      hashedHex
-    });
-    if (!sharedSecret)
-      throw new NotFoundError({
-        message: "Shared secret not found"
-      });
-
-    const { accessType } = sharedSecret;
-
-    const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
-
-    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
-      throw new UnauthorizedError();
-
-    if (!sharedSecret.password)
-      throw new InternalServerError({
-        message: "Something went wrong"
-      });
-
-    const isMatch = await bcrypt.compare(password, sharedSecret.password);
-    if (!isMatch) return undefined;
-
-    // reduce the view count when the password matches (will be returned to the client).
-    await decrementSecretViewCount(sharedSecret, sharedSecretId);
-
-    return {
-      ...sharedSecret,
-      orgName:
-        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
-          ? orgName
-          : undefined
+      isPasswordProtected,
+      secret: {
+        ...sharedSecret,
+        orgName:
+          sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
+            ? orgName
+            : undefined
+      }
     };
   };
 
@@ -295,7 +250,6 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getPasswordlessSecretByID,
-    getValidatedSecretByID
+    getSharedSecretById
   };
 };
