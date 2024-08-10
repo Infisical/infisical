@@ -3,7 +3,10 @@ import { ForbiddenError } from "@casl/ability";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
+import { pkiItemTypeToNameMap } from "@app/services/pki-collection/pki-collection-types";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TPkiAlertDALFactory } from "./pki-alert-dal";
 import { TCreateAlertDTO, TDeleteAlertDTO, TGetAlertByIdDTO, TUpdateAlertDTO } from "./pki-alert-types";
@@ -12,6 +15,7 @@ type TPkiAlertServiceFactoryDep = {
   pkiAlertDAL: TPkiAlertDALFactory;
   pkiCollectionDAL: TPkiCollectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TPkiAlertServiceFactory = ReturnType<typeof pkiAlertServiceFactory>;
@@ -19,8 +23,42 @@ export type TPkiAlertServiceFactory = ReturnType<typeof pkiAlertServiceFactory>;
 export const pkiAlertServiceFactory = ({
   pkiAlertDAL,
   pkiCollectionDAL,
-  permissionService
+  permissionService,
+  smtpService
 }: TPkiAlertServiceFactoryDep) => {
+  const sendPkiItemExpiryNotices = async () => {
+    const allAlertItems = await pkiAlertDAL.getExpiringPkiCollectionItemsForAlerting();
+
+    const flattenedResults = allAlertItems.flatMap(({ recipientEmails, ...item }) =>
+      recipientEmails.split(",").map((email) => ({
+        ...item,
+        recipientEmail: email.trim()
+      }))
+    );
+
+    const groupedByEmail = groupBy(flattenedResults, (item) => item.recipientEmail);
+
+    for await (const [email, items] of Object.entries(groupedByEmail)) {
+      const groupedByAlert = groupBy(items, (item) => item.alertId);
+      for await (const [, alertItems] of Object.entries(groupedByAlert)) {
+        await smtpService.sendMail({
+          recipients: [email],
+          subjectLine: `Infisical CA/Certificate expiration notice: ${alertItems[0].alertName}`,
+          substitutions: {
+            alertName: alertItems[0].alertName,
+            alertBeforeDays: items[0].alertBeforeDays,
+            items: alertItems.map((alertItem) => ({
+              ...alertItem,
+              type: pkiItemTypeToNameMap[alertItem.type],
+              expiryDate: new Date(alertItem.expiryDate).toString()
+            }))
+          },
+          template: SmtpTemplates.PkiExpirationAlert
+        });
+      }
+    }
+  };
+
   const createPkiAlert = async ({
     projectId,
     name,
@@ -108,7 +146,7 @@ export const pkiAlertServiceFactory = ({
       name,
       alertBeforeDays,
       ...(pkiCollectionId && { pkiCollectionId }),
-      ...(emails && { recipientEmails: emails.join(",") }) // TODO: standardize recipient emails
+      ...(emails && { recipientEmails: emails.join(",") })
     });
 
     return alert;
@@ -132,6 +170,7 @@ export const pkiAlertServiceFactory = ({
   };
 
   return {
+    sendPkiItemExpiryNotices,
     createPkiAlert,
     getPkiAlertById,
     updatePkiAlert,

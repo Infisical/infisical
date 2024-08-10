@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
 import { useGetPkiCollectionById, useRemoveItemFromPkiCollection } from "@app/hooks/api";
+import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddPkiCollectionItemModal } from "./AddPkiCollectionItemModal";
@@ -11,9 +12,10 @@ import { PkiCollectionItemsTable } from "./PkiCollectionItemsTable";
 
 type Props = {
   collectionId: string;
+  type: PkiItemType;
 };
 
-export const PkiCollectionItemsSection = ({ collectionId }: Props) => {
+export const PkiCollectionItemsSection = ({ collectionId, type }: Props) => {
   const { data: pkiCollection } = useGetPkiCollectionById(collectionId);
   const { mutateAsync: removeItemFromPkiCollection } = useRemoveItemFromPkiCollection();
 
@@ -40,10 +42,12 @@ export const PkiCollectionItemsSection = ({ collectionId }: Props) => {
     }
   };
 
+  const sectionName = type === PkiItemType.CA ? "Certificate Authorities" : "Certificates";
+
   return pkiCollection ? (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Items</h3>
+        <h3 className="text-lg font-semibold text-mineshaft-100">{sectionName}</h3>
         <IconButton
           ariaLabel="copy icon"
           variant="plain"
@@ -56,10 +60,15 @@ export const PkiCollectionItemsSection = ({ collectionId }: Props) => {
         </IconButton>
       </div>
       <div className="py-4">
-        <PkiCollectionItemsTable collectionId={collectionId} handlePopUpOpen={handlePopUpOpen} />
+        <PkiCollectionItemsTable
+          type={type}
+          collectionId={collectionId}
+          handlePopUpOpen={handlePopUpOpen}
+        />
       </div>
       <AddPkiCollectionItemModal
         collectionId={collectionId}
+        type={type}
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
       />

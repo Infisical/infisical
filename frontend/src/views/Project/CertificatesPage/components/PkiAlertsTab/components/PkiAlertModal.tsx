@@ -11,8 +11,7 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem,
-  TextArea
+  SelectItem
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
@@ -193,7 +192,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
             defaultValue=""
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="PKI Collection"
+                label="Certificate Collection"
                 errorText={error?.message}
                 isError={Boolean(error)}
                 isRequired
@@ -262,16 +261,12 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
             name="emails"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Recipient Email(s)"
+                label="Emails to Alert"
                 isError={Boolean(error)}
                 errorText={error?.message}
                 isRequired
               >
-                <TextArea
-                  {...field}
-                  placeholder="aturing@gmail.com, alovelace@gmail.com, ..."
-                  reSize="none"
-                />
+                <Input {...field} placeholder="johndoe@gmail.com, janedoe@gmail.com, ..." />
               </FormControl>
             )}
           />

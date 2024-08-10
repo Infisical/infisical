@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PkiAlertsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ALERTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -17,11 +18,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Create PKI alert",
       body: z.object({
-        projectId: z.string().trim(),
-        pkiCollectionId: z.string().trim(),
-        name: z.string().trim(),
-        alertBeforeDays: z.number(),
-        emails: z.array(z.string())
+        projectId: z.string().trim().describe(ALERTS.CREATE.projectId),
+        pkiCollectionId: z.string().trim().describe(ALERTS.CREATE.pkiCollectionId),
+        name: z.string().trim().describe(ALERTS.CREATE.name),
+        alertBeforeDays: z.number().describe(ALERTS.CREATE.alertBeforeDays),
+        emails: z.array(z.string().trim().email({ message: "Invalid email address" })).describe(ALERTS.CREATE.emails)
       }),
       response: {
         200: PkiAlertsSchema
@@ -65,7 +66,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get PKI alert",
       params: z.object({
-        alertId: z.string().trim()
+        alertId: z.string().trim().describe(ALERTS.GET.alertId)
       }),
       response: {
         200: PkiAlertsSchema
@@ -105,13 +106,16 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Update PKI alert",
       params: z.object({
-        alertId: z.string().trim()
+        alertId: z.string().trim().describe(ALERTS.UPDATE.alertId)
       }),
       body: z.object({
-        name: z.string().trim().optional(),
-        alertBeforeDays: z.number().optional(),
-        pkiCollectionId: z.string().trim().optional(),
-        emails: z.array(z.string()).optional()
+        name: z.string().trim().optional().describe(ALERTS.UPDATE.name),
+        alertBeforeDays: z.number().optional().describe(ALERTS.UPDATE.alertBeforeDays),
+        pkiCollectionId: z.string().trim().optional().describe(ALERTS.UPDATE.pkiCollectionId),
+        emails: z
+          .array(z.string().trim().email({ message: "Invalid email address" }))
+          .optional()
+          .describe(ALERTS.UPDATE.emails)
       }),
       response: {
         200: PkiAlertsSchema
@@ -156,7 +160,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Delete PKI alert",
       params: z.object({
-        alertId: z.string().trim()
+        alertId: z.string().trim().describe(ALERTS.DELETE.alertId)
       }),
       response: {
         200: PkiAlertsSchema

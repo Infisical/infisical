@@ -9,13 +9,14 @@ import {
   CaStatus,
   useAddItemToPkiCollection,
   useListWorkspaceCas,
-  useListWorkspaceCertificates} from "@app/hooks/api";
+  useListWorkspaceCertificates
+} from "@app/hooks/api";
 import { PkiItemType, pkiItemTypeToNameMap } from "@app/hooks/api/pkiCollections/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    type: z.nativeEnum(PkiItemType),
+    // type: z.nativeEnum(PkiItemType),
     itemId: z.string()
   })
   .required();
@@ -24,6 +25,7 @@ type FormData = z.infer<typeof schema>;
 
 type Props = {
   collectionId: string;
+  type: PkiItemType;
   popUp: UsePopUpState<["addPkiCollectionItem"]>;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["addPkiCollectionItem"]>,
@@ -33,7 +35,12 @@ type Props = {
 
 // note: this component should be optimized so it is easier
 // to find certificates and CAs
-export const AddPkiCollectionItemModal = ({ collectionId, popUp, handlePopUpToggle }: Props) => {
+export const AddPkiCollectionItemModal = ({
+  collectionId,
+  type,
+  popUp,
+  handlePopUpToggle
+}: Props) => {
   const { currentWorkspace } = useWorkspace();
 
   const { data: cas } = useListWorkspaceCas({
@@ -53,18 +60,15 @@ export const AddPkiCollectionItemModal = ({ collectionId, popUp, handlePopUpTogg
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
-    watch
+    formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      type: PkiItemType.CA
-    }
+    resolver: zodResolver(schema)
+    // defaultValues: {
+    //   type: PkiItemType.CA
+    // }
   });
 
-  const itemType = watch("type");
-
-  const onFormSubmit = async ({ type, itemId }: FormData) => {
+  const onFormSubmit = async ({ itemId }: FormData) => {
     try {
       const item = await addItemToPkiCollection({
         collectionId,
@@ -94,9 +98,9 @@ export const AddPkiCollectionItemModal = ({ collectionId, popUp, handlePopUpTogg
         reset();
       }}
     >
-      <ModalContent title="Add CA / Certificate to Collection">
+      <ModalContent title={`Add ${pkiItemTypeToNameMap[type]} to Collection`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
+          {/* <Controller
             control={control}
             name="type"
             defaultValue={PkiItemType.CA}
@@ -117,18 +121,18 @@ export const AddPkiCollectionItemModal = ({ collectionId, popUp, handlePopUpTogg
                 </Select>
               </FormControl>
             )}
-          />
-          {itemType === PkiItemType.CA && (
+          /> */}
+          {type === PkiItemType.CA && (
             <Controller
               control={control}
               name="itemId"
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
-                  label="CA"
+                  label={pkiItemTypeToNameMap[type]}
                   errorText={error?.message}
                   isError={Boolean(error)}
-                  className="mt-4"
+                  // className="mt-4"
                 >
                   <Select
                     defaultValue={field.value}
@@ -146,7 +150,7 @@ export const AddPkiCollectionItemModal = ({ collectionId, popUp, handlePopUpTogg
               )}
             />
           )}
-          {itemType === PkiItemType.CERTIFICATE && (
+          {type === PkiItemType.CERTIFICATE && (
             <Controller
               control={control}
               name="itemId"
@@ -156,7 +160,7 @@ export const AddPkiCollectionItemModal = ({ collectionId, popUp, handlePopUpTogg
                   label="Certificate"
                   errorText={error?.message}
                   isError={Boolean(error)}
-                  className="mt-4"
+                  // className="mt-4"
                 >
                   <Select
                     defaultValue={field.value}

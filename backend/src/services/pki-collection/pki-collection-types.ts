@@ -22,8 +22,14 @@ export enum PkiItemType {
   CA = "ca"
 }
 
+export const pkiItemTypeToNameMap: { [K in PkiItemType]: string } = {
+  [PkiItemType.CA]: "CA",
+  [PkiItemType.CERTIFICATE]: "Certificate"
+};
+
 export type TGetPkiCollectionItems = {
   collectionId: string;
+  type?: PkiItemType;
   offset: number;
   limit: number;
 } & Omit<TProjectPermission, "projectId">;

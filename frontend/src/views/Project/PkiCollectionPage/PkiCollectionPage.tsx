@@ -17,7 +17,8 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { useDeletePkiCollection,useGetPkiCollectionById } from "@app/hooks/api";
+import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
+import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiCollectionModal } from "../CertificatesPage/components/PkiAlertsTab/components/PkiCollectionModal";
@@ -137,7 +138,15 @@ export const PkiCollectionPage = withProjectPermission(
                   handlePopUpOpen={handlePopUpOpen}
                 />
               </div>
-              <PkiCollectionItemsSection collectionId={collectionId} />
+              <div className="w-full">
+                <div className="mb-4">
+                  <PkiCollectionItemsSection collectionId={collectionId} type={PkiItemType.CA} />
+                </div>
+                <PkiCollectionItemsSection
+                  collectionId={collectionId}
+                  type={PkiItemType.CERTIFICATE}
+                />
+              </div>
             </div>
           </div>
         )}

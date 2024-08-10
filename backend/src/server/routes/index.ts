@@ -639,7 +639,8 @@ export const registerRoutes = async (
   const pkiAlertService = pkiAlertServiceFactory({
     pkiAlertDAL,
     pkiCollectionDAL,
-    permissionService
+    permissionService,
+    smtpService
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
@@ -1049,6 +1050,7 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
+    pkiAlertService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,

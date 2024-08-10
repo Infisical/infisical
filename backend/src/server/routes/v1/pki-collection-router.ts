@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PkiCollectionItemsSchema, PkiCollectionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PKI_COLLECTIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,8 +19,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Create PKI collection",
       body: z.object({
-        projectId: z.string().trim(),
-        name: z.string().trim()
+        projectId: z.string().trim().describe(PKI_COLLECTIONS.CREATE.projectId),
+        name: z.string().trim().describe(PKI_COLLECTIONS.CREATE.name)
       }),
       response: {
         200: PkiCollectionsSchema
@@ -60,7 +61,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Get PKI collection",
       params: z.object({
-        collectionId: z.string().trim()
+        collectionId: z.string().trim().describe(PKI_COLLECTIONS.GET.collectionId)
       }),
       response: {
         200: PkiCollectionsSchema
@@ -100,10 +101,10 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Update PKI collection",
       params: z.object({
-        collectionId: z.string().trim()
+        collectionId: z.string().trim().describe(PKI_COLLECTIONS.UPDATE.collectionId)
       }),
       body: z.object({
-        name: z.string().trim().optional()
+        name: z.string().trim().optional().describe(PKI_COLLECTIONS.UPDATE.name)
       }),
       response: {
         200: PkiCollectionsSchema
@@ -145,7 +146,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Delete PKI collection",
       params: z.object({
-        collectionId: z.string().trim()
+        collectionId: z.string().trim().describe(PKI_COLLECTIONS.DELETE.collectionId)
       }),
       response: {
         200: PkiCollectionsSchema
@@ -185,18 +186,22 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Get items in PKI collection",
       params: z.object({
-        collectionId: z.string().trim()
+        collectionId: z.string().trim().describe(PKI_COLLECTIONS.LIST_ITEMS.collectionId)
       }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0),
-        limit: z.coerce.number().min(1).max(100).default(25)
+        type: z.nativeEnum(PkiItemType).optional().describe(PKI_COLLECTIONS.LIST_ITEMS.type),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PKI_COLLECTIONS.LIST_ITEMS.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PKI_COLLECTIONS.LIST_ITEMS.limit)
       }),
       response: {
         200: z.object({
           collectionItems: z.array(
             PkiCollectionItemsSchema.omit({ caId: true, certId: true }).extend({
               type: z.nativeEnum(PkiItemType),
-              itemId: z.string().trim()
+              itemId: z.string().trim(),
+              notBefore: z.date(),
+              notAfter: z.date(),
+              friendlyName: z.string().trim()
             })
           ),
           totalCount: z.number()
@@ -242,16 +247,16 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Add item to PKI collection",
       params: z.object({
-        collectionId: z.string().trim()
+        collectionId: z.string().trim().describe(PKI_COLLECTIONS.ADD_ITEM.collectionId)
       }),
       body: z.object({
-        type: z.nativeEnum(PkiItemType),
-        itemId: z.string().trim()
+        type: z.nativeEnum(PkiItemType).describe(PKI_COLLECTIONS.ADD_ITEM.type),
+        itemId: z.string().trim().describe(PKI_COLLECTIONS.ADD_ITEM.itemId)
       }),
       response: {
         200: PkiCollectionItemsSchema.omit({ caId: true, certId: true }).extend({
-          type: z.nativeEnum(PkiItemType),
-          itemId: z.string().trim()
+          type: z.nativeEnum(PkiItemType).describe(PKI_COLLECTIONS.ADD_ITEM.type),
+          itemId: z.string().trim().describe(PKI_COLLECTIONS.ADD_ITEM.itemId)
         })
       }
     },
@@ -285,7 +290,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "DELETE",
-    url: "/:collectionId/items/:itemId",
+    url: "/:collectionId/items/:collectionItemId",
     config: {
       rateLimit: writeLimit
     },
@@ -293,20 +298,20 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       description: "Remove item from PKI collection",
       params: z.object({
-        collectionId: z.string().trim(),
-        itemId: z.string().trim()
+        collectionId: z.string().trim().describe(PKI_COLLECTIONS.DELETE_ITEM.collectionId),
+        collectionItemId: z.string().trim().describe(PKI_COLLECTIONS.DELETE_ITEM.collectionItemId)
       }),
       response: {
         200: PkiCollectionItemsSchema.omit({ caId: true, certId: true }).extend({
-          type: z.nativeEnum(PkiItemType),
-          itemId: z.string().trim()
+          type: z.nativeEnum(PkiItemType).describe(PKI_COLLECTIONS.DELETE_ITEM.type),
+          itemId: z.string().trim().describe(PKI_COLLECTIONS.DELETE_ITEM.itemId)
         })
       }
     },
     handler: async (req) => {
       const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.removeItemFromPkiCollection({
         collectionId: req.params.collectionId,
-        itemId: req.params.itemId,
+        itemId: req.params.collectionItemId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

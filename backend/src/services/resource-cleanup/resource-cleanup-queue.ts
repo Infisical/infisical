@@ -2,6 +2,7 @@ import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
@@ -18,6 +19,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets">;
   queueService: TQueueServiceFactory;
+  pkiAlertService: Pick<TPkiAlertServiceFactory, "sendPkiItemExpiryNotices">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -25,6 +27,7 @@ export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyRe
 export const dailyResourceCleanUpQueueServiceFactory = ({
   auditLogDAL,
   queueService,
+  pkiAlertService,
   snapshotDAL,
   secretVersionDAL,
   secretFolderVersionDAL,
@@ -41,6 +44,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await secretVersionDAL.pruneExcessVersions();
     await secretVersionV2DAL.pruneExcessVersions();
     await secretFolderVersionDAL.pruneExcessVersions();
+    await pkiAlertService.sendPkiItemExpiryNotices();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
 

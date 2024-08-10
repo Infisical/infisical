@@ -38,6 +38,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("name").notNullable();
       t.integer("alertBeforeDays").notNullable();
       t.string("recipientEmails").notNullable();
+      t.unique(["name", "projectId"]);
     });
   }
 

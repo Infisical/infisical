@@ -144,6 +144,7 @@ export const pkiCollectionServiceFactory = ({
 
   const getPkiCollectionItems = async ({
     collectionId,
+    type,
     offset = 0,
     limit = 25,
     actorId,
@@ -164,16 +165,23 @@ export const pkiCollectionServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
 
-    const pkiCollectionItems = await pkiCollectionItemDAL.find(
-      { pkiCollectionId: collectionId },
-      { offset, limit, sort: [["createdAt", "desc"]] }
-    );
+    const pkiCollectionItems = await pkiCollectionItemDAL.findPkiCollectionItems({
+      collectionId,
+      type,
+      offset,
+      limit
+    });
 
     const count = await pkiCollectionItemDAL.countItemsInPkiCollection(collectionId);
 
     return {
       pkiCollection,
-      pkiCollectionItems: pkiCollectionItems.map(transformPkiCollectionItem),
+      pkiCollectionItems: pkiCollectionItems.map((p) => ({
+        ...transformPkiCollectionItem(p),
+        notBefore: p.notBefore,
+        notAfter: p.notAfter,
+        friendlyName: p.friendlyName
+      })),
       totalCount: count
     };
   };

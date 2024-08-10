@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { PkiItemType } from "./constants";
 import { TPkiCollection, TPkiCollectionItem } from "./types";
 
 export const pkiCollectionKeys = {
@@ -10,16 +11,18 @@ export const pkiCollectionKeys = {
     [{ collectionId }, "pki-collection-items"] as const,
   specificPkiCollectionItems: ({
     collectionId,
+    type,
     offset,
     limit
   }: {
     collectionId: string;
+    type?: PkiItemType;
     offset: number;
     limit: number;
   }) =>
     [
       ...pkiCollectionKeys.getPkiCollectionItems(collectionId),
-      { offset, limit },
+      { offset, limit, type },
       "pki-collection-items-2"
     ] as const
 };
@@ -39,10 +42,12 @@ export const useGetPkiCollectionById = (collectionId: string) => {
 
 export const useListPkiCollectionItems = ({
   collectionId,
+  type,
   offset,
   limit
 }: {
   collectionId: string;
+  type?: PkiItemType;
   offset: number;
   limit: number;
 }) => {
@@ -50,18 +55,24 @@ export const useListPkiCollectionItems = ({
     queryKey: pkiCollectionKeys.specificPkiCollectionItems({
       collectionId,
       offset,
-      limit
+      limit,
+      type
     }),
     queryFn: async () => {
       const params = new URLSearchParams({
         offset: String(offset),
-        limit: String(limit)
+        limit: String(limit),
+        ...(type ? { type } : {})
       });
 
       const {
         data: { collectionItems, totalCount }
       } = await apiRequest.get<{
-        collectionItems: TPkiCollectionItem[];
+        collectionItems: (TPkiCollectionItem & {
+          notBefore: string;
+          notAfter: string;
+          friendlyName: string;
+        })[];
         totalCount: number;
       }>(`/api/v1/pki/collections/${collectionId}/items`, {
         params
