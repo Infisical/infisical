@@ -52,6 +52,7 @@ export const userSecretsServiceFactory = ({ kmsService, userSecretsDAL }: TUserS
 
     return {
       userId: data.actorId,
+      orgId: data.orgId,
       secretType: data.secretType,
       name: data.name,
       loginURL: data.loginURL ?? null,

@@ -6,6 +6,7 @@ export const enum UserSecretType {
 
 export type TCreateUserSecretDTO = {
   actorId: string;
+  orgId: string;
   secretType: UserSecretType;
   name: string;
   loginURL?: string;

@@ -8,6 +8,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.UserSecrets, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("userId").notNullable();
+      t.uuid("orgId").notNullable();
       t.text("secretType").notNullable();
       t.string("name").notNullable();
       t.text("loginURL").nullable();

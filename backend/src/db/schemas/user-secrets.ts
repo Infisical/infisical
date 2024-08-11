@@ -12,6 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const UserSecretsSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
+  orgId: z.string().uuid(),
   secretType: z.string(),
   name: z.string(),
   loginURL: z.string().nullable().optional(),
@@ -19,9 +20,9 @@ export const UserSecretsSchema = z.object({
   password: zodBuffer.nullable().optional(),
   isUsernameSecret: z.boolean().default(false).nullable().optional(),
   cardNumber: zodBuffer.nullable().optional(),
+  cardLastFourDigits: z.string().nullable().optional(),
   cardExpiry: zodBuffer.nullable().optional(),
   cardCvv: zodBuffer.nullable().optional(),
-  cardLastFourDigits: z.string().nullable().optional(),
   secureNote: zodBuffer.nullable().optional(),
   iv: z.string(),
   createdAt: z.date(),

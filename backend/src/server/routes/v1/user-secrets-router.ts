@@ -97,6 +97,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const userSecret = await req.server.services.userSecrets.createUserSecret({
         actorId: req.permission.id,
+        orgId: req.permission.orgId,
         ...req.body
       });
       return { id: userSecret.id };
@@ -197,6 +198,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const secret = await req.server.services.userSecrets.updateUserSecret(req.params.id, {
         actorId: req.permission.id,
+        orgId: req.permission.orgId,
         ...req.body
       });
       return { id: secret.id };
