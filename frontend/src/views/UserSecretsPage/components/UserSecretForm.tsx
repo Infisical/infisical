@@ -3,57 +3,53 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, FormControl, Input, Select, SelectItem } from "@app/components/v2";
-
-const enum SecretType {
-  WEB_LOGIN = "web_login",
-  CREDIT_CARD = "credit_card",
-  SECURE_NOTE = "secure_note"
-}
-
-const secretTypeOptions = [
-  { label: "Login Credentials", value: SecretType.WEB_LOGIN },
-  { label: "Credit Card", value: SecretType.CREDIT_CARD },
-  { label: "Secure Note", value: SecretType.SECURE_NOTE }
-];
+import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
+import {
+  useCreateUserSecret,
+  UserSecretType,
+  useUpdateUserSecret
+} from "@app/hooks/api/userSecrets";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const secretNamePlaceholder = {
-  [SecretType.WEB_LOGIN]: "Google Account, Facebook Account...",
-  [SecretType.CREDIT_CARD]: "Visa Card, Mastercard...",
-  [SecretType.SECURE_NOTE]: "Confidential Work Info, Important Account Info..."
+  [UserSecretType.WEB_LOGIN]: "Google Account, Facebook Account...",
+  [UserSecretType.CREDIT_CARD]: "Visa Card, Mastercard...",
+  [UserSecretType.SECURE_NOTE]: "Confidential Work Info, Important Account Info..."
 };
 
 const schema = z
   .object({
-    id: z.number().int().positive().optional(), // Optional, as this is typically assigned by the database
-    secret_type: z.enum([SecretType.WEB_LOGIN, SecretType.CREDIT_CARD, SecretType.SECURE_NOTE]),
+    id: z.string().optional(),
+    secretType: z.enum([
+      UserSecretType.WEB_LOGIN,
+      UserSecretType.CREDIT_CARD,
+      UserSecretType.SECURE_NOTE
+    ]),
     name: z
       .string()
       .min(1, "Please enter a name for your secret")
       .max(100, "Please enter less than 100 characters"),
-    login_url: z.string().url().optional(), // Optional for non-web login secrets
-    username: z.string().optional(), // Username is optional and can be encrypted
-    password: z.string().optional(), // Password is optional and can be encrypted
-    is_username_secret: z.boolean().default(false), // Defaults to false
-    card_number: z
+    loginURL: z.string().url().optional(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+    cardLastFourDigits: z.string().optional(),
+    isUsernameSecret: z.boolean().default(false),
+    cardNumber: z
       .string()
       .regex(/^\d{13,19}$/, "Please enter a valid card number")
-      .optional(), // Optional, and regex to ensure numbers only with typical card length
-    expiry_date: z
+      .optional(),
+    cardExpiry: z
       .string()
       .regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Invalid expiry date format. Use MM/YY format.")
       .optional(),
-    cvv: z
-      .string()
-      .regex(/^\d{3,4}$/, "Please enter a valid cvv")
-      .optional(), // Optional, typically 3 or 4 digits
-    note: z.string().optional(), // Optional for secure note content
-    created_at: z.date().optional(), // Typically assigned by the database
-    updated_at: z.date().optional() // Typically assigned by the database
+    cardCvv: z
+      .union([z.string().regex(/^\d{3,4}$/, "Please enter a valid cvv"), z.literal("")])
+      .optional(),
+    secureNote: z.string().optional()
   })
   .superRefine((data, ctx) => {
-    switch (data.secret_type) {
-      case SecretType.WEB_LOGIN:
+    switch (data.secretType) {
+      case UserSecretType.WEB_LOGIN:
         if (!data.username) {
           ctx.addIssue({
             path: ["username"],
@@ -70,27 +66,27 @@ const schema = z
         }
         break;
 
-      case SecretType.CREDIT_CARD:
-        if (!data.card_number) {
+      case UserSecretType.CREDIT_CARD:
+        if (!data.cardNumber) {
           ctx.addIssue({
-            path: ["card_number"],
+            path: ["cardNumber"],
             message: "Please enter a card number.",
             code: z.ZodIssueCode.custom
           });
         }
-        if (!data.expiry_date) {
+        if (!data.cardExpiry) {
           ctx.addIssue({
-            path: ["expiry_date"],
+            path: ["cardExpiry"],
             message: "Please enter an expiry date.",
             code: z.ZodIssueCode.custom
           });
         }
         break;
 
-      case SecretType.SECURE_NOTE:
-        if (!data.note) {
+      case UserSecretType.SECURE_NOTE:
+        if (!data.secureNote) {
           ctx.addIssue({
-            path: ["note"],
+            path: ["secureNote"],
             message: "Please enter a note.",
             code: z.ZodIssueCode.custom
           });
@@ -104,8 +100,21 @@ const schema = z
 
 export type FormData = z.infer<typeof schema>;
 
-export const UserSecretForm = () => {
-  // const privateSharedSecretCreator = useCreateSharedSecret();
+type Props = {
+  popUp: UsePopUpState<["addOrUpdateUserSecret"]>;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<["addOrUpdateUserSecret"]>) => void;
+};
+
+function removeNullValues(obj: Record<string, any>): Record<string, any> {
+  return Object.entries(obj)
+    .filter(([, value]) => value !== null)
+    .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+}
+
+export const UserSecretForm = ({ popUp, handlePopUpClose }: Props) => {
+  const isEditMode = popUp.addOrUpdateUserSecret.data?.isEditMode ?? false;
+  const createUserSecret = useCreateUserSecret();
+  const updateUserSecret = useUpdateUserSecret();
 
   const {
     control,
@@ -114,81 +123,40 @@ export const UserSecretForm = () => {
     watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      secret_type: SecretType.WEB_LOGIN
-    }
+    defaultValues: removeNullValues(popUp.addOrUpdateUserSecret?.data?.secretValue || {})
   });
 
   const onFormSubmit = async (formData: FormData) => {
     try {
-      console.log("formData", formData);
-      // const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
+      const secretData = formData;
+      secretData.cardLastFourDigits = formData.cardNumber?.slice(-4);
+      if (isEditMode) {
+        await updateUserSecret.mutateAsync({
+          id: popUp.addOrUpdateUserSecret.data?.id,
+          updateData: secretData
+        });
+      } else {
+        await createUserSecret.mutateAsync(secretData);
+      }
 
-      // const key = crypto.randomBytes(16).toString("hex");
-      // const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
-      // const { ciphertext, iv, tag } = encryptSymmetric({
-      //   plaintext: secret,
-      //   key
-      // });
-
-      // const { id } = await createSharedSecret.mutateAsync({
-      //   name,
-      //   encryptedValue: ciphertext,
-      //   hashedHex,
-      //   iv,
-      //   tag,
-      //   expiresAt,
-      //   expiresAfterViews: viewLimit === "-1" ? undefined : Number(viewLimit),
-      //   accessType
-      // });
-
-      // setSecretLink(
-      //   `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
-      //     hashedHex
-      //   )}-${encodeURIComponent(key)}`
-      // );
-      // reset();
-
-      // setCopyTextSecret("secret");
+      handlePopUpClose("addOrUpdateUserSecret");
       createNotification({
-        text: "Successfully created a shared secret",
+        text: "Successfully saved your secret",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to create a shared secret",
+        text: "Failed to save your secret",
         type: "error"
       });
     }
   };
 
-  const secretType = watch("secret_type");
+  const secretType = watch("secretType");
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="secret_type"
-        defaultValue={SecretType.WEB_LOGIN}
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Secret Type" errorText={error?.message} isError={Boolean(error)}>
-            <Select
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => onChange(e)}
-              className="w-full"
-            >
-              {secretTypeOptions.map(({ label, value: expiresInValue }) => (
-                <SelectItem value={String(expiresInValue || "")} key={label}>
-                  {label}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-
       <Controller
         control={control}
         name="name"
@@ -199,11 +167,11 @@ export const UserSecretForm = () => {
         )}
       />
 
-      {secretType === SecretType.WEB_LOGIN && (
+      {secretType === UserSecretType.WEB_LOGIN && (
         <>
           <Controller
             control={control}
-            name="login_url"
+            name="loginURL"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Login URL (Optional)"
@@ -230,7 +198,7 @@ export const UserSecretForm = () => {
           />
           <Controller
             control={control}
-            name="is_username_secret"
+            name="isUsernameSecret"
             defaultValue={false}
             render={({ field: { onBlur, value, onChange } }) => (
               <div className="mb-5 ml-2">
@@ -257,11 +225,11 @@ export const UserSecretForm = () => {
         </>
       )}
 
-      {secretType === SecretType.CREDIT_CARD && (
+      {secretType === UserSecretType.CREDIT_CARD && (
         <>
           <Controller
             control={control}
-            name="card_number"
+            name="cardNumber"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Card Number" isError={Boolean(error)} errorText={error?.message}>
                 <Input
@@ -276,7 +244,7 @@ export const UserSecretForm = () => {
           <div className="flex w-full flex-row items-start justify-center space-x-2">
             <Controller
               control={control}
-              name="expiry_date"
+              name="cardExpiry"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Expiry Date"
@@ -288,7 +256,6 @@ export const UserSecretForm = () => {
                     {...field}
                     placeholder="MM/YY"
                     type="text"
-                    pattern="(0[1-9]|1[0-2])\/\d{2}"
                     maxLength={5} // Ensures the input does not exceed MM/YY length
                     inputMode="numeric" // Suggests numeric keyboard on mobile devices
                   />
@@ -297,7 +264,7 @@ export const UserSecretForm = () => {
             />
             <Controller
               control={control}
-              name="cvv"
+              name="cardCvv"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="CVV (Optional)"
@@ -319,10 +286,10 @@ export const UserSecretForm = () => {
         </>
       )}
 
-      {secretType === SecretType.SECURE_NOTE && (
+      {secretType === UserSecretType.SECURE_NOTE && (
         <Controller
           control={control}
-          name="note"
+          name="secureNote"
           render={({ field, fieldState: { error } }) => (
             <FormControl
               label="Enter Secret Note"
@@ -347,7 +314,7 @@ export const UserSecretForm = () => {
         isLoading={isSubmitting}
         isDisabled={isSubmitting}
       >
-        Add Secret
+        {isEditMode ? "Update Secret" : "Add Secret"}
       </Button>
     </form>
   );

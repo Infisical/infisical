@@ -15,6 +15,7 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("password").nullable();
       t.boolean("isUsernameSecret").defaultTo(false);
       t.binary("cardNumber").nullable();
+      t.text("cardLastFourDigits").nullable();
       t.binary("cardExpiry").nullable();
       t.binary("cardCvv").nullable();
       t.binary("secureNote").nullable();

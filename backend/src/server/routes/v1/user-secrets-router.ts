@@ -24,6 +24,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
           loginURL: z.string().url().optional(),
           username: z.string().optional(),
           password: z.string().optional(),
+          cardLastFourDigits: z.string().optional(),
           isUsernameSecret: z.boolean().default(false),
           cardNumber: z
             .string()
@@ -123,6 +124,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
           loginURL: z.string().url().optional(),
           username: z.string().optional(),
           password: z.string().optional(),
+          cardLastFourDigits: z.string().optional(),
           isUsernameSecret: z.boolean().default(false),
           cardNumber: z
             .string()
@@ -227,6 +229,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
               username: z.string().nullable(),
               password: z.string().nullable(),
               isUsernameSecret: z.boolean(),
+              cardLastFourDigits: z.string().nullable(),
               cardNumber: z.string().nullable(),
               cardExpiry: z.string().nullable(),
               cardCvv: z.string().nullable(),
@@ -234,19 +237,23 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
               createdAt: z.date(),
               updatedAt: z.date()
             })
-          )
+          ),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { offset, limit, secretType } = req.query;
-      const secrets = await req.server.services.userSecrets.getAllUserSecrets(req.permission.id, {
-        offset,
-        limit,
-        secretType
-      });
-      return { secrets };
+      const { secrets, count: totalCount } = await req.server.services.userSecrets.getAllUserSecrets(
+        req.permission.id,
+        {
+          offset,
+          limit,
+          secretType
+        }
+      );
+      return { secrets, totalCount };
     }
   });
 

@@ -4,26 +4,23 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { UserSecretForm } from "./UserSecretForm";
 
 type Props = {
-  popUp: UsePopUpState<["addNewUserSecret"]>;
-  handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["addNewUserSecret"]>,
-    state?: boolean
-  ) => void;
+  popUp: UsePopUpState<["addOrUpdateUserSecret"]>;
+  handlePopUpClose: (popUpName: keyof UsePopUpState<["addOrUpdateUserSecret"]>) => void;
 };
 
-export const AddUserSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const AddUserSecretModal = ({ popUp, handlePopUpClose }: Props) => {
   return (
     <Modal
-      isOpen={popUp?.addNewUserSecret?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("addNewUserSecret", isOpen);
+      isOpen={popUp?.addOrUpdateUserSecret?.isOpen}
+      onOpenChange={() => {
+        handlePopUpClose("addOrUpdateUserSecret");
       }}
     >
       <ModalContent
-        title="Add a Secret"
+        title={popUp?.addOrUpdateUserSecret?.data?.isEditMode ? "Update secret" : "Add a Secret"}
         subTitle="Store different types of secrets, like credit card details, web logins, and secure note"
       >
-        <UserSecretForm />
+        <UserSecretForm popUp={popUp} handlePopUpClose={handlePopUpClose} />
       </ModalContent>
     </Modal>
   );

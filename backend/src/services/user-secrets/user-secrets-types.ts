@@ -14,6 +14,7 @@ export type TCreateUserSecretDTO = {
   isUsernameSecret: boolean;
   cardNumber?: string;
   cardExpiry?: string;
+  cardLastFourDigits?: string;
   cardCvv?: string;
   secureNote?: string;
 };

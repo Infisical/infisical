@@ -21,6 +21,7 @@ export const userSecretsServiceFactory = ({ kmsService, userSecretsDAL }: TUserS
       delete secretInitialValues.cardCvv;
       delete secretInitialValues.cardNumber;
       delete secretInitialValues.cardExpiry;
+      delete secretInitialValues.cardLastFourDigits;
       delete secretInitialValues.secureNote;
     } else if (data.secretType === UserSecretType.CREDIT_CARD) {
       delete secretInitialValues.loginURL;
@@ -35,6 +36,7 @@ export const userSecretsServiceFactory = ({ kmsService, userSecretsDAL }: TUserS
       delete secretInitialValues.cardCvv;
       delete secretInitialValues.cardNumber;
       delete secretInitialValues.cardExpiry;
+      delete secretInitialValues.cardLastFourDigits;
       secretInitialValues.isUsernameSecret = false;
     }
 
@@ -70,6 +72,7 @@ export const userSecretsServiceFactory = ({ kmsService, userSecretsDAL }: TUserS
         data.cardExpiry,
         (value) => userSecretEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
       ),
+      cardLastFourDigits: data.cardLastFourDigits ?? null,
       cardCvv: setKnexStringValue(
         data.cardCvv,
         (value) => userSecretEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
@@ -94,6 +97,7 @@ export const userSecretsServiceFactory = ({ kmsService, userSecretsDAL }: TUserS
       loginURL: data.loginURL ?? null,
       isUsernameSecret: data.isUsernameSecret ?? false,
       secretType: data.secretType as UserSecretType,
+      cardLastFourDigits: data.cardLastFourDigits ?? null,
       username: data.username ? userSecretDecryptor({ cipherTextBlob: data.username }).toString() : null,
       password: data.password ? userSecretDecryptor({ cipherTextBlob: data.password }).toString() : null,
       cardNumber: data.cardNumber ? userSecretDecryptor({ cipherTextBlob: data.cardNumber }).toString() : null,
@@ -124,10 +128,11 @@ export const userSecretsServiceFactory = ({ kmsService, userSecretsDAL }: TUserS
     userId: string,
     { offset, limit, secretType }: { offset: number; limit: number; secretType?: UserSecretType }
   ) => {
+    const count = await userSecretsDAL.countUserSecrets({ userId, secretType });
     const secrets = await userSecretsDAL.find({ userId, secretType }, { offset, limit });
     const decryptedSecrets = await Promise.all(secrets.map(decryptUserSecret));
 
-    return decryptedSecrets;
+    return { count, secrets: decryptedSecrets };
   };
 
   const deleteUserSecret = async (id: string) => {
