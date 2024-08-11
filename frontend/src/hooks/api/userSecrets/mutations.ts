@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { userSecretKeys } from "./queries";
-import { TDeleteUserSecretRequest, TUserSecretRequest, TUserSecretResponse } from "./types";
+import { TUserSecretRequest, TUserSecretResponse } from "./types";
 
 export const useCreateUserSecret = () => {
   const queryClient = useQueryClient();
@@ -36,7 +36,7 @@ export const useUpdateUserSecret = () => {
 export const useDeleteUserSecret = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: TDeleteUserSecretRequest) => {
+    mutationFn: async ({ id }: TUserSecretResponse) => {
       const { data } = await apiRequest.delete<TUserSecretResponse>(`/api/v1/user-secrets/${id}`);
       return data;
     },

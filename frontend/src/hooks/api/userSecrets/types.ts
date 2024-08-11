@@ -35,10 +35,6 @@ export type TUserSecretRequest = {
   secureNote?: string;
 };
 
-export type TDeleteUserSecretRequest = {
-  id: string;
-};
-
 export type TUserSecretResponse = {
   id: string;
 };
