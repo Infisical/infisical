@@ -1,5 +1,5 @@
 import slugify from "@sindresorhus/slugify";
-import { createHash } from "crypto";
+import { createHmac } from "crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -491,7 +491,12 @@ export const kmsServiceFactory = ({
   };
 
   const $getUserSecretKmsDataKey = async (key: string) => {
-    const hash = createHash("sha256");
+    const encryptionKey = process.env.ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      throw new Error("process.env.ENCRYPTION_KEY must be set.");
+    }
+
+    const hash = createHmac("sha256", encryptionKey);
     hash.update(key);
     const hashedBuffer = hash.digest();
 
