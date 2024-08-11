@@ -1,4 +1,5 @@
 import slugify from "@sindresorhus/slugify";
+import { createHash } from "crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -489,6 +490,14 @@ export const kmsServiceFactory = ({
     return project.kmsSecretManagerKeyId;
   };
 
+  const $getUserSecretKmsDataKey = async (key: string) => {
+    const hash = createHash("sha256");
+    hash.update(key);
+    const hashedBuffer = hash.digest();
+
+    return hashedBuffer;
+  };
+
   const $getProjectSecretManagerKmsDataKey = async (projectId: string) => {
     const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
     let project = await projectDAL.findById(projectId);
@@ -567,6 +576,10 @@ export const kmsServiceFactory = ({
       case KmsDataKey.SecretManager: {
         return $getProjectSecretManagerKmsDataKey(dto.projectId);
       }
+      case KmsDataKey.UserSecret: {
+        return $getUserSecretKmsDataKey(dto.actorId);
+      }
+
       default: {
         return $getOrgKmsDataKey(dto.orgId);
       }

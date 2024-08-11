@@ -2,7 +2,8 @@ import { Knex } from "knex";
 
 export enum KmsDataKey {
   Organization,
-  SecretManager
+  SecretManager,
+  UserSecret
   // CertificateManager
 }
 
@@ -13,7 +14,8 @@ export enum KmsType {
 
 export type TEncryptWithKmsDataKeyDTO =
   | { type: KmsDataKey.Organization; orgId: string }
-  | { type: KmsDataKey.SecretManager; projectId: string };
+  | { type: KmsDataKey.SecretManager; projectId: string }
+  | { type: KmsDataKey.UserSecret; actorId: string };
 // akhilmhdh: not implemented yet
 // | {
 //     type: KmsDataKey.CertificateManager;

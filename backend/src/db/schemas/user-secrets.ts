@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const UserSecretsSchema = z.object({
@@ -12,14 +14,14 @@ export const UserSecretsSchema = z.object({
   userId: z.string().uuid(),
   secretType: z.string(),
   name: z.string(),
-  loginURL: z.string().default("").nullable().optional(),
-  username: z.string().default("").nullable().optional(),
-  password: z.string().default("").nullable().optional(),
+  loginURL: z.string().nullable().optional(),
+  username: zodBuffer.nullable().optional(),
+  password: zodBuffer.nullable().optional(),
   isUsernameSecret: z.boolean().default(false).nullable().optional(),
-  cardNumber: z.string().default("").nullable().optional(),
-  cardExpiry: z.string().default("").nullable().optional(),
-  cardCvv: z.string().default("").nullable().optional(),
-  secureNote: z.string().default("").nullable().optional(),
+  cardNumber: zodBuffer.nullable().optional(),
+  cardExpiry: zodBuffer.nullable().optional(),
+  cardCvv: zodBuffer.nullable().optional(),
+  secureNote: zodBuffer.nullable().optional(),
   iv: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
