@@ -294,7 +294,7 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 	if _, ok := resourceVariablesMap[string(infisicalSecret.UID)]; !ok {
 
 		client := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
-			SiteUrl:   infisicalSecret.Spec.HostAPI,
+			SiteUrl:   api.API_HOST_URL,
 			UserAgent: api.USER_AGENT_NAME,
 		})
 
@@ -322,10 +322,11 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	resourceVariables := r.GetResourceVariables(infisicalSecret)
 	infisicalClient := resourceVariables.infisicalClient
 	authDetails := resourceVariables.authDetails
+	var err error
 
 	if authDetails.authStrategy == "" {
 		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
-		authDetails, err := r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
+		authDetails, err = r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
 		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, authDetails.authStrategy, err)
 
 		if err != nil {
