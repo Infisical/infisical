@@ -67,19 +67,21 @@ export const UserSecretsCreditCardsRow = ({
       </Td>
       <Td>
         <span>{row.cardCvv ? "*".repeat(Math.min(row.cardCvv.length, 4)) : "-"}</span>
-        <IconButton
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePopUpOpen("showSecretData", {
-              keyName: "CVV",
-              value: row.cardCvv || ""
-            });
-          }}
-          variant="outline_bg"
-          ariaLabel="edit"
-        >
-          <FontAwesomeIcon icon={faEye} />
-        </IconButton>
+        {row.cardCvv && (
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopUpOpen("showSecretData", {
+                keyName: "CVV",
+                value: row.cardCvv || ""
+              });
+            }}
+            variant="outline_bg"
+            ariaLabel="edit"
+          >
+            <FontAwesomeIcon icon={faEye} />
+          </IconButton>
+        )}
       </Td>
       <Td>
         <div className="flex flex-row items-center justify-center space-x-1">
