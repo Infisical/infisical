@@ -71,10 +71,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
           setTimeout(resolve, 10); // time to breathe for db
         });
       }
-    } while (
-      deletedClientSecret.length > 0 ||
-      (numberOfRetryOnFailure > 0 && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE)
-    );
+    } while (deletedClientSecret.length > 0 || numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
   };
 
   return { ...uaClientSecretOrm, incrementUsage, removeExpiredClientSecrets };
