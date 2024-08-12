@@ -1037,7 +1037,8 @@ export const registerRoutes = async (
     snapshotDAL,
     identityAccessTokenDAL,
     secretSharingDAL,
-    secretVersionV2DAL: secretVersionV2BridgeDAL
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL
   });
 
   const oidcService = oidcConfigServiceFactory({
