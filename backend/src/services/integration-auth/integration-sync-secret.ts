@@ -609,15 +609,37 @@ const syncSecretsAWSParameterStore = async ({
               Type: "SecureString",
               Value: secrets[key].value,
               ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-              // Overwrite: true,
-              Tags: metadata.secretAWSTag
-                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
-                    Key: tag.key,
-                    Value: tag.value
-                  }))
-                : []
+              Overwrite: true
             })
             .promise();
+          if (metadata.secretAWSTag?.length) {
+            try {
+              await ssm
+                .addTagsToResource({
+                  ResourceType: "Parameter",
+                  ResourceId: `${integration.path}${key}`,
+                  Tags: metadata.secretAWSTag
+                    ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                        Key: tag.key,
+                        Value: tag.value
+                      }))
+                    : []
+                })
+                .promise();
+            } catch (err) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((err as any).code === "AccessDeniedException") {
+                logger.error(
+                  `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+                );
+              }
+
+              response = {
+                isSynced: false,
+                syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+              };
+            }
+          }
         }
         // case: secret exists in AWS parameter store
       } else {
