@@ -61,7 +61,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
       </Table>
       {!isLoading &&
         data?.secrets &&
-        data.secrets.length >= perPage &&
+        data?.totalCount >= perPage &&
         data?.totalCount !== undefined && (
           <Pagination
             count={data.totalCount}
