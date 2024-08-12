@@ -81,8 +81,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         .select({
           secVerTagId: "secVerTag.id",
           secVerTagColor: "secVerTag.color",
-          secVerTagSlug: "secVerTag.slug",
-          secVerTagName: "secVerTag.name"
+          secVerTagSlug: "secVerTag.slug"
         })
         .select(
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
@@ -199,11 +198,11 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
               {
                 key: "secVerTagId",
                 label: "tags" as const,
-                mapper: ({ secVerTagId: id, secVerTagName: name, secVerTagSlug: slug, secVerTagColor: color }) => ({
+                mapper: ({ secVerTagId: id, secVerTagSlug: slug, secVerTagColor: color }) => ({
                   // eslint-disable-next-line
                   id,
                   // eslint-disable-next-line
-                  name,
+                  name: slug,
                   // eslint-disable-next-line
                   slug,
                   // eslint-disable-next-line
@@ -261,8 +260,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         .select({
           secVerTagId: "secVerTag.id",
           secVerTagColor: "secVerTag.color",
-          secVerTagSlug: "secVerTag.slug",
-          secVerTagName: "secVerTag.name"
+          secVerTagSlug: "secVerTag.slug"
         })
         .select(
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
@@ -328,11 +326,11 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
               {
                 key: "secVerTagId",
                 label: "tags" as const,
-                mapper: ({ secVerTagId: id, secVerTagName: name, secVerTagSlug: slug, secVerTagColor: color }) => ({
+                mapper: ({ secVerTagId: id, secVerTagSlug: slug, secVerTagColor: color }) => ({
                   // eslint-disable-next-line
                   id,
                   // eslint-disable-next-line
-                  name,
+                  name: slug,
                   // eslint-disable-next-line
                   slug,
                   // eslint-disable-next-line
