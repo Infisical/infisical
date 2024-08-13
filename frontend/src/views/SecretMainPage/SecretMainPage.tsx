@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
@@ -27,6 +28,7 @@ import {
   useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
+import { SecretV3RawSanitized } from "@app/hooks/api/types";
 
 import { SecretV2MigrationSection } from "../SecretOverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
@@ -38,10 +40,8 @@ import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
-import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 import { useSelectedSecretActions, useSelectedSecrets } from "./SecretMainPage.store";
-import { SecretV3RawSanitized } from "@app/hooks/api/types";
-import { twMerge } from "tailwind-merge";
+import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
@@ -104,7 +104,7 @@ export const SecretMainPage = () => {
     }
   });
 
-  //selectAll functionality
+  // selectAll functionality
   const { selectAll: selectAllSecrets } = useSelectedSecretActions();
   const selectedSecret = useSelectedSecrets();
 
@@ -116,13 +116,13 @@ export const SecretMainPage = () => {
       };
     }
     const selectedSecretKeys = Object.keys(selectedSecret);
-    const secretIds = [...secrets?.map((secret: SecretV3RawSanitized) => secret.id)];
-    const areAllSecretsSelected =  secretIds.every((secret: string) => selectedSecretKeys.includes(secret));
-    const isAnyOneSecretSelected = secretIds.some((secret: string) => selectedSecretKeys.includes(secret));
+    const secretIds = secrets ? [...secrets.map((secret: SecretV3RawSanitized) => secret.id)] : [];
+    const allSecretsSelected =  secretIds.every((secret: string) => selectedSecretKeys.includes(secret));
+    const anyOneSecretSelected = secretIds.some((secret: string) => selectedSecretKeys.includes(secret));
 
     return {
-      areAllSecretsSelected,
-      isAnyOneSecretSelected
+      areAllSecretsSelected: allSecretsSelected,
+      isAnyOneSecretSelected: anyOneSecretSelected
     }
   }, [selectedSecret, secrets]);
 
@@ -254,8 +254,7 @@ export const SecretMainPage = () => {
   }
 
   return (
-    <>
-      <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <SecretV2MigrationSection />
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
@@ -303,14 +302,14 @@ export const SecretMainPage = () => {
                       }}
                     >
                       <Checkbox
-                        id={`select-all-secrets-checkbox`}
+                        id="select-all-secrets-checkbox"
                         isChecked={areAllSecretsSelected}
                         onClick={(e) => {e.stopPropagation()}}
                         onCheckedChange={() => {
                           if(!secrets) {
                             return;
                           }
-                          selectAllSecrets([...secrets?.map((secret: SecretV3RawSanitized) => secret.id)])
+                          selectAllSecrets([...secrets.map((secret: SecretV3RawSanitized) => secret.id)])
                         }}
                         className={twMerge("hidden", isAnyOneSecretSelected && "flex")}
                       />
@@ -408,6 +407,5 @@ export const SecretMainPage = () => {
           />
         )}
       </div>
-    </>
   );
 };

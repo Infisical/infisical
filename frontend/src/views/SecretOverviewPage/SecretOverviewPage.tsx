@@ -208,14 +208,15 @@ export const SecretOverviewPage = () => {
     const selectedSecrets = Object.keys(selectedEntries[EntryType.SECRET])
       .filter((key) => selectedEntries[EntryType.SECRET][key]);
     const allSelections =  [...selectedFolders, ...selectedSecrets];
-    const areAllEntriesSelected = folderNames.every((folder:string) => allSelections.includes(folder)) 
+
+    const allEntriesSelected = folderNames.every((folder:string) => allSelections.includes(folder)) 
       && secKeys.every((secret: string) => allSelections.includes(secret));
-    const isAnyOneEntrySelected = folderNames.some((folder:string) => allSelections.includes(folder)) 
+    const anyOneEntrySelected = folderNames.some((folder:string) => allSelections.includes(folder)) 
       || secKeys.some((secret: string) => allSelections.includes(secret));
 
     return {
-      areAllEntriesSelected,
-      isAnyOneEntrySelected
+      areAllEntriesSelected: allEntriesSelected,
+      isAnyOneEntrySelected: anyOneEntrySelected
     }
   }, [selectedEntries, folderNames, secKeys])
 
@@ -694,7 +695,7 @@ export const SecretOverviewPage = () => {
                   <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
                     <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3 gap-x-2">
                       <Checkbox
-                        id={`select-all-checkbox`}
+                        id="select-all-checkbox"
                         isChecked={areAllEntriesSelected}
                         onCheckedChange={selectAllEntries}
                         className={twMerge("hidden", isAnyOneEntrySelected && "flex")}

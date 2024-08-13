@@ -29,7 +29,7 @@ const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
     selectAll: (allIds) => {
       set(() => {
         const newChecks: Record<string, boolean> = {};
-        allIds.map((id: string) => newChecks[id] = true)
+        allIds.forEach((id: string) => { newChecks[id] = true })
         return { selectedSecret: newChecks};
       })
     }
