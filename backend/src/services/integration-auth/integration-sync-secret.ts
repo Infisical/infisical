@@ -538,19 +538,21 @@ const syncSecretsAWSParameterStore = async ({
   integration,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  projectId
 }: {
   integration: TIntegrations;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  projectId?: string;
 }) => {
   let response: { isSynced: boolean; syncMessage: string } | null = null;
 
   if (!accessId) {
     throw new Error("AWS access ID is required");
   }
-
+  logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug: started`);
   const config = new AWS.Config({
     region: integration.region as string,
     credentials: {
@@ -594,6 +596,12 @@ const syncSecretsAWSParameterStore = async ({
     nextToken = parameters.NextToken;
   }
 
+  logger.info(
+    `getIntegrationSecrets: [projectId=${projectId}] ssm debug: ${Object.keys(awsParameterStoreSecretsObj).join(",")}`
+  );
+  logger.info(
+    `getIntegrationSecrets: [projectId=${projectId}] ssm infisical secrets debug: ${Object.keys(secrets).join(",")}`
+  );
   // Identify secrets to create
   // don't use Promise.all() and promise map here
   // it will cause rate limit
@@ -603,6 +611,7 @@ const syncSecretsAWSParameterStore = async ({
         // case: secret does not exist in AWS parameter store
         // -> create secret
         if (secrets[key].value) {
+          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug create: ${key}`);
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
@@ -643,6 +652,7 @@ const syncSecretsAWSParameterStore = async ({
         }
         // case: secret exists in AWS parameter store
       } else {
+        logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug update: ${key}`);
         // -> update secret
         if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
           await ssm
@@ -695,6 +705,7 @@ const syncSecretsAWSParameterStore = async ({
     for (const key in awsParameterStoreSecretsObj) {
       if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
         if (!(key in secrets)) {
+          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug delete: ${key}`);
           // case:
           // -> delete secret
           await ssm
@@ -3678,7 +3689,8 @@ export const syncIntegrationSecrets = async ({
         integration,
         secrets,
         accessId,
-        accessToken
+        accessToken,
+        projectId
       });
       break;
     case Integrations.AWS_SECRET_MANAGER:
