@@ -541,7 +541,7 @@ const syncSecretsAWSParameterStore = async ({
   accessToken,
   projectId
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & { secretPath: string; environment: { slug: string } };
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
@@ -552,7 +552,6 @@ const syncSecretsAWSParameterStore = async ({
   if (!accessId) {
     throw new Error("AWS access ID is required");
   }
-  logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug: started`);
   const config = new AWS.Config({
     region: integration.region as string,
     credentials: {
@@ -569,7 +568,9 @@ const syncSecretsAWSParameterStore = async ({
 
   const metadata = z.record(z.any()).parse(integration.metadata || {});
   const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
-
+  logger.info(
+    `getIntegrationSecrets: integration sync triggered for ssm with [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [shouldDisableDelete=${metadata.shouldDisableDelete}]`
+  );
   // now fetch all aws parameter store secrets
   let hasNext = true;
   let nextToken: string | undefined;
@@ -597,10 +598,16 @@ const syncSecretsAWSParameterStore = async ({
   }
 
   logger.info(
-    `getIntegrationSecrets: [projectId=${projectId}] ssm debug: ${Object.keys(awsParameterStoreSecretsObj).join(",")}`
+    `getIntegrationSecrets: all fetched keys from AWS SSM [projectId=${projectId}] [environment=${
+      integration.environment.slug
+    }]  [secretPath=${integration.secretPath}] [awsParameterStoreSecretsObj=${Object.keys(
+      awsParameterStoreSecretsObj
+    ).join(",")}]`
   );
   logger.info(
-    `getIntegrationSecrets: [projectId=${projectId}] ssm infisical secrets debug: ${Object.keys(secrets).join(",")}`
+    `getIntegrationSecrets: all secrets from Infisical to send to AWS SSM [projectId=${projectId}] [environment=${
+      integration.environment.slug
+    }]  [secretPath=${integration.secretPath}] [secrets=${Object.keys(secrets).join(",")}]`
   );
   // Identify secrets to create
   // don't use Promise.all() and promise map here
@@ -611,7 +618,9 @@ const syncSecretsAWSParameterStore = async ({
         // case: secret does not exist in AWS parameter store
         // -> create secret
         if (secrets[key].value) {
-          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug create: ${key}`);
+          logger.info(
+            `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [key=${key}]`
+          );
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
@@ -652,7 +661,9 @@ const syncSecretsAWSParameterStore = async ({
         }
         // case: secret exists in AWS parameter store
       } else {
-        logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug update: ${key}`);
+        logger.info(
+          `getIntegrationSecrets: update secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+        );
         // -> update secret
         if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
           await ssm
@@ -702,10 +713,18 @@ const syncSecretsAWSParameterStore = async ({
   }
 
   if (!metadata.shouldDisableDelete) {
+    logger.info(
+      `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=1]`
+    );
     for (const key in awsParameterStoreSecretsObj) {
       if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        logger.info(
+          `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=2]`
+        );
         if (!(key in secrets)) {
-          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug delete: ${key}`);
+          logger.info(
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=3]`
+          );
           // case:
           // -> delete secret
           await ssm
@@ -713,6 +732,9 @@ const syncSecretsAWSParameterStore = async ({
               Name: awsParameterStoreSecretsObj[key].Name as string
             })
             .promise();
+          logger.info(
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=4]`
+          );
         }
         await new Promise((resolve) => {
           setTimeout(resolve, 50);
