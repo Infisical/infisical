@@ -1,13 +1,16 @@
 /* eslint-disable no-bitwise */
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import bcrypt from "bcrypt";
 import crypto, { KeyObject } from "crypto";
 import ms from "ms";
 import { z } from "zod";
 
+import { TCertificateAuthorityEstConfigsUpdate } from "@app/db/schemas/certificate-authority-est-configs";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -18,6 +21,7 @@ import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificat
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
+import { TCertificateAuthorityEstConfigDALFactory } from "./certificate-authority-est-config-dal";
 import {
   createDistinguishedName,
   getCaCertChain, // TODO: consider rename
@@ -32,6 +36,7 @@ import {
   CaStatus,
   CaType,
   TCreateCaDTO,
+  TCreateCaEstConfigurationDTO,
   TDeleteCaDTO,
   TGetCaCertDTO,
   TGetCaCertsDTO,
@@ -42,7 +47,8 @@ import {
   TRenewCaCertDTO,
   TSignCertFromCaDTO,
   TSignIntermediateDTO,
-  TUpdateCaDTO
+  TUpdateCaDTO,
+  TUpdateCaEstConfigurationDTO
 } from "./certificate-authority-types";
 import { hostnameRegex } from "./certificate-authority-validators";
 
@@ -55,6 +61,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
+  certificateAuthorityEstConfigDAL: Pick<TCertificateAuthorityEstConfigDALFactory, "updateById" | "create" | "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
@@ -68,6 +75,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
+  certificateAuthorityEstConfigDAL,
   certificateAuthorityCrlDAL,
   certificateDAL,
   certificateBodyDAL,
@@ -1205,32 +1213,26 @@ export const certificateAuthorityServiceFactory = ({
    * Return new leaf certificate issued by CA with id [caId].
    * Note: CSR is generated externally and submitted to Infisical.
    */
-  const signCertFromCa = async ({
-    caId,
-    csr,
-    friendlyName,
-    commonName,
-    altNames,
-    ttl,
-    notBefore,
-    notAfter,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TSignCertFromCaDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
+  const signCertFromCa = async (dto: TSignCertFromCaDTO) => {
+    const ca = await certificateAuthorityDAL.findById(dto.caId);
     if (!ca) throw new BadRequestError({ message: "CA not found" });
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      ca.projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!dto.isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        dto.actor,
+        dto.actorId,
+        ca.projectId,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        ProjectPermissionSub.Certificates
+      );
+    }
+
+    const { csr, friendlyName, commonName, altNames, ttl, notBefore, notAfter } = dto;
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
 
@@ -1396,11 +1398,140 @@ export const certificateAuthorityServiceFactory = ({
 
     return {
       certificate: leafCert.toString("pem"),
+      rawCertificate: leafCert.rawData,
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       serialNumber,
       ca
     };
+  };
+
+  const createCaEstConfiguration = async ({
+    caId,
+    caChain,
+    passphrase,
+    isEnabled,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TCreateCaEstConfigurationDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) {
+      throw new NotFoundError({ message: "CA not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const appCfg = getConfig();
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const { cipherTextBlob: encryptedCaChain } = await kmsEncryptor({
+      plainText: Buffer.from(caChain)
+    });
+
+    const hashedPassphrase = await bcrypt.hash(passphrase, appCfg.SALT_ROUNDS);
+
+    const estConfig = await certificateAuthorityEstConfigDAL.create({
+      caId,
+      hashedPassphrase,
+      encryptedCaChain,
+      isEnabled
+    });
+
+    return estConfig;
+  };
+
+  const updateCaEstConfiguration = async ({
+    caId,
+    caChain,
+    passphrase,
+    isEnabled,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TUpdateCaEstConfigurationDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) {
+      throw new NotFoundError({ message: "CA not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const originalCaEstConfig = await certificateAuthorityEstConfigDAL.findOne({
+      caId
+    });
+
+    if (!originalCaEstConfig) {
+      throw new NotFoundError({
+        message: "CA EST Config not found"
+      });
+    }
+
+    const appCfg = getConfig();
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const updatedData: TCertificateAuthorityEstConfigsUpdate = {
+      isEnabled
+    };
+
+    if (caChain) {
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+        kmsId: certificateManagerKmsId
+      });
+
+      const { cipherTextBlob: encryptedCaChain } = await kmsEncryptor({
+        plainText: Buffer.from(caChain)
+      });
+
+      updatedData.encryptedCaChain = encryptedCaChain;
+    }
+
+    if (passphrase) {
+      const hashedPassphrase = await bcrypt.hash(passphrase, appCfg.SALT_ROUNDS);
+      updatedData.hashedPassphrase = hashedPassphrase;
+    }
+
+    const estConfig = await certificateAuthorityEstConfigDAL.updateById(originalCaEstConfig.id, updatedData);
+
+    return estConfig;
   };
 
   return {
@@ -1415,6 +1546,8 @@ export const certificateAuthorityServiceFactory = ({
     signIntermediate,
     importCertToCa,
     issueCertFromCa,
-    signCertFromCa
+    signCertFromCa,
+    createCaEstConfiguration,
+    updateCaEstConfiguration
   };
 };

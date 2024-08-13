@@ -95,16 +95,29 @@ export type TIssueCertFromCaDTO = {
   notAfter?: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TSignCertFromCaDTO = {
-  caId: string;
-  csr: string;
-  friendlyName?: string;
-  commonName?: string;
-  altNames: string;
-  ttl: string;
-  notBefore?: string;
-  notAfter?: string;
-} & Omit<TProjectPermission, "projectId">;
+export type TSignCertFromCaDTO =
+  | {
+      isInternal: true;
+      caId: string;
+      csr: string;
+      friendlyName?: string;
+      commonName?: string;
+      altNames: string;
+      ttl: string;
+      notBefore?: string;
+      notAfter?: string;
+    }
+  | ({
+      isInternal: false;
+      caId: string;
+      csr: string;
+      friendlyName?: string;
+      commonName?: string;
+      altNames: string;
+      ttl: string;
+      notBefore?: string;
+      notAfter?: string;
+    } & Omit<TProjectPermission, "projectId">);
 
 export type TDNParts = {
   commonName?: string;
@@ -153,3 +166,17 @@ export type TRotateCaCrlTriggerDTO = {
   caId: string;
   rotationIntervalDays: number;
 };
+
+export type TCreateCaEstConfigurationDTO = {
+  caId: string;
+  caChain: string;
+  passphrase: string;
+  isEnabled: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateCaEstConfigurationDTO = {
+  caId: string;
+  caChain?: string;
+  passphrase?: string;
+  isEnabled?: boolean;
+} & Omit<TProjectPermission, "projectId">;

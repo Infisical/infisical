@@ -190,6 +190,7 @@ import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
+import { registerCertificateEstRouter } from "./est/certificate-est-router";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
@@ -1206,6 +1207,9 @@ export const registerRoutes = async (
       };
     }
   });
+
+  // register special routes
+  await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
 
   // register routes for v1
   await server.register(

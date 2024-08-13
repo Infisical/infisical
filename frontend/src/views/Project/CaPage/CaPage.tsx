@@ -22,7 +22,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CaModal } from "@app/views/Project/CertificatesPage/components/CaTab/components/CaModal";
 
 import { CaInstallCertModal } from "../CertificatesPage/components/CaTab/components/CaInstallCertModal";
-import { TabSections } from "../Types";
+import { CaEnrollmentModal } from "./components/CaEnrollmentModal";
 import { CaCertificatesSection, CaDetailsSection, CaRenewalModal } from "./components";
 
 export const CaPage = withProjectPermission(
@@ -40,7 +40,8 @@ export const CaPage = withProjectPermission(
       "ca",
       "deleteCa",
       "installCaCert",
-      "renewCa"
+      "renewCa",
+      "enrollmentOptions"
     ] as const);
 
     const onRemoveCaSubmit = async (caIdToDelete: string) => {
@@ -125,6 +126,7 @@ export const CaPage = withProjectPermission(
         )}
         <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CaEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteCa.isOpen}

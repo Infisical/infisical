@@ -319,6 +319,11 @@ import {
   TWebhooksUpdate
 } from "@app/db/schemas";
 import {
+  TCertificateAuthorityEstConfigs,
+  TCertificateAuthorityEstConfigsInsert,
+  TCertificateAuthorityEstConfigsUpdate
+} from "@app/db/schemas/certificate-authority-est-configs";
+import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,
   TSecretV2TagJunctionUpdate
@@ -373,6 +378,11 @@ declare module "knex/types/tables" {
       TCertificateSecrets,
       TCertificateSecretsInsert,
       TCertificateSecretsUpdate
+    >;
+    [TableName.CertificateAuthorityEstConfig]: KnexOriginal.CompositeTableType<
+      TCertificateAuthorityEstConfigs,
+      TCertificateAuthorityEstConfigsInsert,
+      TCertificateAuthorityEstConfigsUpdate
     >;
     [TableName.PkiAlert]: KnexOriginal.CompositeTableType<TPkiAlerts, TPkiAlertsInsert, TPkiAlertsUpdate>;
     [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
