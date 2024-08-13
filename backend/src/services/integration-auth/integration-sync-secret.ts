@@ -541,7 +541,7 @@ const syncSecretsAWSParameterStore = async ({
   accessToken,
   projectId
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & { secretPath: string; environment: { slug: string } };
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
@@ -552,7 +552,9 @@ const syncSecretsAWSParameterStore = async ({
   if (!accessId) {
     throw new Error("AWS access ID is required");
   }
-  logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug: started`);
+  logger.info(
+    `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] ssm debug: started`
+  );
   const config = new AWS.Config({
     region: integration.region as string,
     credentials: {
@@ -597,10 +599,14 @@ const syncSecretsAWSParameterStore = async ({
   }
 
   logger.info(
-    `getIntegrationSecrets: [projectId=${projectId}] ssm debug: ${Object.keys(awsParameterStoreSecretsObj).join(",")}`
+    `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${
+      integration.secretPath
+    }] ssm debug: ${Object.keys(awsParameterStoreSecretsObj).join(",")}`
   );
   logger.info(
-    `getIntegrationSecrets: [projectId=${projectId}] ssm infisical secrets debug: ${Object.keys(secrets).join(",")}`
+    `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${
+      integration.secretPath
+    }]  ssm infisical secrets debug: ${Object.keys(secrets).join(",")}`
   );
   // Identify secrets to create
   // don't use Promise.all() and promise map here
@@ -611,7 +617,9 @@ const syncSecretsAWSParameterStore = async ({
         // case: secret does not exist in AWS parameter store
         // -> create secret
         if (secrets[key].value) {
-          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug create: ${key}`);
+          logger.info(
+            `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] ssm debug create: ${key}`
+          );
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
@@ -652,7 +660,9 @@ const syncSecretsAWSParameterStore = async ({
         }
         // case: secret exists in AWS parameter store
       } else {
-        logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug update: ${key}`);
+        logger.info(
+          `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  ssm debug update: ${key}`
+        );
         // -> update secret
         if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
           await ssm
@@ -702,10 +712,18 @@ const syncSecretsAWSParameterStore = async ({
   }
 
   if (!metadata.shouldDisableDelete) {
+    logger.info(
+      `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  ssm debug delete started`
+    );
     for (const key in awsParameterStoreSecretsObj) {
       if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        logger.info(
+          `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  ssm debug delete in hasOwn: ${key}`
+        );
         if (!(key in secrets)) {
-          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug delete: ${key}`);
+          logger.info(
+            `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  ssm debug delete: ${key}`
+          );
           // case:
           // -> delete secret
           await ssm
@@ -713,6 +731,9 @@ const syncSecretsAWSParameterStore = async ({
               Name: awsParameterStoreSecretsObj[key].Name as string
             })
             .promise();
+          logger.info(
+            `getIntegrationSecrets: [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  ssm debug delete completed: ${key}`
+          );
         }
         await new Promise((resolve) => {
           setTimeout(resolve, 50);
