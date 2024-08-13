@@ -1,5 +1,5 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { CaRenewalType,CaStatus, CaType } from "./enums";
+import { CaRenewalType, CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
   id: string;
@@ -19,6 +19,7 @@ export type TCertificateAuthority = {
   notAfter?: string;
   notBefore?: string;
   keyAlgorithm: CertKeyAlgorithm;
+  activeCaCertId?: string;
   createdAt: string;
   updatedAt: string;
 };

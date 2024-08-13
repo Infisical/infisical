@@ -4,16 +4,19 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
-    const hasActiveCaCertVersionColumn = await knex.schema.hasColumn(
-      TableName.CertificateAuthority,
-      "activeCaCertVersion"
-    );
-    if (!hasActiveCaCertVersionColumn) {
+    const hasActiveCaCertIdColumn = await knex.schema.hasColumn(TableName.CertificateAuthority, "activeCaCertId");
+    if (!hasActiveCaCertIdColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
-        t.integer("activeCaCertVersion").nullable();
+        t.uuid("activeCaCertId").nullable();
+        t.foreign("activeCaCertId").references("id").inTable(TableName.CertificateAuthorityCert);
       });
 
-      await knex(TableName.CertificateAuthority).where("status", "active").update({ activeCaCertVersion: 1 });
+      await knex.raw(`
+        UPDATE "${TableName.CertificateAuthority}" ca
+        SET "activeCaCertId" = cac.id
+        FROM "${TableName.CertificateAuthorityCert}" cac
+        WHERE ca.id = cac."caId"
+      `);
     }
   }
 
@@ -63,9 +66,9 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
-    if (await knex.schema.hasColumn(TableName.CertificateAuthority, "activeCaCertVersion")) {
+    if (await knex.schema.hasColumn(TableName.CertificateAuthority, "activeCaCertId")) {
       await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
-        t.dropColumn("activeCaCertVersion");
+        t.dropColumn("activeCaCertId");
       });
     }
   }

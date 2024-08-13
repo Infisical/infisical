@@ -283,7 +283,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Renew CA certificate for CA",
+      description: "Perform CA certificate renewal",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.caId)
       }),

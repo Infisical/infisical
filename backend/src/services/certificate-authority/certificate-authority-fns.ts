@@ -206,8 +206,9 @@ export const getCaCertChain = async ({
 }: TGetCaCertChainDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
   if (!ca) throw new BadRequestError({ message: "CA not found" });
+  if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
-  const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
+  const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
