@@ -792,6 +792,17 @@ export const useAuthorizeIntegration = () => {
   });
 };
 
+export interface SaveIntegrationPayload {
+  workspaceId: string | null;
+  integration: string | undefined;
+  refreshToken?: string;
+  accessId?: string;
+  accessToken?: string;
+  awsAssumeIamRoleArn?: string;
+  url?: string;
+  namespace?: string;
+}
+
 export const useSaveIntegrationAccessToken = () => {
   const queryClient = useQueryClient();
 
@@ -805,16 +816,7 @@ export const useSaveIntegrationAccessToken = () => {
       awsAssumeIamRoleArn,
       url,
       namespace
-    }: {
-      workspaceId: string | null;
-      integration: string | undefined;
-      refreshToken?: string;
-      accessId?: string;
-      accessToken?: string;
-      awsAssumeIamRoleArn?: string;
-      url?: string;
-      namespace?: string;
-    }) => {
+    }: SaveIntegrationPayload) => {
       const {
         data: { integrationAuth }
       } = await apiRequest.post("/api/v1/integration-auth/access-token", {
