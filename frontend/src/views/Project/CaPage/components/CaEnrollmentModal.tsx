@@ -85,7 +85,7 @@ export const CaEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         if (!passphrase) {
-          setError("passphrase", { message: "Passphrase is required to setup EST enrollment." });
+          setError("passphrase", { message: "Passphrase is required to setup EST" });
           return;
         }
 
@@ -153,7 +153,11 @@ export const CaEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <TextArea {...field} />
+                <TextArea
+                  {...field}
+                  className="border-none bg-mineshaft-900 text-gray-400"
+                  reSize="none"
+                />
               </FormControl>
             )}
           />
