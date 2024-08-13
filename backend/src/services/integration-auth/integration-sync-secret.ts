@@ -611,6 +611,7 @@ const syncSecretsAWSParameterStore = async ({
         // case: secret does not exist in AWS parameter store
         // -> create secret
         if (secrets[key].value) {
+          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug create: ${key}`);
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
@@ -651,6 +652,7 @@ const syncSecretsAWSParameterStore = async ({
         }
         // case: secret exists in AWS parameter store
       } else {
+        logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug update: ${key}`);
         // -> update secret
         if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
           await ssm
@@ -703,6 +705,7 @@ const syncSecretsAWSParameterStore = async ({
     for (const key in awsParameterStoreSecretsObj) {
       if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
         if (!(key in secrets)) {
+          logger.info(`getIntegrationSecrets: [projectId=${projectId}] ssm debug delete: ${key}`);
           // case:
           // -> delete secret
           await ssm
