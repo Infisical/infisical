@@ -42,6 +42,7 @@ import {
   TGetCaCertsDTO,
   TGetCaCsrDTO,
   TGetCaDTO,
+  TGetCaEstConfigurationDTO,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
   TRenewCaCertDTO,
@@ -1534,6 +1535,62 @@ export const certificateAuthorityServiceFactory = ({
     return estConfig;
   };
 
+  const getCaEstConfiguration = async ({
+    caId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCaEstConfigurationDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) {
+      throw new NotFoundError({ message: "CA not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const caEstConfig = await certificateAuthorityEstConfigDAL.findOne({
+      caId
+    });
+
+    if (!caEstConfig) {
+      throw new NotFoundError({
+        message: "CA EST Config not found"
+      });
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const decryptedCaChain = await kmsDecryptor({
+      cipherTextBlob: caEstConfig.encryptedCaChain
+    });
+
+    return {
+      caId,
+      isEnabled: caEstConfig.isEnabled,
+      caChain: decryptedCaChain.toString()
+    };
+  };
+
   return {
     createCa,
     getCaById,
@@ -1548,6 +1605,7 @@ export const certificateAuthorityServiceFactory = ({
     issueCertFromCa,
     signCertFromCa,
     createCaEstConfiguration,
-    updateCaEstConfiguration
+    updateCaEstConfiguration,
+    getCaEstConfiguration
   };
 };

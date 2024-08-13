@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { CertificateAuthoritiesSchema } from "@app/db/schemas";
+import { CertificateAuthorityEstConfigsSchema } from "@app/db/schemas/certificate-authority-est-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -694,6 +695,130 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         certificateChain,
         issuingCaCertificate,
         serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/est-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Create CA EST configuration",
+      params: z.object({
+        caId: z.string().trim()
+      }),
+      body: z.object({
+        caChain: z.string().trim().min(1),
+        passphrase: z.string().min(1),
+        isEnabled: z.boolean().default(true)
+      }),
+      response: {
+        200: z.object({
+          caEstConfig: CertificateAuthorityEstConfigsSchema.pick({
+            caId: true,
+            isEnabled: true
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const caEstConfig = await server.services.certificateAuthority.createCaEstConfiguration({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      return {
+        caEstConfig
+      };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:caId/est-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Update CA EST configuration",
+      params: z.object({
+        caId: z.string().trim()
+      }),
+      body: z.object({
+        caChain: z.string().trim().min(1).optional(),
+        passphrase: z.string().min(1).optional(),
+        isEnabled: z.boolean().optional()
+      }),
+      response: {
+        200: z.object({
+          caEstConfig: CertificateAuthorityEstConfigsSchema.pick({
+            caId: true,
+            isEnabled: true
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const caEstConfig = await server.services.certificateAuthority.updateCaEstConfiguration({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      return {
+        caEstConfig
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/est-config",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get CA EST configuration",
+      params: z.object({
+        caId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          caEstConfig: CertificateAuthorityEstConfigsSchema.pick({
+            caId: true,
+            isEnabled: true
+          }).merge(
+            z.object({
+              caChain: z.string()
+            })
+          )
+        })
+      }
+    },
+    handler: async (req) => {
+      const caEstConfig = await server.services.certificateAuthority.getCaEstConfiguration({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return {
+        caEstConfig
       };
     }
   });

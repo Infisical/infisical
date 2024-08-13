@@ -180,3 +180,7 @@ export type TUpdateCaEstConfigurationDTO = {
   passphrase?: string;
   isEnabled?: boolean;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TGetCaEstConfigurationDTO = {
+  caId: string;
+} & Omit<TProjectPermission, "projectId">;

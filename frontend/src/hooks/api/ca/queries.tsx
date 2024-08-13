@@ -2,14 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TCertificateAuthority } from "./types";
+import { TCaEstConfig, TCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
-  getCaCrl: (caId: string) => [{ caId }, "ca-crl"]
+  getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
+  getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"]
 };
 
 export const useGetCaById = (caId: string) => {
@@ -83,6 +84,22 @@ export const useGetCaCrl = (caId: string) => {
         crl: string;
       }>(`/api/v1/pki/ca/${caId}/crl`);
       return crl;
+    },
+    enabled: Boolean(caId)
+  });
+};
+
+export const useGetCaEstConfig = (caId: string) => {
+  return useQuery({
+    queryKey: caKeys.getCaEstConfig(caId),
+    queryFn: async () => {
+      const {
+        data: { caEstConfig }
+      } = await apiRequest.get<{
+        caEstConfig: TCaEstConfig;
+      }>(`/api/v1/pki/ca/${caId}/est-config`);
+
+      return caEstConfig;
     },
     enabled: Boolean(caId)
   });

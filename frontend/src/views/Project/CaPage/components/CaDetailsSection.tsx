@@ -125,7 +125,9 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
                     colorSchema="secondary"
                     type="submit"
                     onClick={() => {
-                      handlePopUpOpen("enrollmentOptions");
+                      handlePopUpOpen("enrollmentOptions", {
+                        caId
+                      });
                     }}
                   >
                     Enrollment Options

@@ -86,6 +86,7 @@ import { certificateDALFactory } from "@app/services/certificate/certificate-dal
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { certificateAuthorityEstConfigDALFactory } from "@app/services/certificate-authority/certificate-authority-est-config-dal";
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
@@ -585,6 +586,7 @@ export const registerRoutes = async (
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
+  const certificateAuthorityEstConfigDAL = certificateAuthorityEstConfigDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
@@ -625,7 +627,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     projectDAL,
     kmsService,
-    permissionService
+    permissionService,
+    certificateAuthorityEstConfigDAL
   });
 
   const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
