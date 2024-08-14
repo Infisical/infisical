@@ -645,6 +645,10 @@ const syncSecretsAWSParameterStore = async ({
                 })
                 .promise();
             } catch (err) {
+              logger.error(
+                err,
+                `getIntegrationSecrets: create secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+              );
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               if ((err as any).code === "AccessDeniedException") {
                 logger.error(
@@ -691,6 +695,10 @@ const syncSecretsAWSParameterStore = async ({
               })
               .promise();
           } catch (err) {
+            logger.error(
+              err,
+              `getIntegrationSecrets: update secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+            );
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((err as any).code === "AccessDeniedException") {
               logger.error(
