@@ -528,8 +528,8 @@ export const reshapeBridgeSecret = (
   environment: string,
   secretPath: string,
   secret: Omit<TSecretsV2, "encryptedValue" | "encryptedComment"> & {
-    value?: string;
-    comment?: string;
+    value: string;
+    comment: string;
     tags?: {
       id: string;
       slug: string;

@@ -164,10 +164,10 @@ export const secretSnapshotServiceFactory = ({
           secretKey: el.key,
           secretValue: el.encryptedValue
             ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-            : undefined,
+            : "",
           secretComment: el.encryptedComment
             ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-            : undefined
+            : ""
         }))
       };
     } else {

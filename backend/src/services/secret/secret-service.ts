@@ -1154,6 +1154,7 @@ export const secretServiceFactory = ({
         type,
         secretName
       });
+
       return secret;
     }
 
