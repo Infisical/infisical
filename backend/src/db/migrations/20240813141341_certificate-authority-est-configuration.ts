@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   const hasEstConfigTable = await knex.schema.hasTable(TableName.CertificateAuthorityEstConfig);
@@ -14,9 +15,12 @@ export async function up(knex: Knex): Promise<void> {
       tb.boolean("isEnabled");
       tb.timestamps(true, true, true);
     });
+
+    await createOnUpdateTrigger(knex, TableName.CertificateAuthorityEstConfig);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.CertificateAuthorityEstConfig);
+  await dropOnUpdateTrigger(knex, TableName.CertificateAuthorityEstConfig);
 }

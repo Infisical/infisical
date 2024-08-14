@@ -181,6 +181,12 @@ export type TUpdateCaEstConfigurationDTO = {
   isEnabled?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TGetCaEstConfigurationDTO = {
-  caId: string;
-} & Omit<TProjectPermission, "projectId">;
+export type TGetCaEstConfigurationDTO =
+  | {
+      isInternal: true;
+      caId: string;
+    }
+  | ({
+      isInternal: false;
+      caId: string;
+    } & Omit<TProjectPermission, "projectId">);

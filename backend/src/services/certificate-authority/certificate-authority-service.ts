@@ -1535,30 +1535,28 @@ export const certificateAuthorityServiceFactory = ({
     return estConfig;
   };
 
-  const getCaEstConfiguration = async ({
-    caId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCaEstConfigurationDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
+  const getCaEstConfiguration = async (dto: TGetCaEstConfigurationDTO) => {
+    const ca = await certificateAuthorityDAL.findById(dto.caId);
     if (!ca) {
       throw new NotFoundError({ message: "CA not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      ca.projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!dto.isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        dto.actor,
+        dto.actorId,
+        ca.projectId,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        ProjectPermissionSub.CertificateAuthorities
+      );
+    }
+
+    const { caId } = dto;
 
     const caEstConfig = await certificateAuthorityEstConfigDAL.findOne({
       caId
@@ -1587,7 +1585,8 @@ export const certificateAuthorityServiceFactory = ({
     return {
       caId,
       isEnabled: caEstConfig.isEnabled,
-      caChain: decryptedCaChain.toString()
+      caChain: decryptedCaChain.toString(),
+      hashedPassphrase: caEstConfig.hashedPassphrase
     };
   };
 

@@ -810,6 +810,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const caEstConfig = await server.services.certificateAuthority.getCaEstConfiguration({
+        isInternal: false,
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,

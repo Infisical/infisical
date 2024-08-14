@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import bcrypt from "bcrypt";
 import { Certificate, ContentInfo, EncapsulatedContentInfo, SignedData } from "pkijs";
 import { z } from "zod";
 
@@ -39,41 +40,27 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
     const urlFragments = req.url.split("/");
     const certificateAuthorityId = urlFragments.slice(-2)[0];
+    const caEstConfig = await server.services.certificateAuthority.getCaEstConfiguration({
+      isInternal: true,
+      caId: certificateAuthorityId
+    });
 
-    const hardcodedCertificateChain = `
-    -----BEGIN CERTIFICATE-----
-    MIIEYzCCA0ugAwIBAgIUbxMrGIZnxNcX2kuYpGOFqix9P80wDQYJKoZIhvcNAQEL
-    BQAwaTELMAkGA1UEBhMCUEgxDTALBgNVBAgMBENlYnUxDTALBgNVBAcMBENlYnUx
-    EjAQBgNVBAoMCUluZmlzaWNhbDEUMBIGA1UECwwLRW5naW5lZXJpbmcxEjAQBgNV
-    BAMMCWxvY2FsaG9zdDAeFw0yNDA4MTIxMzM4MTNaFw0yNTA4MTIxMzM4MTNaMGkx
-    CzAJBgNVBAYTAlBIMQ0wCwYDVQQIDARDZWJ1MQ0wCwYDVQQHDARDZWJ1MRIwEAYD
-    VQQKDAlJbmZpc2ljYWwxFDASBgNVBAsMC0VuZ2luZWVyaW5nMRIwEAYDVQQDDAls
-    b2NhbGhvc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDqssBBMfzr
-    1DDRIxl8TcCHmQU+qhmw8ACkoNN0b+vD0USVv4SC1ABKtYQBBDvBOtQulqc4yTRw
-    A3Q0y3XUR+pyCFb5PcTG8ZFUZ7ewrrHrdExd0enY/R3eDPAb6H7hokDS10Sr5BRR
-    Oow109yzX7ipbw+kYSOOLTF1gX+ewbfpcGNylJNOvFNcu4V64Qg5NXp2Lo4o/VTj
-    IY9yxgVjep8utC/klughk3/EUqfyZ8/9BHyYj3KWDj7VpZNU4o506ZkYsCOPESe1
-    SMl8z4s4bEkfTd6+9SetKkwmCbRpZE5iS0XV0lrySK7AGwKHPuJ5RYj0WZp5O/SK
-    1zC0azN787T3AgMBAAGjggEBMIH+MB0GA1UdDgQWBBT25nGrtg4VmDaXscjwEv/B
-    CSFd2jCBpgYDVR0jBIGeMIGbgBT25nGrtg4VmDaXscjwEv/BCSFd2qFtpGswaTEL
-    MAkGA1UEBhMCUEgxDTALBgNVBAgMBENlYnUxDTALBgNVBAcMBENlYnUxEjAQBgNV
-    BAoMCUluZmlzaWNhbDEUMBIGA1UECwwLRW5naW5lZXJpbmcxEjAQBgNVBAMMCWxv
-    Y2FsaG9zdIIUbxMrGIZnxNcX2kuYpGOFqix9P80wDwYDVR0TAQH/BAUwAwEB/zAO
-    BgNVHQ8BAf8EBAMCBaAwEwYDVR0lBAwwCgYIKwYBBQUHAwIwDQYJKoZIhvcNAQEL
-    BQADggEBABPV6jpVHvnvp6cAPewL6SSN20KGdNX3MCpLIxPhz8dbGnc2SWMaR0Eo
-    GqAYvUgG0xpEWCTZ7RDtfrU7vt6+PnFpP2z0a4YToF24/tdAOMAUQ2AedULAb8UP
-    gwHDeZKKYhs7kscApO0VgYJgjqFe2Kjlt0zzVcMj0qrwgdDUFTNWGOdQy1ghmStc
-    nBw2xVppG0QAyIWnvxqPva+czHhMd8bmLR44VCuzO5xS5B/AUk7BeNBLuEEfM3DR
-    quZ0PRwgsaY/WND3ux93FaSiqfn5y9uZdJkqfJcPL6SKRms6v6da4Rh/DyFcWQFW
-    iwIeUl1cXagVKziyr4Ch5U5dnp+y8Es=
-    -----END CERTIFICATE-----
-    `;
+    if (!caEstConfig.isEnabled) {
+      throw new BadRequestError({
+        message: "EST enrollment is disabled"
+      });
+    }
 
     const sslClientCert = req.headers["x-ssl-client-cert"] as string;
-    if (!sslClientCert) {
+    const leafCertificate = decodeURIComponent(sslClientCert).match(
+      /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
+    )?.[0];
+
+    if (!sslClientCert || !leafCertificate) {
       throw new UnauthorizedError({ message: "Missing client certificate" });
     }
-    const clientCertBody = decodeURIComponent(sslClientCert)
+
+    const clientCertBody = leafCertificate
       .replace("-----BEGIN CERTIFICATE-----", "")
       .replace("-----END CERTIFICATE-----", "")
       .replace(/\n/g, "")
@@ -81,7 +68,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       .trim();
 
     // validate SSL client cert against configured CA
-    const chainCerts = hardcodedCertificateChain
+    const chainCerts = caEstConfig.caChain
       .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
       ?.map((cert) => {
         const processedBody = cert
@@ -126,8 +113,21 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       throw new UnauthorizedError({ message: "Missing HTTP credentials" });
     }
 
+    // expected format is user:password
     const basicCredential = atob(rawCredential);
-    // compare with EST configuration here
+    const password = basicCredential.split(":").pop();
+    if (!password) {
+      throw new BadRequestError({
+        message: "No password provided"
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, caEstConfig.hashedPassphrase);
+    if (!isPasswordValid) {
+      throw new UnauthorizedError({
+        message: "Invalid credentials"
+      });
+    }
   });
 
   server.route({
