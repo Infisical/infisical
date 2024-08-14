@@ -196,7 +196,7 @@ export const secretV2BridgeServiceFactory = ({
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...secret[0],
       value: inputSecret.secretValue,
-      comment: inputSecret.secretComment
+      comment: inputSecret.secretComment || ""
     });
   };
 
@@ -339,8 +339,8 @@ export const secretV2BridgeServiceFactory = ({
     });
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...updatedSecret[0],
-      value: inputSecret.secretValue,
-      comment: inputSecret.secretComment
+      value: inputSecret.secretValue || "",
+      comment: inputSecret.secretComment || ""
     });
   };
 
@@ -424,10 +424,10 @@ export const secretV2BridgeServiceFactory = ({
       ...deletedSecret[0],
       value: deletedSecret[0].encryptedValue
         ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedValue }).toString()
-        : undefined,
+        : "",
       comment: deletedSecret[0].encryptedComment
         ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
-        : undefined
+        : ""
     });
   };
 
@@ -570,7 +570,7 @@ export const secretV2BridgeServiceFactory = ({
       folderDAL,
       secretImportDAL,
       expandSecretReferences,
-      decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+      decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
     });
 
     return {
@@ -670,7 +670,7 @@ export const secretV2BridgeServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         expandSecretReferences: shouldExpandSecretReferences ? expandSecretReferences : undefined
       });
 
@@ -678,12 +678,11 @@ export const secretV2BridgeServiceFactory = ({
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           const importedSecret = importedSecrets[i].secrets[j];
           if (secretName === importedSecret.key) {
-            return reshapeBridgeSecret(
-              projectId,
-              importedSecrets[i].environment,
-              importedSecrets[i].secretPath,
-              importedSecret
-            );
+            return reshapeBridgeSecret(projectId, importedSecrets[i].environment, importedSecrets[i].secretPath, {
+              ...importedSecret,
+              value: importedSecret.secretValue || "",
+              comment: importedSecret.secretComment || ""
+            });
           }
         }
       }
@@ -692,7 +691,7 @@ export const secretV2BridgeServiceFactory = ({
 
     let secretValue = secret.encryptedValue
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-      : undefined;
+      : "";
     if (shouldExpandSecretReferences && secretValue) {
       const secretReferenceExpandedRecord = {
         [secret.key]: { value: secretValue }
@@ -707,7 +706,7 @@ export const secretV2BridgeServiceFactory = ({
       value: secretValue,
       comment: secret.encryptedComment
         ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-        : undefined
+        : ""
     });
   };
 
@@ -797,10 +796,8 @@ export const secretV2BridgeServiceFactory = ({
     return newSecrets.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : undefined,
-        comment: el.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : undefined
+        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+        comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
       })
     );
   };
@@ -918,10 +915,8 @@ export const secretV2BridgeServiceFactory = ({
     return secrets.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : undefined,
-        comment: el.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : undefined
+        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+        comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
       })
     );
   };
@@ -997,10 +992,8 @@ export const secretV2BridgeServiceFactory = ({
     return secretsDeleted.map((el) =>
       reshapeBridgeSecret(projectId, environment, secretPath, {
         ...el,
-        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : undefined,
-        comment: el.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : undefined
+        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+        comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
       })
     );
   };
@@ -1036,10 +1029,8 @@ export const secretV2BridgeServiceFactory = ({
     return secretVersions.map((el) =>
       reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, "/", {
         ...el,
-        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : undefined,
-        comment: el.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : undefined
+        value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+        comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
       })
     );
   };
