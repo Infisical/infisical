@@ -378,6 +378,18 @@ export const secretV2BridgeServiceFactory = ({
       throw new BadRequestError({ message: "Must be user to delete personal secret" });
     }
 
+    const secretToDelete = await secretDAL.findOne({
+      key: inputSecret.secretName,
+      folderId,
+      ...(inputSecret.type === SecretType.Shared
+        ? {}
+        : {
+            type: SecretType.Personal,
+            userId: actorId
+          })
+    });
+    if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
+
     const deletedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkDelete({
         projectId,

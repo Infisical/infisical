@@ -728,7 +728,10 @@ export const secretQueueFactory = ({
           isSynced: response?.isSynced ?? true
         });
       } catch (err) {
-        logger.info("Secret integration sync error: %o", err);
+        logger.error(
+          err,
+          `Secret integration sync error [projectId=${job.data.projectId}] [environment=${job.data.environment}]  [secretPath=${job.data.secretPath}]`
+        );
 
         const message =
           (err instanceof AxiosError ? JSON.stringify(err?.response?.data) : (err as Error)?.message) ||
