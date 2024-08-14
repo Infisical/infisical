@@ -617,7 +617,7 @@ export const certificateAuthorityServiceFactory = ({
         });
 
         const { caCert: parentCaCertificate, caCertChain: parentCaCertChain } = await getCaCertChain({
-          caId: parentCa.id,
+          caCertId: parentCa.activeCaCertId,
           certificateAuthorityDAL,
           certificateAuthorityCertDAL,
           projectDAL,
@@ -704,11 +704,11 @@ export const certificateAuthorityServiceFactory = ({
 
   /**
    * Return current certificate and certificate chain for CA
-   * get latest?? ca cert
    */
   const getCaCert = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new BadRequestError({ message: "CA not found" });
+    if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -724,7 +724,7 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     const { caCert, caCertChain, serialNumber } = await getCaCertChain({
-      caId,
+      caCertId: ca.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
@@ -860,7 +860,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caId,
+      caCertId: ca.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
@@ -1166,6 +1166,7 @@ export const certificateAuthorityServiceFactory = ({
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
+          caCertId: caCert.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || commonName,
           commonName,
@@ -1189,7 +1190,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caId: ca.id,
+      caCertId: caCert.id,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
@@ -1369,6 +1370,7 @@ export const certificateAuthorityServiceFactory = ({
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
+          caCertId: caCert.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,
@@ -1392,7 +1394,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
-      caId: ca.id,
+      caCertId: ca.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,

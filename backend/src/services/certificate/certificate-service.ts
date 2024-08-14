@@ -180,7 +180,7 @@ export const certificateServiceFactory = ({
     const certObj = new x509.X509Certificate(decryptedCert);
 
     const { caCert, caCertChain } = await getCaCertChain({
-      caId: ca.id,
+      caCertId: cert.caCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,

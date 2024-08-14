@@ -195,20 +195,18 @@ export const getCaCertChains = async ({
 
 /**
  * Return the decrypted pem-encoded certificate and certificate chain
- * for CA with id [caId].
+ * corresponding to CA certificate with id [caCertId].
  */
 export const getCaCertChain = async ({
-  caId,
+  caCertId,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   projectDAL,
   kmsService
 }: TGetCaCertChainDTO) => {
-  const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new BadRequestError({ message: "CA not found" });
-  if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
-
-  const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
+  const caCert = await certificateAuthorityCertDAL.findById(caCertId);
+  if (!caCert) throw new BadRequestError({ message: "CA certificate not found" });
+  const ca = await certificateAuthorityDAL.findById(caCert.caId);
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
