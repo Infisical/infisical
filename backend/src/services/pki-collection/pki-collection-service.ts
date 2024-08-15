@@ -40,6 +40,7 @@ export const pkiCollectionServiceFactory = ({
 }: TPkiCollectionServiceFactoryDep) => {
   const createPkiCollection = async ({
     name,
+    description,
     projectId,
     actorId,
     actorAuthMethod,
@@ -61,7 +62,8 @@ export const pkiCollectionServiceFactory = ({
 
     const pkiCollection = await pkiCollectionDAL.create({
       projectId,
-      name
+      name,
+      description
     });
 
     return pkiCollection;
@@ -92,6 +94,7 @@ export const pkiCollectionServiceFactory = ({
   const updatePkiCollection = async ({
     collectionId,
     name,
+    description,
     actorId,
     actorAuthMethod,
     actor,
@@ -110,7 +113,8 @@ export const pkiCollectionServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
     pkiCollection = await pkiCollectionDAL.updateById(collectionId, {
-      name
+      name,
+      description
     });
 
     return pkiCollection;

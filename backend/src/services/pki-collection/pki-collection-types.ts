@@ -2,6 +2,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 export type TCreatePkiCollectionDTO = {
   name: string;
+  description: string;
 } & TProjectPermission;
 
 export type TGetPkiCollectionByIdDTO = {
@@ -11,6 +12,7 @@ export type TGetPkiCollectionByIdDTO = {
 export type TUpdatePkiCollectionDTO = {
   collectionId: string;
   name?: string;
+  description?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeletePkiCollectionDTO = {

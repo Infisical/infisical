@@ -46,11 +46,12 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
+              <Th>Description</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={2} innerKey="pki-collections" />}
+            {isLoading && <TableSkeleton columns={3} innerKey="pki-collections" />}
             {!isLoading &&
               data?.collections.map((pkiCollection) => {
                 return (
@@ -62,6 +63,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                     }
                   >
                     <Td>{pkiCollection.name}</Td>
+                    <Td>{pkiCollection.description}</Td>
                     <Td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">

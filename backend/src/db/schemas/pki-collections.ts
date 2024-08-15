@@ -12,7 +12,8 @@ export const PkiCollectionsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
-  name: z.string()
+  name: z.string(),
+  description: z.string()
 });
 
 export type TPkiCollections = z.infer<typeof PkiCollectionsSchema>;

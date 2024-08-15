@@ -1172,14 +1172,16 @@ export const ALERTS = {
 export const PKI_COLLECTIONS = {
   CREATE: {
     projectId: "The ID of the project to create the PKI collection in",
-    name: "The name of the PKI collection"
+    name: "The name of the PKI collection",
+    description: "A description for the PKI collection"
   },
   GET: {
     collectionId: "The ID of the PKI collection to get"
   },
   UPDATE: {
     collectionId: "The ID of the PKI collection to update",
-    name: "The name of the PKI collection to update to"
+    name: "The name of the PKI collection to update to",
+    description: "The description for the PKI collection to update to"
   },
   DELETE: {
     collectionId: "The ID of the PKI collection to delete"
