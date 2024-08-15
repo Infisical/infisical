@@ -36,6 +36,7 @@ export const GlobToolFormSection = ({ selectedPath }: Props) => {
 
   const {
     control,
+    watch,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<FormData>({
@@ -46,6 +47,7 @@ export const GlobToolFormSection = ({ selectedPath }: Props) => {
     }
   });
 
+  const path = watch("path");
   const onFormSubmit = (data: FormData) => {
     validateStrings(data.path, data.textStrings);
   };
@@ -109,7 +111,7 @@ export const GlobToolFormSection = ({ selectedPath }: Props) => {
                     <Tooltip content="Copy Path">
                       <IconButton
                         ariaLabel="copy-path"
-                        onClick={() => handleCopyPathToClipboard(selectedPath)}
+                        onClick={() => handleCopyPathToClipboard(path)}
                         variant="plain"
                         className="h-full"
                       >
