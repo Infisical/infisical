@@ -100,9 +100,15 @@ jobs:
               run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
 
             - name: Publish to Cloudsmith (Debian/Ubuntu [] RAW)
-              if: matrix.os == 'linux'
+              if: matrix.os == 'linux' && matrix.arch == 'x64'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-debian-x64 --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+
+            # Raw package for arm64 ubuntu
+            - name: Publish to Cloudsmith (Debian/Ubuntu [] RAW)
+              if: matrix.os == 'linux' && matrix.arch == 'arm64'
+              working-directory: ./backend
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-debian-arm64 --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
 
             # Publish .exe file to Cloudsmith (Windows only)
             - name: Publish to Cloudsmith (Windows [] RAW)
