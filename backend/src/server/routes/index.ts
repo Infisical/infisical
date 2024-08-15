@@ -711,6 +711,7 @@ export const registerRoutes = async (
     kmsService
   });
   const secretQueueService = secretQueueFactory({
+    keyStore,
     queueService,
     secretDAL,
     folderDAL,
