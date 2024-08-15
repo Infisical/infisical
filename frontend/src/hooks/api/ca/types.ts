@@ -80,6 +80,7 @@ export type TImportCaCertificateResponse = {
 export type TCreateCertificateDTO = {
   projectSlug: string;
   caId: string;
+  pkiCollectionId?: string;
   friendlyName?: string;
   commonName: string;
   altNames: string; // sans

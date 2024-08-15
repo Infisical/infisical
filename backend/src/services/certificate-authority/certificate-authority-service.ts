@@ -7,10 +7,12 @@ import { z } from "zod";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
+import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -60,6 +62,8 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
+  pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -74,6 +78,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityCrlDAL,
   certificateDAL,
   certificateBodyDAL,
+  pkiCollectionDAL,
+  pkiCollectionItemDAL,
   projectDAL,
   kmsService,
   permissionService
@@ -1007,6 +1013,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const issueCertFromCa = async ({
     caId,
+    pkiCollectionId,
     friendlyName,
     commonName,
     altNames,
@@ -1037,6 +1044,13 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.notAfter && new Date() > new Date(ca.notAfter)) {
       throw new BadRequestError({ message: "CA is expired" });
+    }
+
+    // check PKI collection
+    if (pkiCollectionId) {
+      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
+      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+      if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -1186,6 +1200,16 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
+      if (pkiCollectionId) {
+        await pkiCollectionItemDAL.create(
+          {
+            pkiCollectionId,
+            certId: cert.id
+          },
+          tx
+        );
+      }
+
       return cert;
     });
 
@@ -1214,6 +1238,7 @@ export const certificateAuthorityServiceFactory = ({
   const signCertFromCa = async ({
     caId,
     csr,
+    pkiCollectionId,
     friendlyName,
     commonName,
     altNames,
@@ -1245,6 +1270,13 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.notAfter && new Date() > new Date(ca.notAfter)) {
       throw new BadRequestError({ message: "CA is expired" });
+    }
+
+    // check PKI collection
+    if (pkiCollectionId) {
+      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
+      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+      if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -1389,6 +1421,16 @@ export const certificateAuthorityServiceFactory = ({
         },
         tx
       );
+
+      if (pkiCollectionId) {
+        await pkiCollectionItemDAL.create(
+          {
+            pkiCollectionId,
+            certId: cert.id
+          },
+          tx
+        );
+      }
 
       return cert;
     });

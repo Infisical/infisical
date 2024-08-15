@@ -1088,6 +1088,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
     altNames:
@@ -1103,6 +1104,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   SIGN_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
