@@ -7,6 +7,7 @@ export * from "./auth";
 export * from "./bots";
 export * from "./ca";
 export * from "./certificates";
+export * from "./certificateTemplates";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
 export * from "./groups";

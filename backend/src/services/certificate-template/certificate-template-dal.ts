@@ -16,7 +16,8 @@ export const certificateTemplateDALFactory = (db: TDbClient) => {
         `${TableName.CertificateTemplate}.caId`
       )
       .where(`${TableName.CertificateAuthority}.projectId`, "=", projectId)
-      .select(selectAllTableCols(TableName.CertificateTemplate));
+      .select(selectAllTableCols(TableName.CertificateTemplate))
+      .select(db.ref("friendlyName").as("caName").withSchema(TableName.CertificateAuthority));
 
     return certTemplates;
   };

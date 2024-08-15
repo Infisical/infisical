@@ -476,7 +476,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             CertificateTemplatesSchema.pick({
               id: true,
               name: true
-            })
+            }).merge(
+              z.object({
+                caName: z.string()
+              })
+            )
           )
         })
       }
