@@ -84,33 +84,68 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
 
   server.route({
     method: "PATCH",
-    url: "/",
+    url: "/:certificateTemplateId",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      params: z.object({}),
+      body: z.object({
+        caId: z.string().optional(),
+        name: z.string().optional(),
+        commonName: z.string().optional(),
+        ttl: z.string().optional()
+      }),
+      params: z.object({
+        certificateTemplateId: z.string()
+      }),
       response: {
-        200: z.object({})
+        200: z.object({
+          certificateTemplate: sanitizedCertificateTemplate
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {}
+    handler: async (req) => {
+      const certificateTemplate = await server.services.certificateTemplate.updateCertTemplate({
+        ...req.body,
+        id: req.params.certificateTemplateId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { certificateTemplate };
+    }
   });
 
   server.route({
     method: "DELETE",
-    url: "/",
+    url: "/:certificateTemplateId",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      params: z.object({}),
+      params: z.object({
+        certificateTemplateId: z.string()
+      }),
       response: {
-        200: z.object({})
+        200: z.object({
+          certificateTemplate: sanitizedCertificateTemplate
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {}
+    handler: async (req) => {
+      const certificateTemplate = await server.services.certificateTemplate.deleteCertTemplate({
+        id: req.params.certificateTemplateId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { certificateTemplate };
+    }
   });
 };

@@ -89,6 +89,8 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
+import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -584,6 +586,7 @@ export const registerRoutes = async (
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
+  const certificateTemplateDAL = certificateTemplateDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
@@ -636,6 +639,12 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const certificateTemplateService = certificateTemplateServiceFactory({
+    certificateTemplateDAL,
+    certificateAuthorityDAL,
+    permissionService
+  });
+
   const pkiAlertService = pkiAlertServiceFactory({
     pkiAlertDAL,
     pkiCollectionDAL,
@@ -673,7 +682,8 @@ export const registerRoutes = async (
     identityProjectMembershipRoleDAL,
     keyStore,
     kmsService,
-    projectBotDAL
+    projectBotDAL,
+    certificateTemplateDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1140,6 +1150,7 @@ export const registerRoutes = async (
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
     certificateAuthority: certificateAuthorityService,
+    certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
