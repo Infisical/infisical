@@ -12,8 +12,15 @@ export default function GlobTool() {
       <Head>
         <title>{t("common.head-title", { title: t("section.glob-tool.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <meta property="og:title" content="" />
+        <meta name="og:description" content="" />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      <GlobToolPage />
+
+      <div className="dark h-full">
+        <GlobToolPage />
+      </div>
     </>
   );
 }
