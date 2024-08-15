@@ -654,10 +654,12 @@ export const secretQueueFactory = ({
     const lockAcquiredTime = new Date();
 
     const lastRunSyncIntegrationTimestamp = await keyStore.getItem(
-      KeyStorePrefixes.SetSyncSecretIntegrationLastRunTimestamp(projectId, environment, secretPath)
+      KeyStorePrefixes.SyncSecretIntegrationLastRunTimestamp(projectId, environment, secretPath)
     );
 
+    // check whether the integration should wait or not
     if (lastRunSyncIntegrationTimestamp) {
+      const INTEGRATION_INTERVAL = 2000;
       const isStaleSyncIntegration = new Date(job.timestamp) < new Date(lastRunSyncIntegrationTimestamp);
       if (isStaleSyncIntegration) {
         logger.info(
@@ -670,7 +672,7 @@ export const secretQueueFactory = ({
         lockAcquiredTime.toISOString(),
         lastRunSyncIntegrationTimestamp
       );
-      if (timeDifferenceWithLastIntegration < 2000 && timeDifferenceWithLastIntegration > 0)
+      if (timeDifferenceWithLastIntegration < INTEGRATION_INTERVAL && timeDifferenceWithLastIntegration > 0)
         await new Promise((resolve) => {
           setTimeout(resolve, 2000 - timeDifferenceWithLastIntegration * 1000);
         });
@@ -788,7 +790,7 @@ export const secretQueueFactory = ({
     }
 
     await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.SetSyncSecretIntegrationLastRunTimestamp(projectId, environment, secretPath),
+      KeyStorePrefixes.SyncSecretIntegrationLastRunTimestamp(projectId, environment, secretPath),
       KeyStoreTtls.SetSyncSecretIntegrationLastRunTimestampInSeconds,
       lockAcquiredTime.toISOString()
     );
