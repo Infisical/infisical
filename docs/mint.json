@@ -618,6 +618,21 @@
           ]
         },
         {
+          "group": "Dynamic Secrets",
+          "pages": [
+            "api-reference/endpoints/dynamic-secrets/create",
+            "api-reference/endpoints/dynamic-secrets/update",
+            "api-reference/endpoints/dynamic-secrets/delete",
+            "api-reference/endpoints/dynamic-secrets/get",
+            "api-reference/endpoints/dynamic-secrets/list",
+            "api-reference/endpoints/dynamic-secrets/list-leases",
+            "api-reference/endpoints/dynamic-secrets/create-lease",
+            "api-reference/endpoints/dynamic-secrets/delete-lease",
+            "api-reference/endpoints/dynamic-secrets/renew-lease",
+            "api-reference/endpoints/dynamic-secrets/get-lease"
+          ]
+        },
+        {
           "group": "Secret Imports",
           "pages": [
             "api-reference/endpoints/secret-imports/list",
