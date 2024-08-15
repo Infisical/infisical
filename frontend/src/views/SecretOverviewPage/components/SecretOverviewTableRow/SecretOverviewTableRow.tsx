@@ -13,7 +13,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import { SecretBulkUpdate, SecretType,SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretEditRow } from "./SecretEditRow";
@@ -41,6 +41,7 @@ type Props = {
     env: string,
     secretName: string
   ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
+  setBulkSecretUpdateContent: (content: SecretBulkUpdate) => void;
 };
 
 export const SecretOverviewTableRow = ({
@@ -55,7 +56,8 @@ export const SecretOverviewTableRow = ({
   getImportedSecretByKey,
   expandableColWidth,
   onToggleSecretSelect,
-  isSelected
+  isSelected,
+  setBulkSecretUpdateContent
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
@@ -232,6 +234,7 @@ export const SecretOverviewTableRow = ({
                               onSecretCreate={onSecretCreate}
                               onSecretUpdate={onSecretUpdate}
                               environment={slug}
+                              setBulkSecretUpdateContent={setBulkSecretUpdateContent}
                             />
                           </td>
                         </tr>

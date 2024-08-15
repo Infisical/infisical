@@ -62,7 +62,7 @@ import {
 } from "@app/hooks/api";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { SecretType, TSecretFolder } from "@app/hooks/api/types";
+import { SecretType, TSecretFolder, SecretBulkUpdate } from "@app/hooks/api/types";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
@@ -102,6 +102,7 @@ export const SecretOverviewPage = () => {
   const projectSlug = currentWorkspace?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
+  const [bulkSecretUpdateContent,setBulkSecretUpdateContent] = useState<SecretBulkUpdate[]>([])
 
   const [selectedEntries, setSelectedEntries] = useState<{
     [EntryType.FOLDER]: Record<string, boolean>;
@@ -365,6 +366,25 @@ export const SecretOverviewPage = () => {
     }
   };
 
+  const handleBulkSecretUpdate = async() => {
+    bulkSecretUpdateContent.map(async(secretContent: SecretBulkUpdate)=>{
+      if(secretContent?.isCreatable){
+        await handleSecretCreate(secretContent.env,secretContent.key,secretContent.value)
+      }
+      else{
+        let type = secretContent.type
+        await handleSecretUpdate(
+          secretContent.env,
+          secretContent.key,
+          secretContent?.value,
+          type,
+        );
+      }
+    })
+    setBulkSecretUpdateContent([]);
+  }
+
+
   const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
     try {
       await deleteSecretV3({
@@ -583,21 +603,33 @@ export const SecretOverviewPage = () => {
                 />
               </div>
               {userAvailableEnvs.length > 0 && (
-                <div>
+                <div className="flex justify-between">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Create}
                     a={subject(ProjectPermissionSub.Secrets, { secretPath })}
                   >
                     {(isAllowed) => (
-                      <Button
-                        variant="outline_bg"
-                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                        className="h-10 rounded-r-none"
-                        isDisabled={!isAllowed}
-                      >
-                        Add Secret
-                      </Button>
+                      <div className="flex justify-between space-x-1">
+                        {bulkSecretUpdateContent.length > 0 && (
+                          <Button
+                            variant="outline_bg"
+                            onClick={() => handleBulkSecretUpdate()}
+                            className="h-10"
+                            isDisabled={!isAllowed}
+                          >
+                            Save
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline_bg"
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                          className="h-10 rounded-r-none"
+                          isDisabled={!isAllowed}
+                        >
+                          Add Secret
+                        </Button>
+                    </div>
                     )}
                   </ProjectPermissionCan>
                   <DropdownMenu
@@ -809,6 +841,7 @@ export const SecretOverviewPage = () => {
                       secretKey={key}
                       getSecretByKey={getSecretByKey}
                       expandableColWidth={expandableTableWidth}
+                      setBulkSecretUpdateContent={setBulkSecretUpdateContent}
                     />
                   ))}
               </TBody>

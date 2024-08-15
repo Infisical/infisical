@@ -11,7 +11,7 @@ import { DeleteActionModal,IconButton, Tooltip } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { SecretType } from "@app/hooks/api/types";
+import { SecretBulkUpdate, SecretType } from "@app/hooks/api/types";
 
 type Props = {
   defaultValue?: string | null;
@@ -32,6 +32,7 @@ type Props = {
     secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  setBulkSecretUpdateContent: (content: SecretBulkUpdate) => void;
 };
 
 export const SecretEditRow = ({
@@ -46,7 +47,8 @@ export const SecretEditRow = ({
   environment,
   secretPath,
   isVisible,
-  secretId
+  secretId,
+  setBulkSecretUpdateContent
 }: Props) => {
   const {
     handleSubmit,
@@ -67,6 +69,18 @@ export const SecretEditRow = ({
   }, [])
 
   const handleFormReset = () => {
+    setBulkSecretUpdateContent((prevContent) => {
+      let data = [...prevContent];
+
+      const secretObjectIndex = data.findIndex(secretObject => 
+        (secretId && secretObject.secretId === secretId && secretObject.env === environment)
+      );
+
+      if (secretObjectIndex !== -1) {
+        data.splice(secretObjectIndex, 1);
+      }
+      return data
+    })
     reset();
   };
 
@@ -100,12 +114,53 @@ export const SecretEditRow = ({
     reset({ value });
   };
 
+  const handleSecretInputChange = (value: string) => {
+    if ((value || value === "") && secretName) {
+      setBulkSecretUpdateContent((prevContent) => {
+        let data = [...prevContent];
+        const secretObjectIndex = data.findIndex(secretObject => 
+          (secretId && secretObject.secretId === secretId && secretObject.env === environment) ||
+          (!secretId && secretObject.key === secretName && secretObject.env === environment)
+        );
+        if (secretObjectIndex !== -1) {
+          let secretObj = {...data[secretObjectIndex]};
+          secretObj.value = value;
+          data[secretObjectIndex] = secretObj;
+        } else {
+          let newSecretUpdate: SecretBulkUpdate = {
+            env: environment,
+            key: secretName,
+            value: value,
+            type: isOverride ? SecretType.Personal : SecretType.Shared,
+            secretId: secretId,
+            isCreatable: isCreatable
+          };
+          data.push(newSecretUpdate);
+        }
+        return data;
+      });
+    }
+  };
+
   const handleDeleteSecret = useCallback(async () => {
     setIsDeleting.on();
     setIsModalOpen(false);
 
     try {
       await onSecretDelete(environment, secretName, secretId);
+       // updating bulksecretupdatecontent array to prevent it from being updated when secret that was changed is deleted
+      setBulkSecretUpdateContent((prevContent) => {
+        let data = [...prevContent];
+
+        const secretObjectIndex = data.findIndex(secretObject => 
+          (secretId && secretObject.secretId === secretId && secretObject.env === environment)
+        );
+
+        if (secretObjectIndex !== -1) {
+          data.splice(secretObjectIndex, 1);
+        }
+        return data
+      })
       reset({ value: null });
     } finally {
       setIsDeleting.off();
@@ -138,6 +193,7 @@ export const SecretEditRow = ({
               secretPath={secretPath}
               environment={environment}
               isImport={isImportedSecret}
+              handleSecretInputChange={handleSecretInputChange}
             />
           )}
         />

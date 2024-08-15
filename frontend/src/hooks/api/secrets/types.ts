@@ -210,3 +210,12 @@ export type TMoveSecretsDTO = {
   secretIds: string[];
   shouldOverwrite: boolean;
 };
+
+export type SecretBulkUpdate = {
+  env: string,
+  key: string,
+  value: string,
+  type: SecretType,
+  secretId?: string,
+  isCreatable?: boolean
+}
