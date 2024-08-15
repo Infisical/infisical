@@ -9,6 +9,7 @@ export enum TableName {
   Certificate = "certificates",
   CertificateBody = "certificate_bodies",
   CertificateSecret = "certificate_secrets",
+  CertificateTemplate = "certificate_templates",
   PkiAlert = "pki_alerts",
   PkiCollection = "pki_collections",
   PkiCollectionItem = "pki_collection_items",

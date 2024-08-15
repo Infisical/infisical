@@ -8,6 +8,7 @@ import {
   PkiCollectionsSchema,
   ProjectKeysSchema
 } from "@app/db/schemas";
+import { CertificateTemplatesSchema } from "@app/db/schemas/certificate-templates";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -456,6 +457,41 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { collections: pkiCollections };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: z.array(
+            CertificateTemplatesSchema.pick({
+              id: true,
+              name: true
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { certificateTemplates };
     }
   });
 };

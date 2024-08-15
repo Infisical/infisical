@@ -319,6 +319,11 @@ import {
   TWebhooksUpdate
 } from "@app/db/schemas";
 import {
+  TCertificateTemplates,
+  TCertificateTemplatesInsert,
+  TCertificateTemplatesUpdate
+} from "@app/db/schemas/certificate-templates";
+import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,
   TSecretV2TagJunctionUpdate
@@ -364,6 +369,11 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrlUpdate
     >;
     [TableName.Certificate]: KnexOriginal.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
+    [TableName.CertificateTemplate]: KnexOriginal.CompositeTableType<
+      TCertificateTemplates,
+      TCertificateTemplatesInsert,
+      TCertificateTemplatesUpdate
+    >;
     [TableName.CertificateBody]: KnexOriginal.CompositeTableType<
       TCertificateBodies,
       TCertificateBodiesInsert,
