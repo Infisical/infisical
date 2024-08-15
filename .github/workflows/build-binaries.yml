@@ -53,7 +53,7 @@ jobs:
                   if [ "${{ matrix.os }}" != "linux" ]; then
                     pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   fi
 
             # Set up .deb package structure (Debian/Ubuntu only)
@@ -62,7 +62,7 @@ jobs:
               run: |
                   mkdir -p infisical-core/DEBIAN
                   mkdir -p infisical-core/usr/local/bin
-                  cp ./binary/infisical-core infisical-core/usr/local/bin/
+                  cp ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} infisical-core/usr/local/bin/infisical-core
                   chmod +x infisical-core/usr/local/bin/infisical-core
 
             - name: Create control file
@@ -99,16 +99,17 @@ jobs:
               working-directory: ./backend
               run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
 
+            # Raw package for x64 ubuntu (needed for Infisical Omnibus to avoid having to build from source)
             - name: Publish to Cloudsmith (Debian/Ubuntu [] RAW)
               if: matrix.os == 'linux' && matrix.arch == 'x64'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-debian-x64 --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
 
-            # Raw package for arm64 ubuntu
+            # Raw package for arm64 ubuntu (needed for Infisical Omnibus to avoid having to build from source)
             - name: Publish to Cloudsmith (Debian/Ubuntu [] RAW)
               if: matrix.os == 'linux' && matrix.arch == 'arm64'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-debian-arm64 --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
 
             # Publish .exe file to Cloudsmith (Windows only)
             - name: Publish to Cloudsmith (Windows [] RAW)
