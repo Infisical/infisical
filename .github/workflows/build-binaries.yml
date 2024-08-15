@@ -1,6 +1,8 @@
 name: Build Binaries and Deploy
 
 on:
+    push:
+
     workflow_dispatch:
         inputs:
             version:
@@ -56,7 +58,7 @@ jobs:
 
             # Set up .deb package structure (Debian/Ubuntu only)
             - name: Set up .deb package structure
-              if: matrix.os == 'linux'
+              if: matrix.os == 'linux ------------------------------------------------------------------- TEST'
               run: |
                   mkdir -p infisical-core/DEBIAN
                   mkdir -p infisical-core/usr/local/bin
@@ -64,7 +66,7 @@ jobs:
                   chmod +x infisical-core/usr/local/bin/infisical-core
 
             - name: Create control file
-              if: matrix.os == 'linux'
+              if: matrix.os == 'linux ----------------------------------------- TEST'
               run: |
                   cat <<EOF > infisical-core/DEBIAN/control
                   Package: infisical-core
@@ -78,7 +80,7 @@ jobs:
 
             # Build .deb file (Debian/Ubunutu only)
             - name: Build .deb package
-              if: matrix.os == 'linux'
+              if: matrix.os == 'linux ------------------------------------------- TEST'
               run: |
                   dpkg-deb --build infisical-core
                   mv infisical-core.deb ./binary/infisical-core-${{matrix.arch}}.deb
@@ -93,12 +95,17 @@ jobs:
 
             # Publish .deb file to Cloudsmith (Debian/Ubuntu only)
             - name: Publish to Cloudsmith (Debian/Ubuntu)
-              if: matrix.os == 'linux'
+              if: matrix.os == 'linux ------------------------------------------- TEST'
               working-directory: ./backend
               run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
 
+            - name: Publish to Cloudsmith (Debian/Ubuntu [] RAW)
+              if: matrix.os == 'linux'
+              working-directory: ./backend
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+
             # Publish .exe file to Cloudsmith (Windows only)
-            - name: Publish to Cloudsmith (Windows)
+            - name: Publish to Cloudsmith (Windows [] RAW)
               if: matrix.os == 'win'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 1.0.1 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
