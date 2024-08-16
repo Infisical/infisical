@@ -76,7 +76,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                             }
                             icon={<FontAwesomeIcon icon={faGear} />}
                           >
-                            Manage
+                            Manage Policies
                           </DropdownMenuItem>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}

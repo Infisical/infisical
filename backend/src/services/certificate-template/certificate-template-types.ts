@@ -2,6 +2,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateCertTemplateDTO = {
   caId: string;
+  pkiCollectionId?: string;
   name: string;
   commonName: string;
   subjectAlternativeName: string;
@@ -11,6 +12,7 @@ export type TCreateCertTemplateDTO = {
 export type TUpdateCertTemplateDTO = {
   id: string;
   caId?: string;
+  pkiCollectionId?: string;
   name?: string;
   commonName?: string;
   subjectAlternativeName?: string;

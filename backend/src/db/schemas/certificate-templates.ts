@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const CertificateTemplatesSchema = z.object({
   id: z.string().uuid(),
   caId: z.string().uuid(),
+  pkiCollectionId: z.string().uuid().nullable().optional(),
   name: z.string(),
   commonName: z.string(),
   subjectAlternativeName: z.string(),

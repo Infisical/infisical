@@ -1033,6 +1033,7 @@ export const certificateAuthorityServiceFactory = ({
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorities | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
+    let collectionId = pkiCollectionId;
 
     if (caId) {
       ca = await certificateAuthorityDAL.findById(caId);
@@ -1044,6 +1045,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      collectionId = certificateTemplate.pkiCollectionId as string;
       ca = await certificateAuthorityDAL.findById(certificateTemplate.caId);
     }
 
@@ -1070,8 +1072,8 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     // check PKI collection
-    if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
+    if (collectionId) {
+      const pkiCollection = await pkiCollectionDAL.findById(collectionId);
       if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
@@ -1237,10 +1239,10 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (pkiCollectionId) {
+      if (collectionId) {
         await pkiCollectionItemDAL.create(
           {
-            pkiCollectionId,
+            pkiCollectionId: collectionId,
             certId: cert.id
           },
           tx
@@ -1290,6 +1292,7 @@ export const certificateAuthorityServiceFactory = ({
   }: TSignCertFromCaDTO) => {
     let ca: TCertificateAuthorities | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
+    let collectionId = pkiCollectionId;
 
     if (caId) {
       ca = await certificateAuthorityDAL.findById(caId);
@@ -1301,6 +1304,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      collectionId = certificateTemplate.pkiCollectionId as string;
       ca = await certificateAuthorityDAL.findById(certificateTemplate.caId);
     }
 
@@ -1490,10 +1494,10 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (pkiCollectionId) {
+      if (collectionId) {
         await pkiCollectionItemDAL.create(
           {
-            pkiCollectionId,
+            pkiCollectionId: collectionId,
             certId: cert.id
           },
           tx

@@ -19,6 +19,7 @@ import {
   useCreateCertTemplate,
   useGetCertTemplate,
   useListWorkspaceCas,
+  useListWorkspacePkiCollections,
   useUpdateCertTemplate
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
@@ -36,6 +37,7 @@ const validateTemplateRegexField = z
 
 const schema = z.object({
   caId: z.string(),
+  collectionId: z.string().optional(),
   name: z.string().min(1),
   commonName: validateTemplateRegexField,
   subjectAlternativeName: validateTemplateRegexField,
@@ -63,6 +65,10 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
     status: CaStatus.ACTIVE
   });
 
+  const { data: collectionsData } = useListWorkspacePkiCollections({
+    workspaceId: currentWorkspace?.id || ""
+  });
+
   const { mutateAsync: createCertTemplate } = useCreateCertTemplate();
   const { mutateAsync: updateCertTemplate } = useUpdateCertTemplate();
 
@@ -82,6 +88,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
         name: certTemplate.name,
         commonName: certTemplate.commonName,
         subjectAlternativeName: certTemplate.subjectAlternativeName,
+        collectionId: certTemplate.pkiCollectionId ?? undefined,
         ttl: certTemplate.ttl
       });
     } else {
@@ -96,6 +103,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
 
   const onFormSubmit = async ({
     caId,
+    collectionId,
     name,
     commonName,
     subjectAlternativeName,
@@ -110,6 +118,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
         await updateCertTemplate({
           id: certTemplate.id,
           projectId: currentWorkspace.id,
+          pkiCollectionId: collectionId,
           caId,
           name,
           commonName,
@@ -124,6 +133,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
       } else {
         await createCertTemplate({
           projectId: currentWorkspace.id,
+          pkiCollectionId: collectionId,
           caId,
           name,
           commonName,
@@ -194,6 +204,31 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
                   {(cas || []).map(({ id, type, dn }) => (
                     <SelectItem value={id} key={`ca-${id}`}>
                       {`${caTypeToNameMap[type]}: ${dn}`}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="collectionId"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl
+                label="Certificate Collection (Optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+                className="mt-4"
+              >
+                <Select
+                  defaultValue={field.value}
+                  {...field}
+                  onValueChange={(e) => onChange(e)}
+                  className="w-full"
+                >
+                  {(collectionsData?.collections || []).map(({ id, name }) => (
+                    <SelectItem value={id} key={`pki-collection-${id}`}>
+                      {name}
                     </SelectItem>
                   ))}
                 </Select>

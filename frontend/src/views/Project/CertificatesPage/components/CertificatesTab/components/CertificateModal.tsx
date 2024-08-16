@@ -216,60 +216,61 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
               )}
             />
             {(!selectedCertTemplateId || selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE) && (
-              <Controller
-                control={control}
-                name="caId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Issuing CA"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    className="mt-4"
-                    isRequired
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                      isDisabled={Boolean(cert)}
+                <Controller
+                  control={control}
+                  name="caId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Issuing CA"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="mt-4"
+                      isRequired
                     >
-                      {(cas || []).map(({ id, type, dn }) => (
-                        <SelectItem value={id} key={`ca-${id}`}>
-                          {`${caTypeToNameMap[type]}: ${dn}`}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            )}
-            <Controller
-              control={control}
-              name="collectionId"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Certificate Collection (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  className="mt-4"
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                    isDisabled={Boolean(cert)}
-                  >
-                    {(data?.collections || []).map(({ id, name }) => (
-                      <SelectItem value={id} key={`pki-collection-${id}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                        isDisabled={Boolean(cert)}
+                      >
+                        {(cas || []).map(({ id, type, dn }) => (
+                          <SelectItem value={id} key={`ca-${id}`}>
+                            {`${caTypeToNameMap[type]}: ${dn}`}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              ) && (
+                <Controller
+                  control={control}
+                  name="collectionId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Certificate Collection (Optional)"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="mt-4"
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                        isDisabled={Boolean(cert)}
+                      >
+                        {(data?.collections || []).map(({ id, name }) => (
+                          <SelectItem value={id} key={`pki-collection-${id}`}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
               )}
-            />
             <Controller
               control={control}
               defaultValue=""

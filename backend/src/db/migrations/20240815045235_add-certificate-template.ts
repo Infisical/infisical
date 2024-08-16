@@ -10,6 +10,8 @@ export async function up(knex: Knex): Promise<void> {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.uuid("caId").notNullable();
       tb.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
+      tb.uuid("pkiCollectionId");
+      tb.foreign("pkiCollectionId").references("id").inTable(TableName.PkiCollection).onDelete("SET NULL");
       tb.string("name").notNullable();
       tb.string("commonName").notNullable();
       tb.string("subjectAlternativeName").notNullable();

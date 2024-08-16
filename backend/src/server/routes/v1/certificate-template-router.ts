@@ -13,6 +13,7 @@ const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
   name: true,
   commonName: true,
   subjectAlternativeName: true,
+  pkiCollectionId: true,
   ttl: true
 });
 
@@ -61,6 +62,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     schema: {
       body: z.object({
         caId: z.string(),
+        pkiCollectionId: z.string().optional(),
         name: z.string().min(1),
         commonName: validateTemplateRegexField,
         subjectAlternativeName: validateTemplateRegexField,
@@ -95,6 +97,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     schema: {
       body: z.object({
         caId: z.string().optional(),
+        pkiCollectionId: z.string().optional(),
         name: z.string().min(1).optional(),
         commonName: validateTemplateRegexField.optional(),
         subjectAlternativeName: validateTemplateRegexField.optional(),

@@ -28,6 +28,7 @@ export const certificateTemplateServiceFactory = ({
 }: TCertificateTemplateServiceFactoryDep) => {
   const createCertTemplate = async ({
     caId,
+    pkiCollectionId,
     name,
     commonName,
     subjectAlternativeName,
@@ -58,6 +59,7 @@ export const certificateTemplateServiceFactory = ({
 
     const certificateTemplate = await certificateTemplateDAL.create({
       caId,
+      pkiCollectionId,
       name,
       commonName,
       subjectAlternativeName,
@@ -70,6 +72,7 @@ export const certificateTemplateServiceFactory = ({
   const updateCertTemplate = async ({
     id,
     caId,
+    pkiCollectionId,
     name,
     commonName,
     subjectAlternativeName,
@@ -110,6 +113,7 @@ export const certificateTemplateServiceFactory = ({
 
     const updatedCertTemplate = await certificateTemplateDAL.updateById(certTemplate.id, {
       caId,
+      pkiCollectionId,
       commonName,
       subjectAlternativeName,
       name,

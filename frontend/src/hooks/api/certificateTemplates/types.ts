@@ -8,6 +8,7 @@ export type TCertificateTemplateListEntry = {
 export type TCertificateTemplate = {
   id: string;
   caId: string;
+  pkiCollectionId?: string;
   name: string;
   commonName: string;
   subjectAlternativeName: string;
@@ -16,6 +17,7 @@ export type TCertificateTemplate = {
 
 export type TCreateCertificateTemplateDTO = {
   caId: string;
+  pkiCollectionId?: string;
   name: string;
   commonName: string;
   subjectAlternativeName: string;
@@ -26,6 +28,7 @@ export type TCreateCertificateTemplateDTO = {
 export type TUpdateCertificateTemplateDTO = {
   id: string;
   caId?: string;
+  pkiCollectionId?: string;
   name?: string;
   commonName?: string;
   subjectAlternativeName?: string;

@@ -77,6 +77,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .trim()
             .optional()
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificateTemplateId),
+          pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
           friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
           commonName: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
           altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.altNames),
@@ -166,6 +167,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .trim()
             .optional()
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificateTemplateId),
+          pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
           csr: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.csr),
           friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.friendlyName),
           commonName: z.string().trim().min(1).optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.commonName),
