@@ -626,6 +626,8 @@ export const registerRoutes = async (
     certificateAuthorityQueue,
     certificateDAL,
     certificateBodyDAL,
+    pkiCollectionDAL,
+    pkiCollectionItemDAL,
     projectDAL,
     kmsService,
     permissionService

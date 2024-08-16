@@ -1089,6 +1089,7 @@ export const CERTIFICATE_AUTHORITIES = {
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from",
     certificateTemplateId: "The ID of the certificate template to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
     altNames:
@@ -1104,6 +1105,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   SIGN_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
@@ -1171,14 +1173,16 @@ export const ALERTS = {
 export const PKI_COLLECTIONS = {
   CREATE: {
     projectId: "The ID of the project to create the PKI collection in",
-    name: "The name of the PKI collection"
+    name: "The name of the PKI collection",
+    description: "A description for the PKI collection"
   },
   GET: {
     collectionId: "The ID of the PKI collection to get"
   },
   UPDATE: {
     collectionId: "The ID of the PKI collection to update",
-    name: "The name of the PKI collection to update to"
+    name: "The name of the PKI collection to update to",
+    description: "The description for the PKI collection to update to"
   },
   DELETE: {
     collectionId: "The ID of the PKI collection to delete"

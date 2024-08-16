@@ -88,6 +88,7 @@ export type TImportCertToCaDTO = {
 export type TIssueCertFromCaDTO = {
   caId?: string;
   certificateTemplateId?: string;
+  pkiCollectionId?: string;
   friendlyName?: string;
   commonName: string;
   altNames: string;
@@ -100,6 +101,7 @@ export type TSignCertFromCaDTO = {
   caId?: string;
   csr: string;
   certificateTemplateId?: string;
+  pkiCollectionId?: string;
   friendlyName?: string;
   commonName?: string;
   altNames: string;
@@ -134,9 +136,9 @@ export type TGetCaCertChainsDTO = {
 };
 
 export type TGetCaCertChainDTO = {
-  caId: string;
+  caCertId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findOne">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };

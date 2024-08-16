@@ -283,7 +283,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Renew CA certificate for CA",
+      description: "Perform CA certificate renewal",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.caId)
       }),
@@ -556,6 +556,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }),
       body: z
         .object({
+          pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.pkiCollectionId),
           friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
           commonName: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
           altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.altNames),
@@ -635,6 +636,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           csr: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.csr),
+          pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
           friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.friendlyName),
           commonName: z.string().trim().min(1).optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.commonName),
           altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.altNames),

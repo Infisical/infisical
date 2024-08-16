@@ -20,7 +20,8 @@ import {
   useGetCert,
   useGetCertTemplate,
   useListWorkspaceCas,
-  useListWorkspaceCertificateTemplates
+  useListWorkspaceCertificateTemplates,
+  useListWorkspacePkiCollections
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -30,6 +31,7 @@ import { CertificateContent } from "./CertificateContent";
 const schema = z.object({
   certificateTemplateId: z.string().optional(),
   caId: z.string(),
+  collectionId: z.string().optional(),
   friendlyName: z.string(),
   commonName: z.string().trim().min(1),
   altNames: z.string(),
@@ -62,6 +64,10 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: cas } = useListWorkspaceCas({
     projectSlug: currentWorkspace?.slug ?? "",
     status: CaStatus.ACTIVE
+  });
+
+  const { data } = useListWorkspacePkiCollections({
+    workspaceId: currentWorkspace?.id || ""
   });
 
   const { data: templatesData } = useListWorkspaceCertificateTemplates({
@@ -116,7 +122,14 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   }, [selectedCertTemplate, cert]);
 
-  const onFormSubmit = async ({ caId, friendlyName, commonName, altNames, ttl }: FormData) => {
+  const onFormSubmit = async ({
+    caId,
+    friendlyName,
+    collectionId,
+    commonName,
+    altNames,
+    ttl
+  }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
 
@@ -124,6 +137,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         caId: !selectedCertTemplate ? caId : undefined,
         certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
         projectSlug: currentWorkspace.slug,
+        pkiCollectionId: collectionId,
         friendlyName,
         commonName,
         altNames,
@@ -230,6 +244,32 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 )}
               />
             )}
+            <Controller
+              control={control}
+              name="collectionId"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Certificate Collection (Optional)"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  className="mt-4"
+                >
+                  <Select
+                    defaultValue={field.value}
+                    {...field}
+                    onValueChange={(e) => onChange(e)}
+                    className="w-full"
+                    isDisabled={Boolean(cert)}
+                  >
+                    {(data?.collections || []).map(({ id, name }) => (
+                      <SelectItem value={id} key={`pki-collection-${id}`}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
             <Controller
               control={control}
               defaultValue=""
