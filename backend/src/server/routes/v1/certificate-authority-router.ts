@@ -8,7 +8,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-types";
+import { CaRenewalType, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-types";
 import {
   validateAltNamesField,
   validateCaDateField
@@ -276,14 +276,117 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:caId/renew",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Perform CA certificate renewal",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.caId)
+      }),
+      body: z.object({
+        type: z.nativeEnum(CaRenewalType).describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.type),
+        notAfter: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.notAfter)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.certificate),
+          certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.certificateChain),
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.serialNumber)
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificate, certificateChain, serialNumber, ca } =
+        await server.services.certificateAuthority.renewCaCert({
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.RENEW_CA,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
-    url: "/:caId/certificate",
+    url: "/:caId/ca-certificates",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      description: "Get cert and cert chain of a CA",
+      description: "Get list of past and current CA certificates for a CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
+      }),
+      response: {
+        200: z.array(
+          z.object({
+            certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.certificate),
+            certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.certificateChain),
+            serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.serialNumber),
+            version: z.number().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.version)
+          })
+        )
+      }
+    },
+    handler: async (req) => {
+      const { caCerts, ca } = await server.services.certificateAuthority.getCaCerts({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CERTS,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return caCerts;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/certificate", // TODO: consider updating endpoint structure considering CA certificates
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get current CA cert and cert chain of a CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),

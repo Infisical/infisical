@@ -1,5 +1,5 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { CaStatus, CaType } from "./enums";
+import { CaRenewalType, CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
   id: string;
@@ -19,6 +19,7 @@ export type TCertificateAuthority = {
   notAfter?: string;
   notBefore?: string;
   keyAlgorithm: CertKeyAlgorithm;
+  activeCaCertId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -92,5 +93,18 @@ export type TCreateCertificateResponse = {
   issuingCertificate: string;
   certificateChain: string;
   privateKey: string;
+  serialNumber: string;
+};
+
+export type TRenewCaDTO = {
+  projectSlug: string;
+  caId: string;
+  type: CaRenewalType;
+  notAfter: string;
+};
+
+export type TRenewCaResponse = {
+  certificate: string;
+  certificateChain: string;
   serialNumber: string;
 };

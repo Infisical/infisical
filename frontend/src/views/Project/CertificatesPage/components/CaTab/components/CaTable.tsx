@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import {
   faBan,
   faCertificate,
@@ -12,6 +13,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,9 +33,14 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
-  useWorkspace} from "@app/context";
+  useWorkspace
+} from "@app/context";
 import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
-import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
+import {
+  caStatusToNameMap,
+  caTypeToNameMap,
+  getStatusBadgeVariant
+} from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -51,11 +58,13 @@ type Props = {
 };
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
+  const router = useRouter();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useListWorkspaceCas({
     projectSlug: currentWorkspace?.slug ?? ""
   });
+
   return (
     <div>
       <TableContainer>
@@ -76,11 +85,26 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
               data.length > 0 &&
               data.map((ca) => {
                 return (
-                  <Tr className="h-10" key={`ca-${ca.id}`}>
+                  <Tr
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    key={`ca-${ca.id}`}
+                    onClick={() => router.push(`/project/${currentWorkspace?.id}/ca/${ca.id}`)}
+                  >
                     <Td>{ca.friendlyName}</Td>
-                    <Td>{caStatusToNameMap[ca.status]}</Td>
+                    <Td>
+                      <Badge variant={getStatusBadgeVariant(ca.status)}>
+                        {caStatusToNameMap[ca.status]}
+                      </Badge>
+                    </Td>
                     <Td>{caTypeToNameMap[ca.type]}</Td>
-                    <Td>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</Td>
+                    <Td>
+                      <div className="flex items-center ">
+                        <p>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</p>
+                        {/* <Badge variant="danger" className="ml-4">
+                          Expires Soon
+                        </Badge> */}
+                      </div>
+                    </Td>
                     <Td className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
@@ -102,7 +126,8 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("installCaCert", {
                                       caId: ca.id
                                     });
@@ -110,7 +135,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   disabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faCertificate} />}
                                 >
-                                  Install Certificate
+                                  Install CA Certificate
                                 </DropdownMenuItem>
                               )}
                             </ProjectPermissionCan>
@@ -126,7 +151,8 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("caCert", {
                                       caId: ca.id
                                     });
@@ -150,7 +176,8 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (!subscription?.caCrl) {
                                       handlePopUpOpen("upgradePlan", {
                                         description:
@@ -179,11 +206,12 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
-                                onClick={async () =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handlePopUpOpen("ca", {
                                     caId: ca.id
-                                  })
-                                }
+                                  });
+                                }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faEye} />}
                               >
@@ -202,15 +230,16 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () =>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
                                       caId: ca.id,
                                       status:
                                         ca.status === CaStatus.ACTIVE
                                           ? CaStatus.DISABLED
                                           : CaStatus.ACTIVE
-                                    })
-                                  }
+                                    });
+                                  }}
                                   disabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faBan} />}
                                 >
@@ -228,12 +257,13 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
-                                onClick={async () =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handlePopUpOpen("deleteCa", {
                                     caId: ca.id,
                                     dn: ca.dn
-                                  })
-                                }
+                                  });
+                                }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}
                               >
