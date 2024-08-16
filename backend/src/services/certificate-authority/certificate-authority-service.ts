@@ -1220,6 +1220,7 @@ export const certificateAuthorityServiceFactory = ({
         {
           caId: ca.id,
           caCertId: caCert.id,
+          certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || commonName,
           commonName,
@@ -1475,6 +1476,7 @@ export const certificateAuthorityServiceFactory = ({
         {
           caId: ca.id,
           caCertId: caCert.id,
+          certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,

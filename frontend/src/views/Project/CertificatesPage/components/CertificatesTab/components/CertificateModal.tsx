@@ -102,6 +102,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         friendlyName: cert.friendlyName,
         commonName: cert.commonName,
         altNames: cert.altNames,
+        certificateTemplateId: cert.certificateTemplateId ?? CERT_TEMPLATE_NONE_VALUE,
         ttl: ""
       });
     } else {
@@ -215,7 +216,10 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            {(!selectedCertTemplateId || selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE) && (
+            {(!selectedCertTemplateId ||
+              selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE ||
+              cert) && (
+              <>
                 <Controller
                   control={control}
                   name="caId"
@@ -243,7 +247,6 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </FormControl>
                   )}
                 />
-              ) && (
                 <Controller
                   control={control}
                   name="collectionId"
@@ -270,7 +273,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </FormControl>
                   )}
                 />
-              )}
+              </>
+            )}
             <Controller
               control={control}
               defaultValue=""

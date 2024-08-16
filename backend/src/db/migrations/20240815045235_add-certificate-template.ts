@@ -21,6 +21,18 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.CertificateTemplate);
   }
+
+  const doesCertificateTableHaveTemplateId = await knex.schema.hasColumn(
+    TableName.Certificate,
+    "certificateTemplateId"
+  );
+
+  if (!doesCertificateTableHaveTemplateId) {
+    await knex.schema.alterTable(TableName.Certificate, (tb) => {
+      tb.uuid("certificateTemplateId");
+      tb.foreign("certificateTemplateId").references("id").inTable(TableName.CertificateTemplate).onDelete("SET NULL");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -28,5 +40,16 @@ export async function down(knex: Knex): Promise<void> {
   if (hasCertificateTemplateTable) {
     await knex.schema.dropTable(TableName.CertificateTemplate);
     await dropOnUpdateTrigger(knex, TableName.CertificateTemplate);
+  }
+
+  const doesCertificateTableHaveTemplateId = await knex.schema.hasColumn(
+    TableName.Certificate,
+    "certificateTemplateId"
+  );
+
+  if (doesCertificateTableHaveTemplateId) {
+    await knex.schema.alterTable(TableName.Certificate, (t) => {
+      t.dropColumn("certificateTemplateId");
+    });
   }
 }
