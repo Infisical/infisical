@@ -1218,7 +1218,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
-          caId: ca.id,
+          caId: (ca as TCertificateAuthorities).id,
           caCertId: caCert.id,
           certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,
@@ -1474,7 +1474,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
-          caId: ca.id,
+          caId: (ca as TCertificateAuthorities).id,
           caCertId: caCert.id,
           certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,

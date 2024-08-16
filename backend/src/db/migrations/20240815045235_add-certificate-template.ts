@@ -36,12 +36,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasCertificateTemplateTable = await knex.schema.hasTable(TableName.CertificateTemplate);
-  if (hasCertificateTemplateTable) {
-    await knex.schema.dropTable(TableName.CertificateTemplate);
-    await dropOnUpdateTrigger(knex, TableName.CertificateTemplate);
-  }
-
   const doesCertificateTableHaveTemplateId = await knex.schema.hasColumn(
     TableName.Certificate,
     "certificateTemplateId"
@@ -51,5 +45,11 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.Certificate, (t) => {
       t.dropColumn("certificateTemplateId");
     });
+  }
+
+  const hasCertificateTemplateTable = await knex.schema.hasTable(TableName.CertificateTemplate);
+  if (hasCertificateTemplateTable) {
+    await knex.schema.dropTable(TableName.CertificateTemplate);
+    await dropOnUpdateTrigger(knex, TableName.CertificateTemplate);
   }
 }
