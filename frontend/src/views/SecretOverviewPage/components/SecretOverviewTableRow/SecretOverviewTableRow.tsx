@@ -15,7 +15,7 @@ import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/componen
 import { useToggle } from "@app/hooks";
 import { SecretBulkUpdate, SecretType,SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
-
+import React from "react"
 import { SecretEditRow } from "./SecretEditRow";
 import SecretRenameRow from "./SecretRenameRow";
 
@@ -41,7 +41,7 @@ type Props = {
     env: string,
     secretName: string
   ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
-  setBulkSecretUpdateContent: (content: SecretBulkUpdate) => void;
+  setBulkSecretUpdateContent: React.Dispatch<React.SetStateAction<SecretBulkUpdate[]>>;
 };
 
 export const SecretOverviewTableRow = ({

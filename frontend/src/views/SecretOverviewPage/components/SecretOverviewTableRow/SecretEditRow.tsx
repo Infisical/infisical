@@ -1,4 +1,4 @@
-import { useCallback,useState } from "react";
+import { useCallback,useState,React } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -32,7 +32,7 @@ type Props = {
     secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
-  setBulkSecretUpdateContent: (content: SecretBulkUpdate) => void;
+  setBulkSecretUpdateContent: React.Dispatch<React.SetStateAction<SecretBulkUpdate[]>>;
 };
 
 export const SecretEditRow = ({
@@ -69,7 +69,7 @@ export const SecretEditRow = ({
   }, [])
 
   const handleFormReset = () => {
-    setBulkSecretUpdateContent((prevContent) => {
+    setBulkSecretUpdateContent((prevContent: SecretBulkUpdate[]) => {
       let data = [...prevContent];
 
       const secretObjectIndex = data.findIndex(secretObject => 
@@ -116,7 +116,7 @@ export const SecretEditRow = ({
 
   const handleSecretInputChange = (value: string) => {
     if ((value || value === "") && secretName) {
-      setBulkSecretUpdateContent((prevContent) => {
+      setBulkSecretUpdateContent((prevContent: SecretBulkUpdate[]) => {
         let data = [...prevContent];
         const secretObjectIndex = data.findIndex(secretObject => 
           (secretId && secretObject.secretId === secretId && secretObject.env === environment) ||
@@ -149,7 +149,7 @@ export const SecretEditRow = ({
     try {
       await onSecretDelete(environment, secretName, secretId);
        // updating bulksecretupdatecontent array to prevent it from being updated when secret that was changed is deleted
-      setBulkSecretUpdateContent((prevContent) => {
+      setBulkSecretUpdateContent((prevContent: SecretBulkUpdate[]) => {
         let data = [...prevContent];
 
         const secretObjectIndex = data.findIndex(secretObject => 
