@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { CertificateTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -27,7 +28,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       params: z.object({
-        certificateTemplateId: z.string()
+        certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
       }),
       response: {
         200: z.object({
@@ -73,12 +74,17 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       body: z.object({
-        caId: z.string(),
-        pkiCollectionId: z.string().optional(),
-        name: z.string().min(1),
-        commonName: validateTemplateRegexField,
-        subjectAlternativeName: validateTemplateRegexField,
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
+        caId: z.string().describe(CERTIFICATE_TEMPLATES.CREATE.caId),
+        pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.CREATE.pkiCollectionId),
+        name: z.string().min(1).describe(CERTIFICATE_TEMPLATES.CREATE.name),
+        commonName: validateTemplateRegexField.describe(CERTIFICATE_TEMPLATES.CREATE.commonName),
+        subjectAlternativeName: validateTemplateRegexField.describe(
+          CERTIFICATE_TEMPLATES.CREATE.subjectAlternativeName
+        ),
+        ttl: z
+          .string()
+          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .describe(CERTIFICATE_TEMPLATES.CREATE.ttl)
       }),
       response: {
         200: z.object({
@@ -119,18 +125,21 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       body: z.object({
-        caId: z.string().optional(),
-        pkiCollectionId: z.string().optional(),
-        name: z.string().min(1).optional(),
-        commonName: validateTemplateRegexField.optional(),
-        subjectAlternativeName: validateTemplateRegexField.optional(),
+        caId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.caId),
+        pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.pkiCollectionId),
+        name: z.string().min(1).optional().describe(CERTIFICATE_TEMPLATES.UPDATE.name),
+        commonName: validateTemplateRegexField.optional().describe(CERTIFICATE_TEMPLATES.UPDATE.commonName),
+        subjectAlternativeName: validateTemplateRegexField
+          .optional()
+          .describe(CERTIFICATE_TEMPLATES.UPDATE.subjectAlternativeName),
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
+          .describe(CERTIFICATE_TEMPLATES.UPDATE.ttl)
       }),
       params: z.object({
-        certificateTemplateId: z.string()
+        certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.UPDATE.certificateTemplateId)
       }),
       response: {
         200: z.object({
@@ -172,7 +181,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       params: z.object({
-        certificateTemplateId: z.string()
+        certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
       }),
       response: {
         200: z.object({

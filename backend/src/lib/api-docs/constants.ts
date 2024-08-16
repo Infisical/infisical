@@ -1147,6 +1147,32 @@ export const CERTIFICATES = {
   }
 };
 
+export const CERTIFICATE_TEMPLATES = {
+  CREATE: {
+    caId: "The ID of the certificate authority to associate the template with",
+    pkiCollectionId: "The ID of the PKI collection to bind to the template",
+    name: "The name of the template",
+    commonName: "The regular expression string to use for validating common names",
+    subjectAlternativeName: "The regular expression string to use for validating subject alternative names",
+    ttl: "The max TTL for the template"
+  },
+  GET: {
+    certificateTemplateId: "The ID of the certificate template to get"
+  },
+  UPDATE: {
+    certificateTemplateId: "The ID of the certificate template to update",
+    caId: "The ID of the certificate authority to update the association with the template",
+    pkiCollectionId: "The ID of the PKI collection to update the binding to the template",
+    name: "The updated name of the template",
+    commonName: "The updated regular expression string for validating common names",
+    subjectAlternativeName: "The updated regular expression string for validating subject alternative names",
+    ttl: "The updated max TTL for the template"
+  },
+  DELETE: {
+    certificateTemplateId: "The ID of the certificate template to delete"
+  }
+};
+
 export const ALERTS = {
   CREATE: {
     projectId: "The ID of the project to create the alert in",
