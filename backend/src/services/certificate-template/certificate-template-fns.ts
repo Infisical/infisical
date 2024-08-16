@@ -1,5 +1,6 @@
 import ms from "ms";
 
+import { TCertificateTemplates } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 export const validateCertificateDetailsAgainstTemplate = (
@@ -7,11 +8,9 @@ export const validateCertificateDetailsAgainstTemplate = (
     commonName: string;
     notBeforeDate: Date;
     notAfterDate: Date;
+    altNames: string[];
   },
-  template: {
-    commonName: string;
-    ttl: string;
-  }
+  template: TCertificateTemplates
 ) => {
   const commonNameRegex = new RegExp(template.commonName);
   if (!commonNameRegex.test(cert.commonName)) {
@@ -25,4 +24,13 @@ export const validateCertificateDetailsAgainstTemplate = (
       message: "Invalid validity date based on template policy"
     });
   }
+
+  const subjectAlternativeNameRegex = new RegExp(template.subjectAlternativeName);
+  cert.altNames.forEach((altName) => {
+    if (!subjectAlternativeNameRegex.test(altName)) {
+      throw new BadRequestError({
+        message: "Invalid subject alternative name based on template policy"
+      });
+    }
+  });
 };

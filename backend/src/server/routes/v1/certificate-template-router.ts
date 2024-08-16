@@ -12,6 +12,7 @@ const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
   caId: true,
   name: true,
   commonName: true,
+  subjectAlternativeName: true,
   ttl: true
 });
 
@@ -62,6 +63,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         caId: z.string(),
         name: z.string().min(1),
         commonName: validateTemplateRegexField,
+        subjectAlternativeName: validateTemplateRegexField,
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
       }),
       response: {
@@ -95,6 +97,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         caId: z.string().optional(),
         name: z.string().min(1).optional(),
         commonName: validateTemplateRegexField.optional(),
+        subjectAlternativeName: validateTemplateRegexField.optional(),
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")

@@ -4,6 +4,7 @@ export type TCreateCertTemplateDTO = {
   caId: string;
   name: string;
   commonName: string;
+  subjectAlternativeName: string;
   ttl: string;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -12,6 +13,7 @@ export type TUpdateCertTemplateDTO = {
   caId?: string;
   name?: string;
   commonName?: string;
+  subjectAlternativeName?: string;
   ttl?: string;
 } & Omit<TProjectPermission, "projectId">;
 

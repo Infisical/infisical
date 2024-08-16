@@ -10,6 +10,7 @@ export type TCertificateTemplate = {
   caId: string;
   name: string;
   commonName: string;
+  subjectAlternativeName: string;
   ttl: string;
 };
 
@@ -17,6 +18,7 @@ export type TCreateCertificateTemplateDTO = {
   caId: string;
   name: string;
   commonName: string;
+  subjectAlternativeName: string;
   ttl: string;
   projectId: string;
 };
@@ -26,6 +28,7 @@ export type TUpdateCertificateTemplateDTO = {
   caId?: string;
   name?: string;
   commonName?: string;
+  subjectAlternativeName?: string;
   ttl?: string;
   projectId: string;
 };

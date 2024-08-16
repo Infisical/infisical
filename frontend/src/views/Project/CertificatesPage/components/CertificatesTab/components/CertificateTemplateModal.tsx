@@ -24,18 +24,21 @@ import {
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+const validateTemplateRegexField = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^[a-zA-Z0-9 *@\-\\.\\]+$/, {
+    message:
+      "Invalid pattern: only alphanumeric characters, spaces, *, ., @, -, and \\ are allowed."
+  });
+
 const schema = z.object({
   caId: z.string(),
   name: z.string().min(1),
-  commonName: z
-    .string()
-    .trim()
-    .min(1)
-    .max(100)
-    .regex(/^[a-zA-Z0-9 *@\-\\.\\]+$/, {
-      message:
-        "Invalid pattern: only alphanumeric characters, spaces, *, ., @, -, and \\ are allowed."
-    }),
+  commonName: validateTemplateRegexField,
+  subjectAlternativeName: validateTemplateRegexField,
   ttl: z.string().trim().min(1)
 });
 
@@ -78,6 +81,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
         caId: certTemplate.caId,
         name: certTemplate.name,
         commonName: certTemplate.commonName,
+        subjectAlternativeName: certTemplate.subjectAlternativeName,
         ttl: certTemplate.ttl
       });
     } else {
@@ -90,7 +94,13 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
     }
   }, [certTemplate]);
 
-  const onFormSubmit = async ({ caId, name, commonName, ttl }: FormData) => {
+  const onFormSubmit = async ({
+    caId,
+    name,
+    commonName,
+    subjectAlternativeName,
+    ttl
+  }: FormData) => {
     if (!currentWorkspace?.id) {
       return;
     }
@@ -103,6 +113,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
           caId,
           name,
           commonName,
+          subjectAlternativeName,
           ttl
         });
 
@@ -116,6 +127,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
           caId,
           name,
           commonName,
+          subjectAlternativeName,
           ttl
         });
 
@@ -199,7 +211,22 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="service.acme.com" />
+                <Input {...field} placeholder=".*\.acme.com" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="subjectAlternativeName"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Alternative Names (SANs)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                isRequired
+              >
+                <Input {...field} placeholder="service\.acme.\..*" />
               </FormControl>
             )}
           />
@@ -208,7 +235,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
             name="ttl"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="TTL"
+                label="Max TTL"
                 isError={Boolean(error)}
                 errorText={error?.message}
                 isRequired

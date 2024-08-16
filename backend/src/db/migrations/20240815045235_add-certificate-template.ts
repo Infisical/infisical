@@ -12,6 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       tb.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
       tb.string("name").notNullable();
       tb.string("commonName").notNullable();
+      tb.string("subjectAlternativeName").notNullable();
       tb.string("ttl").notNullable();
       tb.timestamps(true, true, true);
     });

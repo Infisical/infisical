@@ -110,6 +110,12 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   }, [cert]);
 
+  useEffect(() => {
+    if (!cert && selectedCertTemplate) {
+      setValue("ttl", selectedCertTemplate.ttl);
+    }
+  }, [selectedCertTemplate, cert]);
+
   const onFormSubmit = async ({ caId, friendlyName, commonName, altNames, ttl }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;

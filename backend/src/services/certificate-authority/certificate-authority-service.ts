@@ -1096,17 +1096,6 @@ export const certificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    if (certificateTemplate) {
-      validateCertificateDetailsAgainstTemplate(
-        {
-          commonName,
-          notBeforeDate,
-          notAfterDate
-        },
-        certificateTemplate
-      );
-    }
-
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
     const leafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
@@ -1136,11 +1125,13 @@ export const certificateAuthorityServiceFactory = ({
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
 
+    let altNamesArray: {
+      type: "email" | "dns";
+      value: string;
+    }[] = [];
+
     if (altNames) {
-      const altNamesArray: {
-        type: "email" | "dns";
-        value: string;
-      }[] = altNames
+      altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
         .map((altName) => {
@@ -1166,6 +1157,18 @@ export const certificateAuthorityServiceFactory = ({
 
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
       extensions.push(altNamesExtension);
+    }
+
+    if (certificateTemplate) {
+      validateCertificateDetailsAgainstTemplate(
+        {
+          commonName,
+          notBeforeDate,
+          notAfterDate,
+          altNames: altNamesArray.map((entry) => entry.value)
+        },
+        certificateTemplate
+      );
     }
 
     const serialNumber = crypto.randomBytes(32).toString("hex");
@@ -1345,17 +1348,6 @@ export const certificateAuthorityServiceFactory = ({
         message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
       });
 
-    if (certificateTemplate) {
-      validateCertificateDetailsAgainstTemplate(
-        {
-          commonName: cn,
-          notBeforeDate,
-          notAfterDate
-        },
-        certificateTemplate
-      );
-    }
-
     const { caPrivateKey } = await getCaCredentials({
       caId: ca.id,
       certificateAuthorityDAL,
@@ -1371,11 +1363,12 @@ export const certificateAuthorityServiceFactory = ({
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
 
+    let altNamesArray: {
+      type: "email" | "dns";
+      value: string;
+    }[] = [];
     if (altNames) {
-      const altNamesArray: {
-        type: "email" | "dns";
-        value: string;
-      }[] = altNames
+      altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
         .map((altName) => {
@@ -1401,6 +1394,18 @@ export const certificateAuthorityServiceFactory = ({
 
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
       extensions.push(altNamesExtension);
+    }
+
+    if (certificateTemplate) {
+      validateCertificateDetailsAgainstTemplate(
+        {
+          commonName: cn,
+          notBeforeDate,
+          notAfterDate,
+          altNames: altNamesArray.map((entry) => entry.value)
+        },
+        certificateTemplate
+      );
     }
 
     const serialNumber = crypto.randomBytes(32).toString("hex");

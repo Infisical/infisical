@@ -12,6 +12,7 @@ export const CertificateTemplatesSchema = z.object({
   caId: z.string().uuid(),
   name: z.string(),
   commonName: z.string(),
+  subjectAlternativeName: z.string(),
   ttl: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

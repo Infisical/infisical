@@ -30,6 +30,7 @@ export const certificateTemplateServiceFactory = ({
     caId,
     name,
     commonName,
+    subjectAlternativeName,
     ttl,
     actorId,
     actorAuthMethod,
@@ -59,6 +60,7 @@ export const certificateTemplateServiceFactory = ({
       caId,
       name,
       commonName,
+      subjectAlternativeName,
       ttl
     });
 
@@ -70,6 +72,7 @@ export const certificateTemplateServiceFactory = ({
     caId,
     name,
     commonName,
+    subjectAlternativeName,
     ttl,
     actorId,
     actorAuthMethod,
@@ -108,6 +111,7 @@ export const certificateTemplateServiceFactory = ({
     const updatedCertTemplate = await certificateTemplateDAL.updateById(certTemplate.id, {
       caId,
       commonName,
+      subjectAlternativeName,
       name,
       ttl
     });
