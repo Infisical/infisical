@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -7,11 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
   Input,
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
@@ -241,7 +245,27 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
             name="commonName"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Common Name (CN)"
+                label={
+                  <div>
+                    <FormLabel
+                      isRequired
+                      label="Common Name (CN)"
+                      icon={
+                        <Tooltip
+                          className="text-center"
+                          content={
+                            <span>
+                              This field accepts limited regular expressions: spaces, *, ., @, -, \
+                              (for escaping), and alphanumeric characters only
+                            </span>
+                          }
+                        >
+                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                        </Tooltip>
+                      }
+                    />
+                  </div>
+                }
                 isError={Boolean(error)}
                 errorText={error?.message}
                 isRequired
@@ -256,7 +280,27 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
             name="subjectAlternativeName"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Alternative Names (SANs)"
+                label={
+                  <div>
+                    <FormLabel
+                      isRequired
+                      label="Alternative Names (SAN)"
+                      icon={
+                        <Tooltip
+                          className="text-center"
+                          content={
+                            <span>
+                              This field accepts limited regular expressions: spaces, *, ., @, -, \
+                              (for escaping), and alphanumeric characters only
+                            </span>
+                          }
+                        >
+                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                        </Tooltip>
+                      }
+                    />
+                  </div>
+                }
                 isError={Boolean(error)}
                 errorText={error?.message}
                 isRequired

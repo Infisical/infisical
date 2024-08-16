@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -7,11 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
   Input,
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
@@ -191,7 +195,27 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
-                  label="Certificate Template"
+                  label={
+                    <div>
+                      <FormLabel
+                        isRequired
+                        label="Certificate Template"
+                        icon={
+                          <Tooltip
+                            className="text-center"
+                            content={
+                              <span>
+                                When a template is selected, the details provided are validated
+                                against the template policies.
+                              </span>
+                            }
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                          </Tooltip>
+                        }
+                      />
+                    </div>
+                  }
                   errorText={error?.message}
                   isError={Boolean(error)}
                   className="mt-4"
