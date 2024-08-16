@@ -66,7 +66,7 @@ export const certificateTemplateServiceFactory = ({
       ttl
     });
 
-    return certificateTemplate;
+    return { ...certificateTemplate, projectId: ca.projectId };
   };
 
   const updateCertTemplate = async ({
@@ -120,7 +120,7 @@ export const certificateTemplateServiceFactory = ({
       ttl
     });
 
-    return updatedCertTemplate;
+    return { ...updatedCertTemplate, projectId: certTemplate.projectId };
   };
 
   const deleteCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertTemplateDTO) => {
@@ -146,7 +146,7 @@ export const certificateTemplateServiceFactory = ({
 
     const deletedCertTemplate = await certificateTemplateDAL.deleteById(certTemplate.id);
 
-    return deletedCertTemplate;
+    return { ...deletedCertTemplate, projectId: certTemplate.projectId };
   };
 
   const getCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertTemplateDTO) => {

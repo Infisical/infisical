@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { CertificateTemplatesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -49,6 +50,17 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateTemplate.projectId,
+        event: {
+          type: EventType.GET_CERTIFICATE_TEMPLATE,
+          metadata: {
+            certificateTemplateId: certificateTemplate.id
+          }
+        }
+      });
+
       return { certificateTemplate };
     }
   });
@@ -82,6 +94,17 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateTemplate.projectId,
+        event: {
+          type: EventType.CREATE_CERTIFICATE_TEMPLATE,
+          metadata: {
+            certificateTemplateId: certificateTemplate.id
+          }
+        }
       });
 
       return { certificateTemplate };
@@ -126,6 +149,17 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateTemplate.projectId,
+        event: {
+          type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
+          metadata: {
+            certificateTemplateId: certificateTemplate.id
+          }
+        }
+      });
+
       return { certificateTemplate };
     }
   });
@@ -154,6 +188,17 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: certificateTemplate.projectId,
+        event: {
+          type: EventType.DELETE_CERTIFICATE_TEMPLATE,
+          metadata: {
+            certificateTemplateId: certificateTemplate.id
+          }
+        }
       });
 
       return { certificateTemplate };

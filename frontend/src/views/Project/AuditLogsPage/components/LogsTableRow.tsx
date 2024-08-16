@@ -406,6 +406,15 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             <p>{`Cert CN: ${event.metadata.cn}`}</p>
           </Td>
         );
+      case EventType.CREATE_CERTIFICATE_TEMPLATE:
+      case EventType.UPDATE_CERTIFICATE_TEMPLATE:
+      case EventType.GET_CERTIFICATE_TEMPLATE:
+      case EventType.DELETE_CERTIFICATE_TEMPLATE:
+        return (
+          <Td>
+            <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
+          </Td>
+        );
       default:
         return <Td />;
     }
