@@ -5,9 +5,10 @@ import crypto, { KeyObject } from "crypto";
 import ms from "ms";
 import { z } from "zod";
 
+import { TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -16,6 +17,8 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
+import { validateCertificateDetailsAgainstTemplate } from "../certificate-template/certificate-template-fns";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -54,6 +57,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "create" | "findOne" | "transaction" | "find">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
+  certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -69,6 +73,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
+  certificateTemplateDAL,
   certificateDAL,
   certificateBodyDAL,
   projectDAL,
@@ -1001,6 +1006,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const issueCertFromCa = async ({
     caId,
+    certificateTemplateId,
     friendlyName,
     commonName,
     altNames,
@@ -1012,8 +1018,25 @@ export const certificateAuthorityServiceFactory = ({
     actor,
     actorOrgId
   }: TIssueCertFromCaDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+    let ca: TCertificateAuthorities | undefined;
+    let certificateTemplate: TCertificateTemplates | undefined;
+
+    if (caId) {
+      ca = await certificateAuthorityDAL.findById(caId);
+    } else if (certificateTemplateId) {
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
+      if (!certificateTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      ca = await certificateAuthorityDAL.findById(certificateTemplate.caId);
+    }
+
+    if (!ca) {
+      throw new BadRequestError({ message: "CA not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1071,6 +1094,17 @@ export const certificateAuthorityServiceFactory = ({
     // check not after constraint
     if (notAfterDate > caCertNotAfterDate) {
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
+    }
+
+    if (certificateTemplate) {
+      validateCertificateDetailsAgainstTemplate(
+        {
+          commonName,
+          notBeforeDate,
+          notAfterDate
+        },
+        certificateTemplate
+      );
     }
 
     const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
@@ -1207,6 +1241,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const signCertFromCa = async ({
     caId,
+    certificateTemplateId,
     csr,
     friendlyName,
     commonName,
@@ -1219,8 +1254,25 @@ export const certificateAuthorityServiceFactory = ({
     actor,
     actorOrgId
   }: TSignCertFromCaDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+    let ca: TCertificateAuthorities | undefined;
+    let certificateTemplate: TCertificateTemplates | undefined;
+
+    if (caId) {
+      ca = await certificateAuthorityDAL.findById(caId);
+    } else if (certificateTemplateId) {
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
+      if (!certificateTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      ca = await certificateAuthorityDAL.findById(certificateTemplate.caId);
+    }
+
+    if (!ca) {
+      throw new BadRequestError({ message: "CA not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1292,6 +1344,17 @@ export const certificateAuthorityServiceFactory = ({
       throw new BadRequestError({
         message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
       });
+
+    if (certificateTemplate) {
+      validateCertificateDetailsAgainstTemplate(
+        {
+          commonName: cn,
+          notBeforeDate,
+          notAfterDate
+        },
+        certificateTemplate
+      );
+    }
 
     const { caPrivateKey } = await getCaCredentials({
       caId: ca.id,

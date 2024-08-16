@@ -2,6 +2,7 @@ export type TCertificateTemplateListEntry = {
   id: string;
   name: string;
   caName: string;
+  caId: string;
 };
 
 export type TCertificateTemplate = {

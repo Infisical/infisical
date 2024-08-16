@@ -14,13 +14,21 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CaStatus, useCreateCertificate, useGetCert, useListWorkspaceCas } from "@app/hooks/api";
+import {
+  CaStatus,
+  useCreateCertificate,
+  useGetCert,
+  useGetCertTemplate,
+  useListWorkspaceCas,
+  useListWorkspaceCertificateTemplates
+} from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
 
 const schema = z.object({
+  certificateTemplateId: z.string().optional(),
   caId: z.string(),
   friendlyName: z.string(),
   commonName: z.string().trim().min(1),
@@ -42,6 +50,8 @@ type TCertificateDetails = {
   privateKey: string;
 };
 
+const CERT_TEMPLATE_NONE_VALUE = "none";
+
 export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const { currentWorkspace } = useWorkspace();
@@ -54,6 +64,10 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     status: CaStatus.ACTIVE
   });
 
+  const { data: templatesData } = useListWorkspaceCertificateTemplates({
+    workspaceId: currentWorkspace?.id || ""
+  });
+
   const { mutateAsync: createCertificate } = useCreateCertificate();
 
   const {
@@ -61,10 +75,19 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    setValue
+    setValue,
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
+
+  const selectedCertTemplateId = watch("certificateTemplateId");
+  const hasCertTemplateSelected =
+    selectedCertTemplateId !== "" && selectedCertTemplateId !== CERT_TEMPLATE_NONE_VALUE;
+
+  const { data: selectedCertTemplate } = useGetCertTemplate(
+    hasCertTemplateSelected ? (selectedCertTemplateId as string) : ""
+  );
 
   useEffect(() => {
     if (cert) {
@@ -81,7 +104,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         friendlyName: "",
         commonName: "",
         altNames: "",
-        ttl: ""
+        ttl: "",
+        certificateTemplateId: CERT_TEMPLATE_NONE_VALUE
       });
     }
   }, [cert]);
@@ -91,8 +115,9 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
       if (!currentWorkspace?.slug) return;
 
       const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
+        caId: !selectedCertTemplate ? caId : undefined,
+        certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
         projectSlug: currentWorkspace.slug,
-        caId,
         friendlyName,
         commonName,
         altNames,
@@ -141,11 +166,11 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
-              name="caId"
+              name="certificateTemplateId"
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
-                  label="Issuing CA"
+                  label="Certificate Template"
                   errorText={error?.message}
                   isError={Boolean(error)}
                   className="mt-4"
@@ -158,15 +183,47 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     className="w-full"
                     isDisabled={Boolean(cert)}
                   >
-                    {(cas || []).map(({ id, type, dn }) => (
-                      <SelectItem value={id} key={`ca-${id}`}>
-                        {`${caTypeToNameMap[type]}: ${dn}`}
+                    <SelectItem value={CERT_TEMPLATE_NONE_VALUE} key="cert-template-none">
+                      None
+                    </SelectItem>
+                    {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
+                      <SelectItem value={id} key={`cert-template-${id}`}>
+                        {name}
                       </SelectItem>
                     ))}
                   </Select>
                 </FormControl>
               )}
             />
+            {(!selectedCertTemplateId || selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE) && (
+              <Controller
+                control={control}
+                name="caId"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Issuing CA"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    className="mt-4"
+                    isRequired
+                  >
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full"
+                      isDisabled={Boolean(cert)}
+                    >
+                      {(cas || []).map(({ id, type, dn }) => (
+                        <SelectItem value={id} key={`ca-${id}`}>
+                          {`${caTypeToNameMap[type]}: ${dn}`}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            )}
             <Controller
               control={control}
               defaultValue=""

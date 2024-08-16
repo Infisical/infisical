@@ -53,6 +53,9 @@ import {
   TCertificateSecretsUpdate,
   TCertificatesInsert,
   TCertificatesUpdate,
+  TCertificateTemplates,
+  TCertificateTemplatesInsert,
+  TCertificateTemplatesUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -318,11 +321,6 @@ import {
   TWebhooksInsert,
   TWebhooksUpdate
 } from "@app/db/schemas";
-import {
-  TCertificateTemplates,
-  TCertificateTemplatesInsert,
-  TCertificateTemplatesUpdate
-} from "@app/db/schemas/certificate-templates";
 import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,

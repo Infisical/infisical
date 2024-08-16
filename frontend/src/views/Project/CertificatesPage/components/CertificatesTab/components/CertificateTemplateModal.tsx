@@ -27,7 +27,15 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 const schema = z.object({
   caId: z.string(),
   name: z.string().min(1),
-  commonName: z.string().trim().min(1),
+  commonName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z0-9 *@\-\\.\\]+$/, {
+      message:
+        "Invalid pattern: only alphanumeric characters, spaces, *, ., @, -, and \\ are allowed."
+    }),
   ttl: z.string().trim().min(1)
 });
 

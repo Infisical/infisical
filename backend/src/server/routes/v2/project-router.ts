@@ -4,11 +4,11 @@ import { z } from "zod";
 import {
   CertificateAuthoritiesSchema,
   CertificatesSchema,
+  CertificateTemplatesSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
   ProjectKeysSchema
 } from "@app/db/schemas";
-import { CertificateTemplatesSchema } from "@app/db/schemas/certificate-templates";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -478,7 +478,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               name: true
             }).merge(
               z.object({
-                caName: z.string()
+                caName: z.string(),
+                caId: z.string()
               })
             )
           )

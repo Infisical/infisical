@@ -1,9 +1,11 @@
+import ms from "ms";
 import { z } from "zod";
 
-import { CertificateTemplatesSchema } from "@app/db/schemas/certificate-templates";
+import { CertificateTemplatesSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
 const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
   id: true,
@@ -58,9 +60,9 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     schema: {
       body: z.object({
         caId: z.string(),
-        name: z.string(),
-        commonName: z.string(),
-        ttl: z.string()
+        name: z.string().min(1),
+        commonName: validateTemplateRegexField,
+        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
       }),
       response: {
         200: z.object({
@@ -91,9 +93,12 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     schema: {
       body: z.object({
         caId: z.string().optional(),
-        name: z.string().optional(),
-        commonName: z.string().optional(),
-        ttl: z.string().optional()
+        name: z.string().min(1).optional(),
+        commonName: validateTemplateRegexField.optional(),
+        ttl: z
+          .string()
+          .refine((val) => ms(val) > 0, "TTL must be a positive number")
+          .optional()
       }),
       params: z.object({
         certificateTemplateId: z.string()

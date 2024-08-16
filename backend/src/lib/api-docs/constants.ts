@@ -1088,6 +1088,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    certificateTemplateId: "The ID of the certificate template to issue the certificate from",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
     altNames:

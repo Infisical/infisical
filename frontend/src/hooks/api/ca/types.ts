@@ -1,5 +1,5 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { CaRenewalType,CaStatus, CaType } from "./enums";
+import { CaRenewalType, CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
   id: string;
@@ -78,7 +78,8 @@ export type TImportCaCertificateResponse = {
 
 export type TCreateCertificateDTO = {
   projectSlug: string;
-  caId: string;
+  caId?: string;
+  certificateTemplateId?: string;
   friendlyName?: string;
   commonName: string;
   altNames: string; // sans
