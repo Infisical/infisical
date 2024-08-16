@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -61,6 +62,10 @@ export const auditLogServiceFactory = ({
   };
 
   const createAuditLog = async (data: TCreateAuditLogDTO) => {
+    const appCfg = getConfig();
+    if (appCfg.DISABLE_AUDIT_LOG_GENERATION) {
+      return;
+    }
     // add all cases in which project id or org id cannot be added
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId) throw new BadRequestError({ message: "Must either project id or org id" });
