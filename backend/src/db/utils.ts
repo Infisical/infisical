@@ -60,6 +60,7 @@ export const createJunctionTable = async (
     } else {
       console.error(`An unknown error occurred while creating junction table ${tableName}`);
     }
+    throw error;
   }
 };
 
@@ -81,6 +82,7 @@ export const createUpdateAtTriggerFunction = async (knex: Knex): Promise<void> =
     } else {
       console.error(`An unknown error occurred while creating update timestamp function`);
     }
+    throw error;
   }
 };
 
@@ -96,6 +98,7 @@ export const dropUpdatedAtTriggerFunction = async (knex: Knex): Promise<void> =>
     } else {
       console.error(`An unknown error occurred while dropping update timestamp function`);
     }
+    throw error;
   }
 };
 
@@ -114,6 +117,7 @@ export const createOnUpdateTrigger = async (knex: Knex, tableName: string): Prom
     } else {
       console.error(`An unknown error occurred while creating update trigger for table ${tableName}`);
     }
+    throw error;
   }
 };
 
@@ -128,5 +132,6 @@ export const dropOnUpdateTrigger = async (knex: Knex, tableName: string): Promis
     } else {
       console.error(`An unknown error occurred while dropping update trigger for table ${tableName}`);
     }
+    throw error;
   }
 };
