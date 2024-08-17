@@ -40,6 +40,10 @@ func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, in
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
 	}
+	if infisicalToken != "" {
+		infisicalClient.Auth().SetAccessToken(infisicalToken)
+		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_TOKEN}, nil
+	}
 
 	// ? Legacy support, service account auth
 	serviceAccountCreds, err := r.GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
@@ -48,9 +52,8 @@ func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, in
 	}
 
 	if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
+		infisicalClient.Auth().SetAccessToken(serviceAccountCreds.AccessKey)
 		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_ACCOUNT}, nil
-	} else if infisicalToken != "" {
-		return AuthenticationDetails{authStrategy: AuthStrategy.SERVICE_TOKEN}, nil
 	}
 
 	authStrategies := map[AuthStrategyType]func(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error){
@@ -69,7 +72,7 @@ func (r *InfisicalSecretReconciler) HandleAuthentication(ctx context.Context, in
 			return authDetails, nil
 		}
 
-		if err != nil && !errors.Is(err, ErrAuthNotApplicable) {
+		if !errors.Is(err, ErrAuthNotApplicable) {
 			return AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
 		}
 	}
@@ -291,7 +294,7 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 	if _, ok := resourceVariablesMap[string(infisicalSecret.UID)]; !ok {
 
 		client := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
-			SiteUrl:   infisicalSecret.Spec.HostAPI,
+			SiteUrl:   api.API_HOST_URL,
 			UserAgent: api.USER_AGENT_NAME,
 		})
 
@@ -319,10 +322,11 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	resourceVariables := r.GetResourceVariables(infisicalSecret)
 	infisicalClient := resourceVariables.infisicalClient
 	authDetails := resourceVariables.authDetails
+	var err error
 
 	if authDetails.authStrategy == "" {
 		fmt.Println("ReconcileInfisicalSecret: No authentication strategy found. Attempting to authenticate")
-		authDetails, err := r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
+		authDetails, err = r.HandleAuthentication(ctx, infisicalSecret, infisicalClient)
 		r.SetInfisicalTokenLoadCondition(ctx, &infisicalSecret, authDetails.authStrategy, err)
 
 		if err != nil {
@@ -360,11 +364,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			return fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
 		}
 
-		if err != nil {
-			return fmt.Errorf("unable to load Infisical Token from the specified Kubernetes secret with error [%w]", err)
-		}
-
-		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceAccount(infisicalClient, serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}
@@ -381,7 +381,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		secretsPath := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.SecretsPath
 		recursive := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.Recursive
 
-		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath, recursive)
+		plainTextSecretsFromApi, updateDetails, err = util.GetPlainTextSecretsViaServiceToken(infisicalClient, infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath, recursive)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}

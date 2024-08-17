@@ -20,8 +20,6 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  // the idea is to use postgres specific function
-  // insert with id this will cause a conflict then merge the data
   const bulkUpdate = async (
     data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
 
@@ -125,7 +123,6 @@ export const secretDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
         .orderBy("id", "asc");
       const data = sqlNestRelationships({
         data: secs,
@@ -135,11 +132,11 @@ export const secretDALFactory = (db: TDbClient) => {
           {
             key: "tagId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
               id,
               color,
               slug,
-              name
+              name: slug
             })
           }
         ]
@@ -157,14 +154,13 @@ export const secretDALFactory = (db: TDbClient) => {
         .where({ [`${TableName.Secret}Id` as const]: secretId })
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
 
       return tags.map((el) => ({
         id: el.tagId,
         color: el.tagColor,
         slug: el.tagSlug,
-        name: el.tagName
+        name: el.tagSlug
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "get secret tags" });
@@ -190,7 +186,6 @@ export const secretDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
         .orderBy("id", "asc");
       const data = sqlNestRelationships({
         data: secs,
@@ -200,11 +195,11 @@ export const secretDALFactory = (db: TDbClient) => {
           {
             key: "tagId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
               id,
               color,
               slug,
-              name
+              name: slug
             })
           }
         ]
@@ -320,8 +315,7 @@ export const secretDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Secret))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
@@ -330,11 +324,11 @@ export const secretDALFactory = (db: TDbClient) => {
           {
             key: "tagId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
               id,
               color,
               slug,
-              name
+              name: slug
             })
           }
         ]

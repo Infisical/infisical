@@ -57,6 +57,12 @@ export type TFeatureSet = {
   secretRotation: true;
   caCrl: false;
   instanceUserManagement: false;
+  externalKms: false;
+  rateLimits: {
+    readLimit: number;
+    writeLimit: number;
+    secretsLimit: number;
+  };
 };
 
 export type TOrgPlansTableDTO = {

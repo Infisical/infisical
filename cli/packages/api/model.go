@@ -574,6 +574,7 @@ type GetRawSecretsV3Request struct {
 	SecretPath    string `json:"secretPath"`
 	IncludeImport bool   `json:"include_imports"`
 	Recursive     bool   `json:"recursive"`
+	TagSlugs      string `json:"tagSlugs,omitempty"`
 }
 
 type GetRawSecretsV3Response struct {
@@ -589,4 +590,26 @@ type GetRawSecretsV3Response struct {
 	} `json:"secrets"`
 	Imports []ImportedRawSecretV3 `json:"imports"`
 	ETag    string
+}
+
+type GetRawSecretV3ByNameRequest struct {
+	SecretName  string `json:"secretName"`
+	WorkspaceID string `json:"workspaceId"`
+	Type        string `json:"type,omitempty"`
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath,omitempty"`
+}
+
+type GetRawSecretV3ByNameResponse struct {
+	Secret struct {
+		ID            string `json:"_id"`
+		Version       int    `json:"version"`
+		Workspace     string `json:"workspace"`
+		Type          string `json:"type"`
+		Environment   string `json:"environment"`
+		SecretKey     string `json:"secretKey"`
+		SecretValue   string `json:"secretValue"`
+		SecretComment string `json:"secretComment"`
+	} `json:"secret"`
+	ETag string
 }

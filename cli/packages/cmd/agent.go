@@ -312,7 +312,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 
 func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		res, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false, false)
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, false, "")
 		if err != nil {
 			return nil, err
 		}
@@ -324,6 +324,21 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 		expandedSecrets := util.ExpandSecrets(res.Secrets, models.ExpandSecretsAuthentication{UniversalAuthAccessToken: accessToken}, "")
 
 		return expandedSecrets, nil
+	}
+}
+
+func getSingleSecretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string, string) (models.SingleEnvironmentVariable, error) {
+	return func(projectID, envSlug, secretPath, secretName string) (models.SingleEnvironmentVariable, error) {
+		secret, requestEtag, err := util.GetSinglePlainTextSecretByNameV3(accessToken, projectID, envSlug, secretPath, secretName)
+		if err != nil {
+			return models.SingleEnvironmentVariable{}, err
+		}
+
+		if existingEtag != requestEtag {
+			*currentEtag = requestEtag
+		}
+
+		return secret, nil
 	}
 }
 
@@ -358,9 +373,12 @@ func ProcessTemplate(templateId int, templatePath string, data interface{}, acce
 	// custom template function to fetch secrets from Infisical
 	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag)
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretManager, templateId)
+	getSingleSecretFunction := getSingleSecretTemplateFunction(accessToken, existingEtag, currentEtag)
 	funcs := template.FuncMap{
-		"secret":         secretFunction,
-		"dynamic_secret": dynamicSecretFunction,
+		"secret":          secretFunction, // depreciated
+		"listSecrets":     secretFunction,
+		"dynamic_secret":  dynamicSecretFunction,
+		"getSecretByName": getSingleSecretFunction,
 		"minus": func(a, b int) int {
 			return a - b
 		},
@@ -550,7 +568,7 @@ func (tm *AgentManager) FetchAzureAuthAccessToken() (credential infisicalSdk.Mac
 		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
 	}
 
-	return tm.infisicalClient.Auth().AzureAuthLogin(identityId)
+	return tm.infisicalClient.Auth().AzureAuthLogin(identityId, "")
 
 }
 

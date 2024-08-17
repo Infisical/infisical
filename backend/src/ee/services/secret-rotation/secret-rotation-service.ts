@@ -1,12 +1,15 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { ProjectVersion } from "@app/db/schemas";
+import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -22,9 +25,11 @@ type TSecretRotationServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   secretDAL: Pick<TSecretDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
+  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
 };
 
 export type TSecretRotationServiceFactory = ReturnType<typeof secretRotationServiceFactory>;
@@ -37,7 +42,9 @@ export const secretRotationServiceFactory = ({
   licenseService,
   projectDAL,
   folderDAL,
-  secretDAL
+  secretDAL,
+  projectBotService,
+  secretV2BridgeDAL
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({
     actor,
@@ -92,15 +99,25 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
-
-    const selectedSecrets = await secretDAL.find({
-      folderId: folder.id,
-      $in: { id: Object.values(outputs) }
-    });
-    if (selectedSecrets.length !== Object.values(outputs).length)
-      throw new BadRequestError({ message: "Secrets not found" });
-
     const project = await projectDAL.findById(projectId);
+    const shouldUseBridge = project.version === ProjectVersion.V3;
+
+    if (shouldUseBridge) {
+      const selectedSecrets = await secretV2BridgeDAL.find({
+        folderId: folder.id,
+        $in: { id: Object.values(outputs) }
+      });
+      if (selectedSecrets.length !== Object.values(outputs).length)
+        throw new BadRequestError({ message: "Secrets not found" });
+    } else {
+      const selectedSecrets = await secretDAL.find({
+        folderId: folder.id,
+        $in: { id: Object.values(outputs) }
+      });
+      if (selectedSecrets.length !== Object.values(outputs).length)
+        throw new BadRequestError({ message: "Secrets not found" });
+    }
+
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -148,10 +165,18 @@ export const secretRotationServiceFactory = ({
         },
         tx
       );
-      const outputSecretMapping = await secretRotationDAL.secretOutputInsertMany(
-        Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
-        tx
-      );
+      let outputSecretMapping;
+      if (shouldUseBridge) {
+        outputSecretMapping = await secretRotationDAL.secretOutputV2InsertMany(
+          Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
+          tx
+        );
+      } else {
+        outputSecretMapping = await secretRotationDAL.secretOutputInsertMany(
+          Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
+          tx
+        );
+      }
       return { ...doc, outputs: outputSecretMapping, environment: folder.environment };
     });
     await secretRotationQueue.addToQueue(secretRotation.id, secretRotation.interval);
@@ -167,8 +192,30 @@ export const secretRotationServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
-    const doc = await secretRotationDAL.find({ projectId });
-    return doc;
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    if (shouldUseSecretV2Bridge) {
+      const docs = await secretRotationDAL.findSecretV2({ projectId });
+      return docs;
+    }
+
+    if (!botKey) throw new BadRequestError({ message: "bot not found" });
+    const docs = await secretRotationDAL.find({ projectId });
+    return docs.map((el) => ({
+      ...el,
+      outputs: el.outputs.map((output) => ({
+        ...output,
+        secret: {
+          id: output.secret.id,
+          version: output.secret.version,
+          secretKey: decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: output.secret.secretKeyCiphertext,
+            iv: output.secret.secretKeyIV,
+            tag: output.secret.secretKeyTag,
+            key: botKey
+          })
+        }
+      }))
+    }));
   };
 
   const restartById = async ({ actor, actorId, actorOrgId, actorAuthMethod, rotationId }: TRestartDTO) => {

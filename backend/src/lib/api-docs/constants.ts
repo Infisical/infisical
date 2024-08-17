@@ -425,6 +425,21 @@ export const PROJECTS = {
   },
   LIST_INTEGRATION_AUTHORIZATION: {
     workspaceId: "The ID of the project to list integration auths for."
+  },
+  LIST_CAS: {
+    slug: "The slug of the project to list CAs for.",
+    status: "The status of the CA to filter by.",
+    friendlyName: "The friendly name of the CA to filter by.",
+    commonName: "The common name of the CA to filter by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th CA.",
+    limit: "The number of CAs to return."
+  },
+  LIST_CERTIFICATES: {
+    slug: "The slug of the project to list certificates for.",
+    friendlyName: "The friendly name of the certificate to filter by.",
+    commonName: "The common name of the certificate to filter by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
+    limit: "The number of certificates to return."
   }
 } as const;
 
@@ -510,6 +525,10 @@ export const ENVIRONMENTS = {
   DELETE: {
     workspaceId: "The ID of the project to delete the environment from.",
     id: "The ID of the environment to delete."
+  },
+  GET: {
+    workspaceId: "The ID of the project the environment belongs to.",
+    id: "The ID of the environment to fetch."
   }
 } as const;
 
@@ -577,7 +596,8 @@ export const RAW_SECRETS = {
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
-    includeImports: "Weather to include imported secrets or not."
+    includeImports: "Weather to include imported secrets or not.",
+    tagSlugs: "The comma separated tag slugs to filter secrets"
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -589,7 +609,9 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to create.",
     workspaceId: "The ID of the project to create the secret in.",
-    tagIds: "The ID of the tags to be attached to the created secret."
+    tagIds: "The ID of the tags to be attached to the created secret.",
+    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days",
+    secretReminderNote: "Note to be attached in notification email"
   },
   GET: {
     expand: "Whether or not to expand secret references",
@@ -612,7 +634,10 @@ export const RAW_SECRETS = {
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
     workspaceId: "The ID of the project to update the secret in.",
-    tagIds: "The ID of the tags to be attached to the updated secret."
+    tagIds: "The ID of the tags to be attached to the updated secret.",
+    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days",
+    secretReminderNote: "Note to be attached in notification email",
+    newSecretName: "The new name for the secret"
   },
   DELETE: {
     secretName: "The name of the secret to delete.",
@@ -1024,15 +1049,30 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to generate CSR from",
     csr: "The generated CSR from the CA"
   },
+  RENEW_CA_CERT: {
+    caId: "The ID of the CA to renew the CA certificate for",
+    type: "The type of behavior to use for the renewal operation. Currently Infisical is only able to renew a CA certificate with the same key pair.",
+    notAfter: "The expiry date and time for the renewed CA certificate in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    certificate: "The renewed CA certificate body",
+    certificateChain: "The certificate chain of the CA",
+    serialNumber: "The serial number of the renewed CA certificate"
+  },
   GET_CERT: {
     caId: "The ID of the CA to get the certificate body and certificate chain from",
     certificate: "The certificate body of the CA",
     certificateChain: "The certificate chain of the CA",
     serialNumber: "The serial number of the CA certificate"
   },
+  GET_CA_CERTS: {
+    caId: "The ID of the CA to get the CA certificates for",
+    certificate: "The certificate body of the CA certificate",
+    certificateChain: "The certificate chain of the CA certificate",
+    serialNumber: "The serial number of the CA certificate",
+    version: "The version of the CA certificate. The version is incremented for each CA renewal operation."
+  },
   SIGN_INTERMEDIATE: {
     caId: "The ID of the CA to sign the intermediate certificate with",
-    csr: "The CSR to sign with the CA",
+    csr: "The pem-encoded CSR to sign with the CA",
     notBefore: "The date and time when the intermediate CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
     notAfter: "The date and time when the intermediate CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
     maxPathLength:
@@ -1060,6 +1100,21 @@ export const CERTIFICATE_AUTHORITIES = {
     issuingCaCertificate: "The certificate of the issuing CA",
     certificateChain: "The certificate chain of the issued certificate",
     privateKey: "The private key of the issued certificate",
+    serialNumber: "The serial number of the issued certificate"
+  },
+  SIGN_CERT: {
+    caId: "The ID of the CA to issue the certificate from",
+    csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
+    friendlyName: "A friendly name for the certificate",
+    commonName: "The common name (CN) for the certificate",
+    altNames:
+      "A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses.",
+    ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
+    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    certificate: "The issued certificate",
+    issuingCaCertificate: "The certificate of the issuing CA",
+    certificateChain: "The certificate chain of the issued certificate",
     serialNumber: "The serial number of the issued certificate"
   },
   GET_CRL: {

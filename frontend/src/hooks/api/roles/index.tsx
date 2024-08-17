@@ -7,6 +7,7 @@ export {
   useUpdateProjectRole
 } from "./mutation";
 export {
+  useGetOrgRole,
   useGetOrgRoles,
   useGetProjectRoleBySlug,
   useGetProjectRoles,

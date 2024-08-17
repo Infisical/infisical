@@ -99,6 +99,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           {...props}
           required={isRequired}
+          aria-required={isRequired}
           ref={ref}
           readOnly={isReadOnly}
           disabled={isDisabled}

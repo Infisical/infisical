@@ -18,7 +18,10 @@ export const SecretSharingSchema = z.object({
   orgId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  expiresAfterViews: z.number().nullable().optional()
+  expiresAfterViews: z.number().nullable().optional(),
+  accessType: z.string().default("anyone"),
+  name: z.string().nullable().optional(),
+  lastViewedAt: z.date().nullable().optional()
 });
 
 export type TSecretSharing = z.infer<typeof SecretSharingSchema>;

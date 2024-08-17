@@ -170,6 +170,12 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         integrationId: z.string().trim().describe(INTEGRATION.DELETE.integrationId)
       }),
+      querystring: z.object({
+        shouldDeleteIntegrationSecrets: z
+          .enum(["true", "false"])
+          .optional()
+          .transform((val) => val === "true")
+      }),
       response: {
         200: z.object({
           integration: IntegrationsSchema
@@ -183,7 +189,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        id: req.params.integrationId
+        id: req.params.integrationId,
+        shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
       });
 
       await server.services.auditLog.createAuditLog({
@@ -205,7 +212,8 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
             targetService: integration.targetService,
             targetServiceId: integration.targetServiceId,
             path: integration.path,
-            region: integration.region
+            region: integration.region,
+            shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
             // eslint-disable-next-line
           }) as any
         }

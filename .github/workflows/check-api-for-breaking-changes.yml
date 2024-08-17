@@ -22,14 +22,14 @@ jobs:
       # uncomment this when testing locally using nektos/act
       - uses: KengoTODA/actions-setup-docker-compose@v1
         if: ${{ env.ACT }}
-        name: Install `docker-compose` for local simulations
+        name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
       - name: 📦Build the latest image
         run: docker build --tag infisical-api .
         working-directory: backend
       - name: Start postgres and redis
-        run: touch .env && docker-compose -f docker-compose.dev.yml up -d db redis
+        run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
       - name: Start the server
         run: |
             echo "SECRET_SCANNING_GIT_APP_ID=793712" >> .env
@@ -72,6 +72,6 @@ jobs:
         run: oasdiff breaking https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json --fail-on ERR
       - name: cleanup
         run: |
-          docker-compose -f "docker-compose.dev.yml" down
+          docker compose -f "docker-compose.dev.yml" down
           docker stop infisical-api
           docker remove infisical-api

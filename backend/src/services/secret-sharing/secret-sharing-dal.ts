@@ -10,6 +10,25 @@ export type TSecretSharingDALFactory = ReturnType<typeof secretSharingDALFactory
 export const secretSharingDALFactory = (db: TDbClient) => {
   const sharedSecretOrm = ormify(db, TableName.SecretSharing);
 
+  const countAllUserOrgSharedSecrets = async ({ orgId, userId }: { orgId: string; userId: string }) => {
+    try {
+      interface CountResult {
+        count: string;
+      }
+
+      const count = await db
+        .replicaNode()(TableName.SecretSharing)
+        .where(`${TableName.SecretSharing}.orgId`, orgId)
+        .where(`${TableName.SecretSharing}.userId`, userId)
+        .count("*")
+        .first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count all user-org shared secrets" });
+    }
+  };
+
   const pruneExpiredSharedSecrets = async (tx?: Knex) => {
     try {
       const today = new Date();
@@ -19,8 +38,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         .update({
           encryptedValue: "",
           tag: "",
-          iv: "",
-          hashedHex: ""
+          iv: ""
         });
       return docs;
     } catch (error) {
@@ -50,8 +68,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
       await sharedSecretOrm.updateById(id, {
         encryptedValue: "",
         iv: "",
-        tag: "",
-        hashedHex: ""
+        tag: ""
       });
     } catch (error) {
       throw new DatabaseError({
@@ -63,6 +80,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
 
   return {
     ...sharedSecretOrm,
+    countAllUserOrgSharedSecrets,
     pruneExpiredSharedSecrets,
     softDeleteById,
     findActiveSharedSecrets

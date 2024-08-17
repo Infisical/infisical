@@ -32,7 +32,6 @@ import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
-import { UserWsKeyPair } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   environment: z.string().trim(),
@@ -54,7 +53,6 @@ type Props = {
   onParsedEnv: (env: Record<string, { value: string; comments: string[] }>) => void;
   environments?: { name: string; slug: string }[];
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
   environment: string;
   secretPath: string;
 };
@@ -62,7 +60,6 @@ type Props = {
 export const CopySecretsFromBoard = ({
   environments = [],
   workspaceId,
-  decryptFileKey,
   environment,
   secretPath,
   isOpen,
@@ -93,7 +90,6 @@ export const CopySecretsFromBoard = ({
     workspaceId,
     environment: selectedEnvSlug,
     secretPath: debouncedEnvCopySecretPath,
-    decryptFileKey,
     options: {
       enabled:
         Boolean(workspaceId) &&

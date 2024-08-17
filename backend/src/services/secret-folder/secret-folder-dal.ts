@@ -312,18 +312,41 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const folder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .where({ [`${TableName.SecretFolder}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .select(
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName"),
-          db.ref("projectId").withSchema(TableName.Environment)
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("version").withSchema(TableName.Project).as("projectVersion")
         )
         .first();
       if (folder) {
         const { envId, envName, envSlug, ...el } = folder;
         return { ...el, environment: { envId, envName, envSlug }, envId };
       }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
+  // special query for project migration
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .select(selectAllTableCols(TableName.SecretFolder))
+        .where({ projectId })
+        .select(
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("version").withSchema(TableName.Project).as("projectVersion")
+        );
+      return folders;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id" });
     }
@@ -336,6 +359,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findById,
     findByManySecretPath,
     findSecretPathByFolderIds,
-    findClosestFolder
+    findClosestFolder,
+    findByProjectId
   };
 };

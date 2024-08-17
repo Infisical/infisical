@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretRotationOutputsSchema, SecretRotationsSchema, SecretsSchema } from "@app/db/schemas";
+import { SecretRotationOutputsSchema, SecretRotationsSchema } from "@app/db/schemas";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -112,18 +112,10 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
               outputs: z
                 .object({
                   key: z.string(),
-                  secret: SecretsSchema.pick({
-                    id: true,
-                    version: true,
-                    secretKeyIV: true,
-                    secretKeyTag: true,
-                    secretKeyCiphertext: true,
-                    secretValueIV: true,
-                    secretValueTag: true,
-                    secretValueCiphertext: true,
-                    secretCommentIV: true,
-                    secretCommentTag: true,
-                    secretCommentCiphertext: true
+                  secret: z.object({
+                    secretKey: z.string(),
+                    id: z.string(),
+                    version: z.number()
                   })
                 })
                 .array()

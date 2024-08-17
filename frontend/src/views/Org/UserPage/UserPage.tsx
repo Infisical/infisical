@@ -29,6 +29,7 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { TabSections } from "@app/views/Org/Types";
 
 import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 
@@ -90,7 +91,7 @@ export const UserPage = withPermission(
         });
 
         handlePopUpClose("removeMember");
-        router.push(`/org/${orgId}/members`);
+        router.push(`/org/${orgId}/members?selectedTab=${TabSections.Member}`);
       } catch (err) {
         console.error(err);
         createNotification({
@@ -111,7 +112,7 @@ export const UserPage = withPermission(
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
-                router.push(`/org/${orgId}/members`);
+                router.push(`/org/${orgId}/members?selectedTab=${TabSections.Member}`);
               }}
               className="mb-4"
             >

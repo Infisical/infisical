@@ -14,7 +14,6 @@ defaults:
 
 jobs:
     build-and-deploy:
-        runs-on: ubuntu-20.04
         strategy:
             matrix:
                 arch: [x64, arm64]
@@ -24,6 +23,7 @@ jobs:
                       target: node20-linux
                     - os: win
                       target: node20-win
+        runs-on: ${{ (matrix.arch == 'arm64' && matrix.os == 'linux') && 'ubuntu24-arm64' || 'ubuntu-latest' }}
 
         steps:
             - name: Checkout code
@@ -49,9 +49,9 @@ jobs:
             - name: Package into node binary
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --compress Brotli --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   fi
 
             # Set up .deb package structure (Debian/Ubuntu only)
@@ -84,7 +84,12 @@ jobs:
                   mv infisical-core.deb ./binary/infisical-core-${{matrix.arch}}.deb
 
             - uses: actions/setup-python@v4
-            - run: pip install --upgrade cloudsmith-cli
+              with:
+                  python-version: "3.x" # Specify the Python version you need
+            - name: Install Python dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install --upgrade cloudsmith-cli
 
             # Publish .deb file to Cloudsmith (Debian/Ubuntu only)
             - name: Publish to Cloudsmith (Debian/Ubuntu)

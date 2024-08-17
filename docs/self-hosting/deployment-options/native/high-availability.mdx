@@ -1,0 +1,520 @@
+---
+title: "Automatically deploy Infisical with High Availability"
+sidebarTitle: "High Availability"
+---
+
+
+# Self-Hosting Infisical with a native High Availability (HA) deployment
+
+This page describes the Infisical architecture designed to provide high availability (HA) and how to deploy Infisical with high availability. The high availability deployment is designed to ensure that Infisical services are always available and can handle service failures gracefully, without causing service disruptions.
+
+<Info>
+  This deployment option is currently only available for Debian-based nodes (e.g., Ubuntu, Debian).
+  We plan on adding support for other operating systems in the future.
+</Info>
+
+## High availability architecture
+| Service                          | Nodes          | Configuration                | GCP           | AWS          |
+|----------------------------------|----------------|------------------------------|---------------|--------------|
+| External load balancer$^1$       | 1              | 4 vCPU, 3.6 GB memory        | n1-highcpu-4  | c5n.xlarge   |
+| Internal load balancer$^2$       | 1              | 4 vCPU, 3.6 GB memory        | n1-highcpu-4  | c5n.xlarge   |
+| Etcd cluster$^3$                 | 3              | 4 vCPU, 3.6 GB memory        | n1-highcpu-4  | c5n.xlarge   |
+| PostgreSQL$^4$                   | 3              | 2 vCPU, 7.5 GB memory        | n1-standard-2 | m5.large     |
+| Sentinel$^4$                     | 3              | 2 vCPU, 7.5 GB memory        | n1-standard-2 | m5.large     |
+| Redis$^4$                        | 3              | 2 vCPU, 7.5 GB memory        | n1-standard-2 | m5.large     |
+| Infisical Core                   | 3              | 8 vCPU, 7.2 GB memory        | n1-highcpu-8  | c5.2xlarge   |
+
+**Footnotes:**
+1. External load balancer: If you wish to have multiple instances of the internal load balancer, you will need to use an external load balancer to distribute incoming traffic across multiple internal load balancers.
+   Using multiple internal load balancers is recommended for high-traffic environments. In the following guide we will use a single internal load balancer, as external load balancing falls outside the scope of this guide.
+2. Internal load balancer: The internal load balancer (a HAProxy instance) is used to distribute incoming traffic across multiple Infisical Core instances, Postgres nodes, and Redis nodes. The internal load balancer exposes a set of ports _(80 for Infiscial, 5000 for Read/Write postgres, 5001 for Read-only postgres, and 6379 for Redis)_. Where these ports route to is determained by the internal load balancer based on the availability and health of the service nodes.
+   The internal load balancer is only accessible from within the same network, and is not exposed to the public internet.
+3. Etcd cluster: Etcd is a distributed key-value store used to store and distribute data between the PostgreSQL nodes. Etcd is dependent on high disk I/O performance, therefore it is highly recommended to use highly performant SSD disks for the Etcd nodes, with _at least_ 80GB of disk space.
+4. The Redis and PostgreSQL nodes will automatically be configured for high availability and used in your Infisical Core instances. However, you can optionally choose to bring your own database (BYOD), and skip these nodes. See more on how to [provide your own databases](#provide-your-own-databases).
+
+<Info>
+ For all services that require multiple nodes, it is recommended to deploy them across multiple availability zones (AZs) to ensure high availability and fault tolerance. This will help prevent service disruptions in the event of an AZ failure.
+</Info>
+
+![High availability stack](../../images/self-hosting/deployment-options/native/ha-stack.png)
+The image above shows how a high availability deployment of Infisical is structured. In this example, an external load balancer is used to distribute incoming traffic across multiple internal load balancers. The internal load balancers. The external load balancer isn't required, and it will require additional configuration to set up.
+
+###  Fault Tolerance
+This setup provides N+1 redundancy, meaning it can tolerate the failure of any single node without service interruption.
+
+## Ansible
+### What is Ansible
+Ansible is an open-source automation tool that simplifies application deployment, configuration management, and task automation.
+At Infisical, we use Ansible to automate the deployment of Infisical services. The Ansible roles are designed to make it easy to deploy Infisical services in a high availability environment.
+
+### Installing Ansible
+<Steps>
+  <Step title="Install using the pipx Python package manager">
+    ```bash
+      pipx install --include-deps ansible
+    ```
+  </Step>
+  <Step title="Verify the installation">
+    ```bash
+      ansible --version
+    ```
+  </Step>
+</Steps>
+
+
+### Understanding Ansible Concepts
+
+* Inventory _(inventory.ini)_: A file that lists your target hosts.
+* Playbook _(playbook.yml)_: YAML file containing a set of tasks to be executed on hosts.
+* Roles: Reusable units of organization for playbooks. Roles are used to group tasks together in a structured and reusable manner.
+
+
+### Basic Ansible Commands
+Running a playbook with with an invetory file:
+```bash
+  ansible-playbook -i inventory.ini playbook.yml
+```
+
+This is how you would run the playbook containing the roles for setting up Infisical in a high availability environment.
+
+### Installing the Infisical High Availability Deployment Ansible Role
+The Infisical Ansible role is available on Ansible Galaxy. You can install the role by running the following command:
+```bash
+  ansible-galaxy collection install infisical.infisical_core_ha_deployment
+```
+
+
+## Set up components
+1. External load balancer (optional, and not covered in this guide)
+2. [Configure Etcd cluster](#configure-etcd-cluster)
+3. [Configure PostgreSQL database](#configure-postgresql-database)
+4. [Configure Redis/Sentinel](#configure-redis-and-sentinel)
+5. [Configure Infisical Core](#configure-infisical-core)
+
+
+The servers start on the same 52.1.0.0/24 private network range, and can connect to each other freely on these addresses.
+
+The following list includes descriptions of each server and its assigned IP:
+
+52.1.0.1:   External Load Balancer
+52.1.0.2:   Internal Load Balancer
+52.1.0.3:   Etcd 1
+52.1.0.4:   Etcd 2
+52.1.0.5:   Etcd 3
+52.1.0.6:   PostgreSQL 1
+52.1.0.7:   PostgreSQL 2
+52.1.0.8:   PostgreSQL 3
+52.1.0.9:   Redis 1
+52.1.0.10:  Redis 2
+52.1.0.11:  Redis 3
+52.1.0.12:  Sentinel 1
+52.1.0.13:  Sentinel 2
+52.1.0.14:  Sentinel 3
+52.1.0.15: Infisical Core 1
+52.1.0.16: Infisical Core 2
+52.1.0.17: Infisical Core 3
+
+
+
+### Configure Etcd cluster
+
+Configuring the ETCD cluster is the first step in setting up a high availability deployment of Infisical.
+The ETCD cluster is used to store and distribute data between the PostgreSQL nodes. The ETCD cluster is a distributed key-value store that is highly available and fault-tolerant.
+
+```yaml example.playbook.yml
+  - hosts: all
+    gather_facts: true
+
+  - name: Set up etcd cluster
+    hosts: etcd
+    become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
+    roles:
+      - role: etcd
+```
+
+```ini example.inventory.ini
+  [etcd]
+  etcd1 ansible_host=52.1.0.3
+  etcd2 ansible_host=52.1.0.4
+  etcd3 ansible_host=52.1.0.5
+
+  [etcd:vars]
+  ansible_user=ubuntu
+  ansible_ssh_private_key_file=./ssh-key.pem
+  ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+```
+
+### Configure PostgreSQL database
+
+The Postgres role takes a set of parameters that are used to configure your PostgreSQL database.
+
+Make sure to set the following variables in your playbook.yml file:
+- `postgres_super_user_password`: The password for the 'postgres' database user.
+- `postgres_db_name`: The name of the database that will be created on the leader node and replicated to the secondary nodes.
+- `postgres_user`: The name of the user that will be created on the leader node and replicated to the secondary nodes.
+- `postgres_user_password`: The password for the user that will be created on the leader node and replicated to the secondary nodes.
+- `etcd_hosts`: The list of etcd hosts that the PostgreSQL nodes will use to communicate with etcd. By default you want to keep this value set to `"{{ groups['etcd'] }}"`
+
+```yaml example.playbook.yml
+  - hosts: all
+    gather_facts: true
+
+  - name: Set up PostgreSQL with Patroni
+    hosts: postgres
+    become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
+    roles:
+      - role: postgres
+        vars:
+          postgres_super_user_password: "your-super-user-password"
+          postgres_user: infisical-user
+          postgres_user_password: "your-password"
+          postgres_db_name: infisical-db
+
+          etcd_hosts: "{{ groups['etcd'] }}"
+```
+
+```ini example.inventory.ini
+  [postgres]
+  postgres1 ansible_host=52.1.0.6
+  postgres2 ansible_host=52.1.0.7
+  postgres3 ansible_host=52.1.0.8
+```
+
+### Configure Redis and Sentinel
+
+The Redis role takes a single variable as input, which is the redis password.
+The Sentinel and Redis hosts will run the same role, therefore we are running the task for both the sentinel and redis hosts, `hosts: redis:sentinel`.
+
+- `redis_password`: The password that will be set for the Redis instance.
+  
+```yaml example.playbook.yml
+    - hosts: all
+      gather_facts: true
+  
+    - name: Setup Redis and Sentinel
+      hosts: redis:sentinel
+      become: true
+      collections:
+        - infisical.infisical_core_ha_deployment
+      roles:
+        - role: redis
+          vars:
+            redis_password: "REDIS_PASSWORD"
+```
+
+```ini example.inventory.ini
+    [redis]
+    redis1 ansible_host=52.1.0.9
+    redis2 ansible_host=52.1.0.10
+    redis3 ansible_host=52.1.0.11
+
+    [sentinel]
+    sentinel1 ansible_host=52.1.0.12
+    sentinel2 ansible_host=52.1.0.13
+    sentinel3 ansible_host=52.1.0.14
+```
+
+### Configure Internal Load Balancer
+
+The internal load balancer used is HAProxy. HAProxy will expose a set of ports as listed below. Each port will route to a different service based on the availability and health of the service nodes.
+
+- Port 80: Infisical Core
+- Port 5000: Read/Write PostgreSQL
+- Port 5001: Read-only PostgreSQL
+- Port 6379: Redis
+- Port 7000: HAProxy monitoring
+These ports will need to be exposed on your network to become accessible from the outside world.
+
+The HAProxy configuration file is generated by the Infisical Core role, and is located at `/etc/haproxy/haproxy.cfg` on your internal load balancer node.
+
+The HAProxy setup comes with a monitoring panel. You have to set the username/password combination for the monitoring panel by setting the `stats_user` and `stats_password` variables in the HAProxy role.
+
+
+Once the HAProxy role has fully executed, you can monitor your HA setup by navigating to `http://52.1.0.2:7000/haproxy?stats` in your browser.
+
+```ini example.inventory.ini
+[haproxy]
+internal_lb ansible_host=52.1.0.2
+```
+
+```yaml example.playbook.yml
+- name: Set up HAProxy
+  hosts: haproxy
+  become: true
+  collections:
+    - infisical.infisical_core_ha_deployment
+  roles:
+    - role: haproxy
+      vars:
+        stats_user: "stats-username"
+        stats_password: "stats-password!"
+
+        postgres_servers: "{{ groups['postgres'] }}"
+        infisical_servers: "{{ groups['infisical'] }}"
+        redis_servers: "{{ groups['redis'] }}"
+```
+
+
+
+### Configure Infisical Core
+
+The Infisical Core role will set up your actual Infisical instances.
+
+The `env_vars` variable is used to set the environment variables that Infisical will use. The minimum required environment variables are `ENCRYPTION_KEY` and `AUTH_SECRET`. You can find a list of all available environment variables [here](/docs/self-hosting/configuration/envars#general-platform).
+The `DB_CONNECTION_URI` and `REDIS_URL` variables will automatically be set if you're running the full playbook. However, you can choose to set them yourself, and skip the Postgres, etcd, redis/sentinel roles entirely.
+
+<Info>
+ If you later need to add new environment varibles to your Infisical deployments, it's important you add the variables to **all** your Infisical nodes.<br/>
+ You can find the environment file for Infisical at `/etc/infisical/environment`.<br/>
+ After editing the environment file, you need to reload the Infisical service by doing `systemctl restart infisical`.
+</Info>
+
+```yaml example.playbook.yml
+  - hosts: all
+    gather_facts: true
+
+  - name: Setup Infisical
+    hosts: infisical
+    become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
+    roles:
+      - role: infisical
+        env_vars:
+          ENCRYPTION_KEY: "YOUR_ENCRYPTION_KEY" # openssl rand -hex 16
+          AUTH_SECRET: "YOUR_AUTH_SECRET" # openssl rand -base64 32
+```
+
+```ini example.inventory.ini
+  [infisical]
+  infisical1 ansible_host=52.1.0.15
+  infisical2 ansible_host=52.1.0.16
+  infisical3 ansible_host=52.1.0.17
+```
+
+## Provide your own databases
+Bringing your own database is an option using the Infisical Core deployment role.
+By bringing your own database, you're able to skip the Etcd, Postgres, and Redis/Sentinel roles entirely.
+
+To bring your own database, you need to set the `DB_CONNECTION_URI` and `REDIS_URL` environment variables in the Infisical Core role.
+
+```yaml example.playbook.yml
+  - hosts: all
+    gather_facts: true
+
+  - name: Setup Infisical
+    hosts: infisical
+    become: true
+    collections:
+      - infisical.infisical_core_ha_deployment
+    roles:
+      - role: infisical
+        env_vars:
+          ENCRYPTION_KEY: "YOUR_ENCRYPTION_KEY" # openssl rand -hex 16
+          AUTH_SECRET: "YOUR_AUTH_SECRET" # openssl rand -base64 32
+          DB_CONNECTION_URI: "postgres://user:password@localhost:5432/infisical"
+          REDIS_URL: "redis://localhost:6379"
+```
+
+```ini example.inventory.ini
+  [infisical]
+  infisical1 ansible_host=52.1.0.15
+  infisical2 ansible_host=52.1.0.16
+  infisical3 ansible_host=52.1.0.17
+```
+
+## Full deployment example
+To make it easier to get started, we've provided a full deployment example that you can use to deploy Infisical in a high availability environment.
+
+- This deployment does not use an external load balancer.
+- You **must** change the environment variables defined in the `playbook.yml` example.
+- You have update the IP addresses in the `inventory.ini` file to match your own network configuration.
+- You need to set the SSH key and ssh user in the `inventory.ini` file.
+
+<Steps>
+  <Step title="Install Ansible">
+    Install Ansible using the pipx Python package manager.
+  ```bash
+    pipx install --include-deps ansible
+  ```
+
+  </Step>
+  <Step title="Install the Infisical deployment Ansible Role">
+    Install the Infisical deployment role from Ansible Galaxy.
+  ```bash
+    ansible-galaxy collection install infisical.infisical_core_ha_deployment
+  ```
+  </Step>
+  <Step title="Setup your hosts">
+
+    Create an `inventory.ini` file, and define your hosts and their IP addresses. You can use the example below as a template, and update the IP addresses to match your own network configuration.
+    Make sure to set the SSH key and ssh user in the `inventory.ini` file. Please see the example below.
+
+    ```ini example.inventory.ini
+      [etcd]
+      etcd1 ansible_host=52.1.0.3
+      etcd2 ansible_host=52.1.0.4
+      etcd3 ansible_host=52.1.0.5
+
+      [postgres]
+      postgres1 ansible_host=52.1.0.6
+      postgres2 ansible_host=52.1.0.7
+      postgres3 ansible_host=52.1.0.8
+
+      [infisical]
+      infisical1 ansible_host=52.1.0.15
+      infisical2 ansible_host=52.1.0.16
+      infisical3 ansible_host=52.1.0.17
+
+      [redis]
+      redis1 ansible_host=52.1.0.9
+      redis2 ansible_host=52.1.0.10
+      redis3 ansible_host=52.1.0.11
+
+      [sentinel]
+      sentinel1 ansible_host=52.1.0.12
+      sentinel2 ansible_host=52.1.0.13
+      sentinel3 ansible_host=52.1.0.14
+
+      [haproxy]
+      internal_lb ansible_host=52.1.0.2
+
+      ; This can be defined individually for each host, or globally for all hosts.
+      ; In this case the credentials are the same for all hosts, so we define them globally as seen below ([all:vars]).
+      [all:vars]
+      ansible_user=ubuntu
+      ansible_ssh_private_key_file=./your-ssh-key.pem
+      ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+    ```
+  </Step>
+  <Step title="Setup your Ansible playbook">
+    The Ansible playbook is where you define which roles/tasks to execute on which hosts.
+
+    ```yaml example.playbook.yml
+      ---
+      # Important, we must gather facts from all hosts prior to running the roles to ensure we have all the information we need.
+      - hosts: all
+        gather_facts: true
+
+      - name: Set up etcd cluster
+        hosts: etcd
+        become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
+        roles:
+          - role: etcd
+
+      - name: Set up PostgreSQL with Patroni
+        hosts: postgres
+        become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
+        roles:
+          - role: postgres
+            vars:
+              postgres_super_user_password: "<ENTER_SUPERUSER_PASSWORD>" # Password for the 'postgres' database user
+
+              # A database with these credentials will be created on the leader node, and replicated to the secondary nodes.
+              postgres_db_name: <ENTER_DB_NAME>
+              postgres_user: <ENTER_DB_USER>
+              postgres_user_password: <ENTER_DB_USER_PASSWORD>
+
+              etcd_hosts: "{{ groups['etcd'] }}"
+
+      - name: Setup Redis and Sentinel
+        hosts: redis:sentinel
+        become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
+        roles:
+          - role: redis
+            vars:
+              redis_password: "<ENTER_REDIS_PASSWORD>"
+
+      - name: Set up HAProxy
+        hosts: haproxy
+        become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
+        roles:
+          - role: haproxy
+            vars:
+              stats_user: "<ENTER_HAPROXY_STATS_USERNAME>"
+              stats_password: "<ENTER_HAPROXY_STATS_PASSWORD>"
+
+              postgres_servers: "{{ groups['postgres'] }}"
+              infisical_servers: "{{ groups['infisical'] }}"
+              redis_servers: "{{ groups['redis'] }}"
+      - name: Setup Infisical
+        hosts: infisical
+        become: true
+        collections:
+          - infisical.infisical_core_ha_deployment
+        roles:
+          - role: infisical
+            env_vars:
+              ENCRYPTION_KEY: "YOUR_ENCRYPTION_KEY" # openssl rand -hex 16
+              AUTH_SECRET: "YOUR_AUTH_SECRET" # openssl rand -base64 32
+  ```
+  </Step>
+  <Step title="Run the Ansible playbook">
+    After creating the `playbook.yml` and `inventory.ini` files, you can run the playbook using the following command
+  ```bash
+      ansible-playbook -i inventory.ini playbook.yml
+  ```
+
+  This step may take upwards of 10 minutes to complete, depending on the number of nodes and the network speed.
+  Once the playbook has completed, you should have a fully deployed high availability Infisical environment.
+
+  To access Infisical, you can try navigating to `http://52.1.0.2`, in order to view your newly deployed Infisical instance.
+  </Step>
+</Steps>
+
+
+## Post-deployment steps
+After deploying Infisical in a high availability environment, you should perform the following post-deployment steps:
+- Check your deployment to ensure that all services are running as expected. You can use the HAProxy monitoring panel to check the status of your services (http://52.1.0.2:7000/haproxy?stats)
+- Attempt to access the Infisical Core instances to ensure that they are accessible from the internal load balancer. (http://52.1.0.2)
+
+A HAProxy stats page indicating success will look like the image below
+![HAProxy stats page](../../images/self-hosting/deployment-options/native/haproxy-stats.png)
+
+
+## Security Considerations
+### Network Security
+Secure the network that your instances run on. While this falls outside the scope of Infisical deployment, it's crucial for overall security.
+AWS-specific recommendations:
+
+Use Virtual Private Cloud (VPC) to isolate your infrastructure.
+Configure security groups to restrict inbound and outbound traffic.
+Use Network Access Control Lists (NACLs) for additional network-level security.
+
+<Note>
+  Please take note that the Infisical team cannot provide infrastructure support for **free self-hosted** deployments.<br/>If you need help with infrastructure, we recommend upgrading to a [paid plan](https://infisical.com/pricing) which includes infrastructure support.
+
+  You can also join our community [Slack](https://infisical.com/slack) for help and support from the community. 
+</Note>
+
+
+### Troubleshooting
+<Accordion title="Ansible: Failed to set permissions on the temporary files Ansible needs to create when becoming an unprivileged user">
+  If you encounter this issue, please update your ansible config (`ansible.cfg`) file with the following configuration:
+  ```ini
+    [defaults]
+    allow_world_readable_tmpfiles = true
+  ```
+
+  You can read more about the solution [here](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/sh_shell.html#parameter-world_readable_temp)
+</Accordion>
+
+<Accordion title="I'm unable to connect to access the Infisical instance on the web">
+  This issue can be caused by a number of reasons, mostly realted to  the network configuration. Here are a few things you can check:
+  1. Ensure that the firewall is not blocking the connection. You can check this by running `ufw status`. Ensure that port 80 is open.
+  2. If you're using a cloud provider like AWS or GCP, ensure that the security group allows traffic on port 80.
+  3. Ensure that the HAProxy service is running. You can check this by running `systemctl status haproxy`.
+  4. Ensure that the Infisical service is running. You can check this by running `systemctl status infisical`.
+</Accordion>

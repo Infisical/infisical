@@ -1,8 +1,10 @@
+import { useWorkspace } from "@app/context";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
+
 import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
 import { AutoCapitalizationSection } from "../AutoCapitalizationSection";
 import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
-import { E2EESection } from "../E2EESection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
 import { ProjectNameChangeSection } from "../ProjectNameChangeSection";
@@ -10,17 +12,18 @@ import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/Rebu
 import { SecretTagsSection } from "../SecretTagsSection";
 
 export const ProjectGeneralTab = () => {
+  const { currentWorkspace } = useWorkspace();
+
   return (
     <div>
       <ProjectNameChangeSection />
       <EnvironmentSection />
       <SecretTagsSection />
       <AutoCapitalizationSection />
-      <E2EESection />
       <PointInTimeVersionLimitSection />
       <AuditLogsRetentionSection />
       <BackfillSecretReferenceSecretion />
-      <RebuildSecretIndicesSection />
+      {currentWorkspace?.version !== ProjectVersion.V3 && <RebuildSecretIndicesSection />}
       <DeleteProjectSection />
     </div>
   );

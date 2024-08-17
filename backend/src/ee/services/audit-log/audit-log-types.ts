@@ -106,6 +106,7 @@ export enum EventType {
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
+  GET_ENVIRONMENT = "get-environment",
   ADD_WORKSPACE_MEMBER = "add-workspace-member",
   ADD_BATCH_WORKSPACE_MEMBER = "add-workspace-members",
   REMOVE_WORKSPACE_MEMBER = "remove-workspace-member",
@@ -129,16 +130,27 @@ export enum EventType {
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
+  RENEW_CA = "renew-certificate-authority",
   GET_CA_CSR = "get-certificate-authority-csr",
+  GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
+  SIGN_CERT = "sign-cert",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
-  GET_CERT_BODY = "get-cert-body"
+  GET_CERT_BODY = "get-cert-body",
+  CREATE_KMS = "create-kms",
+  UPDATE_KMS = "update-kms",
+  DELETE_KMS = "delete-kms",
+  GET_KMS = "get-kms",
+  UPDATE_PROJECT_KMS = "update-project-kms",
+  GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
+  LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project"
 }
 
 interface UserActorMetadata {
@@ -328,6 +340,7 @@ interface DeleteIntegrationEvent {
     targetServiceId?: string;
     path?: string;
     region?: string;
+    shouldDeleteIntegrationSecrets?: boolean;
   };
 }
 
@@ -831,6 +844,13 @@ interface CreateEnvironmentEvent {
   };
 }
 
+interface GetEnvironmentEvent {
+  type: EventType.GET_ENVIRONMENT;
+  metadata: {
+    id: string;
+  };
+}
+
 interface UpdateEnvironmentEvent {
   type: EventType.UPDATE_ENVIRONMENT;
   metadata: {
@@ -1078,8 +1098,24 @@ interface DeleteCa {
   };
 }
 
+interface RenewCa {
+  type: EventType.RENEW_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
 interface GetCaCsr {
   type: EventType.GET_CA_CSR;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCerts {
+  type: EventType.GET_CA_CERTS;
   metadata: {
     caId: string;
     dn: string;
@@ -1128,6 +1164,15 @@ interface IssueCert {
   };
 }
 
+interface SignCert {
+  type: EventType.SIGN_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
 interface GetCert {
   type: EventType.GET_CERT;
   metadata: {
@@ -1162,6 +1207,72 @@ interface GetCertBody {
     cn: string;
     serialNumber: string;
   };
+}
+
+interface CreateKmsEvent {
+  type: EventType.CREATE_KMS;
+  metadata: {
+    kmsId: string;
+    provider: string;
+    slug: string;
+    description?: string;
+  };
+}
+
+interface DeleteKmsEvent {
+  type: EventType.DELETE_KMS;
+  metadata: {
+    kmsId: string;
+    slug: string;
+  };
+}
+
+interface UpdateKmsEvent {
+  type: EventType.UPDATE_KMS;
+  metadata: {
+    kmsId: string;
+    provider: string;
+    slug?: string;
+    description?: string;
+  };
+}
+
+interface GetKmsEvent {
+  type: EventType.GET_KMS;
+  metadata: {
+    kmsId: string;
+    slug: string;
+  };
+}
+
+interface UpdateProjectKmsEvent {
+  type: EventType.UPDATE_PROJECT_KMS;
+  metadata: {
+    secretManagerKmsKey: {
+      id: string;
+      slug: string;
+    };
+  };
+}
+
+interface GetProjectKmsBackupEvent {
+  type: EventType.GET_PROJECT_KMS_BACKUP;
+  metadata: Record<string, string>; // no metadata yet
+}
+
+interface LoadProjectKmsBackupEvent {
+  type: EventType.LOAD_PROJECT_KMS_BACKUP;
+  metadata: Record<string, string>; // no metadata yet
+}
+
+interface OrgAdminAccessProjectEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PROJECT;
+  metadata: {
+    userId: string;
+    username: string;
+    email: string;
+    projectId: string;
+  }; // no metadata yet
 }
 
 export type Event =
@@ -1230,6 +1341,7 @@ export type Event =
   | UpdateIdentityOidcAuthEvent
   | GetIdentityOidcAuthEvent
   | CreateEnvironmentEvent
+  | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
   | AddWorkspaceMemberEvent
@@ -1255,13 +1367,24 @@ export type Event =
   | GetCa
   | UpdateCa
   | DeleteCa
+  | RenewCa
   | GetCaCsr
+  | GetCaCerts
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
   | GetCaCrl
   | IssueCert
+  | SignCert
   | GetCert
   | DeleteCert
   | RevokeCert
-  | GetCertBody;
+  | GetCertBody
+  | CreateKmsEvent
+  | UpdateKmsEvent
+  | DeleteKmsEvent
+  | GetKmsEvent
+  | UpdateProjectKmsEvent
+  | GetProjectKmsBackupEvent
+  | LoadProjectKmsBackupEvent
+  | OrgAdminAccessProjectEvent;

@@ -23,7 +23,10 @@ export enum SecretActionType {
 
 export const formSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
-  value: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+  value: z
+    .string()
+    .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+    .optional(),
   idOverride: z.string().trim().optional(),
   valueOverride: z
     .string()
@@ -46,12 +49,12 @@ export const formSchema = z.object({
   tags: z
     .object({
       id: z.string(),
-      name: z.string(),
       slug: z.string(),
       tagColor: z.string().optional()
     })
     .array()
     .default([])
+    .optional()
 });
 
 export type TFormSchema = z.infer<typeof formSchema>;

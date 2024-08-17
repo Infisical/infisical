@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { faCalendarCheck } from "@fortawesome/free-regular-svg-icons";
 import { faArrowRight, faRefresh, faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,9 +6,8 @@ import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Alert,
-  AlertDescription,
   Button,
+  Checkbox,
   DeleteActionModal,
   EmptyState,
   FormLabel,
@@ -19,7 +17,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
 import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
@@ -28,8 +26,11 @@ type Props = {
   environments: Array<{ name: string; slug: string; id: string }>;
   integrations?: TIntegration[];
   isLoading?: boolean;
-  onIntegrationDelete: (integration: TIntegration, cb: () => void) => void;
-  isBotActive: boolean | undefined;
+  onIntegrationDelete: (
+    integrationId: string,
+    shouldDeleteIntegrationSecrets: boolean,
+    cb: () => void
+  ) => Promise<void>;
   workspaceId: string;
 };
 
@@ -38,14 +39,15 @@ export const IntegrationsSection = ({
   environments = [],
   isLoading,
   onIntegrationDelete,
-  isBotActive,
   workspaceId
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "deleteConfirmation"
+    "deleteConfirmation",
+    "deleteSecretsConfirmation"
   ] as const);
 
   const { mutate: syncIntegration } = useSyncIntegration();
+  const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);
 
   return (
     <div className="mb-8">
@@ -59,21 +61,7 @@ export const IntegrationsSection = ({
         </div>
       )}
 
-      {!isBotActive && Boolean(integrations.length) && (
-        <div className="px-6 py-4">
-          <Alert hideTitle variant="warning">
-            <AlertDescription>
-              All the active integrations will be disabled. Disable End-to-End Encryption in{" "}
-              <Link href={`/project/${workspaceId}/settings`} passHref>
-                <a className="underline underline-offset-2">project settings </a>
-              </Link>
-              to re-enable it.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {!isLoading && !integrations.length && isBotActive && (
+      {!isLoading && !integrations.length && (
         <div className="mx-6">
           <EmptyState
             className="rounded-md border border-mineshaft-700 pt-8 pb-4"
@@ -81,7 +69,7 @@ export const IntegrationsSection = ({
           />
         </div>
       )}
-      {!isLoading && isBotActive && (
+      {!isLoading && (
         <div className="flex min-w-max flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
@@ -238,7 +226,7 @@ export const IntegrationsSection = ({
                       }
                     >
                       <div className="flex items-center space-x-2 text-white">
-                        <div>Sync Status</div>
+                        <div>{integration.isSynced ? "Synced" : "Not synced"}</div>
                         {!integration.isSynced && <FontAwesomeIcon icon={faWarning} />}
                       </div>
                     </Tooltip>
@@ -268,7 +256,10 @@ export const IntegrationsSection = ({
                     <div className="flex items-end opacity-80 duration-200 hover:opacity-100">
                       <Tooltip content="Remove Integration">
                         <IconButton
-                          onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
+                          onClick={() => {
+                            setShouldDeleteSecrets.off();
+                            handlePopUpOpen("deleteConfirmation", integration);
+                          }}
                           ariaLabel="delete"
                           isDisabled={!isAllowed}
                           colorSchema="danger"
@@ -300,11 +291,49 @@ export const IntegrationsSection = ({
           (popUp?.deleteConfirmation?.data as TIntegration)?.integration ||
           ""
         }
-        onDeleteApproved={async () =>
-          onIntegrationDelete(popUp?.deleteConfirmation.data as TIntegration, () =>
-            handlePopUpClose("deleteConfirmation")
-          )
-        }
+        onDeleteApproved={async () => {
+          if (shouldDeleteSecrets) {
+            handlePopUpOpen("deleteSecretsConfirmation");
+            return;
+          }
+
+          await onIntegrationDelete(
+            (popUp?.deleteConfirmation.data as TIntegration).id,
+            false,
+            () => handlePopUpClose("deleteConfirmation")
+          );
+        }}
+      >
+        {(popUp?.deleteConfirmation?.data as TIntegration)?.integration === "github" && (
+          <div className="mt-4">
+            <Checkbox
+              id="delete-integration-secrets"
+              checkIndicatorBg="text-white"
+              onCheckedChange={() => setShouldDeleteSecrets.toggle()}
+            >
+              Delete previously synced secrets from the destination
+            </Checkbox>
+          </div>
+        )}
+      </DeleteActionModal>
+      <DeleteActionModal
+        isOpen={popUp.deleteSecretsConfirmation.isOpen}
+        title={`Are you sure you also want to delete secrets on ${
+          (popUp?.deleteConfirmation.data as TIntegration)?.integration
+        }?`}
+        subTitle="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
+        onChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={async () => {
+          await onIntegrationDelete(
+            (popUp?.deleteConfirmation.data as TIntegration).id,
+            true,
+            () => {
+              handlePopUpClose("deleteSecretsConfirmation");
+              handlePopUpClose("deleteConfirmation");
+            }
+          );
+        }}
       />
     </div>
   );

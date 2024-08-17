@@ -86,7 +86,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             data?.map(({ identity: { id, name }, role, customRole }) => {
               return (
                 <Tr
-                  className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+                  className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   key={`identity-${id}`}
                   onClick={() => router.push(`/org/${orgId}/identities/${id}`)}
                 >

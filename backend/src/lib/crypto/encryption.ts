@@ -116,6 +116,8 @@ export const decryptAsymmetric = ({ ciphertext, nonce, publicKey, privateKey }: 
 
 export const generateSymmetricKey = (size = 32) => crypto.randomBytes(size).toString("base64");
 
+export const generateHash = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
+
 export const generateAsymmetricKeyPair = () => {
   const pair = nacl.box.keyPair();
 
@@ -224,8 +226,9 @@ export const infisicalSymmetricDecrypt = <T = string>({
   keyEncoding: SecretKeyEncoding;
 }) => {
   const appCfg = getConfig();
-  const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
-  const encryptionKey = appCfg.ENCRYPTION_KEY;
+  // the or gate is used used in migration
+  const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
+  const encryptionKey = appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
   if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
     const data = decryptSymmetric({ key: rootEncryptionKey, iv, tag, ciphertext });
     return data as T;

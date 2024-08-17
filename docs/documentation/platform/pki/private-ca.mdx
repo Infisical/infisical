@@ -36,7 +36,7 @@ A typical workflow for setting up a Private CA hierarchy consists of the followi
   intermediate certificate back to the intermediate CA as part of Step 2.
 </Note>
 
-## Guide
+## Guide to Creating a CA Hierarchy
 
 In the following steps, we explore how to create a simple Private CA hierarchy
 consisting of a root CA and an intermediate CA.
@@ -240,11 +240,60 @@ consisting of a root CA and an intermediate CA.
   </Tab>
 </Tabs>
 
+## Guide to CA Renewal
+
+In the following steps, we explore how to renew a CA certificate via same key pair.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    Head to the CA Page of the CA you wish you renew and press **Renew CA** on
+    the left side. ![pki ca renewal
+    page](/images/platform/pki/ca-renewal-page.png) Input a new **Valid Until**
+    date to be used for the renewed CA certificate and press **Renew** to renew
+    the CA. ![pki ca renewal. modal](/images/platform/pki/ca-renewal-modal.png)
+    <Note>
+      The new **Valid Until** date must be within the validity period of the
+      parent CA.
+    </Note>
+  </Tab>
+  <Tab title="API">
+  
+  To renew a CA certificate, make an API request to the [Renew CA](/api-reference/endpoints/certificate-authorities/renew) API endpoint, specifying the new `notAfter` date for the CA.
+
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/renew' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "type": "existing",
+          "notAfter": "2029-06-12"
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      certificate: "...",
+      certificateChain: "...",
+      serialNumber: "..."
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
 ## FAQ
 
 <AccordionGroup>
   <Accordion title="What key algorithms are supported as part of private key generation and certificate signing?">
     Infisical supports `RSA 2048`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384` key
     algorithms specified at the time of creating a CA.
+  </Accordion>
+  <Accordion title="Does Infisical support CA renewal via new key pair">
+    At the moment, Infisical only supports CA renewal via same key pair. We
+    anticipate supporting CA renewal via new key pair in the coming month.
   </Accordion>
 </AccordionGroup>

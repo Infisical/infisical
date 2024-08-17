@@ -18,7 +18,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
 import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
-import { DecryptedSecret, WorkspaceEnv } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, WorkspaceEnv } from "@app/hooks/api/types";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretImportItem } from "./SecretImportItem";
@@ -29,14 +29,14 @@ type TImportedSecrets = Array<{
   environmentInfo: WorkspaceEnv;
   secretPath: string;
   folderId: string;
-  secrets: DecryptedSecret[];
+  secrets: SecretV3RawSanitized[];
 }>;
 
 export const computeImportedSecretRows = (
   importedSecEnv: string,
   importedSecPath: string,
   importSecrets: TImportedSecrets = [],
-  secrets: DecryptedSecret[] = []
+  secrets: SecretV3RawSanitized[] = []
 ) => {
   const importedSecIndex = importSecrets.findIndex(
     ({ secretPath, environmentInfo }) =>
@@ -63,7 +63,7 @@ export const computeImportedSecretRows = (
   const importedEntry: Record<string, boolean> = {};
   const importedSecretEntries: {
     key: string;
-    value: string;
+    value?: string;
     overriden: {
       env: string;
       secretPath: string;
@@ -90,7 +90,7 @@ type Props = {
   secretPath?: string;
   secretImports?: TSecretImport[];
   isFetching?: boolean;
-  secrets?: DecryptedSecret[];
+  secrets?: SecretV3RawSanitized[];
   importedSecrets?: TImportedSecrets;
   searchTerm: string;
 };

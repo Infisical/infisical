@@ -1,6 +1,5 @@
-import { UserWsKeyPair } from "../keys/types";
 import { TSecretApprovalPolicy } from "../secretApproval/types";
-import { EncryptedSecret } from "../secrets/types";
+import { SecretV3Raw } from "../secrets/types";
 import { WsTag } from "../tags/types";
 
 export enum ApprovalStatus {
@@ -17,15 +16,9 @@ export enum CommitType {
 
 export type TSecretApprovalSecChangeData = {
   id: string;
-  secretKeyCiphertext: string;
-  secretKeyIV: string;
-  secretKeyTag: string;
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
-  secretCommentIV: string;
-  secretCommentTag: string;
-  secretCommentCiphertext: string;
+  secretKey: string;
+  secretValue?: string;
+  secretComment?: string;
   skipMultilineEncoding?: boolean;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
@@ -37,12 +30,12 @@ export type TSecretApprovalSecChange = {
   id: string;
   version: number;
   secretKey: string;
-  secretValue: string;
-  secretComment: string;
+  secretValue?: string;
+  secretComment?: string;
   tags?: string[];
 };
 
-export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
+export type TSecretApprovalRequest = {
   id: string;
   isReplicated?: boolean;
   slug: string;
@@ -90,7 +83,7 @@ export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   commits: ({
     // if there is no secret means it was creation
     secret?: { version: number };
-    secretVersion: J;
+    secretVersion: SecretV3Raw;
     // if there is no new version its for Delete
     op: CommitType;
   } & TSecretApprovalSecChangeData)[];
@@ -116,7 +109,6 @@ export type TGetSecretApprovalRequestCount = {
 
 export type TGetSecretApprovalRequestDetails = {
   id: string;
-  decryptKey: UserWsKeyPair;
 };
 
 export type TUpdateSecretApprovalReviewStatusDTO = {
@@ -133,4 +125,5 @@ export type TUpdateSecretApprovalRequestStatusDTO = {
 export type TPerformSecretApprovalRequestMerge = {
   id: string;
   workspaceId: string;
+  bypassReason?: string;
 };

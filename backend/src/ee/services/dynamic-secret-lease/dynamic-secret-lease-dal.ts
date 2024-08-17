@@ -12,10 +12,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
 
   const countLeasesForDynamicSecret = async (dynamicSecretId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
-        .count("*")
-        .where({ dynamicSecretId })
-        .first();
+      const doc = await (tx || db)(TableName.DynamicSecretLease).count("*").where({ dynamicSecretId }).first();
       return parseInt(doc || "0", 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "DynamicSecretCountLeases" });
@@ -24,7 +21,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+      const doc = await (tx || db)(TableName.DynamicSecretLease)
         .where({ [`${TableName.DynamicSecretLease}.id` as "id"]: id })
         .first()
         .join(

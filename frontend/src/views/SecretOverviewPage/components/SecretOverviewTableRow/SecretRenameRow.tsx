@@ -17,15 +17,15 @@ import {
   useWorkspace
 } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useGetUserWsKey, useUpdateSecretV3 } from "@app/hooks/api";
-import { DecryptedSecret, SecretType } from "@app/hooks/api/types";
+import { useUpdateSecretV3 } from "@app/hooks/api";
+import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/types";
 import { SecretActionType } from "@app/views/SecretMainPage/components/SecretListView/SecretListView.utils";
 
 type Props = {
   secretKey: string;
   secretPath: string;
   environments: { name: string; slug: string }[];
-  getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
+  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
 };
 
 export const formSchema = z.object({
@@ -63,8 +63,6 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       secret?.overrideAction === SecretActionType.Modified
   );
   const workspaceId = currentWorkspace?.id || "";
-
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
 
@@ -109,12 +107,10 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           environment: secret?.env,
           workspaceId,
           secretPath,
-          secretName: secret.key,
-          secretId: secret.id,
+          secretKey: secret.key,
           secretValue: secret.value || "",
           type: SecretType.Shared,
-          latestFileKey: decryptFileKey!,
-          tags: secret.tags.map((tag) => tag.id),
+          tagIds: secret.tags?.map((tag) => tag.id),
           secretComment: secret.comment,
           secretReminderRepeatDays: secret.reminderRepeatDays,
           secretReminderNote: secret.reminderNote,

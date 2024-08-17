@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import axios from "axios";
+import { addSeconds, formatISO } from "date-fns";
 import jwt_decode from "jwt-decode";
 
 import { createNotification } from "@app/components/notifications";
@@ -12,6 +13,7 @@ import attemptLogin from "@app/components/utilities/attemptLogin";
 import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input, Spinner } from "@app/components/v2";
+import { SessionStorageKeys } from "@app/const";
 import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
@@ -79,11 +81,24 @@ export const PasswordStep = ({
         if (callbackPort) {
           console.log("organization id was present. new JWT token to be used in CLI:", newJwtToken);
           const instance = axios.create();
-          await instance.post(cliUrl, {
+          const payload = {
             privateKey,
             email,
             JTWToken: newJwtToken
+          };
+          await instance.post(cliUrl, payload).catch(() => {
+            // if error happens to communicate we set the token with an expiry in sessino storage
+            // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+            sessionStorage.setItem(
+              SessionStorageKeys.CLI_TERMINAL_TOKEN,
+              JSON.stringify({
+                expiry: formatISO(addSeconds(new Date(), 30)),
+                data: window.btoa(JSON.stringify(payload))
+              })
+            );
           });
+          router.push("/cli-redirect");
+          return;
         }
 
         await navigateUserToOrg(router, organizationId);
@@ -165,26 +180,35 @@ export const PasswordStep = ({
             );
 
             const instance = axios.create();
-            await instance.post(cliUrl, {
+            const payload = {
               ...isCliLoginSuccessful.loginResponse,
               JTWToken: newJwtToken
+            };
+            await instance.post(cliUrl, payload).catch(() => {
+              // if error happens to communicate we set the token with an expiry in sessino storage
+              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+              sessionStorage.setItem(
+                SessionStorageKeys.CLI_TERMINAL_TOKEN,
+                JSON.stringify({
+                  expiry: formatISO(addSeconds(new Date(), 30)),
+                  data: window.btoa(JSON.stringify(payload))
+                })
+              );
             });
-
-            await navigateUserToOrg(router, organizationId);
+            router.push("/cli-redirect");
+            return;
           }
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
           // if the user has no orgs, navigate to the create org page
-          else {
-            const userOrgs = await fetchOrganizations();
+          const userOrgs = await fetchOrganizations();
 
-            // case: user has orgs, so we navigate the user to select an org
-            if (userOrgs.length > 0) {
-              navigateToSelectOrganization(callbackPort);
-            }
-            // case: no orgs found, so we navigate the user to create an org
-            else {
-              await navigateUserToOrg(router);
-            }
+          // case: user has orgs, so we navigate the user to select an org
+          if (userOrgs.length > 0) {
+            navigateToSelectOrganization(callbackPort);
+          }
+          // case: no orgs found, so we navigate the user to create an org
+          else {
+            await navigateUserToOrg(router);
           }
         }
       } else {

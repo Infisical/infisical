@@ -13,9 +13,9 @@ export const KmsKeysSchema = z.object({
   isDisabled: z.boolean().default(false).nullable().optional(),
   isReserved: z.boolean().default(true).nullable().optional(),
   orgId: z.string().uuid(),
+  slug: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  slug: z.string()
+  updatedAt: z.date()
 });
 
 export type TKmsKeys = z.infer<typeof KmsKeysSchema>;

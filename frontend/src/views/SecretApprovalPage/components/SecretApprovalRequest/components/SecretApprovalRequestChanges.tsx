@@ -16,7 +16,6 @@ import { Button, ContentLoader, EmptyState, IconButton, Tooltip } from "@app/com
 import { useUser } from "@app/context";
 import {
   useGetSecretApprovalRequestDetails,
-  useGetUserWsKey,
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType } from "@app/hooks/api/types";
@@ -81,14 +80,12 @@ export const SecretApprovalRequestChanges = ({
   workspaceId
 }: Props) => {
   const { user: userSession } = useUser();
-  const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
   const {
     data: secretApprovalRequestDetails,
     isSuccess: isSecretApprovalRequestSuccess,
     isLoading: isSecretApprovalRequestLoading
   } = useGetSecretApprovalRequestDetails({
-    id: approvalRequestId,
-    decryptKey: decryptFileKey!
+    id: approvalRequestId
   });
 
   const {
@@ -230,7 +227,7 @@ export const SecretApprovalRequestChanges = ({
         </div>
         <div className="flex flex-col space-y-4">
           {secretApprovalRequestDetails.commits.map(
-            ({ op, secretVersion, secret, newVersion }, index) => (
+            ({ op, secretVersion, secret, ...newVersion }, index) => (
               <SecretApprovalRequestChangeItem
                 op={op}
                 conflicts={secretApprovalRequestDetails.conflicts}
@@ -269,8 +266,9 @@ export const SecretApprovalRequestChanges = ({
               >
                 <div className="flex-grow text-sm">
                   <Tooltip
-                    content={`${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""
-                      }`}
+                    content={`${requiredApprover.firstName || ""} ${
+                      requiredApprover.lastName || ""
+                    }`}
                   >
                     <span>{requiredApprover?.email} </span>
                   </Tooltip>

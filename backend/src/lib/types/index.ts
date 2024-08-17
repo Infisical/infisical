@@ -47,3 +47,8 @@ export enum EnforcementLevel {
   Hard = "hard",
   Soft = "soft"
 }
+
+export enum SecretSharingAccessType {
+  Anyone = "anyone",
+  Organization = "organization"
+}

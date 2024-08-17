@@ -9,6 +9,7 @@ import { useWorkspace } from "@app/context";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { TabSections } from "@app/views/Org/Types";
 
 type Props = {
   membership: TWorkspaceUser;
@@ -43,11 +44,11 @@ export const UserProjectRow = ({
 
   return (
     <Tr
-      className="group h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+      className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
       key={`user-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
-          router.push(`/project/${project.id}/members`);
+          router.push(`/project/${project.id}/members?selectedTab=${TabSections.Member}`);
           return;
         }
 

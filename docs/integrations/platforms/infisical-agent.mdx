@@ -252,7 +252,7 @@ To install the Infisical agent, you must first install the [Infisical CLI](../cl
 
 Once you have the CLI installed, you will need to provision programmatic access for the agent via [Universal Auth](/documentation/platform/identities/universal-auth). To obtain a **Client ID** and a **Client Secret**, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
 
-Next, create agent config file as shown below.
+Next, create agent config file as shown below. The example agent configuration file defines the token authentication method, one sink location, and a secret template.
 
 ```yaml example-agent-config-file.yaml
 infisical:
@@ -277,8 +277,8 @@ templates:
         command: ./reload-app.sh
 ```
 
-Above is an example agent configuration file that defines the token authentication method, one sink location (where to deposit access tokens after renewal) and a secret template. 
-
+The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `secret` is used to fetch the secrets. 
+This function takes the following arguments: `secret "<project-id>" "<environment-slug>" "<secret-path>"`. 
 
 ```text my-dot-ev-secret-template
 {{- with secret "6553ccb2b7da580d7f6e7260" "dev" "/" }}
@@ -288,11 +288,51 @@ Above is an example agent configuration file that defines the token authenticati
 {{- end }}
 ```
 
-The secret template above will be used to render the secrets where the key and the value are separated by `=` sign. You'll notice that a custom function named `secret` is used to fetch the secrets. 
-This function takes the following arguments: `secret "<project-id>" "<environment-slug>" "<secret-path>"`. 
+After defining the agent configuration file, run the command below pointing to the path where the agent configuration file is located.
+
 
 ```bash 
 infisical agent --config example-agent-config-file.yaml
 ```
 
-After defining the agent configuration file, run the command above pointing to the path where the agent configuration is located. 
+
+### Available secret template functions
+<Accordion title="listSecrets">
+  ```bash
+    listSecrets "<project-id>" "environment-slug" "<secret-path>"
+  ```
+    ```bash example-template-usage
+  {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" }}
+  {{- range . }}
+  {{ .Key }}={{ .Value }}
+  {{- end }}
+  {{- end }}
+  ```
+
+  **Function name**: listSecrets
+
+  **Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
+
+  **Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`  
+</Accordion>
+
+<Accordion title="getSecretByName">
+  ```bash
+  getSecretByName "<project-id>" "<environment-slug>" "<secret-path>" "<secret-name>"
+  ```
+
+  ```bash example-template-usage
+  {{ with getSecretByName "d821f21d-aa90-453b-8448-8c78c1160a0e" "dev" "/" "POSTHOG_HOST"}}
+  {{ if .Value }}
+  password = "{{ .Value }}"
+  {{ end }}
+  {{ end }}
+  ```
+
+  **Function name**: getSecretByName
+
+  **Description**: This function can be used to render a single secret by it's name.
+
+  **Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
+
+</Accordion>

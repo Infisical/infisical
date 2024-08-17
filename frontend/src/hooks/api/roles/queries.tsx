@@ -40,6 +40,7 @@ export const roleQueryKeys = {
   getProjectRoleBySlug: (projectSlug: string, roleSlug: string) =>
     ["roles", { projectSlug, roleSlug }] as const,
   getOrgRoles: (orgId: string) => ["org-roles", { orgId }] as const,
+  getOrgRole: (orgId: string, roleId: string) => [{ orgId, roleId }, "org-role"] as const,
   getUserOrgPermissions: ({ orgId }: TGetUserOrgPermissionsDTO) =>
     ["user-permissions", { orgId }] as const,
   getUserProjectPermissions: ({ workspaceId }: TGetUserProjectPermissionDTO) =>
@@ -87,6 +88,21 @@ export const useGetOrgRoles = (orgId: string, enable = true) =>
     queryKey: roleQueryKeys.getOrgRoles(orgId),
     queryFn: () => getOrgRoles(orgId),
     enabled: Boolean(orgId) && enable
+  });
+
+export const useGetOrgRole = (orgId: string, roleId: string) =>
+  useQuery({
+    queryKey: roleQueryKeys.getOrgRole(orgId, roleId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        role: Omit<TOrgRole, "permissions"> & { permissions: unknown };
+      }>(`/api/v1/organization/${orgId}/roles/${roleId}`);
+      return {
+        ...data.role,
+        permissions: unpackRules(data.role.permissions as PackRule<TPermission>[])
+      };
+    },
+    enabled: Boolean(orgId && roleId)
   });
 
 const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {

@@ -9,7 +9,7 @@ description: "Learn how to manage secrets in local development environments."
 There is a number of issues that arise with secret management in local development environment: 
 1. **Getting secrets onto local machines**. When new developers join or a new project is created, the process of getting the development set of secrets onto local machines is often unclear. As a result, developers end up spending a lot of time onboarding and risk potentially following insecure practices when sharing secrets from one developer to another.
 2. **Syncing secrets with teammates**. One of the problems with .env files is that they become unsynced when one of the developers updates a secret or configuration. Even if the rest of the team is notified, developers don't make all the right changes immediately, and later on end up spending a lot of time debugging an issue due to missing environment variables. This leads to a lot of inefficiencies and lost time. 
-3. **Accidentally leaking secrets**. When developing locally, it's common for developers to accidentally leak a hardcoded as part of a commit. As soon as the secret is part of the git history, it becomes hard to get it removed and create a security vulnerability.
+3. **Accidentally leaking secrets**. When developing locally, it's common for developers to accidentally leak a hardcoded secret as part of a commit. As soon as the secret is part of the git history, it becomes hard to get it removed and create a security vulnerability.
 
 ## Solution
 

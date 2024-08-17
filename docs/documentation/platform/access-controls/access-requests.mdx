@@ -6,7 +6,7 @@ description: "Learn how to request access to sensitive resources in Infisical."
 In certain situations, developers need to expand their access to a certain new project or a sensitive environment. For those use cases, it is helpful to utilize Infisical's **Access Requests** functionality. 
 
 This functionality works in the following way: 
-1. A project administrator sets up a policy that assigns access managers (also known as eligible approvers) to a certain sensitive folder or environment. 
+1. A project administrator sets up an access policy that assigns access managers (also known as eligible approvers) to a certain sensitive folder or environment. 
 ![Create Access Request Policy Modal](/images/platform/access-controls/create-access-request-policy.png)
 ![Access Request Policies](/images/platform/access-controls/access-request-policies.png)
 
@@ -14,9 +14,14 @@ This functionality works in the following way:
 ![Access Request Create](/images/platform/access-controls/request-access.png)
 ![Access Request Dashboard](/images/platform/access-controls/access-requests-pending.png)
 
-3. An eligible approver can approve or reject the access request. 
-![Access Request Review](/images/platform/access-controls/review-access-request.png)
+4. An eligible approver can approve or reject the access request.
+{/* ![Access Request Review](/images/platform/access-controls/review-access-request.png) */}
+![Access Request Bypass](/images/platform/access-controls/access-request-bypass.png)
 
-4. As soon as the request is approved, developer is able to access the sought resources. 
+<Info>
+ If the access request matches with a policy that has a **Soft** enforcement level, the requester may bypass the policy and get access to the resource without full approval.
+</Info>
+
+5. As soon as the request is approved, developer is able to access the sought resources. 
 ![Access Request Dashboard](/images/platform/access-controls/access-requests-completed.png)
 

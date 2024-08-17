@@ -3,16 +3,14 @@ import { z } from "zod";
 import {
   SecretApprovalRequestsReviewersSchema,
   SecretApprovalRequestsSchema,
-  SecretApprovalRequestsSecretsSchema,
-  SecretsSchema,
   SecretTagsSchema,
-  SecretVersionsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const approvalRequestUser = z.object({ userId: z.string() }).merge(
@@ -117,6 +115,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       params: z.object({
         id: z.string()
       }),
+      body: z.object({
+        bypassReason: z.string().optional()
+      }),
       response: {
         200: z.object({
           approval: SecretApprovalRequestsSchema
@@ -130,7 +131,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        approvalId: req.params.id
+        approvalId: req.params.id,
+        bypassReason: req.body.bypassReason
       });
       return { approval };
     }
@@ -257,46 +259,32 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               committerUser: approvalRequestUser,
               reviewers: approvalRequestUser.extend({ status: z.string() }).array(),
               secretPath: z.string(),
-              commits: SecretApprovalRequestsSecretsSchema.omit({ secretBlindIndex: true })
-                .merge(
-                  z.object({
-                    tags: tagSchema,
-                    secret: SecretsSchema.pick({
-                      id: true,
-                      version: true,
-                      secretKeyIV: true,
-                      secretKeyTag: true,
-                      secretKeyCiphertext: true,
-                      secretValueIV: true,
-                      secretValueTag: true,
-                      secretValueCiphertext: true,
-                      secretCommentIV: true,
-                      secretCommentTag: true,
-                      secretCommentCiphertext: true
+              commits: secretRawSchema
+                .omit({ _id: true, environment: true, workspace: true, type: true, version: true })
+                .extend({
+                  op: z.string(),
+                  tags: tagSchema,
+                  secret: z
+                    .object({
+                      id: z.string(),
+                      version: z.number(),
+                      secretKey: z.string(),
+                      secretValue: z.string().optional(),
+                      secretComment: z.string().optional()
                     })
-                      .optional()
-                      .nullable(),
-                    secretVersion: SecretVersionsSchema.pick({
-                      id: true,
-                      version: true,
-                      secretKeyIV: true,
-                      secretKeyTag: true,
-                      secretKeyCiphertext: true,
-                      secretValueIV: true,
-                      secretValueTag: true,
-                      secretValueCiphertext: true,
-                      secretCommentIV: true,
-                      secretCommentTag: true,
-                      secretCommentCiphertext: true
+                    .optional()
+                    .nullable(),
+                  secretVersion: z
+                    .object({
+                      id: z.string(),
+                      version: z.number(),
+                      secretKey: z.string(),
+                      secretValue: z.string().optional(),
+                      secretComment: z.string().optional(),
+                      tags: tagSchema
                     })
-                      .merge(
-                        z.object({
-                          tags: tagSchema
-                        })
-                      )
-                      .optional()
-                  })
-                )
+                    .optional()
+                })
                 .array()
             })
           )

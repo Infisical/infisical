@@ -1,77 +1,16 @@
-import { useEffect, useState } from "react";
-import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faEnvelope, faEnvelopeOpen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
-import { IconButton, Td, Tr } from "@app/components/v2";
+import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+// import { useToggle } from "@app/hooks";
+import { Badge } from "@app/components/v2/Badge";
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const formatDate = (date: Date): string => (date ? new Date(date).toUTCString() : "");
-
-const isExpired = (expiresAt: Date | number | undefined): boolean => {
-  if (typeof expiresAt === "number") {
-    return expiresAt <= 0;
-  }
-  if (expiresAt instanceof Date) {
-    return new Date(expiresAt) < new Date();
-  }
-  return false;
-};
-
-const getValidityStatusText = (expiresAt: Date): string =>
-  isExpired(expiresAt) ? "Expired " : "Valid for ";
-
-const timeAgo = (inputDate: Date, currentDate: Date): string => {
-  const now = new Date(currentDate).getTime();
-  const date = new Date(inputDate).getTime();
-  const elapsedMilliseconds = now - date;
-  const elapsedSeconds = Math.abs(Math.floor(elapsedMilliseconds / 1000));
-  const elapsedMinutes = Math.abs(Math.floor(elapsedSeconds / 60));
-  const elapsedHours = Math.abs(Math.floor(elapsedMinutes / 60));
-  const elapsedDays = Math.abs(Math.floor(elapsedHours / 24));
-  const elapsedWeeks = Math.abs(Math.floor(elapsedDays / 7));
-  const elapsedMonths = Math.abs(Math.floor(elapsedDays / 30));
-  const elapsedYears = Math.abs(Math.floor(elapsedDays / 365));
-
-  if (elapsedYears > 0) {
-    return `${elapsedYears} year${elapsedYears === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
-  }
-  if (elapsedMonths > 0) {
-    return `${elapsedMonths} month${elapsedMonths === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
-  }
-  if (elapsedWeeks > 0) {
-    return `${elapsedWeeks} week${elapsedWeeks === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
-  }
-  if (elapsedDays > 0) {
-    return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
-  }
-  if (elapsedHours > 0) {
-    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
-  }
-  if (elapsedMinutes > 0) {
-    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} ${
-      elapsedMilliseconds >= 0 ? "ago" : "from now"
-    }`;
-  }
-  return `${elapsedSeconds} second${elapsedSeconds === 1 ? "" : "s"} ${
-    elapsedMilliseconds >= 0 ? "ago" : "from now"
-  }`;
-};
-
 export const ShareSecretsRow = ({
   row,
-  handlePopUpOpen,
-  onSecretExpiration
+  handlePopUpOpen
 }: {
   row: TSharedSecret;
   handlePopUpOpen: (
@@ -84,58 +23,72 @@ export const ShareSecretsRow = ({
       id: string;
     }
   ) => void;
-  onSecretExpiration: (expiredSecretId: string) => void;
 }) => {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // const [isRowExpanded, setIsRowExpanded] = useToggle();
+  const lastViewedAt = row.lastViewedAt
+    ? format(new Date(row.lastViewedAt), "yyyy-MM-dd - HH:mm a")
+    : undefined;
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+  let isExpired = false;
+  if (row.expiresAfterViews !== null && row.expiresAfterViews <= 0) {
+    isExpired = true;
+  }
 
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    if (isExpired(row.expiresAt || row.expiresAfterViews)) {
-      onSecretExpiration(row.id);
-    }
-  }, [isExpired(row.expiresAt || row.expiresAfterViews)]);
+  if (row.expiresAt !== null && new Date(row.expiresAt) < new Date()) {
+    isExpired = true;
+  }
 
   return (
-    <Tr key={row.id}>
-      <Td>{`${row.encryptedValue.substring(0, 5)}...`}</Td>
-      <Td>
-        <p className="text-sm text-yellow-400">{timeAgo(row.createdAt, currentTime)}</p>
-        <p className="text-xs text-gray-500">{formatDate(row.createdAt)}</p>
-      </Td>
-      <Td>
-        <>
-          <p className={`text-sm ${isExpired(row.expiresAt) ? "text-red-500" : "text-green-500"}`}>
-            {getValidityStatusText(row.expiresAt!) + timeAgo(row.expiresAt!, currentTime)}
-          </p>
-          <p className="text-xs text-gray-500">{formatDate(row.expiresAt!)}</p>
-        </>
-      </Td>
-      <Td>
-        <p className={`text-sm ${row.expiresAfterViews <= 0 ? "text-red-500" : "text-green-500"}`}>
-          {row.expiresAfterViews}
-        </p>
-      </Td>
-      <Td>
-        <IconButton
-          onClick={() =>
-            handlePopUpOpen("deleteSharedSecretConfirmation", {
-              name: "delete",
-              id: row.id
-            })
-          }
-          colorSchema="danger"
-          ariaLabel="delete"
-        >
-          <FontAwesomeIcon icon={faTrashCan} />
-        </IconButton>
-      </Td>
-    </Tr>
+    <>
+      <Tr
+        key={row.id}
+        // className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
+        // onClick={() => setIsRowExpanded.toggle()}
+      >
+        <Td>
+          <Tooltip content={lastViewedAt ? `Last opened at ${lastViewedAt}` : "Not yet opened"}>
+            <FontAwesomeIcon icon={lastViewedAt ? faEnvelopeOpen : faEnvelope} />
+          </Tooltip>
+        </Td>
+        <Td>{row.name ? `${row.name}` : "-"}</Td>
+        <Td>
+          <Badge variant={isExpired ? "danger" : "success"}>
+            {isExpired ? "Expired" : "Active"}
+          </Badge>
+        </Td>
+        <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
+        <Td>{format(new Date(row.expiresAt), "yyyy-MM-dd - HH:mm a")}</Td>
+        <Td>{row.expiresAfterViews !== null ? row.expiresAfterViews : "-"}</Td>
+        <Td>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopUpOpen("deleteSharedSecretConfirmation", {
+                name: "delete",
+                id: row.id
+              });
+            }}
+            variant="plain"
+            ariaLabel="delete"
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </IconButton>
+        </Td>
+      </Tr>
+      {/* {isRowExpanded && (
+        <Tr>
+          <Td
+            colSpan={6}
+            className={`bg-bunker-600 px-0 py-0 ${isRowExpanded && " border-mineshaft-500 p-8"}`}
+          >
+            <div className="grid grid-cols-3 gap-4">
+              <div>Test 1</div>
+              <div>Test 2</div>
+              <div>Test 3</div>
+            </div>
+          </Td>
+        </Tr>
+      )} */}
+    </>
   );
 };

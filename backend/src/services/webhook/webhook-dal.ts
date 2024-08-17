@@ -20,7 +20,7 @@ export const webhookDALFactory = (db: TDbClient) => {
       .select(tx.ref("projectId").withSchema(TableName.Environment))
       .select(selectAllTableCols(TableName.Webhook));
 
-  const find = async (filter: Partial<TWebhooks>, tx?: Knex) => {
+  const find = async (filter: Partial<TWebhooks & { projectId: string }>, tx?: Knex) => {
     try {
       const docs = await webhookFindQuery(tx || db.replicaNode(), filter);
       return docs.map(({ envId, envSlug, envName, ...el }) => ({

@@ -75,15 +75,16 @@ export const auditLogDALFactory = (db: TDbClient) => {
           .del()
           .returning("id");
         numberOfRetryOnFailure = 0; // reset
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100); // time to breathe for db
-        });
       } catch (error) {
         numberOfRetryOnFailure += 1;
         logger.error(error, "Failed to delete audit log on pruning");
+      } finally {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10); // time to breathe for db
+        });
       }
-    } while (deletedAuditLogIds.length > 0 && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
+    } while (deletedAuditLogIds.length > 0 || numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
   };
 
   return { ...auditLogOrm, pruneAuditLog, find };

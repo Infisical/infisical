@@ -3,12 +3,12 @@ import { ForbiddenError } from "@casl/ability";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
-import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
@@ -139,9 +139,35 @@ export const projectEnvServiceFactory = ({
     return env;
   };
 
+  const getEnvironmentById = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+
+    const [env] = await projectEnvDAL.find({
+      id,
+      projectId
+    });
+
+    if (!env) {
+      throw new NotFoundError({
+        message: "Environment does not exist"
+      });
+    }
+
+    return env;
+  };
+
   return {
     createEnvironment,
     updateEnvironment,
-    deleteEnvironment
+    deleteEnvironment,
+    getEnvironmentById
   };
 };

@@ -5,7 +5,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
-import { TDNParts, TGetCaCertChainDTO, TGetCaCredentialsDTO, TRebuildCaCrlDTO } from "./certificate-authority-types";
+import {
+  TDNParts,
+  TGetCaCertChainDTO,
+  TGetCaCertChainsDTO,
+  TGetCaCredentialsDTO,
+  TRebuildCaCrlDTO
+} from "./certificate-authority-types";
 
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];
@@ -16,6 +22,40 @@ export const createDistinguishedName = (parts: TDNParts) => {
   if (parts.commonName) dnParts.push(`CN=${parts.commonName}`);
   if (parts.locality) dnParts.push(`L=${parts.locality}`);
   return dnParts.join(", ");
+};
+
+export const parseDistinguishedName = (dn: string): TDNParts => {
+  const parts: TDNParts = {};
+  const dnParts = dn.split(/,\s*/);
+
+  for (const part of dnParts) {
+    const [key, value] = part.split("=");
+    switch (key.toUpperCase()) {
+      case "C":
+        parts.country = value;
+        break;
+      case "O":
+        parts.organization = value;
+        break;
+      case "OU":
+        parts.ou = value;
+        break;
+      case "ST":
+        parts.province = value;
+        break;
+      case "CN":
+        parts.commonName = value;
+        break;
+      case "L":
+        parts.locality = value;
+        break;
+      default:
+        // Ignore unrecognized keys
+        break;
+    }
+  }
+
+  return parts;
 };
 
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
@@ -55,6 +95,8 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
  * Return the public and private key of CA with id [caId]
  * Note: credentials are returned as crypto.webcrypto.CryptoKey
  * suitable for use with @peculiar/x509 module
+ *
+ * TODO: Update to get latest CA Secret once support for CA renewal with new key pair is added
  */
 export const getCaCredentials = async ({
   caId,
@@ -78,7 +120,7 @@ export const getCaCredentials = async ({
   const kmsDecryptor = await kmsService.decryptWithKmsKey({
     kmsId: keyId
   });
-  const decryptedPrivateKey = kmsDecryptor({
+  const decryptedPrivateKey = await kmsDecryptor({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
@@ -98,26 +140,25 @@ export const getCaCredentials = async ({
   ]);
 
   return {
+    caSecret,
     caPrivateKey,
     caPublicKey
   };
 };
 
 /**
- * Return the decrypted pem-encoded certificate and certificate chain
+ * Return the list of decrypted pem-encoded certificates and certificate chains
  * for CA with id [caId].
  */
-export const getCaCertChain = async ({
+export const getCaCertChains = async ({
   caId,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   projectDAL,
   kmsService
-}: TGetCaCertChainDTO) => {
+}: TGetCaCertChainsDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
   if (!ca) throw new BadRequestError({ message: "CA not found" });
-
-  const caCert = await certificateAuthorityCertDAL.findOne({ caId: ca.id });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -129,13 +170,61 @@ export const getCaCertChain = async ({
     kmsId: keyId
   });
 
-  const decryptedCaCert = kmsDecryptor({
+  const caCerts = await certificateAuthorityCertDAL.find({ caId: ca.id }, { sort: [["version", "asc"]] });
+
+  const decryptedChains = await Promise.all(
+    caCerts.map(async (caCert) => {
+      const decryptedCaCert = await kmsDecryptor({
+        cipherTextBlob: caCert.encryptedCertificate
+      });
+      const caCertObj = new x509.X509Certificate(decryptedCaCert);
+      const decryptedChain = await kmsDecryptor({
+        cipherTextBlob: caCert.encryptedCertificateChain
+      });
+      return {
+        certificate: caCertObj.toString("pem"),
+        certificateChain: decryptedChain.toString("utf-8"),
+        serialNumber: caCertObj.serialNumber,
+        version: caCert.version
+      };
+    })
+  );
+
+  return decryptedChains;
+};
+
+/**
+ * Return the decrypted pem-encoded certificate and certificate chain
+ * corresponding to CA certificate with id [caCertId].
+ */
+export const getCaCertChain = async ({
+  caCertId,
+  certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
+  projectDAL,
+  kmsService
+}: TGetCaCertChainDTO) => {
+  const caCert = await certificateAuthorityCertDAL.findById(caCertId);
+  if (!caCert) throw new BadRequestError({ message: "CA certificate not found" });
+  const ca = await certificateAuthorityDAL.findById(caCert.caId);
+
+  const keyId = await getProjectKmsCertificateKeyId({
+    projectId: ca.projectId,
+    projectDAL,
+    kmsService
+  });
+
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    kmsId: keyId
+  });
+
+  const decryptedCaCert = await kmsDecryptor({
     cipherTextBlob: caCert.encryptedCertificate
   });
 
   const caCertObj = new x509.X509Certificate(decryptedCaCert);
 
-  const decryptedChain = kmsDecryptor({
+  const decryptedChain = await kmsDecryptor({
     cipherTextBlob: caCert.encryptedCertificateChain
   });
 
@@ -176,7 +265,7 @@ export const rebuildCaCrl = async ({
     kmsId: keyId
   });
 
-  const privateKey = kmsDecryptor({
+  const privateKey = await kmsDecryptor({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
@@ -210,7 +299,7 @@ export const rebuildCaCrl = async ({
   const kmsEncryptor = await kmsService.encryptWithKmsKey({
     kmsId: keyId
   });
-  const { cipherTextBlob: encryptedCrl } = kmsEncryptor({
+  const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
     plainText: Buffer.from(new Uint8Array(crl.rawData))
   });
 

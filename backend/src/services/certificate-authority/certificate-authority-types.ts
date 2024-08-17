@@ -20,6 +20,10 @@ export enum CaStatus {
   PENDING_CERTIFICATE = "pending-certificate"
 }
 
+export enum CaRenewalType {
+  EXISTING = "existing"
+}
+
 export type TCreateCaDTO = {
   projectSlug: string;
   type: CaType;
@@ -53,6 +57,16 @@ export type TGetCaCsrDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TRenewCaCertDTO = {
+  caId: string;
+  notAfter: string;
+  type: CaRenewalType;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetCaCertsDTO = {
+  caId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCaCertDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -81,6 +95,17 @@ export type TIssueCertFromCaDTO = {
   notAfter?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TSignCertFromCaDTO = {
+  caId: string;
+  csr: string;
+  friendlyName?: string;
+  commonName?: string;
+  altNames: string;
+  ttl: string;
+  notBefore?: string;
+  notAfter?: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TDNParts = {
   commonName?: string;
   organization?: string;
@@ -98,10 +123,18 @@ export type TGetCaCredentialsDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
-export type TGetCaCertChainDTO = {
+export type TGetCaCertChainsDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findOne">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+};
+
+export type TGetCaCertChainDTO = {
+  caCertId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };

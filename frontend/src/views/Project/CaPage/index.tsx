@@ -1,0 +1,1 @@
+export { CaPage } from "./CaPage";

@@ -26,7 +26,7 @@ import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
+import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -275,8 +275,8 @@ const syncSecretsAzureKeyVault = async ({
   };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
 }) => {
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
@@ -538,19 +538,20 @@ const syncSecretsAWSParameterStore = async ({
   integration,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  projectId
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & { secretPath: string; environment: { slug: string } };
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  projectId?: string;
 }) => {
   let response: { isSynced: boolean; syncMessage: string } | null = null;
 
   if (!accessId) {
     throw new Error("AWS access ID is required");
   }
-
   const config = new AWS.Config({
     region: integration.region as string,
     credentials: {
@@ -567,7 +568,9 @@ const syncSecretsAWSParameterStore = async ({
 
   const metadata = z.record(z.any()).parse(integration.metadata || {});
   const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
-
+  logger.info(
+    `getIntegrationSecrets: integration sync triggered for ssm with [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [shouldDisableDelete=${metadata.shouldDisableDelete}]`
+  );
   // now fetch all aws parameter store secrets
   let hasNext = true;
   let nextToken: string | undefined;
@@ -594,6 +597,18 @@ const syncSecretsAWSParameterStore = async ({
     nextToken = parameters.NextToken;
   }
 
+  logger.info(
+    `getIntegrationSecrets: all fetched keys from AWS SSM [projectId=${projectId}] [environment=${
+      integration.environment.slug
+    }]  [secretPath=${integration.secretPath}] [awsParameterStoreSecretsObj=${Object.keys(
+      awsParameterStoreSecretsObj
+    ).join(",")}]`
+  );
+  logger.info(
+    `getIntegrationSecrets: all secrets from Infisical to send to AWS SSM [projectId=${projectId}] [environment=${
+      integration.environment.slug
+    }]  [secretPath=${integration.secretPath}] [secrets=${Object.keys(secrets).join(",")}]`
+  );
   // Identify secrets to create
   // don't use Promise.all() and promise map here
   // it will cause rate limit
@@ -603,24 +618,56 @@ const syncSecretsAWSParameterStore = async ({
         // case: secret does not exist in AWS parameter store
         // -> create secret
         if (secrets[key].value) {
+          logger.info(
+            `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [key=${key}]`
+          );
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
               Type: "SecureString",
               Value: secrets[key].value,
               ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-              // Overwrite: true,
-              Tags: metadata.secretAWSTag
-                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
-                    Key: tag.key,
-                    Value: tag.value
-                  }))
-                : []
+              Overwrite: true
             })
             .promise();
+          if (metadata.secretAWSTag?.length) {
+            try {
+              await ssm
+                .addTagsToResource({
+                  ResourceType: "Parameter",
+                  ResourceId: `${integration.path}${key}`,
+                  Tags: metadata.secretAWSTag
+                    ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                        Key: tag.key,
+                        Value: tag.value
+                      }))
+                    : []
+                })
+                .promise();
+            } catch (err) {
+              logger.error(
+                err,
+                `getIntegrationSecrets: create secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+              );
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((err as any).code === "AccessDeniedException") {
+                logger.error(
+                  `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+                );
+              }
+
+              response = {
+                isSynced: false,
+                syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+              };
+            }
+          }
         }
         // case: secret exists in AWS parameter store
       } else {
+        logger.info(
+          `getIntegrationSecrets: update secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+        );
         // -> update secret
         if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
           await ssm
@@ -648,6 +695,10 @@ const syncSecretsAWSParameterStore = async ({
               })
               .promise();
           } catch (err) {
+            logger.error(
+              err,
+              `getIntegrationSecrets: update secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+            );
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((err as any).code === "AccessDeniedException") {
               logger.error(
@@ -670,9 +721,18 @@ const syncSecretsAWSParameterStore = async ({
   }
 
   if (!metadata.shouldDisableDelete) {
+    logger.info(
+      `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=1]`
+    );
     for (const key in awsParameterStoreSecretsObj) {
       if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        logger.info(
+          `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=2]`
+        );
         if (!(key in secrets)) {
+          logger.info(
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=3]`
+          );
           // case:
           // -> delete secret
           await ssm
@@ -680,6 +740,9 @@ const syncSecretsAWSParameterStore = async ({
               Name: awsParameterStoreSecretsObj[key].Name as string
             })
             .promise();
+          logger.info(
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=4]`
+          );
         }
         await new Promise((resolve) => {
           setTimeout(resolve, 50);
@@ -903,8 +966,8 @@ const syncSecretsHeroku = async ({
   secrets,
   accessToken
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -2464,8 +2527,8 @@ const syncSecretsTerraformCloud = async ({
   accessToken,
   integrationDAL
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -3612,8 +3675,8 @@ export const syncIntegrationSecrets = async ({
   appendices,
   projectId
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   integration: TIntegrations & {
     projectId: string;
@@ -3656,7 +3719,8 @@ export const syncIntegrationSecrets = async ({
         integration,
         secrets,
         accessId,
-        accessToken
+        accessToken,
+        projectId
       });
       break;
     case Integrations.AWS_SECRET_MANAGER:

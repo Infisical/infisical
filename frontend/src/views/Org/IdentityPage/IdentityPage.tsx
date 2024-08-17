@@ -24,6 +24,7 @@ import {
   useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { TabSections } from"@app/views/Org/Types";
 
 import { IdentityAuthMethodModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
@@ -75,7 +76,7 @@ export const IdentityPage = withPermission(
         });
 
         handlePopUpClose("deleteIdentity");
-        router.push(`/org/${orgId}/members`);
+        router.push(`/org/${orgId}/members?selectedTab=${TabSections.Identities}`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -154,7 +155,7 @@ export const IdentityPage = withPermission(
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
               onClick={() => {
-                router.push(`/org/${orgId}/members`);
+                router.push(`/org/${orgId}/members?selectedTab=${TabSections.Identities}`);
               }}
               className="mb-4"
             >
