@@ -468,6 +468,29 @@ export const SecretOverviewPage = () => {
     filteredFolderNames?.length === 0 &&
     filteredDynamicSecrets?.length === 0;
 
+  const combinedItems = [
+    ...filteredFolderNames.map((folderName:string, index:number) => ({
+      type: 'folder',
+      data: folderName,
+      key: `overview-folder-${folderName}-${index + 1}`
+    })),
+    ...filteredDynamicSecrets.map((dynamicSecretName:string, index:number) => ({
+      type: 'dynamicSecret',
+      data: dynamicSecretName,
+      key: `overview-dynamicSecret-${dynamicSecretName}-${index + 1}`
+    })),
+    ...filteredSecretNames.map((key:string, index:number) => ({
+      type: 'secret',
+      data: key,
+      key: `overview-secret-${key}-${index + 1}`
+    }))
+  ];    
+  const [itemsPerPage,setItemsPerPage] = useState(10);
+  const [currentPage,setCurrentPage] = useState(1);
+  const totalPages=Math.ceil(combinedItems.length/itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = combinedItems.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <>
       <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -650,7 +673,7 @@ export const SecretOverviewPage = () => {
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
         />
-        <div className="thin-scrollbar mt-4" ref={parentTableRef}>
+        <div className="thin-scrollbar mt-4 pb-4" ref={parentTableRef}>
           <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
             <Table>
               <THead>
@@ -769,48 +792,46 @@ export const SecretOverviewPage = () => {
                   </Tr>
                 )}
                 {!isTableLoading &&
-                  filteredFolderNames.map((folderName, index) => (
-                    <SecretOverviewFolderRow
-                      folderName={folderName}
-                      isFolderPresentInEnv={isFolderPresentInEnv}
-                      isSelected={selectedEntries.folder[folderName]}
-                      onToggleFolderSelect={() => toggleSelectedEntry(EntryType.FOLDER, folderName)}
-                      environments={visibleEnvs}
-                      key={`overview-${folderName}-${index + 1}`}
-                      onClick={handleFolderClick}
-                      onToggleFolderEdit={(name: string) =>
-                        handlePopUpOpen("updateFolder", { name })
-                      }
-                    />
-                  ))}
-                {!isTableLoading &&
-                  filteredDynamicSecrets.map((dynamicSecretName, index) => (
-                    <SecretOverviewDynamicSecretRow
-                      dynamicSecretName={dynamicSecretName}
-                      isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
-                      environments={visibleEnvs}
-                      key={`overview-${dynamicSecretName}-${index + 1}`}
-                    />
-                  ))}
-                {!isTableLoading &&
-                  visibleEnvs?.length > 0 &&
-                  filteredSecretNames.map((key, index) => (
-                    <SecretOverviewTableRow
-                      isSelected={selectedEntries.secret[key]}
-                      onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
-                      secretPath={secretPath}
-                      getImportedSecretByKey={getImportedSecretByKey}
-                      isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
-                      onSecretCreate={handleSecretCreate}
-                      onSecretDelete={handleSecretDelete}
-                      onSecretUpdate={handleSecretUpdate}
-                      key={`overview-${key}-${index + 1}`}
-                      environments={visibleEnvs}
-                      secretKey={key}
-                      getSecretByKey={getSecretByKey}
-                      expandableColWidth={expandableTableWidth}
-                    />
-                  ))}
+                  paginatedItems.map((item) => {
+                    switch(item.type){
+                      case 'folder':
+                        return <SecretOverviewFolderRow
+                              folderName={item.data}
+                              isFolderPresentInEnv={isFolderPresentInEnv}
+                              isSelected={selectedEntries.folder[item.data]}
+                              onToggleFolderSelect={() => toggleSelectedEntry(EntryType.FOLDER, item.data)}
+                              environments={visibleEnvs}
+                              key={item.key}
+                              onClick={handleFolderClick}
+                              onToggleFolderEdit={(name: string) =>
+                                handlePopUpOpen("updateFolder", { name })
+                              }
+                            />
+                      case 'dynamicSecret':
+                        return <SecretOverviewDynamicSecretRow
+                        dynamicSecretName={item.data}
+                        isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
+                        environments={visibleEnvs}
+                        key={item.key}
+                      />
+
+                      case 'secret':
+                        return <SecretOverviewTableRow
+                        isSelected={selectedEntries.secret[item.data]}
+                        onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, item.data)}
+                        secretPath={secretPath}
+                        getImportedSecretByKey={getImportedSecretByKey}
+                        isImportedSecretPresentInEnv={isImportedSecretPresentInEnv}
+                        onSecretCreate={handleSecretCreate}
+                        onSecretDelete={handleSecretDelete}
+                        onSecretUpdate={handleSecretUpdate}
+                        key={item.key}
+                        environments={visibleEnvs}
+                        secretKey={item.data}
+                        getSecretByKey={getSecretByKey}
+                        expandableColWidth={expandableTableWidth}
+                      />
+                      }})}
               </TBody>
               <TFoot>
                 <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
@@ -838,6 +859,45 @@ export const SecretOverviewPage = () => {
               </TFoot>
             </Table>
           </TableContainer>
+          <div className="flex justify-center mt-4">
+            <Button
+              variant="outline_bg"
+              onClick={() => setCurrentPage(currentPage-1)}
+              className="h-10 rounded"
+            >
+              Previous
+            </Button>
+            <div className="flex items-center space-x-1 mx-2">
+              {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
+                let pageNum;
+                if (currentPage <= 3) {
+                  pageNum = index + 1;
+                } else if (currentPage > totalPages - 3) {
+                  pageNum = totalPages - 4 + index;
+                } else {
+                  pageNum = currentPage - 2 + index;
+                }
+
+                return (
+                  <Button
+                    key={pageNum}
+                    variant="outline_bg"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`h-10 w-10 rounded ${currentPage === pageNum ? 'bg-blue-50 text-blue-600' : ''}`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline_bg"
+              onClick={() => setCurrentPage(currentPage+1)}
+              className="h-10 rounded"
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
       <CreateSecretForm
