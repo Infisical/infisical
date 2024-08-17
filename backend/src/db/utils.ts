@@ -55,11 +55,7 @@ export const createJunctionTable = async (
       console.log(`Table ${tableName} already exists. Skipping creation.`);
     }
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(`Error creating junction table ${tableName}: ${error.message}`);
-    } else {
-      console.error(`An unknown error occurred while creating junction table ${tableName}`);
-    }
+    console.error(`Error in createJunctionTable for ${tableName}:`, error);
     throw error;
   }
 };
@@ -74,14 +70,10 @@ export const createUpdateAtTriggerFunction = async (knex: Knex): Promise<void> =
       RETURN NEW;
       END;
       $$ LANGUAGE plpgsql;
-      `);
+    `);
     console.log(`Update timestamp function 'on_update_timestamp' created or replaced successfully.`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Error creating update timestamp function: ${error.message}`);
-    } else {
-      console.error(`An unknown error occurred while creating update timestamp function`);
-    }
+  } catch (error) {
+    console.error("Error in createUpdateAtTriggerFunction:", error);
     throw error;
   }
 };
@@ -92,12 +84,8 @@ export const dropUpdatedAtTriggerFunction = async (knex: Knex): Promise<void> =>
       DROP FUNCTION IF EXISTS on_update_timestamp() CASCADE;
     `);
     console.log(`Update timestamp function 'on_update_timestamp' dropped successfully.`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Error dropping update timestamp function: ${error.message}`);
-    } else {
-      console.error(`An unknown error occurred while dropping update timestamp function`);
-    }
+  } catch (error) {
+    console.error("Error in dropUpdatedAtTriggerFunction:", error);
     throw error;
   }
 };
@@ -111,12 +99,8 @@ export const createOnUpdateTrigger = async (knex: Knex, tableName: string): Prom
       EXECUTE PROCEDURE on_update_timestamp();
     `);
     console.log(`Update trigger for table ${tableName} created successfully.`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Error creating update trigger for table ${tableName}: ${error.message}`);
-    } else {
-      console.error(`An unknown error occurred while creating update trigger for table ${tableName}`);
-    }
+  } catch (error) {
+    console.error(`Error in createOnUpdateTrigger for ${tableName}:`, error);
     throw error;
   }
 };
@@ -124,14 +108,9 @@ export const createOnUpdateTrigger = async (knex: Knex, tableName: string): Prom
 export const dropOnUpdateTrigger = async (knex: Knex, tableName: string): Promise<void> => {
   try {
     await knex.raw(`DROP TRIGGER IF EXISTS "${tableName}_updatedAt" ON ${tableName}`);
-    
     console.log(`Update trigger for table ${tableName} dropped successfully.`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Error dropping update trigger for table ${tableName}: ${error.message}`);
-    } else {
-      console.error(`An unknown error occurred while dropping update trigger for table ${tableName}`);
-    }
+  } catch (error) {
+    console.error(`Error in dropOnUpdateTrigger for ${tableName}:`, error);
     throw error;
   }
 };
