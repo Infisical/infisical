@@ -131,6 +131,7 @@ import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -1063,7 +1064,6 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
-    pkiAlertService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
@@ -1071,6 +1071,11 @@ export const registerRoutes = async (
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL
+  });
+
+  const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
+    queueService,
+    pkiAlertService
   });
 
   const oidcService = oidcConfigServiceFactory({
@@ -1097,6 +1102,7 @@ export const registerRoutes = async (
 
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
+  await dailyExpiringPkiItemAlert.startSendingAlerts();
   await kmsService.startService();
 
   // inject all services

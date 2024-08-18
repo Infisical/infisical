@@ -186,32 +186,34 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            <Controller
-              control={control}
-              name="collectionId"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Certificate Collection (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  className="mt-4"
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                    isDisabled={Boolean(cert)}
+            {!cert && (
+              <Controller
+                control={control}
+                name="collectionId"
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Certificate Collection (Optional)"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    className="mt-4"
                   >
-                    {(data?.collections || []).map(({ id, name }) => (
-                      <SelectItem value={id} key={`pki-collection-${id}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full"
+                      isDisabled={Boolean(cert)}
+                    >
+                      {(data?.collections || []).map(({ id, name }) => (
+                        <SelectItem value={id} key={`pki-collection-${id}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            )}
             <Controller
               control={control}
               defaultValue=""

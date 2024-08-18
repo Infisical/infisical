@@ -15,6 +15,8 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
+  await createOnUpdateTrigger(knex, TableName.PkiCollection);
+
   if (!(await knex.schema.hasTable(TableName.PkiCollectionItem))) {
     await knex.schema.createTable(TableName.PkiCollectionItem, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -27,6 +29,8 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("certId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
     });
   }
+
+  await createOnUpdateTrigger(knex, TableName.PkiCollectionItem);
 
   if (!(await knex.schema.hasTable(TableName.PkiAlert))) {
     await knex.schema.createTable(TableName.PkiAlert, (t) => {
@@ -43,7 +47,6 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.PkiCollection);
   await createOnUpdateTrigger(knex, TableName.PkiAlert);
 }
 

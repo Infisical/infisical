@@ -12,8 +12,11 @@ import { TPkiAlertDALFactory } from "./pki-alert-dal";
 import { TCreateAlertDTO, TDeleteAlertDTO, TGetAlertByIdDTO, TUpdateAlertDTO } from "./pki-alert-types";
 
 type TPkiAlertServiceFactoryDep = {
-  pkiAlertDAL: TPkiAlertDALFactory;
-  pkiCollectionDAL: TPkiCollectionDALFactory;
+  pkiAlertDAL: Pick<
+    TPkiAlertDALFactory,
+    "create" | "findById" | "updateById" | "deleteById" | "getExpiringPkiCollectionItemsForAlerting"
+  >;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
