@@ -1,6 +1,7 @@
 import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
@@ -8,11 +9,13 @@ import { useWorkspace } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const schema = yup.object({
-  name: yup.string().required().label("Tag Name")
+const schema = z.object({
+  slug: z.string().refine((v) => slugify(v) === v, {
+    message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
+  })
 });
 
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = z.infer<typeof schema>;
 
 type Props = {
   popUp: UsePopUpState<["CreateSecretTag", "deleteTagConfirmation"]>;
@@ -26,7 +29,6 @@ type Props = {
 };
 
 export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  
   const { currentWorkspace } = useWorkspace();
   const createWsTag = useCreateWsTag();
   const {
@@ -35,17 +37,16 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
     handleSubmit,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: yupResolver(schema)
+    resolver: zodResolver(schema)
   });
 
-  const onFormSubmit = async ({ name }: FormData) => {
+  const onFormSubmit = async ({ slug }: FormData) => {
     try {
       if (!currentWorkspace?.id) return;
 
       await createWsTag.mutateAsync({
         workspaceID: currentWorkspace?.id,
-        tagName: name,
-        tagSlug: name.replace(/\s+/g, " ").replace(" ", "_"),
+        tagSlug: slug,
         tagColor: ""
       });
 
@@ -80,11 +81,11 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
-            name="name"
+            name="slug"
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Tag Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="Type your tag name" />
+              <FormControl label="Tag Slug" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="Type your tag slug" />
               </FormControl>
             )}
           />

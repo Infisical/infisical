@@ -81,15 +81,13 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         .select({
           secVerTagId: "secVerTag.id",
           secVerTagColor: "secVerTag.color",
-          secVerTagSlug: "secVerTag.slug",
-          secVerTagName: "secVerTag.name"
+          secVerTagSlug: "secVerTag.slug"
         })
         .select(
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTag).as("tagJnId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         )
         .select(
           db.ref("secretBlindIndex").withSchema(TableName.Secret).as("orgSecBlindIndex"),
@@ -124,9 +122,9 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "tagJnId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color }) => ({
+            mapper: ({ tagId: id, tagSlug: slug, tagColor: color }) => ({
               id,
-              name,
+              name: slug,
               slug,
               color
             })
@@ -200,11 +198,11 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
               {
                 key: "secVerTagId",
                 label: "tags" as const,
-                mapper: ({ secVerTagId: id, secVerTagName: name, secVerTagSlug: slug, secVerTagColor: color }) => ({
+                mapper: ({ secVerTagId: id, secVerTagSlug: slug, secVerTagColor: color }) => ({
                   // eslint-disable-next-line
                   id,
                   // eslint-disable-next-line
-                  name,
+                  name: slug,
                   // eslint-disable-next-line
                   slug,
                   // eslint-disable-next-line
@@ -262,15 +260,13 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         .select({
           secVerTagId: "secVerTag.id",
           secVerTagColor: "secVerTag.color",
-          secVerTagSlug: "secVerTag.slug",
-          secVerTagName: "secVerTag.name"
+          secVerTagSlug: "secVerTag.slug"
         })
         .select(
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTagV2).as("tagJnId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         )
         .select(
           db.ref("version").withSchema(TableName.SecretV2).as("orgSecVersion"),
@@ -292,9 +288,9 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "tagJnId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color }) => ({
+            mapper: ({ tagId: id, tagSlug: slug, tagColor: color }) => ({
               id,
-              name,
+              name: slug,
               slug,
               color
             })
@@ -330,11 +326,11 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
               {
                 key: "secVerTagId",
                 label: "tags" as const,
-                mapper: ({ secVerTagId: id, secVerTagName: name, secVerTagSlug: slug, secVerTagColor: color }) => ({
+                mapper: ({ secVerTagId: id, secVerTagSlug: slug, secVerTagColor: color }) => ({
                   // eslint-disable-next-line
                   id,
                   // eslint-disable-next-line
-                  name,
+                  name: slug,
                   // eslint-disable-next-line
                   slug,
                   // eslint-disable-next-line

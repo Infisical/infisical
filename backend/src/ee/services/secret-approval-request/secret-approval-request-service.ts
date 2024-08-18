@@ -224,12 +224,10 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretValue: el.encryptedValue
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-          : undefined,
+        secretValue: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : undefined,
+          : "",
         secret: el.secret
           ? {
               secretKey: el.secret.key,
@@ -237,10 +235,10 @@ export const secretApprovalRequestServiceFactory = ({
               version: el.secret.version,
               secretValue: el.secret.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
-                : undefined,
+                : "",
               secretComment: el.secret.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedComment }).toString()
-                : undefined
+                : ""
             }
           : undefined,
         secretVersion: el.secretVersion
@@ -250,10 +248,10 @@ export const secretApprovalRequestServiceFactory = ({
               version: el.secretVersion.version,
               secretValue: el.secretVersion.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
-                : undefined,
+                : "",
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
-                : undefined
+                : ""
             }
           : undefined
       }));

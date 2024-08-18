@@ -254,7 +254,7 @@ export const SecretDetailSidebar = ({
               )}
               <FormControl label="Tags" className="">
                 <div className="grid auto-cols-min grid-flow-col gap-2 overflow-hidden pt-2">
-                  {fields.map(({ tagColor, id: formId, name, id }) => (
+                  {fields.map(({ tagColor, id: formId, slug, id }) => (
                     <Tag
                       className="flex w-min items-center space-x-2"
                       key={formId}
@@ -271,7 +271,7 @@ export const SecretDetailSidebar = ({
                         className="h-3 w-3 rounded-full"
                         style={{ backgroundColor: tagColor || "#bec2c8" }}
                       />
-                      <div className="text-sm">{name}</div>
+                      <div className="text-sm">{slug}</div>
                     </Tag>
                   ))}
                   <DropdownMenu>
@@ -296,7 +296,7 @@ export const SecretDetailSidebar = ({
                     <DropdownMenuContent align="end" className="z-[100]">
                       <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
                       {tags.map((tag) => {
-                        const { id: tagId, name, color } = tag;
+                        const { id: tagId, slug, color } = tag;
 
                         const isSelected = selectedTagsGroupById?.[tagId];
                         return (
@@ -311,7 +311,7 @@ export const SecretDetailSidebar = ({
                                 className="mr-2 h-2 w-2 rounded-full"
                                 style={{ background: color || "#bec2c8" }}
                               />
-                              {name}
+                              {slug}
                             </div>
                           </DropdownMenuItem>
                         );

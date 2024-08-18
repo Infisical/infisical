@@ -596,7 +596,8 @@ export const RAW_SECRETS = {
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
-    includeImports: "Weather to include imported secrets or not."
+    includeImports: "Weather to include imported secrets or not.",
+    tagSlugs: "The comma separated tag slugs to filter secrets"
   },
   CREATE: {
     secretName: "The name of the secret to create.",

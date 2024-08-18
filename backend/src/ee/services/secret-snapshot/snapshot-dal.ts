@@ -100,8 +100,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretVersionTag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
       return sqlNestRelationships({
         data,
@@ -132,9 +131,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                mapper: ({ tagId: id, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
                   id,
-                  name,
+                  name: slug,
                   slug,
                   color,
                   vId
@@ -195,8 +194,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
       return sqlNestRelationships({
         data,
@@ -227,9 +225,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                mapper: ({ tagId: id, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
                   id,
-                  name,
+                  name: slug,
                   slug,
                   color,
                   vId
@@ -353,8 +351,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretVersionTag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
 
       const formated = sqlNestRelationships({
@@ -377,9 +374,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                mapper: ({ tagId: id, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
                   id,
-                  name,
+                  name: slug,
                   slug,
                   color,
                   vId
@@ -508,8 +505,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("id").withSchema(TableName.SecretVersionV2Tag).as("tagVersionId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
-          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
 
       const formated = sqlNestRelationships({
@@ -532,9 +528,9 @@ export const snapshotDALFactory = (db: TDbClient) => {
               {
                 key: "tagVersionId",
                 label: "tags" as const,
-                mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
+                mapper: ({ tagId: id, tagSlug: slug, tagColor: color, tagVersionId: vId }) => ({
                   id,
-                  name,
+                  name: slug,
                   slug,
                   color,
                   vId

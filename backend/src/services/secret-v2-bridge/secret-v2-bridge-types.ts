@@ -20,6 +20,7 @@ export type TGetSecretsDTO = {
   environment: string;
   includeImports?: boolean;
   recursive?: boolean;
+  tagSlugs?: string[];
 } & TProjectPermission;
 
 export type TGetASecretDTO = {

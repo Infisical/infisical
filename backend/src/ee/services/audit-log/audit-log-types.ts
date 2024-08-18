@@ -352,6 +352,7 @@ interface DeleteIntegrationEvent {
     targetServiceId?: string;
     path?: string;
     region?: string;
+    shouldDeleteIntegrationSecrets?: boolean;
   };
 }
 
