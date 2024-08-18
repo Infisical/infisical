@@ -1089,6 +1089,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
     altNames:
@@ -1104,6 +1105,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   SIGN_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
@@ -1142,6 +1144,65 @@ export const CERTIFICATES = {
     certificate: "The certificate body of the certificate",
     certificateChain: "The certificate chain of the certificate",
     serialNumberRes: "The serial number of the certificate"
+  }
+};
+
+export const ALERTS = {
+  CREATE: {
+    projectId: "The ID of the project to create the alert in",
+    pkiCollectionId: "The ID of the PKI collection to bind to the alert",
+    name: "The name of the alert",
+    alertBeforeDays: "The number of days before the certificate expires to trigger the alert",
+    emails: "The email addresses to send the alert email to"
+  },
+  GET: {
+    alertId: "The ID of the alert to get"
+  },
+  UPDATE: {
+    alertId: "The ID of the alert to update",
+    name: "The name of the alert to update to",
+    alertBeforeDays: "The number of days before the certificate expires to trigger the alert to update to",
+    pkiCollectionId: "The ID of the PKI collection to bind to the alert to update to",
+    emails: "The email addresses to send the alert email to update to"
+  },
+  DELETE: {
+    alertId: "The ID of the alert to delete"
+  }
+};
+
+export const PKI_COLLECTIONS = {
+  CREATE: {
+    projectId: "The ID of the project to create the PKI collection in",
+    name: "The name of the PKI collection",
+    description: "A description for the PKI collection"
+  },
+  GET: {
+    collectionId: "The ID of the PKI collection to get"
+  },
+  UPDATE: {
+    collectionId: "The ID of the PKI collection to update",
+    name: "The name of the PKI collection to update to",
+    description: "The description for the PKI collection to update to"
+  },
+  DELETE: {
+    collectionId: "The ID of the PKI collection to delete"
+  },
+  LIST_ITEMS: {
+    collectionId: "The ID of the PKI collection to list items from",
+    type: "The type of the PKI collection item to list",
+    offset: "The offset to start from",
+    limit: "The number of items to return"
+  },
+  ADD_ITEM: {
+    collectionId: "The ID of the PKI collection to add the item to",
+    type: "The type of the PKI collection item to add",
+    itemId: "The resource ID of the PKI collection item to add"
+  },
+  DELETE_ITEM: {
+    collectionId: "The ID of the PKI collection to delete the item from",
+    collectionItemId: "The ID of the PKI collection item to delete",
+    type: "The type of the deleted PKI collection item",
+    itemId: "The resource ID of the deleted PKI collection item"
   }
 };
 

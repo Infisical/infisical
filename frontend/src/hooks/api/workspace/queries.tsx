@@ -10,6 +10,8 @@ import { identitiesKeys } from "../identities/queries";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
+import { TPkiAlert } from "../pkiAlerts/types";
+import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
 import { userKeys } from "../users/queries";
 import { TWorkspaceUser } from "../users/types";
@@ -62,7 +64,11 @@ export const workspaceKeys = {
     slug: string;
     offset: number;
     limit: number;
-  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const
+  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
+  getWorkspacePkiAlerts: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-pki-alerts"] as const,
+  getWorkspacePkiCollections: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-pki-collections"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -599,5 +605,37 @@ export const useListWorkspaceCertificates = ({
       return { certificates, totalCount };
     },
     enabled: Boolean(projectSlug)
+  });
+};
+
+export const useListWorkspacePkiAlerts = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspacePkiAlerts(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { alerts }
+      } = await apiRequest.get<{ alerts: TPkiAlert[] }>(
+        `/api/v2/workspace/${workspaceId}/pki-alerts`
+      );
+
+      return { alerts };
+    },
+    enabled: Boolean(workspaceId)
+  });
+};
+
+export const useListWorkspacePkiCollections = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspacePkiCollections(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { collections }
+      } = await apiRequest.get<{ collections: TPkiCollection[] }>(
+        `/api/v2/workspace/${workspaceId}/pki-collections`
+      );
+
+      return { collections };
+    },
+    enabled: Boolean(workspaceId)
   });
 };

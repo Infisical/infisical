@@ -1,5 +1,6 @@
 import { CaStatus } from "../ca";
 import { IdentityTrustedIp } from "../identities/types";
+import { PkiItemType } from "../pkiCollections/constants";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
 interface UserActorMetadata {
@@ -579,6 +580,95 @@ interface GetCertBody {
   };
 }
 
+interface CreatePkiAlert {
+  type: EventType.CREATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId: string;
+    name: string;
+    alertBeforeDays: number;
+    recipientEmails: string;
+  };
+}
+interface GetPkiAlert {
+  type: EventType.GET_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface UpdatePkiAlert {
+  type: EventType.UPDATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId?: string;
+    name?: string;
+    alertBeforeDays?: number;
+    recipientEmails?: string;
+  };
+}
+interface DeletePkiAlert {
+  type: EventType.DELETE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface CreatePkiCollection {
+  type: EventType.CREATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name: string;
+  };
+}
+
+interface GetPkiCollection {
+  type: EventType.GET_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface UpdatePkiCollection {
+  type: EventType.UPDATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name?: string;
+  };
+}
+
+interface DeletePkiCollection {
+  type: EventType.DELETE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface GetPkiCollectionItems {
+  type: EventType.GET_PKI_COLLECTION_ITEMS;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface AddPkiCollectionItem {
+  type: EventType.ADD_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+    type: PkiItemType;
+    itemId: string;
+  };
+}
+
+interface DeletePkiCollectionItem {
+  type: EventType.DELETE_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+  };
+}
+
 interface OrgAdminAccessProjectEvent {
   type: EventType.ORG_ADMIN_ACCESS_PROJECT;
   metadata: {
@@ -646,6 +736,17 @@ export type Event =
   | DeleteCert
   | RevokeCert
   | GetCertBody
+  | CreatePkiAlert
+  | GetPkiAlert
+  | UpdatePkiAlert
+  | DeletePkiAlert
+  | CreatePkiCollection
+  | GetPkiCollection
+  | UpdatePkiCollection
+  | DeletePkiCollection
+  | GetPkiCollectionItems
+  | AddPkiCollectionItem
+  | DeletePkiCollectionItem
   | OrgAdminAccessProjectEvent;
 
 export type AuditLog = {

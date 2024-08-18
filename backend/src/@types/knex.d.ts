@@ -161,6 +161,15 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPkiAlerts,
+  TPkiAlertsInsert,
+  TPkiAlertsUpdate,
+  TPkiCollectionItems,
+  TPkiCollectionItemsInsert,
+  TPkiCollectionItemsUpdate,
+  TPkiCollections,
+  TPkiCollectionsInsert,
+  TPkiCollectionsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -364,6 +373,17 @@ declare module "knex/types/tables" {
       TCertificateSecrets,
       TCertificateSecretsInsert,
       TCertificateSecretsUpdate
+    >;
+    [TableName.PkiAlert]: KnexOriginal.CompositeTableType<TPkiAlerts, TPkiAlertsInsert, TPkiAlertsUpdate>;
+    [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
+      TPkiCollections,
+      TPkiCollectionsInsert,
+      TPkiCollectionsUpdate
+    >;
+    [TableName.PkiCollectionItem]: KnexOriginal.CompositeTableType<
+      TPkiCollectionItems,
+      TPkiCollectionItemsInsert,
+      TPkiCollectionItemsUpdate
     >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,

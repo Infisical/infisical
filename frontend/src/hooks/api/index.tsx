@@ -21,6 +21,8 @@ export * from "./ldapConfig";
 export * from "./oidcConfig";
 export * from "./orgAdmin";
 export * from "./organization";
+export * from "./pkiAlerts";
+export * from "./pkiCollections";
 export * from "./projectUserAdditionalPrivilege";
 export * from "./rateLimit";
 export * from "./roles";

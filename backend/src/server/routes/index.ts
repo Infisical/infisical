@@ -131,6 +131,12 @@ import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
+import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
+import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
+import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
+import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
@@ -585,6 +591,10 @@ export const registerRoutes = async (
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
 
+  const pkiAlertDAL = pkiAlertDALFactory(db);
+  const pkiCollectionDAL = pkiCollectionDALFactory(db);
+  const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
+
   const certificateService = certificateServiceFactory({
     certificateDAL,
     certificateBodyDAL,
@@ -615,6 +625,8 @@ export const registerRoutes = async (
     certificateAuthorityQueue,
     certificateDAL,
     certificateBodyDAL,
+    pkiCollectionDAL,
+    pkiCollectionItemDAL,
     projectDAL,
     kmsService,
     permissionService
@@ -627,6 +639,21 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     licenseService
+  });
+
+  const pkiAlertService = pkiAlertServiceFactory({
+    pkiAlertDAL,
+    pkiCollectionDAL,
+    permissionService,
+    smtpService
+  });
+
+  const pkiCollectionService = pkiCollectionServiceFactory({
+    pkiCollectionDAL,
+    pkiCollectionItemDAL,
+    certificateAuthorityDAL,
+    certificateDAL,
+    permissionService
   });
 
   const projectService = projectServiceFactory({
@@ -645,6 +672,8 @@ export const registerRoutes = async (
     licenseService,
     certificateAuthorityDAL,
     certificateDAL,
+    pkiAlertDAL,
+    pkiCollectionDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,
     keyStore,
@@ -1044,6 +1073,11 @@ export const registerRoutes = async (
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL
   });
 
+  const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
+    queueService,
+    pkiAlertService
+  });
+
   const oidcService = oidcConfigServiceFactory({
     orgDAL,
     orgMembershipDAL,
@@ -1068,6 +1102,7 @@ export const registerRoutes = async (
 
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
+  await dailyExpiringPkiItemAlert.startSendingAlerts();
   await kmsService.startService();
 
   // inject all services
@@ -1126,6 +1161,8 @@ export const registerRoutes = async (
     certificate: certificateService,
     certificateAuthority: certificateAuthorityService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
+    pkiAlert: pkiAlertService,
+    pkiCollection: pkiCollectionService,
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,

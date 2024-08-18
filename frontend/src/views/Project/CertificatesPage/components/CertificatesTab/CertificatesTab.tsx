@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 
+import { PkiCollectionSection } from "../PkiAlertsTab/components";
 import { CertificatesSection } from "./components";
 
 export const CertificatesTab = () => {
@@ -11,6 +12,7 @@ export const CertificatesTab = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
+      <PkiCollectionSection />
       <CertificatesSection />
     </motion.div>
   );

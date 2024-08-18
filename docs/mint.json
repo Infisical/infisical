@@ -107,7 +107,8 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
-            "documentation/platform/pki/certificates"
+            "documentation/platform/pki/certificates",
+            "documentation/platform/pki/alerting"
           ]
         },
         {
@@ -701,6 +702,27 @@
             "api-reference/endpoints/certificates/revoke",
             "api-reference/endpoints/certificates/delete",
             "api-reference/endpoints/certificates/cert-body"
+          ]
+        },
+        {
+          "group": "Certificate Collections",
+          "pages": [
+            "api-reference/endpoints/pki-collections/create",
+            "api-reference/endpoints/pki-collections/read",
+            "api-reference/endpoints/pki-collections/update",
+            "api-reference/endpoints/pki-collections/delete",
+            "api-reference/endpoints/pki-collections/add-item",
+            "api-reference/endpoints/pki-collections/list-items",
+            "api-reference/endpoints/pki-collections/delete-item"
+          ]
+        },
+        {
+          "group": "PKI Alerting",
+          "pages": [
+            "api-reference/endpoints/pki-alerts/create",
+            "api-reference/endpoints/pki-alerts/read",
+            "api-reference/endpoints/pki-alerts/update",
+            "api-reference/endpoints/pki-alerts/delete"
           ]
         }
       ]

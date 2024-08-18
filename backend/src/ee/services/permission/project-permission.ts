@@ -30,6 +30,8 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
+  PkiAlerts = "pki-alerts",
+  PkiCollections = "pki-collections",
   Kms = "kms"
 }
 
@@ -63,6 +65,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Identity]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -161,6 +165,16 @@ const buildAdminPermissionRules = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
 
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiCollections);
+
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
 
@@ -236,6 +250,9 @@ const buildMemberPermissionRules = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
 
   return rules;
 };

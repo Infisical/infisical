@@ -3,7 +3,8 @@ export {
   useDeleteGroupFromWorkspace,
   useLeaveProject,
   useMigrateProjectToV3,
-  useUpdateGroupWorkspaceRole} from "./mutations";
+  useUpdateGroupWorkspaceRole
+} from "./mutations";
 export {
   useAddIdentityToWorkspace,
   useCreateWorkspace,
@@ -25,6 +26,8 @@ export {
   useListWorkspaceCas,
   useListWorkspaceCertificates,
   useListWorkspaceGroups,
+  useListWorkspacePkiAlerts,
+  useListWorkspacePkiCollections,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,

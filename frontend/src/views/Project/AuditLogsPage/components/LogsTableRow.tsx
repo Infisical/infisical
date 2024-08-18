@@ -323,6 +323,65 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             <p>{`Email: ${event.metadata.email}`}</p>
           </Td>
         );
+      case EventType.CREATE_PKI_ALERT:
+      case EventType.UPDATE_PKI_ALERT:
+        return (
+          <Td>
+            <p>{`Alert ID: ${event.metadata.pkiAlertId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+            <p>{`Alert Before Days: ${event.metadata.alertBeforeDays}`}</p>
+          </Td>
+        );
+      case EventType.GET_PKI_ALERT:
+      case EventType.DELETE_PKI_ALERT:
+        return (
+          <Td>
+            <p>{`Alert ID: ${event.metadata.pkiAlertId}`}</p>
+          </Td>
+        );
+      case EventType.CREATE_PKI_COLLECTION:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+          </Td>
+        );
+      case EventType.UPDATE_PKI_COLLECTION:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+          </Td>
+        );
+      case EventType.GET_PKI_COLLECTION:
+      case EventType.DELETE_PKI_COLLECTION:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+          </Td>
+        );
+      case EventType.GET_PKI_COLLECTION_ITEMS:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+          </Td>
+        );
+      case EventType.ADD_PKI_COLLECTION_ITEM:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Collection Item ID: ${event.metadata.pkiCollectionItemId}`}</p>
+            <p>{`Type: ${event.metadata.type}`}</p>
+            <p>{`Item ID: ${event.metadata.itemId}`}</p>
+          </Td>
+        );
+      case EventType.DELETE_PKI_COLLECTION_ITEM:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Collection Item ID: ${event.metadata.pkiCollectionItemId}`}</p>
+          </Td>
+        );
       case EventType.CREATE_CA:
       case EventType.GET_CA:
       case EventType.UPDATE_CA:
