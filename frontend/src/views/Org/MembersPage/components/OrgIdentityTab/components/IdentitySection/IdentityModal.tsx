@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import Toggle from "@app/components/basic/Toggle";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -209,16 +208,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </SelectItem>
                   ))}
                 </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue={false}
-            name="isDisabled"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Disabled" isError={Boolean(error)} errorText={error?.message}>
-                <Toggle className="ml-1" enabled={field.value} setEnabled={field.onChange} />
               </FormControl>
             )}
           />

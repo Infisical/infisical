@@ -22,7 +22,8 @@ import {
   useDeleteIdentity,
   useGetIdentityById,
   useRevokeIdentityTokenAuthToken,
-  useRevokeIdentityUniversalAuthClientSecret} from "@app/hooks/api";
+  useRevokeIdentityUniversalAuthClientSecret,
+  useUpdateIdentity} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { TabSections } from"@app/views/Org/Types";
 
@@ -46,6 +47,7 @@ export const IdentityPage = withPermission(
     const orgId = currentOrg?.id || "";
     const { data } = useGetIdentityById(identityId);
     const { mutateAsync: deleteIdentity } = useDeleteIdentity();
+    const {mutateAsync: updateIdentity} = useUpdateIdentity()
     const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
     const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
 
@@ -60,7 +62,8 @@ export const IdentityPage = withPermission(
       "clientSecret",
       "revokeClientSecret",
       "universalAuthClientSecret", // list of client secrets
-      "upgradePlan"
+      "upgradePlan",
+      "disableIdentity"
     ] as const);
 
     const onDeleteIdentitySubmit = async (id: string) => {
@@ -81,6 +84,34 @@ export const IdentityPage = withPermission(
         console.error(err);
         const error = err as any;
         const text = error?.response?.data?.message ?? "Failed to delete identity";
+
+        createNotification({
+          text,
+          type: "error"
+        });
+      }
+    };
+
+    const onDisableIdentitySubmit = async (id: string) => {
+      if (!data) return
+      
+      try {
+        await updateIdentity({
+          identityId: id,
+          organizationId: orgId,
+          isDisabled: !data.identity.isDisabled
+        });
+
+        createNotification({
+          text: "Successfully disabled identity",
+          type: "success"
+        });
+
+        handlePopUpClose("disableIdentity");
+      } catch (err) {
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to disable identity";
 
         createNotification({
           text,
@@ -218,6 +249,34 @@ export const IdentityPage = withPermission(
                     )}
                   </OrgPermissionCan>
                   <OrgPermissionCan
+                    I={OrgPermissionActions.Edit}
+                    a={OrgPermissionSubjects.Identity}
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        className={twMerge(
+                          isAllowed
+                            ? `${data.identity.isDisabled ? "" : "hover:!bg-red-500"} hover:!text-white`
+                            : "pointer-events-none cursor-not-allowed opacity-50"
+                        )}
+                        onClick={async () => {
+                          if (!data.identity.isDisabled) {
+                            handlePopUpOpen("disableIdentity", {
+                              identityId,
+                              name: data.identity.name
+                            });
+                            return
+                          }
+
+                          await onDisableIdentitySubmit(data.identity.id)
+                        }}
+                        disabled={!isAllowed}
+                      >
+                        {data.identity.isDisabled ? "Enable Identity" : "Disable Identity"}
+                      </DropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
+                  <OrgPermissionCan
                     I={OrgPermissionActions.Delete}
                     a={OrgPermissionSubjects.Identity}
                   >
@@ -288,6 +347,20 @@ export const IdentityPage = withPermission(
           onDeleteApproved={() =>
             onDeleteIdentitySubmit(
               (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+            )
+          }
+        />
+        <DeleteActionModal
+          isOpen={popUp.disableIdentity.isOpen}
+          title={`Are you sure want to disable ${
+            (popUp?.disableIdentity?.data as { name: string })?.name || ""
+          }?`}
+          onChange={(isOpen) => handlePopUpToggle("disableIdentity", isOpen)}
+          deleteKey="confirm"
+          buttonText="Disable"
+          onDeleteApproved={() =>
+            onDisableIdentitySubmit(
+              (popUp?.disableIdentity?.data as { identityId: string })?.identityId
             )
           }
         />

@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -77,7 +78,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Role</Th>
-            <Th>Disabled</Th>
+            <Th>Status</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
@@ -121,7 +122,19 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       }}
                     </OrgPermissionCan>
                   </Td>
-                  <Td>{isDisabled ? "true" : "false"}</Td>
+                  <Td>
+                    {isDisabled ? (
+                      <Button
+                        isDisabled
+                        className="w-40"
+                        colorSchema="primary"
+                        variant="outline_bg"
+                        onClick={() => {}}
+                      >
+                        Disabled
+                      </Button>
+                    ) : "Enabled"}
+                  </Td>
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
