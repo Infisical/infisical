@@ -81,7 +81,7 @@ export const pkiCollectionItemDALFactory = (db: TDbClient) => {
 
       return parseInt((count as unknown as CountResult).count || "0", 10);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count all project certificates" });
+      throw new DatabaseError({ error, name: "Count all PKI collection items" });
     }
   };
 

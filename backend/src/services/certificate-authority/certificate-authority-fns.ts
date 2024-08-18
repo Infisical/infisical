@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import crypto from "crypto";
 
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
@@ -106,10 +106,10 @@ export const getCaCredentials = async ({
   kmsService
 }: TGetCaCredentialsDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new BadRequestError({ message: "CA not found" });
+  if (!ca) throw new NotFoundError({ message: "CA not found" });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
-  if (!caSecret) throw new BadRequestError({ message: "CA secret not found" });
+  if (!caSecret) throw new NotFoundError({ message: "CA secret not found" });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -158,7 +158,7 @@ export const getCaCertChains = async ({
   kmsService
 }: TGetCaCertChainsDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new BadRequestError({ message: "CA not found" });
+  if (!ca) throw new NotFoundError({ message: "CA not found" });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -205,7 +205,7 @@ export const getCaCertChain = async ({
   kmsService
 }: TGetCaCertChainDTO) => {
   const caCert = await certificateAuthorityCertDAL.findById(caCertId);
-  if (!caCert) throw new BadRequestError({ message: "CA certificate not found" });
+  if (!caCert) throw new NotFoundError({ message: "CA certificate not found" });
   const ca = await certificateAuthorityDAL.findById(caCert.caId);
 
   const keyId = await getProjectKmsCertificateKeyId({
@@ -249,7 +249,7 @@ export const rebuildCaCrl = async ({
   kmsService
 }: TRebuildCaCrlDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new BadRequestError({ message: "CA not found" });
+  if (!ca) throw new NotFoundError({ message: "CA not found" });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 

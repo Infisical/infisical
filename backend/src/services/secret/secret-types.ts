@@ -149,6 +149,7 @@ export type TGetSecretsRawDTO = {
   environment: string;
   includeImports?: boolean;
   recursive?: boolean;
+  tagSlugs?: string[];
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {

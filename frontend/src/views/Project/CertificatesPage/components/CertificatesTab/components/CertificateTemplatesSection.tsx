@@ -62,7 +62,7 @@ export const CertificateTemplatesSection = () => {
               onClick={() => handlePopUpOpen("certificateTemplate")}
               isDisabled={!isAllowed}
             >
-              Create Certificate Template
+              Create
             </Button>
           )}
         </ProjectPermissionCan>

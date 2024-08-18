@@ -2,8 +2,9 @@ package util
 
 import (
 	"encoding/base64"
+	"fmt"
 
-	"github.com/manifoldco/promptui"
+	"github.com/rs/zerolog/log"
 	"github.com/zalando/go-keyring"
 )
 
@@ -26,20 +27,13 @@ func SetValueInKeyring(key, value string) error {
 	err = keyring.Set(currentVaultBackend, MAIN_KEYRING_SERVICE, key, value)
 
 	if err != nil {
+		log.Debug().Msg(fmt.Sprintf("Error while setting default keyring: %v", err))
 		configFile, _ := GetConfigFile()
 
 		if configFile.VaultBackendPassphrase == "" {
-			PrintWarning("System keyring could not be used, falling back to `file` vault for sensitive data storage.")
-			passphrasePrompt := promptui.Prompt{
-				Label: "Enter the passphrase to use for keyring encryption",
-			}
-			passphrase, err := passphrasePrompt.Run()
-			if err != nil {
-				return err
-			}
-
-			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(passphrase))
+			encodedPassphrase := base64.StdEncoding.EncodeToString([]byte(GenerateRandomString(10))) // generate random passphrase
 			configFile.VaultBackendPassphrase = encodedPassphrase
+			configFile.VaultBackendType = VAULT_BACKEND_FILE_MODE
 			err = WriteConfigFile(&configFile)
 			if err != nil {
 				return err
@@ -50,6 +44,7 @@ func SetValueInKeyring(key, value string) error {
 		}
 
 		err = keyring.Set(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key, value)
+		log.Debug().Msg(fmt.Sprintf("Error while setting file keyring: %v", err))
 	}
 
 	return err
@@ -60,13 +55,7 @@ func GetValueInKeyring(key string) (string, error) {
 	if err != nil {
 		PrintErrorAndExit(1, err, "Unable to get current vault. Tip: run [infisical reset] then try again")
 	}
-
-	value, err := keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
-
-	if err != nil {
-		value, err = keyring.Get(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key)
-	}
-	return value, err
+	return keyring.Get(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 
 }
 
@@ -76,11 +65,5 @@ func DeleteValueInKeyring(key string) error {
 		return err
 	}
 
-	err = keyring.Delete(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
-
-	if err != nil {
-		err = keyring.Delete(VAULT_BACKEND_FILE_MODE, MAIN_KEYRING_SERVICE, key)
-	}
-
-	return err
+	return keyring.Delete(currentVaultBackend, MAIN_KEYRING_SERVICE, key)
 }

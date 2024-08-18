@@ -50,6 +50,7 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
@@ -97,6 +98,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -122,7 +124,8 @@ export const secretApprovalRequestServiceFactory = ({
   kmsService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
-  secretVersionTagV2BridgeDAL
+  secretVersionTagV2BridgeDAL,
+  licenseService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -224,12 +227,10 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretValue: el.encryptedValue
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-          : undefined,
+        secretValue: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         secretComment: el.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : undefined,
+          : "",
         secret: el.secret
           ? {
               secretKey: el.secret.key,
@@ -237,10 +238,10 @@ export const secretApprovalRequestServiceFactory = ({
               version: el.secret.version,
               secretValue: el.secret.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
-                : undefined,
+                : "",
               secretComment: el.secret.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedComment }).toString()
-                : undefined
+                : ""
             }
           : undefined,
         secretVersion: el.secretVersion
@@ -250,10 +251,10 @@ export const secretApprovalRequestServiceFactory = ({
               version: el.secretVersion.version,
               secretValue: el.secretVersion.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
-                : undefined,
+                : "",
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
-                : undefined
+                : ""
             }
           : undefined
       }));
@@ -296,6 +297,14 @@ export const secretApprovalRequestServiceFactory = ({
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
+      });
+    }
 
     const { policy } = secretApprovalRequest;
     const { hasRole } = await permissionService.getProjectPermission(
@@ -347,6 +356,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
+      });
+    }
+
     const { policy } = secretApprovalRequest;
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
@@ -387,6 +404,14 @@ export const secretApprovalRequestServiceFactory = ({
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to merge secret approval request due to plan restriction. Upgrade plan to merge secret approval request."
+      });
+    }
 
     const { policy, folderId, projectId } = secretApprovalRequest;
     const { hasRole } = await permissionService.getProjectPermission(

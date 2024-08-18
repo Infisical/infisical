@@ -11,7 +11,7 @@ export const caStatusToNameMap: { [K in CaStatus]: string } = {
   [CaStatus.PENDING_CERTIFICATE]: "Pending Certificate"
 };
 
-export const getStatusBadgeVariant = (status: CaStatus) => {
+export const getCaStatusBadgeVariant = (status: CaStatus) => {
   switch (status) {
     case CaStatus.ACTIVE:
       return "success";

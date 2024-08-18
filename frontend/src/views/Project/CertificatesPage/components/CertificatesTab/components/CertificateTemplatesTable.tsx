@@ -1,4 +1,4 @@
-import { faEllipsis, faGear, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -74,7 +74,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                                 id: certificateTemplate.id
                               })
                             }
-                            icon={<FontAwesomeIcon icon={faGear} />}
+                            icon={<FontAwesomeIcon icon={faFileAlt} />}
                           >
                             Manage Policies
                           </DropdownMenuItem>
@@ -109,7 +109,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
           </TBody>
         </Table>
         {!isLoading && !data?.certificateTemplates?.length && (
-          <EmptyState title="No certificate templates have been created" icon={faGear} />
+          <EmptyState title="No certificate templates have been created" icon={faFileAlt} />
         )}
       </TableContainer>
     </div>

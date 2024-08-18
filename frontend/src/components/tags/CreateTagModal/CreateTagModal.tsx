@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -87,7 +88,13 @@ type Props = {
 };
 
 const createTagSchema = z.object({
-  name: z.string().trim(),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((v) => slugify(v) === v, {
+      message: "Invalid slug. Slug can only contain alphanumeric characters and hyphens."
+    }),
   color: z.string().trim()
 });
 
@@ -110,7 +117,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
   } = useForm<FormData>({
     resolver: zodResolver(createTagSchema)
   });
-  
+
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
 
@@ -123,13 +130,12 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
     if (!isOpen) reset();
   }, [isOpen]);
 
-  const onFormSubmit = async ({ name, color }: FormData) => {
+  const onFormSubmit = async ({ slug, color }: FormData) => {
     try {
       await createWsTag({
         workspaceID: workspaceId,
-        tagName: name,
         tagColor: color,
-        tagSlug: name.replace(" ", "_")
+        tagSlug: slug
       });
       onToggle(false);
       reset();
@@ -155,11 +161,11 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
-            name="name"
+            name="slug"
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Tag Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="Type your tag name" />
+              <FormControl label="Tag Slug" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="Type your tag slug" />
               </FormControl>
             )}
           />

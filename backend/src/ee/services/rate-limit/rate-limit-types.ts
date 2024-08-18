@@ -5,7 +5,6 @@ export type TRateLimitUpdateDTO = {
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
-  creationLimit: number;
   publicEndpointLimit: number;
 };
 
@@ -14,3 +13,13 @@ export type TRateLimit = {
   createdAt: Date;
   updatedAt: Date;
 } & TRateLimitUpdateDTO;
+
+export type RateLimitConfiguration = {
+  readLimit: number;
+  publicEndpointLimit: number;
+  writeLimit: number;
+  secretsLimit: number;
+  authRateLimit: number;
+  inviteUserRateLimit: number;
+  mfaRateLimit: number;
+};

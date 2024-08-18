@@ -46,6 +46,7 @@ export const projectBotDALFactory = (db: TDbClient) => {
       const doc = await db
         .replicaNode()(TableName.ProjectMembership)
         .where(`${TableName.ProjectMembership}.projectId` as "projectId", projectId)
+        .where(`${TableName.ProjectKeys}.projectId` as "projectId", projectId)
         .where(`${TableName.Users}.isGhost` as "isGhost", false)
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
         .join(TableName.ProjectKeys, `${TableName.ProjectMembership}.userId`, `${TableName.ProjectKeys}.receiverId`)

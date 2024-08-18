@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<void> {
     if (!hasVersionColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthorityCert, (t) => {
         t.integer("version").nullable();
-        // t.dropUnique(["caId"]);
+        t.dropUnique(["caId"]);
       });
 
       await knex(TableName.CertificateAuthorityCert).update({ version: 1 }).whereNull("version");

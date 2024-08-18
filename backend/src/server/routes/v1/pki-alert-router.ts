@@ -22,7 +22,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         pkiCollectionId: z.string().trim().describe(ALERTS.CREATE.pkiCollectionId),
         name: z.string().trim().describe(ALERTS.CREATE.name),
         alertBeforeDays: z.number().describe(ALERTS.CREATE.alertBeforeDays),
-        emails: z.array(z.string().trim().email({ message: "Invalid email address" })).describe(ALERTS.CREATE.emails)
+        emails: z
+          .array(z.string().trim().email({ message: "Invalid email address" }))
+          .min(1, { message: "You must specify at least 1 email" })
+          .max(5, { message: "You can specify a maximum of 5 emails" })
+          .describe(ALERTS.CREATE.emails)
       }),
       response: {
         200: PkiAlertsSchema
@@ -114,6 +118,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         pkiCollectionId: z.string().trim().optional().describe(ALERTS.UPDATE.pkiCollectionId),
         emails: z
           .array(z.string().trim().email({ message: "Invalid email address" }))
+          .min(1, { message: "You must specify at least 1 email" })
+          .max(5, { message: "You can specify a maximum of 5 emails" })
           .optional()
           .describe(ALERTS.UPDATE.emails)
       }),

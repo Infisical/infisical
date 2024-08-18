@@ -140,7 +140,8 @@ const envSchema = z
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     PLAIN_API_KEY: zpStr(z.string().optional()),
-    PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional())
+    PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
+    DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false")
   })
   .transform((data) => ({
     ...data,

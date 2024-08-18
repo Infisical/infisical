@@ -3,7 +3,7 @@ import { z } from "zod";
 import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { IDENTITIES } from "@app/lib/api-docs";
-import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -16,7 +16,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     config: {
-      rateLimit: creationLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {

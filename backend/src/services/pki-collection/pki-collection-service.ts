@@ -22,10 +22,13 @@ import {
 } from "./pki-collection-types";
 
 type TPkiCollectionServiceFactoryDep = {
-  pkiCollectionDAL: TPkiCollectionDALFactory; // TODO: Pick
-  pkiCollectionItemDAL: TPkiCollectionItemDALFactory;
-  certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  certificateDAL: TCertificateDALFactory;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "create" | "findById" | "updateById" | "deleteById">;
+  pkiCollectionItemDAL: Pick<
+    TPkiCollectionItemDALFactory,
+    "findOne" | "create" | "deleteById" | "findPkiCollectionItems" | "countItemsInPkiCollection"
+  >;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -139,7 +142,7 @@ export const pkiCollectionServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
       ProjectPermissionSub.PkiCollections
     );
     pkiCollection = await pkiCollectionDAL.deleteById(collectionId);

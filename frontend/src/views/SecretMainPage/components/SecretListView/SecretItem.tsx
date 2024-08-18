@@ -336,7 +336,7 @@ export const SecretItem = memo(
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
                       {tags.map((tag) => {
-                        const { id: tagId, name, color } = tag;
+                        const { id: tagId, slug, color } = tag;
 
                         const isTagSelected = selectedTagsGroupById?.[tagId];
                         return (
@@ -358,7 +358,7 @@ export const SecretItem = memo(
                                 className="mr-2 h-2 w-2 rounded-full"
                                 style={{ background: color || "#bec2c8" }}
                               />
-                              {name}
+                              {slug}
                             </div>
                           </DropdownMenuItem>
                         );

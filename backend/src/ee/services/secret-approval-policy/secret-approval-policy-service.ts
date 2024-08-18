@@ -8,6 +8,7 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
@@ -28,6 +29,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -36,7 +38,8 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyDAL,
   permissionService,
   secretApprovalPolicyApproverDAL,
-  projectEnvDAL
+  projectEnvDAL,
+  licenseService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSecretApprovalPolicy = async ({
     name,
@@ -65,6 +68,15 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create secret approval policy due to plan restriction. Upgrade plan to create secret approval policy."
+      });
+    }
+
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
@@ -114,6 +126,14 @@ export const secretApprovalPolicyServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
+      });
+    }
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.updateById(
@@ -166,6 +186,14 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
+      });
+    }
 
     await secretApprovalPolicyDAL.deleteById(secretPolicyId);
     return sapPolicy;

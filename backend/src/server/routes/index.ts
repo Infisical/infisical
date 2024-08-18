@@ -133,6 +133,7 @@ import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -191,6 +192,7 @@ import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
+import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
@@ -362,7 +364,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
-    secretApprovalPolicyDAL
+    secretApprovalPolicyDAL,
+    licenseService
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
 
@@ -749,6 +752,7 @@ export const registerRoutes = async (
     kmsService
   });
   const secretQueueService = secretQueueFactory({
+    keyStore,
     queueService,
     secretDAL,
     folderDAL,
@@ -834,7 +838,8 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     smtpService,
     projectEnvDAL,
-    userDAL
+    userDAL,
+    licenseService
   });
 
   const secretService = secretServiceFactory({
@@ -935,8 +940,15 @@ export const registerRoutes = async (
     folderDAL,
     integrationDAL,
     integrationAuthDAL,
-    secretQueueService
+    secretQueueService,
+    integrationAuthService,
+    projectBotService,
+    secretV2BridgeDAL,
+    secretImportDAL,
+    secretDAL,
+    kmsService
   });
+
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
@@ -1063,13 +1075,18 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
-    pkiAlertService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
     identityAccessTokenDAL,
     secretSharingDAL,
-    secretVersionV2DAL: secretVersionV2BridgeDAL
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL
+  });
+
+  const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
+    queueService,
+    pkiAlertService
   });
 
   const oidcService = oidcConfigServiceFactory({
@@ -1096,6 +1113,7 @@ export const registerRoutes = async (
 
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
+  await dailyExpiringPkiItemAlert.startSendingAlerts();
   await kmsService.startService();
 
   // inject all services
@@ -1185,6 +1203,7 @@ export const registerRoutes = async (
 
   await server.register(injectIdentity, { userDAL, serviceTokenDAL });
   await server.register(injectPermission);
+  await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
 
   server.route({

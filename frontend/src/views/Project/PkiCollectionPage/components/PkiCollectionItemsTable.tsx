@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faBoxesStacked, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faBoxesStacked, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -85,7 +85,7 @@ export const PkiCollectionItemsTable = ({ collectionId, type, handlePopUpOpen }:
                                   });
                                 }}
                               >
-                                <FontAwesomeIcon icon={faTrash} />
+                                <FontAwesomeIcon icon={faXmark} />
                               </IconButton>
                             </Tooltip>
                           )}

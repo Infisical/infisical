@@ -63,6 +63,7 @@ export type TUpdateIntegrationDTO = {
 
 export type TDeleteIntegrationDTO = {
   id: string;
+  shouldDeleteIntegrationSecrets?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSyncIntegrationDTO = {

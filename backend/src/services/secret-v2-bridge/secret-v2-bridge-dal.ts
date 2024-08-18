@@ -136,7 +136,6 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
         .orderBy("id", "asc");
 
       const data = sqlNestRelationships({
@@ -147,11 +146,11 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           {
             key: "tagId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
               id,
               color,
               slug,
-              name
+              name: slug
             })
           }
         ]
@@ -169,14 +168,13 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         .where({ [`${TableName.SecretV2}Id` as const]: secretId })
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
 
       return tags.map((el) => ({
         id: el.tagId,
         color: el.tagColor,
         slug: el.tagSlug,
-        name: el.tagName
+        name: el.tagSlug
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "get secret tags" });
@@ -210,7 +208,6 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"))
         .orderBy("id", "asc");
 
       const data = sqlNestRelationships({
@@ -221,11 +218,11 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           {
             key: "tagId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
               id,
               color,
               slug,
-              name
+              name: slug
             })
           }
         ]
@@ -290,7 +287,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           }))
         );
       if (!newSecretReferences.length) return;
-      const secretReferences = await (tx || db)(TableName.SecretReferenceV2).insert(newSecretReferences);
+      const secretReferences = await (tx || db).batchInsert(TableName.SecretReferenceV2, newSecretReferences);
       return secretReferences;
     } catch (error) {
       throw new DatabaseError({ error, name: "UpsertSecretReference" });
@@ -350,8 +347,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
@@ -360,11 +356,11 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           {
             key: "tagId",
             label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
               id,
               color,
               slug,
-              name
+              name: slug
             })
           }
         ]
