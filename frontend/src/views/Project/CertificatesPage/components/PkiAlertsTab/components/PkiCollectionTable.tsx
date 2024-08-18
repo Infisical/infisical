@@ -63,7 +63,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                     }
                   >
                     <Td>{pkiCollection.name}</Td>
-                    <Td>{pkiCollection.description}</Td>
+                    <Td>{pkiCollection.description ? pkiCollection.description : "-"}</Td>
                     <Td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
