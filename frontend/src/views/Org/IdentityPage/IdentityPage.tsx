@@ -103,7 +103,7 @@ export const IdentityPage = withPermission(
         });
 
         createNotification({
-          text: "Successfully disabled identity",
+          text: `Successfully ${data.identity.isDisabled ? "enabled" : "disabled"} identity`,
           type: "success"
         });
 
