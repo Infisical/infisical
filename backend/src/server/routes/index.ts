@@ -361,7 +361,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
-    secretApprovalPolicyDAL
+    secretApprovalPolicyDAL,
+    licenseService
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
 
@@ -739,6 +740,7 @@ export const registerRoutes = async (
     kmsService
   });
   const secretQueueService = secretQueueFactory({
+    keyStore,
     queueService,
     secretDAL,
     folderDAL,
@@ -824,7 +826,8 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     smtpService,
     projectEnvDAL,
-    userDAL
+    userDAL,
+    licenseService
   });
 
   const secretService = secretServiceFactory({

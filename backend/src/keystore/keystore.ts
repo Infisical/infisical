@@ -5,17 +5,26 @@ import { Redlock, Settings } from "@app/lib/red-lock";
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
 // all the key prefixes used must be set here to avoid conflict
-export enum KeyStorePrefixes {
-  SecretReplication = "secret-replication-import-lock",
-  KmsProjectDataKeyCreation = "kms-project-data-key-creation-lock",
-  KmsProjectKeyCreation = "kms-project-key-creation-lock",
-  WaitUntilReadyKmsProjectDataKeyCreation = "wait-until-ready-kms-project-data-key-creation-",
-  WaitUntilReadyKmsProjectKeyCreation = "wait-until-ready-kms-project-key-creation-",
-  KmsOrgKeyCreation = "kms-org-key-creation-lock",
-  KmsOrgDataKeyCreation = "kms-org-data-key-creation-lock",
-  WaitUntilReadyKmsOrgKeyCreation = "wait-until-ready-kms-org-key-creation-",
-  WaitUntilReadyKmsOrgDataKeyCreation = "wait-until-ready-kms-org-data-key-creation-"
-}
+export const KeyStorePrefixes = {
+  SecretReplication: "secret-replication-import-lock",
+  KmsProjectDataKeyCreation: "kms-project-data-key-creation-lock",
+  KmsProjectKeyCreation: "kms-project-key-creation-lock",
+  WaitUntilReadyKmsProjectDataKeyCreation: "wait-until-ready-kms-project-data-key-creation-",
+  WaitUntilReadyKmsProjectKeyCreation: "wait-until-ready-kms-project-key-creation-",
+  KmsOrgKeyCreation: "kms-org-key-creation-lock",
+  KmsOrgDataKeyCreation: "kms-org-data-key-creation-lock",
+  WaitUntilReadyKmsOrgKeyCreation: "wait-until-ready-kms-org-key-creation-",
+  WaitUntilReadyKmsOrgDataKeyCreation: "wait-until-ready-kms-org-data-key-creation-",
+
+  SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
+    `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
+  SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
+    `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const
+};
+
+export const KeyStoreTtls = {
+  SetSyncSecretIntegrationLastRunTimestampInSeconds: 10
+};
 
 type TWaitTillReady = {
   key: string;
@@ -37,10 +46,10 @@ export const keyStoreFactory = (redisUrl: string) => {
 
   const setItemWithExpiry = async (
     key: string,
-    exp: number | string,
+    expiryInSeconds: number | string,
     value: string | number | Buffer,
     prefix?: string
-  ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", exp);
+  ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
 
   const deleteItem = async (key: string) => redis.del(key);
 
