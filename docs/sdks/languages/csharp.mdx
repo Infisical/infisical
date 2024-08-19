@@ -379,6 +379,9 @@ By default, `GetSecret()` fetches and returns a shared secret.
         <ParamField query="Type" type="string" optional>
             The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
         </ParamField>
+        <ParamField query="IncludeImports" type="boolean" optional>
+          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
     </Expandable>
 </ParamField>
 
