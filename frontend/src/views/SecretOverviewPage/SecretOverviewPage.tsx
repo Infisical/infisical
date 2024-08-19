@@ -31,6 +31,7 @@ import {
   Input,
   Modal,
   ModalContent,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -859,45 +860,16 @@ export const SecretOverviewPage = () => {
               </TFoot>
             </Table>
           </TableContainer>
-          <div className="flex justify-center mt-4">
-            <Button
-              variant="outline_bg"
-              onClick={() => setCurrentPage(currentPage-1)}
-              className="h-10 rounded"
-            >
-              Previous
-            </Button>
-            <div className="flex items-center space-x-1 mx-2">
-              {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
-                let pageNum;
-                if (currentPage <= 3) {
-                  pageNum = index + 1;
-                } else if (currentPage > totalPages - 3) {
-                  pageNum = totalPages - 4 + index;
-                } else {
-                  pageNum = currentPage - 2 + index;
-                }
-
-                return (
-                  <Button
-                    key={pageNum}
-                    variant="outline_bg"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`h-10 w-10 rounded ${currentPage === pageNum ? 'bg-blue-50 text-blue-600' : ''}`}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            <Button
-              variant="outline_bg"
-              onClick={() => setCurrentPage(currentPage+1)}
-              className="h-10 rounded"
-            >
-              Next
-            </Button>
-          </div>
+          <Pagination
+            count={combinedItems.length}
+            page={currentPage}
+            perPage={itemsPerPage}
+            onChangePage={(newPage) => setCurrentPage(newPage)}
+            onChangePerPage={(newPerPage) => {
+              setItemsPerPage(newPerPage);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       </div>
       <CreateSecretForm
