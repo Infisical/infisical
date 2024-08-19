@@ -76,7 +76,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                                 id: certificateTemplate.id
                               })
                             }
-                            icon={<FontAwesomeIcon icon={faFileAlt} />}
+                            icon={<FontAwesomeIcon icon={faFileAlt} size="sm" className="mr-1" />}
                           >
                             Manage Policies
                           </DropdownMenuItem>
@@ -86,7 +86,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                                 id: certificateTemplate.id
                               })
                             }
-                            icon={<FontAwesomeIcon icon={faUserPlus} />}
+                            icon={<FontAwesomeIcon icon={faUserPlus} size="sm" />}
                           >
                             Manage Enrollment
                           </DropdownMenuItem>
@@ -100,7 +100,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faTrash} />}
+                                icon={<FontAwesomeIcon icon={faTrash} size="sm" className="mr-1" />}
                                 onClick={() =>
                                   handlePopUpOpen("deleteCertificateTemplate", {
                                     id: certificateTemplate.id,
