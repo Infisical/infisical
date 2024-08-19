@@ -20,15 +20,18 @@ export const createJunctionTable = async (
     indexForeignKeys = false
   } = options;
 
+  // Check if the table already exists
   const tableExists = await knex.schema.hasTable(tableName);
   
   if (!tableExists) {
     await knex.schema.createTable(tableName, (table) => {
       table.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       
+      // Create foreign key columns
       table.uuid(`${table1Name}Id`).unsigned().notNullable();
       table.uuid(`${table2Name}Id`).unsigned().notNullable();
       
+      // Set up foreign key constraints
       table.foreign(`${table1Name}Id`)
         .references(table1PrimaryKey)
         .inTable(table1Name)
@@ -39,6 +42,7 @@ export const createJunctionTable = async (
         .inTable(table2Name)
         .onDelete("CASCADE");
       
+      // Add indexes on foreign key columns if specified
       if (indexForeignKeys) {
         table.index(`${table1Name}Id`);
         table.index(`${table2Name}Id`);
@@ -47,6 +51,8 @@ export const createJunctionTable = async (
   }
 };
 
+// one time logic
+// this is a postgres function log to set updateAt to present time whenever row gets updated
 export const createUpdateAtTriggerFunction = async (knex: Knex): Promise<void> => {
   await knex.raw(`
     CREATE OR REPLACE FUNCTION on_update_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW."updatedAt" = NOW();
