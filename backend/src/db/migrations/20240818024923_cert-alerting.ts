@@ -11,8 +11,11 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.string("name").notNullable();
+      t.string("description").notNullable();
     });
   }
+
+  await createOnUpdateTrigger(knex, TableName.PkiCollection);
 
   if (!(await knex.schema.hasTable(TableName.PkiCollectionItem))) {
     await knex.schema.createTable(TableName.PkiCollectionItem, (t) => {
@@ -26,6 +29,8 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("certId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
     });
   }
+
+  await createOnUpdateTrigger(knex, TableName.PkiCollectionItem);
 
   if (!(await knex.schema.hasTable(TableName.PkiAlert))) {
     await knex.schema.createTable(TableName.PkiAlert, (t) => {
@@ -42,7 +47,6 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.PkiCollection);
   await createOnUpdateTrigger(knex, TableName.PkiAlert);
 }
 

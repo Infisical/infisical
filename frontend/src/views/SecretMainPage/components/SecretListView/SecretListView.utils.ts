@@ -49,7 +49,6 @@ export const formSchema = z.object({
   tags: z
     .object({
       id: z.string(),
-      name: z.string(),
       slug: z.string(),
       tagColor: z.string().optional()
     })

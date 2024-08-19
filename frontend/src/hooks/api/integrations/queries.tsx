@@ -110,8 +110,15 @@ export const useCreateIntegration = () => {
 export const useDeleteIntegration = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, { id: string; workspaceId: string }>({
-    mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration/${id}`),
+  return useMutation<
+    {},
+    {},
+    { id: string; workspaceId: string; shouldDeleteIntegrationSecrets: boolean }
+  >({
+    mutationFn: ({ id, shouldDeleteIntegrationSecrets }) =>
+      apiRequest.delete(
+        `/api/v1/integration/${id}?shouldDeleteIntegrationSecrets=${shouldDeleteIntegrationSecrets}`
+      ),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));

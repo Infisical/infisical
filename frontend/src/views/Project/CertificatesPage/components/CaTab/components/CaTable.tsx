@@ -39,7 +39,7 @@ import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
 import {
   caStatusToNameMap,
   caTypeToNameMap,
-  getStatusBadgeVariant
+  getCaStatusBadgeVariant
 } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -92,7 +92,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                   >
                     <Td>{ca.friendlyName}</Td>
                     <Td>
-                      <Badge variant={getStatusBadgeVariant(ca.status)}>
+                      <Badge variant={getCaStatusBadgeVariant(ca.status)}>
                         {caStatusToNameMap[ca.status]}
                       </Badge>
                     </Td>
@@ -100,9 +100,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     <Td>
                       <div className="flex items-center ">
                         <p>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</p>
-                        {/* <Badge variant="danger" className="ml-4">
-                          Expires Soon
-                        </Badge> */}
                       </div>
                     </Td>
                     <Td className="flex justify-end">

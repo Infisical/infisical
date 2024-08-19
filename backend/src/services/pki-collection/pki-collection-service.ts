@@ -22,10 +22,13 @@ import {
 } from "./pki-collection-types";
 
 type TPkiCollectionServiceFactoryDep = {
-  pkiCollectionDAL: TPkiCollectionDALFactory; // TODO: Pick
-  pkiCollectionItemDAL: TPkiCollectionItemDALFactory;
-  certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  certificateDAL: TCertificateDALFactory;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "create" | "findById" | "updateById" | "deleteById">;
+  pkiCollectionItemDAL: Pick<
+    TPkiCollectionItemDALFactory,
+    "findOne" | "create" | "deleteById" | "findPkiCollectionItems" | "countItemsInPkiCollection"
+  >;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -40,6 +43,7 @@ export const pkiCollectionServiceFactory = ({
 }: TPkiCollectionServiceFactoryDep) => {
   const createPkiCollection = async ({
     name,
+    description,
     projectId,
     actorId,
     actorAuthMethod,
@@ -61,7 +65,8 @@ export const pkiCollectionServiceFactory = ({
 
     const pkiCollection = await pkiCollectionDAL.create({
       projectId,
-      name
+      name,
+      description
     });
 
     return pkiCollection;
@@ -92,6 +97,7 @@ export const pkiCollectionServiceFactory = ({
   const updatePkiCollection = async ({
     collectionId,
     name,
+    description,
     actorId,
     actorAuthMethod,
     actor,
@@ -110,7 +116,8 @@ export const pkiCollectionServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
     pkiCollection = await pkiCollectionDAL.updateById(collectionId, {
-      name
+      name,
+      description
     });
 
     return pkiCollection;
@@ -135,7 +142,7 @@ export const pkiCollectionServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
       ProjectPermissionSub.PkiCollections
     );
     pkiCollection = await pkiCollectionDAL.deleteById(collectionId);

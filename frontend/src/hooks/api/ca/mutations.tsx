@@ -101,9 +101,9 @@ export const useImportCaCertificate = () => {
 export const useCreateCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCreateCertificateResponse, {}, TCreateCertificateDTO>({
-    mutationFn: async ({ caId, ...body }) => {
+    mutationFn: async (body) => {
       const { data } = await apiRequest.post<TCreateCertificateResponse>(
-        `/api/v1/pki/ca/${caId}/issue-certificate`,
+        "/api/v1/pki/certificates/issue-certificate",
         body
       );
       return data;
@@ -126,6 +126,7 @@ export const useRenewCa = () => {
     },
     onSuccess: (_, { caId, projectSlug }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
+      queryClient.invalidateQueries(caKeys.getCaById(caId));
       queryClient.invalidateQueries(caKeys.getCaCert(caId));
       queryClient.invalidateQueries(caKeys.getCaCerts(caId));
       queryClient.invalidateQueries(caKeys.getCaCsr(caId));

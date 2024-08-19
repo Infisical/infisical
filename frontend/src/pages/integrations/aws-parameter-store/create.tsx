@@ -277,18 +277,14 @@ export default function AWSParameterStoreCreateIntegrationPage() {
               <div className="mt-2 ml-1">
                 <Switch
                   id="delete-aws"
-                  onCheckedChange={() => setShouldDisableDelete(!shouldDisableDelete)}
+                  onCheckedChange={setShouldDisableDelete}
                   isChecked={shouldDisableDelete}
                 >
                   Disable deleting secrets in AWS Parameter Store
                 </Switch>
               </div>
               <div className="mt-4 ml-1">
-                <Switch
-                  id="tag-aws"
-                  onCheckedChange={() => setShouldTag(!shouldTag)}
-                  isChecked={shouldTag}
-                >
+                <Switch id="tag-aws" onCheckedChange={setShouldTag} isChecked={shouldTag}>
                   Tag in AWS Parameter Store
                 </Switch>
               </div>

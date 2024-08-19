@@ -71,9 +71,13 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
             </div>
           </div>
         </div>
-        <div>
+        <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{pkiCollection.name}</p>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-mineshaft-300">Description</p>
+          <p className="text-sm text-mineshaft-300">{pkiCollection.description}</p>
         </div>
       </div>
     </div>

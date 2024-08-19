@@ -51,7 +51,7 @@ export const secretTagDALFactory = (db: TDbClient) => {
     ...secretTagOrm,
     saveTagsToSecret: secretJnTagOrm.insertMany,
     deleteTagsToSecret: secretJnTagOrm.delete,
-    saveTagsToSecretV2: secretV2JnTagOrm.insertMany,
+    saveTagsToSecretV2: secretV2JnTagOrm.batchInsert,
     deleteTagsToSecretV2: secretV2JnTagOrm.delete,
     findSecretTagsByProjectId,
     deleteTagsManySecret,

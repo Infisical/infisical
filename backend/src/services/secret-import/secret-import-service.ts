@@ -507,7 +507,7 @@ export const secretImportServiceFactory = ({
         folderDAL,
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
       });
       return importedSecrets;
     }

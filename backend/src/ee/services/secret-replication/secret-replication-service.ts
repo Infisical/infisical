@@ -257,7 +257,7 @@ export const secretReplicationServiceFactory = ({
         secretDAL: secretV2BridgeDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({
@@ -449,7 +449,7 @@ export const secretReplicationServiceFactory = ({
                   });
                 }
                 if (locallyDeletedSecrets.length) {
-                  await secretDAL.delete(
+                  await secretV2BridgeDAL.delete(
                     {
                       $in: {
                         id: locallyDeletedSecrets.map(({ id }) => id)

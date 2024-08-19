@@ -36,8 +36,8 @@ type TSecretImportSecretsV2 = {
     secretKey: string;
     // akhilmhdh: yes i know you can put ?.
     // But for somereason ts consider ? and undefined explicit as different just ts things
-    secretValue: string | undefined;
-    secretComment: string | undefined;
+    secretValue: string;
+    secretComment: string;
   })[];
 };
 
@@ -157,7 +157,7 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
   depth?: number;
   cyclicDetector?: Set<string>;
-  decryptor: (value?: Buffer | null) => string | undefined;
+  decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (
     secrets: Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
   ) => Promise<Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>>;
@@ -231,6 +231,7 @@ export const fnSecretsV2FromImports = async ({
         _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
       }))
       .concat(folderDeeperImportSecrets);
+
     return {
       secretPath: importPath,
       environment: importEnv.slug,
@@ -254,7 +255,7 @@ export const fnSecretsV2FromImports = async ({
             };
             return acc;
           },
-          {} as Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
+          {} as Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean | null }>
         );
         // eslint-disable-next-line
         await expandSecretReferences(secretsGroupByKey);

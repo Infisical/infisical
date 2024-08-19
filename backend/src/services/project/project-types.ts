@@ -117,3 +117,5 @@ export type TLoadProjectKmsBackupDTO = {
 } & TProjectPermission;
 
 export type TGetProjectKmsKey = TProjectPermission;
+
+export type TListProjectCertificateTemplatesDTO = TProjectPermission;

@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
+import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
 import { identitiesKeys } from "../identities/queries";
 import { IdentityMembership } from "../identities/types";
@@ -68,7 +69,9 @@ export const workspaceKeys = {
   getWorkspacePkiAlerts: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-alerts"] as const,
   getWorkspacePkiCollections: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-pki-collections"] as const
+    [{ workspaceId }, "workspace-pki-collections"] as const,
+  getWorkspaceCertificateTemplates: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-certificate-templates"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -635,6 +638,22 @@ export const useListWorkspacePkiCollections = ({ workspaceId }: { workspaceId: s
       );
 
       return { collections };
+    },
+    enabled: Boolean(workspaceId)
+  });
+};
+
+export const useListWorkspaceCertificateTemplates = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceCertificateTemplates(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { certificateTemplates }
+      } = await apiRequest.get<{ certificateTemplates: TCertificateTemplate[] }>(
+        `/api/v2/workspace/${workspaceId}/certificate-templates`
+      );
+
+      return { certificateTemplates };
     },
     enabled: Boolean(workspaceId)
   });

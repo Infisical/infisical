@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 
-import { PkiAlertsSection, PkiCollectionSection } from "./components";
+import { PkiAlertsSection } from "./components";
 
 export const PkiAlertsTab = () => {
   return (
@@ -11,7 +11,6 @@ export const PkiAlertsTab = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
-      <PkiCollectionSection />
       <PkiAlertsSection />
     </motion.div>
   );

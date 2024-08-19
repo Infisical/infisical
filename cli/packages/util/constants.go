@@ -38,7 +38,8 @@ const (
 	SERVICE_TOKEN_IDENTIFIER        = "service-token"
 	UNIVERSAL_AUTH_TOKEN_IDENTIFIER = "universal-auth-token"
 
-	INFISICAL_BACKUP_SECRET = "infisical-backup-secrets"
+	INFISICAL_BACKUP_SECRET                = "infisical-backup-secrets" // akhilmhdh: @depreciated remove in version v0.30
+	INFISICAL_BACKUP_SECRET_ENCRYPTION_KEY = "infisical-backup-secret-encryption-key"
 )
 
 var (

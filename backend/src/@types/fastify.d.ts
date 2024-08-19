@@ -18,6 +18,7 @@ import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-ser
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
+import { RateLimitConfiguration } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -35,6 +36,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
@@ -91,6 +93,7 @@ declare module "fastify" {
       id: string;
       orgId: string;
     };
+    rateLimits: RateLimitConfiguration;
     // passport data
     passportUser: {
       isUserCompleted: string;
@@ -154,6 +157,7 @@ declare module "fastify" {
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
+      certificateTemplate: TCertificateTemplateServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;

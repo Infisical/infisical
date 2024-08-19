@@ -97,7 +97,7 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>{secretVersion?.secretComment}</Td>
                 <Td>
-                  {secretVersion?.tags?.map(({ name, id: tagId, color }) => (
+                  {secretVersion?.tags?.map(({ slug, id: tagId, color }) => (
                     <Tag
                       className="flex w-min items-center space-x-2"
                       key={`${secretVersion.id}-${tagId}`}
@@ -106,7 +106,7 @@ export const SecretApprovalRequestChangeItem = ({
                         className="h-3 w-3 rounded-full"
                         style={{ backgroundColor: color || "#bec2c8" }}
                       />
-                      <div className="text-sm">{name}</div>
+                      <div className="text-sm">{slug}</div>
                     </Tag>
                   ))}
                 </Td>
@@ -119,7 +119,7 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>{newVersion?.secretComment}</Td>
                 <Td>
-                  {newVersion?.tags?.map(({ name, id: tagId, color }) => (
+                  {newVersion?.tags?.map(({ slug, id: tagId, color }) => (
                     <Tag
                       className="flex w-min items-center space-x-2"
                       key={`${newVersion.id}-${tagId}`}
@@ -128,7 +128,7 @@ export const SecretApprovalRequestChangeItem = ({
                         className="h-3 w-3 rounded-full"
                         style={{ backgroundColor: color || "#bec2c8" }}
                       />
-                      <div className="text-sm">{name}</div>
+                      <div className="text-sm">{slug}</div>
                     </Tag>
                   ))}
                 </Td>
@@ -157,7 +157,7 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>
                   {(op === CommitType.CREATE ? newVersion?.tags : secretVersion?.tags)?.map(
-                    ({ name, id: tagId, color }) => (
+                    ({ slug, id: tagId, color }) => (
                       <Tag
                         className="flex w-min items-center space-x-2"
                         key={`${
@@ -168,7 +168,7 @@ export const SecretApprovalRequestChangeItem = ({
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: color || "#bec2c8" }}
                         />
-                        <div className="text-sm">{name}</div>
+                        <div className="text-sm">{slug}</div>
                       </Tag>
                     )
                   )}

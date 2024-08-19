@@ -15,7 +15,8 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
-  name: z.string().trim().min(1)
+  name: z.string().trim().min(1),
+  description: z.string()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -49,16 +50,18 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
   useEffect(() => {
     if (pkiCollection) {
       reset({
-        name: pkiCollection.name
+        name: pkiCollection.name,
+        description: pkiCollection.description
       });
     } else {
       reset({
-        name: ""
+        name: "",
+        description: ""
       });
     }
   }, [pkiCollection]);
 
-  const onFormSubmit = async ({ name }: FormData) => {
+  const onFormSubmit = async ({ name, description }: FormData) => {
     try {
       if (!projectId) return;
 
@@ -67,12 +70,14 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         await updatePkiCollection({
           collectionId: pkiCollection.id,
           name,
+          description,
           projectId
         });
       } else {
         // create
         const { id: createdId } = await createPkiCollection({
           name,
+          description,
           projectId
         });
 
@@ -118,6 +123,19 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isRequired
               >
                 <Input {...field} placeholder="My Certificate Collection" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="description"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
+                <Input
+                  {...field}
+                  placeholder="A collection to house certificates for ACME device"
+                />
               </FormControl>
             )}
           />

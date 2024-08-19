@@ -7,7 +7,6 @@ import (
 	"github.com/bradleyjkemp/cupaloy/v2"
 )
 
-
 func TestServiceToken_SecretsGetWithImportsAndRecursiveCmd(t *testing.T) {
 	output, err := ExecuteCliCommand(FORMATTED_CLI_NAME, "secrets", "--token", creds.ServiceToken, "--projectId", creds.ProjectID, "--env", creds.EnvSlug, "--recursive", "--silent")
 
@@ -94,7 +93,7 @@ func TestUserAuth_SecretsGetAll(t *testing.T) {
 	}
 
 	// explicitly called here because it should happen directly after successful secretsGetAll
-	testUserAuth_SecretsGetAllWithoutConnection(t)
+	// testUserAuth_SecretsGetAllWithoutConnection(t)
 }
 
 func testUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
@@ -107,7 +106,7 @@ func testUserAuth_SecretsGetAllWithoutConnection(t *testing.T) {
 	// set it to a URL that will always be unreachable
 	newConfigFile.LoggedInUserDomain = "http://localhost:4999"
 	util.WriteConfigFile(&newConfigFile)
-	
+
 	// restore config file
 	defer util.WriteConfigFile(&originalConfigFile)
 

@@ -20,7 +20,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       description: "Create PKI collection",
       body: z.object({
         projectId: z.string().trim().describe(PKI_COLLECTIONS.CREATE.projectId),
-        name: z.string().trim().describe(PKI_COLLECTIONS.CREATE.name)
+        name: z.string().trim().describe(PKI_COLLECTIONS.CREATE.name),
+        description: z.string().trim().default("").describe(PKI_COLLECTIONS.CREATE.description)
       }),
       response: {
         200: PkiCollectionsSchema
@@ -104,7 +105,8 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
         collectionId: z.string().trim().describe(PKI_COLLECTIONS.UPDATE.collectionId)
       }),
       body: z.object({
-        name: z.string().trim().optional().describe(PKI_COLLECTIONS.UPDATE.name)
+        name: z.string().trim().optional().describe(PKI_COLLECTIONS.UPDATE.name),
+        description: z.string().trim().optional().describe(PKI_COLLECTIONS.UPDATE.description)
       }),
       response: {
         200: PkiCollectionsSchema

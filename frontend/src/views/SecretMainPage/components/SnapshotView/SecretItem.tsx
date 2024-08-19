@@ -151,7 +151,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Tags</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      {preSecret?.tags?.map(({ name, id: tagId, color }) => (
+                      {preSecret?.tags?.map(({ slug, id: tagId, color }) => (
                         <Tag
                           className="flex w-min items-center space-x-2"
                           key={`${preSecret.id}-${tagId}`}
@@ -160,13 +160,13 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: color || "#bec2c8" }}
                           />
-                          <div className="text-sm">{name}</div>
+                          <div className="text-sm">{slug}</div>
                         </Tag>
                       ))}
                     </Td>
                   )}
                   <Td>
-                    {postSecret?.tags?.map(({ name, id: tagId, color }) => (
+                    {postSecret?.tags?.map(({ slug, id: tagId, color }) => (
                       <Tag
                         className="flex w-min items-center space-x-2"
                         key={`${postSecret.id}-${tagId}`}
@@ -175,7 +175,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: color || "#bec2c8" }}
                         />
-                        <div className="text-sm">{name}</div>
+                        <div className="text-sm">{slug}</div>
                       </Tag>
                     ))}
                   </Td>

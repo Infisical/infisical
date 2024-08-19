@@ -273,8 +273,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
         const orgUsers = await fetchOrgUsers(currentOrg.id);
         await addUsersToProject.mutateAsync({
           usernames: orgUsers
-            .map((member) => member.user.username)
-            .filter((username) => username !== user.username),
+            .filter(
+              (member) => member.user.username !== user.username && member.status === "accepted"
+            )
+            .map((member) => member.user.username),
           projectId: newProjectId,
           orgId: currentOrg.id
         });
@@ -482,7 +484,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         )}
                         <Link href={`/org/${currentOrg?.id}/admin`} legacyBehavior>
                           <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                          Organization Admin Console
+                            Organization Admin Console
                           </DropdownMenuItem>
                         </Link>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />

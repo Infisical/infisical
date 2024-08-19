@@ -106,9 +106,13 @@ export const IntegrationsPage = withProjectPermission(
       handleProviderIntegration(provider);
     };
 
-    const handleIntegrationDelete = async (integrationId: string, cb: () => void) => {
+    const handleIntegrationDelete = async (
+      integrationId: string,
+      shouldDeleteIntegrationSecrets: boolean,
+      cb: () => void
+    ) => {
       try {
-        await deleteIntegration({ id: integrationId, workspaceId });
+        await deleteIntegration({ id: integrationId, workspaceId, shouldDeleteIntegrationSecrets });
         if (cb) cb();
         createNotification({
           type: "success",
@@ -152,7 +156,7 @@ export const IntegrationsPage = withProjectPermission(
           isLoading={isIntegrationLoading}
           integrations={integrations}
           environments={environments}
-          onIntegrationDelete={({ id }, cb) => handleIntegrationDelete(id, cb)}
+          onIntegrationDelete={handleIntegrationDelete}
           workspaceId={workspaceId}
         />
         <CloudIntegrationSection

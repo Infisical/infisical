@@ -16,6 +16,7 @@ export enum QueueName {
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
+  DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -36,6 +37,7 @@ export enum QueueJobs {
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
+  DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
@@ -69,6 +71,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.DailyResourceCleanUp]: {
     name: QueueJobs.DailyResourceCleanUp;
+    payload: undefined;
+  };
+  [QueueName.DailyExpiringPkiItemAlert]: {
+    name: QueueJobs.DailyExpiringPkiItemAlert;
     payload: undefined;
   };
   [QueueName.AuditLogPrune]: {

@@ -1,0 +1,111 @@
+---
+title: "Certificate Templates"
+sidebarTitle: "Certificate Templates"
+description: "Learn how to use certificate templates to enforce policies."
+---
+
+## Concept
+
+In order to ensure your certificates follow certain policies, you can use certificate templates during the issuance and signing flows.
+
+A certificate template is linked to a certificate authority. It contains custom policies for certificate fields, allowing you to define rules based on your security policies.
+
+## Workflow
+
+The typical workflow for using certificate templates consists of the following steps:
+
+1. Creating a certificate template attached to an existing CA along with defining custom rules for certificate fields.
+2. Selecting the certificate template during the creation of new certificates.
+
+<Note>
+  Note that this workflow can be executed via the Infisical UI or manually such
+  as via API.
+</Note>
+
+## Guide to using Certificate Templates
+
+In the following steps, we explore how to issue a X.509 certificate using a certificate template.
+
+<Tabs>
+  <Tab title="Infisical UI">
+
+<Steps>
+  <Step title="Creating the certificate template">
+    To create a certificate template, head to your Project > Internal PKI > Certificate Templates and press **Create Certificate Template**.
+
+    ![certificate-template create template dashboard](/images/platform/pki/certificate-template/create-template-dashboard.png)
+
+    Here, set the **Issuing CA** to the CA you want to issue certificates under when the certificate template is used.
+
+    ![certificate-template create template modal](/images/platform/pki/certificate-template/create-template-form.png)
+
+    Here's some guidance on each field:
+    - Template Name: A descriptive name for the certificate template.
+    - Issuing CA: The Certificate Authority (CA) that will issue certificates based on this template.
+    - Certificate Collection: The collection where certificates issued with this template will be added.
+    - Common Name (CN): The regular expression used to validate the common name in certificate requests.
+    - Alternative Names (SANs): The regular expression used to validate subject alternative names in certificate requests.
+    - TTL: The maximum Time-to-Live (TTL) for certificates issued using this template.
+
+  </Step>
+  <Step title="Using the certificate template">
+    Once you have created the certificate template from step 1, you can select it when issuing certificates.
+    
+    ![certificate-template select template](/images/platform/pki/certificate-template/select-template.png)
+  </Step>
+</Steps>
+  </Tab>
+  <Tab title="API">
+    <Steps>
+        <Step title="Creating the certificate template">
+            To create a certificate template, make an API request to the [Create Certificate Template](/api-reference/endpoints/certificate-templates/create) API endpoint.
+
+            ### Sample request
+
+            ```bash Request
+            curl --request POST \
+              --url https://app.infisical.com/api/v1/pki/certificate-templates \
+              --header 'Content-Type: application/json' \
+              --data '{
+              "caId": "<string>",
+              "pkiCollectionId": "<string>",
+              "name": "<string>",
+              "commonName": "<string>",
+              "subjectAlternativeName": "<string>",
+              "ttl": "<string>"
+            }'
+            ```
+
+            ### Sample response
+
+            ```bash Response
+            {
+              "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+              "caId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+              "name": "certificate-template-1",
+              "commonName": "<string>",
+              ...
+            }
+            ```
+        </Step>
+        <Step title="Using the certificate template">
+          To use the certificate template, attach the certificate template ID when invoking the API endpoint for [issuing](/api-reference/endpoints/certificates/issue-certificate) or [signing](/api-reference/endpoints/certificates/sign-certificate) new certificates.
+
+          ### Sample request
+
+            ```bash Request
+            curl --request POST \
+              --url https://app.infisical.com/api/v1/pki/certificates/issue-certificate \
+              --header 'Content-Type: application/json' \
+              --data '{
+              "certificateTemplateId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+              "friendlyName": "my-new-certificate",
+              "commonName": "CERT",
+              ...
+            }'
+            ```
+        </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>

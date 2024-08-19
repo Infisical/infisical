@@ -19,6 +19,7 @@ export type TCertificateAuthority = {
   notAfter?: string;
   notBefore?: string;
   keyAlgorithm: CertKeyAlgorithm;
+  activeCaCertId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -78,7 +79,9 @@ export type TImportCaCertificateResponse = {
 
 export type TCreateCertificateDTO = {
   projectSlug: string;
-  caId: string;
+  caId?: string;
+  certificateTemplateId?: string;
+  pkiCollectionId?: string;
   friendlyName?: string;
   commonName: string;
   altNames: string; // sans

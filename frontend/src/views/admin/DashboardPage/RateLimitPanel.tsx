@@ -15,7 +15,6 @@ const formSchema = z.object({
   authRateLimit: z.number(),
   inviteUserRateLimit: z.number(),
   mfaRateLimit: z.number(),
-  creationLimit: z.number(),
   publicEndpointLimit: z.number()
 });
 
@@ -41,7 +40,6 @@ export const RateLimitPanel = () => {
       authRateLimit: rateLimit?.authRateLimit ?? 60,
       inviteUserRateLimit: rateLimit?.inviteUserRateLimit ?? 30,
       mfaRateLimit: rateLimit?.mfaRateLimit ?? 20,
-      creationLimit: rateLimit?.creationLimit ?? 30,
       publicEndpointLimit: rateLimit?.publicEndpointLimit ?? 30
     }
   });
@@ -60,7 +58,6 @@ export const RateLimitPanel = () => {
         authRateLimit,
         inviteUserRateLimit,
         mfaRateLimit,
-        creationLimit,
         publicEndpointLimit
       } = formData;
 
@@ -71,7 +68,6 @@ export const RateLimitPanel = () => {
         authRateLimit,
         inviteUserRateLimit,
         mfaRateLimit,
-        creationLimit,
         publicEndpointLimit
       });
       createNotification({
@@ -198,25 +194,6 @@ export const RateLimitPanel = () => {
           render={({ field, fieldState: { error } }) => (
             <FormControl
               label="Multi factor auth requests per minute"
-              className="w-72"
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
-              <Input
-                {...field}
-                value={field.value || ""}
-                onChange={(e) => field.onChange(Number(e.target.value))}
-              />
-            </FormControl>
-          )}
-        />
-        <Controller
-          control={control}
-          defaultValue={300}
-          name="creationLimit"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="New resource creation requests per minute"
               className="w-72"
               isError={Boolean(error)}
               errorText={error?.message}

@@ -131,7 +131,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           .default("/")
           .transform(removeTrailingSlash)
           .describe(DYNAMIC_SECRET_LEASES.RENEW.path),
-        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.ttl)
+        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.environmentSlug)
       }),
       response: {
         200: z.object({

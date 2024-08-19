@@ -62,7 +62,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, watch } = useForm<AddSSOFormData>({
+  const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<AddSSOFormData>({
     defaultValues: {
       authProvider: AuthProvider.OKTA_SAML
     },
@@ -188,8 +188,8 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
           entityId: "SP Entity ID",
           entryPoint: "SSO URL",
           entryPointPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx",
-          issuer: "IdP Entity ID",
-          issuerPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx"
+          issuer: "Issuer",
+          issuerPlaceholder: window.origin
         };
       default:
         return {
@@ -204,6 +204,11 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   };
 
   const authProvider = watch("authProvider");
+  useEffect(() => {
+    if (authProvider === AuthProvider.GOOGLE_SAML && getValues("issuer") === "") {
+      setValue("issuer", window.origin);
+    }
+  }, [authProvider]);
 
   return (
     <>

@@ -7,14 +7,33 @@ const prompt = promptSync({
   sigint: true
 });
 
+type ComponentType = 1 | 2 | 3;
+
 console.log(`
 Component List
 --------------
+0. Exit
 1. Service component
 2. DAL component
 3. Router component
 `);
-const componentType = parseInt(prompt("Select a component: "), 10);
+
+function getComponentType(): ComponentType {
+  while (true) {
+    const input = prompt("Select a component (0-3): ");
+    const componentType = parseInt(input, 10);
+
+    if (componentType === 0) {
+      console.log("Exiting the program. Goodbye!");
+      process.exit(0);
+    } else if (componentType === 1 || componentType === 2 || componentType === 3) {
+      return componentType;
+    } else {
+      console.log("Invalid input. Please enter 0, 1, 2, or 3.");
+    }
+  }
+}
+const componentType = getComponentType();
 
 if (componentType === 1) {
   const componentName = prompt("Enter service name: ");

@@ -596,7 +596,8 @@ export const RAW_SECRETS = {
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
-    includeImports: "Weather to include imported secrets or not."
+    includeImports: "Weather to include imported secrets or not.",
+    tagSlugs: "The comma separated tag slugs to filter secrets"
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -1088,6 +1089,8 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    certificateTemplateId: "The ID of the certificate template to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
     altNames:
@@ -1103,6 +1106,7 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   SIGN_CERT: {
     caId: "The ID of the CA to issue the certificate from",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
     csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
@@ -1144,6 +1148,32 @@ export const CERTIFICATES = {
   }
 };
 
+export const CERTIFICATE_TEMPLATES = {
+  CREATE: {
+    caId: "The ID of the certificate authority to associate the template with",
+    pkiCollectionId: "The ID of the PKI collection to bind to the template",
+    name: "The name of the template",
+    commonName: "The regular expression string to use for validating common names",
+    subjectAlternativeName: "The regular expression string to use for validating subject alternative names",
+    ttl: "The max TTL for the template"
+  },
+  GET: {
+    certificateTemplateId: "The ID of the certificate template to get"
+  },
+  UPDATE: {
+    certificateTemplateId: "The ID of the certificate template to update",
+    caId: "The ID of the certificate authority to update the association with the template",
+    pkiCollectionId: "The ID of the PKI collection to update the binding to the template",
+    name: "The updated name of the template",
+    commonName: "The updated regular expression string for validating common names",
+    subjectAlternativeName: "The updated regular expression string for validating subject alternative names",
+    ttl: "The updated max TTL for the template"
+  },
+  DELETE: {
+    certificateTemplateId: "The ID of the certificate template to delete"
+  }
+};
+
 export const ALERTS = {
   CREATE: {
     projectId: "The ID of the project to create the alert in",
@@ -1170,14 +1200,16 @@ export const ALERTS = {
 export const PKI_COLLECTIONS = {
   CREATE: {
     projectId: "The ID of the project to create the PKI collection in",
-    name: "The name of the PKI collection"
+    name: "The name of the PKI collection",
+    description: "A description for the PKI collection"
   },
   GET: {
     collectionId: "The ID of the PKI collection to get"
   },
   UPDATE: {
     collectionId: "The ID of the PKI collection to update",
-    name: "The name of the PKI collection to update to"
+    name: "The name of the PKI collection to update to",
+    description: "The description for the PKI collection to update to"
   },
   DELETE: {
     collectionId: "The ID of the PKI collection to delete"
