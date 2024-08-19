@@ -317,6 +317,9 @@ By default, `getSecret()` fetches and returns a shared secret. If not found, it 
 		<ParamField query="secret_name" type="string" required>
 			The key of the secret to retrieve
 		</ParamField>
+    <ParamField query="include_imports" type="boolean">
+          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+    </ParamField>
 		<ParamField query="environment" type="string" required>
 			The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
 		</ParamField>
@@ -332,6 +335,9 @@ By default, `getSecret()` fetches and returns a shared secret. If not found, it 
 		<ParamField query="include_imports" type="boolean" default="false" optional>
 			Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
 		</ParamField>
+    <ParamField query="expand_secret_references" type="boolean" default="true" optional>
+      Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
+    </ParamField>
 	</Expandable>
 </ParamField>
 
