@@ -15,6 +15,7 @@ import {
   Switch,
   TextArea
 } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { useCreateEstConfig, useGetEstConfig, useUpdateEstConfig } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -59,6 +60,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
 
   const { mutateAsync: createEstConfig } = useCreateEstConfig();
   const { mutateAsync: updateEstConfig } = useUpdateEstConfig();
+  const [isPassphraseFocused, setIsPassphraseFocused] = useToggle(false);
 
   useEffect(() => {
     if (data) {
@@ -143,6 +145,11 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
               </FormControl>
             )}
           />
+          {data && (
+            <FormControl label="EST Label">
+              <Input value={data.certificateTemplateId} disabled />
+            </FormControl>
+          )}
           <Controller
             control={control}
             name="caChain"
@@ -166,7 +173,12 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
             name="passphrase"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Passphrase" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} type="password" />
+                <Input
+                  {...field}
+                  type={isPassphraseFocused ? "text" : "password"}
+                  onFocus={() => setIsPassphraseFocused.on()}
+                  onBlur={() => setIsPassphraseFocused.off()}
+                />
               </FormControl>
             )}
           />

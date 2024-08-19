@@ -80,16 +80,27 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                           >
                             Manage Policies
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handlePopUpOpen("enrollmentOptions", {
-                                id: certificateTemplate.id
-                              })
-                            }
-                            icon={<FontAwesomeIcon icon={faUserPlus} size="sm" />}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.CertificateTemplates}
                           >
-                            Manage Enrollment
-                          </DropdownMenuItem>
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handlePopUpOpen("enrollmentOptions", {
+                                    id: certificateTemplate.id
+                                  })
+                                }
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faUserPlus} size="sm" />}
+                              >
+                                Manage Enrollment
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.CertificateTemplates}
