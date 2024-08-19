@@ -428,6 +428,20 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
           </Td>
         );
+      case EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG:
+      case EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG:
+        return (
+          <Td>
+            <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
+            <p>{`Enabled: ${event.metadata.isEnabled}`}</p>
+          </Td>
+        );
+      case EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG:
+        return (
+          <Td>
+            <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
+          </Td>
+        );
       default:
         return <Td />;
     }

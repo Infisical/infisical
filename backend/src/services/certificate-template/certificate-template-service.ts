@@ -257,7 +257,7 @@ export const certificateTemplateServiceFactory = ({
       isEnabled
     });
 
-    return estConfig;
+    return { ...estConfig, projectId: certTemplate.projectId };
   };
 
   const updateEstConfiguration = async ({
@@ -331,7 +331,7 @@ export const certificateTemplateServiceFactory = ({
 
     const estConfig = await certificateTemplateEstConfigDAL.updateById(originalCaEstConfig.id, updatedData);
 
-    return estConfig;
+    return { ...estConfig, projectId: certTemplate.projectId };
   };
 
   const getEstConfiguration = async (dto: TGetEstConfigurationDTO) => {
@@ -388,7 +388,8 @@ export const certificateTemplateServiceFactory = ({
       id: estConfig.id,
       isEnabled: estConfig.isEnabled,
       caChain: decryptedCaChain.toString(),
-      hashedPassphrase: estConfig.hashedPassphrase
+      hashedPassphrase: estConfig.hashedPassphrase,
+      projectId: certTemplate.projectId
     };
   };
 

@@ -166,7 +166,10 @@ export enum EventType {
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
-  GET_CERTIFICATE_TEMPLATE = "get-certificate-template"
+  GET_CERTIFICATE_TEMPLATE = "get-certificate-template",
+  CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
+  UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
+  GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config"
 }
 
 interface UserActorMetadata {
@@ -1420,6 +1423,29 @@ interface OrgAdminAccessProjectEvent {
   }; // no metadata yet
 }
 
+interface CreateCertificateTemplateEstConfig {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
+  metadata: {
+    certificateTemplateId: string;
+    isEnabled: boolean;
+  };
+}
+
+interface UpdateCertificateTemplateEstConfig {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
+  metadata: {
+    certificateTemplateId: string;
+    isEnabled: boolean;
+  };
+}
+
+interface GetCertificateTemplateEstConfig {
+  type: EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1547,4 +1573,7 @@ export type Event =
   | CreateCertificateTemplate
   | UpdateCertificateTemplate
   | GetCertificateTemplate
-  | DeleteCertificateTemplate;
+  | DeleteCertificateTemplate
+  | CreateCertificateTemplateEstConfig
+  | UpdateCertificateTemplateEstConfig
+  | GetCertificateTemplateEstConfig;

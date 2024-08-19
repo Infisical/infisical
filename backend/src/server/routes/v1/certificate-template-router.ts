@@ -241,6 +241,18 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: estConfig.projectId,
+        event: {
+          type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG,
+          metadata: {
+            certificateTemplateId: estConfig.certificateTemplateId,
+            isEnabled: estConfig.isEnabled as boolean
+          }
+        }
+      });
+
       return estConfig;
     }
   });
@@ -276,6 +288,18 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: estConfig.projectId,
+        event: {
+          type: EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG,
+          metadata: {
+            certificateTemplateId: estConfig.certificateTemplateId,
+            isEnabled: estConfig.isEnabled as boolean
+          }
+        }
+      });
+
       return estConfig;
     }
   });
@@ -306,6 +330,17 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: estConfig.projectId,
+        event: {
+          type: EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG,
+          metadata: {
+            certificateTemplateId: estConfig.certificateTemplateId
+          }
+        }
       });
 
       return estConfig;
