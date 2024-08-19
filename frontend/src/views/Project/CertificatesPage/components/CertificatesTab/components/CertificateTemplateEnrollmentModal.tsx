@@ -147,7 +147,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           />
           {data && (
             <FormControl label="EST Label">
-              <Input value={data.certificateTemplateId} disabled />
+              <Input value={data.certificateTemplateId} isDisabled className="bg-white/[0.07]" />
             </FormControl>
           )}
           <Controller

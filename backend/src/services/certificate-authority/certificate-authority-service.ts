@@ -1366,6 +1366,8 @@ export const certificateAuthorityServiceFactory = ({
       notAfterDate = new Date(notAfter);
     } else if (ttl) {
       notAfterDate = new Date(new Date().getTime() + ms(ttl));
+    } else if (certificateTemplate?.ttl) {
+      notAfterDate = new Date(new Date().getTime() + ms(certificateTemplate.ttl));
     }
 
     const caCertNotBeforeDate = new Date(caCertObj.notBefore);
@@ -1410,6 +1412,7 @@ export const certificateAuthorityServiceFactory = ({
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
 
+    let altNamesFromCsr: string = "";
     let altNamesArray: {
       type: "email" | "dns";
       value: string;
@@ -1438,7 +1441,24 @@ export const certificateAuthorityServiceFactory = ({
           // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
           throw new Error(`Invalid altName: ${altName}`);
         });
+    } else {
+      // attempt to read from CSR if altNames is not explicitly provided
+      const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
+      if (sanExtension) {
+        const sanNames = new x509.GeneralNames(sanExtension.value);
 
+        altNamesArray = sanNames.items
+          .filter((value) => value.type === "email" || value.type === "dns")
+          .map((name) => ({
+            type: name.type as "email" | "dns",
+            value: name.value
+          }));
+
+        altNamesFromCsr = sanNames.items.map((item) => item.value).join(",");
+      }
+    }
+
+    if (altNamesArray.length) {
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
       extensions.push(altNamesExtension);
     }
@@ -1484,7 +1504,7 @@ export const certificateAuthorityServiceFactory = ({
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,
-          altNames,
+          altNames: altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate

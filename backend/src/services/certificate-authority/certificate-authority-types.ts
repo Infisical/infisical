@@ -106,8 +106,8 @@ export type TSignCertFromCaDTO =
       pkiCollectionId?: string;
       friendlyName?: string;
       commonName?: string;
-      altNames: string;
-      ttl: string;
+      altNames?: string;
+      ttl?: string;
       notBefore?: string;
       notAfter?: string;
     }

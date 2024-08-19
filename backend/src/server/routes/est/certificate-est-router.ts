@@ -149,9 +149,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       const { rawCertificate } = await server.services.certificateAuthority.signCertFromCa({
         isInternal: true,
         certificateTemplateId: req.params.certificateTemplateId,
-        csr: req.body,
-        altNames: "",
-        ttl: "1h"
+        csr: req.body
       });
 
       void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
