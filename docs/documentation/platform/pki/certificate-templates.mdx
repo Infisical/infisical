@@ -82,13 +82,9 @@ In the following steps, we explore how to issue a X.509 certificate using a cert
             {
               "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
               "caId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-              "name": "<string>",
+              "name": "certificate-template-1",
               "commonName": "<string>",
-              "subjectAlternativeName": "<string>",
-              "pkiCollectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-              "ttl": "<string>",
-              "projectId": "<string>",
-              "caName": "<string>"
+              ...
             }
             ```
         </Step>
@@ -102,9 +98,9 @@ In the following steps, we explore how to issue a X.509 certificate using a cert
               --url https://app.infisical.com/api/v1/pki/certificates/issue-certificate \
               --header 'Content-Type: application/json' \
               --data '{
-              "certificateTemplateId": "<string>",
-              "friendlyName": "<string>",
-              "commonName": "<string>",
+              "certificateTemplateId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+              "friendlyName": "my-new-certificate",
+              "commonName": "CERT",
               ...
             }'
             ```
