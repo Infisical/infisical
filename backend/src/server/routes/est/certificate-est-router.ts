@@ -132,14 +132,14 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "POST",
-    url: "/:certificateAuthorityId/simpleenroll",
+    url: "/:certificateTemplateId/simpleenroll",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       body: z.string(),
       params: z.object({
-        certificateAuthorityId: z.string()
+        certificateTemplateId: z.string()
       }),
       response: {
         200: z.object({})
@@ -148,7 +148,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     handler: async (req, res) => {
       const { rawCertificate } = await server.services.certificateAuthority.signCertFromCa({
         isInternal: true,
-        caId: req.params.certificateAuthorityId,
+        certificateTemplateId: req.params.certificateTemplateId,
         csr: req.body,
         altNames: "",
         ttl: "1h"
