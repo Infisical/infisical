@@ -39,13 +39,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
 
     const urlFragments = req.url.split("/");
-    const certificateAuthorityId = urlFragments.slice(-2)[0];
-    const caEstConfig = await server.services.certificateAuthority.getCaEstConfiguration({
+    const certificateTemplateId = urlFragments.slice(-2)[0];
+    const estConfig = await server.services.certificateTemplate.getEstConfiguration({
       isInternal: true,
-      caId: certificateAuthorityId
+      certificateTemplateId
     });
 
-    if (!caEstConfig.isEnabled) {
+    if (!estConfig.isEnabled) {
       throw new BadRequestError({
         message: "EST enrollment is disabled"
       });
@@ -68,7 +68,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       .trim();
 
     // validate SSL client cert against configured CA
-    const chainCerts = caEstConfig.caChain
+    const chainCerts = estConfig.caChain
       .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
       ?.map((cert) => {
         const processedBody = cert
@@ -122,7 +122,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, caEstConfig.hashedPassphrase);
+    const isPasswordValid = await bcrypt.compare(password, estConfig.hashedPassphrase);
     if (!isPasswordValid) {
       throw new UnauthorizedError({
         message: "Invalid credentials"

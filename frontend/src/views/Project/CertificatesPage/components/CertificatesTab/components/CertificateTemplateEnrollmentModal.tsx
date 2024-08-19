@@ -15,7 +15,7 @@ import {
   Switch,
   TextArea
 } from "@app/components/v2";
-import { useCreateCaEstConfig, useGetCaEstConfig, useUpdateCaEstConfig } from "@app/hooks/api";
+import { useCreateEstConfig, useGetEstConfig, useUpdateEstConfig } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum EnrollmentMethod {
@@ -39,13 +39,13 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
-export const CaEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
   const popUpData = popUp?.enrollmentOptions?.data as {
-    caId: string;
+    id: string;
   };
-  const caId = popUpData?.caId;
+  const certificateTemplateId = popUpData?.id;
 
-  const { data } = useGetCaEstConfig(caId);
+  const { data } = useGetEstConfig(certificateTemplateId);
 
   const {
     control,
@@ -57,8 +57,8 @@ export const CaEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema)
   });
 
-  const { mutateAsync: createCaEstConfig } = useCreateCaEstConfig();
-  const { mutateAsync: updateCaEstConfig } = useUpdateCaEstConfig();
+  const { mutateAsync: createEstConfig } = useCreateEstConfig();
+  const { mutateAsync: updateEstConfig } = useUpdateEstConfig();
 
   useEffect(() => {
     if (data) {
@@ -77,8 +77,8 @@ export const CaEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ caChain, passphrase, isEnabled }: FormData) => {
     try {
       if (data) {
-        await updateCaEstConfig({
-          caId,
+        await updateEstConfig({
+          certificateTemplateId,
           caChain,
           passphrase,
           isEnabled
@@ -89,8 +89,8 @@ export const CaEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
           return;
         }
 
-        await createCaEstConfig({
-          caId,
+        await createEstConfig({
+          certificateTemplateId,
           caChain,
           passphrase,
           isEnabled

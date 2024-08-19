@@ -172,27 +172,3 @@ export type TRotateCaCrlTriggerDTO = {
   caId: string;
   rotationIntervalDays: number;
 };
-
-export type TCreateCaEstConfigurationDTO = {
-  caId: string;
-  caChain: string;
-  passphrase: string;
-  isEnabled: boolean;
-} & Omit<TProjectPermission, "projectId">;
-
-export type TUpdateCaEstConfigurationDTO = {
-  caId: string;
-  caChain?: string;
-  passphrase?: string;
-  isEnabled?: boolean;
-} & Omit<TProjectPermission, "projectId">;
-
-export type TGetCaEstConfigurationDTO =
-  | {
-      isInternal: true;
-      caId: string;
-    }
-  | ({
-      isInternal: false;
-      caId: string;
-    } & Omit<TProjectPermission, "projectId">);

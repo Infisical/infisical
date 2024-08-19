@@ -1,4 +1,4 @@
-import { faEllipsis, faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faFileAlt, faTrash, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -25,7 +25,9 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["certificateTemplate", "deleteCertificateTemplate"]>,
+    popUpName: keyof UsePopUpState<
+      ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions"]
+    >,
     data?: {
       id?: string;
       name?: string;
@@ -77,6 +79,16 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                             icon={<FontAwesomeIcon icon={faFileAlt} />}
                           >
                             Manage Policies
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handlePopUpOpen("enrollmentOptions", {
+                                id: certificateTemplate.id
+                              })
+                            }
+                            icon={<FontAwesomeIcon icon={faUserPlus} />}
+                          >
+                            Manage Enrollment
                           </DropdownMenuItem>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}

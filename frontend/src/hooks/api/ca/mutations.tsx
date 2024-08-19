@@ -7,7 +7,6 @@ import { caKeys } from "./queries";
 import {
   TCertificateAuthority,
   TCreateCaDTO,
-  TCreateCaEstConfigDTO,
   TCreateCertificateDTO,
   TCreateCertificateResponse,
   TDeleteCaDTO,
@@ -17,8 +16,7 @@ import {
   TRenewCaResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
-  TUpdateCaDTO,
-  TUpdateCaEstConfigDTO
+  TUpdateCaDTO
 } from "./types";
 
 export const useCreateCa = () => {
@@ -131,32 +129,6 @@ export const useRenewCa = () => {
       queryClient.invalidateQueries(caKeys.getCaCerts(caId));
       queryClient.invalidateQueries(caKeys.getCaCsr(caId));
       queryClient.invalidateQueries(caKeys.getCaCrl(caId));
-    }
-  });
-};
-
-export const useCreateCaEstConfig = () => {
-  const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateCaEstConfigDTO>({
-    mutationFn: async (body) => {
-      const { data } = await apiRequest.post(`/api/v1/pki/ca/${body.caId}/est-config`, body);
-      return data;
-    },
-    onSuccess: (_, { caId }) => {
-      queryClient.invalidateQueries(caKeys.getCaEstConfig(caId));
-    }
-  });
-};
-
-export const useUpdateCaEstConfig = () => {
-  const queryClient = useQueryClient();
-  return useMutation<{}, {}, TUpdateCaEstConfigDTO>({
-    mutationFn: async (body) => {
-      const { data } = await apiRequest.patch(`/api/v1/pki/ca/${body.caId}/est-config`, body);
-      return data;
-    },
-    onSuccess: (_, { caId }) => {
-      queryClient.invalidateQueries(caKeys.getCaEstConfig(caId));
     }
   });
 };

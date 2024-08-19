@@ -1,2 +1,8 @@
-export { useCreateCertTemplate, useDeleteCertTemplate, useUpdateCertTemplate } from "./mutations";
-export { useGetCertTemplate } from "./queries";
+export {
+  useCreateCertTemplate,
+  useCreateEstConfig,
+  useDeleteCertTemplate,
+  useUpdateCertTemplate,
+  useUpdateEstConfig
+} from "./mutations";
+export { useGetCertTemplate, useGetEstConfig } from "./queries";

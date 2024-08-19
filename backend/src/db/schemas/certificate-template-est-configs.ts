@@ -9,9 +9,9 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const CertificateAuthorityEstConfigsSchema = z.object({
+export const CertificateTemplateEstConfigsSchema = z.object({
   id: z.string().uuid(),
-  caId: z.string().uuid(),
+  certificateTemplateId: z.string().uuid(),
   encryptedCaChain: zodBuffer,
   hashedPassphrase: z.string(),
   isEnabled: z.boolean().nullable().optional(),
@@ -19,11 +19,11 @@ export const CertificateAuthorityEstConfigsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TCertificateAuthorityEstConfigs = z.infer<typeof CertificateAuthorityEstConfigsSchema>;
-export type TCertificateAuthorityEstConfigsInsert = Omit<
-  z.input<typeof CertificateAuthorityEstConfigsSchema>,
+export type TCertificateTemplateEstConfigs = z.infer<typeof CertificateTemplateEstConfigsSchema>;
+export type TCertificateTemplateEstConfigsInsert = Omit<
+  z.input<typeof CertificateTemplateEstConfigsSchema>,
   TImmutableDBKeys
 >;
-export type TCertificateAuthorityEstConfigsUpdate = Partial<
-  Omit<z.input<typeof CertificateAuthorityEstConfigsSchema>, TImmutableDBKeys>
+export type TCertificateTemplateEstConfigsUpdate = Partial<
+  Omit<z.input<typeof CertificateTemplateEstConfigsSchema>, TImmutableDBKeys>
 >;

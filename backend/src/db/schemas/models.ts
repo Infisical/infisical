@@ -3,7 +3,7 @@ import { z } from "zod";
 export enum TableName {
   Users = "users",
   CertificateAuthority = "certificate_authorities",
-  CertificateAuthorityEstConfig = "certificate_authority_est_configs",
+  CertificateTemplateEstConfig = "certificate_template_est_configs",
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySecret = "certificate_authority_secret",
   CertificateAuthorityCrl = "certificate_authority_crl",

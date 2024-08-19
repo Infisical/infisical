@@ -86,11 +86,11 @@ import { certificateDALFactory } from "@app/services/certificate/certificate-dal
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { certificateAuthorityEstConfigDALFactory } from "@app/services/certificate-authority/certificate-authority-est-config-dal";
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
+import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
@@ -591,8 +591,8 @@ export const registerRoutes = async (
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
-  const certificateAuthorityEstConfigDAL = certificateAuthorityEstConfigDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
+  const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
@@ -636,8 +636,7 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     projectDAL,
     kmsService,
-    permissionService,
-    certificateAuthorityEstConfigDAL
+    permissionService
   });
 
   const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
@@ -651,8 +650,11 @@ export const registerRoutes = async (
 
   const certificateTemplateService = certificateTemplateServiceFactory({
     certificateTemplateDAL,
+    certificateTemplateEstConfigDAL,
     certificateAuthorityDAL,
-    permissionService
+    permissionService,
+    kmsService,
+    projectDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
