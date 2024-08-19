@@ -209,7 +209,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
         />
       )}
       {!isLoading && !data?.certificates?.length && (
-        <EmptyState title="No certificates have been created" icon={faCertificate} />
+        <EmptyState title="No certificates have been issued" icon={faCertificate} />
       )}
     </TableContainer>
   );

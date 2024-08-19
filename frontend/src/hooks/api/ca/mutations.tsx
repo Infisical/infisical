@@ -99,9 +99,9 @@ export const useImportCaCertificate = () => {
 export const useCreateCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCreateCertificateResponse, {}, TCreateCertificateDTO>({
-    mutationFn: async ({ caId, ...body }) => {
+    mutationFn: async (body) => {
       const { data } = await apiRequest.post<TCreateCertificateResponse>(
-        `/api/v1/pki/ca/${caId}/issue-certificate`,
+        "/api/v1/pki/certificates/issue-certificate",
         body
       );
       return data;

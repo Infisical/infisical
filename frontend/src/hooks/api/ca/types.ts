@@ -79,7 +79,8 @@ export type TImportCaCertificateResponse = {
 
 export type TCreateCertificateDTO = {
   projectSlug: string;
-  caId: string;
+  caId?: string;
+  certificateTemplateId?: string;
   pkiCollectionId?: string;
   friendlyName?: string;
   commonName: string;

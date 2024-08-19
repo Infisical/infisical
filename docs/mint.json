@@ -108,6 +108,7 @@
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
             "documentation/platform/pki/certificates",
+            "documentation/platform/pki/certificate-templates",
             "documentation/platform/pki/alerting"
           ]
         },
@@ -701,7 +702,18 @@
             "api-reference/endpoints/certificates/read",
             "api-reference/endpoints/certificates/revoke",
             "api-reference/endpoints/certificates/delete",
-            "api-reference/endpoints/certificates/cert-body"
+            "api-reference/endpoints/certificates/cert-body",
+            "api-reference/endpoints/certificates/issue-certificate",
+            "api-reference/endpoints/certificates/sign-certificate"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/certificate-templates/create",
+            "api-reference/endpoints/certificate-templates/update",
+            "api-reference/endpoints/certificate-templates/get-by-id",
+            "api-reference/endpoints/certificate-templates/delete"
           ]
         },
         {

@@ -68,7 +68,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_PKI_COLLECTION_ITEMS]: "Get PKI collection items",
   [EventType.ADD_PKI_COLLECTION_ITEM]: "Add PKI collection item",
   [EventType.DELETE_PKI_COLLECTION_ITEM]: "Delete PKI collection item",
-  [EventType.ORG_ADMIN_ACCESS_PROJECT]: "Org admin accessed project"
+  [EventType.ORG_ADMIN_ACCESS_PROJECT]: "Org admin accessed project",
+  [EventType.CREATE_CERTIFICATE_TEMPLATE]: "Create certificate template",
+  [EventType.UPDATE_CERTIFICATE_TEMPLATE]: "Update certificate template",
+  [EventType.DELETE_CERTIFICATE_TEMPLATE]: "Delete certificate template",
+  [EventType.GET_CERTIFICATE_TEMPLATE]: "Get certificate template"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

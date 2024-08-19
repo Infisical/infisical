@@ -5,6 +5,7 @@ import crypto, { KeyObject } from "crypto";
 import ms from "ms";
 import { z } from "zod";
 
+import { TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -18,6 +19,8 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
+import { validateCertificateDetailsAgainstTemplate } from "../certificate-template/certificate-template-fns";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -59,6 +62,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
+  certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -76,6 +80,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
+  certificateTemplateDAL,
   certificateDAL,
   certificateBodyDAL,
   pkiCollectionDAL,
@@ -1013,6 +1018,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const issueCertFromCa = async ({
     caId,
+    certificateTemplateId,
     pkiCollectionId,
     friendlyName,
     commonName,
@@ -1025,8 +1031,27 @@ export const certificateAuthorityServiceFactory = ({
     actor,
     actorOrgId
   }: TIssueCertFromCaDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+    let ca: TCertificateAuthorities | undefined;
+    let certificateTemplate: TCertificateTemplates | undefined;
+    let collectionId = pkiCollectionId;
+
+    if (caId) {
+      ca = await certificateAuthorityDAL.findById(caId);
+    } else if (certificateTemplateId) {
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
+      if (!certificateTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      collectionId = certificateTemplate.pkiCollectionId as string;
+      ca = await certificateAuthorityDAL.findById(certificateTemplate.caId);
+    }
+
+    if (!ca) {
+      throw new BadRequestError({ message: "CA not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1047,8 +1072,8 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     // check PKI collection
-    if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
+    if (collectionId) {
+      const pkiCollection = await pkiCollectionDAL.findById(collectionId);
       if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
@@ -1121,11 +1146,13 @@ export const certificateAuthorityServiceFactory = ({
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
 
+    let altNamesArray: {
+      type: "email" | "dns";
+      value: string;
+    }[] = [];
+
     if (altNames) {
-      const altNamesArray: {
-        type: "email" | "dns";
-        value: string;
-      }[] = altNames
+      altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
         .map((altName) => {
@@ -1151,6 +1178,18 @@ export const certificateAuthorityServiceFactory = ({
 
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
       extensions.push(altNamesExtension);
+    }
+
+    if (certificateTemplate) {
+      validateCertificateDetailsAgainstTemplate(
+        {
+          commonName,
+          notBeforeDate,
+          notAfterDate,
+          altNames: altNamesArray.map((entry) => entry.value)
+        },
+        certificateTemplate
+      );
     }
 
     const serialNumber = crypto.randomBytes(32).toString("hex");
@@ -1179,8 +1218,9 @@ export const certificateAuthorityServiceFactory = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
-          caId: ca.id,
+          caId: (ca as TCertificateAuthorities).id,
           caCertId: caCert.id,
+          certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || commonName,
           commonName,
@@ -1200,10 +1240,10 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (pkiCollectionId) {
+      if (collectionId) {
         await pkiCollectionItemDAL.create(
           {
-            pkiCollectionId,
+            pkiCollectionId: collectionId,
             certId: cert.id
           },
           tx
@@ -1237,6 +1277,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const signCertFromCa = async ({
     caId,
+    certificateTemplateId,
     csr,
     pkiCollectionId,
     friendlyName,
@@ -1250,8 +1291,27 @@ export const certificateAuthorityServiceFactory = ({
     actor,
     actorOrgId
   }: TSignCertFromCaDTO) => {
-    const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+    let ca: TCertificateAuthorities | undefined;
+    let certificateTemplate: TCertificateTemplates | undefined;
+    let collectionId = pkiCollectionId;
+
+    if (caId) {
+      ca = await certificateAuthorityDAL.findById(caId);
+    } else if (certificateTemplateId) {
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
+      if (!certificateTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      collectionId = certificateTemplate.pkiCollectionId as string;
+      ca = await certificateAuthorityDAL.findById(certificateTemplate.caId);
+    }
+
+    if (!ca) {
+      throw new BadRequestError({ message: "CA not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1346,11 +1406,12 @@ export const certificateAuthorityServiceFactory = ({
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
 
+    let altNamesArray: {
+      type: "email" | "dns";
+      value: string;
+    }[] = [];
     if (altNames) {
-      const altNamesArray: {
-        type: "email" | "dns";
-        value: string;
-      }[] = altNames
+      altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
         .map((altName) => {
@@ -1378,6 +1439,18 @@ export const certificateAuthorityServiceFactory = ({
       extensions.push(altNamesExtension);
     }
 
+    if (certificateTemplate) {
+      validateCertificateDetailsAgainstTemplate(
+        {
+          commonName: cn,
+          notBeforeDate,
+          notAfterDate,
+          altNames: altNamesArray.map((entry) => entry.value)
+        },
+        certificateTemplate
+      );
+    }
+
     const serialNumber = crypto.randomBytes(32).toString("hex");
     const leafCert = await x509.X509CertificateGenerator.create({
       serialNumber,
@@ -1401,8 +1474,9 @@ export const certificateAuthorityServiceFactory = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
-          caId: ca.id,
+          caId: (ca as TCertificateAuthorities).id,
           caCertId: caCert.id,
+          certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,
@@ -1422,10 +1496,10 @@ export const certificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (pkiCollectionId) {
+      if (collectionId) {
         await pkiCollectionItemDAL.create(
           {
-            pkiCollectionId,
+            pkiCollectionId: collectionId,
             certId: cert.id
           },
           tx

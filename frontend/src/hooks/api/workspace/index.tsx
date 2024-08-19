@@ -25,6 +25,7 @@ export {
   useGetWorkspaceUsers,
   useListWorkspaceCas,
   useListWorkspaceCertificates,
+  useListWorkspaceCertificateTemplates,
   useListWorkspaceGroups,
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,

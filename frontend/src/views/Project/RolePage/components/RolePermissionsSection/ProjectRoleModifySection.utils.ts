@@ -53,6 +53,7 @@ export const formSchema = z.object({
       certificates: generalPermissionSchema,
       "pki-alerts": generalPermissionSchema,
       "pki-collections": generalPermissionSchema,
+      "certificate-templates": generalPermissionSchema,
       // akhilmhdh: refactor all keys like below
       [ProjectPermissionSub.SecretApproval]: generalPermissionSchema,
       workspace: z

@@ -15,6 +15,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -456,6 +457,36 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { collections: pkiCollections };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: sanitizedCertificateTemplate.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { certificateTemplates };
     }
   });
 };

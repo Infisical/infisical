@@ -36,6 +36,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
@@ -156,6 +157,7 @@ declare module "fastify" {
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
+      certificateTemplate: TCertificateTemplateServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;

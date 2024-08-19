@@ -82,5 +82,9 @@ export enum EventType {
   GET_PKI_COLLECTION_ITEMS = "get-pki-collection-items",
   ADD_PKI_COLLECTION_ITEM = "add-pki-collection-item",
   DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
-  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project"
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
+  UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
+  DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
+  GET_CERTIFICATE_TEMPLATE = "get-certificate-template"
 }

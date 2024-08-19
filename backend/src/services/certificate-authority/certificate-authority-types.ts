@@ -86,7 +86,8 @@ export type TImportCertToCaDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIssueCertFromCaDTO = {
-  caId: string;
+  caId?: string;
+  certificateTemplateId?: string;
   pkiCollectionId?: string;
   friendlyName?: string;
   commonName: string;
@@ -97,8 +98,9 @@ export type TIssueCertFromCaDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO = {
-  caId: string;
+  caId?: string;
   csr: string;
+  certificateTemplateId?: string;
   pkiCollectionId?: string;
   friendlyName?: string;
   commonName?: string;

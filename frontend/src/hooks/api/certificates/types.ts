@@ -3,6 +3,7 @@ import { CertStatus } from "./enums";
 export type TCertificate = {
   id: string;
   caId: string;
+  certificateTemplateId?: string;
   status: CertStatus;
   friendlyName: string;
   commonName: string;

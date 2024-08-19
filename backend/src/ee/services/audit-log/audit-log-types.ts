@@ -162,7 +162,11 @@ export enum EventType {
   UPDATE_PROJECT_KMS = "update-project-kms",
   GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
-  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project"
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
+  UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
+  DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
+  GET_CERTIFICATE_TEMPLATE = "get-certificate-template"
 }
 
 interface UserActorMetadata {
@@ -1366,6 +1370,46 @@ interface LoadProjectKmsBackupEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+interface CreateCertificateTemplate {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface GetCertificateTemplate {
+  type: EventType.GET_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface UpdateCertificateTemplate {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface DeleteCertificateTemplate {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
 interface OrgAdminAccessProjectEvent {
   type: EventType.ORG_ADMIN_ACCESS_PROJECT;
   metadata: {
@@ -1499,4 +1543,8 @@ export type Event =
   | UpdateProjectKmsEvent
   | GetProjectKmsBackupEvent
   | LoadProjectKmsBackupEvent
-  | OrgAdminAccessProjectEvent;
+  | OrgAdminAccessProjectEvent
+  | CreateCertificateTemplate
+  | UpdateCertificateTemplate
+  | GetCertificateTemplate
+  | DeleteCertificateTemplate;
