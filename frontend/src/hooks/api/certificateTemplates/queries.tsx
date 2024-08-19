@@ -12,9 +12,7 @@ export const useGetCertTemplate = (id: string) => {
   return useQuery({
     queryKey: certTemplateKeys.getCertTemplateById(id),
     queryFn: async () => {
-      const {
-        data: { certificateTemplate }
-      } = await apiRequest.get<{ certificateTemplate: TCertificateTemplate }>(
+      const { data: certificateTemplate } = await apiRequest.get<TCertificateTemplate>(
         `/api/v1/pki/certificate-templates/${id}`
       );
       return certificateTemplate;

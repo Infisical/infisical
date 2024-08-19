@@ -57,7 +57,7 @@ export const certificateTemplateServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    const certificateTemplate = await certificateTemplateDAL.create({
+    const { id } = await certificateTemplateDAL.create({
       caId,
       pkiCollectionId,
       name,
@@ -66,7 +66,14 @@ export const certificateTemplateServiceFactory = ({
       ttl
     });
 
-    return { ...certificateTemplate, projectId: ca.projectId };
+    const certificateTemplate = await certificateTemplateDAL.getById(id);
+    if (!certificateTemplate) {
+      throw new NotFoundError({
+        message: "Certificate template not found"
+      });
+    }
+
+    return certificateTemplate;
   };
 
   const updateCertTemplate = async ({
@@ -111,7 +118,7 @@ export const certificateTemplateServiceFactory = ({
       }
     }
 
-    const updatedCertTemplate = await certificateTemplateDAL.updateById(certTemplate.id, {
+    await certificateTemplateDAL.updateById(certTemplate.id, {
       caId,
       pkiCollectionId,
       commonName,
@@ -120,7 +127,14 @@ export const certificateTemplateServiceFactory = ({
       ttl
     });
 
-    return { ...updatedCertTemplate, projectId: certTemplate.projectId };
+    const updatedTemplate = await certificateTemplateDAL.getById(id);
+    if (!updatedTemplate) {
+      throw new NotFoundError({
+        message: "Certificate template not found"
+      });
+    }
+
+    return updatedTemplate;
   };
 
   const deleteCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertTemplateDTO) => {
@@ -144,9 +158,9 @@ export const certificateTemplateServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    const deletedCertTemplate = await certificateTemplateDAL.deleteById(certTemplate.id);
+    await certificateTemplateDAL.deleteById(certTemplate.id);
 
-    return { ...deletedCertTemplate, projectId: certTemplate.projectId };
+    return certTemplate;
   };
 
   const getCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertTemplateDTO) => {

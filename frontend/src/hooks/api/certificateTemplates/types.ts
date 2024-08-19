@@ -1,13 +1,8 @@
-export type TCertificateTemplateListEntry = {
-  id: string;
-  name: string;
-  caName: string;
-  caId: string;
-};
-
 export type TCertificateTemplate = {
   id: string;
   caId: string;
+  caName: string;
+  projectId: string;
   pkiCollectionId?: string;
   name: string;
   commonName: string;

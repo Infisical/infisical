@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
-import { TCertificateTemplateListEntry } from "../certificateTemplates/types";
+import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
 import { identitiesKeys } from "../identities/queries";
 import { IdentityMembership } from "../identities/types";
@@ -649,7 +649,7 @@ export const useListWorkspaceCertificateTemplates = ({ workspaceId }: { workspac
     queryFn: async () => {
       const {
         data: { certificateTemplates }
-      } = await apiRequest.get<{ certificateTemplates: TCertificateTemplateListEntry[] }>(
+      } = await apiRequest.get<{ certificateTemplates: TCertificateTemplate[] }>(
         `/api/v2/workspace/${workspaceId}/certificate-templates`
       );
 

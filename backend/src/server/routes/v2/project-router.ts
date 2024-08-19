@@ -4,7 +4,6 @@ import { z } from "zod";
 import {
   CertificateAuthoritiesSchema,
   CertificatesSchema,
-  CertificateTemplatesSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
   ProjectKeysSchema
@@ -16,6 +15,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -472,17 +472,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificateTemplates: z.array(
-            CertificateTemplatesSchema.pick({
-              id: true,
-              name: true
-            }).merge(
-              z.object({
-                caName: z.string(),
-                caId: z.string()
-              })
-            )
-          )
+          certificateTemplates: sanitizedCertificateTemplate.array()
         })
       }
     },

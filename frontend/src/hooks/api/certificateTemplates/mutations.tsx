@@ -15,9 +15,7 @@ export const useCreateCertTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificateTemplate, {}, TCreateCertificateTemplateDTO>({
     mutationFn: async (data) => {
-      const {
-        data: { certificateTemplate }
-      } = await apiRequest.post<{ certificateTemplate: TCertificateTemplate }>(
+      const { data: certificateTemplate } = await apiRequest.post<TCertificateTemplate>(
         "/api/v1/pki/certificate-templates",
         data
       );
@@ -33,9 +31,7 @@ export const useUpdateCertTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificateTemplate, {}, TUpdateCertificateTemplateDTO>({
     mutationFn: async (data) => {
-      const {
-        data: { certificateTemplate }
-      } = await apiRequest.patch<{ certificateTemplate: TCertificateTemplate }>(
+      const { data: certificateTemplate } = await apiRequest.patch<TCertificateTemplate>(
         `/api/v1/pki/certificate-templates/${data.id}`,
         data
       );

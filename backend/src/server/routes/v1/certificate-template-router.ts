@@ -1,23 +1,13 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { CertificateTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
-
-const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
-  id: true,
-  caId: true,
-  name: true,
-  commonName: true,
-  subjectAlternativeName: true,
-  pkiCollectionId: true,
-  ttl: true
-});
 
 export const registerCertificateTemplateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -31,14 +21,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
       }),
       response: {
-        200: z.object({
-          certificateTemplate: sanitizedCertificateTemplate.merge(
-            z.object({
-              projectId: z.string(),
-              caName: z.string()
-            })
-          )
-        })
+        200: sanitizedCertificateTemplate
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -62,7 +45,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         }
       });
 
-      return { certificateTemplate };
+      return certificateTemplate;
     }
   });
 
@@ -87,9 +70,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .describe(CERTIFICATE_TEMPLATES.CREATE.ttl)
       }),
       response: {
-        200: z.object({
-          certificateTemplate: sanitizedCertificateTemplate
-        })
+        200: sanitizedCertificateTemplate
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -108,12 +89,18 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.CREATE_CERTIFICATE_TEMPLATE,
           metadata: {
-            certificateTemplateId: certificateTemplate.id
+            certificateTemplateId: certificateTemplate.id,
+            caId: certificateTemplate.caId,
+            pkiCollectionId: certificateTemplate.pkiCollectionId as string,
+            name: certificateTemplate.name,
+            commonName: certificateTemplate.commonName,
+            subjectAlternativeName: certificateTemplate.subjectAlternativeName,
+            ttl: certificateTemplate.ttl
           }
         }
       });
 
-      return { certificateTemplate };
+      return certificateTemplate;
     }
   });
 
@@ -142,9 +129,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.UPDATE.certificateTemplateId)
       }),
       response: {
-        200: z.object({
-          certificateTemplate: sanitizedCertificateTemplate
-        })
+        200: sanitizedCertificateTemplate
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -164,12 +149,18 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
           metadata: {
-            certificateTemplateId: certificateTemplate.id
+            certificateTemplateId: certificateTemplate.id,
+            caId: certificateTemplate.caId,
+            pkiCollectionId: certificateTemplate.pkiCollectionId as string,
+            name: certificateTemplate.name,
+            commonName: certificateTemplate.commonName,
+            subjectAlternativeName: certificateTemplate.subjectAlternativeName,
+            ttl: certificateTemplate.ttl
           }
         }
       });
 
-      return { certificateTemplate };
+      return certificateTemplate;
     }
   });
 
@@ -184,9 +175,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
       }),
       response: {
-        200: z.object({
-          certificateTemplate: sanitizedCertificateTemplate
-        })
+        200: sanitizedCertificateTemplate
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -210,7 +199,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         }
       });
 
-      return { certificateTemplate };
+      return certificateTemplate;
     }
   });
 };

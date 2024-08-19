@@ -1374,6 +1374,12 @@ interface CreateCertificateTemplate {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
   };
 }
 
@@ -1388,6 +1394,12 @@ interface UpdateCertificateTemplate {
   type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
   };
 }
 
