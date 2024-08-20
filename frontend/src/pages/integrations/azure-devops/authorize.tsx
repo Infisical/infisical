@@ -52,8 +52,8 @@ export default function AzureDevopsCreateIntegrationPage() {
           <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </FormControl>
         <FormControl
-          label="AzureDevops Organization Name"
-          tooltipText="This is not the organization ID, but the slug of the organization. An example would be 'my-acme-org'"
+          label="Azure DevOps Organization Name"
+          tooltipText="This is the slug of the organization. An example would be 'my-acme-org'"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >
