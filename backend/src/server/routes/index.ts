@@ -412,6 +412,7 @@ export const registerRoutes = async (
     orgDAL,
     orgMembershipDAL,
     projectDAL,
+    projectUserAdditionalPrivilegeDAL,
     projectMembershipDAL,
     groupDAL,
     groupProjectDAL,
@@ -477,6 +478,7 @@ export const registerRoutes = async (
     orgDAL,
     incidentContactDAL,
     tokenService,
+    projectUserAdditionalPrivilegeDAL,
     projectDAL,
     projectMembershipDAL,
     orgMembershipDAL,
@@ -549,10 +551,12 @@ export const registerRoutes = async (
     projectBotDAL,
     orgDAL,
     userDAL,
+    projectUserAdditionalPrivilegeDAL,
     userGroupMembershipDAL,
     smtpService,
     projectKeyDAL,
     projectRoleDAL,
+    groupProjectDAL,
     licenseService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({

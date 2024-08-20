@@ -31,6 +31,7 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import {
   buildScimGroup,
   buildScimGroupList,
@@ -93,6 +94,7 @@ type TScimServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
 };
 
 export type TScimServiceFactory = ReturnType<typeof scimServiceFactory>;
@@ -112,6 +114,7 @@ export const scimServiceFactory = ({
   projectKeyDAL,
   projectBotDAL,
   permissionService,
+  projectUserAdditionalPrivilegeDAL,
   smtpService
 }: TScimServiceFactoryDep) => {
   const createScimToken = async ({
@@ -558,6 +561,7 @@ export const scimServiceFactory = ({
       orgId: membership.orgId,
       orgDAL,
       projectMembershipDAL,
+      projectUserAdditionalPrivilegeDAL,
       projectKeyDAL,
       userAliasDAL,
       licenseService

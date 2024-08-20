@@ -83,6 +83,7 @@ export type TWorkspaceUser = {
     publicKey: string;
   };
   projectId: string;
+  isGroupMember: boolean;
   project: {
     id: string;
     name: string;
