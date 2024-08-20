@@ -1,5 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { createSecretV2, deleteSecretV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
+import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
 
 import { seedData1 } from "@app/db/seed-data";
 
@@ -35,33 +35,36 @@ describe("Secret expansion", () => {
   });
 
   test("Local secret reference", async () => {
-    await createSecretV2({
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: projectId,
-      secretPath: "/",
-      authToken: jwtAuthToken,
-      key: "HELLO",
-      value: "world"
-    });
+    const secrets = [
+      {
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: projectId,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "HELLO",
+        value: "world"
+      },
+      {
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: projectId,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "TEST",
+        // eslint-disable-next-line
+        value: "hello ${HELLO}"
+      }
+    ];
 
-    await createSecretV2({
+    await Promise.all(secrets.map((el) => createSecretV2(el)));
+
+    const expandedSecret = await getSecretByNameV2({
       environmentSlug: seedData1.environment.slug,
       workspaceId: projectId,
       secretPath: "/",
       authToken: jwtAuthToken,
-      key: "TEST",
-      // eslint-disable-next-line
-      value: "hello ${HELLO}"
+      key: "TEST"
     });
-    //
-    // const expandedSecret = await getSecretByNameV2({
-    //   environmentSlug: seedData1.environment.slug,
-    //   workspaceId: projectId,
-    //   secretPath: "/",
-    //   authToken: jwtAuthToken,
-    //   key: "TEST"
-    // });
-    // expect(expandedSecret.secretValue).toBe("hello world");
+    expect(expandedSecret.secretValue).toBe("hello world");
 
     const listSecrets = await getSecretsV2({
       environmentSlug: seedData1.environment.slug,
@@ -78,20 +81,73 @@ describe("Secret expansion", () => {
       ])
     );
 
-    await deleteSecretV2({
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: projectId,
-      secretPath: "/",
-      authToken: jwtAuthToken,
-      key: "TEST"
-    });
+    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
+  });
 
-    await deleteSecretV2({
+  test("Cross environment secret reference", async () => {
+    const secrets = [
+      {
+        environmentSlug: "prod",
+        workspaceId: projectId,
+        secretPath: "/deep",
+        authToken: jwtAuthToken,
+        key: "DEEP_KEY_1",
+        value: "testing"
+      },
+      {
+        environmentSlug: "prod",
+        workspaceId: projectId,
+        secretPath: "/deep/nested",
+        authToken: jwtAuthToken,
+        key: "NESTED_KEY_1",
+        value: "reference"
+      },
+      {
+        environmentSlug: "prod",
+        workspaceId: projectId,
+        secretPath: "/deep/nested",
+        authToken: jwtAuthToken,
+        key: "NESTED_KEY_2",
+        // eslint-disable-next-line
+        value: "secret ${NESTED_KEY_1}"
+      },
+      {
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: projectId,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "KEY",
+        // eslint-disable-next-line
+        value: "hello ${prod.deep.DEEP_KEY_1} ${prod.deep.nested.NESTED_KEY_2}"
+      }
+    ];
+
+    await Promise.all(secrets.map((el) => createSecretV2(el)));
+
+    const expandedSecret = await getSecretByNameV2({
       environmentSlug: seedData1.environment.slug,
       workspaceId: projectId,
       secretPath: "/",
       authToken: jwtAuthToken,
-      key: "HELLO"
+      key: "KEY"
     });
+    expect(expandedSecret.secretValue).toBe("hello testing secret reference");
+
+    const listSecrets = await getSecretsV2({
+      environmentSlug: seedData1.environment.slug,
+      workspaceId: projectId,
+      secretPath: "/",
+      authToken: jwtAuthToken
+    });
+    expect(listSecrets.secrets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          secretKey: "KEY",
+          secretValue: "hello testing secret reference"
+        })
+      ])
+    );
+
+    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 });
