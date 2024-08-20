@@ -16,8 +16,8 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { getDefaultOnPremFeatures, setupLicenceRequestWithStore } from "./licence-fns";
 import { TLicenseDALFactory } from "./license-dal";
+import { getDefaultOnPremFeatures, setupLicenceRequestWithStore } from "./license-fns";
 import {
   InstanceType,
   TAddOrgPmtMethodDTO,
