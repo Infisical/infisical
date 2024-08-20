@@ -99,22 +99,6 @@ export const dynamicSecretServiceFactory = ({
 
     const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(inputs));
 
-    console.log("YES THIS IS WHERE WE ARE");
-
-    console.log({
-      type: provider.type,
-      version: 1,
-      inputIV: encryptedInput.iv,
-      inputTag: encryptedInput.tag,
-      inputCiphertext: encryptedInput.ciphertext,
-      algorithm: encryptedInput.algorithm,
-      keyEncoding: encryptedInput.encoding,
-      maxTTL,
-      defaultTTL,
-      folderId: folder.id,
-      name
-    });
-
     const dynamicSecretCfg = await dynamicSecretDAL.create({
       type: provider.type,
       version: 1,
@@ -128,7 +112,6 @@ export const dynamicSecretServiceFactory = ({
       folderId: folder.id,
       name
     });
-    console.log("IT WORKED");
     return dynamicSecretCfg;
   };
 
