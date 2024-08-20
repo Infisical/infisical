@@ -29,6 +29,7 @@ export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
 export type TIntegrationAuthAppsDTO = {
   id: string;
   teamId?: string;
+  azureDevOpsOrgName?: string;
   workspaceSlug?: string;
 } & Omit<TProjectPermission, "projectId">;
 

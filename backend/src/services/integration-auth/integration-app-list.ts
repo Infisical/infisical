@@ -1030,11 +1030,10 @@ const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
-const getAppsAzureDevOps = async ({ accessToken, orgId }: { accessToken: string; orgId: string }) => {
-  console.log({ accessToken, orgId });
+const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: string; orgName: string }) => {
   const res = (
     await request.get<{ count: number; value: Record<string, string>[] }>(
-      `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgId}/_apis/projects?api-version=7.2-preview.2`,
+      `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/projects?api-version=7.2-preview.2`,
       {
         headers: {
           Authorization: `Basic ${accessToken}`
@@ -1055,6 +1054,7 @@ export const getApps = async ({
   accessToken,
   accessId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug,
   url
 }: {
@@ -1062,6 +1062,7 @@ export const getApps = async ({
   accessToken: string;
   accessId?: string;
   teamId?: string | null;
+  azureDevOpsOrgName?: string | null;
   workspaceSlug?: string;
   url?: string | null;
 }): Promise<App[]> => {
@@ -1207,7 +1208,7 @@ export const getApps = async ({
     case Integrations.AZURE_DEVOPS:
       return getAppsAzureDevOps({
         accessToken,
-        orgId: teamId as string // small hack to pass orgId as teamId
+        orgName: azureDevOpsOrgName as string
       });
 
     default:

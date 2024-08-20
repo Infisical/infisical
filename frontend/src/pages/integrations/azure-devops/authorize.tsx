@@ -10,7 +10,7 @@ export default function AzureDevopsCreateIntegrationPage() {
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const [apiKey, setApiKey] = useState("");
-  const [orgId, setOrgId] = useState("");
+  const [devopsOrgName, setDevopsOrgName] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +24,7 @@ export default function AzureDevopsCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      localStorage.setItem("azure-devops-org-id", orgId);
+      localStorage.setItem("azure-devops-org-name", devopsOrgName);
 
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
@@ -52,12 +52,16 @@ export default function AzureDevopsCreateIntegrationPage() {
           <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </FormControl>
         <FormControl
-          label="AzureDevops Organization Slug"
+          label="AzureDevops Organization Name"
           tooltipText="This is not the organization ID, but the slug of the organization. An example would be 'my-acme-org'"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >
-          <Input placeholder="" value={orgId} onChange={(e) => setOrgId(e.target.value)} />
+          <Input
+            placeholder=""
+            value={devopsOrgName}
+            onChange={(e) => setDevopsOrgName(e.target.value)}
+          />
         </FormControl>
 
         <Button
@@ -66,7 +70,7 @@ export default function AzureDevopsCreateIntegrationPage() {
           className="mt-4"
           isLoading={isLoading}
         >
-          Connect to AzureDevops
+          Connect to AzureDevOps
         </Button>
       </Card>
     </div>

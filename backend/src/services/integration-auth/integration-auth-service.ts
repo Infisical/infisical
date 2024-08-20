@@ -440,6 +440,7 @@ export const integrationAuthServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     teamId,
+    azureDevOpsOrgName,
     id,
     workspaceSlug
   }: TIntegrationAuthAppsDTO) => {
@@ -462,6 +463,7 @@ export const integrationAuthServiceFactory = ({
       accessToken,
       accessId,
       teamId,
+      azureDevOpsOrgName,
       workspaceSlug,
       url: integrationAuth.url
     });

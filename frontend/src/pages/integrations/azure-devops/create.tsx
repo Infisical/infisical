@@ -29,7 +29,7 @@ export default function AzureDevopsCreateIntegrationPage() {
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    teamId: localStorage.getItem("azure-devops-org-id") ?? ""
+    azureDevOpsOrgName: localStorage.getItem("azure-devops-org-name") ?? ""
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
@@ -63,7 +63,7 @@ export default function AzureDevopsCreateIntegrationPage() {
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: localStorage.getItem("azure-devops-org-id") || "",
+        app: localStorage.getItem("azure-devops-org-name") || "",
         appId: targetApp,
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
