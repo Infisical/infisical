@@ -382,7 +382,7 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "Azure Devops",
+      name: "Azure DevOps",
       slug: "azure-devops",
       image: "Microsoft Azure.png",
       isAvailable: true,
