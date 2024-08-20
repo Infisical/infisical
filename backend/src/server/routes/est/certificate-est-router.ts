@@ -1,6 +1,4 @@
-import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
-import { Certificate, ContentInfo, EncapsulatedContentInfo, SignedData } from "pkijs";
 import { z } from "zod";
 
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -17,7 +15,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
   });
 
-  // Authenticate EST client
+  // Authenticate EST client using Passphrase
   server.addHook("onRequest", async (req, res) => {
     const { authorization } = req.headers;
     if (!authorization) {
@@ -47,64 +45,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
     if (!estConfig.isEnabled) {
       throw new BadRequestError({
-        message: "EST enrollment is disabled"
-      });
-    }
-
-    const sslClientCert = req.headers["x-ssl-client-cert"] as string;
-    const leafCertificate = decodeURIComponent(sslClientCert).match(
-      /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
-    )?.[0];
-
-    if (!sslClientCert || !leafCertificate) {
-      throw new UnauthorizedError({ message: "Missing client certificate" });
-    }
-
-    const clientCertBody = leafCertificate
-      .replace("-----BEGIN CERTIFICATE-----", "")
-      .replace("-----END CERTIFICATE-----", "")
-      .replace(/\n/g, "")
-      .replace(/ /g, "")
-      .trim();
-
-    // validate SSL client cert against configured CA
-    const chainCerts = estConfig.caChain
-      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-      ?.map((cert) => {
-        const processedBody = cert
-          .replace("-----BEGIN CERTIFICATE-----", "")
-          .replace("-----END CERTIFICATE-----", "")
-          .replace(/\n/g, "")
-          .replace(/ /g, "")
-          .trim();
-
-        const certificateBuffer = Buffer.from(processedBody, "base64");
-        return new x509.X509Certificate(certificateBuffer);
-      });
-
-    if (!chainCerts) {
-      throw new BadRequestError({ message: "Failed to parse certificate chain" });
-    }
-
-    let isSslClientCertValid = true;
-    let certToVerify = new x509.X509Certificate(clientCertBody);
-
-    for await (const issuerCert of chainCerts) {
-      if (
-        await certToVerify.verify({
-          publicKey: issuerCert.publicKey,
-          date: new Date()
-        })
-      ) {
-        certToVerify = issuerCert; // Move to the next certificate in the chain
-      } else {
-        isSslClientCertValid = false;
-      }
-    }
-
-    if (!isSslClientCertValid) {
-      throw new UnauthorizedError({
-        message: "Invalid client certificate"
+        message: "EST is disabled"
       });
     }
 
@@ -137,42 +78,23 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
-      body: z.string(),
+      body: z.string().min(1),
       params: z.object({
-        certificateTemplateId: z.string()
+        certificateTemplateId: z.string().min(1)
       }),
       response: {
         200: z.object({})
       }
     },
     handler: async (req, res) => {
-      const { rawCertificate } = await server.services.certificateAuthority.signCertFromCa({
-        isInternal: true,
-        certificateTemplateId: req.params.certificateTemplateId,
-        csr: req.body
-      });
-
       void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
       void res.header("Content-Transfer-Encoding", "base64");
 
-      const cert = Certificate.fromBER(rawCertificate);
-      const cmsSigned = new SignedData({
-        encapContentInfo: new EncapsulatedContentInfo({
-          eContentType: "1.2.840.113549.1.7.1" // not encrypted and not compressed data
-        }),
-        certificates: [cert]
+      return server.services.certificateEst.simpleEnroll({
+        csr: req.body,
+        certificateTemplateId: req.params.certificateTemplateId,
+        sslClientCert: req.headers["x-ssl-client-cert"] as string
       });
-
-      const cmsContent = new ContentInfo({
-        contentType: "1.2.840.113549.1.7.2", // SignedData
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        content: cmsSigned.toSchema()
-      });
-
-      const derBuffer = cmsContent.toSchema().toBER(false);
-      const base64Pkcs7 = Buffer.from(derBuffer).toString("base64");
-
-      return base64Pkcs7;
     }
   });
 };

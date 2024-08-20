@@ -89,6 +89,7 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { certificateEstServiceFactory } from "@app/services/certificate-est/certificate-est-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
@@ -657,6 +658,11 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const certificateEstService = certificateEstServiceFactory({
+    certificateAuthorityService,
+    certificateTemplateService
+  });
+
   const pkiAlertService = pkiAlertServiceFactory({
     pkiAlertDAL,
     pkiCollectionDAL,
@@ -1179,6 +1185,7 @@ export const registerRoutes = async (
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
+    certificateEst: certificateEstService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     secretScanning: secretScanningService,
