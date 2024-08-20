@@ -11,10 +11,11 @@ import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
-import { mockQueue } from "./mocks/queue";
 import { mockSmtpServer } from "./mocks/smtp";
-import { mockKeyStore } from "./mocks/keystore";
 import { initDbConnection } from "@app/db";
+import { queueServiceFactory } from "@app/queue";
+import { keyStoreFactory } from "@app/keystore/keystore";
+import { Redis } from "ioredis";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -27,6 +28,9 @@ export default {
       dbConnectionUri: cfg.DB_CONNECTION_URI,
       dbRootCert: cfg.DB_ROOT_CERT
     });
+
+    const redis = new Redis(cfg.REDIS_URL);
+    await redis.flushdb("ASYNC");
 
     try {
       await db.migrate.rollback(
@@ -48,8 +52,8 @@ export default {
         extension: "ts"
       });
       const smtp = mockSmtpServer();
-      const queue = mockQueue();
-      const keyStore = mockKeyStore();
+      const queue = queueServiceFactory(cfg.REDIS_URL);
+      const keyStore = keyStoreFactory(cfg.REDIS_URL);
       const server = await main({ db, smtp, logger, queue, keyStore });
       // @ts-expect-error type
       globalThis.testServer = server;
@@ -91,6 +95,9 @@ export default {
           },
           true
         );
+
+        await redis.flushdb("ASYNC");
+        redis.disconnect();
         await db.destroy();
       }
     };

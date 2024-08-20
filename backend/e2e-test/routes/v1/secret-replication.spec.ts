@@ -4,262 +4,9 @@ import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from 
 
 import { seedData1 } from "@app/db/seed-data";
 
-describe("Secret Import Router", async () => {
-  test.each([
-    { importEnv: "prod", importPath: "/" }, // one in root
-    { importEnv: "staging", importPath: "/" } // then create a deep one creating intermediate ones
-  ])("Create secret import $importEnv with path $importPath", async ({ importPath, importEnv }) => {
-    // check for default environments
-    const payload = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath,
-      importEnv
-    });
-    expect(payload).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        importPath: expect.any(String),
-        importEnv: expect.objectContaining({
-          name: expect.any(String),
-          slug: expect.any(String),
-          id: expect.any(String)
-        })
-      })
-    );
-    await deleteSecretImport({
-      id: payload.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-  });
-
-  test("Get secret imports", async () => {
-    const createdImport1 = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath: "/",
-      importEnv: "prod"
-    });
-    const createdImport2 = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath: "/",
-      importEnv: "staging"
-    });
-    const res = await testServer.inject({
-      method: "GET",
-      url: `/api/v1/secret-imports`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      query: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        path: "/"
-      }
-    });
-
-    expect(res.statusCode).toBe(200);
-    const payload = JSON.parse(res.payload);
-    expect(payload).toHaveProperty("secretImports");
-    expect(payload.secretImports.length).toBe(2);
-    expect(payload.secretImports).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: expect.any(String),
-          importPath: expect.any(String),
-          importEnv: expect.objectContaining({
-            name: expect.any(String),
-            slug: expect.any(String),
-            id: expect.any(String)
-          })
-        })
-      ])
-    );
-    await deleteSecretImport({
-      id: createdImport1.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-    await deleteSecretImport({
-      id: createdImport2.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-  });
-
-  test("Update secret import position", async () => {
-    const prodImportDetails = { path: "/", envSlug: "prod" };
-    const stagingImportDetails = { path: "/", envSlug: "staging" };
-
-    const createdImport1 = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath: prodImportDetails.path,
-      importEnv: prodImportDetails.envSlug
-    });
-    const createdImport2 = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath: stagingImportDetails.path,
-      importEnv: stagingImportDetails.envSlug
-    });
-
-    const updateImportRes = await testServer.inject({
-      method: "PATCH",
-      url: `/api/v1/secret-imports/${createdImport1.id}`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        path: "/",
-        import: {
-          position: 2
-        }
-      }
-    });
-
-    expect(updateImportRes.statusCode).toBe(200);
-    const payload = JSON.parse(updateImportRes.payload);
-    expect(payload).toHaveProperty("secretImport");
-    // check for default environments
-    expect(payload.secretImport).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        importPath: expect.any(String),
-        position: 2,
-        importEnv: expect.objectContaining({
-          name: expect.any(String),
-          slug: expect.stringMatching(prodImportDetails.envSlug),
-          id: expect.any(String)
-        })
-      })
-    );
-
-    const secretImportsListRes = await testServer.inject({
-      method: "GET",
-      url: `/api/v1/secret-imports`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      query: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        path: "/"
-      }
-    });
-
-    expect(secretImportsListRes.statusCode).toBe(200);
-    const secretImportList = JSON.parse(secretImportsListRes.payload);
-    expect(secretImportList).toHaveProperty("secretImports");
-    expect(secretImportList.secretImports[1].id).toEqual(createdImport1.id);
-    expect(secretImportList.secretImports[0].id).toEqual(createdImport2.id);
-
-    await deleteSecretImport({
-      id: createdImport1.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-    await deleteSecretImport({
-      id: createdImport2.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-  });
-
-  test("Delete secret import position", async () => {
-    const createdImport1 = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath: "/",
-      importEnv: "prod"
-    });
-    const createdImport2 = await createSecretImport({
-      authToken: jwtAuthToken,
-      secretPath: "/",
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: seedData1.project.id,
-      importPath: "/",
-      importEnv: "staging"
-    });
-    const deletedImport = await deleteSecretImport({
-      id: createdImport1.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-
-    // check for default environments
-    expect(deletedImport).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        importPath: expect.any(String),
-        importEnv: expect.objectContaining({
-          name: expect.any(String),
-          slug: expect.any(String),
-          id: expect.any(String)
-        })
-      })
-    );
-
-    const secretImportsListRes = await testServer.inject({
-      method: "GET",
-      url: `/api/v1/secret-imports`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      query: {
-        workspaceId: seedData1.project.id,
-        environment: seedData1.environment.slug,
-        path: "/"
-      }
-    });
-
-    expect(secretImportsListRes.statusCode).toBe(200);
-    const secretImportList = JSON.parse(secretImportsListRes.payload);
-    expect(secretImportList).toHaveProperty("secretImports");
-    expect(secretImportList.secretImports.length).toEqual(1);
-    expect(secretImportList.secretImports[0].position).toEqual(1);
-
-    await deleteSecretImport({
-      id: createdImport2.id,
-      workspaceId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      secretPath: "/",
-      authToken: jwtAuthToken
-    });
-  });
-});
-
 // dev <- stage <- prod
 describe.each([{ path: "/" }, { path: "/deep" }])(
-  "Secret import waterfall pattern testing - %path",
+  "Secret replication waterfall pattern testing - %path",
   ({ path: testSuitePath }) => {
     beforeAll(async () => {
       let prodFolder: { id: string };
@@ -298,7 +45,8 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         importPath: testSuitePath,
-        importEnv: "staging"
+        importEnv: "staging",
+        isReplication: true
       });
 
       const stageImportFromProd = await createSecretImport({
@@ -307,7 +55,8 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         environmentSlug: "staging",
         workspaceId: seedData1.projectV3.id,
         importPath: testSuitePath,
-        importEnv: "prod"
+        importEnv: "prod",
+        isReplication: true
       });
 
       return async () => {
@@ -369,6 +118,11 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "stage-value"
       });
 
+      // wait for 5 second for  replication to finish
+      await new Promise((resolve) => {
+        setTimeout(resolve, 5000); // time to breathe for db
+      });
+
       const secret = await getSecretByNameV2({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
@@ -418,6 +172,11 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "prod-value"
       });
 
+      // wait for 5 second for  replication to finish
+      await new Promise((resolve) => {
+        setTimeout(resolve, 5000); // time to breathe for db
+      });
+
       const secret = await getSecretByNameV2({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
@@ -456,12 +215,13 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         key: "PROD_KEY"
       });
     });
-  }
+  },
+  { timeout: 30000 }
 );
 
 // dev <- stage, dev <- prod
 describe.each([{ path: "/" }, { path: "/deep" }])(
-  "Secret import 1-N pattern testing - %path",
+  "Secret replication 1-N pattern testing - %path",
   ({ path: testSuitePath }) => {
     beforeAll(async () => {
       let prodFolder: { id: string };
@@ -500,7 +260,8 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         importPath: testSuitePath,
-        importEnv: "staging"
+        importEnv: "staging",
+        isReplication: true
       });
 
       const devImportFromProd = await createSecretImport({
@@ -509,7 +270,8 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         importPath: testSuitePath,
-        importEnv: "prod"
+        importEnv: "prod",
+        isReplication: true
       });
 
       return async () => {
@@ -580,6 +342,11 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "prod-value"
       });
 
+      // wait for 5 second for  replication to finish
+      await new Promise((resolve) => {
+        setTimeout(resolve, 5000); // time to breathe for db
+      });
+
       const secret = await getSecretByNameV2({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
@@ -633,5 +400,6 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         key: "PROD_KEY"
       });
     });
-  }
+  },
+  { timeout: 30000 }
 );
