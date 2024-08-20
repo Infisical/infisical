@@ -115,7 +115,14 @@ export async function down(knex: Knex): Promise<void> {
         // eslint-disable-next-line
         // @ts-ignore because generate schema happens after this
         approverId: knex(TableName.ProjectMembership)
-          .select("id")
+          .join(
+            TableName.SecretApprovalPolicy,
+            `${TableName.SecretApprovalPolicy}.id`,
+            `${TableName.SecretApprovalPolicyApprover}.policyId`
+          )
+          .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretApprovalPolicy}.envId`)
+          .select(knex.ref("id").withSchema(TableName.ProjectMembership))
+          .where(`${TableName.ProjectMembership}.projectId`, knex.raw("??", [`${TableName.Environment}.projectId`]))
           .where("userId", knex.raw("??", [`${TableName.SecretApprovalPolicyApprover}.approverUserId`]))
       });
       await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (tb) => {
@@ -147,13 +154,27 @@ export async function down(knex: Knex): Promise<void> {
       // eslint-disable-next-line
       // @ts-ignore because generate schema happens after this
       committerId: knex(TableName.ProjectMembership)
-        .select("id")
-        .where("userId", knex.raw("??", [`${TableName.SecretApprovalRequest}.committerUserId`])),
+        .join(
+          TableName.SecretApprovalPolicy,
+          `${TableName.SecretApprovalPolicy}.id`,
+          `${TableName.SecretApprovalRequest}.policyId`
+        )
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretApprovalPolicy}.envId`)
+        .where(`${TableName.ProjectMembership}.projectId`, knex.raw("??", [`${TableName.Environment}.projectId`]))
+        .where("userId", knex.raw("??", [`${TableName.SecretApprovalRequest}.committerUserId`]))
+        .select(knex.ref("id").withSchema(TableName.ProjectMembership)),
       // eslint-disable-next-line
       // @ts-ignore because generate schema happens after this
       statusChangeBy: knex(TableName.ProjectMembership)
-        .select("id")
+        .join(
+          TableName.SecretApprovalPolicy,
+          `${TableName.SecretApprovalPolicy}.id`,
+          `${TableName.SecretApprovalRequest}.policyId`
+        )
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretApprovalPolicy}.envId`)
+        .where(`${TableName.ProjectMembership}.projectId`, knex.raw("??", [`${TableName.Environment}.projectId`]))
         .where("userId", knex.raw("??", [`${TableName.SecretApprovalRequest}.statusChangedByUserId`]))
+        .select(knex.ref("id").withSchema(TableName.ProjectMembership))
     });
 
     await knex.schema.alterTable(TableName.SecretApprovalRequest, (tb) => {
@@ -177,8 +198,20 @@ export async function down(knex: Knex): Promise<void> {
       // eslint-disable-next-line
       // @ts-ignore because generate schema happens after this
       member: knex(TableName.ProjectMembership)
-        .select("id")
+        .join(
+          TableName.SecretApprovalRequest,
+          `${TableName.SecretApprovalRequest}.id`,
+          `${TableName.SecretApprovalRequestReviewer}.requestId`
+        )
+        .join(
+          TableName.SecretApprovalPolicy,
+          `${TableName.SecretApprovalPolicy}.id`,
+          `${TableName.SecretApprovalRequest}.policyId`
+        )
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretApprovalPolicy}.envId`)
+        .where(`${TableName.ProjectMembership}.projectId`, knex.raw("??", [`${TableName.Environment}.projectId`]))
         .where("userId", knex.raw("??", [`${TableName.SecretApprovalRequestReviewer}.reviewerUserId`]))
+        .select(knex.ref("id").withSchema(TableName.ProjectMembership))
     });
     await knex.schema.alterTable(TableName.SecretApprovalRequestReviewer, (tb) => {
       tb.uuid("member").notNullable().alter();
