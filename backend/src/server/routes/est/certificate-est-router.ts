@@ -83,7 +83,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         certificateTemplateId: z.string().min(1)
       }),
       response: {
-        200: z.object({})
+        200: z.string()
       }
     },
     handler: async (req, res) => {
@@ -91,6 +91,33 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Transfer-Encoding", "base64");
 
       return server.services.certificateEst.simpleEnroll({
+        csr: req.body,
+        certificateTemplateId: req.params.certificateTemplateId,
+        sslClientCert: req.headers["x-ssl-client-cert"] as string
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:certificateTemplateId/simplereenroll",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.string().min(1),
+      params: z.object({
+        certificateTemplateId: z.string().min(1)
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    handler: async (req, res) => {
+      void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
+      void res.header("Content-Transfer-Encoding", "base64");
+
+      return server.services.certificateEst.simpleReenroll({
         csr: req.body,
         certificateTemplateId: req.params.certificateTemplateId,
         sslClientCert: req.headers["x-ssl-client-cert"] as string

@@ -660,7 +660,12 @@ export const registerRoutes = async (
 
   const certificateEstService = certificateEstServiceFactory({
     certificateAuthorityService,
-    certificateTemplateService
+    certificateTemplateService,
+    certificateTemplateDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityDAL,
+    projectDAL,
+    kmsService
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
