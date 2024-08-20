@@ -1,3 +1,4 @@
+import { TIntegrations } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TGetIntegrationAuthDTO = {
@@ -162,4 +163,14 @@ export type TTeamCityBuildConfig = {
   projectId: string;
   href: string;
   webUrl: string;
+};
+
+export type TIntegrationsWithEnvironment = TIntegrations & {
+  environment?:
+    | {
+        id?: string | null | undefined;
+        name?: string | null | undefined;
+      }
+    | null
+    | undefined;
 };

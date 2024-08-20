@@ -131,6 +131,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "rundeck":
         link = `${window.location.origin}/integrations/rundeck/authorize`;
         break;
+      case "azure-devops":
+        link = `${window.location.origin}/integrations/azure-devops/authorize`;
+        break;
       default:
         break;
     }

@@ -17,7 +17,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   environmentsUsed: 0,
   identityLimit: null,
   identitiesUsed: 0,
-  dynamicSecret: false,
+  dynamicSecret: true,
   secretVersioning: true,
   pitRecovery: false,
   ipAllowlisting: false,
