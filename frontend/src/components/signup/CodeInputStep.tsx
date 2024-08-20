@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 
@@ -50,6 +50,7 @@ interface CodeInputStepProps {
   email: string;
   incrementStep: () => void;
   setCode: (value: string) => void;
+  code: string;
   codeError: boolean;
   isCodeInputCheckLoading: boolean;
 }
@@ -67,11 +68,13 @@ export default function CodeInputStep({
   email,
   incrementStep,
   setCode,
+  code,
   codeError,
   isCodeInputCheckLoading
 }: CodeInputStepProps): JSX.Element {
   const { mutateAsync } = useSendVerificationEmail();
   const [isLoading, setIsLoading] = useState(false);
+  const [runEffect, setRunEffect] = useState(false);
   const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
   const { t } = useTranslation();
 
@@ -84,6 +87,10 @@ export default function CodeInputStep({
       setIsResendingVerificationEmail(false);
     }, 2000);
   };
+
+  useEffect(() => {
+    if (code.length === 6 && code != "123456") incrementStep();
+  }, [code]);
 
   return (
     <div className="mx-auto h-full w-full pb-4 md:px-8">
