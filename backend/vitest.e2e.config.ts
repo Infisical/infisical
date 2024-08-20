@@ -1,4 +1,4 @@
-import tsconfigPaths from "vite-tsconfig-paths"; // only if you are using custom tsconfig paths
+import path from "path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -15,7 +15,14 @@ export default defineConfig({
         useAtomics: true,
         isolate: false
       }
+    },
+    alias: {
+      "./license-fns": path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
     }
   },
-  plugins: [tsconfigPaths()] // only if you are using custom tsconfig paths,
+  resolve: {
+    alias: {
+      "@app": path.resolve(__dirname, "./src")
+    }
+  }
 });

@@ -29,11 +29,20 @@ export default {
     });
 
     try {
+      await db.migrate.rollback(
+        {
+          directory: path.join(__dirname, "../src/db/migrations"),
+          extension: "ts",
+          tableName: "infisical_migrations"
+        },
+        true
+      );
       await db.migrate.latest({
         directory: path.join(__dirname, "../src/db/migrations"),
         extension: "ts",
         tableName: "infisical_migrations"
       });
+
       await db.seed.run({
         directory: path.join(__dirname, "../src/db/seeds"),
         extension: "ts"
@@ -58,10 +67,12 @@ export default {
         { expiresIn: cfg.JWT_AUTH_LIFETIME }
       );
     } catch (error) {
+      // eslint-disable-next-line
       console.log("[TEST] Error setting up environment", error);
       await db.destroy();
       throw error;
     }
+
     // custom setup
     return {
       async teardown() {
