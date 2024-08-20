@@ -30,6 +30,7 @@ const getIntegrationSecretsV2 = async (
     environment: string;
     folderId: string;
     depth: number;
+    secretPath: string;
     decryptor: (value: Buffer | null | undefined) => string;
   },
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">,
@@ -306,6 +307,7 @@ export const deleteIntegrationSecrets = async ({
     ? await getIntegrationSecretsV2(
         {
           environment: integration.environment.id,
+          secretPath: integration.secretPath,
           projectId: integration.projectId,
           folderId: folder.id,
           depth: 1,
