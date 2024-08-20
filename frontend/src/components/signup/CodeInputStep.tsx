@@ -74,7 +74,6 @@ export default function CodeInputStep({
 }: CodeInputStepProps): JSX.Element {
   const { mutateAsync } = useSendVerificationEmail();
   const [isLoading, setIsLoading] = useState(false);
-  const [runEffect, setRunEffect] = useState(false);
   const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
   const { t } = useTranslation();
 
