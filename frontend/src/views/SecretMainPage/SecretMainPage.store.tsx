@@ -7,7 +7,7 @@ import { createStore, StateCreator, StoreApi, useStore } from "zustand";
 // this will allow more stuff like undo grouping stuffs etc
 type SelectedSecretState = {
   selectedSecret: Record<string, boolean>;
-  action: {
+  secretActions: {
     toggle: (id: string) => void;
     reset: () => void;
     selectAll: (allIds: string[]) => void;
@@ -15,7 +15,7 @@ type SelectedSecretState = {
 };
 const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
   selectedSecret: {},
-  action: {
+  secretActions: {
     toggle: (id) =>
       set((state) => {
         const isChecked = Boolean(state.selectedSecret?.[id]);
@@ -31,6 +31,38 @@ const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
         const newChecks: Record<string, boolean> = {};
         allIds.forEach((id: string) => { newChecks[id] = true })
         return { selectedSecret: newChecks};
+      })
+    }
+  }
+});
+
+type SelectedFolderState = {
+  selectedFolder: Record<string, boolean>;
+  folderActions: {
+    toggle: (id: string) => void;
+    reset: () => void;
+    selectAll: (allIds: string[]) => void;
+  };
+};
+
+const createSelectedFolderStore: StateCreator<SelectedFolderState> = (set) => ({
+  selectedFolder: {},
+  folderActions: {
+    toggle: (id) =>
+      set((state) => {
+        const isChecked = Boolean(state.selectedFolder?.[id]);
+        const newChecks = { ...state.selectedFolder };
+        // remove selection if its present else add it
+        if (isChecked) delete newChecks[id];
+        else newChecks[id] = true;
+        return { selectedFolder: newChecks };
+      }),
+    reset: () => set({ selectedFolder: {} }),
+    selectAll: (allIds) => {
+      set(() => {
+        const newChecks: Record<string, boolean> = {};
+        allIds.forEach((id: string) => { newChecks[id] = true })
+        return { selectedFolder: newChecks};
       })
     }
   }
@@ -61,7 +93,7 @@ const createPopUpStore: StateCreator<PopUpState> = (set) => ({
   }
 });
 
-type CombinedState = SelectedSecretState & PopUpState;
+type CombinedState = SelectedSecretState & PopUpState & SelectedFolderState;
 const StoreContext = createContext<StoreApi<CombinedState> | null>(null);
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const storeRef = useRef<StoreApi<CombinedState>>();
@@ -69,14 +101,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   if (!storeRef.current) {
     storeRef.current = createStore<CombinedState>((...a) => ({
       ...createSelectedSecretStore(...a),
-      ...createPopUpStore(...a)
+      ...createPopUpStore(...a),
+      ...createSelectedFolderStore(...a)
     }));
   }
 
   useEffect(() => {
     const onRouteChangeStart = () => {
       const state = storeRef.current?.getState();
-      state?.action.reset();
+      state?.secretActions.reset();
+      state?.folderActions.reset();
     };
 
     router.events.on("routeChangeStart", onRouteChangeStart);
@@ -96,7 +130,11 @@ const useStoreContext = <T extends unknown>(selector: (state: CombinedState) => 
 
 // selected secret context
 export const useSelectedSecrets = () => useStoreContext((state) => state.selectedSecret);
-export const useSelectedSecretActions = () => useStoreContext((state) => state.action);
+export const useSelectedSecretActions = () => useStoreContext((state) => state.secretActions);
+
+// selected folder context
+export const useSelectedFolders = () => useStoreContext((state) => state.selectedFolder);
+export const useSelectedFolderActions = () => useStoreContext((state) => state.folderActions);
 
 // popup context
 export const usePopUpState = (id: PopUpNames) =>

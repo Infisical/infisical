@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckedState } from "@radix-ui/react-checkbox";
 import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
@@ -28,7 +29,7 @@ import {
   useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
-import { SecretV3RawSanitized } from "@app/hooks/api/types";
+import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 
 import { SecretV2MigrationSection } from "../SecretOverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
@@ -40,7 +41,7 @@ import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
-import { useSelectedSecretActions, useSelectedSecrets } from "./SecretMainPage.store";
+import { useSelectedFolderActions, useSelectedFolders, useSelectedSecretActions, useSelectedSecrets } from "./SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
@@ -104,34 +105,62 @@ export const SecretMainPage = () => {
     }
   });
 
-  // selectAll functionality
-  const { selectAll: selectAllSecrets } = useSelectedSecretActions();
-  const selectedSecret = useSelectedSecrets();
-
-  const {areAllSecretsSelected, isAnyOneSecretSelected} = useMemo(() => {
-    if(!secrets || !selectedSecret) {
-      return {
-        areAllSecretsSelected:false, 
-        isAnyOneSecretSelected: false
-      };
-    }
-    const selectedSecretKeys = Object.keys(selectedSecret);
-    const secretIds = secrets ? [...secrets.map((secret: SecretV3RawSanitized) => secret.id)] : [];
-    const allSecretsSelected =  secretIds.every((secret: string) => selectedSecretKeys.includes(secret));
-    const anyOneSecretSelected = secretIds.some((secret: string) => selectedSecretKeys.includes(secret));
-
-    return {
-      areAllSecretsSelected: allSecretsSelected,
-      isAnyOneSecretSelected: anyOneSecretSelected
-    }
-  }, [selectedSecret, secrets]);
-
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
     projectId: workspaceId,
     environment,
     path: secretPath
   });
+
+  // selectAll functionality
+  const { selectAll: selectAllSecrets } = useSelectedSecretActions();
+  const { reset: resetSecretSelections } = useSelectedSecretActions();
+  const selectedSecrets = useSelectedSecrets();
+
+  const { selectAll: selectAllFolders } = useSelectedFolderActions();
+  const { reset: resetFolderSelections } = useSelectedFolderActions();
+  const selectedFolders = useSelectedFolders();
+
+  const handleSelectAllCheckboxChange = (checkedState: CheckedState) => {
+    if(checkedState === "indeterminate" || !secrets || !folders) {
+      return;
+    }
+    if(checkedState === false) {
+      resetSecretSelections();
+      resetFolderSelections();
+      return;
+    }
+    const secretIds = [...secrets.map((secret: SecretV3RawSanitized) => secret.id)];
+    selectAllSecrets(secretIds);
+
+    const folderIds = [...folders.map((folder: TSecretFolder) => folder.id)];
+    selectAllFolders(folderIds);
+  } 
+
+  const {areAllEntriesSelected, isAnyOneEntrySelected} = useMemo(() => {
+    if(!secrets || !folders) {
+      return {
+        areAllEntriesSelected: false, 
+        isAnyOneEntrySelected: false
+      };
+    }
+    
+    const selectedSecretIds = Object.keys(selectedSecrets);
+    const secretIds = [...secrets.map((secret: SecretV3RawSanitized) => secret.id)];
+
+    const selectedFolderIds = Object.keys(selectedFolders);
+    const folderIds = [...folders.map((folder: TSecretFolder) => folder.id)];
+
+    const allEntriesSelected =  secretIds.every((secret: string) => selectedSecretIds.includes(secret)) 
+      && folderIds.every((folder: string) => selectedFolderIds.includes(folder)) ;
+    const anyOneEntrySelected = secretIds.some((secret: string) => selectedSecretIds.includes(secret))
+      || folderIds.some((folder: string) => selectedFolderIds.includes(folder));
+
+    return {
+      areAllEntriesSelected: allEntriesSelected,
+      isAnyOneEntrySelected: anyOneEntrySelected
+    }
+  }, [selectedSecrets, secrets, selectedFolders, folders]);
 
   // fetch secret imports
   const {
@@ -273,6 +302,7 @@ export const SecretMainPage = () => {
           <>
             <ActionBar
               secrets={secrets}
+              folders={folders}
               environment={environment}
               workspaceId={workspaceId}
               projectSlug={projectSlug}
@@ -303,15 +333,10 @@ export const SecretMainPage = () => {
                     >
                       <Checkbox
                         id="select-all-secrets-checkbox"
-                        isChecked={areAllSecretsSelected}
+                        isChecked={areAllEntriesSelected}
                         onClick={(e) => {e.stopPropagation()}}
-                        onCheckedChange={() => {
-                          if(!secrets) {
-                            return;
-                          }
-                          selectAllSecrets([...secrets.map((secret: SecretV3RawSanitized) => secret.id)])
-                        }}
-                        className={twMerge("hidden", isAnyOneSecretSelected && "flex")}
+                        onCheckedChange={handleSelectAllCheckboxChange}
+                        className={twMerge("hidden", isAnyOneEntrySelected && "flex")}
                       />
                       Key
                       <FontAwesomeIcon

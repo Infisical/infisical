@@ -15,7 +15,6 @@ import {
   faFingerprint,
   faFolderPlus,
   faMagnifyingGlass,
-  faMinusSquare,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -41,7 +40,6 @@ import {
   Input,
   Modal,
   ModalContent,
-  Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
 import {
@@ -51,14 +49,16 @@ import {
   useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
+import { useCreateFolder, useDeleteFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
-import { SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
+import { SecretType, SecretV3RawSanitized, TSecretFolder, WsTag } from "@app/hooks/api/types";
 import { debounce } from "@app/lib/fn/debounce";
 
 import {
   PopUpNames,
   usePopUpAction,
+  useSelectedFolderActions,
+  useSelectedFolders,
   useSelectedSecretActions,
   useSelectedSecrets
 } from "../../SecretMainPage.store";
@@ -70,6 +70,7 @@ import { MoveSecretsModal } from "./MoveSecretsModal";
 
 type Props = {
   secrets?: SecretV3RawSanitized[];
+  folders?: TSecretFolder[],
   // swtich the secrets type as it gets decrypted after api call
   environment: string;
   // @depreciated will be moving all these details to zustand
@@ -90,6 +91,7 @@ type Props = {
 
 export const ActionBar = ({
   secrets = [],
+  folders = [],
   environment,
   workspaceId,
   projectSlug,
@@ -109,7 +111,7 @@ export const ActionBar = ({
     "addFolder",
     "addDynamicSecret",
     "addSecretImport",
-    "bulkDeleteSecrets",
+    "bulkDeleteEntries",
     "moveSecrets",
     "misc",
     "upgradePlan"
@@ -122,9 +124,21 @@ export const ActionBar = ({
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: moveSecrets } = useMoveSecrets();
 
+  const { mutateAsync: deleteFolder } = useDeleteFolder();
+
   const selectedSecrets = useSelectedSecrets();
-  const { reset: resetSelectedSecret } = useSelectedSecretActions();
-  const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+  const { reset: resetSelectedSecrets } = useSelectedSecretActions();
+  const selectedFolders = useSelectedFolders();
+  const { reset: resetSelectedFolders } = useSelectedFolderActions();
+
+  const resetSelectedEntries = () => {
+    resetSelectedSecrets();
+    resetSelectedFolders();
+  }
+
+  const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length + Object.keys(selectedFolders).length);
+  // Disabling move entry button when folder is selected.
+  const isMoveEntriesAllowed = Object.keys(selectedFolders).length === 0;
 
   const { permission } = useProjectPermission();
 
@@ -206,24 +220,38 @@ export const ActionBar = ({
 
   const handleSecretBulkDelete = async () => {
     const bulkDeletedSecrets = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
+    const bulkDeletedFolders = folders.filter(({ id }) => Boolean(selectedFolders?.[id]));
     try {
-      await deleteBatchSecretV3({
-        secretPath,
-        workspaceId,
-        environment,
-        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
-      });
-      resetSelectedSecret();
-      handlePopUpClose("bulkDeleteSecrets");
+      await Promise.all(
+        bulkDeletedFolders.map(async (folder) => {
+          await deleteFolder({
+            folderId: folder?.id,
+            path: secretPath,
+            environment,
+            projectId: workspaceId
+          });
+        })
+      );
+
+      if ( bulkDeletedSecrets.length > 0 ) {
+        await deleteBatchSecretV3({
+          secretPath,
+          workspaceId,
+          environment,
+          secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
+        });
+      } 
+      resetSelectedEntries();
+      handlePopUpClose("bulkDeleteEntries");
       createNotification({
         type: "success",
-        text: "Successfully deleted secrets"
+        text: "Successfully deleted selected entries"
       });
     } catch (error) {
       console.log(error);
       createNotification({
         type: "error",
-        text: "Failed to delete secrets"
+        text: "Failed to delete selected entries"
       });
     }
   };
@@ -271,7 +299,7 @@ export const ActionBar = ({
         text: notificationMessage
       });
 
-      resetSelectedSecret();
+      resetSelectedEntries();
     } catch (error) {
       console.error(error);
     }
@@ -501,13 +529,8 @@ export const ActionBar = ({
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 py-2 px-4 text-bunker-300">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
           <div className="ml-4 flex-grow px-2 text-sm">
-            {Object.keys(selectedSecrets).length} Selected
+            {Object.keys(selectedSecrets).length + Object.keys(selectedFolders).length} Selected
           </div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
@@ -521,7 +544,7 @@ export const ActionBar = ({
                 leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
                 className="ml-4"
                 onClick={() => handlePopUpOpen("moveSecrets")}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || !isMoveEntriesAllowed}
                 size="xs"
               >
                 Move
@@ -540,7 +563,7 @@ export const ActionBar = ({
                 colorSchema="danger"
                 leftIcon={<FontAwesomeIcon icon={faTrash} />}
                 className="ml-2"
-                onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
+                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
                 isDisabled={!isAllowed}
                 size="xs"
               >
@@ -576,10 +599,10 @@ export const ActionBar = ({
         </ModalContent>
       </Modal>
       <DeleteActionModal
-        isOpen={popUp.bulkDeleteSecrets.isOpen}
+        isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"
         title="Do you want to delete these secrets?"
-        onChange={(isOpen) => handlePopUpToggle("bulkDeleteSecrets", isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleSecretBulkDelete}
       />
       <MoveSecretsModal

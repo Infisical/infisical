@@ -2,15 +2,17 @@ import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faClose, faFolder, faPencilSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
+import { Checkbox, DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 
+import { useSelectedFolderActions, useSelectedFolders } from "../../SecretMainPage.store";
 import { SortDir } from "../../SecretMainPage.types";
 import { FolderForm } from "../ActionBar/FolderForm";
 
@@ -102,6 +104,10 @@ export const FolderListView = ({
     });
   };
 
+  // for handling select folders
+  const {toggle: toggleFolderSelect} = useSelectedFolderActions();
+  const selectedFolders = useSelectedFolders();
+
   return (
     <>
       {folders
@@ -117,7 +123,21 @@ export const FolderListView = ({
             className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
           >
             <div className="flex w-11 items-center px-5 py-3 text-yellow-700">
-              <FontAwesomeIcon icon={faFolder} />
+              <Checkbox
+                id={`checkbox-${id}`}
+                isChecked={selectedFolders?.[id]}
+                onCheckedChange={() => {
+                  toggleFolderSelect(id);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className={twMerge("hidden group-hover:flex", selectedFolders?.[id] && "flex")}
+              />
+              <FontAwesomeIcon 
+                icon={faFolder} 
+                className={twMerge("block group-hover:hidden", selectedFolders?.[id] && "hidden")}  
+              />
             </div>
             <div
               className="flex flex-grow items-center px-4 py-3"

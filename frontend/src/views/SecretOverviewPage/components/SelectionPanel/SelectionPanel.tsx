@@ -1,10 +1,10 @@
 import { subject } from "@casl/ability";
-import { faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
+import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -168,11 +168,6 @@ export const SelectionPanel = ({
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 py-2 px-4 text-bunker-300">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedEntries}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
           <div className="ml-4 flex-grow px-2 text-sm">{selectedCount} Selected</div>
           {shouldShowDelete && (
             <Button

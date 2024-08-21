@@ -15,6 +15,7 @@ import {
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckedState } from "@radix-ui/react-checkbox";
 import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
@@ -185,7 +186,18 @@ export const SecretOverviewPage = () => {
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
-  const selectAllEntries = () => {
+  const handleSelectAllCheckboxChange = (checkedState: CheckedState) => {
+    if(checkedState === "indeterminate") {
+      return;
+    }
+    if(checkedState === false) {
+      setSelectedEntries({
+        [EntryType.FOLDER]: {},
+        [EntryType.SECRET]: {}
+      })
+      return;
+    }
+
     const folderRecord: Record<string, boolean> = {};
     folderNames.forEach((folder: string) => {
       folderRecord[folder] = true;
@@ -697,7 +709,7 @@ export const SecretOverviewPage = () => {
                       <Checkbox
                         id="select-all-checkbox"
                         isChecked={areAllEntriesSelected}
-                        onCheckedChange={selectAllEntries}
+                        onCheckedChange={handleSelectAllCheckboxChange}
                         className={twMerge("hidden", isAnyOneEntrySelected && "flex")}
                       />
                       Name
