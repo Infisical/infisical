@@ -89,6 +89,25 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
       </div>
     );
   }
+
+  if (provider === DynamicSecretProviders.Redis) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Redis Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Redis Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 
