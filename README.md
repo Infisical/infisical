@@ -1,4 +1,4 @@
-¡<h1 align="center">
+<h1 align="center">
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
