@@ -1,5 +1,6 @@
 import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { subject } from "@casl/ability";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +18,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateFolder, useCreateSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
@@ -62,6 +68,7 @@ export const CreateSecretForm = ({
   const newSecretKey = watch("key");
 
   const { currentWorkspace } = useWorkspace();
+  const { permission } = useProjectPermission();
   const workspaceId = currentWorkspace?.id || "";
   const environments = currentWorkspace?.environments || [];
 
@@ -86,7 +93,24 @@ export const CreateSecretForm = ({
         const pathSegment = secretPath.split("/").filter(Boolean);
         const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
         const folderName = pathSegment.at(-1);
-        if (folderName && parentPath) {
+        const canCreateFolder = permission.rules.some((rule) =>
+          (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
+        )
+          ? permission.can(
+              ProjectPermissionActions.Create,
+              subject(ProjectPermissionSub.SecretFolders, {
+                environment: env.slug,
+                secretPath: parentPath
+              })
+            )
+          : permission.can(
+              ProjectPermissionActions.Create,
+              subject(ProjectPermissionSub.Secrets, {
+                environment: env.slug,
+                secretPath: parentPath
+              })
+            );
+        if (folderName && parentPath && canCreateFolder) {
           await createFolder({
             projectId: workspaceId,
             path: parentPath,
@@ -186,39 +210,52 @@ export const CreateSecretForm = ({
           />
           <FormLabel label="Environments" className="mb-2" />
           <div className="thin-scrollbar grid max-h-64 grid-cols-3 gap-4 overflow-auto py-2">
-            {environments.map((env) => {
-              return (
-                <Controller
-                  name={`environments.${env.slug}`}
-                  key={`secret-input-${env.slug}`}
-                  control={control}
-                  render={({ field }) => (
-                    <Checkbox
-                      isChecked={field.value}
-                      onCheckedChange={field.onChange}
-                      id={`secret-input-${env.slug}`}
-                      className="!justify-start"
-                    >
-                      <span className="flex w-full flex-row items-center justify-start whitespace-pre-wrap">
-                        <span title={env.name} className="truncate">
-                          {env.name}
+            {environments
+              .filter((environmentSlug) =>
+                permission.can(
+                  ProjectPermissionActions.Create,
+                  subject(ProjectPermissionSub.Secrets, {
+                    environment: environmentSlug.slug,
+                    secretPath
+                  })
+                )
+              )
+              .map((env) => {
+                return (
+                  <Controller
+                    name={`environments.${env.slug}`}
+                    key={`secret-input-${env.slug}`}
+                    control={control}
+                    render={({ field }) => (
+                      <Checkbox
+                        isChecked={field.value}
+                        onCheckedChange={field.onChange}
+                        id={`secret-input-${env.slug}`}
+                        className="!justify-start"
+                      >
+                        <span className="flex w-full flex-row items-center justify-start whitespace-pre-wrap">
+                          <span title={env.name} className="truncate">
+                            {env.name}
+                          </span>
+                          <span>
+                            {getSecretByKey(env.slug, newSecretKey) && (
+                              <Tooltip
+                                className="max-w-[150px]"
+                                content="Secret already exists, and it will be overwritten"
+                              >
+                                <FontAwesomeIcon
+                                  icon={faWarning}
+                                  className="ml-1 text-yellow-400"
+                                />
+                              </Tooltip>
+                            )}
+                          </span>
                         </span>
-                        <span>
-                          {getSecretByKey(env.slug, newSecretKey) && (
-                            <Tooltip
-                              className="max-w-[150px]"
-                              content="Secret already exists, and it will be overwritten"
-                            >
-                              <FontAwesomeIcon icon={faWarning} className="ml-1 text-yellow-400" />
-                            </Tooltip>
-                          )}
-                        </span>
-                      </span>
-                    </Checkbox>
-                  )}
-                />
-              );
-            })}
+                      </Checkbox>
+                    )}
+                  />
+                );
+              })}
           </div>
           <div className="mt-7 flex items-center">
             <Button

@@ -44,6 +44,13 @@ export type ProjectPermissionSet =
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
     ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionActions, ProjectPermissionSub.Member]

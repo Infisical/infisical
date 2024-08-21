@@ -405,8 +405,21 @@ export const SecretOverviewPage = () => {
       const pathSegment = secretPath.split("/").filter(Boolean);
       const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
       const folderName = pathSegment.at(-1);
-      console.log(folderName, parentPath);
-      if (folderName && parentPath) {
+      const canCreateFolder = permission.rules.some((rule) =>
+        (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
+      )
+        ? permission.can(
+            ProjectPermissionActions.Create,
+            subject(ProjectPermissionSub.SecretFolders, {
+              environment: slug,
+              secretPath: parentPath
+            })
+          )
+        : permission.can(
+            ProjectPermissionActions.Create,
+            subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath: parentPath })
+          );
+      if (folderName && parentPath && canCreateFolder) {
         await createFolder({
           projectId: workspaceId,
           environment: slug,
@@ -584,22 +597,14 @@ export const SecretOverviewPage = () => {
               </div>
               {userAvailableEnvs.length > 0 && (
                 <div>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={subject(ProjectPermissionSub.Secrets, { secretPath })}
+                  <Button
+                    variant="outline_bg"
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                    className="h-10 rounded-r-none"
                   >
-                    {(isAllowed) => (
-                      <Button
-                        variant="outline_bg"
-                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                        className="h-10 rounded-r-none"
-                        isDisabled={!isAllowed}
-                      >
-                        Add Secret
-                      </Button>
-                    )}
-                  </ProjectPermissionCan>
+                    Add Secret
+                  </Button>
                   <DropdownMenu
                     open={popUp.misc.isOpen}
                     onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
