@@ -24,8 +24,8 @@ graph TD
 
 A typical workflow for setting up a Private CA hierarchy consists of the following steps:
 
-1. Configuring a root CA with details like name, validity period, and path length.
-2. Configuring and chaining intermediate CA(s) with details like name, validity period, path length, and imported certificate.
+1. Configuring an Infisical root CA with details like name, validity period, and path length — This step is optional if you wish to use an external root CA.
+2. Configuring and chaining intermediate CA(s) with details like name, validity period, path length, and imported certificate to your Root CA.
 3. Managing the CA lifecycle events such as CA succession.
 
 <Note>
@@ -39,19 +39,21 @@ A typical workflow for setting up a Private CA hierarchy consists of the followi
 ## Guide to Creating a CA Hierarchy
 
 In the following steps, we explore how to create a simple Private CA hierarchy
-consisting of a root CA and an intermediate CA.
+consisting of an (optional) root CA and an intermediate CA.
 
 <Tabs>
   <Tab title="Infisical UI">
 <Steps>
     <Step title="Creating a root CA">
+        If you wish to use an external root CA, you can skip this step and head to step 2 to create an intermediate CA.
+    
         To create a root CA, head to your Project > Internal PKI > Certificate Authorities and press **Create CA**.
 
-        ![pki create ca](/images/platform/pki/ca-create.png)
+        ![pki create ca](/images/platform/pki/ca/ca-create.png)
 
         Here, set the **CA Type** to **Root** and fill out details for the root CA.
 
-        ![pki create root ca](/images/platform/pki/ca-create-root.png)
+        ![pki create root ca](/images/platform/pki/ca/ca-create-root.png)
 
         Here's some guidance on each field:
 
@@ -71,17 +73,19 @@ consisting of a root CA and an intermediate CA.
         </Note>
     </Step>
     <Step title="Creating an intermediate CA">
-        1.1. To create an intermediate CA, press **Create CA** again but this time specifying the **CA Type** to be **Intermediate**. Fill out the details for the intermediate CA.
+        2.1. To create an intermediate CA, press **Create CA** again but this time specifying the **CA Type** to be **Intermediate**. Fill out the details for the intermediate CA.
 
-        ![pki create intermediate ca](/images/platform/pki/ca-create-intermediate.png)
+        ![pki create intermediate ca](/images/platform/pki/ca/ca-create-intermediate.png)
 
-        1.2. Next, press the **Install Certificate** option on the intermediate CA from step 1.1.
+        2.2. Next, press the **Install Certificate** option on the intermediate CA from step 1.1.
 
-        ![pki install cert opt](/images/platform/pki/ca-install-intermediate-opt.png)
+        ![pki install cert opt](/images/platform/pki/ca/ca-install-intermediate-opt.png)
 
-        Here, set the **Parent CA** to the root CA created in step 1 and configure the intended **Valid Until** and **Path Length** fields on the intermediate CA; feel free to use the prefilled values.
+        2.3a. If you created a root CA in step 1, select **Infisical CA** for the **Parent CA Type** field.
 
-        ![pki install cert](/images/platform/pki/ca-install-intermediate.png)
+        Next, set the **Parent CA** to the root CA created in step 1 and configure the intended **Valid Until** and **Path Length** fields on the intermediate CA; feel free to use the prefilled values.
+
+        ![pki install cert](/images/platform/pki/ca/ca-install-intermediate.png)
 
         Here's some guidance on each field:
 
@@ -91,9 +95,20 @@ consisting of a root CA and an intermediate CA.
 
         Finally, press **Install** to chain the intermediate CA to the root CA; this creates a Certificate Signing Request (CSR) for the intermediate CA, creates an intermediate certificate using the root CA private key and CSR, and imports the signed certificate back to the intermediate CA.
 
-        ![pki cas](/images/platform/pki/cas.png)
+        ![pki cas](/images/platform/pki/ca/cas.png)
 
         Great! You've successfully created a Private CA hierarchy with a root CA and an intermediate CA.
+        Now check out the [Certificates](/documentation/platform/pki/certificates) page to learn more about how to issue X.509 certificates using the intermediate CA.
+
+        2.3b. If you have an external root CA, select **External CA** for the **Parent CA Type** field.
+
+        Next, use the provided intermediate CSR to generate a certificate from your external root CA and paste the PEM-encoded certificate back into the **Certificate Body** field; the PEM-encoded external root CA certificate should be pasted under the **Certificate Chain** field.
+
+        ![pki ca csr](/images/platform/pki/ca/ca-install-intermediate-csr.png)
+
+        Finally, press **Install** to import the certificate and certificate chain as part of the installation step for the intermediate CA
+
+        Great! You've successfully created a Private CA hierarchy with an intermediate CA chained to an external root CA.
         Now check out the [Certificates](/documentation/platform/pki/certificates) page to learn more about how to issue X.509 certificates using the intermediate CA.
 
 </Step>
@@ -102,6 +117,8 @@ consisting of a root CA and an intermediate CA.
   <Tab title="API">
 <Steps>
   <Step title="Creating a root CA">
+    If you wish to use an external root CA, you can skip this step and head to step 2 to create an intermediate CA.
+
     To create a root CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/create) API endpoint, specifying the `type` as `root`.
 
     ### Sample request
@@ -181,6 +198,8 @@ consisting of a root CA and an intermediate CA.
     }
     ```
 
+    If using an external root CA, then use the CSR to generate a certificate for the intermediate CA using your external root CA and skip to step 2.4.
+
     2.3. Next, create an intermediate certificate by making an API request to the [Sign Intermediate](/api-reference/endpoints/certificate-authorities/sign-intermediate) API endpoint
     containing the CSR from step 2.2, referencing the root CA created in step 1.
 
@@ -212,6 +231,8 @@ consisting of a root CA and an intermediate CA.
 
     2.4. Finally, import the intermediate certificate and certificate chain from step 2.3 back to the intermediate CA by making an API request to the [Import Certificate](/api-reference/endpoints/certificate-authorities/import-cert) API endpoint.
 
+    If using an external root CA, then import the generated certificate and root CA certificate under certificate chain back into the intermediate CA.
+
     ### Sample request
 
     ```bash Request
@@ -242,7 +263,17 @@ consisting of a root CA and an intermediate CA.
 
 ## Guide to CA Renewal
 
-In the following steps, we explore how to renew a CA certificate via same key pair.
+In the following steps, we explore how to renew a CA certificate.
+
+<Note>
+  If renewing an intermediate CA chained to an Infisical CA, then Infisical will
+  automate the process of generating a new certificate for the intermediate CA for you.
+
+If renewing an intermediate CA chained to an external parent CA, you'll be
+required to generate a new certificate from the external parent CA and manually import
+the certificate back to the intermediate CA.
+
+</Note>
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -295,5 +326,11 @@ In the following steps, we explore how to renew a CA certificate via same key pa
   <Accordion title="Does Infisical support CA renewal via new key pair">
     At the moment, Infisical only supports CA renewal via same key pair. We
     anticipate supporting CA renewal via new key pair in the coming month.
+  </Accordion>
+  <Accordion title="Does Infisical support chaining an Intermediate CA to an external Root CA?">
+    Yes. You may obtain a CSR from the Intermediate CA and use it to generate a
+    certificate from your external Root CA. The certificate, along with the Root
+    CA certificate, can be imported back to the Intermediate CA as part of the
+    CA installation step.
   </Accordion>
 </AccordionGroup>
