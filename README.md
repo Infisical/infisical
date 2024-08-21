@@ -1,4 +1,4 @@
-<h1 align="center">
+¡<h1 align="center">
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
@@ -20,6 +20,9 @@
   </a>
   <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace" alt="Deploy to DigitalOcean">
      <img width="200" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue.svg"/>
+  </a>
+  <a href="https://elest.io/open-source/infisical" alt="Deploy to Elestio">
+     <img alt="Deploy to Elestio" src="https://elest.io/images/logos/deploy-to-elestio-btn.png" height="33">
   </a>
 </p>
 
