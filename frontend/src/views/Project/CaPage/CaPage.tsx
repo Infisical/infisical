@@ -22,7 +22,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CaModal } from "@app/views/Project/CertificatesPage/components/CaTab/components/CaModal";
 
 import { CaInstallCertModal } from "../CertificatesPage/components/CaTab/components/CaInstallCertModal";
-import { TabSections } from "../Types";
 import { CaCertificatesSection, CaDetailsSection, CaRenewalModal } from "./components";
 
 export const CaPage = withProjectPermission(
