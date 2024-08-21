@@ -73,6 +73,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -953,12 +954,20 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const accessTokenQueue = accessTokenQueueServiceFactory({
+    keyStore,
+    identityAccessTokenDAL,
+    queueService,
+    serviceTokenDAL
+  });
+
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
     userDAL,
     permissionService,
-    projectDAL
+    projectDAL,
+    accessTokenQueue
   });
 
   const identityService = identityServiceFactory({
@@ -968,10 +977,13 @@ export const registerRoutes = async (
     identityProjectDAL,
     licenseService
   });
+
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
-    identityOrgMembershipDAL
+    identityOrgMembershipDAL,
+    accessTokenQueue
   });
+
   const identityProjectService = identityProjectServiceFactory({
     permissionService,
     projectDAL,

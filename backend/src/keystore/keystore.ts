@@ -19,11 +19,15 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
-    `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const
+    `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
+  IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
+    `identity-access-token-status:${identityAccessTokenId}`,
+  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`
 };
 
 export const KeyStoreTtls = {
-  SetSyncSecretIntegrationLastRunTimestampInSeconds: 10
+  SetSyncSecretIntegrationLastRunTimestampInSeconds: 10,
+  AccessTokenStatusUpdateInSeconds: 120
 };
 
 type TWaitTillReady = {

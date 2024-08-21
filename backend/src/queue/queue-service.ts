@@ -27,7 +27,8 @@ export enum QueueName {
   CaCrlRotation = "ca-crl-rotation",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
-  ProjectV3Migration = "project-v3-migration"
+  ProjectV3Migration = "project-v3-migration",
+  AccessTokenStatusUpdate = "access-token-status-update"
 }
 
 export enum QueueJobs {
@@ -48,7 +49,9 @@ export enum QueueJobs {
   CaCrlRotation = "ca-crl-rotation-job",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
-  ProjectV3Migration = "project-v3-migration"
+  ProjectV3Migration = "project-v3-migration",
+  IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
+  ServiceTokenStatusUpdate = "service-token-status-update"
 }
 
 export type TQueueJobTypes = {
@@ -148,6 +151,15 @@ export type TQueueJobTypes = {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
   };
+  [QueueName.AccessTokenStatusUpdate]:
+    | {
+        name: QueueJobs.IdentityAccessTokenStatusUpdate;
+        payload: { identityAccessTokenId: string; numberOfUses: number };
+      }
+    | {
+        name: QueueJobs.ServiceTokenStatusUpdate;
+        payload: { serviceTokenId: string };
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
