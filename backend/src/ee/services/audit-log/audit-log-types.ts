@@ -137,7 +137,7 @@ export enum EventType {
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
-  GET_CA_CRL = "get-certificate-authority-crl",
+  GET_CA_CRLS = "get-certificate-authority-crls",
   ISSUE_CERT = "issue-cert",
   SIGN_CERT = "sign-cert",
   GET_CERT = "get-cert",
@@ -1163,8 +1163,8 @@ interface ImportCaCert {
   };
 }
 
-interface GetCaCrl {
-  type: EventType.GET_CA_CRL;
+interface GetCaCrls {
+  type: EventType.GET_CA_CRLS;
   metadata: {
     caId: string;
     dn: string;
@@ -1518,7 +1518,7 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
-  | GetCaCrl
+  | GetCaCrls
   | IssueCert
   | SignCert
   | GetCert

@@ -698,4 +698,83 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/crls",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get list of CRLs of the CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.caId)
+      }),
+      response: {
+        200: z.array(
+          z.object({
+            id: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl)
+          })
+        )
+      }
+    },
+    handler: async (req) => {
+      const { ca, crls } = await server.services.certificateAuthorityCrl.getCaCrls({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CRLS,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return crls;
+    }
+  });
+
+  // TODO: implement this endpoint in the future
+  // server.route({
+  //   method: "GET",
+  //   url: "/:caId/crl/rotate",
+  //   config: {
+  //     rateLimit: writeLimit
+  //   },
+  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+  //   schema: {
+  //     description: "Rotate CRLs of the CA",
+  //     params: z.object({
+  //       caId: z.string().trim()
+  //     }),
+  //     response: {
+  //       200: z.object({
+  //         message: z.string()
+  //       })
+  //     }
+  //   },
+  //   handler: async (req) => {
+  //     await server.services.certificateAuthority.rotateCaCrl({
+  //       caId: req.params.caId,
+  //       actor: req.permission.type,
+  //       actorId: req.permission.id,
+  //       actorAuthMethod: req.permission.authMethod,
+  //       actorOrgId: req.permission.orgId
+  //     });
+  //     return {
+  //       message: "Successfully rotated CA CRL"
+  //     };
+  //   }
+  // });
 };

@@ -7,6 +7,7 @@ import { TCertificateAuthority } from "./types";
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
+  getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"]
@@ -73,16 +74,17 @@ export const useGetCaCsr = (caId: string) => {
   });
 };
 
-export const useGetCaCrl = (caId: string) => {
+export const useGetCaCrls = (caId: string) => {
   return useQuery({
-    queryKey: caKeys.getCaCrl(caId),
+    queryKey: caKeys.getCaCrls(caId),
     queryFn: async () => {
-      const {
-        data: { crl }
-      } = await apiRequest.get<{
-        crl: string;
-      }>(`/api/v1/pki/ca/${caId}/crl`);
-      return crl;
+      const { data } = await apiRequest.get<
+        {
+          id: string;
+          crl: string;
+        }[]
+      >(`/api/v1/pki/ca/${caId}/crls`);
+      return data;
     },
     enabled: Boolean(caId)
   });

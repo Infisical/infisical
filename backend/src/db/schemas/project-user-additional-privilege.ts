@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const ProjectUserAdditionalPrivilegeSchema = z.object({
   id: z.string().uuid(),
   slug: z.string(),
+  projectMembershipId: z.string().uuid().nullable().optional(),
   isTemporary: z.boolean().default(false),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),
