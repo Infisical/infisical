@@ -65,7 +65,7 @@ export const identityAwsAuthServiceFactory = ({
       }
     }: { data: TGetCallerIdentityResponse } = await axios({
       method: iamHttpRequestMethod,
-      url: identityAwsAuth.stsEndpoint,
+      url: headers?.Host ? `https://${headers.Host}` : identityAwsAuth.stsEndpoint,
       headers,
       data: body
     });

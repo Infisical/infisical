@@ -5,6 +5,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
+import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
@@ -13,19 +14,24 @@ import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  accessTokenQueue: Pick<
+    TAccessTokenQueueServiceFactory,
+    "updateIdentityAccessTokenStatus" | "getIdentityTokenDetailsInCache"
+  >;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
-  identityOrgMembershipDAL
+  identityOrgMembershipDAL,
+  accessTokenQueue
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
       id: tokenId,
-      accessTokenTTL,
       accessTokenNumUses,
+      accessTokenTTL,
       accessTokenNumUsesLimit,
       accessTokenLastRenewedAt,
       createdAt: accessTokenCreatedAt
@@ -83,7 +89,12 @@ export const identityAccessTokenServiceFactory = ({
     });
     if (!identityAccessToken) throw new UnauthorizedError();
 
-    await validateAccessTokenExp(identityAccessToken);
+    let { accessTokenNumUses } = identityAccessToken;
+    const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
+    if (tokenStatusInCache) {
+      accessTokenNumUses = tokenStatusInCache.numberOfUses;
+    }
+    await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
     const { accessTokenMaxTTL, createdAt: accessTokenCreatedAt, accessTokenTTL } = identityAccessToken;
 
@@ -164,14 +175,14 @@ export const identityAccessTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
     }
 
-    await validateAccessTokenExp(identityAccessToken);
+    let { accessTokenNumUses } = identityAccessToken;
+    const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
+    if (tokenStatusInCache) {
+      accessTokenNumUses = tokenStatusInCache.numberOfUses;
+    }
+    await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
-    await identityAccessTokenDAL.updateById(identityAccessToken.id, {
-      accessTokenLastUsedAt: new Date(),
-      $incr: {
-        accessTokenNumUses: 1
-      }
-    });
+    await accessTokenQueue.updateIdentityAccessTokenStatus(identityAccessToken.id, Number(accessTokenNumUses) + 1);
     return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
   };
 

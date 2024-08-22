@@ -8,6 +8,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
+import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -26,6 +27,7 @@ type TServiceTokenServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -35,7 +37,8 @@ export const serviceTokenServiceFactory = ({
   userDAL,
   permissionService,
   projectEnvDAL,
-  projectDAL
+  projectDAL,
+  accessTokenQueue
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -166,11 +169,9 @@ export const serviceTokenServiceFactory = ({
 
     const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceToken.secretHash);
     if (!isMatch) throw new UnauthorizedError();
-    const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
-      lastUsed: new Date()
-    });
+    await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
 
-    return { ...serviceToken, lastUsed: updatedToken.lastUsed, orgId: project.orgId };
+    return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
   };
 
   return {

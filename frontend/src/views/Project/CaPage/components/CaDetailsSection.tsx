@@ -6,7 +6,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { CaStatus, useGetCaById } from "@app/hooks/api";
+import { CaStatus, CaType, useGetCaById } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -36,6 +36,10 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
       </div>
       <div className="pt-4">
         <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">CA Type</p>
+          <p className="text-sm text-mineshaft-300">{caTypeToNameMap[ca.type]}</p>
+        </div>
+        <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">CA ID</p>
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{ca.id}</p>
@@ -56,36 +60,36 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
             </div>
           </div>
         </div>
-        {ca.parentCaId && (
+        {ca.type === CaType.INTERMEDIATE && ca.status !== CaStatus.PENDING_CERTIFICATE && (
           <div className="mb-4">
             <p className="text-sm font-semibold text-mineshaft-300">Parent CA ID</p>
             <div className="group flex align-top">
-              <p className="text-sm text-mineshaft-300">{ca.parentCaId}</p>
-              <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                <Tooltip content={copyTextParentId}>
-                  <IconButton
-                    ariaLabel="copy icon"
-                    variant="plain"
-                    className="group relative ml-2"
-                    onClick={() => {
-                      navigator.clipboard.writeText(ca.parentCaId as string);
-                      setCopyTextParentId("Copied");
-                    }}
-                  >
-                    <FontAwesomeIcon icon={isCopyingParentId ? faCheck : faCopy} />
-                  </IconButton>
-                </Tooltip>
-              </div>
+              <p className="text-sm text-mineshaft-300">
+                {ca.parentCaId ? ca.parentCaId : "N/A - External Parent CA"}
+              </p>
+              {ca.parentCaId && (
+                <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <Tooltip content={copyTextParentId}>
+                    <IconButton
+                      ariaLabel="copy icon"
+                      variant="plain"
+                      className="group relative ml-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(ca.parentCaId as string);
+                        setCopyTextParentId("Copied");
+                      }}
+                    >
+                      <FontAwesomeIcon icon={isCopyingParentId ? faCheck : faCopy} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
             </div>
           </div>
         )}
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Friendly Name</p>
           <p className="text-sm text-mineshaft-300">{ca.friendlyName}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">CA Type</p>
-          <p className="text-sm text-mineshaft-300">{caTypeToNameMap[ca.type]}</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Status</p>
@@ -124,6 +128,15 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
                   colorSchema="primary"
                   type="submit"
                   onClick={() => {
+                    if (ca.type === CaType.INTERMEDIATE && !ca.parentCaId) {
+                      // intermediate CA with external parent CA
+                      handlePopUpOpen("installCaCert", {
+                        caId,
+                        isParentCaExternal: true
+                      });
+                      return;
+                    }
+
                     handlePopUpOpen("renewCa", {
                       caId
                     });
