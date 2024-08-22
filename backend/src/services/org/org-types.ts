@@ -29,7 +29,9 @@ export type TInviteUserToOrgDTO = {
   orgId: string;
   actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
-  inviteeEmail: string;
+  inviteeEmails: string[];
+  organizationRoleSlug?: string;
+  projectIds?: string[];
 };
 
 export type TVerifyUserToOrgDTO = {
