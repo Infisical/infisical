@@ -9,13 +9,15 @@ export {
   useAddUserToOrg,
   useCreateAPIKey,
   useDeleteAPIKey,
+  useDeleteMe,
   useDeleteOrgMembership,
-  useDeleteUser,
   useGetMyAPIKeys,
   useGetMyAPIKeysV2,
   useGetMyIp,
   useGetMyOrganizationProjects,
   useGetMySessions,
+  useGetOrgMembership,
+  useGetOrgMembershipProjectMemberships,
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
@@ -23,6 +25,5 @@ export {
   useRegisterUserAction,
   useRevokeMySessions,
   useUpdateMfaEnabled,
-  useUpdateOrgUserRole,
-  useUpdateUserAuthMethods
-} from "./queries";
+  useUpdateOrgMembership,
+  useUpdateUserAuthMethods} from "./queries";

@@ -3,7 +3,7 @@ title: Universal Auth
 description: "Learn how to authenticate to Infisical from any platform or environment."
 ---
 
-**Universal Auth** is a platform-agnostic authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) suitable to authenticate from any platform/environment.
+**Universal Auth** is a platform-agnostic authentication method that can be configured for a [machine identity](/documentation/platform/identities/machine-identities) to authenticate from any platform/environment using a Client ID and Client Secret.
 
 ## Diagram
 
@@ -26,10 +26,14 @@ sequenceDiagram
 
 ## Concept
 
-In this method, Infisical authenticates an identity by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
+In this method, Infisical authenticates a client by verifying the credentials issued for it at the `/api/v1/auth/universal-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
-In Universal Auth, an identity is given a **Client ID** and one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for a short-lived access token to authenticate with the Infisical API.
+To be more specific:
+
+1. The client submits a **Client ID** and **Client Secret** to Infisical at the `/api/v1/auth/universal-auth/login` endpoint.
+2. Infisical verifies the credential pair.
+3. If all is well, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
 
 ## Guide
 
@@ -51,9 +55,16 @@ using the Universal Auth authentication method.
     - Name (required): A friendly name for the identity.
     - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
 
+    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+
+    ![identities page](/images/platform/identities/identities-page.png)
+
     Once you've created an identity, you'll be prompted to configure the **Universal Auth** authentication method for it.
 
-    ![identities organization create auth method](/images/platform/identities/identities-org-create-auth-method.png)
+    By default, the identity has been configured with Universal Auth. If you wish, you can edit the Universal Auth configuration
+    details by pressing to edit the **Authentication** section.
+
+    ![identities organization create universal auth method](/images/platform/identities/identities-org-create-universal-auth-method.png)
 
     Here's some more guidance on each field:
 
@@ -73,12 +84,12 @@ using the Universal Auth authentication method.
   <Step title="Creating a Client Secret">
     In order to use the identity, you'll need the non-sensitive **Client ID**
     of the identity and a **Client Secret** for it; you can think of these credentials akin to a username
-    and password used to authenticate with the Infisical API. With that, press on the key icon on the identity to generate a **Client Secret**
-    for it.
+    and password used to authenticate with the Infisical API. 
+    With that, press **Create Client Secret**.
     
-    ![identities client secret create](/images/platform/identities/identities-org-client-secret.png)
-    ![identities client secret create](/images/platform/identities/identities-org-client-secret-create-1.png)
-    ![identities client secret create](/images/platform/identities/identities-org-client-secret-create-2.png)
+    ![identities client secret create](/images/platform/identities/identities-universal-auth-create-1.png)
+    ![identities client secret create](/images/platform/identities/identities-universal-auth-create-2.png)
+    ![identities client secret create](/images/platform/identities/identities-universal-auth-create-3.png)
     
     Feel free to input any (optional) details for the **Client Secret** configuration:
     
@@ -127,7 +138,7 @@ using the Universal Auth authentication method.
 
     <Note>
       Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
-      the default TTL is `7200` seconds which can be adjusted.
+      the default TTL is `7200` seconds which can be adjusted in the Universal Auth configuration.
 
       If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
       a new access token should be obtained by performing another login operation.
@@ -144,16 +155,15 @@ using the Universal Auth authentication method.
   
   - The client secret or access token has expired.
   - The identity is insufficently permissioned to interact with the resources you wish to access.
-  - You are attempting to access a `/raw` secrets endpoint that requires your project to disable E2EE.
   - The client secret/access token is being used from an untrusted IP.
 </Accordion>
 <Accordion title="What is access token renewal and TTL/Max TTL?">
-  A identity access token can have a time-to-live (TTL) or incremental lifetime afterwhich it expires.
+  A identity access token can have a time-to-live (TTL) or incremental lifetime after which it expires.
   
   In certain cases, you may want to extend the lifespan of an access token; to do so, you must set a max TTL parameter.
 
-A token can be renewed any number of time and each call to renew it will extend the toke life by increments of access token TTL.
-Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation
+A token can be renewed any number of times where each call to renew it can extend the token's lifetime by increments of the access token's TTL.
+Regardless of how frequently an access token is renewed, its lifespan remains bound to the maximum TTL determined at its creation.
 
 </Accordion>
 </AccordionGroup>

@@ -20,7 +20,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgById = async (orgId: string) => {
     try {
-      const org = await db(TableName.Organization).where({ id: orgId }).first();
+      const org = await db.replicaNode()(TableName.Organization).where({ id: orgId }).first();
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org by id" });
@@ -30,7 +30,8 @@ export const orgDALFactory = (db: TDbClient) => {
   // special query
   const findAllOrgsByUserId = async (userId: string): Promise<TOrganizations[]> => {
     try {
-      const org = await db(TableName.OrgMembership)
+      const org = await db
+        .replicaNode()(TableName.OrgMembership)
         .where({ userId })
         .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
         .select(selectAllTableCols(TableName.Organization));
@@ -42,7 +43,8 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgByProjectId = async (projectId: string): Promise<TOrganizations> => {
     try {
-      const [org] = await db(TableName.Project)
+      const [org] = await db
+        .replicaNode()(TableName.Project)
         .where({ [`${TableName.Project}.id` as "id"]: projectId })
         .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
         .select(selectAllTableCols(TableName.Organization));
@@ -56,7 +58,8 @@ export const orgDALFactory = (db: TDbClient) => {
   // special query
   const findAllOrgMembers = async (orgId: string) => {
     try {
-      const members = await db(TableName.OrgMembership)
+      const members = await db
+        .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
@@ -71,7 +74,9 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema(TableName.OrgMembership),
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("isActive").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
@@ -80,9 +85,9 @@ export const orgDALFactory = (db: TDbClient) => {
         )
         .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
 
-      return members.map(({ email, username, firstName, lastName, userId, publicKey, ...data }) => ({
+      return members.map(({ email, isEmailVerified, username, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
-        user: { email, username, firstName, lastName, id: userId, publicKey }
+        user: { email, isEmailVerified, username, firstName, lastName, id: userId, publicKey }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
@@ -95,7 +100,8 @@ export const orgDALFactory = (db: TDbClient) => {
         count: string;
       }
 
-      const count = await db(TableName.OrgMembership)
+      const count = await db
+        .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .count("*")
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
@@ -110,7 +116,8 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgMembersByUsername = async (orgId: string, usernames: string[]) => {
     try {
-      const members = await db(TableName.OrgMembership)
+      const members = await db
+        .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
@@ -145,7 +152,8 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const findOrgGhostUser = async (orgId: string) => {
     try {
-      const member = await db(TableName.OrgMembership)
+      const member = await db
+        .replicaNode()(TableName.OrgMembership)
         .where({ orgId })
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
@@ -169,7 +177,8 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const ghostUserExists = async (orgId: string) => {
     try {
-      const member = await db(TableName.OrgMembership)
+      const member = await db
+        .replicaNode()(TableName.OrgMembership)
         .where({ orgId })
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
@@ -200,9 +209,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateById = async (orgId: string, data: Partial<TOrganizations>) => {
+  const updateById = async (orgId: string, data: Partial<TOrganizations>, tx?: Knex) => {
     try {
-      const [org] = await db(TableName.Organization)
+      const [org] = await (tx || db)(TableName.Organization)
         .where({ id: orgId })
         .update({ ...data })
         .returning("*");
@@ -257,7 +266,7 @@ export const orgDALFactory = (db: TDbClient) => {
     { offset, limit, sort, tx }: TFindOpt<TOrgMemberships> = {}
   ) => {
     try {
-      const query = (tx || db)(TableName.OrgMembership)
+      const query = (tx || db.replicaNode())(TableName.OrgMembership)
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)

@@ -12,7 +12,7 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
 
   const countOfSecretsWithNullSecretBlindIndex = async (projectId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.Secret)
+      const doc = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
@@ -26,11 +26,10 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
 
   const findAllSecretsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.Secret)
+      const docs = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
-        .whereNull("secretBlindIndex")
         .select(selectAllTableCols(TableName.Secret))
         .select(
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
@@ -44,12 +43,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
 
   const findSecretsByProjectId = async (projectId: string, secretIds: string[], tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.Secret)
+      const docs = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .where({ projectId })
         .whereIn(`${TableName.Secret}.id`, secretIds)
-        .whereNull("secretBlindIndex")
         .select(selectAllTableCols(TableName.Secret))
         .select(
           db.ref("slug").withSchema(TableName.Environment).as("environment"),

@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: KengoTODA/actions-setup-docker-compose@v1
         if: ${{ env.ACT }}
-        name: Install `docker-compose` for local simulations
+        name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
       - name: 🔧 Setup Node 20
@@ -33,7 +33,7 @@ jobs:
         run: npm install
         working-directory: backend
       - name: Start postgres and redis
-        run: touch .env && docker-compose -f docker-compose.dev.yml up -d db redis
+        run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
       - name: Start integration test
         run: npm run test:e2e
         working-directory: backend
@@ -44,4 +44,4 @@ jobs:
           ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
       - name: cleanup
         run: |
-          docker-compose -f "docker-compose.dev.yml" down
+          docker compose -f "docker-compose.dev.yml" down

@@ -18,9 +18,19 @@ In a similar way, to solve the above-mentioned issues, Infisical provides a feat
 
 ### Setting a policy
 
-First, you would need to create a set of policies for a certain environment. In the example below, a generic policy for a production environment is shown. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined approver (or multiple approvers).
+First, you would need to create a set of policies for a certain environment. In the example below, a generic change policy for a production environment is shown. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined approver (or multiple approvers).
 
 ![create secret update policy](../../images/platform/pr-workflows/secret-update-policy.png)
+
+### Policy enforcement levels
+
+The enforcement level determines how strict the policy is. A **Hard** enforcement level means that any change that matches the policy will need full approval prior merging. A **Soft** enforcement level allows for break glass functionality on the request. If a change request is bypassed, the approvers will be notified via email.
+
+### Example of creating a change policy
+
+When creating a policy, you can choose the type of policy you want to create. In this case, we will be creating a `Change Policy`. Other types of policies include `Access Policy` that creates policies for **[Access Requests](/documentation/platform/access-controls/access-requests)**.
+
+![create panel secret update policy](../../images/platform/pr-workflows/create-change-policy.png)
 
 ### Example of updating secrets with Approval workflows
 
@@ -28,6 +38,6 @@ When a user submits a change to an enviropnment that is under a particular polic
 
 ![secret update change requests](../../images/platform/pr-workflows/secret-update-request.png)
 
-An approver is notified by email and/or Slack as soon as the request is initiated. In the Infisical Dashboard, they will be able to `approve` and `merge` (or `deny`) a request for a change in a particular environment. After that, depending on the workflows setup, the change will be automatically propagated to the right applications (e.g., using [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
+Approvers are notified by email and/or Slack as soon as the request is initiated. In the Infisical Dashboard, they will be able to `approve` and `merge` (or `deny`) a request for a change in a particular environment. After that, depending on the workflows setup, the change will be automatically propagated to the right applications (e.g., using [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
 
 ![secrets update pull request](../../images/platform/pr-workflows/secret-update-pr.png)

@@ -4,23 +4,29 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useDeleteIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
+// import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
 import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
-import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthClientSecretModal";
+import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
+// import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthClientSecretModal";
 
 export const IdentitySection = withPermission(
   () => {
+    const { subscription } = useSubscription();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
@@ -28,8 +34,13 @@ export const IdentitySection = withPermission(
       "deleteIdentity",
       "universalAuthClientSecret",
       "deleteUniversalAuthClientSecret",
-      "upgradePlan"
+      "upgradePlan",
+      "tokenAuthToken"
     ] as const);
+
+    const isMoreIdentitiesAllowed = subscription?.identityLimit
+      ? subscription.identitiesUsed < subscription.identityLimit
+      : true;
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
       try {
@@ -57,7 +68,7 @@ export const IdentitySection = withPermission(
     };
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
           <div className="flex w-full justify-end pr-4">
@@ -81,7 +92,15 @@ export const IdentitySection = withPermission(
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("identity")}
+                onClick={() => {
+                  if (!isMoreIdentitiesAllowed) {
+                    handlePopUpOpen("upgradePlan", {
+                      description: "You can add more identities if you upgrade your Infisical plan."
+                    });
+                    return;
+                  }
+                  handlePopUpOpen("identity");
+                }}
                 isDisabled={!isAllowed}
               >
                 Create identity
@@ -90,21 +109,18 @@ export const IdentitySection = withPermission(
           </OrgPermissionCan>
         </div>
         <IdentityTable handlePopUpOpen={handlePopUpOpen} />
-        <IdentityModal
+        <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        {/* <IdentityAuthMethodModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
-        />
-        <IdentityAuthMethodModal
+        /> */}
+        {/* <IdentityUniversalAuthClientSecretModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
-        />
-        <IdentityUniversalAuthClientSecretModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        />
+        /> */}
+        <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure want to delete ${
@@ -117,6 +133,11 @@ export const IdentitySection = withPermission(
               (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
             )
           }
+        />
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={(popUp.upgradePlan?.data as { description: string })?.description}
         />
       </div>
     );

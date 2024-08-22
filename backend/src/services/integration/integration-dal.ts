@@ -22,7 +22,7 @@ export const integrationDALFactory = (db: TDbClient) => {
 
   const find = async (filter: Partial<TIntegrations>, tx?: Knex) => {
     try {
-      const docs = await integrationFindQuery(tx || db, filter);
+      const docs = await integrationFindQuery(tx || db.replicaNode(), filter);
       return docs.map(({ envId, envSlug, envName, ...el }) => ({
         ...el,
         environment: {
@@ -38,7 +38,7 @@ export const integrationDALFactory = (db: TDbClient) => {
 
   const findOne = async (filter: Partial<TIntegrations>, tx?: Knex) => {
     try {
-      const doc = await integrationFindQuery(tx || db, filter).first();
+      const doc = await integrationFindQuery(tx || db.replicaNode(), filter).first();
       if (!doc) return;
 
       const { envName: name, envSlug: slug, envId: id, ...el } = doc;
@@ -50,7 +50,7 @@ export const integrationDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await integrationFindQuery(tx || db, {
+      const doc = await integrationFindQuery(tx || db.replicaNode(), {
         [`${TableName.Integration}.id` as "id"]: id
       }).first();
       if (!doc) return;
@@ -64,7 +64,7 @@ export const integrationDALFactory = (db: TDbClient) => {
 
   const findByProjectId = async (projectId: string, tx?: Knex) => {
     try {
-      const integrations = await (tx || db)(TableName.Integration)
+      const integrations = await (tx || db.replicaNode())(TableName.Integration)
         .where(`${TableName.Environment}.projectId`, projectId)
         .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
@@ -90,7 +90,7 @@ export const integrationDALFactory = (db: TDbClient) => {
   // used for syncing secrets
   // this will populate integration auth also
   const findByProjectIdV2 = async (projectId: string, environment: string, tx?: Knex) => {
-    const docs = await (tx || db)(TableName.Integration)
+    const docs = await (tx || db.replicaNode())(TableName.Integration)
       .where(`${TableName.Environment}.projectId`, projectId)
       .where("isActive", true)
       .where(`${TableName.Environment}.slug`, environment)
@@ -120,7 +120,14 @@ export const integrationDALFactory = (db: TDbClient) => {
         db.ref("accessExpiresAt").withSchema(TableName.IntegrationAuth).as("accessExpiresAtAu"),
         db.ref("metadata").withSchema(TableName.IntegrationAuth).as("metadataAu"),
         db.ref("algorithm").withSchema(TableName.IntegrationAuth).as("algorithmAu"),
-        db.ref("keyEncoding").withSchema(TableName.IntegrationAuth).as("keyEncodingAu")
+        db.ref("keyEncoding").withSchema(TableName.IntegrationAuth).as("keyEncodingAu"),
+        db.ref("awsAssumeIamRoleArnCipherText").withSchema(TableName.IntegrationAuth),
+        db.ref("awsAssumeIamRoleArnIV").withSchema(TableName.IntegrationAuth),
+        db.ref("awsAssumeIamRoleArnTag").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedRefresh").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedAccess").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedAccessId").withSchema(TableName.IntegrationAuth),
+        db.ref("encryptedAwsAssumeIamRoleArn").withSchema(TableName.IntegrationAuth)
       );
     return docs.map(
       ({
@@ -146,6 +153,13 @@ export const integrationDALFactory = (db: TDbClient) => {
         algorithmAu: algorithm,
         keyEncodingAu: keyEncoding,
         accessExpiresAtAu: accessExpiresAt,
+        awsAssumeIamRoleArnIV,
+        awsAssumeIamRoleArnCipherText,
+        awsAssumeIamRoleArnTag,
+        encryptedAccess,
+        encryptedRefresh,
+        encryptedAccessId,
+        encryptedAwsAssumeIamRoleArn,
         ...el
       }) => ({
         ...el,
@@ -174,7 +188,14 @@ export const integrationDALFactory = (db: TDbClient) => {
           metadata,
           algorithm,
           keyEncoding,
-          accessExpiresAt
+          accessExpiresAt,
+          awsAssumeIamRoleArnIV,
+          awsAssumeIamRoleArnCipherText,
+          awsAssumeIamRoleArnTag,
+          encryptedAccess,
+          encryptedRefresh,
+          encryptedAccessId,
+          encryptedAwsAssumeIamRoleArn
         }
       })
     );

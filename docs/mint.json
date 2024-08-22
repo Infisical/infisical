@@ -103,6 +103,16 @@
           ]
         },
         {
+          "group": "Internal PKI",
+          "pages": [
+            "documentation/platform/pki/overview",
+            "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/certificates",
+            "documentation/platform/pki/certificate-templates",
+            "documentation/platform/pki/alerting"
+          ]
+        },
+        {
           "group": "Identities",
           "pages": [
             "documentation/platform/identities/overview",
@@ -119,7 +129,9 @@
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-logs"
+            "documentation/platform/audit-logs",
+            "documentation/platform/audit-log-streams",
+            "documentation/platform/groups"
           ]
         },
         {
@@ -138,13 +150,21 @@
             "documentation/platform/dynamic-secrets/overview",
             "documentation/platform/dynamic-secrets/postgresql",
             "documentation/platform/dynamic-secrets/mysql",
+            "documentation/platform/dynamic-secrets/mssql",
             "documentation/platform/dynamic-secrets/oracle",
             "documentation/platform/dynamic-secrets/cassandra",
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
-        "documentation/platform/groups",
-        "documentation/platform/audit-log-streams"
+        {
+          "group": "Key Management (KMS)",
+          "pages": [
+            "documentation/platform/kms/overview",
+            "documentation/platform/kms/aws-kms",
+            "documentation/platform/kms/aws-hsm"
+          ]
+        },
+        "documentation/platform/secret-sharing"
       ]
     },
     {
@@ -152,8 +172,19 @@
       "pages": [
         "documentation/platform/auth-methods/email-password",
         "documentation/platform/token",
+        "documentation/platform/identities/token-auth",
         "documentation/platform/identities/universal-auth",
+        "documentation/platform/identities/kubernetes-auth",
+        "documentation/platform/identities/gcp-auth",
+        "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
+        {
+          "group": "OIDC Auth",
+          "pages": [
+            "documentation/platform/identities/oidc-auth/general",
+            "documentation/platform/identities/oidc-auth/github"
+          ]
+        },
         "documentation/platform/mfa",
         {
           "group": "SSO",
@@ -166,7 +197,10 @@
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud",
             "documentation/platform/sso/keycloak-saml",
-            "documentation/platform/sso/google-saml"
+            "documentation/platform/sso/google-saml",
+            "documentation/platform/sso/keycloak-oidc",
+            "documentation/platform/sso/auth0-oidc",
+            "documentation/platform/sso/general-oidc"
           ]
         },
         {
@@ -193,7 +227,7 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Installation methods",
+          "group": "Containerized installation methods",
           "pages": [
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/docker-swarm",
@@ -207,7 +241,8 @@
           "group": "Guides",
           "pages": [
             "self-hosting/configuration/schema-migrations",
-            "self-hosting/guides/mongo-to-postgres"
+            "self-hosting/guides/mongo-to-postgres",
+            "self-hosting/guides/custom-certificates"
           ]
         },
         {
@@ -332,6 +367,7 @@
           "pages": [
             "integrations/cicd/circleci",
             "integrations/cicd/travisci",
+            "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
             "integrations/cloud/checkly"
           ]
@@ -379,6 +415,8 @@
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
+        "sdks/languages/go",
+        "sdks/languages/ruby",
         "sdks/languages/java",
         "sdks/languages/csharp"
       ]
@@ -402,7 +440,22 @@
           "pages": [
             "api-reference/endpoints/identities/create",
             "api-reference/endpoints/identities/update",
-            "api-reference/endpoints/identities/delete"
+            "api-reference/endpoints/identities/delete",
+            "api-reference/endpoints/identities/get-by-id",
+            "api-reference/endpoints/identities/list"
+          ]
+        },
+        {
+          "group": "Token Auth",
+          "pages": [
+            "api-reference/endpoints/token-auth/attach",
+            "api-reference/endpoints/token-auth/retrieve",
+            "api-reference/endpoints/token-auth/update",
+            "api-reference/endpoints/token-auth/revoke",
+            "api-reference/endpoints/token-auth/get-tokens",
+            "api-reference/endpoints/token-auth/create-token",
+            "api-reference/endpoints/token-auth/update-token",
+            "api-reference/endpoints/token-auth/revoke-token"
           ]
         },
         {
@@ -412,10 +465,63 @@
             "api-reference/endpoints/universal-auth/attach",
             "api-reference/endpoints/universal-auth/retrieve",
             "api-reference/endpoints/universal-auth/update",
+            "api-reference/endpoints/universal-auth/revoke",
             "api-reference/endpoints/universal-auth/create-client-secret",
             "api-reference/endpoints/universal-auth/list-client-secrets",
             "api-reference/endpoints/universal-auth/revoke-client-secret",
-            "api-reference/endpoints/universal-auth/renew-access-token"
+            "api-reference/endpoints/universal-auth/get-client-secret-by-id",
+            "api-reference/endpoints/universal-auth/renew-access-token",
+            "api-reference/endpoints/universal-auth/revoke-access-token"
+          ]
+        },
+        {
+          "group": "GCP Auth",
+          "pages": [
+            "api-reference/endpoints/gcp-auth/login",
+            "api-reference/endpoints/gcp-auth/attach",
+            "api-reference/endpoints/gcp-auth/retrieve",
+            "api-reference/endpoints/gcp-auth/update",
+            "api-reference/endpoints/gcp-auth/revoke"
+          ]
+        },
+        {
+          "group": "AWS Auth",
+          "pages": [
+            "api-reference/endpoints/aws-auth/login",
+            "api-reference/endpoints/aws-auth/attach",
+            "api-reference/endpoints/aws-auth/retrieve",
+            "api-reference/endpoints/aws-auth/update",
+            "api-reference/endpoints/aws-auth/revoke"
+          ]
+        },
+        {
+          "group": "Azure Auth",
+          "pages": [
+            "api-reference/endpoints/azure-auth/login",
+            "api-reference/endpoints/azure-auth/attach",
+            "api-reference/endpoints/azure-auth/retrieve",
+            "api-reference/endpoints/azure-auth/update",
+            "api-reference/endpoints/azure-auth/revoke"
+          ]
+        },
+        {
+          "group": "Kubernetes Auth",
+          "pages": [
+            "api-reference/endpoints/kubernetes-auth/login",
+            "api-reference/endpoints/kubernetes-auth/attach",
+            "api-reference/endpoints/kubernetes-auth/retrieve",
+            "api-reference/endpoints/kubernetes-auth/update",
+            "api-reference/endpoints/kubernetes-auth/revoke"
+          ]
+        },
+        {
+          "group": "OIDC Auth",
+          "pages": [
+            "api-reference/endpoints/oidc-auth/login",
+            "api-reference/endpoints/oidc-auth/attach",
+            "api-reference/endpoints/oidc-auth/retrieve",
+            "api-reference/endpoints/oidc-auth/update",
+            "api-reference/endpoints/oidc-auth/revoke"
           ]
         },
         {
@@ -435,15 +541,38 @@
             "api-reference/endpoints/workspaces/delete-workspace",
             "api-reference/endpoints/workspaces/get-workspace",
             "api-reference/endpoints/workspaces/update-workspace",
-            "api-reference/endpoints/workspaces/invite-member-to-workspace",
-            "api-reference/endpoints/workspaces/remove-member-from-workspace",
-            "api-reference/endpoints/workspaces/memberships",
-            "api-reference/endpoints/workspaces/update-membership",
-            "api-reference/endpoints/workspaces/list-identity-memberships",
-            "api-reference/endpoints/workspaces/update-identity-membership",
-            "api-reference/endpoints/workspaces/delete-identity-membership",
             "api-reference/endpoints/workspaces/secret-snapshots",
             "api-reference/endpoints/workspaces/rollback-snapshot"
+          ]
+        },
+        {
+          "group": "Project Users",
+          "pages": [
+            "api-reference/endpoints/project-users/invite-member-to-workspace",
+            "api-reference/endpoints/project-users/remove-member-from-workspace",
+            "api-reference/endpoints/project-users/memberships",
+            "api-reference/endpoints/project-users/get-by-username",
+            "api-reference/endpoints/project-users/update-membership"
+          ]
+        },
+        {
+          "group": "Project Identities",
+          "pages": [
+            "api-reference/endpoints/project-identities/add-identity-membership",
+            "api-reference/endpoints/project-identities/list-identity-memberships",
+            "api-reference/endpoints/project-identities/get-by-id",
+            "api-reference/endpoints/project-identities/update-identity-membership",
+            "api-reference/endpoints/project-identities/delete-identity-membership"
+          ]
+        },
+        {
+          "group": "Project Roles",
+          "pages": [
+            "api-reference/endpoints/project-roles/create",
+            "api-reference/endpoints/project-roles/update",
+            "api-reference/endpoints/project-roles/delete",
+            "api-reference/endpoints/project-roles/get-by-slug",
+            "api-reference/endpoints/project-roles/list"
           ]
         },
         {
@@ -458,6 +587,7 @@
           "group": "Folders",
           "pages": [
             "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/get-by-id",
             "api-reference/endpoints/folders/create",
             "api-reference/endpoints/folders/update",
             "api-reference/endpoints/folders/delete"
@@ -467,7 +597,10 @@
           "group": "Secret Tags",
           "pages": [
             "api-reference/endpoints/secret-tags/list",
+            "api-reference/endpoints/secret-tags/get-by-id",
+            "api-reference/endpoints/secret-tags/get-by-slug",
             "api-reference/endpoints/secret-tags/create",
+            "api-reference/endpoints/secret-tags/update",
             "api-reference/endpoints/secret-tags/delete"
           ]
         },
@@ -484,6 +617,21 @@
             "api-reference/endpoints/secrets/delete-many",
             "api-reference/endpoints/secrets/attach-tags",
             "api-reference/endpoints/secrets/detach-tags"
+          ]
+        },
+        {
+          "group": "Dynamic Secrets",
+          "pages": [
+            "api-reference/endpoints/dynamic-secrets/create",
+            "api-reference/endpoints/dynamic-secrets/update",
+            "api-reference/endpoints/dynamic-secrets/delete",
+            "api-reference/endpoints/dynamic-secrets/get",
+            "api-reference/endpoints/dynamic-secrets/list",
+            "api-reference/endpoints/dynamic-secrets/list-leases",
+            "api-reference/endpoints/dynamic-secrets/create-lease",
+            "api-reference/endpoints/dynamic-secrets/delete-lease",
+            "api-reference/endpoints/dynamic-secrets/renew-lease",
+            "api-reference/endpoints/dynamic-secrets/get-lease"
           ]
         },
         {
@@ -527,6 +675,67 @@
         {
           "group": "Audit Logs",
           "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+        },
+        {
+          "group": "Certificate Authorities",
+          "pages": [
+            "api-reference/endpoints/certificate-authorities/list",
+            "api-reference/endpoints/certificate-authorities/create",
+            "api-reference/endpoints/certificate-authorities/read",
+            "api-reference/endpoints/certificate-authorities/update",
+            "api-reference/endpoints/certificate-authorities/delete",
+            "api-reference/endpoints/certificate-authorities/renew",
+            "api-reference/endpoints/certificate-authorities/list-ca-certs",
+            "api-reference/endpoints/certificate-authorities/csr",
+            "api-reference/endpoints/certificate-authorities/cert",
+            "api-reference/endpoints/certificate-authorities/sign-intermediate",
+            "api-reference/endpoints/certificate-authorities/import-cert",
+            "api-reference/endpoints/certificate-authorities/issue-cert",
+            "api-reference/endpoints/certificate-authorities/sign-cert",
+            "api-reference/endpoints/certificate-authorities/crl"
+          ]
+        },
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/certificates/list",
+            "api-reference/endpoints/certificates/read",
+            "api-reference/endpoints/certificates/revoke",
+            "api-reference/endpoints/certificates/delete",
+            "api-reference/endpoints/certificates/cert-body",
+            "api-reference/endpoints/certificates/issue-certificate",
+            "api-reference/endpoints/certificates/sign-certificate"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/certificate-templates/create",
+            "api-reference/endpoints/certificate-templates/update",
+            "api-reference/endpoints/certificate-templates/get-by-id",
+            "api-reference/endpoints/certificate-templates/delete"
+          ]
+        },
+        {
+          "group": "Certificate Collections",
+          "pages": [
+            "api-reference/endpoints/pki-collections/create",
+            "api-reference/endpoints/pki-collections/read",
+            "api-reference/endpoints/pki-collections/update",
+            "api-reference/endpoints/pki-collections/delete",
+            "api-reference/endpoints/pki-collections/add-item",
+            "api-reference/endpoints/pki-collections/list-items",
+            "api-reference/endpoints/pki-collections/delete-item"
+          ]
+        },
+        {
+          "group": "PKI Alerting",
+          "pages": [
+            "api-reference/endpoints/pki-alerts/create",
+            "api-reference/endpoints/pki-alerts/read",
+            "api-reference/endpoints/pki-alerts/update",
+            "api-reference/endpoints/pki-alerts/delete"
+          ]
         }
       ]
     },
@@ -573,5 +782,10 @@
   ],
   "integrations": {
     "intercom": "hsg644ru"
+  },
+  "analytics": {
+    "koala": {
+      "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
+    }
   }
 }

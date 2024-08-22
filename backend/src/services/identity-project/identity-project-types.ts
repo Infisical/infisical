@@ -4,7 +4,19 @@ import { ProjectUserMembershipTemporaryMode } from "../project-membership/projec
 
 export type TCreateProjectIdentityDTO = {
   identityId: string;
-  role: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: ProjectUserMembershipTemporaryMode.Relative;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
 } & TProjectPermission;
 
 export type TUpdateProjectIdentityDTO = {
@@ -29,3 +41,7 @@ export type TDeleteProjectIdentityDTO = {
 } & TProjectPermission;
 
 export type TListProjectIdentityDTO = TProjectPermission;
+
+export type TGetProjectIdentityByIdentityIdDTO = {
+  identityId: string;
+} & TProjectPermission;

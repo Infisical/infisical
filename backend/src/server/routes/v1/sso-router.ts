@@ -259,4 +259,50 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       );
     }
   });
+
+  server.route({
+    url: "/token-exchange",
+    method: "POST",
+    schema: {
+      body: z.object({
+        providerAuthToken: z.string(),
+        email: z.string()
+      })
+    },
+    handler: async (req, res) => {
+      const userAgent = req.headers["user-agent"];
+      if (!userAgent) throw new Error("user agent header is required");
+
+      const data = await server.services.login.oauth2TokenExchange({
+        email: req.body.email,
+        ip: req.realIp,
+        userAgent,
+        providerAuthToken: req.body.providerAuthToken
+      });
+
+      if (data.isMfaEnabled) {
+        return { mfaEnabled: true, token: data.token } as const; // for discriminated union
+      }
+
+      void res.setCookie("jid", data.token.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
+      return {
+        mfaEnabled: false,
+        encryptionVersion: data.user.encryptionVersion,
+        token: data.token.access,
+        publicKey: data.user.publicKey,
+        encryptedPrivateKey: data.user.encryptedPrivateKey,
+        iv: data.user.iv,
+        tag: data.user.tag,
+        protectedKey: data.user.protectedKey || null,
+        protectedKeyIV: data.user.protectedKeyIV || null,
+        protectedKeyTag: data.user.protectedKeyTag || null
+      } as const;
+    }
+  });
 };

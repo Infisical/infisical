@@ -7,6 +7,7 @@ import {
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
+import { userKeys } from "./queries";
 import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 
 export const useAddUserToWsE2EE = () => {
@@ -56,8 +57,9 @@ export const useAddUserToWsNonE2EE = () => {
       });
       return data;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { orgId, projectId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(projectId));
+      queryClient.invalidateQueries(userKeys.allOrgMembershipProjectMemberships(orgId));
     }
   });
 };
@@ -85,6 +87,29 @@ export const useVerifyEmailVerificationCode = () => {
         code
       });
       return {};
+    }
+  });
+};
+
+export const useUpdateUserProjectFavorites = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orgId,
+      projectFavorites
+    }: {
+      orgId: string;
+      projectFavorites: string[];
+    }) => {
+      await apiRequest.put("/api/v1/user/me/project-favorites", {
+        orgId,
+        projectFavorites
+      });
+
+      return {};
+    },
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(userKeys.userProjectFavorites(orgId));
     }
   });
 };

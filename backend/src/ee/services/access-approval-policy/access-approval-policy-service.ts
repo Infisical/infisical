@@ -34,8 +34,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalPolicyApproverDAL,
   permissionService,
   projectEnvDAL,
-  projectDAL,
-  projectMembershipDAL
+  projectDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createAccessApprovalPolicy = async ({
     name,
@@ -45,14 +44,15 @@ export const accessApprovalPolicyServiceFactory = ({
     secretPath,
     actorAuthMethod,
     approvals,
-    approvers,
+    approverUserIds,
     projectSlug,
-    environment
+    environment,
+    enforcementLevel
   }: TCreateAccessApprovalPolicy) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
-    if (approvals > approvers.length)
+    if (approvals > approverUserIds.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -69,15 +69,6 @@ export const accessApprovalPolicyServiceFactory = ({
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
-    const secretApprovers = await projectMembershipDAL.find({
-      projectId: project.id,
-      $in: { id: approvers }
-    });
-
-    if (secretApprovers.length !== approvers.length) {
-      throw new BadRequestError({ message: "Approver not found in project" });
-    }
-
     await verifyApprovers({
       projectId: project.id,
       orgId: actorOrgId,
@@ -85,7 +76,7 @@ export const accessApprovalPolicyServiceFactory = ({
       secretPath,
       actorAuthMethod,
       permissionService,
-      userIds: secretApprovers.map((approver) => approver.userId)
+      userIds: approverUserIds
     });
 
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -94,13 +85,14 @@ export const accessApprovalPolicyServiceFactory = ({
           envId: env.id,
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
       await accessApprovalPolicyApproverDAL.insertMany(
-        secretApprovers.map(({ id }) => ({
-          approverId: id,
+        approverUserIds.map((userId) => ({
+          approverUserId: userId,
           policyId: doc.id
         })),
         tx
@@ -136,14 +128,15 @@ export const accessApprovalPolicyServiceFactory = ({
 
   const updateAccessApprovalPolicy = async ({
     policyId,
-    approvers,
+    approverUserIds,
     secretPath,
     name,
     actorId,
     actor,
     actorOrgId,
     actorAuthMethod,
-    approvals
+    approvals,
+    enforcementLevel
   }: TUpdateAccessApprovalPolicy) => {
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
     if (!accessApprovalPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
@@ -163,20 +156,12 @@ export const accessApprovalPolicyServiceFactory = ({
         {
           approvals,
           secretPath,
-          name
+          name,
+          enforcementLevel
         },
         tx
       );
-      if (approvers) {
-        // Find the workspace project memberships of the users passed in the approvers array
-        const secretApprovers = await projectMembershipDAL.find(
-          {
-            projectId: accessApprovalPolicy.projectId,
-            $in: { id: approvers }
-          },
-          { tx }
-        );
-
+      if (approverUserIds) {
         await verifyApprovers({
           projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
@@ -184,15 +169,13 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath: doc.secretPath!,
           actorAuthMethod,
           permissionService,
-          userIds: secretApprovers.map((approver) => approver.userId)
+          userIds: approverUserIds
         });
 
-        if (secretApprovers.length !== approvers.length)
-          throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
         await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await accessApprovalPolicyApproverDAL.insertMany(
-          secretApprovers.map(({ id }) => ({
-            approverId: id,
+          approverUserIds.map((userId) => ({
+            approverUserId: userId,
             policyId: doc.id
           })),
           tx

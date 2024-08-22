@@ -802,6 +802,7 @@ export const useSaveIntegrationAccessToken = () => {
       refreshToken,
       accessId,
       accessToken,
+      awsAssumeIamRoleArn,
       url,
       namespace
     }: {
@@ -810,6 +811,7 @@ export const useSaveIntegrationAccessToken = () => {
       refreshToken?: string;
       accessId?: string;
       accessToken?: string;
+      awsAssumeIamRoleArn?: string;
       url?: string;
       namespace?: string;
     }) => {
@@ -821,6 +823,7 @@ export const useSaveIntegrationAccessToken = () => {
         refreshToken,
         accessId,
         accessToken,
+        awsAssumeIamRoleArn,
         url,
         namespace
       });

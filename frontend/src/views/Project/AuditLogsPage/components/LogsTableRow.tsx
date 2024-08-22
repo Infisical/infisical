@@ -243,7 +243,6 @@ export const LogsTableRow = ({ auditLog }: Props) => {
           <Td>
             <p>{`Environment: ${event.metadata.environment}`}</p>
             <p>{`Secret path: ${event.metadata.secretPath}`}</p>
-            <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
             <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
           </Td>
         );
@@ -252,7 +251,6 @@ export const LogsTableRow = ({ auditLog }: Props) => {
           <Td>
             <p>{`Environment: ${event.metadata.environment}`}</p>
             <p>{`Secret path: ${event.metadata.secretPath}`}</p>
-            <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
             <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
           </Td>
         );
@@ -261,7 +259,6 @@ export const LogsTableRow = ({ auditLog }: Props) => {
           <Td>
             <p>{`Environment: ${event.metadata.environment}`}</p>
             <p>{`Secret path: ${event.metadata.secretPath}`}</p>
-            <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
             <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
           </Td>
         );
@@ -318,6 +315,117 @@ export const LogsTableRow = ({ auditLog }: Props) => {
                 </p>
               );
             })}
+          </Td>
+        );
+      case EventType.ORG_ADMIN_ACCESS_PROJECT:
+        return (
+          <Td>
+            <p>{`Email: ${event.metadata.email}`}</p>
+          </Td>
+        );
+      case EventType.CREATE_PKI_ALERT:
+      case EventType.UPDATE_PKI_ALERT:
+        return (
+          <Td>
+            <p>{`Alert ID: ${event.metadata.pkiAlertId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+            <p>{`Alert Before Days: ${event.metadata.alertBeforeDays}`}</p>
+          </Td>
+        );
+      case EventType.GET_PKI_ALERT:
+      case EventType.DELETE_PKI_ALERT:
+        return (
+          <Td>
+            <p>{`Alert ID: ${event.metadata.pkiAlertId}`}</p>
+          </Td>
+        );
+      case EventType.CREATE_PKI_COLLECTION:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+          </Td>
+        );
+      case EventType.UPDATE_PKI_COLLECTION:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+          </Td>
+        );
+      case EventType.GET_PKI_COLLECTION:
+      case EventType.DELETE_PKI_COLLECTION:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+          </Td>
+        );
+      case EventType.GET_PKI_COLLECTION_ITEMS:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+          </Td>
+        );
+      case EventType.ADD_PKI_COLLECTION_ITEM:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Collection Item ID: ${event.metadata.pkiCollectionItemId}`}</p>
+            <p>{`Type: ${event.metadata.type}`}</p>
+            <p>{`Item ID: ${event.metadata.itemId}`}</p>
+          </Td>
+        );
+      case EventType.DELETE_PKI_COLLECTION_ITEM:
+        return (
+          <Td>
+            <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            <p>{`Collection Item ID: ${event.metadata.pkiCollectionItemId}`}</p>
+          </Td>
+        );
+      case EventType.CREATE_CA:
+      case EventType.GET_CA:
+      case EventType.UPDATE_CA:
+      case EventType.DELETE_CA:
+      case EventType.GET_CA_CSR:
+      case EventType.GET_CA_CERT:
+      case EventType.IMPORT_CA_CERT:
+      case EventType.GET_CA_CRL:
+      case EventType.SIGN_INTERMEDIATE:
+      case EventType.ISSUE_CERT:
+        return (
+          <Td>
+            <p>{`CA DN: ${event.metadata.dn}`}</p>
+          </Td>
+        );
+      case EventType.GET_CERT:
+      case EventType.DELETE_CERT:
+      case EventType.REVOKE_CERT:
+      case EventType.GET_CERT_BODY:
+        return (
+          <Td>
+            <p>{`Cert CN: ${event.metadata.cn}`}</p>
+          </Td>
+        );
+      case EventType.CREATE_CERTIFICATE_TEMPLATE:
+      case EventType.UPDATE_CERTIFICATE_TEMPLATE:
+        return (
+          <Td>
+            <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
+            <p>{`Certificate Authority ID: ${event.metadata.caId}`}</p>
+            <p>{`Name: ${event.metadata.name}`}</p>
+            <p>{`Common Name: ${event.metadata.commonName}`}</p>
+            <p>{`Subject Alternative Name: ${event.metadata.subjectAlternativeName}`}</p>
+            <p>{`TTL: ${event.metadata.ttl}`}</p>
+            {event.metadata.pkiCollectionId && (
+              <p>{`Collection ID: ${event.metadata.pkiCollectionId}`}</p>
+            )}
+          </Td>
+        );
+      case EventType.GET_CERTIFICATE_TEMPLATE:
+      case EventType.DELETE_CERTIFICATE_TEMPLATE:
+        return (
+          <Td>
+            <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
           </Td>
         );
       default:

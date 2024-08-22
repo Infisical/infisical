@@ -25,7 +25,9 @@ import {
   TCreateUaClientSecretDTO,
   TGetUaClientSecretsDTO,
   TGetUaDTO,
+  TGetUniversalAuthClientSecretByIdDTO,
   TRevokeUaClientSecretDTO,
+  TRevokeUaDTO,
   TUpdateUaDTO
 } from "./identity-ua-types";
 
@@ -136,7 +138,7 @@ export const identityUaServiceFactory = ({
     return { accessToken, identityUa, validClientSecretInfo, identityAccessToken, identityMembershipOrg };
   };
 
-  const attachUa = async ({
+  const attachUniversalAuth = async ({
     accessTokenMaxTTL,
     identityId,
     accessTokenNumUsesLimit,
@@ -227,7 +229,7 @@ export const identityUaServiceFactory = ({
     return { ...identityUa, orgId: identityMembershipOrg.orgId };
   };
 
-  const updateUa = async ({
+  const updateUniversalAuth = async ({
     accessTokenMaxTTL,
     identityId,
     accessTokenNumUsesLimit,
@@ -312,7 +314,7 @@ export const identityUaServiceFactory = ({
     return { ...updatedUaAuth, orgId: identityMembershipOrg.orgId };
   };
 
-  const getIdentityUa = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetUaDTO) => {
+  const getIdentityUniversalAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
@@ -333,7 +335,50 @@ export const identityUaServiceFactory = ({
     return { ...uaIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
 
-  const createUaClientSecret = async ({
+  const revokeIdentityUniversalAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TRevokeUaDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
+      throw new BadRequestError({
+        message: "The identity does not have universal auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to revoke universal auth of identity with more privileged role"
+      });
+
+    const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
+      const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
+      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.orgId };
+    });
+    return revokedIdentityUniversalAuth;
+  };
+
+  const createUniversalAuthClientSecret = async ({
     actor,
     actorId,
     actorOrgId,
@@ -396,7 +441,7 @@ export const identityUaServiceFactory = ({
     };
   };
 
-  const getUaClientSecrets = async ({
+  const getUniversalAuthClientSecrets = async ({
     actor,
     actorId,
     actorOrgId,
@@ -442,7 +487,47 @@ export const identityUaServiceFactory = ({
     return { clientSecrets, orgId: identityMembershipOrg.orgId };
   };
 
-  const revokeUaClientSecret = async ({
+  const getUniversalAuthClientSecretById = async ({
+    identityId,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    clientSecretId
+  }: TGetUniversalAuthClientSecretByIdDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
+      throw new BadRequestError({
+        message: "The identity does not have universal auth"
+      });
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      identityMembershipOrg.identityId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
+      throw new ForbiddenRequestError({
+        message: "Failed to read identity client secret of project with more privileged role"
+      });
+
+    const clientSecret = await identityUaClientSecretDAL.findById(clientSecretId);
+    return { ...clientSecret, identityId, orgId: identityMembershipOrg.orgId };
+  };
+
+  const revokeUniversalAuthClientSecret = async ({
     identityId,
     actorId,
     actor,
@@ -475,7 +560,7 @@ export const identityUaServiceFactory = ({
     const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
     if (!hasPriviledge)
       throw new ForbiddenRequestError({
-        message: "Failed to add identity to project with more privileged role"
+        message: "Failed to revoke identity client secret with more privileged role"
       });
 
     const clientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
@@ -486,11 +571,13 @@ export const identityUaServiceFactory = ({
 
   return {
     login,
-    attachUa,
-    updateUa,
-    getIdentityUa,
-    createUaClientSecret,
-    getUaClientSecrets,
-    revokeUaClientSecret
+    attachUniversalAuth,
+    updateUniversalAuth,
+    getIdentityUniversalAuth,
+    revokeIdentityUniversalAuth,
+    createUniversalAuthClientSecret,
+    getUniversalAuthClientSecrets,
+    revokeUniversalAuthClientSecret,
+    getUniversalAuthClientSecretById
   };
 };

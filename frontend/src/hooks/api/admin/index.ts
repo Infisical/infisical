@@ -1,2 +1,2 @@
-export { useCreateAdminUser, useUpdateServerConfig } from "./mutation";
-export { useGetServerConfig } from "./queries";
+export { useAdminDeleteUser, useCreateAdminUser, useUpdateServerConfig } from "./mutation";
+export { useAdminGetUsers, useGetServerConfig } from "./queries";

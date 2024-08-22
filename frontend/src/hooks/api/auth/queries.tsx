@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
 import { organizationKeys } from "../organization/queries";
+import { workspaceKeys } from "../workspace/queries";
 import {
   ChangePasswordDTO,
   CompleteAccountDTO,
@@ -22,6 +23,7 @@ import {
   SendMfaTokenDTO,
   SRP1DTO,
   SRPR1Res,
+  TOauthTokenExchangeDTO,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
@@ -78,7 +80,10 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries([
+        organizationKeys.getUserOrganizations,
+        workspaceKeys.getAllUserWorkspace
+      ]);
     }
   });
 };
@@ -88,9 +93,24 @@ export const useLogin2 = () => {
     mutationFn: async (details: {
       email: string;
       clientProof: string;
+      password: string;
       providerAuthToken?: string;
     }) => {
       return login2(details);
+    }
+  });
+};
+
+export const oauthTokenExchange = async (details: TOauthTokenExchangeDTO) => {
+  const { data } = await apiRequest.post<Login2Res>("/api/v1/sso/token-exchange", details);
+  return data;
+};
+
+export const useOauthTokenExchange = () => {
+  // note: use after srp1
+  return useMutation({
+    mutationFn: async (details: TOauthTokenExchangeDTO) => {
+      return oauthTokenExchange(details);
     }
   });
 };

@@ -28,7 +28,10 @@ export const IntegrationsSchema = z.object({
   secretPath: z.string().default("/"),
   createdAt: z.date(),
   updatedAt: z.date(),
-  lastUsed: z.date().nullable().optional()
+  lastUsed: z.date().nullable().optional(),
+  isSynced: z.boolean().nullable().optional(),
+  syncMessage: z.string().nullable().optional(),
+  lastSyncJobId: z.string().nullable().optional()
 });
 
 export type TIntegrations = z.infer<typeof IntegrationsSchema>;

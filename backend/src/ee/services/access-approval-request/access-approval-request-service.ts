@@ -52,7 +52,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
   >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  userDAL: Pick<TUserDALFactory, "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds">;
+  userDAL: Pick<
+    TUserDALFactory,
+    "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds" | "find" | "findById"
+  >;
 };
 
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
@@ -94,7 +97,7 @@ export const accessApprovalRequestServiceFactory = ({
     );
     if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
 
-    const requestedByUser = await userDAL.findUserByProjectMembershipId(membership.id);
+    const requestedByUser = await userDAL.findById(actorId);
     if (!requestedByUser) throw new UnauthorizedError({ message: "User not found" });
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
@@ -114,13 +117,15 @@ export const accessApprovalRequestServiceFactory = ({
       policyId: policy.id
     });
 
-    const approverUsers = await userDAL.findUsersByProjectMembershipIds(
-      approvers.map((approver) => approver.approverId)
-    );
+    const approverUsers = await userDAL.find({
+      $in: {
+        id: approvers.map((approver) => approver.approverUserId)
+      }
+    });
 
     const duplicateRequests = await accessApprovalRequestDAL.find({
       policyId: policy.id,
-      requestedBy: membership.id,
+      requestedByUserId: actorId,
       permissions: JSON.stringify(requestedPermissions),
       isTemporary
     });
@@ -153,7 +158,7 @@ export const accessApprovalRequestServiceFactory = ({
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
           policyId: policy.id,
-          requestedBy: membership.id,
+          requestedByUserId: actorId,
           temporaryRange: temporaryRange || null,
           permissions: JSON.stringify(requestedPermissions),
           isTemporary
@@ -212,7 +217,7 @@ export const accessApprovalRequestServiceFactory = ({
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
 
     if (authorProjectMembershipId) {
-      requests = requests.filter((request) => request.requestedBy === authorProjectMembershipId);
+      requests = requests.filter((request) => request.requestedByUserId === actorId);
     }
 
     if (envSlug) {
@@ -246,8 +251,8 @@ export const accessApprovalRequestServiceFactory = ({
 
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
-      accessApprovalRequest.requestedBy !== membership.id && // The request wasn't made by the current user
-      !policy.approvers.find((approverId) => approverId === membership.id) // The request isn't performed by an assigned approver
+      accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
+      !policy.approvers.find((approver) => approver.userId === actorId) // The request isn't performed by an assigned approver
     ) {
       throw new UnauthorizedError({ message: "You are not authorized to approve this request" });
     }
@@ -273,7 +278,7 @@ export const accessApprovalRequestServiceFactory = ({
       const review = await accessApprovalRequestReviewerDAL.findOne(
         {
           requestId: accessApprovalRequest.id,
-          member: membership.id
+          reviewerUserId: actorId
         },
         tx
       );
@@ -282,7 +287,7 @@ export const accessApprovalRequestServiceFactory = ({
           {
             status,
             requestId: accessApprovalRequest.id,
-            member: membership.id
+            reviewerUserId: actorId
           },
           tx
         );
@@ -303,7 +308,8 @@ export const accessApprovalRequestServiceFactory = ({
             // Permanent access
             const privilege = await additionalPrivilegeDAL.create(
               {
-                projectMembershipId: accessApprovalRequest.requestedBy,
+                userId: accessApprovalRequest.requestedByUserId,
+                projectId: accessApprovalRequest.projectId,
                 slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions)
               },
@@ -317,7 +323,8 @@ export const accessApprovalRequestServiceFactory = ({
 
             const privilege = await additionalPrivilegeDAL.create(
               {
-                projectMembershipId: accessApprovalRequest.requestedBy,
+                userId: accessApprovalRequest.requestedByUserId,
+                projectId: accessApprovalRequest.projectId,
                 slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions),
                 isTemporary: true,

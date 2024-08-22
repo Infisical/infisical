@@ -22,8 +22,22 @@ const schema = yup
     stsEndpoint: yup.string(),
     allowedPrincipalArns: yup.string(),
     allowedAccountIds: yup.string(),
-    accessTokenTTL: yup.string().required("Access Token TTL is required"),
-    accessTokenMaxTTL: yup.string().required("Access Max Token TTL is required"),
+    accessTokenTTL: yup
+      .string()
+      .required("Access Token TTL is required")
+      .test(
+        "is-value-valid",
+        "Access Token TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
+      ),
+    accessTokenMaxTTL: yup
+      .string()
+      .required("Access Max Token TTL is required")
+      .test(
+        "is-value-valid",
+        "Access Token Max TTL cannot be greater than 315360000",
+        (value) => Number(value) <= 315360000
+      ),
     accessTokenNumUsesLimit: yup.string().required("Access Token Max Number of Uses is required"),
     accessTokenTrustedIps: yup
       .array(
@@ -42,7 +56,7 @@ export type FormData = yup.InferType<typeof schema>;
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
+    popUpName: keyof UsePopUpState<["identityAuthMethod", "revokeAuthMethod"]>,
     state?: boolean
   ) => void;
   identityAuthMethodData: {
@@ -329,23 +343,36 @@ export const IdentityAwsAuthForm = ({
           Add IP Address
         </Button>
       </div>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-        </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          {identityAuthMethodData?.authMethod ? "Cancel" : "Skip"}
-        </Button>
+      <div className="flex justify-between">
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
+          </Button>
+          <Button
+            colorSchema="secondary"
+            variant="plain"
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
+        </div>
+        {identityAuthMethodData?.authMethod && (
+          <Button
+            size="sm"
+            colorSchema="danger"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+          >
+            Remove Auth Method
+          </Button>
+        )}
       </div>
     </form>
   );

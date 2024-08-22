@@ -1,4 +1,6 @@
+import { CaStatus } from "../ca";
 import { IdentityTrustedIp } from "../identities/types";
+import { PkiItemType } from "../pkiCollections/constants";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
 interface UserActorMetadata {
@@ -361,7 +363,6 @@ interface CreateWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -372,7 +373,6 @@ interface UpdateWebhookStatusEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -383,7 +383,6 @@ interface DeleteWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -462,6 +461,264 @@ interface UpdateUserDeniedPermissions {
   };
 }
 
+interface CreateCa {
+  type: EventType.CREATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCa {
+  type: EventType.GET_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCa {
+  type: EventType.UPDATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+    status: CaStatus;
+  };
+}
+
+interface DeleteCa {
+  type: EventType.DELETE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCsr {
+  type: EventType.GET_CA_CSR;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCert {
+  type: EventType.GET_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface SignIntermediate {
+  type: EventType.SIGN_INTERMEDIATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface ImportCaCert {
+  type: EventType.IMPORT_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCrl {
+  type: EventType.GET_CA_CRL;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface IssueCert {
+  type: EventType.ISSUE_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCert {
+  type: EventType.GET_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface DeleteCert {
+  type: EventType.DELETE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface RevokeCert {
+  type: EventType.REVOKE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCertBody {
+  type: EventType.GET_CERT_BODY;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface CreatePkiAlert {
+  type: EventType.CREATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId: string;
+    name: string;
+    alertBeforeDays: number;
+    recipientEmails: string;
+  };
+}
+interface GetPkiAlert {
+  type: EventType.GET_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface UpdatePkiAlert {
+  type: EventType.UPDATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId?: string;
+    name?: string;
+    alertBeforeDays?: number;
+    recipientEmails?: string;
+  };
+}
+interface DeletePkiAlert {
+  type: EventType.DELETE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface CreatePkiCollection {
+  type: EventType.CREATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name: string;
+  };
+}
+
+interface GetPkiCollection {
+  type: EventType.GET_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface UpdatePkiCollection {
+  type: EventType.UPDATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name?: string;
+  };
+}
+
+interface DeletePkiCollection {
+  type: EventType.DELETE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface GetPkiCollectionItems {
+  type: EventType.GET_PKI_COLLECTION_ITEMS;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface AddPkiCollectionItem {
+  type: EventType.ADD_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+    type: PkiItemType;
+    itemId: string;
+  };
+}
+
+interface DeletePkiCollectionItem {
+  type: EventType.DELETE_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+  };
+}
+
+interface OrgAdminAccessProjectEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PROJECT;
+  metadata: {
+    userId: string;
+    username: string;
+    email: string;
+    projectId: string;
+  }; // no metadata yet
+}
+
+interface CreateCertificateTemplate {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface GetCertificateTemplate {
+  type: EventType.GET_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface UpdateCertificateTemplate {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface DeleteCertificateTemplate {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -504,7 +761,37 @@ export type Event =
   | UpdateSecretImportEvent
   | DeleteSecretImportEvent
   | UpdateUserRole
-  | UpdateUserDeniedPermissions;
+  | UpdateUserDeniedPermissions
+  | CreateCa
+  | GetCa
+  | UpdateCa
+  | DeleteCa
+  | GetCaCsr
+  | GetCaCert
+  | SignIntermediate
+  | ImportCaCert
+  | GetCaCrl
+  | IssueCert
+  | GetCert
+  | DeleteCert
+  | RevokeCert
+  | GetCertBody
+  | CreatePkiAlert
+  | GetPkiAlert
+  | UpdatePkiAlert
+  | DeletePkiAlert
+  | CreatePkiCollection
+  | GetPkiCollection
+  | UpdatePkiCollection
+  | DeletePkiCollection
+  | GetPkiCollectionItems
+  | AddPkiCollectionItem
+  | DeletePkiCollectionItem
+  | OrgAdminAccessProjectEvent
+  | CreateCertificateTemplate
+  | UpdateCertificateTemplate
+  | GetCertificateTemplate
+  | DeleteCertificateTemplate;
 
 export type AuditLog = {
   id: string;

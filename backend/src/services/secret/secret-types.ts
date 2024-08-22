@@ -11,6 +11,12 @@ import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/se
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { ActorType } from "../auth/auth-type";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
+
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
@@ -143,12 +149,14 @@ export type TGetSecretsRawDTO = {
   environment: string;
   includeImports?: boolean;
   recursive?: boolean;
+  tagSlugs?: string[];
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {
   secretName: string;
   path: string;
   environment: string;
+  expandSecretReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
@@ -157,13 +165,16 @@ export type TGetASecretRawDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretRawDTO = TProjectPermission & {
+  secretName: string;
   secretPath: string;
   environment: string;
-  secretName: string;
   secretValue: string;
   type: SecretType;
+  tagIds?: string[];
   secretComment?: string;
   skipMultilineEncoding?: boolean;
+  secretReminderRepeatDays?: number | null;
+  secretReminderNote?: string | null;
 };
 
 export type TUpdateSecretRawDTO = TProjectPermission & {
@@ -171,10 +182,16 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   environment: string;
   secretName: string;
   secretValue?: string;
+  newSecretName?: string;
+  secretComment?: string;
   type: SecretType;
+  tagIds?: string[];
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  metadata?: {
+    source?: string;
+  };
 };
 
 export type TDeleteSecretRawDTO = TProjectPermission & {
@@ -186,34 +203,46 @@ export type TDeleteSecretRawDTO = TProjectPermission & {
 
 export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   environment: string;
   secrets: {
     secretKey: string;
     secretValue: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
+    tagIds?: string[];
+    metadata?: {
+      source?: string;
+    };
   }[];
 };
 
 export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   environment: string;
   secrets: {
     secretKey: string;
+    newSecretName?: string;
     secretValue: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean;
+    tagIds?: string[];
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
   }[];
 };
 
 export type TDeleteManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   environment: string;
   secrets: {
     secretKey: string;
+    type?: SecretType;
   }[];
 };
 
@@ -223,11 +252,13 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   secretId: string;
 };
 
+export type TSecretReference = { environment: string; secretPath: string };
+
 export type TFnSecretBulkInsert = {
   folderId: string;
   tx?: Knex;
-  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[] }>;
-  secretDAL: Pick<TSecretDALFactory, "insertMany">;
+  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[]; references?: TSecretReference[] }>;
+  secretDAL: Pick<TSecretDALFactory, "insertMany" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -236,8 +267,11 @@ export type TFnSecretBulkInsert = {
 export type TFnSecretBulkUpdate = {
   folderId: string;
   projectId: string;
-  inputSecrets: { filter: Partial<TSecrets>; data: TSecretsUpdate & { tags?: string[] } }[];
-  secretDAL: Pick<TSecretDALFactory, "bulkUpdate">;
+  inputSecrets: {
+    filter: Partial<TSecrets>;
+    data: TSecretsUpdate & { tags?: string[]; references?: TSecretReference[] };
+  }[];
+  secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "upsertSecretReferences">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "deleteTagsManySecret">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -259,6 +293,10 @@ export type TFnSecretBulkDelete = {
   inputSecrets: Array<{ type: SecretType; secretBlindIndex: string }>;
   actorId: string;
   tx?: Knex;
+  secretDAL: Pick<TSecretDALFactory, "deleteMany">;
+  secretQueueService: {
+    removeSecretReminder: (data: TRemoveSecretReminderDTO) => Promise<void>;
+  };
 };
 
 export type TFnSecretBlindIndexCheck = {
@@ -272,6 +310,7 @@ export type TFnSecretBlindIndexCheck = {
 
 // when blind index is already present
 export type TFnSecretBlindIndexCheckV2 = {
+  secretDAL: Pick<TSecretDALFactory, "findByBlindIndexes">;
   folderId: string;
   userId?: string;
   inputSecrets: Array<{ secretBlindIndex: string; type?: SecretType }>;
@@ -294,6 +333,8 @@ export type TRemoveSecretReminderDTO = {
   repeatDays: number;
 };
 
+export type TBackFillSecretReferencesDTO = TProjectPermission;
+
 // ---
 
 export type TCreateManySecretsRawFnFactory = {
@@ -305,6 +346,13 @@ export type TCreateManySecretsRawFnFactory = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
+  >;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
 };
 
 export type TCreateManySecretsRawFn = {
@@ -334,6 +382,13 @@ export type TUpdateManySecretsRawFnFactory = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany"
+  >;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
 };
 
 export type TUpdateManySecretsRawFn = {
@@ -356,3 +411,44 @@ export type TUpdateManySecretsRawFn = {
   }[];
   userId?: string;
 };
+
+export enum SecretOperations {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
+export type TSyncSecretsDTO<T extends boolean = false> = {
+  _deDupeQueue?: Record<string, boolean>;
+  _deDupeReplicationQueue?: Record<string, boolean>;
+  _depth?: number;
+  secretPath: string;
+  projectId: string;
+  environmentSlug: string;
+  // cases for just doing sync integration and webhook
+  excludeReplication?: T;
+} & (T extends true
+  ? object
+  : {
+      actor: ActorType;
+      actorId: string;
+      // used for import creation to trigger replication
+      pickOnlyImportIds?: string[];
+    });
+
+export type TMoveSecretsDTO = {
+  projectSlug: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  shouldOverwrite: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export enum SecretProtectionType {
+  Approval = "approval",
+  Direct = "direct"
+}
+
+export type TStartSecretsV2MigrationDTO = TProjectPermission;

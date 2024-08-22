@@ -2,17 +2,43 @@ export { identityAuthToNameMap } from "./constants";
 export { IdentityAuthMethod } from "./enums";
 export {
   useAddIdentityAwsAuth,
+  useAddIdentityAzureAuth,
+  useAddIdentityGcpAuth,
+  useAddIdentityKubernetesAuth,
+  useAddIdentityOidcAuth,
+  useAddIdentityTokenAuth,
   useAddIdentityUniversalAuth,
   useCreateIdentity,
   useCreateIdentityUniversalAuthClientSecret,
+  useCreateTokenIdentityTokenAuth,
   useDeleteIdentity,
+  useDeleteIdentityAwsAuth,
+  useDeleteIdentityAzureAuth,
+  useDeleteIdentityGcpAuth,
+  useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOidcAuth,
+  useDeleteIdentityTokenAuth,
+  useDeleteIdentityUniversalAuth,
+  useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret,
   useUpdateIdentity,
   useUpdateIdentityAwsAuth,
-  useUpdateIdentityUniversalAuth
-} from "./mutations";
+  useUpdateIdentityAzureAuth,
+  useUpdateIdentityGcpAuth,
+  useUpdateIdentityKubernetesAuth,
+  useUpdateIdentityOidcAuth,
+  useUpdateIdentityTokenAuth,
+  useUpdateIdentityTokenAuthToken,
+  useUpdateIdentityUniversalAuth} from "./mutations";
 export {
   useGetIdentityAwsAuth,
+  useGetIdentityAzureAuth,
+  useGetIdentityById,
+  useGetIdentityGcpAuth,
+  useGetIdentityKubernetesAuth,
+  useGetIdentityOidcAuth,
+  useGetIdentityProjectMemberships,
+  useGetIdentityTokenAuth,
+  useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets
-} from "./queries";
+  useGetIdentityUniversalAuthClientSecrets} from "./queries";

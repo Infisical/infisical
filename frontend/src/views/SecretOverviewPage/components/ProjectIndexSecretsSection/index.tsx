@@ -1,1 +1,0 @@
-export { ProjectIndexSecretsSection } from "./ProjectIndexSecretsSection";

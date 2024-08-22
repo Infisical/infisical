@@ -12,6 +12,7 @@ import {
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
@@ -19,6 +20,7 @@ import { groupBy } from "@app/lib/fn";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
+import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
@@ -34,7 +36,9 @@ import {
   TAddUsersToWorkspaceNonE2EEDTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
+  TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
+  TLeaveProjectDTO,
   TUpdateProjectMembershipDTO
 } from "./project-membership-types";
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
@@ -52,6 +56,8 @@ type TProjectMembershipServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  groupProjectDAL: TGroupProjectDALFactory;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -64,8 +70,10 @@ export const projectMembershipServiceFactory = ({
   projectRoleDAL,
   projectBotDAL,
   orgDAL,
+  projectUserAdditionalPrivilegeDAL,
   userDAL,
   userGroupMembershipDAL,
+  groupProjectDAL,
   projectDAL,
   projectKeyDAL,
   licenseService
@@ -75,6 +83,7 @@ export const projectMembershipServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
+    includeGroupMembers,
     projectId
   }: TGetProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission(
@@ -86,7 +95,47 @@ export const projectMembershipServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    return projectMembershipDAL.findAllProjectMembers(projectId);
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+
+    // projectMembers[0].project
+    if (includeGroupMembers) {
+      const groupMembers = await groupProjectDAL.findAllProjectGroupMembers(projectId);
+
+      const allMembers = [
+        ...projectMembers.map((m) => ({ ...m, isGroupMember: false })),
+        ...groupMembers.map((m) => ({ ...m, isGroupMember: true }))
+      ];
+
+      // Ensure the userId is unique
+      const membersIds = new Set(allMembers.map((entity) => entity.user.id));
+      const uniqueMembers = allMembers.filter((entity) => membersIds.has(entity.user.id));
+
+      return uniqueMembers;
+    }
+
+    return projectMembers.map((m) => ({ ...m, isGroupMember: false }));
+  };
+
+  const getProjectMembershipByUsername = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    username
+  }: TGetProjectMembershipByUsernameDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
+    if (!membership) throw new BadRequestError({ message: `Project membership not found for user ${username}` });
+    return membership;
   };
 
   const addUsersToProject = async ({
@@ -232,7 +281,6 @@ export const projectMembershipServiceFactory = ({
     }
 
     const bot = await projectBotDAL.findOne({ projectId });
-
     if (!bot) {
       throw new BadRequestError({
         message: "Failed to find bot"
@@ -479,6 +527,16 @@ export const projectMembershipServiceFactory = ({
     );
 
     const memberships = await projectMembershipDAL.transaction(async (tx) => {
+      await projectUserAdditionalPrivilegeDAL.delete(
+        {
+          projectId,
+          $in: {
+            userId: projectMembers.map((membership) => membership.user.id)
+          }
+        },
+        tx
+      );
+
       const deletedMemberships = await projectMembershipDAL.delete(
         {
           projectId,
@@ -508,12 +566,74 @@ export const projectMembershipServiceFactory = ({
     return memberships;
   };
 
+  const leaveProject = async ({ projectId, actorId, actor }: TLeaveProjectDTO) => {
+    if (actor !== ActorType.USER) {
+      throw new BadRequestError({ message: "Only users can leave projects" });
+    }
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new BadRequestError({ message: "Project not found" });
+
+    if (project.version === ProjectVersion.V1) {
+      throw new BadRequestError({
+        message: "Please ask your project administrator to upgrade the project before leaving."
+      });
+    }
+
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+
+    if (!projectMembers?.length) {
+      throw new BadRequestError({ message: "Failed to find project members" });
+    }
+
+    if (projectMembers.length < 2) {
+      throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
+    }
+
+    const adminMembers = projectMembers.filter(
+      (member) => member.roles.map((r) => r.role).includes("admin") && member.userId !== actorId
+    );
+    if (!adminMembers.length) {
+      throw new BadRequestError({
+        message: "You cannot leave the project as you are the only admin. Promote another user to admin before leaving."
+      });
+    }
+
+    const deletedMembership = await projectMembershipDAL.transaction(async (tx) => {
+      await projectUserAdditionalPrivilegeDAL.delete(
+        {
+          projectId: project.id,
+          userId: actorId
+        },
+        tx
+      );
+      const membership = (
+        await projectMembershipDAL.delete(
+          {
+            projectId: project.id,
+            userId: actorId
+          },
+          tx
+        )
+      )?.[0];
+      return membership;
+    });
+
+    if (!deletedMembership) {
+      throw new BadRequestError({ message: "Failed to leave project" });
+    }
+
+    return deletedMembership;
+  };
+
   return {
     getProjectMemberships,
+    getProjectMembershipByUsername,
     updateProjectMembership,
     addUsersToProjectNonE2EE,
     deleteProjectMemberships,
     deleteProjectMembership, // TODO: Remove this
-    addUsersToProject
+    addUsersToProject,
+    leaveProject
   };
 };

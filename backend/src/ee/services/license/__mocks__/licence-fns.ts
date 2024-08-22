@@ -7,6 +7,8 @@ export const getDefaultOnPremFeatures = () => {
     workspacesUsed: 0,
     memberLimit: null,
     membersUsed: 0,
+    identityLimit: null,
+    identitiesUsed: 0,
     environmentLimit: null,
     environmentsUsed: 0,
     secretVersioning: true,
@@ -25,6 +27,7 @@ export const getDefaultOnPremFeatures = () => {
     trial_end: null,
     has_used_trial: true,
     secretApproval: false,
-    secretRotation: true
+    secretRotation: true,
+    caCrl: false
   };
 };

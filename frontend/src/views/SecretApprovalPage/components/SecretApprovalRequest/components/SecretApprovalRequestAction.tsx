@@ -1,20 +1,23 @@
+import React, { useState } from "react";
 import {
   faCheck,
   faClose,
+  faLandMineOn,
   faLockOpen,
   faSquareCheck,
   faSquareXmark,
-  faUserLock
-} from "@fortawesome/free-solid-svg-icons";
+  faTriangleExclamation,
+  faUserLock} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
 import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
 } from "@app/hooks/api";
+import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 
 type Props = {
   approvalRequestId: string;
@@ -23,8 +26,9 @@ type Props = {
   status: "close" | "open";
   approvals: number;
   canApprove?: boolean;
-  statusChangeByEmail: string;
+  statusChangeByEmail?: string;
   workspaceId: string;
+  enforcementLevel: EnforcementLevel;
 };
 
 export const SecretApprovalRequestAction = ({
@@ -34,7 +38,8 @@ export const SecretApprovalRequestAction = ({
   isMergable,
   approvals,
   statusChangeByEmail,
-  workspaceId,
+  workspaceId,  
+  enforcementLevel,
   canApprove
 }: Props) => {
   const { mutateAsync: performSecretApprovalMerge, isLoading: isMerging } =
@@ -43,11 +48,20 @@ export const SecretApprovalRequestAction = ({
   const { mutateAsync: updateSecretStatusChange, isLoading: isStatusChanging } =
     useUpdateSecretApprovalRequestStatus();
 
+  const [byPassApproval, setByPassApproval] = useState(false);
+  const [bypassReason, setBypassReason] = useState("");
+
+  const isValidBypassReason = (value: string) => {
+    const trimmedValue = value.trim();
+    return trimmedValue.length >= 10;
+  };
+
   const handleSecretApprovalRequestMerge = async () => {
     try {
       await performSecretApprovalMerge({
         id: approvalRequestId,
-        workspaceId
+        workspaceId,
+        bypassReason: byPassApproval ? bypassReason : undefined
       });
       createNotification({
         type: "success",
@@ -82,9 +96,11 @@ export const SecretApprovalRequestAction = ({
     }
   };
 
+  const isSoftEnforcement = enforcementLevel === EnforcementLevel.Soft;
+
   if (!hasMerged && status === "open") {
     return (
-      <div className="flex w-full items-center justify-between">
+      <div className="flex w-full items-start justify-between transition-all">
         <div className="flex items-start space-x-4">
           <FontAwesomeIcon
             icon={isMergable ? faSquareCheck : faSquareXmark}
@@ -96,10 +112,40 @@ export const SecretApprovalRequestAction = ({
               At least {approvals} approving review required
               {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
             </span>
+            {!canApprove && isSoftEnforcement && (
+              <div className="mt-2 flex flex-col space-y-2">
+                <Checkbox
+                  onCheckedChange={(checked) => setByPassApproval(checked === true)}
+                  isChecked={byPassApproval}
+                  id="byPassApproval"
+                  checkIndicatorBg="text-white"
+                  className={twMerge("mr-2", byPassApproval ? "bg-red hover:bg-red-600 border-red" : "")}
+                >
+                  <span className="text-red text-xs">
+                    Merge without waiting for approval (bypass secret change policy)
+                  </span>
+                </Checkbox>
+                {byPassApproval && (
+                  <FormControl
+                    label="Reason for bypass"
+                    className="mt-2"
+                    isRequired
+                    tooltipText="Enter a reason for bypassing the secret change policy"
+                  >
+                    <Input
+                      value={bypassReason}
+                      onChange={(e) => setBypassReason(e.target.value)}
+                      placeholder="Enter reason for bypass (min 10 chars)"
+                      leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
+                    />
+                  </FormControl>
+                )}
+              </div>
+            )}
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          {canApprove ? (
+          {canApprove || isSoftEnforcement ? (
             <>
               <Button
                 onClick={() => handleSecretApprovalStatusChange("close")}
@@ -111,11 +157,14 @@ export const SecretApprovalRequestAction = ({
                 Close request
               </Button>
               <Button
-                leftIcon={<FontAwesomeIcon icon={faCheck} />}
-                isDisabled={!isMergable}
+                leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
+                isDisabled={
+                  (!isMergable && canApprove)
+                  || (!canApprove && isSoftEnforcement && (!byPassApproval || !isValidBypassReason(bypassReason)))
+                }
                 isLoading={isMerging}
                 onClick={handleSecretApprovalRequestMerge}
-                colorSchema="primary"
+                colorSchema={isSoftEnforcement && !canApprove ? "danger" : "primary"}
                 variant="solid"
               >
                 Merge

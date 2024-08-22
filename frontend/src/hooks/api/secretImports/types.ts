@@ -1,5 +1,4 @@
-import { UserWsKeyPair } from "../keys/types";
-import { EncryptedSecret } from "../secrets/types";
+import { SecretV3Raw } from "../secrets/types";
 import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretImport = {
@@ -10,6 +9,11 @@ export type TSecretImport = {
   position: string;
   createdAt: string;
   updatedAt: string;
+  isReserved?: boolean;
+  isReplication?: boolean;
+  isReplicationSuccess?: boolean;
+  replicationStatus?: string;
+  lastReplicated?: string;
 };
 
 export type TGetImportedFoldersByEnvDTO = {
@@ -23,7 +27,7 @@ export type TImportedSecrets = {
   environmentInfo: WorkspaceEnv;
   secretPath: string;
   folderId: string;
-  secrets: EncryptedSecret[];
+  secrets: SecretV3Raw[];
 };
 
 export type TGetSecretImports = {
@@ -34,7 +38,6 @@ export type TGetSecretImports = {
 
 export type TGetSecretImportsAllEnvs = {
   projectId: string;
-  decryptFileKey: UserWsKeyPair;
   path?: string;
   environments: string[];
 };
@@ -43,7 +46,6 @@ export type TGetImportedSecrets = {
   projectId: string;
   environment: string;
   path?: string;
-  decryptFileKey: UserWsKeyPair;
 };
 
 export type TuseGetImportedFoldersByEnv = {
@@ -60,6 +62,7 @@ export type TCreateSecretImportDTO = {
     environment: string;
     path: string;
   };
+  isReplication?: boolean;
 };
 
 export type TUpdateSecretImportDTO = {
@@ -72,6 +75,13 @@ export type TUpdateSecretImportDTO = {
     path: string;
     position: number;
   }>;
+};
+
+export type TResyncSecretReplicationDTO = {
+  id: string;
+  projectId: string;
+  environment: string;
+  path?: string;
 };
 
 export type TDeleteSecretImportDTO = {

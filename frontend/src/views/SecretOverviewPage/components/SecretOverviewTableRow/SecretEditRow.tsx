@@ -1,3 +1,4 @@
+import { useCallback,useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -6,28 +7,37 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, Tooltip } from "@app/components/v2";
+import { DeleteActionModal,IconButton, Tooltip } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { SecretType } from "@app/hooks/api/types";
 
 type Props = {
   defaultValue?: string | null;
   secretName: string;
   secretId?: string;
+  isOverride?: boolean;
   isCreatable?: boolean;
   isVisible?: boolean;
   isImportedSecret: boolean;
   environment: string;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
+  onSecretUpdate: (
+    env: string,
+    key: string,
+    value: string,
+    type?: SecretType,
+    secretId?: string
+  ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
 export const SecretEditRow = ({
   defaultValue,
   isCreatable,
+  isOverride,
   isImportedSecret,
   onSecretUpdate,
   secretName,
@@ -50,6 +60,11 @@ export const SecretEditRow = ({
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  const toggleModal = useCallback(() => {
+    setIsModalOpen((prev) => !prev)
+  }, [])
 
   const handleFormReset = () => {
     reset();
@@ -73,32 +88,50 @@ export const SecretEditRow = ({
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {
-        await onSecretUpdate(environment, secretName, value, secretId);
+        await onSecretUpdate(
+          environment,
+          secretName,
+          value,
+          isOverride ? SecretType.Personal : SecretType.Shared,
+          secretId
+        );
       }
     }
     reset({ value });
   };
 
-  const handleDeleteSecret = async () => {
+  const handleDeleteSecret = useCallback(async () => {
     setIsDeleting.on();
+    setIsModalOpen(false);
+
     try {
       await onSecretDelete(environment, secretName, secretId);
       reset({ value: null });
     } finally {
       setIsDeleting.off();
     }
-  };
+  }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
   return (
     <div className="group flex w-full cursor-text items-center space-x-2">
+
+      <DeleteActionModal
+        isOpen={isModalOpen}
+        onClose={toggleModal}
+        title="Do you want to delete the selected secret?"
+        deleteKey="delete"
+        onDeleteApproved={handleDeleteSecret}
+      />
+
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
-          disabled={isImportedSecret}
+          disabled={isImportedSecret && !defaultValue}
           control={control}
           name="value"
           render={({ field }) => (
             <InfisicalSecretInput
               {...field}
+              isReadOnly={isImportedSecret}
               value={field.value as string}
               key="secret-input"
               isVisible={isVisible}
@@ -177,7 +210,7 @@ export const SecretEditRow = ({
                       variant="plain"
                       ariaLabel="delete-value"
                       className="h-full"
-                      onClick={handleDeleteSecret}
+                      onClick={toggleModal}
                       isDisabled={isDeleting || !isAllowed}
                     >
                       <FontAwesomeIcon icon={faTrash} />

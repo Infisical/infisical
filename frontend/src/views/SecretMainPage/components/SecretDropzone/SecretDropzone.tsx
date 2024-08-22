@@ -16,7 +16,7 @@ import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
+import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
@@ -40,10 +40,9 @@ type Props = {
   isSmaller: boolean;
   environments?: { name: string; slug: string }[];
   workspaceId: string;
-  decryptFileKey: UserWsKeyPair;
   environment: string;
   secretPath: string;
-  secrets?: DecryptedSecret[];
+  secrets?: SecretV3RawSanitized[];
   isProtectedBranch?: boolean;
 };
 
@@ -51,7 +50,6 @@ export const SecretDropzone = ({
   isSmaller,
   environments = [],
   workspaceId,
-  decryptFileKey,
   environment,
   secretPath,
   secrets = [],
@@ -152,7 +150,7 @@ export const SecretDropzone = ({
 
     e.dataTransfer.dropEffect = "copy";
     setDragActive.off();
-    parseFile(e.dataTransfer.files[0]);
+    parseFile(e.dataTransfer.files[0], e.dataTransfer.files[0].type === "application/json");
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -165,29 +163,27 @@ export const SecretDropzone = ({
     try {
       if (Object.keys(create || {}).length) {
         await createSecretBatch({
-          latestFileKey: decryptFileKey!,
           secretPath,
           workspaceId,
           environment,
-          secrets: Object.entries(create).map(([secretName, secData]) => ({
-            type: "shared",
+          secrets: Object.entries(create).map(([secretKey, secData]) => ({
+            type: SecretType.Shared,
             secretComment: secData.comments.join("\n"),
             secretValue: secData.value,
-            secretName
+            secretKey
           }))
         });
       }
       if (Object.keys(update || {}).length) {
         await updateSecretBatch({
-          latestFileKey: decryptFileKey!,
           secretPath,
           workspaceId,
           environment,
-          secrets: Object.entries(update).map(([secretName, secData]) => ({
-            type: "shared",
+          secrets: Object.entries(update).map(([secretKey, secData]) => ({
+            type: SecretType.Shared,
             secretComment: secData.comments.join("\n"),
             secretValue: secData.value,
-            secretName
+            secretKey
           }))
         });
       }
@@ -281,7 +277,6 @@ export const SecretDropzone = ({
                 environment={environment}
                 environments={environments}
                 workspaceId={workspaceId}
-                decryptFileKey={decryptFileKey}
                 secretPath={secretPath}
                 isSmaller={isSmaller}
               />

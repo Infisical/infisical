@@ -9,25 +9,38 @@
 
 import {
   CreateSecretCommand,
+  DescribeSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
+  TagResourceCommand,
+  UntagResourceCommand,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { Octokit } from "@octokit/rest";
-import AWS from "aws-sdk";
+import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
+import { randomUUID } from "crypto";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
 
-import { SecretType, TIntegrationAuths, TIntegrations, TSecrets } from "@app/db/schemas";
+import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { IntegrationInitialSyncBehavior, Integrations, IntegrationUrls } from "./integration-list";
+import { IntegrationMetadataSchema } from "../integration/integration-schema";
+import {
+  IntegrationInitialSyncBehavior,
+  IntegrationMappingBehavior,
+  Integrations,
+  IntegrationUrls
+} from "./integration-list";
 
 const getSecretKeyValuePair = (secrets: Record<string, { value: string | null; comment?: string } | null>) =>
   Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
@@ -247,14 +260,27 @@ const syncSecretsGCPSecretManager = async ({
 const syncSecretsAzureKeyVault = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  createManySecretsRawFn,
+  updateManySecretsRawFn
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
 }) => {
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
+    value: string;
     attributes: {
       enabled: true;
       created: number;
@@ -351,6 +377,83 @@ const syncSecretsAzureKeyVault = async ({
     }
   });
 
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+  const secretKeysToRemoveFromDelete = new Set<string>();
+
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  if (!integration.lastUsed) {
+    Object.keys(res).forEach((key) => {
+      // first time using integration
+      const underscoredKey = key.replace(/-/g, "_");
+
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
+            setSecrets.push({
+              key,
+              value: res[key].value
+            });
+          } else if (secrets[underscoredKey]?.value !== res[key].value) {
+            secretsToUpdate[underscoredKey] = res[key].value;
+            const toEditSecretIndex = setSecrets.findIndex((secret) => secret.key === key);
+            if (toEditSecretIndex >= 0) {
+              setSecrets[toEditSecretIndex].value = res[key].value;
+            }
+          }
+
+          secretKeysToRemoveFromDelete.add(key);
+
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
+            setSecrets.push({
+              key,
+              value: res[key].value
+            });
+          }
+
+          secretKeysToRemoveFromDelete.add(key);
+          break;
+        }
+        default:
+          break;
+      }
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
   const setSecretAzureKeyVault = async ({
     key,
     value,
@@ -418,7 +521,7 @@ const syncSecretsAzureKeyVault = async ({
     });
   }
 
-  for await (const deleteSecret of deleteSecrets) {
+  for await (const deleteSecret of deleteSecrets.filter((secret) => !secretKeysToRemoveFromDelete.has(secret.key))) {
     const { key } = deleteSecret;
     await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
       headers: {
@@ -435,15 +538,20 @@ const syncSecretsAWSParameterStore = async ({
   integration,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  projectId
 }: {
-  integration: TIntegrations;
+  integration: TIntegrations & { secretPath: string; environment: { slug: string } };
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  projectId?: string;
 }) => {
-  if (!accessId) return;
+  let response: { isSynced: boolean; syncMessage: string } | null = null;
 
+  if (!accessId) {
+    throw new Error("AWS access ID is required");
+  }
   const config = new AWS.Config({
     region: integration.region as string,
     credentials: {
@@ -459,69 +567,172 @@ const syncSecretsAWSParameterStore = async ({
   ssm.config.update(config);
 
   const metadata = z.record(z.any()).parse(integration.metadata || {});
+  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
+  logger.info(
+    `getIntegrationSecrets: integration sync triggered for ssm with [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [shouldDisableDelete=${metadata.shouldDisableDelete}]`
+  );
+  // now fetch all aws parameter store secrets
+  let hasNext = true;
+  let nextToken: string | undefined;
+  while (hasNext) {
+    const parameters = await ssm
+      .getParametersByPath({
+        Path: integration.path as string,
+        Recursive: false,
+        WithDecryption: true,
+        MaxResults: 10,
+        NextToken: nextToken
+      })
+      .promise();
 
-  const params = {
-    Path: integration.path as string,
-    Recursive: false,
-    WithDecryption: true
-  };
+    if (parameters.Parameters) {
+      parameters.Parameters.forEach((parameter) => {
+        if (parameter.Name) {
+          const secKey = parameter.Name.substring((integration.path as string).length);
+          awsParameterStoreSecretsObj[secKey] = parameter;
+        }
+      });
+    }
+    hasNext = Boolean(parameters.NextToken);
+    nextToken = parameters.NextToken;
+  }
 
-  const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
-
-  const awsParameterStoreSecretsObj = (parameterList || [])
-    .filter(({ Name }) => Boolean(Name))
-    .reduce(
-      (obj, secret) => ({
-        ...obj,
-        [(secret.Name as string).substring((integration.path as string).length)]: secret
-      }),
-      {} as Record<string, AWS.SSM.Parameter>
-    );
+  logger.info(
+    `getIntegrationSecrets: all fetched keys from AWS SSM [projectId=${projectId}] [environment=${
+      integration.environment.slug
+    }]  [secretPath=${integration.secretPath}] [awsParameterStoreSecretsObj=${Object.keys(
+      awsParameterStoreSecretsObj
+    ).join(",")}]`
+  );
+  logger.info(
+    `getIntegrationSecrets: all secrets from Infisical to send to AWS SSM [projectId=${projectId}] [environment=${
+      integration.environment.slug
+    }]  [secretPath=${integration.secretPath}] [secrets=${Object.keys(secrets).join(",")}]`
+  );
   // Identify secrets to create
-  await Promise.all(
-    Object.keys(secrets).map(async (key) => {
+  // don't use Promise.all() and promise map here
+  // it will cause rate limit
+  for (const key in secrets) {
+    if (Object.hasOwn(secrets, key)) {
       if (!(key in awsParameterStoreSecretsObj)) {
         // case: secret does not exist in AWS parameter store
         // -> create secret
         if (secrets[key].value) {
+          logger.info(
+            `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [key=${key}]`
+          );
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
               Type: "SecureString",
               Value: secrets[key].value,
               ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId }),
-              // Overwrite: true,
-              Tags: metadata.secretAWSTag
-                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
-                    Key: tag.key,
-                    Value: tag.value
-                  }))
-                : []
+              Overwrite: true
+            })
+            .promise();
+          if (metadata.secretAWSTag?.length) {
+            try {
+              await ssm
+                .addTagsToResource({
+                  ResourceType: "Parameter",
+                  ResourceId: `${integration.path}${key}`,
+                  Tags: metadata.secretAWSTag
+                    ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                        Key: tag.key,
+                        Value: tag.value
+                      }))
+                    : []
+                })
+                .promise();
+            } catch (err) {
+              logger.error(
+                err,
+                `getIntegrationSecrets: create secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+              );
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((err as any).code === "AccessDeniedException") {
+                logger.error(
+                  `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+                );
+              }
+
+              response = {
+                isSynced: false,
+                syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+              };
+            }
+          }
+        }
+        // case: secret exists in AWS parameter store
+      } else {
+        logger.info(
+          `getIntegrationSecrets: update secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+        );
+        // -> update secret
+        if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+          await ssm
+            .putParameter({
+              Name: `${integration.path}${key}`,
+              Type: "SecureString",
+              Value: secrets[key].value,
+              Overwrite: true
             })
             .promise();
         }
-        // case: secret exists in AWS parameter store
-      } else if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
-        // case: secret value doesn't match one in AWS parameter store
-        // -> update secret
-        await ssm
-          .putParameter({
-            Name: `${integration.path}${key}`,
-            Type: "SecureString",
-            Value: secrets[key].value,
-            Overwrite: true
-            // Tags: metadata.secretAWSTag ? [{ Key: metadata.secretAWSTag.key, Value: metadata.secretAWSTag.value }] : []
-          })
-          .promise();
+
+        if (awsParameterStoreSecretsObj[key].Name) {
+          try {
+            await ssm
+              .addTagsToResource({
+                ResourceType: "Parameter",
+                ResourceId: awsParameterStoreSecretsObj[key].Name as string,
+                Tags: metadata.secretAWSTag
+                  ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                      Key: tag.key,
+                      Value: tag.value
+                    }))
+                  : []
+              })
+              .promise();
+          } catch (err) {
+            logger.error(
+              err,
+              `getIntegrationSecrets: update secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+            );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((err as any).code === "AccessDeniedException") {
+              logger.error(
+                `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+              );
+            }
+
+            response = {
+              isSynced: false,
+              syncMessage: (err as AWSError)?.message || "Error syncing with AWS Parameter Store"
+            };
+          }
+        }
       }
-    })
-  );
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    }
+  }
 
   if (!metadata.shouldDisableDelete) {
-    // Identify secrets to delete
-    await Promise.all(
-      Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
+    logger.info(
+      `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=1]`
+    );
+    for (const key in awsParameterStoreSecretsObj) {
+      if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
+        logger.info(
+          `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=2]`
+        );
         if (!(key in secrets)) {
+          logger.info(
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=3]`
+          );
           // case:
           // -> delete secret
           await ssm
@@ -529,10 +740,18 @@ const syncSecretsAWSParameterStore = async ({
               Name: awsParameterStoreSecretsObj[key].Name as string
             })
             .promise();
+          logger.info(
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=4]`
+          );
         }
-      })
-    );
+        await new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        });
+      }
+    }
   }
+
+  return response;
 };
 
 /**
@@ -542,59 +761,198 @@ const syncSecretsAWSSecretManager = async ({
   integration,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  awsAssumeRoleArn,
+  projectId
 }: {
   integration: TIntegrations;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  awsAssumeRoleArn: string | null;
+  projectId?: string;
 }) => {
-  let secretsManager;
-  const secKeyVal = getSecretKeyValuePair(secrets);
+  const appCfg = getConfig();
   const metadata = z.record(z.any()).parse(integration.metadata || {});
-  try {
-    if (!accessId) return;
 
-    secretsManager = new SecretsManagerClient({
+  if (!accessId && !awsAssumeRoleArn) {
+    throw new Error("AWS access ID/AWS Assume Role is required");
+  }
+
+  let accessKeyId = "";
+  let secretAccessKey = "";
+  let sessionToken;
+  if (awsAssumeRoleArn) {
+    const client = new STSClient({
       region: integration.region as string,
-      credentials: {
-        accessKeyId: accessId,
-        secretAccessKey: accessToken
-      }
+      credentials:
+        appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
+          ? {
+              accessKeyId: appCfg.CLIENT_ID_AWS_INTEGRATION,
+              secretAccessKey: appCfg.CLIENT_SECRET_AWS_INTEGRATION
+            }
+          : undefined
     });
+    const command = new AssumeRoleCommand({
+      RoleArn: awsAssumeRoleArn,
+      RoleSessionName: `infisical-sm-${randomUUID()}`,
+      DurationSeconds: 900, // 15mins
+      ExternalId: projectId
+    });
+    const response = await client.send(command);
+    if (!response.Credentials?.AccessKeyId || !response.Credentials?.SecretAccessKey)
+      throw new Error("Failed to assume role");
+    accessKeyId = response.Credentials?.AccessKeyId;
+    secretAccessKey = response.Credentials?.SecretAccessKey;
+    sessionToken = response.Credentials?.SessionToken;
+  } else {
+    accessKeyId = accessId as string;
+    secretAccessKey = accessToken;
+  }
 
-    const awsSecretManagerSecret = await secretsManager.send(
-      new GetSecretValueCommand({
-        SecretId: integration.app as string
-      })
-    );
-
-    let awsSecretManagerSecretObj: { [key: string]: AWS.SecretsManager } = {};
-
-    if (awsSecretManagerSecret?.SecretString) {
-      awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
+  const secretsManager = new SecretsManagerClient({
+    region: integration.region as string,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
     }
-    if (!isEqual(awsSecretManagerSecretObj, secKeyVal)) {
-      await secretsManager.send(
-        new UpdateSecretCommand({
-          SecretId: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal)
+  });
+
+  const processAwsSecret = async (
+    secretId: string,
+    secretValue: Record<string, string | null | undefined> | string
+  ) => {
+    try {
+      const awsSecretManagerSecret = await secretsManager.send(
+        new GetSecretValueCommand({
+          SecretId: secretId
         })
       );
+
+      let secretToCompare;
+      if (awsSecretManagerSecret?.SecretString) {
+        if (typeof secretValue === "string") {
+          secretToCompare = awsSecretManagerSecret.SecretString;
+        } else {
+          secretToCompare = JSON.parse(awsSecretManagerSecret.SecretString);
+        }
+      }
+
+      if (!isEqual(secretToCompare, secretValue)) {
+        await secretsManager.send(
+          new UpdateSecretCommand({
+            SecretId: secretId,
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
+          })
+        );
+      }
+
+      const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
+
+      if (secretAWSTag && secretAWSTag.length) {
+        const describedSecret = await secretsManager.send(
+          // requires secretsmanager:DescribeSecret policy
+          new DescribeSecretCommand({
+            SecretId: secretId
+          })
+        );
+
+        if (!describedSecret.Tags) return;
+
+        const integrationTagObj = secretAWSTag.reduce(
+          (acc, item) => {
+            acc[item.key] = item.value;
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        const awsTagObj = (describedSecret.Tags || []).reduce(
+          (acc, item) => {
+            if (item.Key && item.Value) {
+              acc[item.Key] = item.Value;
+            }
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        const tagsToUpdate: { Key: string; Value: string }[] = [];
+        const tagsToDelete: { Key: string; Value: string }[] = [];
+
+        describedSecret.Tags?.forEach((tag) => {
+          if (tag.Key && tag.Value) {
+            if (!(tag.Key in integrationTagObj)) {
+              // delete tag from AWS secret manager
+              tagsToDelete.push({
+                Key: tag.Key,
+                Value: tag.Value
+              });
+            } else if (tag.Value !== integrationTagObj[tag.Key]) {
+              // update tag in AWS secret manager
+              tagsToUpdate.push({
+                Key: tag.Key,
+                Value: integrationTagObj[tag.Key]
+              });
+            }
+          }
+        });
+
+        secretAWSTag?.forEach((tag) => {
+          if (!(tag.key in awsTagObj)) {
+            // create tag in AWS secret manager
+            tagsToUpdate.push({
+              Key: tag.key,
+              Value: tag.value
+            });
+          }
+        });
+
+        if (tagsToUpdate.length) {
+          await secretsManager.send(
+            new TagResourceCommand({
+              SecretId: secretId,
+              Tags: tagsToUpdate
+            })
+          );
+        }
+
+        if (tagsToDelete.length) {
+          await secretsManager.send(
+            new UntagResourceCommand({
+              SecretId: secretId,
+              TagKeys: tagsToDelete.map((tag) => tag.Key)
+            })
+          );
+        }
+      }
+    } catch (err) {
+      // case 1: when AWS manager can't find the specified secret
+      if (err instanceof ResourceNotFoundException && secretsManager) {
+        await secretsManager.send(
+          new CreateSecretCommand({
+            Name: secretId,
+            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
+            ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
+            Tags: metadata.secretAWSTag
+              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
+              : []
+          })
+        );
+        // case 2: something unexpected went wrong, so we'll throw the error to reflect the error in the integration sync status
+      } else {
+        throw err;
+      }
     }
-  } catch (err) {
-    if (err instanceof ResourceNotFoundException && secretsManager) {
-      await secretsManager.send(
-        new CreateSecretCommand({
-          Name: integration.app as string,
-          SecretString: JSON.stringify(secKeyVal),
-          ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
-          Tags: metadata.secretAWSTag
-            ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
-            : []
-        })
-      );
+  };
+
+  if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
+    for await (const [key, value] of Object.entries(secrets)) {
+      await processAwsSecret(key, value.value);
     }
+  } else {
+    await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
   }
 };
 
@@ -604,14 +962,12 @@ const syncSecretsAWSSecretManager = async ({
 const syncSecretsHeroku = async ({
   createManySecretsRawFn,
   updateManySecretsRawFn,
-  integrationDAL,
   integration,
   secrets,
   accessToken
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -713,10 +1069,6 @@ const syncSecretsHeroku = async ({
       }
     }
   );
-
-  await integrationDAL.updateById(integration.id, {
-    lastUsed: new Date()
-  });
 };
 
 /**
@@ -1215,38 +1567,41 @@ const syncSecretsGitHub = async ({
     }
   }
 
-  for await (const encryptedSecret of encryptedSecrets) {
-    if (
-      !(encryptedSecret.name in secrets) &&
-      !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
-      !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
-    ) {
-      switch (integration.scope) {
-        case GithubScope.Org: {
-          await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
-            org: integration.owner as string,
-            secret_name: encryptedSecret.name
-          });
-          break;
-        }
-        case GithubScope.Env: {
-          await octokit.request(
-            "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
-            {
-              repository_id: Number(integration.appId),
-              environment_name: integration.targetEnvironmentId as string,
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  if (metadata.shouldEnableDelete) {
+    for await (const encryptedSecret of encryptedSecrets) {
+      if (
+        !(encryptedSecret.name in secrets) &&
+        !(appendices?.prefix !== undefined && !encryptedSecret.name.startsWith(appendices?.prefix)) &&
+        !(appendices?.suffix !== undefined && !encryptedSecret.name.endsWith(appendices?.suffix))
+      ) {
+        switch (integration.scope) {
+          case GithubScope.Org: {
+            await octokit.request("DELETE /orgs/{org}/actions/secrets/{secret_name}", {
+              org: integration.owner as string,
               secret_name: encryptedSecret.name
-            }
-          );
-          break;
-        }
-        default: {
-          await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-            owner: integration.owner as string,
-            repo: integration.app as string,
-            secret_name: encryptedSecret.name
-          });
-          break;
+            });
+            break;
+          }
+          case GithubScope.Env: {
+            await octokit.request(
+              "DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}",
+              {
+                repository_id: Number(integration.appId),
+                environment_name: integration.targetEnvironmentId as string,
+                secret_name: encryptedSecret.name
+              }
+            );
+            break;
+          }
+          default: {
+            await octokit.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
+              owner: integration.owner as string,
+              repo: integration.app as string,
+              secret_name: encryptedSecret.name
+            });
+            break;
+          }
         }
       }
     }
@@ -1769,13 +2124,13 @@ const syncSecretsGitLab = async ({
     return allEnvVariables;
   };
 
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
   const allEnvVariables = await getAllEnvVariables(integration?.appId as string, accessToken);
   const getSecretsRes: GitLabSecret[] = allEnvVariables
     .filter((secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment)
     .filter((gitLabSecret) => {
       let isValid = true;
 
-      const metadata = z.record(z.any()).parse(integration.metadata);
       if (metadata.secretPrefix && !gitLabSecret.key.startsWith(metadata.secretPrefix)) {
         isValid = false;
       }
@@ -1795,8 +2150,8 @@ const syncSecretsGitLab = async ({
         {
           key,
           value: secrets[key].value,
-          protected: false,
-          masked: false,
+          protected: Boolean(metadata.shouldProtectSecrets),
+          masked: Boolean(metadata.shouldMaskSecrets),
           raw: false,
           environment_scope: integration.targetEnvironment
         },
@@ -1813,7 +2168,9 @@ const syncSecretsGitLab = async ({
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           ...existingSecret,
-          value: secrets[existingSecret.key].value
+          value: secrets[existingSecret.key].value,
+          protected: Boolean(metadata.shouldProtectSecrets),
+          masked: Boolean(metadata.shouldMaskSecrets)
         },
         {
           headers: {
@@ -2170,8 +2527,8 @@ const syncSecretsTerraformCloud = async ({
   accessToken,
   integrationDAL
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integration: TIntegrations & {
     projectId: string;
     environment: {
@@ -2502,7 +2859,9 @@ const syncSecretsHashiCorpVault = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
-  if (!accessId) return;
+  if (!accessId) {
+    throw new Error("Access ID is required");
+  }
 
   interface LoginAppRoleRes {
     auth: {
@@ -2573,18 +2932,21 @@ const syncSecretsCloudflarePages = async ({
     })
   ).data.result.deployment_configs[integration.targetEnvironment as string].env_vars;
 
-  // copy the secrets object, so we can set deleted keys to null
-  const secretsObj = Object.fromEntries(
-    Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
-      key,
-      key in Object.keys(getSecretsRes) ? { type: "secret_text", value: val } : null
-    ])
-  );
+  let secretEntries: [string, object | null][] = Object.entries(getSecretKeyValuePair(secrets)).map(([key, val]) => [
+    key,
+    { type: "secret_text", value: val }
+  ]);
+
+  if (getSecretsRes) {
+    const toDeleteKeys = Object.keys(getSecretsRes).filter((key) => !Object.keys(secrets).includes(key));
+    const toDeleteEntries: [string, null][] = toDeleteKeys.map((key) => [key, null]);
+    secretEntries = [...secretEntries, ...toDeleteEntries];
+  }
 
   const data = {
     deployment_configs: {
       [integration.targetEnvironment as string]: {
-        env_vars: secretsObj
+        env_vars: Object.fromEntries(secretEntries)
       }
     }
   };
@@ -2599,6 +2961,20 @@ const syncSecretsCloudflarePages = async ({
       }
     }
   );
+
+  const metadata = z.record(z.any()).parse(integration.metadata);
+  if (metadata.shouldAutoRedeploy) {
+    await request.post(
+      `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}/deployments`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    );
+  }
 };
 
 /**
@@ -2862,7 +3238,7 @@ const syncSecretsDigitalOceanAppPlatform = async ({
       spec: {
         name: integration.app,
         ...appSettings,
-        envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value }))
+        envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value, type: "SECRET" }))
       }
     },
     {
@@ -3204,6 +3580,82 @@ const syncSecretsHasuraCloud = async ({
   }
 };
 
+/** Sync/push [secrets] to Rundeck
+ * @param {Object} obj
+ * @param {TIntegrations} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Rundeck integration
+ */
+const syncSecretsRundeck = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  interface RundeckSecretResource {
+    name: string;
+  }
+  interface RundeckSecretsGetRes {
+    resources: RundeckSecretResource[];
+  }
+
+  let existingRundeckSecrets: string[] = [];
+
+  try {
+    const listResult = await request.get<RundeckSecretsGetRes>(
+      `${integration.url}/api/44/storage/${integration.path}`,
+      {
+        headers: {
+          "X-Rundeck-Auth-Token": accessToken
+        }
+      }
+    );
+
+    existingRundeckSecrets = listResult.data.resources.map((res) => res.name);
+  } catch (err) {
+    logger.info("No existing rundeck secrets");
+  }
+
+  try {
+    for await (const [key, value] of Object.entries(secrets)) {
+      if (existingRundeckSecrets.includes(key)) {
+        await request.put(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      } else {
+        await request.post(`${integration.url}/api/44/storage/${integration.path}/${key}`, value.value, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken,
+            "Content-Type": "application/x-rundeck-data-password"
+          }
+        });
+      }
+    }
+
+    for await (const existingSecret of existingRundeckSecrets) {
+      if (!(existingSecret in secrets)) {
+        await request.delete(`${integration.url}/api/44/storage/${integration.path}/${existingSecret}`, {
+          headers: {
+            "X-Rundeck-Auth-Token": accessToken
+          }
+        });
+      }
+    }
+  } catch (err: unknown) {
+    throw new Error(
+      `Ensure that the provided Rundeck URL is accessible by Infisical and that the linked API token has sufficient permissions.\n\n${
+        (err as Error).message
+      }`
+    );
+  }
+};
+
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
  *
@@ -3219,10 +3671,12 @@ export const syncIntegrationSecrets = async ({
   secrets,
   accessId,
   accessToken,
-  appendices
+  awsAssumeRoleArn,
+  appendices,
+  projectId
 }: {
-  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
-  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<TSecrets & { _id: string }>>;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
   integration: TIntegrations & {
     projectId: string;
@@ -3236,9 +3690,13 @@ export const syncIntegrationSecrets = async ({
   integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
+  awsAssumeRoleArn: string | null;
   accessToken: string;
   appendices?: { prefix: string; suffix: string };
+  projectId?: string;
 }) => {
+  let response: { isSynced: boolean; syncMessage: string } | null = null;
+
   switch (integration.integration) {
     case Integrations.GCP_SECRET_MANAGER:
       await syncSecretsGCPSecretManager({
@@ -3251,15 +3709,18 @@ export const syncIntegrationSecrets = async ({
       await syncSecretsAzureKeyVault({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        createManySecretsRawFn,
+        updateManySecretsRawFn
       });
       break;
     case Integrations.AWS_PARAMETER_STORE:
-      await syncSecretsAWSParameterStore({
+      response = await syncSecretsAWSParameterStore({
         integration,
         secrets,
         accessId,
-        accessToken
+        accessToken,
+        projectId
       });
       break;
     case Integrations.AWS_SECRET_MANAGER:
@@ -3267,14 +3728,15 @@ export const syncIntegrationSecrets = async ({
         integration,
         secrets,
         accessId,
-        accessToken
+        accessToken,
+        awsAssumeRoleArn,
+        projectId
       });
       break;
     case Integrations.HEROKU:
       await syncSecretsHeroku({
         createManySecretsRawFn,
         updateManySecretsRawFn,
-        integrationDAL,
         integration,
         secrets,
         accessToken
@@ -3470,7 +3932,16 @@ export const syncIntegrationSecrets = async ({
         accessToken
       });
       break;
+    case Integrations.RUNDECK:
+      await syncSecretsRundeck({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
     default:
       throw new BadRequestError({ message: "Invalid integration" });
   }
+
+  return response;
 };

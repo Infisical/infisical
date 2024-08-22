@@ -20,9 +20,9 @@ export const webhookDALFactory = (db: TDbClient) => {
       .select(tx.ref("projectId").withSchema(TableName.Environment))
       .select(selectAllTableCols(TableName.Webhook));
 
-  const find = async (filter: Partial<TWebhooks>, tx?: Knex) => {
+  const find = async (filter: Partial<TWebhooks & { projectId: string }>, tx?: Knex) => {
     try {
-      const docs = await webhookFindQuery(tx || db, filter);
+      const docs = await webhookFindQuery(tx || db.replicaNode(), filter);
       return docs.map(({ envId, envSlug, envName, ...el }) => ({
         ...el,
         envId,
@@ -39,7 +39,7 @@ export const webhookDALFactory = (db: TDbClient) => {
 
   const findOne = async (filter: Partial<TWebhooks>, tx?: Knex) => {
     try {
-      const doc = await webhookFindQuery(tx || db, filter).first();
+      const doc = await webhookFindQuery(tx || db.replicaNode(), filter).first();
       if (!doc) return;
 
       const { envName: name, envSlug: slug, envId: id, ...el } = doc;
@@ -51,7 +51,7 @@ export const webhookDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await webhookFindQuery(tx || db, {
+      const doc = await webhookFindQuery(tx || db.replicaNode(), {
         [`${TableName.Webhook}.id` as "id"]: id
       }).first();
       if (!doc) return;
@@ -65,7 +65,7 @@ export const webhookDALFactory = (db: TDbClient) => {
 
   const findAllWebhooks = async (projectId: string, environment?: string, secretPath?: string, tx?: Knex) => {
     try {
-      const webhooks = await (tx || db)(TableName.Webhook)
+      const webhooks = await (tx || db.replicaNode())(TableName.Webhook)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where((qb) => {
           if (environment) {

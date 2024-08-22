@@ -6,7 +6,7 @@ import tweetnacl from "tweetnacl-util";
 
 import { TUserEncryptionKeys } from "@app/db/schemas";
 
-import { decryptSymmetric, encryptAsymmetric, encryptSymmetric } from "./encryption";
+import { decryptSymmetric128BitHexKeyUTF8, encryptAsymmetric, encryptSymmetric } from "./encryption";
 
 export const generateSrpServerKey = async (salt: string, verifier: string) => {
   // eslint-disable-next-line new-cap
@@ -97,30 +97,55 @@ export const generateUserSrpKeys = async (email: string, password: string) => {
   };
 };
 
-export const getUserPrivateKey = async (password: string, user: TUserEncryptionKeys) => {
-  const derivedKey = await argon2.hash(password, {
-    salt: Buffer.from(user.salt),
-    memoryCost: 65536,
-    timeCost: 3,
-    parallelism: 1,
-    hashLength: 32,
-    type: argon2.argon2id,
-    raw: true
-  });
-  if (!derivedKey) throw new Error("Failed to derive key from password");
-  const key = decryptSymmetric({
-    ciphertext: user.protectedKey!,
-    iv: user.protectedKeyIV!,
-    tag: user.protectedKeyTag!,
-    key: derivedKey.toString("base64")
-  });
-  const privateKey = decryptSymmetric({
-    ciphertext: user.encryptedPrivateKey,
-    iv: user.iv,
-    tag: user.tag,
-    key
-  });
-  return privateKey;
+export const getUserPrivateKey = async (
+  password: string,
+  user: Pick<
+    TUserEncryptionKeys,
+    | "protectedKeyTag"
+    | "protectedKey"
+    | "protectedKeyIV"
+    | "encryptedPrivateKey"
+    | "iv"
+    | "salt"
+    | "tag"
+    | "encryptionVersion"
+  >
+) => {
+  if (user.encryptionVersion === 1) {
+    return decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: user.encryptedPrivateKey,
+      iv: user.iv,
+      tag: user.tag,
+      key: password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
+    });
+  }
+  if (user.encryptionVersion === 2 && user.protectedKey && user.protectedKeyIV && user.protectedKeyTag) {
+    const derivedKey = await argon2.hash(password, {
+      salt: Buffer.from(user.salt),
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 1,
+      hashLength: 32,
+      type: argon2.argon2id,
+      raw: true
+    });
+    if (!derivedKey) throw new Error("Failed to derive key from password");
+    const key = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: user.protectedKey,
+      iv: user.protectedKeyIV,
+      tag: user.protectedKeyTag,
+      key: derivedKey
+    });
+
+    const privateKey = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: user.encryptedPrivateKey,
+      iv: user.iv,
+      tag: user.tag,
+      key: Buffer.from(key, "hex")
+    });
+    return privateKey;
+  }
+  throw new Error(`GetUserPrivateKey: Encryption version not found`);
 };
 
 export const buildUserProjectKey = async (privateKey: string, publickey: string) => {

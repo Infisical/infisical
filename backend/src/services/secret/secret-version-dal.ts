@@ -13,7 +13,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
   // This will fetch all latest secret versions from a folder
   const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretVersion)
+      const docs = await (tx || db.replicaNode())(TableName.SecretVersion)
         .where(`${TableName.SecretVersion}.folderId`, folderId)
         .join(TableName.Secret, `${TableName.Secret}.id`, `${TableName.SecretVersion}.secretId`)
         .join<TSecretVersions, TSecretVersions & { secretId: string; max: number }>(
@@ -89,7 +89,8 @@ export const secretVersionDALFactory = (db: TDbClient) => {
 
   const findLatestVersionMany = async (folderId: string, secretIds: string[], tx?: Knex) => {
     try {
-      const docs: Array<TSecretVersions & { max: number }> = await (tx || db)(TableName.SecretVersion)
+      if (!secretIds.length) return {};
+      const docs: Array<TSecretVersions & { max: number }> = await (tx || db.replicaNode())(TableName.SecretVersion)
         .where("folderId", folderId)
         .whereIn(`${TableName.SecretVersion}.secretId`, secretIds)
         .join(
@@ -110,8 +111,37 @@ export const secretVersionDALFactory = (db: TDbClient) => {
     }
   };
 
+  const pruneExcessVersions = async () => {
+    try {
+      await db(TableName.SecretVersion)
+        .with("version_cte", (qb) => {
+          void qb
+            .from(TableName.SecretVersion)
+            .select(
+              "id",
+              "folderId",
+              db.raw(
+                `ROW_NUMBER() OVER (PARTITION BY ${TableName.SecretVersion}."secretId" ORDER BY ${TableName.SecretVersion}."createdAt" DESC) AS row_num`
+              )
+            );
+        })
+        .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersion}.folderId`)
+        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+        .join("version_cte", "version_cte.id", `${TableName.SecretVersion}.id`)
+        .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Secret Version Prune"
+      });
+    }
+  };
+
   return {
     ...secretVersionOrm,
+    pruneExcessVersions,
     findLatestVersionMany,
     bulkUpdate,
     findLatestVersionByFolderId,

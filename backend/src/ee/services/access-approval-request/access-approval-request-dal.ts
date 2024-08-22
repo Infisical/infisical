@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessApprovalRequestsSchema, TableName, TAccessApprovalRequests } from "@app/db/schemas";
+import { AccessApprovalRequestsSchema, TableName, TAccessApprovalRequests, TUsers } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
@@ -14,7 +14,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findRequestsWithPrivilegeByPolicyIds = async (policyIds: string[]) => {
     try {
-      const docs = await db(TableName.AccessApprovalRequest)
+      const docs = await db
+        .replicaNode()(TableName.AccessApprovalRequest)
         .whereIn(`${TableName.AccessApprovalRequest}.policyId`, policyIds)
 
         .leftJoin(
@@ -39,6 +40,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.AccessApprovalPolicyApprover}.policyId`
         )
 
+        .join<TUsers>(
+          db(TableName.Users).as("requestedByUser"),
+          `${TableName.AccessApprovalRequest}.requestedByUserId`,
+          `requestedByUser.id`
+        )
+
         .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
 
         .select(selectAllTableCols(TableName.AccessApprovalRequest))
@@ -47,10 +54,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.AccessApprovalPolicy).as("policyName"),
           db.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
           db.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
+          db.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId")
         )
 
-        .select(db.ref("approverId").withSchema(TableName.AccessApprovalPolicyApprover))
+        .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
 
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
@@ -59,15 +67,20 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         )
 
         .select(
-          db.ref("member").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerMemberId"),
+          db.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"),
           db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus")
         )
 
+        // TODO: ADD SUPPORT FOR GROUPS!!!!
         .select(
-          db
-            .ref("projectMembershipId")
-            .withSchema(TableName.ProjectUserAdditionalPrivilege)
-            .as("privilegeMembershipId"),
+          db.ref("email").withSchema("requestedByUser").as("requestedByUserEmail"),
+          db.ref("username").withSchema("requestedByUser").as("requestedByUserUsername"),
+          db.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
+          db.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
+
+          db.ref("userId").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeUserId"),
+          db.ref("projectId").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeMembershipId"),
+
           db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeIsTemporary"),
           db.ref("temporaryMode").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryMode"),
           db.ref("temporaryRange").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryRange"),
@@ -97,11 +110,21 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             name: doc.policyName,
             approvals: doc.policyApprovals,
             secretPath: doc.policySecretPath,
+            enforcementLevel: doc.policyEnforcementLevel,
             envId: doc.policyEnvId
+          },
+          requestedByUser: {
+            userId: doc.requestedByUserId,
+            email: doc.requestedByUserEmail,
+            firstName: doc.requestedByUserFirstName,
+            lastName: doc.requestedByUserLastName,
+            username: doc.requestedByUserUsername
           },
           privilege: doc.privilegeId
             ? {
                 membershipId: doc.privilegeMembershipId,
+                userId: doc.privilegeUserId,
+                projectId: doc.projectId,
                 isTemporary: doc.privilegeIsTemporary,
                 temporaryMode: doc.privilegeTemporaryMode,
                 temporaryRange: doc.privilegeTemporaryRange,
@@ -115,11 +138,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({ reviewerUserId: userId, reviewerStatus: status }) => (userId ? { userId, status } : undefined)
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId }
         ]
       });
 
@@ -143,34 +166,70 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicy}.id`
       )
 
+      .join<TUsers>(
+        db(TableName.Users).as("requestedByUser"),
+        `${TableName.AccessApprovalRequest}.requestedByUserId`,
+        `requestedByUser.id`
+      )
+
       .join(
         TableName.AccessApprovalPolicyApprover,
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
+
+      .join<TUsers>(
+        db(TableName.Users).as("accessApprovalPolicyApproverUser"),
+        `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
+        "accessApprovalPolicyApproverUser.id"
+      )
+
       .leftJoin(
         TableName.AccessApprovalRequestReviewer,
         `${TableName.AccessApprovalRequest}.id`,
         `${TableName.AccessApprovalRequestReviewer}.requestId`
       )
 
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("accessApprovalReviewerUser"),
+        `${TableName.AccessApprovalRequestReviewer}.reviewerUserId`,
+        `accessApprovalReviewerUser.id`
+      )
+
       .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
-        tx.ref("member").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerMemberId"),
+        tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
+        tx.ref("email").withSchema("accessApprovalPolicyApproverUser").as("approverEmail"),
+        tx.ref("username").withSchema("accessApprovalPolicyApproverUser").as("approverUsername"),
+        tx.ref("firstName").withSchema("accessApprovalPolicyApproverUser").as("approverFirstName"),
+        tx.ref("lastName").withSchema("accessApprovalPolicyApproverUser").as("approverLastName"),
+        tx.ref("email").withSchema("requestedByUser").as("requestedByUserEmail"),
+        tx.ref("username").withSchema("requestedByUser").as("requestedByUserUsername"),
+        tx.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
+        tx.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
+
+        tx.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer),
+
         tx.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"),
+
+        tx.ref("email").withSchema("accessApprovalReviewerUser").as("reviewerEmail"),
+        tx.ref("username").withSchema("accessApprovalReviewerUser").as("reviewerUsername"),
+        tx.ref("firstName").withSchema("accessApprovalReviewerUser").as("reviewerFirstName"),
+        tx.ref("lastName").withSchema("accessApprovalReviewerUser").as("reviewerLastName"),
+
         tx.ref("id").withSchema(TableName.AccessApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.AccessApprovalPolicy).as("policyName"),
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.AccessApprovalPolicy).as("policySecretPath"),
-        tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
-        tx.ref("approverId").withSchema(TableName.AccessApprovalPolicyApprover)
+        tx.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
+        tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals")
       );
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const sql = findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db);
+      const sql = findQuery({ [`${TableName.AccessApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
       const docs = await sql;
       const formatedDoc = sqlNestRelationships({
         data: docs,
@@ -183,16 +242,47 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             id: el.policyId,
             name: el.policyName,
             approvals: el.policyApprovals,
-            secretPath: el.policySecretPath
+            secretPath: el.policySecretPath,
+            enforcementLevel: el.policyEnforcementLevel
+          },
+          requestedByUser: {
+            userId: el.requestedByUserId,
+            email: el.requestedByUserEmail,
+            firstName: el.requestedByUserFirstName,
+            lastName: el.requestedByUserLastName,
+            username: el.requestedByUserUsername
           }
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({
+              reviewerUserId: userId,
+              reviewerStatus: status,
+              reviewerEmail: email,
+              reviewerLastName: lastName,
+              reviewerUsername: username,
+              reviewerFirstName: firstName
+            }) => (userId ? { userId, status, email, firstName, lastName, username } : undefined)
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          {
+            key: "approverUserId",
+            label: "approvers" as const,
+            mapper: ({
+              approverUserId,
+              approverEmail: email,
+              approverUsername: username,
+              approverLastName: lastName,
+              approverFirstName: firstName
+            }) => ({
+              userId: approverUserId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
+          }
         ]
       });
       if (!formatedDoc?.[0]) return;
@@ -207,7 +297,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
   const getCount = async ({ projectId }: { projectId: string }) => {
     try {
-      const accessRequests = await db(TableName.AccessApprovalRequest)
+      const accessRequests = await db
+        .replicaNode()(TableName.AccessApprovalRequest)
         .leftJoin(
           TableName.AccessApprovalPolicy,
           `${TableName.AccessApprovalRequest}.policyId`,
@@ -229,7 +320,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         .where(`${TableName.Environment}.projectId`, projectId)
         .select(selectAllTableCols(TableName.AccessApprovalRequest))
         .select(db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"))
-        .select(db.ref("member").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerMemberId"));
+        .select(db.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"));
 
       const formattedRequests = sqlNestRelationships({
         data: accessRequests,
@@ -239,9 +330,10 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         }),
         childrenMapper: [
           {
-            key: "reviewerMemberId",
+            key: "reviewerUserId",
             label: "reviewers" as const,
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => (member ? { member, status } : undefined)
+            mapper: ({ reviewerUserId: reviewer, reviewerStatus: status }) =>
+              reviewer ? { reviewer, status } : undefined
           }
         ]
       });

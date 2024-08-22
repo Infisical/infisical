@@ -7,9 +7,9 @@ description: "Learn how to use Machine Identities to programmatically interact w
 
 An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
 
-Each identity must authenticate using a supported authentication method like [Universal Auth](/documentation/platform/identities/universal-auth) or [AWS Auth](/documentation/platform/identities/aws-auth) to get back a short-lived access token to be used in subsequent requests.
+Each identity must authenticate with the Infisical API using a supported authentication method like [Token Auth](/documentation/platform/identities/token-auth), [Universal Auth](/documentation/platform/identities/universal-auth), [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), [AWS Auth](/documentation/platform/identities/aws-auth), [Azure Auth](/documentation/platform/identities/azure-auth), or [GCP Auth](/documentation/platform/identities/gcp-auth) to get back a short-lived access token to be used in subsequent requests.
 
-![organization identities](/images/platform/organization/organization-machine-identities.png)
+![Organization Identities](/images/platform/organization/organization-machine-identities.png)
 
 Key Features:
 
@@ -21,24 +21,22 @@ Key Features:
 A typical workflow for using identities consists of four steps:
 
 1. Creating the identity with a name and [role](/documentation/platform/role-based-access-controls) in Organization Access Control > Machine Identities.
-   This step also involves configuring an authentication method for it such as [Universal Auth](/documentation/platform/identities/universal-auth) or [AWS Auth](/documentation/platform/identities/aws-auth).
+   This step also involves configuring an authentication method for it.
 2. Adding the identity to the project(s) you want it to have access to.
 3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
 4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
 
-<Note>
-  Currently, identities can only be used to make authenticated requests to the Infisical API, SDKs, Terraform, Kubernetes Operator, and Infisical Agent. They do not work with clients such as CLI, Ansible look up plugin, etc.
-
-Machine Identity support for the rest of the clients is planned to be released in the current quarter.
-
-</Note>
-
 ## Authentication Methods
 
-To interact with various resources in Infisical, Machine Identities are able to authenticate using:
+To interact with various resources in Infisical, Machine Identities can authenticate with the Infisical API using:
 
-- [Universal Auth](/documentation/platform/identities/universal-auth): A platform-agnostic authentication method that can be configured on an identity suitable to authenticate from any platform/environment.
-- [AWS Auth](/documentation/platform/identities/aws-auth): An AWS-native authentication method for IAM principals like EC2 instances or Lambda functions to authenticate with Infisical.
+- [Token Auth](/documentation/platform/identities/token-auth): A platform-agnostic, simple authentication method suitable to authenticate with Infisical using a token.
+- [Universal Auth](/documentation/platform/identities/universal-auth): A platform-agnostic authentication method suitable to authenticate with Infisical using a Client ID and Client Secret.
+- [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth): A Kubernetes-native authentication method for applications (e.g. pods).
+- [AWS Auth](/documentation/platform/identities/aws-auth): An AWS-native authentication method for AWS services (e.g. EC2, Lambda functions, etc.).
+- [Azure Auth](/documentation/platform/identities/azure-auth): An Azure-native authentication method for Azure resources (e.g. Azure VMs, Azure App Services, Azure Functions, Azure Kubernetes Service, etc.).
+- [GCP Auth](/documentation/platform/identities/gcp-auth): A GCP-native authentication method for GCP resources (e.g. Compute Engine, App Engine, Cloud Run, Google Kubernetes Engine, IAM service accounts, etc.).
+- [OIDC Auth](/documentation/platform/identities/oidc-auth): A platform-agnostic, JWT-based authentication method for workloads using an OpenID Connect identity provider.
 
 ## FAQ
 
@@ -56,6 +54,8 @@ You can learn more about how to do this in the CLI quickstart [here](/cli/usage)
   
   Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
   permission system as user identities, and come with a significantly larger number of configurable authentication and security features.
+  
+  If you're looking for a simple authentication method, similar to service tokens, that can be bound onto an identity, we recommend checking out [Token Auth](/documentation/platform/identities/token-auth).
 </Accordion>
 <Accordion title="Why can I not create, read, update, or delete an identity?">
   There are a few reasons for why this might happen:

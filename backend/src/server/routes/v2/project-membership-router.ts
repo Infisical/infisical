@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PROJECTS } from "@app/lib/api-docs";
+import { PROJECT_USERS } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -22,11 +22,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().describe(PROJECTS.INVITE_MEMBER.projectId)
+        projectId: z.string().describe(PROJECT_USERS.INVITE_MEMBER.projectId)
       }),
       body: z.object({
-        emails: z.string().email().array().default([]).describe(PROJECTS.INVITE_MEMBER.emails),
-        usernames: z.string().array().default([]).describe(PROJECTS.INVITE_MEMBER.usernames)
+        emails: z.string().email().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.emails),
+        usernames: z.string().array().default([]).describe(PROJECT_USERS.INVITE_MEMBER.usernames)
       }),
       response: {
         200: z.object({
@@ -77,11 +77,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().describe(PROJECTS.REMOVE_MEMBER.projectId)
+        projectId: z.string().describe(PROJECT_USERS.REMOVE_MEMBER.projectId)
       }),
       body: z.object({
-        emails: z.string().email().array().default([]).describe(PROJECTS.REMOVE_MEMBER.emails),
-        usernames: z.string().array().default([]).describe(PROJECTS.REMOVE_MEMBER.usernames)
+        emails: z.string().email().array().default([]).describe(PROJECT_USERS.REMOVE_MEMBER.emails),
+        usernames: z.string().array().default([]).describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
       }),
       response: {
         200: z.object({

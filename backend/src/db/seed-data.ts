@@ -33,6 +33,11 @@ export const seedData1 = {
     name: "first project",
     slug: "first-project"
   },
+  projectV3: {
+    id: "77fa7aed-9288-401e-a4c9-3a9430be62a4",
+    name: "first project v2",
+    slug: "first-project-v2"
+  },
   environment: {
     name: "Development",
     slug: "dev"

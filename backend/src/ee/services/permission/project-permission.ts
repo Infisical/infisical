@@ -23,10 +23,17 @@ export enum ProjectPermissionSub {
   IpAllowList = "ip-allowlist",
   Project = "workspace",
   Secrets = "secrets",
+  SecretFolders = "secret-folders",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
-  Identity = "identity"
+  Identity = "identity",
+  CertificateAuthorities = "certificate-authorities",
+  Certificates = "certificates",
+  CertificateTemplates = "certificate-templates",
+  PkiAlerts = "pki-alerts",
+  PkiCollections = "pki-collections",
+  Kms = "kms"
 }
 
 type SubjectFields = {
@@ -38,6 +45,10 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.SecretFolders | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
@@ -53,10 +64,16 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
   | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
+  | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
-  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback];
+  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
 
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
@@ -139,8 +156,36 @@ const buildAdminPermissionRules = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
 
+  // double check if all CRUD are needed for CA and Certificates
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateAuthorities);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateTemplates);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.CertificateTemplates);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateTemplates);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateTemplates);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiCollections);
+
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
+
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
   return rules;
 };
@@ -205,6 +250,19 @@ const buildMemberPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
+  // double check if all CRUD are needed for CA and Certificates
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateTemplates);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+
   return rules;
 };
 
@@ -229,6 +287,8 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
 
   return rules;
 };

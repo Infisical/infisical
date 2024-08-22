@@ -10,6 +10,55 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
+    method: "GET",
+    url: "/:workspaceId/environments/:envId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Get Environment",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        workspaceId: z.string().trim().describe(ENVIRONMENTS.GET.workspaceId),
+        envId: z.string().trim().describe(ENVIRONMENTS.GET.id)
+      }),
+      response: {
+        200: z.object({
+          environment: ProjectEnvironmentsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const environment = await server.services.projectEnv.getEnvironmentById({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.workspaceId,
+        id: req.params.envId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: environment.projectId,
+        event: {
+          type: EventType.GET_ENVIRONMENT,
+          metadata: {
+            id: environment.id
+          }
+        }
+      });
+
+      return { environment };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:workspaceId/environments",
     config: {

@@ -1,6 +1,7 @@
 export enum ProjectVersion {
   V1 = 1,
-  V2 = 2
+  V2 = 2,
+  V3 = 3
 }
 
 export enum ProjectUserMembershipTemporaryMode {
@@ -14,9 +15,13 @@ export type Workspace = {
   orgId: string;
   version: ProjectVersion;
   upgradeStatus: string | null;
+  updatedAt: string;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
+  pitVersionLimit: number;
+  auditLogsRetentionDays: number;
   slug: string;
+  createdAt: string;
 };
 
 export type WorkspaceEnv = {
@@ -45,9 +50,12 @@ export type TGetUpgradeProjectStatusDTO = {
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;
+  kmsKeyId?: string;
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
+export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
+export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
 
 export type DeleteWorkspaceDTO = { workspaceID: string };

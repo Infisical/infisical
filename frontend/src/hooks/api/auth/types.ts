@@ -23,6 +23,11 @@ export type VerifyMfaTokenRes = {
   tag: string;
 };
 
+export type TOauthTokenExchangeDTO = {
+  providerAuthToken: string;
+  email: string;
+};
+
 export type Login1DTO = {
   email: string;
   clientPublicKey: string;
@@ -30,9 +35,11 @@ export type Login1DTO = {
 };
 
 export type Login2DTO = {
+  captchaToken?: string;
   email: string;
   clientProof: string;
   providerAuthToken?: string;
+  password: string;
 };
 
 export type Login1Res = {
@@ -85,6 +92,7 @@ export type CompleteAccountDTO = {
   encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
+  password: string;
 };
 
 export type CompleteAccountSignupDTO = CompleteAccountDTO & {
@@ -100,6 +108,7 @@ export type VerifySignupInviteDTO = {
 };
 
 export type ChangePasswordDTO = {
+  password: string;
   clientProof: string;
   protectedKey: string;
   protectedKeyIV: string;

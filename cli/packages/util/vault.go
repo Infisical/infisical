@@ -11,11 +11,11 @@ func GetCurrentVaultBackend() (string, error) {
 	}
 
 	if configFile.VaultBackendType == "" {
-		return "auto", nil
+		return VAULT_BACKEND_AUTO_MODE, nil
 	}
 
-	if configFile.VaultBackendType != "auto" && configFile.VaultBackendType != "file" {
-		return "auto", nil
+	if configFile.VaultBackendType != VAULT_BACKEND_AUTO_MODE && configFile.VaultBackendType != VAULT_BACKEND_FILE_MODE {
+		return VAULT_BACKEND_AUTO_MODE, nil
 	}
 
 	return configFile.VaultBackendType, nil

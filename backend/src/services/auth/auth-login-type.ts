@@ -12,6 +12,8 @@ export type TLoginClientProofDTO = {
   providerAuthToken?: string;
   ip: string;
   userAgent: string;
+  captchaToken?: string;
+  password?: string;
 };
 
 export type TVerifyMfaTokenDTO = {
@@ -29,4 +31,11 @@ export type TOauthLoginDTO = {
   lastName?: string;
   authMethod: AuthMethod;
   callbackPort?: string;
+};
+
+export type TOauthTokenExchangeDTO = {
+  providerAuthToken: string;
+  ip: string;
+  userAgent: string;
+  email: string;
 };

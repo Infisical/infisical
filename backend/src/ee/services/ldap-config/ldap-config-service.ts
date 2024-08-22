@@ -23,6 +23,8 @@ import {
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -30,7 +32,9 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -50,7 +54,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { testLDAPConfig } from "./ldap-fns";
+import { searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -73,11 +77,19 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userDAL: Pick<
     TUserDALFactory,
-    "create" | "findOne" | "transaction" | "updateById" | "findUserEncKeyByUserIdsBatch" | "find"
+    | "create"
+    | "findOne"
+    | "transaction"
+    | "updateById"
+    | "findUserEncKeyByUserIdsBatch"
+    | "find"
+    | "findUserEncKeyByUserId"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -97,7 +109,9 @@ export const ldapConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   permissionService,
-  licenseService
+  licenseService,
+  tokenService,
+  smtpService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -109,6 +123,7 @@ export const ldapConfigServiceFactory = ({
     url,
     bindDN,
     bindPass,
+    uniqueUserAttribute,
     searchBase,
     searchFilter,
     groupSearchBase,
@@ -187,6 +202,7 @@ export const ldapConfigServiceFactory = ({
       encryptedBindPass,
       bindPassIV,
       bindPassTag,
+      uniqueUserAttribute,
       searchBase,
       searchFilter,
       groupSearchBase,
@@ -209,6 +225,7 @@ export const ldapConfigServiceFactory = ({
     url,
     bindDN,
     bindPass,
+    uniqueUserAttribute,
     searchBase,
     searchFilter,
     groupSearchBase,
@@ -231,7 +248,8 @@ export const ldapConfigServiceFactory = ({
       searchBase,
       searchFilter,
       groupSearchBase,
-      groupSearchFilter
+      groupSearchFilter,
+      uniqueUserAttribute
     };
 
     const orgBot = await orgBotDAL.findOne({ orgId });
@@ -269,7 +287,7 @@ export const ldapConfigServiceFactory = ({
     return ldapConfig;
   };
 
-  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean }) => {
+  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }) => {
     const ldapConfig = await ldapConfigDAL.findOne(filter);
     if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
 
@@ -332,6 +350,7 @@ export const ldapConfigServiceFactory = ({
       url: ldapConfig.url,
       bindDN,
       bindPass,
+      uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
       searchBase: ldapConfig.searchBase,
       searchFilter: ldapConfig.searchFilter,
       groupSearchBase: ldapConfig.groupSearchBase,
@@ -368,6 +387,7 @@ export const ldapConfigServiceFactory = ({
         url: ldapConfig.url,
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
+        uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
         searchBase: ldapConfig.searchBase,
         searchFilter: ldapConfig.searchFilter || "(uid={{username}})",
         // searchAttributes: ["uid", "uidNumber", "givenName", "sn", "mail"],
@@ -398,6 +418,13 @@ export const ldapConfigServiceFactory = ({
   }: TLdapLoginDTO) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
+
+    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
+      throw new BadRequestError({
+        message: "Login with LDAP is disabled by administrator."
+      });
+    }
+
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -422,7 +449,8 @@ export const ldapConfigServiceFactory = ({
               userId: userAlias.userId,
               orgId,
               role: OrgMembershipRole.Member,
-              status: OrgMembershipStatus.Accepted
+              status: OrgMembershipStatus.Accepted,
+              isActive: true
             },
             tx
           );
@@ -437,9 +465,24 @@ export const ldapConfigServiceFactory = ({
         }
       });
     } else {
+      const plan = await licenseService.getPlan(orgId);
+      if (plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
+        // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
+        throw new BadRequestError({
+          message: "Failed to create new member via LDAP due to member limit reached. Upgrade plan to add more members."
+        });
+      }
+
+      if (plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+        throw new BadRequestError({
+          message: "Failed to create new member via LDAP due to member limit reached. Upgrade plan to add more members."
+        });
+      }
+
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
-        if (serverCfg.trustSamlEmails) {
+        if (serverCfg.trustLdapEmails) {
           newUser = await userDAL.findOne(
             {
               email,
@@ -488,11 +531,12 @@ export const ldapConfigServiceFactory = ({
         if (!orgMembership) {
           await orgMembershipDAL.create(
             {
-              userId: userAlias.userId,
+              userId: newUser.id,
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );
@@ -510,6 +554,7 @@ export const ldapConfigServiceFactory = ({
         return newUserAlias;
       });
     }
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
@@ -591,12 +636,14 @@ export const ldapConfigServiceFactory = ({
     });
 
     const isUserCompleted = Boolean(user.isAccepted);
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
 
     const providerAuthToken = jwt.sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
@@ -617,6 +664,22 @@ export const ldapConfigServiceFactory = ({
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
     );
+
+    if (user.email && !user.isEmailVerified) {
+      const token = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: user.id
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [user.email],
+        substitutions: {
+          code: token
+        }
+      });
+    }
 
     return { isUserCompleted, providerAuthToken };
   };
@@ -663,11 +726,25 @@ export const ldapConfigServiceFactory = ({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
       });
 
-    const ldapConfig = await ldapConfigDAL.findOne({
-      id: ldapConfigId,
-      orgId
+    const ldapConfig = await getLdapCfg({
+      orgId,
+      id: ldapConfigId
     });
-    if (!ldapConfig) throw new BadRequestError({ message: "Failed to find organization LDAP data" });
+
+    if (!ldapConfig.groupSearchBase) {
+      throw new BadRequestError({
+        message: "Configure a group search base in your LDAP configuration in order to proceed."
+      });
+    }
+
+    const groupSearchFilter = `(cn=${ldapGroupCN})`;
+    const groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
+
+    if (!groups.some((g) => g.cn === ldapGroupCN)) {
+      throw new BadRequestError({
+        message: "Failed to find LDAP Group CN"
+      });
+    }
 
     const group = await groupDAL.findOne({ slug: groupSlug, orgId });
     if (!group) throw new BadRequestError({ message: "Failed to find group" });

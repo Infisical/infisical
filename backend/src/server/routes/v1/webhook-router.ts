@@ -6,23 +6,26 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { WebhookType } from "@app/services/webhook/webhook-types";
 
-export const sanitizedWebhookSchema = WebhooksSchema.omit({
-  encryptedSecretKey: true,
-  iv: true,
-  tag: true,
-  algorithm: true,
-  keyEncoding: true
-}).merge(
-  z.object({
-    projectId: z.string(),
-    environment: z.object({
-      id: z.string(),
-      name: z.string(),
-      slug: z.string()
-    })
+export const sanitizedWebhookSchema = WebhooksSchema.pick({
+  id: true,
+  secretPath: true,
+  lastStatus: true,
+  lastRunErrorMessage: true,
+  isDisabled: true,
+  createdAt: true,
+  updatedAt: true,
+  envId: true,
+  type: true
+}).extend({
+  projectId: z.string(),
+  environment: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string()
   })
-);
+});
 
 export const registerWebhookRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -33,13 +36,24 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      body: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
-        webhookUrl: z.string().url().trim(),
-        webhookSecretKey: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash)
-      }),
+      body: z
+        .object({
+          type: z.nativeEnum(WebhookType).default(WebhookType.GENERAL),
+          workspaceId: z.string().trim(),
+          environment: z.string().trim(),
+          webhookUrl: z.string().url().trim(),
+          webhookSecretKey: z.string().trim().optional(),
+          secretPath: z.string().trim().default("/").transform(removeTrailingSlash)
+        })
+        .superRefine((data, ctx) => {
+          if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Incoming Webhook URL is invalid.",
+              path: ["webhookUrl"]
+            });
+          }
+        }),
       response: {
         200: z.object({
           message: z.string(),
@@ -66,8 +80,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             environment: webhook.environment.slug,
             webhookId: webhook.id,
             isDisabled: webhook.isDisabled,
-            secretPath: webhook.secretPath,
-            webhookUrl: webhook.url
+            secretPath: webhook.secretPath
           }
         }
       });
@@ -116,8 +129,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             environment: webhook.environment.slug,
             webhookId: webhook.id,
             isDisabled: webhook.isDisabled,
-            secretPath: webhook.secretPath,
-            webhookUrl: webhook.url
+            secretPath: webhook.secretPath
           }
         }
       });
@@ -156,8 +168,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             environment: webhook.environment.slug,
             webhookId: webhook.id,
             isDisabled: webhook.isDisabled,
-            secretPath: webhook.secretPath,
-            webhookUrl: webhook.url
+            secretPath: webhook.secretPath
           }
         }
       });
@@ -216,7 +227,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          webhooks: sanitizedWebhookSchema.array()
+          webhooks: sanitizedWebhookSchema.extend({ url: z.string() }).array()
         })
       }
     },

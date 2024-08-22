@@ -29,7 +29,8 @@ export async function seed(knex: Knex): Promise<void> {
       role: OrgMembershipRole.Admin,
       orgId: org.id,
       status: OrgMembershipStatus.Accepted,
-      userId: user.id
+      userId: user.id,
+      isActive: true
     }
   ]);
 }

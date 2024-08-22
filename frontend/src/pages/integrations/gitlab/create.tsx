@@ -25,6 +25,7 @@ import {
   ModalContent,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -58,7 +59,9 @@ const schema = yup.object({
   targetAppId: yup.string().required("GitLab project is required"),
   targetEnvironment: yup.string(),
   secretPrefix: yup.string(),
-  secretSuffix: yup.string()
+  secretSuffix: yup.string(),
+  shouldMaskSecrets: yup.boolean(),
+  shouldProtectSecrets: yup.boolean()
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -121,7 +124,7 @@ export default function GitLabCreateIntegrationPage() {
       if (integrationAuthTeams) {
         if (integrationAuthTeams.length > 0) {
           // case: user is part of at least 1 group in GitLab
-          setValue("targetTeamId", String(integrationAuthTeams[0].teamId));
+          setValue("targetTeamId", String(integrationAuthTeams[0].id));
         } else {
           // case: user is not part of any groups in GitLab
           setValue("targetTeamId", "none");
@@ -138,7 +141,9 @@ export default function GitLabCreateIntegrationPage() {
     targetAppId,
     targetEnvironment,
     secretPrefix,
-    secretSuffix
+    secretSuffix,
+    shouldMaskSecrets,
+    shouldProtectSecrets
   }: FormData) => {
     try {
       setIsLoading(true);
@@ -156,7 +161,9 @@ export default function GitLabCreateIntegrationPage() {
         secretPath,
         metadata: {
           secretPrefix,
-          secretSuffix
+          secretSuffix,
+          shouldMaskSecrets,
+          shouldProtectSecrets
         }
       });
 
@@ -312,8 +319,8 @@ export default function GitLabCreateIntegrationPage() {
                         {integrationAuthTeams.length > 0 ? (
                           integrationAuthTeams.map((integrationAuthTeam) => (
                             <SelectItem
-                              value={String(integrationAuthTeam.teamId as string)}
-                              key={`target-team-${String(integrationAuthTeam.teamId)}`}
+                              value={String(integrationAuthTeam.id as string)}
+                              key={`target-team-${String(integrationAuthTeam.id)}`}
                             >
                               {integrationAuthTeam.name}
                             </SelectItem>
@@ -390,6 +397,36 @@ export default function GitLabCreateIntegrationPage() {
               exit={{ opacity: 0, translateX: 30 }}
               className="pb-[14.25rem]"
             >
+              <div className="ml-1">
+                <Controller
+                  control={control}
+                  name="shouldMaskSecrets"
+                  render={({ field: { onChange, value } }) => (
+                    <Switch
+                      id="should-mask-secrets"
+                      onCheckedChange={(isChecked) => onChange(isChecked)}
+                      isChecked={value}
+                    >
+                      <div className="max-w-md">Mark Infisical secrets in Gitlab as &apos;Masked&apos; secrets</div>
+                    </Switch>
+                  )}
+                />
+              </div>
+              <div className="ml-1 mt-4 mb-5">
+                <Controller
+                  control={control}
+                  name="shouldProtectSecrets"
+                  render={({ field: { onChange, value } }) => (
+                    <Switch
+                      id="should-protect-secrets"
+                      onCheckedChange={(isChecked) => onChange(isChecked)}
+                      isChecked={value}
+                    >
+                      Mark Infisical secrets in Gitlab as &apos;Protected&apos; secrets
+                    </Switch>
+                  )}
+                />
+              </div>
               <Controller
                 control={control}
                 name="secretPrefix"
@@ -433,7 +470,7 @@ export default function GitLabCreateIntegrationPage() {
       </Card>
       {/* <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
       <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
-        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
+        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tip</span></div>
         <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in GitLab with secrets from Infisical.</span>
       </div> */}
       <Modal

@@ -10,7 +10,7 @@ import * as yup from "yup";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  DeleteActionModal,
+  // DeleteActionModal,
   EmptyState,
   FormControl,
   IconButton,
@@ -30,32 +30,35 @@ import { useToggle } from "@app/hooks";
 import {
   useCreateIdentityUniversalAuthClientSecret,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets,
-  useRevokeIdentityUniversalAuthClientSecret
+  useGetIdentityUniversalAuthClientSecrets
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
   description: yup.string(),
-  ttl: yup.string(),
+  ttl: yup
+    .string()
+    .test(
+      "is-value-valid",
+      "TTL cannot be greater than 315360000",
+      (value) => Number(value) <= 315360000
+    ),
   numUsesLimit: yup.string()
 });
 
 export type FormData = yup.InferType<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["universalAuthClientSecret", "deleteUniversalAuthClientSecret"]>;
+  popUp: UsePopUpState<["universalAuthClientSecret", "revokeClientSecret"]>;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteUniversalAuthClientSecret"]>,
+    popUpName: keyof UsePopUpState<["revokeClientSecret"]>,
     data?: {
       clientSecretPrefix: string;
       clientSecretId: string;
     }
   ) => void;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<
-      ["universalAuthClientSecret", "deleteUniversalAuthClientSecret"]
-    >,
+    popUpName: keyof UsePopUpState<["universalAuthClientSecret", "revokeClientSecret"]>,
     state?: boolean
   ) => void;
 };
@@ -66,7 +69,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
   handlePopUpToggle
 }: Props) => {
   const { t } = useTranslation();
-  
+
   const [token, setToken] = useState("");
   const [isClientSecretCopied, setIsClientSecretCopied] = useToggle(false);
   const [isClientIdCopied, setIsClientIdCopied] = useToggle(false);
@@ -81,8 +84,6 @@ export const IdentityUniversalAuthClientSecretModal = ({
 
   const { mutateAsync: createClientSecretMutateAsync } =
     useCreateIdentityUniversalAuthClientSecret();
-  const { mutateAsync: revokeClientSecretMutateAsync } =
-    useRevokeIdentityUniversalAuthClientSecret();
 
   const {
     control,
@@ -137,41 +138,6 @@ export const IdentityUniversalAuthClientSecretModal = ({
       console.error(err);
       createNotification({
         text: "Failed to create client secret",
-        type: "error"
-      });
-    }
-  };
-
-  const onDeleteClientSecretSubmit = async ({
-    clientSecretId,
-    clientSecretPrefix
-  }: {
-    clientSecretId: string;
-    clientSecretPrefix: string;
-  }) => {
-    try {
-      if (!popUpData?.identityId) return;
-
-      await revokeClientSecretMutateAsync({
-        identityId: popUpData.identityId,
-        clientSecretId
-      });
-
-      if (token.startsWith(clientSecretPrefix)) {
-        reset();
-        setToken("");
-      }
-
-      handlePopUpToggle("deleteUniversalAuthClientSecret", false);
-
-      createNotification({
-        text: "Successfully deleted client secret",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete client secret",
         type: "error"
       });
     }
@@ -346,7 +312,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
                         <Td>
                           <IconButton
                             onClick={() => {
-                              handlePopUpOpen("deleteUniversalAuthClientSecret", {
+                              handlePopUpOpen("revokeClientSecret", {
                                 clientSecretPrefix,
                                 clientSecretId: id
                               });
@@ -376,26 +342,6 @@ export const IdentityUniversalAuthClientSecretModal = ({
             </TBody>
           </Table>
         </TableContainer>
-        <DeleteActionModal
-          isOpen={popUp.deleteUniversalAuthClientSecret.isOpen}
-          title={`Are you sure want to delete the client secret ${
-            (popUp?.deleteUniversalAuthClientSecret?.data as { clientSecretPrefix: string })
-              ?.clientSecretPrefix || ""
-          }************?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteUniversalAuthClientSecret", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() => {
-            const deleteClientSecretData = popUp?.deleteUniversalAuthClientSecret?.data as {
-              clientSecretId: string;
-              clientSecretPrefix: string;
-            };
-
-            return onDeleteClientSecretSubmit({
-              clientSecretId: deleteClientSecretData.clientSecretId,
-              clientSecretPrefix: deleteClientSecretData.clientSecretPrefix
-            });
-          }}
-        />
       </ModalContent>
     </Modal>
   );

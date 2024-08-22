@@ -1,20 +1,24 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import axios from "axios";
+import { addSeconds, formatISO } from "date-fns";
 import jwt_decode from "jwt-decode";
 
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
-import { Button, Input } from "@app/components/v2";
-import { useUpdateUserAuthMethods } from "@app/hooks/api";
-import { useSelectOrganization } from "@app/hooks/api/auth/queries";
+import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
+import SecurityClient from "@app/components/utilities/SecurityClient";
+import { Button, Input, Spinner } from "@app/components/v2";
+import { SessionStorageKeys } from "@app/const";
+import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
-import { navigateUserToOrg, navigateUserToSelectOrg } from "../../Login.utils";
+import { navigateUserToOrg, useNavigateToSelectOrganization } from "../../Login.utils";
 
 type Props = {
   providerAuthToken: string;
@@ -31,16 +35,117 @@ export const PasswordStep = ({
   setPassword,
   setStep
 }: Props) => {
-  
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
-  const { mutateAsync } = useUpdateUserAuthMethods();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const { mutateAsync: oauthTokenExchange } = useOauthTokenExchange();
 
-  const { callbackPort, isLinkingRequired, authMethod, organizationId } = jwt_decode(
+  const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
+
+  const { callbackPort, organizationId, hasExchangedPrivateKey } = jwt_decode(
     providerAuthToken
   ) as any;
+
+  const handleExchange = async () => {
+    try {
+      setIsLoading(true);
+      const oauthLogin = await oauthTokenExchange({
+        email,
+        providerAuthToken
+      });
+
+      // attemptCliLogin
+      if (oauthLogin.mfaEnabled) {
+        SecurityClient.setMfaToken(oauthLogin.token);
+        // case: login requires MFA step
+        setStep(2);
+        setIsLoading(false);
+        return;
+      }
+      const cliUrl = `http://127.0.0.1:${callbackPort}/`;
+
+      // case: MFA is not enabled
+
+      // unset provider auth token in case it was used
+      SecurityClient.setProviderAuthToken("");
+      // set JWT token
+      SecurityClient.setToken(oauthLogin.token);
+
+      const privateKey = await fetchMyPrivateKey();
+      localStorage.setItem("PRIVATE_KEY", privateKey);
+
+      // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
+      if (organizationId) {
+        const { token: newJwtToken } = await selectOrganization({ organizationId });
+        if (callbackPort) {
+          console.log("organization id was present. new JWT token to be used in CLI:", newJwtToken);
+          const instance = axios.create();
+          const payload = {
+            privateKey,
+            email,
+            JTWToken: newJwtToken
+          };
+          await instance.post(cliUrl, payload).catch(() => {
+            // if error happens to communicate we set the token with an expiry in sessino storage
+            // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+            sessionStorage.setItem(
+              SessionStorageKeys.CLI_TERMINAL_TOKEN,
+              JSON.stringify({
+                expiry: formatISO(addSeconds(new Date(), 30)),
+                data: window.btoa(JSON.stringify(payload))
+              })
+            );
+          });
+          router.push("/cli-redirect");
+          return;
+        }
+
+        await navigateUserToOrg(router, organizationId);
+      }
+      // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
+      // if the user has no orgs, navigate to the create org page
+      else {
+        const userOrgs = await fetchOrganizations();
+
+        // case: user has orgs, so we navigate the user to select an org
+        if (userOrgs.length > 0) {
+          navigateToSelectOrganization(callbackPort);
+        }
+        // case: no orgs found, so we navigate the user to create an org
+        else {
+          await navigateUserToOrg(router);
+        }
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      console.error(err);
+
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        return;
+      }
+
+      createNotification({
+        text: "Login unsuccessful. Double-check your master password and try again.",
+        type: "error"
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (hasExchangedPrivateKey) {
+      handleExchange();
+    }
+  }, []);
+
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
+  const captchaRef = useRef<HCaptcha>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +157,8 @@ export const PasswordStep = ({
         const isCliLoginSuccessful = await attemptCliLogin({
           email,
           password,
-          providerAuthToken
+          providerAuthToken,
+          captchaToken
         });
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
@@ -74,33 +180,43 @@ export const PasswordStep = ({
             );
 
             const instance = axios.create();
-            await instance.post(cliUrl, {
+            const payload = {
               ...isCliLoginSuccessful.loginResponse,
               JTWToken: newJwtToken
+            };
+            await instance.post(cliUrl, payload).catch(() => {
+              // if error happens to communicate we set the token with an expiry in sessino storage
+              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+              sessionStorage.setItem(
+                SessionStorageKeys.CLI_TERMINAL_TOKEN,
+                JSON.stringify({
+                  expiry: formatISO(addSeconds(new Date(), 30)),
+                  data: window.btoa(JSON.stringify(payload))
+                })
+              );
             });
-
-            await navigateUserToOrg(router, organizationId);
+            router.push("/cli-redirect");
+            return;
           }
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
           // if the user has no orgs, navigate to the create org page
-          else {
-            const userOrgs = await fetchOrganizations();
+          const userOrgs = await fetchOrganizations();
 
-            // case: user has orgs, so we navigate the user to select an org
-            if (userOrgs.length > 0) {
-              navigateUserToSelectOrg(router, callbackPort);
-            }
-            // case: no orgs found, so we navigate the user to create an org
-            else {
-              await navigateUserToOrg(router);
-            }
+          // case: user has orgs, so we navigate the user to select an org
+          if (userOrgs.length > 0) {
+            navigateToSelectOrganization(callbackPort);
+          }
+          // case: no orgs found, so we navigate the user to create an org
+          else {
+            await navigateUserToOrg(router);
           }
         }
       } else {
         const loginAttempt = await attemptLogin({
           email,
           password,
-          providerAuthToken
+          providerAuthToken,
+          captchaToken
         });
 
         if (loginAttempt && loginAttempt.success) {
@@ -121,14 +237,6 @@ export const PasswordStep = ({
             type: "success"
           });
 
-          if (isLinkingRequired) {
-            const user = await fetchUserDetails();
-            const newAuthMethods = [...user.authMethods, authMethod];
-            await mutateAsync({
-              authMethods: newAuthMethods
-            });
-          }
-
           // case: organization ID is present from the provider auth token -- navigate directly to the org
           if (organizationId) {
             await navigateUserToOrg(router, organizationId);
@@ -139,37 +247,58 @@ export const PasswordStep = ({
             const userOrgs = await fetchOrganizations();
 
             if (userOrgs.length > 0) {
-              navigateUserToSelectOrg(router);
+              navigateToSelectOrganization();
             } else {
               await navigateUserToOrg(router);
             }
           }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       setIsLoading(false);
+      console.error(err);
+
+      if (err.response.data.error === "User Locked") {
+        createNotification({
+          title: err.response.data.error,
+          text: err.response.data.message,
+          type: "error"
+        });
+        return;
+      }
+
+      if (err.response.data.error === "Captcha Required") {
+        setShouldShowCaptcha(true);
+        return;
+      }
+
       createNotification({
         text: "Login unsuccessful. Double-check your master password and try again.",
         type: "error"
       });
-      console.error(err);
     }
+
+    if (captchaRef.current) {
+      captchaRef.current.resetCaptcha();
+    }
+    setCaptchaToken("");
   };
+
+  if (hasExchangedPrivateKey) {
+    return (
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+        <Spinner />
+        <p className="text-white opacity-80">Loading, please wait</p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleLogin} className="mx-auto h-full w-full max-w-md px-6 pt-8">
       <div className="mb-8">
         <p className="mx-auto mb-4 flex w-max justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-          {isLinkingRequired ? "Link your account" : "What's your Infisical password?"}
+          What&apos;s your Infisical password?
         </p>
-        {isLinkingRequired && (
-          <div className="mx-auto flex w-max flex-col items-center text-xs text-bunker-400">
-            <span className="max-w-sm px-4 text-center duration-200">
-              An existing account without this SSO authentication method enabled was found under the
-              same email. Login with your password to link the account.
-            </span>
-          </div>
-        )}
       </div>
       <div className="relative mx-auto flex max-h-24 w-1/4 w-full min-w-[22rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
         <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
@@ -185,8 +314,19 @@ export const PasswordStep = ({
           />
         </div>
       </div>
+      {shouldShowCaptcha && (
+        <div className="mx-auto mt-4 flex w-full min-w-[22rem] items-center justify-center lg:w-1/6">
+          <HCaptcha
+            theme="dark"
+            sitekey={CAPTCHA_SITE_KEY}
+            onVerify={(token) => setCaptchaToken(token)}
+            ref={captchaRef}
+          />
+        </div>
+      )}
       <div className="mx-auto mt-4 flex w-1/4 w-full min-w-[22rem] items-center justify-center rounded-md text-center lg:w-1/6">
         <Button
+          disabled={shouldShowCaptcha && captchaToken === ""}
           type="submit"
           colorSchema="primary"
           variant="outline_bg"

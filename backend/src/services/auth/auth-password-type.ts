@@ -10,6 +10,7 @@ export type TChangePasswordDTO = {
   salt: string;
   verifier: string;
   tokenVersionId?: string;
+  password: string;
 };
 
 export type TResetPasswordViaBackupKeyDTO = {

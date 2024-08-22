@@ -15,12 +15,12 @@ import (
 	"path"
 	"runtime"
 	"slices"
-	"strings"
 	"sync"
 	"syscall"
 	"text/template"
 	"time"
 
+	infisicalSdk "github.com/infisical/go-sdk"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 
@@ -60,9 +60,26 @@ type UniversalAuth struct {
 	RemoveClientSecretOnRead bool   `yaml:"remove_client_secret_on_read"`
 }
 
-type OAuthConfig struct {
-	ClientID     string `yaml:"client-id"`
-	ClientSecret string `yaml:"client-secret"`
+type KubernetesAuth struct {
+	IdentityID          string `yaml:"identity-id"`
+	ServiceAccountToken string `yaml:"service-account-token"`
+}
+
+type AzureAuth struct {
+	IdentityID string `yaml:"identity-id"`
+}
+
+type GcpIdTokenAuth struct {
+	IdentityID string `yaml:"identity-id"`
+}
+
+type GcpIamAuth struct {
+	IdentityID        string `yaml:"identity-id"`
+	ServiceAccountKey string `yaml:"service-account-key"`
+}
+
+type AwsIamAuth struct {
+	IdentityID string `yaml:"identity-id"`
 }
 
 type Sink struct {
@@ -86,15 +103,6 @@ type Template struct {
 			Timeout int64  `yaml:"timeout"` // Timeout for the command
 		} `yaml:"execute"` // Command to execute once the template has been rendered
 	} `yaml:"config"`
-}
-
-func newAgentTemplateChannels(templates []Template) map[string]chan bool {
-	// we keep each destination as an identifier for various channel
-	templateChannel := make(map[string]chan bool)
-	for _, template := range templates {
-		templateChannel[template.DestinationPath] = make(chan bool)
-	}
-	return templateChannel
 }
 
 type DynamicSecretLease struct {
@@ -257,17 +265,12 @@ func WriteBytesToFile(data *bytes.Buffer, outputPath string) error {
 	return err
 }
 
-func appendAPIEndpoint(address string) string {
-	// Ensure the address does not already end with "/api"
-	if strings.HasSuffix(address, "/api") {
-		return address
+func ParseAuthConfig(authConfigFile []byte, destination interface{}) error {
+	if err := yaml.Unmarshal(authConfigFile, destination); err != nil {
+		return err
 	}
 
-	// Check if the address ends with a slash and append accordingly
-	if address[len(address)-1] == '/' {
-		return address + "api"
-	}
-	return address + "/api"
+	return nil
 }
 
 func ParseAgentConfig(configFile []byte) (*Config, error) {
@@ -290,41 +293,18 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 		rawConfig.Infisical.Address = DEFAULT_INFISICAL_CLOUD_URL
 	}
 
-	config.INFISICAL_URL = appendAPIEndpoint(rawConfig.Infisical.Address)
+	config.INFISICAL_URL = util.AppendAPIEndpoint(rawConfig.Infisical.Address)
 
 	log.Info().Msgf("Infisical instance address set to %s", rawConfig.Infisical.Address)
 
 	config := &Config{
 		Infisical: rawConfig.Infisical,
 		Auth: AuthConfig{
-			Type: rawConfig.Auth.Type,
+			Type:   rawConfig.Auth.Type,
+			Config: rawConfig.Auth.Config,
 		},
 		Sinks:     rawConfig.Sinks,
 		Templates: rawConfig.Templates,
-	}
-
-	// Marshal and then unmarshal the config based on the type
-	configBytes, err := yaml.Marshal(rawConfig.Auth.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	switch rawConfig.Auth.Type {
-	case "universal-auth":
-		var tokenConfig UniversalAuth
-		if err := yaml.Unmarshal(configBytes, &tokenConfig); err != nil {
-			return nil, err
-		}
-
-		config.Auth.Config = tokenConfig
-	case "oauth": // aws, gcp, k8s service account, etc
-		var oauthConfig OAuthConfig
-		if err := yaml.Unmarshal(configBytes, &oauthConfig); err != nil {
-			return nil, err
-		}
-		config.Auth.Config = oauthConfig
-	default:
-		return nil, fmt.Errorf("unknown auth type: %s", rawConfig.Auth.Type)
 	}
 
 	return config, nil
@@ -332,7 +312,7 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 
 func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		res, err := util.GetPlainTextSecretsViaMachineIdentity(accessToken, projectID, envSlug, secretPath, false, false)
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, false, "")
 		if err != nil {
 			return nil, err
 		}
@@ -347,11 +327,26 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 	}
 }
 
+func getSingleSecretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string, string) (models.SingleEnvironmentVariable, error) {
+	return func(projectID, envSlug, secretPath, secretName string) (models.SingleEnvironmentVariable, error) {
+		secret, requestEtag, err := util.GetSinglePlainTextSecretByNameV3(accessToken, projectID, envSlug, secretPath, secretName)
+		if err != nil {
+			return models.SingleEnvironmentVariable{}, err
+		}
+
+		if existingEtag != requestEtag {
+			*currentEtag = requestEtag
+		}
+
+		return secret, nil
+	}
+}
+
 func dynamicSecretTemplateFunction(accessToken string, dynamicSecretManager *DynamicSecretLeaseManager, templateId int) func(...string) (map[string]interface{}, error) {
 	return func(args ...string) (map[string]interface{}, error) {
 		argLength := len(args)
 		if argLength != 4 && argLength != 5 {
-			return nil, fmt.Errorf("Invalid arguments found for dynamic-secret function. Check template %i", templateId)
+			return nil, fmt.Errorf("invalid arguments found for dynamic-secret function. Check template %d", templateId)
 		}
 
 		projectSlug, envSlug, secretPath, slug, ttl := args[0], args[1], args[2], args[3], ""
@@ -378,9 +373,12 @@ func ProcessTemplate(templateId int, templatePath string, data interface{}, acce
 	// custom template function to fetch secrets from Infisical
 	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag)
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretManager, templateId)
+	getSingleSecretFunction := getSingleSecretTemplateFunction(accessToken, existingEtag, currentEtag)
 	funcs := template.FuncMap{
-		"secret":         secretFunction,
-		"dynamic_secret": dynamicSecretFunction,
+		"secret":          secretFunction, // depreciated
+		"listSecrets":     secretFunction,
+		"dynamic_secret":  dynamicSecretFunction,
+		"getSecretByName": getSingleSecretFunction,
 		"minus": func(a, b int) int {
 			return a - b
 		},
@@ -435,32 +433,54 @@ func ProcessBase64Template(templateId int, encodedTemplate string, data interfac
 }
 
 type AgentManager struct {
-	accessToken                    string
-	accessTokenTTL                 time.Duration
-	accessTokenMaxTTL              time.Duration
-	accessTokenFetchedTime         time.Time
-	accessTokenRefreshedTime       time.Time
-	mutex                          sync.Mutex
-	filePaths                      []Sink // Store file paths if needed
-	templates                      []Template
-	dynamicSecretLeases            *DynamicSecretLeaseManager
-	clientIdPath                   string
-	clientSecretPath               string
-	newAccessTokenNotificationChan chan bool
-	removeClientSecretOnRead       bool
-	cachedClientSecret             string
-	exitAfterAuth                  bool
+	accessToken              string
+	accessTokenTTL           time.Duration
+	accessTokenMaxTTL        time.Duration
+	accessTokenFetchedTime   time.Time
+	accessTokenRefreshedTime time.Time
+	mutex                    sync.Mutex
+	filePaths                []Sink // Store file paths if needed
+	templates                []Template
+	dynamicSecretLeases      *DynamicSecretLeaseManager
+
+	authConfigBytes []byte
+	authStrategy    util.AuthStrategyType
+
+	newAccessTokenNotificationChan        chan bool
+	removeUniversalAuthClientSecretOnRead bool
+	cachedUniversalAuthClientSecret       string
+	exitAfterAuth                         bool
+
+	infisicalClient infisicalSdk.InfisicalClientInterface
 }
 
-func NewAgentManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool, exitAfterAuth bool) *AgentManager {
+type NewAgentMangerOptions struct {
+	FileDeposits []Sink
+	Templates    []Template
+
+	AuthConfigBytes []byte
+	AuthStrategy    util.AuthStrategyType
+
+	NewAccessTokenNotificationChan chan bool
+	ExitAfterAuth                  bool
+}
+
+func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
+
 	return &AgentManager{
-		filePaths:                      fileDeposits,
-		templates:                      templates,
-		clientIdPath:                   clientIdPath,
-		clientSecretPath:               clientSecretPath,
-		newAccessTokenNotificationChan: newAccessTokenNotificationChan,
-		removeClientSecretOnRead:       removeClientSecretOnRead,
-		exitAfterAuth:                  exitAfterAuth,
+		filePaths: options.FileDeposits,
+		templates: options.Templates,
+
+		authConfigBytes: options.AuthConfigBytes,
+		authStrategy:    options.AuthStrategy,
+
+		newAccessTokenNotificationChan: options.NewAccessTokenNotificationChan,
+		exitAfterAuth:                  options.ExitAfterAuth,
+
+		infisicalClient: infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
+			SiteUrl:   config.INFISICAL_URL,
+			UserAgent: api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
+		}),
 	}
 
 }
@@ -483,52 +503,164 @@ func (tm *AgentManager) GetToken() string {
 	return tm.accessToken
 }
 
+func (tm *AgentManager) FetchUniversalAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, e error) {
+
+	var universalAuthConfig UniversalAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &universalAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	clientID, err := util.GetEnvVarOrFileContent(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME, universalAuthConfig.ClientIDPath)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get client id: %v", err)
+	}
+
+	clientSecret, err := util.GetEnvVarOrFileContent("INFISICAL_UNIVERSAL_CLIENT_SECRET", universalAuthConfig.ClientSecretPath)
+	if err != nil {
+		if len(tm.cachedUniversalAuthClientSecret) == 0 {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get client secret: %v", err)
+		}
+		clientSecret = tm.cachedUniversalAuthClientSecret
+	}
+
+	tm.cachedUniversalAuthClientSecret = clientSecret
+	if tm.removeUniversalAuthClientSecretOnRead {
+		defer os.Remove(universalAuthConfig.ClientSecretPath)
+	}
+
+	return tm.infisicalClient.Auth().UniversalAuthLogin(clientID, clientSecret)
+
+}
+
+func (tm *AgentManager) FetchKubernetesAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, err error) {
+
+	var kubernetesAuthConfig KubernetesAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &kubernetesAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, kubernetesAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
+	}
+
+	serviceAccountTokenPath := os.Getenv(util.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
+	if serviceAccountTokenPath == "" {
+		serviceAccountTokenPath = kubernetesAuthConfig.ServiceAccountToken
+		if serviceAccountTokenPath == "" {
+			serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+		}
+	}
+
+	return tm.infisicalClient.Auth().KubernetesAuthLogin(identityId, serviceAccountTokenPath)
+
+}
+
+func (tm *AgentManager) FetchAzureAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, err error) {
+
+	var azureAuthConfig AzureAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &azureAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, azureAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
+	}
+
+	return tm.infisicalClient.Auth().AzureAuthLogin(identityId, "")
+
+}
+
+func (tm *AgentManager) FetchGcpIdTokenAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, err error) {
+
+	var gcpIdTokenAuthConfig GcpIdTokenAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &gcpIdTokenAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, gcpIdTokenAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
+	}
+
+	return tm.infisicalClient.Auth().GcpIdTokenAuthLogin(identityId)
+
+}
+
+func (tm *AgentManager) FetchGcpIamAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, err error) {
+
+	var gcpIamAuthConfig GcpIamAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &gcpIamAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, gcpIamAuthConfig.IdentityID)
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
+	}
+
+	serviceAccountKeyPath := os.Getenv(util.INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH_NAME)
+	if serviceAccountKeyPath == "" {
+		// we don't need to read this file, because the service account key path is directly read inside the sdk
+		serviceAccountKeyPath = gcpIamAuthConfig.ServiceAccountKey
+		if serviceAccountKeyPath == "" {
+			return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("gcp service account key path not found")
+		}
+	}
+
+	return tm.infisicalClient.Auth().GcpIamAuthLogin(identityId, serviceAccountKeyPath)
+
+}
+
+func (tm *AgentManager) FetchAwsIamAuthAccessToken() (credential infisicalSdk.MachineIdentityCredential, err error) {
+
+	var awsIamAuthConfig AwsIamAuth
+	if err := ParseAuthConfig(tm.authConfigBytes, &awsIamAuthConfig); err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to parse auth config due to error: %v", err)
+	}
+
+	identityId, err := util.GetEnvVarOrFileContent(util.INFISICAL_MACHINE_IDENTITY_ID_NAME, awsIamAuthConfig.IdentityID)
+
+	if err != nil {
+		return infisicalSdk.MachineIdentityCredential{}, fmt.Errorf("unable to get identity id: %v", err)
+	}
+
+	return tm.infisicalClient.Auth().AwsIamAuthLogin(identityId)
+
+}
+
 // Fetches a new access token using client credentials
 func (tm *AgentManager) FetchNewAccessToken() error {
-	clientID := os.Getenv(util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
-	if clientID == "" {
-		clientIDAsByte, err := ReadFile(tm.clientIdPath)
-		if err != nil {
-			return fmt.Errorf("unable to read client id from file path '%s' due to error: %v", tm.clientIdPath, err)
-		}
-		clientID = string(clientIDAsByte)
+
+	authStrategies := map[util.AuthStrategyType]func() (credential infisicalSdk.MachineIdentityCredential, e error){
+		util.AuthStrategy.UNIVERSAL_AUTH:    tm.FetchUniversalAuthAccessToken,
+		util.AuthStrategy.KUBERNETES_AUTH:   tm.FetchKubernetesAuthAccessToken,
+		util.AuthStrategy.AZURE_AUTH:        tm.FetchAzureAuthAccessToken,
+		util.AuthStrategy.GCP_ID_TOKEN_AUTH: tm.FetchGcpIdTokenAuthAccessToken,
+		util.AuthStrategy.GCP_IAM_AUTH:      tm.FetchGcpIamAuthAccessToken,
+		util.AuthStrategy.AWS_IAM_AUTH:      tm.FetchAwsIamAuthAccessToken,
 	}
 
-	clientSecret := os.Getenv("INFISICAL_UNIVERSAL_CLIENT_SECRET")
-	if clientSecret == "" {
-		clientSecretAsByte, err := ReadFile(tm.clientSecretPath)
-		if err != nil {
-			if len(tm.cachedClientSecret) == 0 {
-				return fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
-			} else {
-				clientSecretAsByte = []byte(tm.cachedClientSecret)
-			}
-		}
-		clientSecret = string(clientSecretAsByte)
+	if _, ok := authStrategies[tm.authStrategy]; !ok {
+		return fmt.Errorf("auth strategy %s not found", tm.authStrategy)
 	}
 
-	// remove client secret after first read
-	if tm.removeClientSecretOnRead {
-		os.Remove(tm.clientSecretPath)
-	}
+	credential, err := authStrategies[tm.authStrategy]()
 
-	// save as cache in memory
-	tm.cachedClientSecret = clientSecret
-
-	loginResponse, err := util.UniversalAuthLogin(clientID, clientSecret)
 	if err != nil {
 		return err
 	}
 
-	accessTokenTTL := time.Duration(loginResponse.AccessTokenTTL * int(time.Second))
-	accessTokenMaxTTL := time.Duration(loginResponse.AccessTokenMaxTTL * int(time.Second))
+	accessTokenTTL := time.Duration(credential.ExpiresIn * int64(time.Second))
+	accessTokenMaxTTL := time.Duration(credential.AccessTokenMaxTTL * int64(time.Second))
 
 	if accessTokenTTL <= time.Duration(5)*time.Second {
-		util.PrintErrorMessageAndExit("At this this, agent does not support refresh of tokens with 5 seconds or less ttl. Please increase access token ttl and try again")
+		util.PrintErrorMessageAndExit("At this time, agent does not support refresh of tokens with 5 seconds or less ttl. Please increase access token ttl and try again")
 	}
 
 	tm.accessTokenFetchedTime = time.Now()
-	tm.SetToken(loginResponse.AccessToken, accessTokenTTL, accessTokenMaxTTL)
+	tm.SetToken(credential.AccessToken, accessTokenTTL, accessTokenMaxTTL)
 
 	return nil
 }
@@ -541,7 +673,7 @@ func (tm *AgentManager) RefreshAccessToken() error {
 		SetRetryWaitTime(5 * time.Second)
 
 	accessToken := tm.GetToken()
-	response, err := api.CallUniversalAuthRefreshAccessToken(httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
+	response, err := api.CallMachineIdentityRefreshAccessToken(httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
 	if err != nil {
 		return err
 	}
@@ -578,6 +710,7 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 				continue
 			}
 		} else if time.Now().After(accessTokenMaxTTLExpiresInTime) {
+			// case: token has reached max ttl and we should re-authenticate entirely (cannot refresh)
 			log.Info().Msgf("token has reached max ttl, attempting to re authenticate...")
 			err := tm.FetchNewAccessToken()
 			if err != nil {
@@ -588,6 +721,7 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 				continue
 			}
 		} else {
+			// case: token ttl has expired, but the token is still within max ttl, so we can refresh
 			log.Info().Msgf("attempting to refresh existing token...")
 			err := tm.RefreshAccessToken()
 			if err != nil {
@@ -784,18 +918,33 @@ var agentCmd = &cobra.Command{
 			return
 		}
 
-		if agentConfig.Auth.Type != "universal-auth" {
-			util.PrintErrorMessageAndExit("Only auth type of 'universal-auth' is supported at this time")
-		}
+		authMethodValid, authStrategy := util.IsAuthMethodValid(agentConfig.Auth.Type, false)
 
-		configUniversalAuthType := agentConfig.Auth.Config.(UniversalAuth)
+		if !authMethodValid {
+			util.PrintErrorMessageAndExit(fmt.Sprintf("The auth method '%s' is not supported.", agentConfig.Auth.Type))
+		}
 
 		tokenRefreshNotifier := make(chan bool)
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 		filePaths := agentConfig.Sinks
-		tm := NewAgentManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead, agentConfig.Infisical.ExitAfterAuth)
+
+		configBytes, err := yaml.Marshal(agentConfig.Auth.Config)
+		if err != nil {
+			log.Error().Msgf("unable to marshal auth config because %v", err)
+			return
+		}
+
+		tm := NewAgentManager(NewAgentMangerOptions{
+			FileDeposits:                   filePaths,
+			Templates:                      agentConfig.Templates,
+			AuthConfigBytes:                configBytes,
+			NewAccessTokenNotificationChan: tokenRefreshNotifier,
+			ExitAfterAuth:                  agentConfig.Infisical.ExitAfterAuth,
+			AuthStrategy:                   authStrategy,
+		})
+
 		tm.dynamicSecretLeases = NewDynamicSecretLeaseManager(sigChan)
 
 		go tm.ManageTokenLifecycle()

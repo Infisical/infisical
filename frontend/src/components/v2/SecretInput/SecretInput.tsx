@@ -15,7 +15,7 @@ const replaceContentWithDot = (str: string) => {
 };
 
 const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
-  if (isImport) return "IMPORTED";
+  if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);
@@ -41,7 +41,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
   // when break is added a line break works properly
-  return formattedContent.concat(<br />);
+  return formattedContent.concat(<br key={`secret-value-${formattedContent.length + 1}`} />);
 };
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -90,7 +90,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             aria-label="secret value"
             ref={ref}
             className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
-            onFocus={() => setIsSecretFocused.on()}
+            onFocus={(evt) => {
+              onFocus?.(evt);
+              setIsSecretFocused.on();
+            }}
             disabled={isDisabled}
             spellCheck={false}
             onBlur={(evt) => {

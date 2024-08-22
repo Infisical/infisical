@@ -1,15 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, TWebhooksInsert } from "@app/db/schemas";
+import { TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import { encryptSymmetric, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
-import { getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
+import { decryptWebhookDetails, getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
 import {
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
@@ -21,12 +21,18 @@ import {
 type TWebhookServiceFactoryDep = {
   webhookDAL: TWebhookDALFactory;
   projectEnvDAL: TProjectEnvDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
 
-export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionService }: TWebhookServiceFactoryDep) => {
+export const webhookServiceFactory = ({
+  webhookDAL,
+  projectEnvDAL,
+  permissionService,
+  projectDAL
+}: TWebhookServiceFactoryDep) => {
   const createWebhook = async ({
     actor,
     actorId,
@@ -36,7 +42,8 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     webhookUrl,
     environment,
     secretPath,
-    webhookSecretKey
+    webhookSecretKey,
+    type
   }: TCreateWebhookDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -50,30 +57,29 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     if (!env) throw new BadRequestError({ message: "Env not found" });
 
     const insertDoc: TWebhooksInsert = {
-      url: webhookUrl,
+      url: "", // deprecated - we are moving away from plaintext URLs
       envId: env.id,
       isDisabled: false,
-      secretPath: secretPath || "/"
+      secretPath: secretPath || "/",
+      type
     };
+
     if (webhookSecretKey) {
-      const appCfg = getConfig();
-      const encryptionKey = appCfg.ENCRYPTION_KEY;
-      const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
-      if (rootEncryptionKey) {
-        const { ciphertext, iv, tag } = encryptSymmetric(webhookSecretKey, rootEncryptionKey);
-        insertDoc.encryptedSecretKey = ciphertext;
-        insertDoc.iv = iv;
-        insertDoc.tag = tag;
-        insertDoc.algorithm = SecretEncryptionAlgo.AES_256_GCM;
-        insertDoc.keyEncoding = SecretKeyEncoding.BASE64;
-      } else if (encryptionKey) {
-        const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8(webhookSecretKey, encryptionKey);
-        insertDoc.encryptedSecretKey = ciphertext;
-        insertDoc.iv = iv;
-        insertDoc.tag = tag;
-        insertDoc.algorithm = SecretEncryptionAlgo.AES_256_GCM;
-        insertDoc.keyEncoding = SecretKeyEncoding.UTF8;
-      }
+      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookSecretKey);
+      insertDoc.encryptedSecretKey = ciphertext;
+      insertDoc.iv = iv;
+      insertDoc.tag = tag;
+      insertDoc.algorithm = algorithm;
+      insertDoc.keyEncoding = encoding;
+    }
+
+    if (webhookUrl) {
+      const { ciphertext, iv, tag, algorithm, encoding } = infisicalSymmetricEncypt(webhookUrl);
+      insertDoc.urlCipherText = ciphertext;
+      insertDoc.urlIV = iv;
+      insertDoc.urlTag = tag;
+      insertDoc.algorithm = algorithm;
+      insertDoc.keyEncoding = encoding;
     }
 
     const webhook = await webhookDAL.create(insertDoc);
@@ -125,13 +131,21 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
+    const project = await projectDAL.findById(webhook.projectId);
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
     let webhookError: string | undefined;
     try {
       await triggerWebhookRequest(
         webhook,
-        getWebhookPayload("test", webhook.projectId, webhook.environment.slug, webhook.secretPath)
+        getWebhookPayload("test", {
+          workspaceName: project.name,
+          workspaceId: webhook.projectId,
+          environment: webhook.environment.slug,
+          secretPath: webhook.secretPath,
+          type: webhook.type
+        })
       );
     } catch (err) {
       webhookError = (err as Error).message;
@@ -162,7 +176,14 @@ export const webhookServiceFactory = ({ webhookDAL, projectEnvDAL, permissionSer
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
-    return webhookDAL.findAllWebhooks(projectId, environment, secretPath);
+    const webhooks = await webhookDAL.findAllWebhooks(projectId, environment, secretPath);
+    return webhooks.map((w) => {
+      const { url } = decryptWebhookDetails(w);
+      return {
+        ...w,
+        url
+      };
+    });
   };
 
   return {

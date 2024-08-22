@@ -21,7 +21,7 @@ export const EmptyState = ({
 }: Props) => (
   <div
     className={twMerge(
-      "flex w-full flex-col items-center bg-mineshaft-800 px-2 pt-6 text-bunker-300",
+      "flex w-full flex-col items-center bg-mineshaft-800 px-2 pt-4 text-bunker-300",
       className
     )}
   >

@@ -8,6 +8,8 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { secretRawSchema } from "../sanitizedSchemas";
+
 export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -29,7 +31,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         import: z.object({
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
           path: z.string().trim().transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.import.path)
-        })
+        }),
+        isReplication: z.boolean().default(false).describe(SECRET_IMPORTS.CREATE.isReplication)
       }),
       response: {
         200: z.object({
@@ -211,6 +214,49 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    method: "POST",
+    url: "/:secretImportId/replication-resync",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      description: "Resync secret replication of secret imports",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretImportId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.secretImportId)
+      }),
+      body: z.object({
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.workspaceId),
+        environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
+        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.UPDATE.path)
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { message } = await server.services.secretImport.resyncSecretImportReplication({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.secretImportId,
+        ...req.body,
+        projectId: req.body.workspaceId
+      });
+
+      return { message };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/",
     config: {
@@ -232,11 +278,9 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         200: z.object({
           message: z.string(),
           secretImports: SecretImportsSchema.omit({ importEnv: true })
-            .merge(
-              z.object({
-                importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
-              })
-            )
+            .extend({
+              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+            })
             .array()
         })
       }
@@ -301,6 +345,50 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getSecretsFromImports({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query,
+        projectId: req.query.workspaceId
+      });
+      return { secrets: importedSecrets };
+    }
+  });
+
+  server.route({
+    url: "/secrets/raw",
+    method: "GET",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      querystring: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              secretPath: z.string(),
+              environment: z.string(),
+              environmentInfo: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              }),
+              folderId: z.string().optional(),
+              secrets: secretRawSchema.array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,

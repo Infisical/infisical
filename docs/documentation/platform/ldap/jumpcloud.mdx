@@ -39,6 +39,7 @@ Prerequisites:
             - Bind DN: The distinguished name of object to bind when performing the user search (`uid=<ldap-user-username>,ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
             - Bind Pass: The password to use along with `Bind DN` when performing the user search.
             - User Search Base / User DN: Base DN under which to perform user search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
+            - Unique User Attribute: The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID` ... If left blank, defaults to `uidNumber`
             - User Search Filter (optional): Template used to construct the LDAP user search filter (`(uid={{username}})`).
             - Group Search Base / Group DN (optional): LDAP search base to use for group membership search (`ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com`).
             - Group Filter (optional): Template used when constructing the group membership query (`(&(objectClass=groupOfNames)(member=uid={{.Username}},ou=Users,o=<your-org-id>,dc=jumpcloud,dc=com))`)

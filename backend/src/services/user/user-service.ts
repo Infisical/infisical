@@ -1,3 +1,5 @@
+import { SecretKeyEncoding } from "@app/db/schemas";
+import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -6,6 +8,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserDALFactory } from "./user-dal";
 
 type TUserServiceFactoryDep = {
@@ -21,10 +24,12 @@ type TUserServiceFactoryDep = {
     | "findOneUserAction"
     | "createUserAction"
     | "findUserEncKeyByUserId"
+    | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -34,6 +39,7 @@ export const userServiceFactory = ({
   userDAL,
   userAliasDAL,
   orgMembershipDAL,
+  projectMembershipDAL,
   tokenService,
   smtpService
 }: TUserServiceFactoryDep) => {
@@ -85,7 +91,7 @@ export const userServiceFactory = ({
         tx
       );
 
-      // check if there are users with the same email.
+      // check if there are verified users with the same email.
       const users = await userDAL.find(
         {
           email,
@@ -134,6 +140,15 @@ export const userServiceFactory = ({
           );
         }
       } else {
+        await userDAL.delete(
+          {
+            email,
+            isAccepted: false,
+            isEmailVerified: false
+          },
+          tx
+        );
+
         // update current user's username to [email]
         await userDAL.updateById(
           user.id,
@@ -186,7 +201,7 @@ export const userServiceFactory = ({
     return user;
   };
 
-  const deleteMe = async (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);
     return user;
   };
@@ -207,15 +222,92 @@ export const userServiceFactory = ({
     return userAction;
   };
 
+  const unlockUser = async (userId: string, token: string) => {
+    await tokenService.validateTokenForUser({
+      userId,
+      code: token,
+      type: TokenType.TOKEN_USER_UNLOCK
+    });
+
+    await userDAL.update(
+      { id: userId },
+      { consecutiveFailedMfaAttempts: 0, isLocked: false, temporaryLockDateEnd: null }
+    );
+  };
+
+  const getUserPrivateKey = async (userId: string) => {
+    const user = await userDAL.findUserEncKeyByUserId(userId);
+    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
+      throw new BadRequestError({ message: "Private key not found. Please login again" });
+    }
+    const privateKey = infisicalSymmetricDecrypt({
+      ciphertext: user.serverEncryptedPrivateKey,
+      tag: user.serverEncryptedPrivateKeyTag,
+      iv: user.serverEncryptedPrivateKeyIV,
+      keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+    });
+
+    return privateKey;
+  };
+
+  const getUserProjectFavorites = async (userId: string, orgId: string) => {
+    const orgMembership = await orgMembershipDAL.findOne({
+      userId,
+      orgId
+    });
+
+    if (!orgMembership) {
+      throw new BadRequestError({
+        message: "User does not belong in the organization."
+      });
+    }
+
+    return { projectFavorites: orgMembership.projectFavorites || [] };
+  };
+
+  const updateUserProjectFavorites = async (userId: string, orgId: string, projectIds: string[]) => {
+    const orgMembership = await orgMembershipDAL.findOne({
+      userId,
+      orgId
+    });
+
+    if (!orgMembership) {
+      throw new BadRequestError({
+        message: "User does not belong in the organization."
+      });
+    }
+
+    const matchingUserProjectMemberships = await projectMembershipDAL.find({
+      userId,
+      $in: {
+        projectId: projectIds
+      }
+    });
+
+    const memberProjectFavorites = matchingUserProjectMemberships.map(
+      (projectMembership) => projectMembership.projectId
+    );
+
+    const updatedOrgMembership = await orgMembershipDAL.updateById(orgMembership.id, {
+      projectFavorites: memberProjectFavorites
+    });
+
+    return updatedOrgMembership.projectFavorites;
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
     toggleUserMfa,
     updateUserName,
     updateAuthMethods,
-    deleteMe,
+    deleteUser,
     getMe,
     createUserAction,
-    getUserAction
+    getUserAction,
+    unlockUser,
+    getUserPrivateKey,
+    getUserProjectFavorites,
+    updateUserProjectFavorites
   };
 };

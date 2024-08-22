@@ -109,6 +109,9 @@ export const permissionServiceFactory = ({
     authMethod: ActorAuthMethod,
     userOrgId?: string
   ) => {
+    // when token is scoped, ensure the passed org id is same as user org id
+    if (userOrgId && userOrgId !== orgId)
+      throw new BadRequestError({ message: "Invalid user token. Scoped to different organization." });
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {

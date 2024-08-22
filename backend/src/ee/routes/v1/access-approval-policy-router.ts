@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { EnforcementLevel } from "@app/lib/types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -16,10 +17,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           name: z.string().optional(),
           secretPath: z.string().trim().default("/"),
           environment: z.string(),
-          approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1)
+          approverUserIds: z.string().array().min(1),
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvals <= data.approverUserIds.length, {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -38,7 +40,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectSlug: req.body.projectSlug,
-        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`
+        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
+        enforcementLevel: req.body.enforcementLevel
       });
       return { approval };
     }
@@ -53,7 +56,16 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema.extend({ approvers: z.string().array(), secretPath: z.string().optional() }).array()
+          approvals: sapPubSchema
+            .extend({
+              userApprovers: z
+                .object({
+                  userId: z.string()
+                })
+                .array(),
+              secretPath: z.string().optional().nullable()
+            })
+            .array()
         })
       }
     },
@@ -66,6 +78,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         projectSlug: req.query.projectSlug
       });
+
       return { approvals };
     }
   });
@@ -114,10 +127,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .trim()
             .optional()
             .transform((val) => (val === "" ? "/" : val)),
-          approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1)
+          approverUserIds: z.string().array().min(1),
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvals <= data.approverUserIds.length, {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),

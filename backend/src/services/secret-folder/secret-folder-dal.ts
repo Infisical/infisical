@@ -169,6 +169,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
           // this is for root condition
           //  if the given folder id is root folder id then intial path is set as / instead of /root
           //  if not root folder the path here will be /<folder name>
+          depth: 1,
           path: db.raw(`CONCAT('/', (CASE WHEN "parentId" is NULL THEN '' ELSE ${TableName.SecretFolder}.name END))`),
           child: db.raw("NULL::uuid"),
           environmentSlug: `${TableName.Environment}.slug`
@@ -185,6 +186,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
               .select({
                 // then we join join this folder name behind previous as we are going from child to parent
                 // the root folder check is used to avoid last / and also root name in folders
+                depth: db.raw("parent.depth + 1"),
                 path: db.raw(
                   `CONCAT( CASE 
                   WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' 
@@ -199,7 +201,7 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
         );
     })
     .select("*")
-    .from<TSecretFolders & { child: string | null; path: string; environmentSlug: string }>("parent");
+    .from<TSecretFolders & { child: string | null; path: string; environmentSlug: string; depth: number }>("parent");
 
 export type TSecretFolderDALFactory = ReturnType<typeof secretFolderDALFactory>;
 // never change this. If u do write a migration for it
@@ -209,7 +211,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   const findBySecretPath = async (projectId: string, environment: string, path: string, tx?: Knex) => {
     try {
-      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, removeTrailingSlash(path))
+      const folder = await sqlFindFolderByPathQuery(
+        tx || db.replicaNode(),
+        projectId,
+        environment,
+        removeTrailingSlash(path)
+      )
         .orderBy("depth", "desc")
         .first();
       if (folder && folder.path !== removeTrailingSlash(path)) {
@@ -228,7 +235,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   // it will stop automatically at /path2
   const findClosestFolder = async (projectId: string, environment: string, path: string, tx?: Knex) => {
     try {
-      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, removeTrailingSlash(path))
+      const folder = await sqlFindFolderByPathQuery(
+        tx || db.replicaNode(),
+        projectId,
+        environment,
+        removeTrailingSlash(path)
+      )
         .orderBy("depth", "desc")
         .first();
       if (!folder) return;
@@ -245,7 +257,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         envId,
         secretPath: removeTrailingSlash(secretPath)
       }));
-      const folders = await sqlFindMultipleFolderByEnvPathQuery(tx || db, formatedQuery);
+      const folders = await sqlFindMultipleFolderByEnvPathQuery(tx || db.replicaNode(), formatedQuery);
       return formatedQuery.map(({ envId, secretPath }) =>
         folders.find(({ path: targetPath, envId: targetEnvId }) => targetPath === secretPath && targetEnvId === envId)
       );
@@ -258,14 +270,25 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   // that is instances in which for a given folderid find the secret path
   const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
     try {
-      const folders = await sqlFindSecretPathByFolderId(tx || db, projectId, folderIds);
+      const folders = await sqlFindSecretPathByFolderId(tx || db.replicaNode(), projectId, folderIds);
 
+      //  travelling all the way from leaf node to root contains real path
       const rootFolders = groupBy(
         folders.filter(({ parentId }) => parentId === null),
         (i) => i.child || i.id // root condition then child and parent will null
       );
+      const actualFolders = groupBy(
+        folders.filter(({ depth }) => depth === 1),
+        (i) => i.id // root condition then child and parent will null
+      );
 
-      return folderIds.map((folderId) => rootFolders[folderId]?.[0]);
+      return folderIds.map((folderId) => {
+        if (!rootFolders[folderId]?.[0]) return;
+
+        const actualId = rootFolders[folderId][0].child || rootFolders[folderId][0].id;
+        const folder = actualFolders[actualId][0];
+        return { ...folder, path: rootFolders[folderId]?.[0].path };
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });
     }
@@ -286,21 +309,44 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const folder = await (tx || db)(TableName.SecretFolder)
+      const folder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .where({ [`${TableName.SecretFolder}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .select(
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName"),
-          db.ref("projectId").withSchema(TableName.Environment)
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("version").withSchema(TableName.Project).as("projectVersion")
         )
         .first();
       if (folder) {
         const { envId, envName, envSlug, ...el } = folder;
-        return { ...el, environment: { envId, envName, envSlug } };
+        return { ...el, environment: { envId, envName, envSlug }, envId };
       }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
+  // special query for project migration
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .select(selectAllTableCols(TableName.SecretFolder))
+        .where({ projectId })
+        .select(
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("version").withSchema(TableName.Project).as("projectVersion")
+        );
+      return folders;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id" });
     }
@@ -313,6 +359,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findById,
     findByManySecretPath,
     findSecretPathByFolderIds,
-    findClosestFolder
+    findClosestFolder,
+    findByProjectId
   };
 };

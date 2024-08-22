@@ -2,6 +2,8 @@ export type SubscriptionPlan = {
   id: string;
   membersUsed: number;
   memberLimit: number;
+  identitiesUsed: number;
+  identityLimit: number;
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number;
@@ -21,18 +23,22 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
+  oidcSSO: boolean;
   scim: boolean;
   ldap: boolean;
   groups: boolean;
   status:
-  | "incomplete"
-  | "incomplete_expired"
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled"
-  | "unpaid"
-  | null;
+    | "incomplete"
+    | "incomplete_expired"
+    | "trialing"
+    | "active"
+    | "past_due"
+    | "canceled"
+    | "unpaid"
+    | null;
   trial_end: number | null;
   has_used_trial: boolean;
+  caCrl: boolean;
+  instanceUserManagement: boolean;
+  externalKms: boolean;
 };

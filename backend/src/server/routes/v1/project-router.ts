@@ -1,22 +1,16 @@
 import { z } from "zod";
 
-import {
-  IntegrationsSchema,
-  ProjectMembershipsSchema,
-  ProjectsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { IntegrationsSchema, ProjectMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
 
-import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
-const projectWithEnv = ProjectsSchema.merge(
+const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
     environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
@@ -65,12 +59,19 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      querystring: z.object({
+        includeGroupMembers: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       params: z.object({
         workspaceId: z.string().trim()
       }),
       response: {
         200: z.object({
           users: ProjectMembershipsSchema.extend({
+            isGroupMember: z.boolean(),
             user: UsersSchema.pick({
               email: true,
               username: true,
@@ -78,6 +79,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               lastName: true,
               id: true
             }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            project: SanitizedProjectSchema.pick({ name: true, id: true }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -104,9 +106,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
+        includeGroupMembers: req.query.includeGroupMembers,
         projectId: req.params.workspaceId,
         actorOrgId: req.permission.orgId
       });
+
       return { users };
     }
   });
@@ -187,7 +191,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema.optional()
+          workspace: SanitizedProjectSchema.optional()
         })
       }
     },
@@ -223,7 +227,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -271,7 +275,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -313,7 +317,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: ProjectsSchema
+          workspace: SanitizedProjectSchema
         })
       }
     },
@@ -329,6 +333,82 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
       return {
         message: "Successfully changed workspace settings",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:workspaceSlug/version-limit",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceSlug: z.string().trim()
+      }),
+      body: z.object({
+        pitVersionLimit: z.number().min(1).max(100)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateVersionLimit({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        pitVersionLimit: req.body.pitVersionLimit,
+        workspaceSlug: req.params.workspaceSlug
+      });
+
+      return {
+        message: "Successfully changed workspace version limit",
+        workspace
+      };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:workspaceSlug/audit-logs-retention",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceSlug: z.string().trim()
+      }),
+      body: z.object({
+        auditLogsRetentionDays: z.number().min(0)
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          workspace: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const workspace = await server.services.project.updateAuditLogsRetention({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        workspaceSlug: req.params.workspaceSlug,
+        auditLogsRetentionDays: req.body.auditLogsRetentionDays
+      });
+
+      return {
+        message: "Successfully updated project's audit logs retention period",
         workspace
       };
     }

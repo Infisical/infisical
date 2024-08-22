@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { SessionStorageKeys } from "@app/const";
 import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
@@ -13,19 +14,31 @@ import {
   OrgUser,
   RenameUserDTO,
   TokenVersion,
-  UpdateOrgUserRoleDTO,
+  TWorkspaceUser,
+  UpdateOrgMembershipDTO,
   User,
   UserEnc
 } from "./types";
 
 export const userKeys = {
   getUser: ["user"] as const,
+  getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
+  userProjectFavorites: (orgId: string) => [{ orgId }, "user-project-favorites"] as const,
+  getOrgMembership: (orgId: string, orgMembershipId: string) =>
+    [{ orgId, orgMembershipId }, "org-membership"] as const,
+  allOrgMembershipProjectMemberships: (orgId: string) => [orgId, "all-user-memberships"] as const,
+  forOrgMembershipProjectMemberships: (orgId: string, orgMembershipId: string) =>
+    [...userKeys.allOrgMembershipProjectMemberships(orgId), { orgMembershipId }] as const,
+  getOrgMembershipProjectMemberships: (orgId: string, username: string) =>
+    [{ orgId, username }, "org-membership-project-memberships"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
+  listUsers: ["user-list"] as const,
+
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
 
@@ -37,7 +50,7 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-export const useDeleteUser = () => {
+export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -71,6 +84,14 @@ export const fetchUserAction = async (action: string) => {
     }
   });
   return data.userAction || "";
+};
+
+export const fetchUserProjectFavorites = async (orgId: string) => {
+  const { data } = await apiRequest.get<{ projectFavorites: string[] }>(
+    `/api/v1/user/me/project-favorites?orgId=${orgId}`
+  );
+
+  return data.projectFavorites;
 };
 
 export const useRenameUser = () => {
@@ -121,6 +142,12 @@ export const fetchOrgUsers = async (orgId: string) => {
   return data.users;
 };
 
+export const useGetUserProjectFavorites = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.userProjectFavorites(orgId),
+    queryFn: () => fetchUserProjectFavorites(orgId)
+  });
+
 export const useGetOrgUsers = (orgId: string) =>
   useQuery({
     queryKey: userKeys.getOrgUsers(orgId),
@@ -149,6 +176,41 @@ export const useAddUserToOrg = () => {
   });
 };
 
+export const useGetOrgMembership = (organizationId: string, orgMembershipId: string) => {
+  return useQuery({
+    queryKey: userKeys.getOrgMembership(organizationId, orgMembershipId),
+    queryFn: async () => {
+      const {
+        data: { membership }
+      } = await apiRequest.get<{ membership: OrgUser }>(
+        `/api/v2/organizations/${organizationId}/memberships/${orgMembershipId}`
+      );
+
+      return membership;
+    },
+    enabled: Boolean(organizationId) && Boolean(orgMembershipId)
+  });
+};
+
+export const useGetOrgMembershipProjectMemberships = (
+  organizationId: string,
+  orgMembershipId: string
+) => {
+  return useQuery({
+    queryKey: userKeys.forOrgMembershipProjectMemberships(organizationId, orgMembershipId),
+    queryFn: async () => {
+      const {
+        data: { memberships }
+      } = await apiRequest.get<{ memberships: TWorkspaceUser[] }>(
+        `/api/v2/organizations/${organizationId}/memberships/${orgMembershipId}/project-memberships`
+      );
+
+      return memberships;
+    },
+    enabled: Boolean(organizationId) && Boolean(orgMembershipId)
+  });
+};
+
 export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
@@ -162,24 +224,43 @@ export const useDeleteOrgMembership = () => {
   });
 };
 
-export const useUpdateOrgUserRole = () => {
+export const useDeactivateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateOrgUserRoleDTO>({
-    mutationFn: ({ organizationId, membershipId, role }) => {
+  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+    mutationFn: ({ membershipId, orgId }) => {
+      return apiRequest.post(
+        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
+      );
+    },
+    onSuccess: (_, { orgId, membershipId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
+      queryClient.invalidateQueries(userKeys.getOrgMembership(orgId, membershipId));
+    }
+  });
+};
+
+export const useUpdateOrgMembership = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, UpdateOrgMembershipDTO>({
+    mutationFn: ({ organizationId, membershipId, role, isActive }) => {
       return apiRequest.patch(
         `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
         {
-          role
+          role,
+          isActive
         }
       );
     },
-    onSuccess: (_, { organizationId }) => {
+    onSuccess: (_, { organizationId, membershipId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+      queryClient.invalidateQueries(userKeys.getOrgMembership(organizationId, membershipId));
     },
     // to remove old states
-    onError: (_, { organizationId }) => {
+    onError: (_, { organizationId, membershipId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+      queryClient.invalidateQueries(userKeys.getOrgMembership(organizationId, membershipId));
     }
   });
 };
@@ -213,6 +294,7 @@ export const useLogoutUser = (keepQueryClient?: boolean) => {
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
       localStorage.removeItem("projectData.id");
+      sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
       if (!keepQueryClient) {
         queryClient.clear();
@@ -350,4 +432,12 @@ export const useGetMyOrganizationProjects = (orgId: string) => {
     },
     enabled: true
   });
+};
+
+export const fetchMyPrivateKey = async () => {
+  const {
+    data: { privateKey }
+  } = await apiRequest.get<{ privateKey: string }>("/api/v1/user/private-key");
+
+  return privateKey;
 };

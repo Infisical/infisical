@@ -1,22 +1,30 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { ProjectKeysSchema, ProjectsSchema } from "@app/db/schemas";
+import {
+  CertificateAuthoritiesSchema,
+  CertificatesSchema,
+  PkiAlertsSchema,
+  PkiCollectionsSchema,
+  ProjectKeysSchema
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
-import { creationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const projectWithEnv = ProjectsSchema.merge(
-  z.object({
-    _id: z.string(),
-    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
-  })
-);
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
+
+const projectWithEnv = SanitizedProjectSchema.extend({
+  _id: z.string(),
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+});
 
 const slugSchema = z
   .string()
@@ -141,7 +149,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     config: {
-      rateLimit: creationLimit
+      rateLimit: writeLimit
     },
     schema: {
       description: "Create a new project",
@@ -160,7 +168,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             message: "Slug must be a valid slug"
           })
           .optional()
-          .describe(PROJECTS.CREATE.slug)
+          .describe(PROJECTS.CREATE.slug),
+        kmsKeyId: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -176,7 +185,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
-        slug: req.body.slug
+        slug: req.body.slug,
+        kmsKeyId: req.body.kmsKeyId
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -211,7 +221,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to delete.")
       }),
       response: {
-        200: ProjectsSchema
+        200: SanitizedProjectSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -282,7 +292,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         autoCapitalization: z.boolean().optional().describe("The new auto-capitalization setting.")
       }),
       response: {
-        200: ProjectsSchema
+        200: SanitizedProjectSchema
       }
     },
 
@@ -305,6 +315,178 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return project;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug/cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe(PROJECTS.LIST_CAS.slug)
+      }),
+      querystring: z.object({
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CAS.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CAS.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CAS.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CAS.limit)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(CertificateAuthoritiesSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectCas({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:slug/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe(PROJECTS.LIST_CERTIFICATES.slug)
+      }),
+      querystring: z.object({
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-alerts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          alerts: z.array(PkiAlertsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { alerts } = await server.services.project.listProjectAlerts({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { alerts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-collections",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          collections: z.array(PkiCollectionsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiCollections } = await server.services.project.listProjectPkiCollections({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { collections: pkiCollections };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: sanitizedCertificateTemplate.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { certificateTemplates };
     }
   });
 };

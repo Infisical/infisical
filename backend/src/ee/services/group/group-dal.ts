@@ -12,7 +12,7 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findGroups = async (filter: TFindFilter<TGroups>, { offset, limit, sort, tx }: TFindOpt<TGroups> = {}) => {
     try {
-      const query = (tx || db)(TableName.Groups)
+      const query = (tx || db.replicaNode())(TableName.Groups)
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
         .select(selectAllTableCols(TableName.Groups));
@@ -32,7 +32,7 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findByOrgId = async (orgId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.Groups)
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
         .where(`${TableName.Groups}.orgId`, orgId)
         .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
         .select(selectAllTableCols(TableName.Groups))
@@ -74,11 +74,12 @@ export const groupDALFactory = (db: TDbClient) => {
     username?: string;
   }) => {
     try {
-      let query = db(TableName.OrgMembership)
+      let query = db
+        .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.UserGroupMembership, function () {
-          this.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
+        .leftJoin(TableName.UserGroupMembership, (bd) => {
+          bd.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
             `${TableName.UserGroupMembership}.groupId`,
             "=",
             db.raw("?", [groupId])

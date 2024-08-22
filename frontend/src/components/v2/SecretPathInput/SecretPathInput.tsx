@@ -78,7 +78,8 @@ export const SecretPathInput = ({
     const validPaths = inputValue.split("/");
     validPaths.pop();
 
-    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}/`;
+    // removed trailing slash
+    const newValue = `${validPaths.join("/")}/${suggestions[selectedIndex]}`;
     onChange?.(newValue);
     setInputValue(newValue);
     setSecretPath(newValue);

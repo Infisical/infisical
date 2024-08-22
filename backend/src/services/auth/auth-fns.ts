@@ -15,10 +15,10 @@ export const validateProviderAuthToken = (providerToken: string, username?: stri
   if (decodedToken.username !== username) throw new Error("Invalid auth credentials");
 
   if (decodedToken.organizationId) {
-    return { orgId: decodedToken.organizationId, authMethod: decodedToken.authMethod };
+    return { orgId: decodedToken.organizationId, authMethod: decodedToken.authMethod, userName: decodedToken.username };
   }
 
-  return { authMethod: decodedToken.authMethod, orgId: null };
+  return { authMethod: decodedToken.authMethod, orgId: null, userName: decodedToken.username };
 };
 
 export const validateSignUpAuthorization = (token: string, userId: string, validate = true) => {
@@ -43,4 +43,28 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
 
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new UnauthorizedError();
   if (decodedToken.userId !== userId) throw new UnauthorizedError();
+};
+
+export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: Date | null) => {
+  if (isLocked) {
+    throw new UnauthorizedError({
+      name: "User Locked",
+      message:
+        "User is locked due to multiple failed login attempts. An email has been sent to you in order to unlock your account. You can also reset your password to unlock your account."
+    });
+  }
+
+  if (temporaryLockDateEnd) {
+    const timeDiff = new Date().getTime() - temporaryLockDateEnd.getTime();
+    if (timeDiff < 0) {
+      const secondsDiff = (-1 * timeDiff) / 1000;
+      const timeDisplay =
+        secondsDiff > 60 ? `${Math.ceil(secondsDiff / 60)} minutes` : `${Math.ceil(secondsDiff)} seconds`;
+
+      throw new UnauthorizedError({
+        name: "User Locked",
+        message: `User is temporary locked due to multiple failed login attempts. Try again after ${timeDisplay}. You can also reset your password now to proceed.`
+      });
+    }
+  }
 };

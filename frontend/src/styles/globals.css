@@ -45,6 +45,14 @@ html {
     width: 1%;
     white-space: nowrap;
   }
+
+  .w-inherit {
+    width: inherit;
+  }
+
+  .h-inherit {
+    height: inherit;
+  }
 }
 
 @layer components {

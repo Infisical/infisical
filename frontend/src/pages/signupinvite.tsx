@@ -75,7 +75,12 @@ export default function SignupInvite() {
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
-    let errorCheck = false;
+
+    let errorCheck = await checkPassword({
+      password,
+      setErrors
+    });
+
     if (!firstName) {
       setFirstNameError(true);
       errorCheck = true;
@@ -88,11 +93,6 @@ export default function SignupInvite() {
     } else {
       setLastNameError(false);
     }
-
-    errorCheck = await checkPassword({
-      password,
-      setErrors
-    });
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
@@ -149,6 +149,7 @@ export default function SignupInvite() {
 
               const { token: jwtToken } = await completeAccountSignupInvite({
                 email,
+                password,
                 firstName,
                 lastName,
                 protectedKey,

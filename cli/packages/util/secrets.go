@@ -2,7 +2,9 @@ package util
 
 import (
 	"bufio"
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,18 +12,20 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
+	"github.com/zalando/go-keyring"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool, recursive bool, tagSlugs string) ([]models.SingleEnvironmentVariable, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
+		return nil, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
 	}
 
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
@@ -33,129 +37,49 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 
 	serviceTokenDetails, err := api.CallGetServiceTokenDetailsV2(httpClient)
 	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
+		return nil, fmt.Errorf("unable to get service token details. [err=%v]", err)
 	}
 
 	// if multiple scopes are there then user needs to specify which environment and secret path
 	if environment == "" {
 		if len(serviceTokenDetails.Scopes) != 1 {
-			return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("you need to provide the --env for multiple environment scoped token")
+			return nil, fmt.Errorf("you need to provide the --env for multiple environment scoped token")
 		} else {
 			environment = serviceTokenDetails.Scopes[0].Environment
 		}
 	}
 
-	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
+	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, api.GetRawSecretsV3Request{
 		WorkspaceId:   serviceTokenDetails.Workspace,
 		Environment:   environment,
 		SecretPath:    secretPath,
 		IncludeImport: includeImports,
 		Recursive:     recursive,
+		TagSlugs:      tagSlugs,
 	})
 
-	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, err
-	}
-
-	decodedSymmetricEncryptionDetails, err := GetBase64DecodedSymmetricEncryptionDetails(serviceTokenParts[3], serviceTokenDetails.EncryptedKey, serviceTokenDetails.Iv, serviceTokenDetails.Tag)
-	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
-	}
-
-	plainTextWorkspaceKey, err := crypto.DecryptSymmetric([]byte(serviceTokenParts[3]), decodedSymmetricEncryptionDetails.Cipher, decodedSymmetricEncryptionDetails.Tag, decodedSymmetricEncryptionDetails.IV)
-	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decrypt the required workspace key")
-	}
-
-	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets.Secrets)
-	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
-	}
-
-	if includeImports {
-		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
-		if err != nil {
-			return nil, api.GetServiceTokenDetailsResponse{}, err
-		}
-	}
-
-	return plainTextSecrets, serviceTokenDetails, nil
-}
-
-func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool, recursive bool) ([]models.SingleEnvironmentVariable, error) {
-	httpClient := resty.New()
-	httpClient.SetAuthToken(JTWToken).
-		SetHeader("Accept", "application/json")
-
-	request := api.GetEncryptedWorkspaceKeyRequest{
-		WorkspaceId: workspaceId,
-	}
-
-	workspaceKeyResponse, err := api.CallGetEncryptedWorkspaceKey(httpClient, request)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get your encrypted workspace key. [err=%v]", err)
-	}
-
-	encryptedWorkspaceKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
-	if err != nil {
-		HandleError(err, "Unable to get bytes represented by the base64 for encryptedWorkspaceKey")
-	}
-
-	encryptedWorkspaceKeySenderPublicKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
-	if err != nil {
-		HandleError(err, "Unable to get bytes represented by the base64 for encryptedWorkspaceKeySenderPublicKey")
-	}
-
-	encryptedWorkspaceKeyNonce, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
-	if err != nil {
-		HandleError(err, "Unable to get bytes represented by the base64 for encryptedWorkspaceKeyNonce")
-	}
-
-	currentUsersPrivateKey, err := base64.StdEncoding.DecodeString(receiversPrivateKey)
-	if err != nil {
-		HandleError(err, "Unable to get bytes represented by the base64 for currentUsersPrivateKey")
-	}
-
-	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
-		log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
-		PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
-	}
-
-	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
-
-	getSecretsRequest := api.GetEncryptedSecretsV3Request{
-		WorkspaceId:   workspaceId,
-		Environment:   environmentName,
-		IncludeImport: includeImports,
-		Recursive:     recursive,
-		// TagSlugs:    tagSlugs,
-	}
-
-	if secretsPath != "" {
-		getSecretsRequest.SecretPath = secretsPath
-	}
-
-	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, getSecretsRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets.Secrets)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
+	plainTextSecrets := []models.SingleEnvironmentVariable{}
+
+	for _, secret := range rawSecrets.Secrets {
+		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace})
 	}
 
 	if includeImports {
-		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
+		plainTextSecrets, err = InjectRawImportedSecret(plainTextSecrets, rawSecrets.Imports)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return plainTextSecrets, nil
+
 }
 
-func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool) (models.PlaintextSecretResult, error) {
+func GetPlainTextSecretsV3(accessToken string, workspaceId string, environmentName string, secretsPath string, includeImports bool, recursive bool, tagSlugs string) (models.PlaintextSecretResult, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
@@ -165,7 +89,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		Environment:   environmentName,
 		IncludeImport: includeImports,
 		Recursive:     recursive,
-		// TagSlugs:    tagSlugs,
+		TagSlugs:      tagSlugs,
 	}
 
 	if secretsPath != "" {
@@ -179,9 +103,6 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 	}
 
 	plainTextSecrets := []models.SingleEnvironmentVariable{}
-	if err != nil {
-		return models.PlaintextSecretResult{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
-	}
 
 	for _, secret := range rawSecrets.Secrets {
 		plainTextSecrets = append(plainTextSecrets, models.SingleEnvironmentVariable{Key: secret.SecretKey, Value: secret.SecretValue, Type: secret.Type, WorkspaceId: secret.Workspace})
@@ -198,6 +119,36 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		Secrets: plainTextSecrets,
 		Etag:    rawSecrets.ETag,
 	}, nil
+}
+
+func GetSinglePlainTextSecretByNameV3(accessToken string, workspaceId string, environmentName string, secretsPath string, secretName string) (models.SingleEnvironmentVariable, string, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	getSecretsRequest := api.GetRawSecretV3ByNameRequest{
+		WorkspaceID: workspaceId,
+		Environment: environmentName,
+		SecretName:  secretName,
+		SecretPath:  secretsPath,
+	}
+
+	rawSecret, err := api.CallFetchSingleSecretByName(httpClient, getSecretsRequest)
+
+	if err != nil {
+		return models.SingleEnvironmentVariable{}, "", err
+	}
+
+	formattedSecrets := models.SingleEnvironmentVariable{
+		Key:         rawSecret.Secret.SecretKey,
+		WorkspaceId: rawSecret.Secret.Workspace,
+		Value:       rawSecret.Secret.SecretValue,
+		Type:        rawSecret.Secret.Type,
+		ID:          rawSecret.Secret.ID,
+		Comment:     rawSecret.Secret.SecretComment,
+	}
+
+	return formattedSecrets, rawSecret.ETag, nil
 }
 
 func CreateDynamicSecretLease(accessToken string, projectSlug string, environmentName string, secretsPath string, slug string, ttl string) (models.DynamicSecretLease, error) {
@@ -223,34 +174,6 @@ func CreateDynamicSecretLease(accessToken string, projectSlug string, environmen
 		Data:          dynamicSecret.Data,
 		DynamicSecret: dynamicSecret.DynamicSecret,
 	}, nil
-}
-
-func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]models.SingleEnvironmentVariable, error) {
-	if importedSecrets == nil {
-		return secrets, nil
-	}
-
-	hasOverriden := make(map[string]bool)
-	for _, sec := range secrets {
-		hasOverriden[sec.Key] = true
-	}
-
-	for i := len(importedSecrets) - 1; i >= 0; i-- {
-		importSec := importedSecrets[i]
-		plainTextImportedSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, importSec.Secrets)
-
-		if err != nil {
-			return nil, fmt.Errorf("unable to decrypt your imported secrets [err=%v]", err)
-		}
-
-		for _, sec := range plainTextImportedSecrets {
-			if _, ok := hasOverriden[sec.Key]; !ok {
-				secrets = append(secrets, sec)
-				hasOverriden[sec.Key] = true
-			}
-		}
-	}
-	return secrets, nil
 }
 
 func InjectRawImportedSecret(secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedRawSecretV3) ([]models.SingleEnvironmentVariable, error) {
@@ -308,32 +231,33 @@ func FilterSecretsByTag(plainTextSecrets []models.SingleEnvironmentVariable, tag
 }
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
-	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
 	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
 	if params.InfisicalToken == "" && params.UniversalAuthAccessToken == "" {
-		if isConnected {
-			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
-
-			if projectConfigFilePath == "" {
-				RequireLocalWorkspaceFile()
-			} else {
-				ValidateWorkspaceFile(projectConfigFilePath)
-			}
-
-			RequireLogin()
+		if projectConfigFilePath == "" {
+			RequireLocalWorkspaceFile()
+		} else {
+			ValidateWorkspaceFile(projectConfigFilePath)
 		}
+
+		RequireLogin()
 
 		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
+		isConnected := ValidateInfisicalAPIConnection()
+
+		if isConnected {
+			log.Debug().Msg("GetAllEnvironmentVariables: Connected to Infisical instance, checking logged in creds")
+		}
+
 		if err != nil {
 			return nil, err
 		}
 
-		if loggedInUserDetails.LoginExpired {
+		if isConnected && loggedInUserDetails.LoginExpired {
 			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
@@ -359,29 +283,37 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			infisicalDotJson.WorkspaceId = params.WorkspaceId
 		}
 
-		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
-			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport, params.Recursive)
-		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
+		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, infisicalDotJson.WorkspaceId,
+			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs)
+		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", err)
 
-		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
-		if errorToReturn == nil {
-			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey, secretsToReturn)
+		if err == nil {
+			backupEncryptionKey, err := GetBackupEncryptionKey()
+			if err != nil {
+				return nil, err
+			}
+			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey, res.Secrets)
 		}
 
+		secretsToReturn = res.Secrets
+		errorToReturn = err
 		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
 		if !isConnected {
-			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey)
-			if len(backedSecrets) > 0 {
-				PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
-				secretsToReturn = backedSecrets
-				errorToReturn = err
+			backupEncryptionKey, _ := GetBackupEncryptionKey()
+			if backupEncryptionKey != nil {
+				backedUpSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, params.SecretsPath, backupEncryptionKey)
+				if len(backedUpSecrets) > 0 {
+					PrintWarning("Unable to fetch the latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
+					secretsToReturn = backedUpSecrets
+					errorToReturn = err
+				}
 			}
 		}
 
 	} else {
 		if params.InfisicalToken != "" {
 			log.Debug().Msg("Trying to fetch secrets using service token")
-			secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
+			secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(params.InfisicalToken, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs)
 		} else if params.UniversalAuthAccessToken != "" {
 
 			if params.WorkspaceId == "" {
@@ -389,7 +321,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			}
 
 			log.Debug().Msg("Trying to fetch secrets using universal auth")
-			res, err := GetPlainTextSecretsViaMachineIdentity(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive)
+			res, err := GetPlainTextSecretsV3(params.UniversalAuthAccessToken, params.WorkspaceId, params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs)
 
 			errorToReturn = err
 			secretsToReturn = res.Secrets
@@ -554,89 +486,30 @@ func OverrideSecrets(secrets []models.SingleEnvironmentVariable, secretType stri
 	return secretsToReturn
 }
 
-func GetPlainTextSecrets(key []byte, encryptedSecrets []api.EncryptedSecretV3) ([]models.SingleEnvironmentVariable, error) {
-	plainTextSecrets := []models.SingleEnvironmentVariable{}
-	for _, secret := range encryptedSecrets {
-		// Decrypt key
-		key_iv, err := base64.StdEncoding.DecodeString(secret.SecretKeyIV)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret IV for secret key")
+func GetBackupEncryptionKey() ([]byte, error) {
+	encryptionKey, err := GetValueInKeyring(INFISICAL_BACKUP_SECRET_ENCRYPTION_KEY)
+	if err != nil {
+		if err == keyring.ErrUnsupportedPlatform {
+			return nil, errors.New("your OS does not support keyring. Consider using a service token https://infisical.com/docs/documentation/platform/token")
+		} else if err == keyring.ErrNotFound {
+			// generate a new key
+			randomizedKey := make([]byte, 16)
+			rand.Read(randomizedKey)
+			encryptionKey = hex.EncodeToString(randomizedKey)
+			if err := SetValueInKeyring(INFISICAL_BACKUP_SECRET_ENCRYPTION_KEY, encryptionKey); err != nil {
+				return nil, err
+			}
+			return []byte(encryptionKey), nil
+		} else {
+			return nil, fmt.Errorf("something went wrong, failed to retrieve value from system keyring [error=%v]", err)
 		}
-
-		key_tag, err := base64.StdEncoding.DecodeString(secret.SecretKeyTag)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret authentication tag for secret key")
-		}
-
-		key_ciphertext, err := base64.StdEncoding.DecodeString(secret.SecretKeyCiphertext)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
-		}
-
-		plainTextKey, err := crypto.DecryptSymmetric(key, key_ciphertext, key_tag, key_iv)
-		if err != nil {
-			return nil, fmt.Errorf("unable to symmetrically decrypt secret key")
-		}
-
-		// Decrypt value
-		value_iv, err := base64.StdEncoding.DecodeString(secret.SecretValueIV)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret IV for secret value")
-		}
-
-		value_tag, err := base64.StdEncoding.DecodeString(secret.SecretValueTag)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret authentication tag for secret value")
-		}
-
-		value_ciphertext, _ := base64.StdEncoding.DecodeString(secret.SecretValueCiphertext)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
-		}
-
-		plainTextValue, err := crypto.DecryptSymmetric(key, value_ciphertext, value_tag, value_iv)
-		if err != nil {
-			return nil, fmt.Errorf("unable to symmetrically decrypt secret value")
-		}
-
-		// Decrypt comment
-		comment_iv, err := base64.StdEncoding.DecodeString(secret.SecretCommentIV)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret IV for secret value")
-		}
-
-		comment_tag, err := base64.StdEncoding.DecodeString(secret.SecretCommentTag)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret authentication tag for secret value")
-		}
-
-		comment_ciphertext, _ := base64.StdEncoding.DecodeString(secret.SecretCommentCiphertext)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
-		}
-
-		plainTextComment, err := crypto.DecryptSymmetric(key, comment_ciphertext, comment_tag, comment_iv)
-		if err != nil {
-			return nil, fmt.Errorf("unable to symmetrically decrypt secret comment")
-		}
-
-		plainTextSecret := models.SingleEnvironmentVariable{
-			Key:     string(plainTextKey),
-			Value:   string(plainTextValue),
-			Type:    string(secret.Type),
-			ID:      secret.ID,
-			Tags:    secret.Tags,
-			Comment: string(plainTextComment),
-		}
-
-		plainTextSecrets = append(plainTextSecrets, plainTextSecret)
 	}
-
-	return plainTextSecrets, nil
+	return []byte(encryptionKey), nil
 }
 
-func WriteBackupSecrets(workspace string, environment string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
-	fileName := fmt.Sprintf("secrets_%s_%s", workspace, environment)
+func WriteBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
+	formattedPath := strings.ReplaceAll(secretsPath, "/", "-")
+	fileName := fmt.Sprintf("project_secrets_%s_%s_%s.json", workspace, environment, formattedPath)
 	secrets_backup_folder_name := "secrets-backup"
 
 	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
@@ -652,19 +525,12 @@ func WriteBackupSecrets(workspace string, environment string, encryptionKey []by
 			return err
 		}
 	}
-
-	var encryptedSecrets []models.SymmetricEncryptionResult
-	for _, secret := range secrets {
-		marshaledSecrets, _ := json.Marshal(secret)
-		result, err := crypto.EncryptSymmetric(marshaledSecrets, encryptionKey)
-		if err != nil {
-			return err
-		}
-
-		encryptedSecrets = append(encryptedSecrets, result)
+	marshaledSecrets, _ := json.Marshal(secrets)
+	result, err := crypto.EncryptSymmetric(marshaledSecrets, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("WriteBackupSecrets: Unable to encrypt local secret backup to file [err=%s]", err)
 	}
-
-	listOfSecretsMarshalled, _ := json.Marshal(encryptedSecrets)
+	listOfSecretsMarshalled, _ := json.Marshal(result)
 	err = os.WriteFile(fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName), listOfSecretsMarshalled, 0600)
 	if err != nil {
 		return fmt.Errorf("WriteBackupSecrets: Unable to write backup secrets to file [err=%s]", err)
@@ -673,8 +539,9 @@ func WriteBackupSecrets(workspace string, environment string, encryptionKey []by
 	return nil
 }
 
-func ReadBackupSecrets(workspace string, environment string, encryptionKey []byte) ([]models.SingleEnvironmentVariable, error) {
-	fileName := fmt.Sprintf("secrets_%s_%s", workspace, environment)
+func ReadBackupSecrets(workspace string, environment string, secretsPath string, encryptionKey []byte) ([]models.SingleEnvironmentVariable, error) {
+	formattedPath := strings.ReplaceAll(secretsPath, "/", "-")
+	fileName := fmt.Sprintf("project_secrets_%s_%s_%s.json", workspace, environment, formattedPath)
 	secrets_backup_folder_name := "secrets-backup"
 
 	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
@@ -694,26 +561,18 @@ func ReadBackupSecrets(workspace string, environment string, encryptionKey []byt
 		return nil, err
 	}
 
-	var listOfEncryptedBackupSecrets []models.SymmetricEncryptionResult
-
-	_ = json.Unmarshal(encryptedBackupSecretsAsBytes, &listOfEncryptedBackupSecrets)
-
-	var plainTextSecrets []models.SingleEnvironmentVariable
-	for _, encryptedSecret := range listOfEncryptedBackupSecrets {
-		result, err := crypto.DecryptSymmetric(encryptionKey, encryptedSecret.CipherText, encryptedSecret.AuthTag, encryptedSecret.Nonce)
-		if err != nil {
-			return nil, err
-		}
-
-		var plainTextSecret models.SingleEnvironmentVariable
-
-		err = json.Unmarshal(result, &plainTextSecret)
-		if err != nil {
-			return nil, err
-		}
-
-		plainTextSecrets = append(plainTextSecrets, plainTextSecret)
+	var encryptedBackUpSecrets models.SymmetricEncryptionResult
+	err = json.Unmarshal(encryptedBackupSecretsAsBytes, &encryptedBackUpSecrets)
+	if err != nil {
+		return nil, fmt.Errorf("ReadBackupSecrets: unable to parse encrypted backup secrets. The secrets backup may be malformed [err=%s]", err)
 	}
+
+	result, err := crypto.DecryptSymmetric(encryptionKey, encryptedBackUpSecrets.CipherText, encryptedBackUpSecrets.AuthTag, encryptedBackUpSecrets.Nonce)
+	if err != nil {
+		return nil, fmt.Errorf("ReadBackupSecrets: unable to decrypt encrypted backup secrets [err=%s]", err)
+	}
+	var plainTextSecrets []models.SingleEnvironmentVariable
+	_ = json.Unmarshal(result, &plainTextSecrets)
 
 	return plainTextSecrets, nil
 
@@ -728,6 +587,8 @@ func DeleteBackupSecrets() error {
 	}
 
 	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
+	DeleteValueInKeyring(INFISICAL_BACKUP_SECRET)
+	DeleteValueInKeyring(INFISICAL_BACKUP_SECRET_ENCRYPTION_KEY)
 
 	return os.RemoveAll(fullPathToSecretsBackupFolder)
 }
@@ -824,4 +685,145 @@ func ParseSecretsFromDotEnvFile(filePath string) ([]string, error) {
 		env = append(env, scanner.Text())
 	}
 	return env, nil
+}
+
+func SetRawSecrets(secretArgs []string, secretType string, environmentName string, secretsPath string, projectId string, tokenDetails *models.TokenDetails) ([]models.SecretSetOperation, error) {
+
+	if tokenDetails == nil {
+		return nil, fmt.Errorf("unable to process set secret operations, token details are missing")
+	}
+
+	getAllEnvironmentVariablesRequest := models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath, WorkspaceId: projectId}
+	if tokenDetails.Type == UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		getAllEnvironmentVariablesRequest.UniversalAuthAccessToken = tokenDetails.Token
+	}
+
+	if tokenDetails.Type == SERVICE_TOKEN_IDENTIFIER {
+		getAllEnvironmentVariablesRequest.InfisicalToken = tokenDetails.Token
+	}
+
+	httpClient := resty.New().
+		SetAuthToken(tokenDetails.Token).
+		SetHeader("Accept", "application/json")
+
+	// pull current secrets
+	secrets, err := GetAllEnvironmentVariables(getAllEnvironmentVariablesRequest, "")
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve secrets [err=%v]", err)
+	}
+
+	secretsToCreate := []api.RawSecret{}
+	secretsToModify := []api.RawSecret{}
+	secretOperations := []models.SecretSetOperation{}
+
+	sharedSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
+	personalSecretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
+
+	for _, secret := range secrets {
+		if secret.Type == SECRET_TYPE_PERSONAL {
+			personalSecretMapByName[secret.Key] = secret
+		} else {
+			sharedSecretMapByName[secret.Key] = secret
+		}
+	}
+
+	for _, arg := range secretArgs {
+		splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
+		if splitKeyValueFromArg[0] == "" || splitKeyValueFromArg[1] == "" {
+			PrintErrorMessageAndExit("ensure that each secret has a none empty key and value. Modify the input and try again")
+		}
+
+		if unicode.IsNumber(rune(splitKeyValueFromArg[0][0])) {
+			PrintErrorMessageAndExit("keys of secrets cannot start with a number. Modify the key name(s) and try again")
+		}
+
+		// Key and value from argument
+		key := splitKeyValueFromArg[0]
+		value := splitKeyValueFromArg[1]
+
+		var existingSecret models.SingleEnvironmentVariable
+		var doesSecretExist bool
+
+		if secretType == SECRET_TYPE_SHARED {
+			existingSecret, doesSecretExist = sharedSecretMapByName[key]
+		} else {
+			existingSecret, doesSecretExist = personalSecretMapByName[key]
+		}
+
+		if doesSecretExist {
+			// case: secret exists in project so it needs to be modified
+			encryptedSecretDetails := api.RawSecret{
+				ID:          existingSecret.ID,
+				SecretValue: value,
+				SecretKey:   key,
+				Type:        existingSecret.Type,
+			}
+
+			// Only add to modifications if the value is different
+			if existingSecret.Value != value {
+				secretsToModify = append(secretsToModify, encryptedSecretDetails)
+				secretOperations = append(secretOperations, models.SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET VALUE MODIFIED",
+				})
+			} else {
+				// Current value is same as existing so no change
+				secretOperations = append(secretOperations, models.SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET VALUE UNCHANGED",
+				})
+			}
+
+		} else {
+			// case: secret doesn't exist in project so it needs to be created
+			encryptedSecretDetails := api.RawSecret{
+				SecretKey:   key,
+				SecretValue: value,
+				Type:        secretType,
+			}
+			secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
+			secretOperations = append(secretOperations, models.SecretSetOperation{
+				SecretKey:       key,
+				SecretValue:     value,
+				SecretOperation: "SECRET CREATED",
+			})
+		}
+	}
+
+	for _, secret := range secretsToCreate {
+		createSecretRequest := api.CreateRawSecretV3Request{
+			SecretName:  secret.SecretKey,
+			SecretValue: secret.SecretValue,
+			Type:        secret.Type,
+			SecretPath:  secretsPath,
+			WorkspaceID: projectId,
+			Environment: environmentName,
+		}
+
+		err = api.CallCreateRawSecretsV3(httpClient, createSecretRequest)
+		if err != nil {
+			return nil, fmt.Errorf("unable to process new secret creations [err=%v]", err)
+		}
+	}
+
+	for _, secret := range secretsToModify {
+		updateSecretRequest := api.UpdateRawSecretByNameV3Request{
+			SecretName:  secret.SecretKey,
+			SecretValue: secret.SecretValue,
+			SecretPath:  secretsPath,
+			WorkspaceID: projectId,
+			Environment: environmentName,
+			Type:        secret.Type,
+		}
+
+		err = api.CallUpdateRawSecretsV3(httpClient, updateSecretRequest)
+		if err != nil {
+			return nil, fmt.Errorf("unable to process secret update request [err=%v]", err)
+		}
+	}
+
+	return secretOperations, nil
+
 }

@@ -28,6 +28,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -41,7 +42,10 @@ import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } f
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
-  userDAL: Pick<TUserDALFactory, "create" | "findOne" | "transaction" | "updateById" | "findById">;
+  userDAL: Pick<
+    TUserDALFactory,
+    "create" | "findOne" | "transaction" | "updateById" | "findById" | "findUserEncKeyByUserId"
+  >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
@@ -50,7 +54,7 @@ type TSamlConfigServiceFactoryDep = {
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -332,6 +336,13 @@ export const samlConfigServiceFactory = ({
   }: TSamlLoginDTO) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
+
+    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.SAML)) {
+      throw new BadRequestError({
+        message: "Login with SAML is disabled by administrator."
+      });
+    }
+
     const userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -359,7 +370,8 @@ export const samlConfigServiceFactory = ({
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );
@@ -377,6 +389,21 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      const plan = await licenseService.getPlan(orgId);
+      if (plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
+        // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
+        throw new BadRequestError({
+          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
+        });
+      }
+
+      if (plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+        throw new BadRequestError({
+          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
+        });
+      }
+
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         if (serverCfg.trustSamlEmails) {
@@ -431,7 +458,8 @@ export const samlConfigServiceFactory = ({
               inviteEmail: email,
               orgId,
               role: OrgMembershipRole.Member,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              isActive: true
             },
             tx
           );
@@ -449,8 +477,10 @@ export const samlConfigServiceFactory = ({
         return newUser;
       });
     }
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted);
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const providerAuthToken = jwt.sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
@@ -463,6 +493,7 @@ export const samlConfigServiceFactory = ({
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: authProvider,
+        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
         authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState

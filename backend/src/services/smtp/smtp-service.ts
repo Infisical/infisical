@@ -5,6 +5,7 @@ import handlebars from "handlebars";
 import { createTransport } from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 export type TSmtpConfig = SMTPTransport.Options;
@@ -12,7 +13,7 @@ export type TSmtpSendMail = {
   template: SmtpTemplates;
   subjectLine: string;
   recipients: string[];
-  substitutions: unknown;
+  substitutions: object;
 };
 export type TSmtpService = ReturnType<typeof smtpServiceFactory>;
 
@@ -21,14 +22,17 @@ export enum SmtpTemplates {
   EmailVerification = "emailVerification.handlebars",
   SecretReminder = "secretReminder.handlebars",
   EmailMfa = "emailMfa.handlebars",
+  UnlockAccount = "unlockAccount.handlebars",
   AccessApprovalRequest = "accessApprovalRequest.handlebars",
+  AccessSecretRequestBypassed = "accessSecretRequestBypassed.handlebars",
   HistoricalSecretList = "historicalSecretLeakIncident.handlebars",
   NewDeviceJoin = "newDevice.handlebars",
   OrgInvite = "organizationInvitation.handlebars",
   ResetPassword = "passwordReset.handlebars",
   SecretLeakIncident = "secretLeakIncident.handlebars",
   WorkspaceInvite = "workspaceInvitation.handlebars",
-  ScimUserProvisioned = "scimUserProvisioned.handlebars"
+  ScimUserProvisioned = "scimUserProvisioned.handlebars",
+  PkiExpirationAlert = "pkiExpirationAlert.handlebars"
 }
 
 export enum SmtpHost {
@@ -40,27 +44,16 @@ export enum SmtpHost {
   Office365 = "smtp.office365.com"
 }
 
-export const getTlsOption = (host?: SmtpHost | string, secure?: boolean) => {
-  if (!secure) return { secure: false };
-  if (!host) return { secure: true };
-
-  if ((host as SmtpHost) === SmtpHost.Sendgrid) {
-    return { secure: true, port: 465 }; // more details here https://nodemailer.com/smtp/
-  }
-  if (host.includes("amazonaws.com")) {
-    return { tls: { ciphers: "TLSv1.2" } };
-  }
-  return { requireTLS: true, tls: { ciphers: "TLSv1.2" } };
-};
-
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
-  const smtp = createTransport({ ...cfg, ...getTlsOption(cfg.host, cfg.secure) });
+  const smtp = createTransport(cfg);
   const isSmtpOn = Boolean(cfg.host);
 
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
+    const appCfg = getConfig();
     const html = await fs.readFile(path.resolve(__dirname, "./templates/", template), "utf8");
     const temp = handlebars.compile(html);
-    const htmlToSend = temp(substitutions);
+    const htmlToSend = temp({ isCloud: appCfg.isCloud, siteUrl: appCfg.SITE_URL, ...substitutions });
+
     if (isSmtpOn) {
       await smtp.sendMail({
         from: cfg.from,

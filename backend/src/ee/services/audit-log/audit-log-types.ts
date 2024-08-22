@@ -1,6 +1,8 @@
 import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 
 export type TListProjectAuditLogDTO = {
   auditLogActor?: string;
@@ -44,6 +46,7 @@ export enum EventType {
   CREATE_SECRETS = "create-secrets",
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
+  MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   GET_WORKSPACE_KEY = "get-workspace-key",
@@ -51,6 +54,7 @@ export enum EventType {
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
   CREATE_INTEGRATION = "create-integration",
   DELETE_INTEGRATION = "delete-integration",
+  MANUAL_SYNC_INTEGRATION = "manual-sync-integration",
   ADD_TRUSTED_IP = "add-trusted-ip",
   UPDATE_TRUSTED_IP = "update-trusted-ip",
   DELETE_TRUSTED_IP = "delete-trusted-ip",
@@ -63,16 +67,47 @@ export enum EventType {
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
   GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
+  REVOKE_IDENTITY_UNIVERSAL_AUTH = "revoke-identity-universal-auth",
+  CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
+  UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
+  GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
+  ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
+  UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
+  GET_IDENTITY_TOKEN_AUTH = "get-identity-token-auth",
+  REVOKE_IDENTITY_TOKEN_AUTH = "revoke-identity-token-auth",
+  LOGIN_IDENTITY_KUBERNETES_AUTH = "login-identity-kubernetes-auth",
+  ADD_IDENTITY_KUBERNETES_AUTH = "add-identity-kubernetes-auth",
+  UPDATE_IDENTITY_KUBENETES_AUTH = "update-identity-kubernetes-auth",
+  GET_IDENTITY_KUBERNETES_AUTH = "get-identity-kubernetes-auth",
+  REVOKE_IDENTITY_KUBERNETES_AUTH = "revoke-identity-kubernetes-auth",
+  LOGIN_IDENTITY_OIDC_AUTH = "login-identity-oidc-auth",
+  ADD_IDENTITY_OIDC_AUTH = "add-identity-oidc-auth",
+  UPDATE_IDENTITY_OIDC_AUTH = "update-identity-oidc-auth",
+  GET_IDENTITY_OIDC_AUTH = "get-identity-oidc-auth",
+  REVOKE_IDENTITY_OIDC_AUTH = "revoke-identity-oidc-auth",
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
+  LOGIN_IDENTITY_GCP_AUTH = "login-identity-gcp-auth",
+  ADD_IDENTITY_GCP_AUTH = "add-identity-gcp-auth",
+  UPDATE_IDENTITY_GCP_AUTH = "update-identity-gcp-auth",
+  REVOKE_IDENTITY_GCP_AUTH = "revoke-identity-gcp-auth",
+  GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
+  REVOKE_IDENTITY_AWS_AUTH = "revoke-identity-aws-auth",
   GET_IDENTITY_AWS_AUTH = "get-identity-aws-auth",
+  LOGIN_IDENTITY_AZURE_AUTH = "login-identity-azure-auth",
+  ADD_IDENTITY_AZURE_AUTH = "add-identity-azure-auth",
+  UPDATE_IDENTITY_AZURE_AUTH = "update-identity-azure-auth",
+  GET_IDENTITY_AZURE_AUTH = "get-identity-azure-auth",
+  REVOKE_IDENTITY_AZURE_AUTH = "revoke-identity-azure-auth",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
+  GET_ENVIRONMENT = "get-environment",
   ADD_WORKSPACE_MEMBER = "add-workspace-member",
   ADD_BATCH_WORKSPACE_MEMBER = "add-workspace-members",
   REMOVE_WORKSPACE_MEMBER = "remove-workspace-member",
@@ -91,7 +126,47 @@ export enum EventType {
   SECRET_APPROVAL_MERGED = "secret-approval-merged",
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
-  SECRET_APPROVAL_REOPENED = "secret-approval-reopened"
+  SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
+  CREATE_CA = "create-certificate-authority",
+  GET_CA = "get-certificate-authority",
+  UPDATE_CA = "update-certificate-authority",
+  DELETE_CA = "delete-certificate-authority",
+  RENEW_CA = "renew-certificate-authority",
+  GET_CA_CSR = "get-certificate-authority-csr",
+  GET_CA_CERTS = "get-certificate-authority-certs",
+  GET_CA_CERT = "get-certificate-authority-cert",
+  SIGN_INTERMEDIATE = "sign-intermediate",
+  IMPORT_CA_CERT = "import-certificate-authority-cert",
+  GET_CA_CRL = "get-certificate-authority-crl",
+  ISSUE_CERT = "issue-cert",
+  SIGN_CERT = "sign-cert",
+  GET_CERT = "get-cert",
+  DELETE_CERT = "delete-cert",
+  REVOKE_CERT = "revoke-cert",
+  GET_CERT_BODY = "get-cert-body",
+  CREATE_PKI_ALERT = "create-pki-alert",
+  GET_PKI_ALERT = "get-pki-alert",
+  UPDATE_PKI_ALERT = "update-pki-alert",
+  DELETE_PKI_ALERT = "delete-pki-alert",
+  CREATE_PKI_COLLECTION = "create-pki-collection",
+  GET_PKI_COLLECTION = "get-pki-collection",
+  UPDATE_PKI_COLLECTION = "update-pki-collection",
+  DELETE_PKI_COLLECTION = "delete-pki-collection",
+  GET_PKI_COLLECTION_ITEMS = "get-pki-collection-items",
+  ADD_PKI_COLLECTION_ITEM = "add-pki-collection-item",
+  DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
+  CREATE_KMS = "create-kms",
+  UPDATE_KMS = "update-kms",
+  DELETE_KMS = "delete-kms",
+  GET_KMS = "get-kms",
+  UPDATE_PROJECT_KMS = "update-project-kms",
+  GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
+  LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
+  UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
+  DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
+  GET_CERTIFICATE_TEMPLATE = "get-certificate-template"
 }
 
 interface UserActorMetadata {
@@ -194,6 +269,17 @@ interface UpdateSecretBatchEvent {
   };
 }
 
+interface MoveSecretsEvent {
+  type: EventType.MOVE_SECRETS;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    secretIds: string[];
+  };
+}
+
 interface DeleteSecretEvent {
   type: EventType.DELETE_SECRET;
   metadata: {
@@ -259,6 +345,26 @@ interface DeleteIntegrationEvent {
   metadata: {
     integrationId: string;
     integration: string; // TODO: fix type
+    environment: string;
+    secretPath: string;
+    url?: string;
+    app?: string;
+    appId?: string;
+    targetEnvironment?: string;
+    targetEnvironmentId?: string;
+    targetService?: string;
+    targetServiceId?: string;
+    path?: string;
+    region?: string;
+    shouldDeleteIntegrationSecrets?: boolean;
+  };
+}
+
+interface ManualSyncIntegrationEvent {
+  type: EventType.MANUAL_SYNC_INTEGRATION;
+  metadata: {
+    integrationId: string;
+    integration: string;
     environment: string;
     secretPath: string;
     url?: string;
@@ -387,6 +493,124 @@ interface GetIdentityUniversalAuthEvent {
   };
 }
 
+interface DeleteIdentityUniversalAuthEvent {
+  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateTokenIdentityTokenAuthEvent {
+  type: EventType.CREATE_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface UpdateTokenIdentityTokenAuthEvent {
+  type: EventType.UPDATE_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    tokenId: string;
+    name?: string;
+  };
+}
+
+interface GetTokensIdentityTokenAuthEvent {
+  type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface AddIdentityTokenAuthEvent {
+  type: EventType.ADD_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityTokenAuthEvent {
+  type: EventType.UPDATE_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityTokenAuthEvent {
+  type: EventType.GET_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface DeleteIdentityTokenAuthEvent {
+  type: EventType.REVOKE_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityKubernetesAuthEvent {
+  type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+    identityKubernetesAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityKubernetesAuthEvent {
+  type: EventType.ADD_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+    kubernetesHost: string;
+    allowedNamespaces: string;
+    allowedNames: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityKubernetesAuthEvent {
+  type: EventType.REVOKE_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityKubernetesAuthEvent {
+  type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH;
+  metadata: {
+    identityId: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityKubernetesAuthEvent {
+  type: EventType.GET_IDENTITY_KUBERNETES_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateIdentityUniversalAuthClientSecretEvent {
   type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
@@ -402,11 +626,72 @@ interface GetIdentityUniversalAuthClientSecretsEvent {
   };
 }
 
+interface GetIdentityUniversalAuthClientSecretByIdEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
+}
+
 interface RevokeIdentityUniversalAuthClientSecretEvent {
   type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
     identityId: string;
     clientSecretId: string;
+  };
+}
+
+interface LoginIdentityGcpAuthEvent {
+  type: EventType.LOGIN_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    identityGcpAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityGcpAuthEvent {
+  type: EventType.ADD_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    type: string;
+    allowedServiceAccounts: string;
+    allowedProjects: string;
+    allowedZones: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityGcpAuthEvent {
+  type: EventType.REVOKE_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityGcpAuthEvent {
+  type: EventType.UPDATE_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
+    type?: string;
+    allowedServiceAccounts?: string;
+    allowedProjects?: string;
+    allowedZones?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityGcpAuthEvent {
+  type: EventType.GET_IDENTITY_GCP_AUTH;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -433,6 +718,13 @@ interface AddIdentityAwsAuthEvent {
   };
 }
 
+interface DeleteIdentityAwsAuthEvent {
+  type: EventType.REVOKE_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface UpdateIdentityAwsAuthEvent {
   type: EventType.UPDATE_IDENTITY_AWS_AUTH;
   metadata: {
@@ -454,11 +746,124 @@ interface GetIdentityAwsAuthEvent {
   };
 }
 
+interface LoginIdentityAzureAuthEvent {
+  type: EventType.LOGIN_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+    identityAzureAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAzureAuthEvent {
+  type: EventType.ADD_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+    tenantId: string;
+    resource: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityAzureAuthEvent {
+  type: EventType.REVOKE_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityAzureAuthEvent {
+  type: EventType.UPDATE_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+    tenantId?: string;
+    resource?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAzureAuthEvent {
+  type: EventType.GET_IDENTITY_AZURE_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityOidcAuthEvent {
+  type: EventType.LOGIN_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+    identityOidcAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityOidcAuthEvent {
+  type: EventType.ADD_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+    oidcDiscoveryUrl: string;
+    caCert: string;
+    boundIssuer: string;
+    boundAudiences: string;
+    boundClaims: Record<string, string>;
+    boundSubject: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityOidcAuthEvent {
+  type: EventType.REVOKE_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityOidcAuthEvent {
+  type: EventType.UPDATE_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+    oidcDiscoveryUrl?: string;
+    caCert?: string;
+    boundIssuer?: string;
+    boundAudiences?: string;
+    boundClaims?: Record<string, string>;
+    boundSubject?: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityOidcAuthEvent {
+  type: EventType.GET_IDENTITY_OIDC_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
     name: string;
     slug: string;
+  };
+}
+
+interface GetEnvironmentEvent {
+  type: EventType.GET_ENVIRONMENT;
+  metadata: {
+    id: string;
   };
 }
 
@@ -543,7 +948,6 @@ interface CreateWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -554,7 +958,6 @@ interface UpdateWebhookStatusEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -565,7 +968,6 @@ interface DeleteWebhookEvent {
     webhookId: string;
     environment: string;
     secretPath: string;
-    webhookUrl: string;
     isDisabled: boolean;
   };
 }
@@ -679,6 +1081,345 @@ interface SecretApprovalRequest {
   };
 }
 
+interface CreateCa {
+  type: EventType.CREATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCa {
+  type: EventType.GET_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface UpdateCa {
+  type: EventType.UPDATE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+    status: CaStatus;
+  };
+}
+
+interface DeleteCa {
+  type: EventType.DELETE_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface RenewCa {
+  type: EventType.RENEW_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCsr {
+  type: EventType.GET_CA_CSR;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCerts {
+  type: EventType.GET_CA_CERTS;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCert {
+  type: EventType.GET_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface SignIntermediate {
+  type: EventType.SIGN_INTERMEDIATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface ImportCaCert {
+  type: EventType.IMPORT_CA_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCrl {
+  type: EventType.GET_CA_CRL;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface IssueCert {
+  type: EventType.ISSUE_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface SignCert {
+  type: EventType.SIGN_CERT;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCert {
+  type: EventType.GET_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface DeleteCert {
+  type: EventType.DELETE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface RevokeCert {
+  type: EventType.REVOKE_CERT;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface GetCertBody {
+  type: EventType.GET_CERT_BODY;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
+
+interface CreatePkiAlert {
+  type: EventType.CREATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId: string;
+    name: string;
+    alertBeforeDays: number;
+    recipientEmails: string;
+  };
+}
+interface GetPkiAlert {
+  type: EventType.GET_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface UpdatePkiAlert {
+  type: EventType.UPDATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId?: string;
+    name?: string;
+    alertBeforeDays?: number;
+    recipientEmails?: string;
+  };
+}
+interface DeletePkiAlert {
+  type: EventType.DELETE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface CreatePkiCollection {
+  type: EventType.CREATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name: string;
+  };
+}
+
+interface GetPkiCollection {
+  type: EventType.GET_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface UpdatePkiCollection {
+  type: EventType.UPDATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name?: string;
+  };
+}
+
+interface DeletePkiCollection {
+  type: EventType.DELETE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface GetPkiCollectionItems {
+  type: EventType.GET_PKI_COLLECTION_ITEMS;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface AddPkiCollectionItem {
+  type: EventType.ADD_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+    type: PkiItemType;
+    itemId: string;
+  };
+}
+
+interface DeletePkiCollectionItem {
+  type: EventType.DELETE_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+  };
+}
+
+interface CreateKmsEvent {
+  type: EventType.CREATE_KMS;
+  metadata: {
+    kmsId: string;
+    provider: string;
+    slug: string;
+    description?: string;
+  };
+}
+
+interface DeleteKmsEvent {
+  type: EventType.DELETE_KMS;
+  metadata: {
+    kmsId: string;
+    slug: string;
+  };
+}
+
+interface UpdateKmsEvent {
+  type: EventType.UPDATE_KMS;
+  metadata: {
+    kmsId: string;
+    provider: string;
+    slug?: string;
+    description?: string;
+  };
+}
+
+interface GetKmsEvent {
+  type: EventType.GET_KMS;
+  metadata: {
+    kmsId: string;
+    slug: string;
+  };
+}
+
+interface UpdateProjectKmsEvent {
+  type: EventType.UPDATE_PROJECT_KMS;
+  metadata: {
+    secretManagerKmsKey: {
+      id: string;
+      slug: string;
+    };
+  };
+}
+
+interface GetProjectKmsBackupEvent {
+  type: EventType.GET_PROJECT_KMS_BACKUP;
+  metadata: Record<string, string>; // no metadata yet
+}
+
+interface LoadProjectKmsBackupEvent {
+  type: EventType.LOAD_PROJECT_KMS_BACKUP;
+  metadata: Record<string, string>; // no metadata yet
+}
+
+interface CreateCertificateTemplate {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface GetCertificateTemplate {
+  type: EventType.GET_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface UpdateCertificateTemplate {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface DeleteCertificateTemplate {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface OrgAdminAccessProjectEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PROJECT;
+  metadata: {
+    userId: string;
+    username: string;
+    email: string;
+    projectId: string;
+  }; // no metadata yet
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -686,6 +1427,7 @@ export type Event =
   | CreateSecretBatchEvent
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
+  | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | GetWorkspaceKeyEvent
@@ -693,6 +1435,7 @@ export type Event =
   | UnauthorizeIntegrationEvent
   | CreateIntegrationEvent
   | DeleteIntegrationEvent
+  | ManualSyncIntegrationEvent
   | AddTrustedIPEvent
   | UpdateTrustedIPEvent
   | DeleteTrustedIPEvent
@@ -704,15 +1447,46 @@ export type Event =
   | LoginIdentityUniversalAuthEvent
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
+  | DeleteIdentityUniversalAuthEvent
   | GetIdentityUniversalAuthEvent
+  | CreateTokenIdentityTokenAuthEvent
+  | UpdateTokenIdentityTokenAuthEvent
+  | GetTokensIdentityTokenAuthEvent
+  | AddIdentityTokenAuthEvent
+  | UpdateIdentityTokenAuthEvent
+  | GetIdentityTokenAuthEvent
+  | DeleteIdentityTokenAuthEvent
+  | LoginIdentityKubernetesAuthEvent
+  | DeleteIdentityKubernetesAuthEvent
+  | AddIdentityKubernetesAuthEvent
+  | UpdateIdentityKubernetesAuthEvent
+  | GetIdentityKubernetesAuthEvent
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
+  | GetIdentityUniversalAuthClientSecretByIdEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | LoginIdentityGcpAuthEvent
+  | AddIdentityGcpAuthEvent
+  | DeleteIdentityGcpAuthEvent
+  | UpdateIdentityGcpAuthEvent
+  | GetIdentityGcpAuthEvent
   | LoginIdentityAwsAuthEvent
   | AddIdentityAwsAuthEvent
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
+  | DeleteIdentityAwsAuthEvent
+  | LoginIdentityAzureAuthEvent
+  | AddIdentityAzureAuthEvent
+  | DeleteIdentityAzureAuthEvent
+  | UpdateIdentityAzureAuthEvent
+  | GetIdentityAzureAuthEvent
+  | LoginIdentityOidcAuthEvent
+  | AddIdentityOidcAuthEvent
+  | DeleteIdentityOidcAuthEvent
+  | UpdateIdentityOidcAuthEvent
+  | GetIdentityOidcAuthEvent
   | CreateEnvironmentEvent
+  | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
   | AddWorkspaceMemberEvent
@@ -733,4 +1507,44 @@ export type Event =
   | SecretApprovalMerge
   | SecretApprovalClosed
   | SecretApprovalRequest
-  | SecretApprovalReopened;
+  | SecretApprovalReopened
+  | CreateCa
+  | GetCa
+  | UpdateCa
+  | DeleteCa
+  | RenewCa
+  | GetCaCsr
+  | GetCaCerts
+  | GetCaCert
+  | SignIntermediate
+  | ImportCaCert
+  | GetCaCrl
+  | IssueCert
+  | SignCert
+  | GetCert
+  | DeleteCert
+  | RevokeCert
+  | GetCertBody
+  | CreatePkiAlert
+  | GetPkiAlert
+  | UpdatePkiAlert
+  | DeletePkiAlert
+  | CreatePkiCollection
+  | GetPkiCollection
+  | UpdatePkiCollection
+  | DeletePkiCollection
+  | GetPkiCollectionItems
+  | AddPkiCollectionItem
+  | DeletePkiCollectionItem
+  | CreateKmsEvent
+  | UpdateKmsEvent
+  | DeleteKmsEvent
+  | GetKmsEvent
+  | UpdateProjectKmsEvent
+  | GetProjectKmsBackupEvent
+  | LoadProjectKmsBackupEvent
+  | OrgAdminAccessProjectEvent
+  | CreateCertificateTemplate
+  | UpdateCertificateTemplate
+  | GetCertificateTemplate
+  | DeleteCertificateTemplate;

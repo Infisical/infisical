@@ -18,7 +18,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    */
   const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[], tx?: Knex) => {
     try {
-      const userProjectMemberships: string[] = await (tx || db)(TableName.ProjectMembership)
+      const userProjectMemberships: string[] = await (tx || db.replicaNode())(TableName.ProjectMembership)
         .where(`${TableName.ProjectMembership}.userId`, userId)
         .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
         .pluck(`${TableName.ProjectMembership}.projectId`);
@@ -43,7 +43,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   // special query
   const findUserGroupMembershipsInProject = async (usernames: string[], projectId: string) => {
     try {
-      const usernameDocs: string[] = await db(TableName.UserGroupMembership)
+      const usernameDocs: string[] = await db
+        .replicaNode()(TableName.UserGroupMembership)
         .join(
           TableName.GroupProjectMembership,
           `${TableName.UserGroupMembership}.groupId`,
@@ -73,7 +74,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     try {
       // get list of groups in the project with id [projectId]
       // that that are not the group with id [groupId]
-      const groups: string[] = await (tx || db)(TableName.GroupProjectMembership)
+      const groups: string[] = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
         .whereNot(`${TableName.GroupProjectMembership}.groupId`, groupId)
         .pluck(`${TableName.GroupProjectMembership}.groupId`);
@@ -83,8 +84,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         .where(`${TableName.UserGroupMembership}.groupId`, groupId)
         .where(`${TableName.UserGroupMembership}.isPending`, false)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.ProjectMembership, function () {
-          this.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
+        .leftJoin(TableName.ProjectMembership, (bd) => {
+          bd.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
             `${TableName.ProjectMembership}.projectId`,
             "=",
             db.raw("?", [projectId])
@@ -107,9 +108,9 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
         .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
-        .whereNotIn(`${TableName.UserGroupMembership}.userId`, function () {
+        .whereNotIn(`${TableName.UserGroupMembership}.userId`, (bd) => {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          this.select(`${TableName.UserGroupMembership}.userId`)
+          bd.select(`${TableName.UserGroupMembership}.userId`)
             .from(TableName.UserGroupMembership)
             .whereIn(`${TableName.UserGroupMembership}.groupId`, groups);
         });
@@ -161,11 +162,60 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.UserGroupMembership)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.OrgMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .select(
+          db.ref("id").withSchema(TableName.UserGroupMembership),
+          db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
+          db.ref("firstName").withSchema(TableName.Users).as("firstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("lastName")
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find group memberships by user id in org" });
+    }
+  };
+
+  const findGroupMembershipsByGroupIdInOrg = async (groupId: string, orgId: string) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.UserGroupMembership)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.OrgMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .where(`${TableName.Groups}.id`, groupId)
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .select(
+          db.ref("id").withSchema(TableName.UserGroupMembership),
+          db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
+          db.ref("firstName").withSchema(TableName.Users).as("firstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("lastName")
+        );
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find group memberships by group id in org" });
+    }
+  };
+
   return {
     ...userGroupMembershipOrm,
     filterProjectsByUserMembership,
     findUserGroupMembershipsInProject,
     findGroupMembersNotInProject,
-    deletePendingUserGroupMembershipsByUserIds
+    deletePendingUserGroupMembershipsByUserIds,
+    findGroupMembershipsByUserIdInOrg,
+    findGroupMembershipsByGroupIdInOrg
   };
 };

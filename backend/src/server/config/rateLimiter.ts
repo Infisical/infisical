@@ -21,14 +21,16 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
 // GET endpoints
 export const readLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 600,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.readLimit,
   keyGenerator: (req) => req.realIp
 };
 
 // POST, PATCH, PUT, DELETE endpoints
 export const writeLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 50,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.writeLimit,
   keyGenerator: (req) => req.realIp
 };
 
@@ -36,25 +38,52 @@ export const writeLimit: RateLimitOptions = {
 export const secretsLimit: RateLimitOptions = {
   // secrets, folders, secret imports
   timeWindow: 60 * 1000,
-  max: 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.secretsLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 60,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.authRateLimit,
   keyGenerator: (req) => req.realIp
 };
 
 export const inviteUserRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 30,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.inviteUserRateLimit,
   keyGenerator: (req) => req.realIp
 };
 
-export const creationLimit: RateLimitOptions = {
-  // identity, project, org
+export const mfaRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 30,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.mfaRateLimit,
+  keyGenerator: (req) => {
+    return req.headers.authorization?.split(" ")[1] || req.realIp;
+  }
+};
+
+// Public endpoints to avoid brute force attacks
+export const publicEndpointLimit: RateLimitOptions = {
+  // Read Shared Secrets
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.publicEndpointLimit,
+  keyGenerator: (req) => req.realIp
+};
+
+export const publicSecretShareCreationLimit: RateLimitOptions = {
+  // Create Shared Secrets
+  timeWindow: 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.realIp
+};
+
+export const userEngagementLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  max: 5,
   keyGenerator: (req) => req.realIp
 };

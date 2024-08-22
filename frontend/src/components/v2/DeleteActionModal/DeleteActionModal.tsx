@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 import { useToggle } from "@app/hooks";
 
@@ -16,6 +16,7 @@ type Props = {
   subTitle?: string;
   onDeleteApproved: () => Promise<void>;
   buttonText?: string;
+  children?: ReactNode;
 };
 
 export const DeleteActionModal = ({
@@ -25,8 +26,9 @@ export const DeleteActionModal = ({
   deleteKey,
   onDeleteApproved,
   title,
-  subTitle = "This action is irreversible!",
-  buttonText = "Delete"
+  subTitle = "This action is irreversible.",
+  buttonText = "Delete",
+  children
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
   const [isLoading, setIsLoading] = useToggle();
@@ -86,7 +88,7 @@ export const DeleteActionModal = ({
           <FormControl
             label={
               <div className="break-words pb-2 text-sm">
-                Type <span className="font-bold">{deleteKey}</span> to delete the resource
+                Type <span className="font-bold">{deleteKey}</span> to perform this action
               </div>
             }
             className="mb-0"
@@ -94,9 +96,10 @@ export const DeleteActionModal = ({
             <Input
               value={inputData}
               onChange={(e) => setInputData(e.target.value)}
-              placeholder="Type to delete..."
+              placeholder={`Type ${deleteKey} here`}
             />
           </FormControl>
+          {children}
         </form>
       </ModalContent>
     </Modal>

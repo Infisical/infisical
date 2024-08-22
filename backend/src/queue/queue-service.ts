@@ -7,33 +7,48 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { TSyncSecretsDTO } from "@app/services/secret/secret-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
+  // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
+  DailyResourceCleanUp = "daily-resource-cleanup",
+  DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
   SecretFullRepoScan = "secret-full-repo-scan",
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
-  DynamicSecretRevocation = "dynamic-secret-revocation"
+  DynamicSecretRevocation = "dynamic-secret-revocation",
+  CaCrlRotation = "ca-crl-rotation",
+  SecretReplication = "secret-replication",
+  SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
+  ProjectV3Migration = "project-v3-migration"
 }
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
+  // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
+  DailyResourceCleanUp = "daily-resource-cleanup-job",
+  DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
   SecretScan = "secret-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
-  DynamicSecretPruning = "dynamic-secret-pruning"
+  DynamicSecretPruning = "dynamic-secret-pruning",
+  CaCrlRotation = "ca-crl-rotation-job",
+  SecretReplication = "secret-replication",
+  SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
+  ProjectV3Migration = "project-v3-migration"
 }
 
 export type TQueueJobTypes = {
@@ -46,7 +61,6 @@ export type TQueueJobTypes = {
     };
     name: QueueJobs.SecretReminder;
   };
-
   [QueueName.SecretRotation]: {
     payload: { rotationId: string };
     name: QueueJobs.SecretRotation;
@@ -54,6 +68,14 @@ export type TQueueJobTypes = {
   [QueueName.AuditLog]: {
     name: QueueJobs.AuditLog;
     payload: TCreateAuditLogDTO;
+  };
+  [QueueName.DailyResourceCleanUp]: {
+    name: QueueJobs.DailyResourceCleanUp;
+    payload: undefined;
+  };
+  [QueueName.DailyExpiringPkiItemAlert]: {
+    name: QueueJobs.DailyExpiringPkiItemAlert;
+    payload: undefined;
   };
   [QueueName.AuditLogPrune]: {
     name: QueueJobs.AuditLogPrune;
@@ -65,7 +87,13 @@ export type TQueueJobTypes = {
   };
   [QueueName.IntegrationSync]: {
     name: QueueJobs.IntegrationSync;
-    payload: { projectId: string; environment: string; secretPath: string; depth?: number };
+    payload: {
+      projectId: string;
+      environment: string;
+      secretPath: string;
+      depth?: number;
+      deDupeQueue?: Record<string, boolean>;
+    };
   };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;
@@ -102,6 +130,24 @@ export type TQueueJobTypes = {
           dynamicSecretCfgId: string;
         };
       };
+  [QueueName.CaCrlRotation]: {
+    name: QueueJobs.CaCrlRotation;
+    payload: {
+      caId: string;
+    };
+  };
+  [QueueName.SecretReplication]: {
+    name: QueueJobs.SecretReplication;
+    payload: TSyncSecretsDTO;
+  };
+  [QueueName.SecretSync]: {
+    name: QueueJobs.SecretSync;
+    payload: TSyncSecretsDTO;
+  };
+  [QueueName.ProjectV3Migration]: {
+    name: QueueJobs.ProjectV3Migration;
+    payload: { projectId: string };
+  };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
@@ -118,7 +164,7 @@ export const queueServiceFactory = (redisUrl: string) => {
 
   const start = <T extends QueueName>(
     name: T,
-    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>) => Promise<void>,
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
     queueSettings: Omit<QueueOptions, "connection"> = {}
   ) => {
     if (queueContainer[name]) {
@@ -152,7 +198,7 @@ export const queueServiceFactory = (redisUrl: string) => {
     name: T,
     job: TQueueJobTypes[T]["name"],
     data: TQueueJobTypes[T]["payload"],
-    opts: JobsOptions & { jobId?: string }
+    opts?: JobsOptions & { jobId?: string }
   ) => {
     const q = queueContainer[name];
 
@@ -166,7 +212,9 @@ export const queueServiceFactory = (redisUrl: string) => {
     jobId?: string
   ) => {
     const q = queueContainer[name];
-    return q.removeRepeatable(job, repeatOpt, jobId);
+    if (q) {
+      return q.removeRepeatable(job, repeatOpt, jobId);
+    }
   };
 
   const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {
@@ -174,6 +222,7 @@ export const queueServiceFactory = (redisUrl: string) => {
     const job = await q.getJob(jobId);
     if (!job) return true;
     if (!job.repeatJobKey) return true;
+    await job.remove();
     return q.removeRepeatableByKey(job.repeatJobKey);
   };
 

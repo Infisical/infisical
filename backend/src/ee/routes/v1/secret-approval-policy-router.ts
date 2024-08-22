@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { removeTrailingSlash } from "@app/lib/fn";
+import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
@@ -19,9 +21,15 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           workspaceId: z.string(),
           name: z.string().optional(),
           environment: z.string(),
-          secretPath: z.string().optional().nullable(),
+          secretPath: z
+            .string()
+            .optional()
+            .nullable()
+            .default("/")
+            .transform((val) => (val ? removeTrailingSlash(val) : val)),
           approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1)
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
@@ -42,7 +50,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         projectId: req.body.workspaceId,
         ...req.body,
-        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`
+        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
+        enforcementLevel: req.body.enforcementLevel
       });
       return { approval };
     }
@@ -63,7 +72,13 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           name: z.string().optional(),
           approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
-          secretPath: z.string().optional().nullable()
+          secretPath: z
+            .string()
+            .optional()
+            .nullable()
+            .transform((val) => (val ? removeTrailingSlash(val) : val))
+            .transform((val) => (val === "" ? "/" : val)),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
         })
         .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
@@ -130,7 +145,15 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema.merge(z.object({ approvers: z.string().array() })).array()
+          approvals: sapPubSchema
+            .extend({
+              userApprovers: z
+                .object({
+                  userId: z.string()
+                })
+                .array()
+            })
+            .array()
         })
       }
     },
@@ -157,11 +180,15 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim()
+        secretPath: z.string().trim().transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema.merge(z.object({ approvers: z.string().array() })).optional()
+          policy: sapPubSchema
+            .extend({
+              userApprovers: z.object({ userId: z.string() }).array()
+            })
+            .optional()
         })
       }
     },

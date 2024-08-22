@@ -30,7 +30,9 @@ export type TFeatureSet = {
   workspacesUsed: 0;
   dynamicSecret: false;
   memberLimit: null;
-  membersUsed: 0;
+  membersUsed: number;
+  identityLimit: null;
+  identitiesUsed: number;
   environmentLimit: null;
   environmentsUsed: 0;
   secretVersioning: true;
@@ -44,6 +46,7 @@ export type TFeatureSet = {
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   samlSSO: false;
+  oidcSSO: false;
   scim: false;
   ldap: false;
   groups: false;
@@ -52,6 +55,14 @@ export type TFeatureSet = {
   has_used_trial: true;
   secretApproval: false;
   secretRotation: true;
+  caCrl: false;
+  instanceUserManagement: false;
+  externalKms: false;
+  rateLimits: {
+    readLimit: number;
+    writeLimit: number;
+    secretsLimit: number;
+  };
 };
 
 export type TOrgPlansTableDTO = {
