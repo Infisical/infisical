@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -9,7 +9,7 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -17,9 +17,12 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { TokenType } from "../auth-token/auth-token-types";
+import { TokenType, TTokenMetadata } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { addMembersToProject } from "../project-membership/project-membership-fns";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TAuthDALFactory } from "./auth-dal";
@@ -32,10 +35,14 @@ type TAuthSignupDep = {
   userDAL: TUserDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
-    "find" | "transaction" | "insertMany" | "deletePendingUserGroupMembershipsByUserIds"
+    | "find"
+    | "transaction"
+    | "insertMany"
+    | "deletePendingUserGroupMembershipsByUserIds"
+    | "findUserGroupMembershipsInProject"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
@@ -43,6 +50,8 @@ type TAuthSignupDep = {
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "transaction" | "insertMany">;
+  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -58,6 +67,8 @@ export const authSignupServiceFactory = ({
   smtpService,
   orgService,
   orgDAL,
+  projectMembershipDAL,
+  projectUserMembershipRoleDAL,
   licenseService
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
@@ -301,7 +312,8 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKey,
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
-    authorization
+    authorization,
+    metadata
   }: TCompleteAccountInviteDTO) => {
     const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
@@ -357,6 +369,38 @@ export const authSignupServiceFactory = ({
         },
         tx
       );
+
+      if (metadata) {
+        const metadataObj = jwt.verify(metadata, appCfg.AUTH_SECRET) as TTokenMetadata;
+
+        if (user.id !== metadataObj.userId) {
+          throw new UnauthorizedError({
+            message: "Malformed or invalid metadata token"
+          });
+        }
+
+        for await (const projectId of metadataObj.projectIds) {
+          await addMembersToProject({
+            orgDAL,
+            projectDAL,
+            projectMembershipDAL,
+            projectKeyDAL,
+            userGroupMembershipDAL,
+            projectBotDAL,
+            projectUserMembershipRoleDAL,
+            smtpService
+          }).addMembersToNonE2EEProject(
+            {
+              emails: [user.email!],
+              usernames: [],
+              projectId,
+              projectMembershipRole: ProjectMembershipRole.Member,
+              sendEmails: false
+            },
+            tx
+          );
+        }
+      }
 
       const updatedMembersips = await orgDAL.updateMembership(
         { inviteEmail: email, status: OrgMembershipStatus.Invited },

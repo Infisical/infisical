@@ -49,3 +49,14 @@ export type TIssueAuthTokenDTO = {
   ip: string;
   userAgent: string;
 };
+
+export enum TokenMetadataType {
+  InviteToProjects = "projects-invite"
+}
+
+// TODO: Split the payloads into separate types for better type inference (not needed until we add more types of metadata)
+export type TTokenMetadata = {
+  type: TokenMetadataType.InviteToProjects;
+  projectIds: string[];
+  userId: string;
+};
