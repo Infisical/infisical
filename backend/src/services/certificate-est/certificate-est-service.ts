@@ -1,23 +1,24 @@
 import * as x509 from "@peculiar/x509";
 
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
+import { checkCertValidityAgainstChain, convertCertPemToRaw } from "../certificate/certificate-fns";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
-import { getCaCertChains } from "../certificate-authority/certificate-authority-fns";
+import { getCaCertChain, getCaCertChains } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateAuthorityServiceFactory } from "../certificate-authority/certificate-authority-service";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TCertificateTemplateServiceFactory } from "../certificate-template/certificate-template-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
-import { checkCertValidityAgainstChain, convertRawCertToPkcs7 } from "./certificate-est-fns";
+import { convertRawCertsToPkcs7 } from "./certificate-est-fns";
 
 type TCertificateEstServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificateTemplateService: Pick<TCertificateTemplateServiceFactory, "getEstConfiguration" | "getCertTemplate">;
+  certificateTemplateService: Pick<TCertificateTemplateServiceFactory, "getEstConfiguration">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
@@ -155,7 +156,7 @@ export const certificateEstServiceFactory = ({
       csr
     });
 
-    return convertRawCertToPkcs7(rawCertificate);
+    return convertRawCertsToPkcs7([rawCertificate]);
   };
 
   const simpleEnroll = async ({
@@ -228,10 +229,43 @@ export const certificateEstServiceFactory = ({
       csr
     });
 
-    return convertRawCertToPkcs7(rawCertificate);
+    return convertRawCertsToPkcs7([rawCertificate]);
   };
+
+  const getCaCerts = async ({ certificateTemplateId }: { certificateTemplateId: string }) => {
+    const certTemplate = await certificateTemplateDAL.findById(certificateTemplateId);
+    if (!certTemplate) {
+      throw new NotFoundError({
+        message: "Certificate template not found"
+      });
+    }
+
+    const ca = await certificateAuthorityDAL.findById(certTemplate.caId);
+    if (!ca) {
+      throw new NotFoundError({
+        message: "Certificate Authority not found"
+      });
+    }
+
+    const { caCert, caCertChain } = await getCaCertChain({
+      caCertId: ca.activeCaCertId as string,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const caCertRaw = convertCertPemToRaw(caCert);
+    const caParentsRaw = caCertChain
+      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
+      ?.map(convertCertPemToRaw);
+
+    return convertRawCertsToPkcs7([caCertRaw, ...(caParentsRaw ?? [])]);
+  };
+
   return {
     simpleEnroll,
-    simpleReenroll
+    simpleReenroll,
+    getCaCerts
   };
 };

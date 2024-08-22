@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerCertificateEstRouter = async (server: FastifyZodProvider) => {
   // add support for CSR bodies
@@ -18,6 +18,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
   // Authenticate EST client using Passphrase
   server.addHook("onRequest", async (req, res) => {
     const { authorization } = req.headers;
+    const urlFragments = req.url.split("/");
+
+    // cacerts endpoint should not have any authentication
+    if (urlFragments[urlFragments.length - 1] === "cacerts") {
+      return;
+    }
+
     if (!authorization) {
       const wwwAuthenticateHeader = "WWW-Authenticate";
       const errAuthRequired = "Authentication required";
@@ -36,7 +43,6 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       return;
     }
 
-    const urlFragments = req.url.split("/");
     const certificateTemplateId = urlFragments.slice(-2)[0];
     const estConfig = await server.services.certificateTemplate.getEstConfiguration({
       isInternal: true,
@@ -121,6 +127,30 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         csr: req.body,
         certificateTemplateId: req.params.certificateTemplateId,
         sslClientCert: req.headers["x-ssl-client-cert"] as string
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:certificateTemplateId/cacerts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        certificateTemplateId: z.string().min(1)
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    handler: async (req, res) => {
+      void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
+      void res.header("Content-Transfer-Encoding", "base64");
+
+      return server.services.certificateEst.getCaCerts({
+        certificateTemplateId: req.params.certificateTemplateId
       });
     }
   });

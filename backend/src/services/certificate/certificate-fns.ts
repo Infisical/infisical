@@ -24,3 +24,26 @@ export const revocationReasonToCrlCode = (crlReason: CrlReason) => {
       return x509.X509CrlReason.unspecified;
   }
 };
+
+export const convertCertPemToRaw = (certPem: string) => {
+  return new x509.X509Certificate(certPem).rawData;
+};
+
+export const checkCertValidityAgainstChain = async (cert: x509.X509Certificate, chainCerts: x509.X509Certificate[]) => {
+  let isSslClientCertValid = true;
+  let certToVerify = cert;
+
+  for await (const issuerCert of chainCerts) {
+    if (
+      await certToVerify.verify({
+        publicKey: issuerCert.publicKey
+      })
+    ) {
+      certToVerify = issuerCert; // Move to the next certificate in the chain
+    } else {
+      isSslClientCertValid = false;
+    }
+  }
+
+  return isSslClientCertValid;
+};
