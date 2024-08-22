@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -25,18 +26,21 @@ import {
   useGetOrgRoles,
   useGetUserWorkspaces
 } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { OrgInviteLink } from "./OrgInviteLink";
 
-const DEFAULT_ORG_MEMBER_ROLE_SLUG = "member";
+const DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG = "member";
 
 const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 
 const addMemberFormSchema = z.object({
   emails: z.string().min(1).trim().toLowerCase(),
   projectIds: z.array(z.string().min(1).trim().toLowerCase()).default([]),
-  organizationRoleSlug: z.string().min(1).default(DEFAULT_ORG_MEMBER_ROLE_SLUG)
+  projectRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG),
+  organizationRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG)
 });
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
@@ -71,7 +75,12 @@ export const AddOrgMemberModal = ({
     formState: { isSubmitting }
   } = useForm<TAddMemberForm>({ resolver: zodResolver(addMemberFormSchema) });
 
-  const onAddMembers = async ({ emails, organizationRoleSlug, projectIds }: TAddMemberForm) => {
+  const onAddMembers = async ({
+    emails,
+    organizationRoleSlug,
+    projectIds,
+    projectRoleSlug
+  }: TAddMemberForm) => {
     if (!currentOrg?.id) return;
 
     try {
@@ -98,7 +107,8 @@ export const AddOrgMemberModal = ({
         organizationId: currentOrg?.id,
         inviteeEmails: emails.split(",").map((email) => email.trim()),
         organizationRoleSlug,
-        projectIds
+        projectIds,
+        projectRoleSlug
       });
 
       setCompleteInviteLinks(data?.completeInviteLinks ?? null);
@@ -128,7 +138,12 @@ export const AddOrgMemberModal = ({
   };
 
   const projectIds = watch("projectIds", []);
-  const { data: projects } = useGetUserWorkspaces();
+  const { data: projects } = useGetUserWorkspaces(true);
+
+  const filteredProjects = useMemo(
+    () => projects?.filter((project) => project.version === ProjectVersion.V3),
+    [projects]
+  );
 
   return (
     <Modal
@@ -179,7 +194,7 @@ export const AddOrgMemberModal = ({
                   >
                     <div>
                       <Select
-                        defaultValue={DEFAULT_ORG_MEMBER_ROLE_SLUG}
+                        defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
                         {...field}
                         onValueChange={(val) => field.onChange(val)}
                       >
@@ -195,83 +210,117 @@ export const AddOrgMemberModal = ({
               />
             </div>
 
-            <div className="-space-y-3">
-              <Controller
-                control={control}
-                name="projectIds"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Add user to projects"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        {projects && projects.length > 0 ? (
-                          <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                            {projectIds.length === 1
-                              ? projects.find((project) => project.id === projectIds[0])?.name
-                              : `${projectIds.length} projects selected`}
-                            <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
-                          </div>
-                        ) : (
-                          <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                            No projects found
-                          </div>
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="start"
-                        className="thin-scrollbar z-[100] max-h-80"
-                      >
-                        {projects && projects.length > 0 ? (
-                          projects.map((project) => {
-                            const isSelected = projectIds.includes(String(project.id));
+            <div className="flex items-center justify-between gap-2">
+              <div className="w-full">
+                <Controller
+                  control={control}
+                  name="projectIds"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Add user to projects"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          {filteredProjects && filteredProjects.length > 0 ? (
+                            <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                              {projectIds.length === 1
+                                ? filteredProjects.find((project) => project.id === projectIds[0])
+                                    ?.name
+                                : `${projectIds.length} projects selected`}
+                              <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
+                            </div>
+                          ) : (
+                            <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                              No projects found
+                            </div>
+                          )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="start"
+                          className="thin-scrollbar z-[100] max-h-80"
+                        >
+                          {filteredProjects && filteredProjects.length > 0 ? (
+                            filteredProjects.map((project) => {
+                              const isSelected = projectIds.includes(String(project.id));
 
-                            return (
-                              <DropdownMenuItem
-                                onSelect={(event) => projects.length > 0 && event.preventDefault()}
-                                onClick={() => {
-                                  if (projectIds.includes(String(project.id))) {
-                                    field.onChange(
-                                      projectIds.filter(
-                                        (projectId: string) => projectId !== String(project.id)
-                                      )
-                                    );
-                                  } else {
-                                    field.onChange([...projectIds, String(project.id)]);
+                              return (
+                                <DropdownMenuItem
+                                  onSelect={(event) =>
+                                    filteredProjects.length > 0 && event.preventDefault()
                                   }
-                                }}
-                                key={`project-id-${project.id}`}
-                                icon={
-                                  isSelected ? (
-                                    <FontAwesomeIcon
-                                      icon={faCheckCircle}
-                                      className="pr-0.5 text-primary"
-                                    />
-                                  ) : (
-                                    <div className="pl-[1.01rem]" />
-                                  )
-                                }
-                                iconPos="left"
-                                className="w-[28.4rem] text-sm"
-                              >
-                                {project.name}
-                              </DropdownMenuItem>
-                            );
-                          })
-                        ) : (
-                          <div />
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </FormControl>
-                )}
-              />
-              <p className="ml-0.5 text-xs text-mineshaft-400">
-                Members will automatically be assigned the <a className="font-bold">Developer</a>{" "}
-                role for the projects you select.
-              </p>
+                                  onClick={() => {
+                                    if (projectIds.includes(String(project.id))) {
+                                      field.onChange(
+                                        projectIds.filter(
+                                          (projectId: string) => projectId !== String(project.id)
+                                        )
+                                      );
+                                    } else {
+                                      field.onChange([...projectIds, String(project.id)]);
+                                    }
+                                  }}
+                                  key={`project-id-${project.id}`}
+                                  icon={
+                                    isSelected ? (
+                                      <FontAwesomeIcon
+                                        icon={faCheckCircle}
+                                        className="pr-0.5 text-primary"
+                                      />
+                                    ) : (
+                                      <div className="pl-[1.01rem]" />
+                                    )
+                                  }
+                                  iconPos="left"
+                                  className="w-[28.4rem] text-sm"
+                                >
+                                  {project.name}
+                                </DropdownMenuItem>
+                              );
+                            })
+                          ) : (
+                            <div />
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <div className="flex min-w-fit justify-end">
+                <Controller
+                  control={control}
+                  name="projectRoleSlug"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      tooltipText="Select which role to assign to the users in the selected projects."
+                      label="Role"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                    >
+                      <div>
+                        <Select
+                          isDisabled={projectIds.length === 0}
+                          defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
+                          {...field}
+                          onValueChange={(val) => field.onChange(val)}
+                        >
+                          {Object.entries(ProjectMembershipRole).map(
+                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                            ([_, slug]) =>
+                              slug !== "custom" && (
+                                <SelectItem key={slug} value={slug}>
+                                  <span className="capitalize">{slug.replace("-", " ")}</span>
+                                </SelectItem>
+                              )
+                          )}
+                        </Select>
+                      </div>
+                    </FormControl>
+                  )}
+                />
+              </div>
             </div>
 
             <div className="mt-8 flex items-center">

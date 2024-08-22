@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, UsersSchema } from "@app/db/schemas";
 import { inviteUserRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -19,7 +19,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         inviteeEmails: z.array(z.string().trim().email()),
         organizationId: z.string().trim(),
         projectIds: z.array(z.string().trim()).optional(),
-        organizationRoleSlug: z.string().trim().optional()
+        projectRoleSlug: z.nativeEnum(ProjectMembershipRole).optional(),
+        organizationRoleSlug: z.nativeEnum(OrgMembershipRole)
       }),
       response: {
         200: z.object({
@@ -44,6 +45,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         userId: req.permission.id,
         inviteeEmails: req.body.inviteeEmails,
         projectIds: req.body.projectIds,
+        projectRoleSlug: req.body.projectRoleSlug,
         organizationRoleSlug: req.body.organizationRoleSlug,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId

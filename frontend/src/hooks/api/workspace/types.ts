@@ -1,3 +1,5 @@
+import { TProjectRole } from "../roles/types";
+
 export enum ProjectVersion {
   V1 = 1,
   V2 = 2,
@@ -22,6 +24,8 @@ export type Workspace = {
   auditLogsRetentionDays: number;
   slug: string;
   createdAt: string;
+
+  roles?: TProjectRole[];
 };
 
 export type WorkspaceEnv = {

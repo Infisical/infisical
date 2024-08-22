@@ -50,7 +50,8 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
     try {
       const { data } = await inviteUsers({
         organizationId: orgId,
-        inviteeEmails: [email]
+        inviteeEmails: [email],
+        organizationRoleSlug: "member"
       });
 
       //   setCompleteInviteLink(data?.completeInviteLink || "");

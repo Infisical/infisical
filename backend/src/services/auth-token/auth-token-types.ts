@@ -1,3 +1,5 @@
+import { ProjectMembershipRole } from "@app/db/schemas";
+
 export enum TokenType {
   TOKEN_EMAIL_CONFIRMATION = "emailConfirmation",
   TOKEN_EMAIL_VERIFICATION = "emailVerification", // unverified -> verified
@@ -54,9 +56,14 @@ export enum TokenMetadataType {
   InviteToProjects = "projects-invite"
 }
 
-// TODO: Split the payloads into separate types for better type inference (not needed until we add more types of metadata)
+export type TTokenInviteToProjectsMetadataPayload = {
+  projectIds: string[];
+  projectRoleSlug: ProjectMembershipRole;
+  userId: string;
+  orgId: string;
+};
+
 export type TTokenMetadata = {
   type: TokenMetadataType.InviteToProjects;
-  projectIds: string[];
-  userId: string;
+  payload: TTokenInviteToProjectsMetadataPayload;
 };

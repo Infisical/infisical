@@ -4,7 +4,14 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName, TUsers } from "@app/db/schemas";
+import {
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  ProjectVersion,
+  TableName,
+  TUsers
+} from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -25,8 +32,9 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { TokenMetadataType, TokenType } from "../auth-token/auth-token-types";
+import { TokenMetadataType, TokenType, TTokenMetadata } from "../auth-token/auth-token-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { verifyProjectVersion } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -435,6 +443,7 @@ export const orgServiceFactory = ({
     userId,
     inviteeEmails,
     organizationRoleSlug,
+    projectRoleSlug,
     projectIds,
     actorAuthMethod,
     actorOrgId
@@ -467,6 +476,22 @@ export const orgServiceFactory = ({
       });
     }
 
+    if (projectIds?.length) {
+      const projects = await projectDAL.find({
+        orgId,
+        $in: {
+          id: projectIds
+        }
+      });
+
+      // if its not v3, throw an error
+      if (!verifyProjectVersion(projects, ProjectVersion.V3)) {
+        throw new BadRequestError({
+          message: "One or more selected projects are not compatible with this operation. Please upgrade your projects."
+        });
+      }
+    }
+
     const inviteeUsers = await orgDAL.transaction(async (tx) => {
       const users: Pick<
         TUsers & { orgId: string },
@@ -474,6 +499,7 @@ export const orgServiceFactory = ({
       >[] = [];
       for await (const inviteeEmail of inviteeEmails) {
         const inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
+
         if (inviteeUser) {
           // if user already exist means its already part of infisical
           // Thus the signup flow is not needed anymore
@@ -504,7 +530,22 @@ export const orgServiceFactory = ({
               tx
             );
 
-            if (projectIds) {
+            if (projectIds?.length) {
+              if (
+                organizationRoleSlug === OrgMembershipRole.Custom ||
+                projectRoleSlug === ProjectMembershipRole.Custom
+              ) {
+                throw new BadRequestError({
+                  message: "Custom roles are not supported for inviting users to projects and organizations"
+                });
+              }
+
+              if (!projectRoleSlug) {
+                throw new BadRequestError({
+                  message: "Selecting a project role is required to invite users to projects"
+                });
+              }
+
               for await (const projectId of projectIds) {
                 await projectMembershipDAL.create(
                   {
@@ -528,10 +569,12 @@ export const orgServiceFactory = ({
                     emails: [inviteeEmail],
                     usernames: [],
                     projectId,
-                    projectMembershipRole: ProjectMembershipRole.Member,
+                    projectMembershipRole: projectRoleSlug,
                     sendEmails: false
                   },
-                  tx
+                  {
+                    tx
+                  }
                 );
               }
             }
@@ -561,7 +604,7 @@ export const orgServiceFactory = ({
             inviteEmail: inviteeEmail,
             orgId,
             userId: user.id,
-            role: organizationRoleSlug || OrgMembershipRole.Member,
+            role: organizationRoleSlug,
             status: OrgMembershipStatus.Invited,
             isActive: true
           },
@@ -588,13 +631,17 @@ export const orgServiceFactory = ({
         });
 
         let inviteMetadata: string = "";
-        if (projectIds && projectIds.length > 0) {
+        if (projectIds && projectIds?.length > 0) {
           inviteMetadata = jwt.sign(
             {
               type: TokenMetadataType.InviteToProjects,
-              projectIds,
-              userId: invitee.id
-            },
+              payload: {
+                projectIds,
+                projectRoleSlug: projectRoleSlug!, // Implicitly checked inside transaction if projectRoleSlug is undefined
+                userId: invitee.id,
+                orgId
+              }
+            } satisfies TTokenMetadata,
             appCfg.AUTH_SECRET,
             {
               expiresIn: appCfg.JWT_INVITE_LIFETIME

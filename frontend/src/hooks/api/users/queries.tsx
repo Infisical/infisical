@@ -162,7 +162,7 @@ export const useAddUsersToOrg = () => {
   type Response = {
     data: {
       message: string;
-      completeInviteLinks: {
+      completeInviteLinks?: {
         email: string;
         link: string;
       }[];

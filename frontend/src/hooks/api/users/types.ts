@@ -151,7 +151,8 @@ export type DeletOrgMembershipDTO = {
 export type AddUserToOrgDTO = {
   inviteeEmails: string[];
   projectIds?: string[];
-  organizationRoleSlug?: string;
+  projectRoleSlug?: string;
+  organizationRoleSlug: string;
   organizationId: string;
 };
 

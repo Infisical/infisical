@@ -1,3 +1,4 @@
+import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -30,8 +31,9 @@ export type TInviteUserToOrgDTO = {
   actorOrgId: string | undefined;
   actorAuthMethod: ActorAuthMethod;
   inviteeEmails: string[];
-  organizationRoleSlug?: string;
+  organizationRoleSlug: OrgMembershipRole;
   projectIds?: string[];
+  projectRoleSlug?: ProjectMembershipRole;
 };
 
 export type TVerifyUserToOrgDTO = {

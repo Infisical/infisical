@@ -35,6 +35,11 @@ type AddMembersToNonE2EEProjectDTO = {
   sendEmails?: boolean;
 };
 
+type AddMembersToNonE2EEProjectOptions = {
+  tx?: Knex;
+  throwOnProjectNotFound?: boolean;
+};
+
 export const addMembersToProject = ({
   orgDAL,
   projectDAL,
@@ -45,27 +50,28 @@ export const addMembersToProject = ({
   projectUserMembershipRoleDAL,
   smtpService
 }: TAddMembersToProjectArg) => {
+  // Can create multiple memberships for a singular project, based on user email / username
   const addMembersToNonE2EEProject = async (
     { emails, usernames, projectId, projectMembershipRole, sendEmails }: AddMembersToNonE2EEProjectDTO,
-    transaction?: Knex
+    options: AddMembersToNonE2EEProjectOptions = { throwOnProjectNotFound: true }
   ) => {
     const processTransaction = async (tx: Knex) => {
       const usernamesAndEmails = [...emails, ...usernames];
 
       const project = await projectDAL.findProjectById(projectId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
+      if (!project) {
+        if (options.throwOnProjectNotFound) {
+          throw new BadRequestError({ message: "Project not found when attempting to add user to project" });
+        }
+
+        return [];
+      }
 
       const orgMembers = await orgDAL.findOrgMembersByUsername(
         project.orgId,
         [...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))],
         tx
       );
-
-      // const allorgMembers = await orgDAL.findAllOrgMembers(project.orgId,);
-
-      console.log("usernameandena", usernamesAndEmails);
-      console.log("orgMembers", orgMembers);
-      // console.log("allorgMembers", allorgMembers);
 
       if (orgMembers.length !== usernamesAndEmails.length)
         throw new BadRequestError({ message: "Some users are not part of org" });
@@ -131,7 +137,7 @@ export const addMembersToProject = ({
         tx
       );
       await projectUserMembershipRoleDAL.insertMany(
-        projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: ProjectMembershipRole.Member })),
+        projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: projectMembershipRole })),
         tx
       );
 
@@ -172,8 +178,8 @@ export const addMembersToProject = ({
       return members;
     };
 
-    if (transaction) {
-      return processTransaction(transaction);
+    if (options.tx) {
+      return processTransaction(options.tx);
     }
     return projectMembershipDAL.transaction(processTransaction);
   };

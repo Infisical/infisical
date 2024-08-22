@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-import { OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -17,7 +17,7 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { TokenType, TTokenMetadata } from "../auth-token/auth-token-types";
+import { TokenMetadataType, TokenType, TTokenMetadata } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -373,13 +373,17 @@ export const authSignupServiceFactory = ({
       if (metadata) {
         const metadataObj = jwt.verify(metadata, appCfg.AUTH_SECRET) as TTokenMetadata;
 
-        if (user.id !== metadataObj.userId) {
+        if (
+          metadataObj.payload.userId !== user.id ||
+          metadataObj.payload.orgId !== orgMembership.orgId ||
+          metadataObj.type !== TokenMetadataType.InviteToProjects
+        ) {
           throw new UnauthorizedError({
             message: "Malformed or invalid metadata token"
           });
         }
 
-        for await (const projectId of metadataObj.projectIds) {
+        for await (const projectId of metadataObj.payload.projectIds) {
           await addMembersToProject({
             orgDAL,
             projectDAL,
@@ -394,10 +398,13 @@ export const authSignupServiceFactory = ({
               emails: [user.email!],
               usernames: [],
               projectId,
-              projectMembershipRole: ProjectMembershipRole.Member,
+              projectMembershipRole: metadataObj.payload.projectRoleSlug,
               sendEmails: false
             },
-            tx
+            {
+              tx,
+              throwOnProjectNotFound: false
+            }
           );
         }
       }

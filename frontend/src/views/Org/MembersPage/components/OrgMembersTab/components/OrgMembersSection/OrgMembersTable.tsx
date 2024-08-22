@@ -108,7 +108,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     try {
       const { data } = await addUsersMutateAsync({
         organizationId: orgId,
-        inviteeEmails: [email]
+        inviteeEmails: [email],
+        organizationRoleSlug: "member"
       });
 
       setCompleteInviteLinks(data?.completeInviteLinks || null);

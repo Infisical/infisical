@@ -32,7 +32,8 @@ export default function TeamInviteStep(): JSX.Element {
       .map(async (email) => {
         mutateAsync({
           inviteeEmails: [email],
-          organizationId: String(localStorage.getItem("orgData.id"))
+          organizationId: String(localStorage.getItem("orgData.id")),
+          organizationRoleSlug: "member"
         });
       });
 
