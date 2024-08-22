@@ -14,7 +14,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   caId: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert", "enrollmentOptions"]>,
+    popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert"]>,
     data?: {}
   ) => void;
 };
@@ -118,34 +118,19 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
           >
             {(isAllowed) => {
               return (
-                <>
-                  <Button
-                    isDisabled={!isAllowed}
-                    className="mt-4 w-full"
-                    colorSchema="secondary"
-                    type="submit"
-                    onClick={() => {
-                      handlePopUpOpen("enrollmentOptions", {
-                        caId
-                      });
-                    }}
-                  >
-                    Enrollment Options
-                  </Button>
-                  <Button
-                    isDisabled={!isAllowed}
-                    className="mt-4 w-full"
-                    colorSchema="primary"
-                    type="submit"
-                    onClick={() => {
-                      handlePopUpOpen("renewCa", {
-                        caId
-                      });
-                    }}
-                  >
-                    Renew CA
-                  </Button>
-                </>
+                <Button
+                  isDisabled={!isAllowed}
+                  className="mt-4 w-full"
+                  colorSchema="primary"
+                  type="submit"
+                  onClick={() => {
+                    handlePopUpOpen("renewCa", {
+                      caId
+                    });
+                  }}
+                >
+                  Renew CA
+                </Button>
               );
             }}
           </ProjectPermissionCan>

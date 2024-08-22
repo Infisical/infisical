@@ -39,8 +39,7 @@ export const CaPage = withProjectPermission(
       "ca",
       "deleteCa",
       "installCaCert",
-      "renewCa",
-      "enrollmentOptions"
+      "renewCa"
     ] as const);
 
     const onRemoveCaSubmit = async (caIdToDelete: string) => {
