@@ -27,7 +27,10 @@ export const OrgMembersSection = () => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id ?? "";
 
-  const [completeInviteLink, setCompleteInviteLink] = useState<string>("");
+  const [completeInviteLinks, setCompleteInviteLinks] = useState<Array<{
+    email: string;
+    link: string;
+  }> | null>(null);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addMember",
@@ -132,13 +135,13 @@ export const OrgMembersSection = () => {
       </div>
       <OrgMembersTable
         handlePopUpOpen={handlePopUpOpen}
-        setCompleteInviteLink={setCompleteInviteLink}
+        setCompleteInviteLinks={setCompleteInviteLinks}
       />
       <AddOrgMemberModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
-        completeInviteLink={completeInviteLink}
-        setCompleteInviteLink={setCompleteInviteLink}
+        completeInviteLinks={completeInviteLinks}
+        setCompleteInviteLinks={setCompleteInviteLinks}
       />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
