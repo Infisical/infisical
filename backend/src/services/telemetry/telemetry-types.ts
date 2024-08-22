@@ -100,7 +100,9 @@ export type TIntegrationCreatedEvent = {
 export type TUserOrgInvitedEvent = {
   event: PostHogEventTypes.UserOrgInvitation;
   properties: {
-    inviteeEmail: string;
+    inviteeEmails: string[];
+    projectIds?: string[];
+    organizationRoleSlug?: string;
   };
 };
 
