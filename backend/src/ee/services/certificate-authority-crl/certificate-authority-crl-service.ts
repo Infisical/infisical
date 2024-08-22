@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+// import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -19,7 +19,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  // licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateAuthorityCrlServiceFactory = ReturnType<typeof certificateAuthorityCrlServiceFactory>;
@@ -29,8 +29,7 @@ export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthorityCrlDAL,
   projectDAL,
   kmsService,
-  permissionService,
-  licenseService
+  permissionService // licenseService
 }: TCertificateAuthorityCrlServiceFactoryDep) => {
   /**
    * Return CRL with id [crlId]
@@ -85,12 +84,12 @@ export const certificateAuthorityCrlServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.caCrl)
-      throw new BadRequestError({
-        message:
-          "Failed to get CA certificate revocation lists (CRLs) due to plan restriction. Upgrade plan to get the CA CRL."
-      });
+    // const plan = await licenseService.getPlan(actorOrgId);
+    // if (!plan.caCrl)
+    //   throw new BadRequestError({
+    //     message:
+    //       "Failed to get CA certificate revocation lists (CRLs) due to plan restriction. Upgrade plan to get the CA CRL."
+    //   });
 
     const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 
