@@ -4,9 +4,10 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName, TUsers } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -24,10 +25,13 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { TokenType } from "../auth-token/auth-token-types";
+import { TokenMetadataType, TokenType } from "../auth-token/auth-token-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { addMembersToProject } from "../project-membership/project-membership-fns";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
@@ -56,8 +60,11 @@ type TOrgServiceFactoryDep = {
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
   projectDAL: TProjectDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId" | "delete">;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
+  projectMembershipDAL: Pick<
+    TProjectMembershipDALFactory,
+    "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
+  >;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
@@ -69,6 +76,9 @@ type TOrgServiceFactoryDep = {
     "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
   >;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProject">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -90,7 +100,10 @@ export const orgServiceFactory = ({
   tokenService,
   orgBotDAL,
   licenseService,
-  samlConfigDAL
+  samlConfigDAL,
+  userGroupMembershipDAL,
+  projectBotDAL,
+  projectUserMembershipRoleDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -420,10 +433,14 @@ export const orgServiceFactory = ({
   const inviteUserToOrganization = async ({
     orgId,
     userId,
-    inviteeEmail,
+    inviteeEmails,
+    organizationRoleSlug,
+    projectIds,
     actorAuthMethod,
     actorOrgId
   }: TInviteUserToOrgDTO) => {
+    const appCfg = getConfig();
+
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
 
@@ -450,98 +467,169 @@ export const orgServiceFactory = ({
       });
     }
 
-    const invitee = await orgDAL.transaction(async (tx) => {
-      const inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
-      if (inviteeUser) {
-        // if user already exist means its already part of infisical
-        // Thus the signup flow is not needed anymore
-        const [inviteeMembership] = await orgDAL.findMembership(
-          {
-            [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
-            [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUser.id
-          },
-          { tx }
-        );
-        if (inviteeMembership && inviteeMembership.status === OrgMembershipStatus.Accepted) {
+    const inviteeUsers = await orgDAL.transaction(async (tx) => {
+      const users: Pick<
+        TUsers & { orgId: string },
+        "id" | "firstName" | "lastName" | "email" | "orgId" | "username"
+      >[] = [];
+      for await (const inviteeEmail of inviteeEmails) {
+        const inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
+        if (inviteeUser) {
+          // if user already exist means its already part of infisical
+          // Thus the signup flow is not needed anymore
+          const [inviteeMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+              [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUser.id
+            },
+            { tx }
+          );
+          if (inviteeMembership && inviteeMembership.status === OrgMembershipStatus.Accepted) {
+            throw new BadRequestError({
+              message: `Failed to invite members because ${inviteeEmail} is already part of the organization`,
+              name: "Invite user to org"
+            });
+          }
+
+          if (!inviteeMembership) {
+            await orgDAL.createMembership(
+              {
+                userId: inviteeUser.id,
+                inviteEmail: inviteeEmail,
+                orgId,
+                role: OrgMembershipRole.Member,
+                status: OrgMembershipStatus.Invited,
+                isActive: true
+              },
+              tx
+            );
+
+            if (projectIds) {
+              for await (const projectId of projectIds) {
+                await projectMembershipDAL.create(
+                  {
+                    projectId,
+                    userId: inviteeUser.id
+                  },
+                  tx
+                );
+
+                await addMembersToProject({
+                  orgDAL,
+                  projectDAL,
+                  projectMembershipDAL,
+                  projectKeyDAL,
+                  userGroupMembershipDAL,
+                  projectBotDAL,
+                  projectUserMembershipRoleDAL,
+                  smtpService
+                }).addMembersToNonE2EEProject(
+                  {
+                    emails: [inviteeEmail],
+                    usernames: [],
+                    projectId,
+                    projectMembershipRole: ProjectMembershipRole.Member,
+                    sendEmails: false
+                  },
+                  tx
+                );
+              }
+            }
+          }
+          return [{ ...inviteeUser, orgId }];
+        }
+        const isEmailInvalid = await isDisposableEmail(inviteeEmail);
+        if (isEmailInvalid) {
           throw new BadRequestError({
-            message: "Failed to invite an existing member of org",
-            name: "Invite user to org"
+            message: "Provided a disposable email",
+            name: "Org invite"
           });
         }
+        // not invited before
+        const user = await userDAL.create(
+          {
+            username: inviteeEmail,
+            email: inviteeEmail,
+            isAccepted: false,
+            authMethods: [AuthMethod.EMAIL],
+            isGhost: false
+          },
+          tx
+        );
+        await orgDAL.createMembership(
+          {
+            inviteEmail: inviteeEmail,
+            orgId,
+            userId: user.id,
+            role: organizationRoleSlug || OrgMembershipRole.Member,
+            status: OrgMembershipStatus.Invited,
+            isActive: true
+          },
+          tx
+        );
 
-        if (!inviteeMembership) {
-          await orgDAL.createMembership(
-            {
-              userId: inviteeUser.id,
-              inviteEmail: inviteeEmail,
-              orgId,
-              role: OrgMembershipRole.Member,
-              status: OrgMembershipStatus.Invited,
-              isActive: true
-            },
-            tx
-          );
-        }
-        return inviteeUser;
-      }
-      const isEmailInvalid = await isDisposableEmail(inviteeEmail);
-      if (isEmailInvalid) {
-        throw new BadRequestError({
-          message: "Provided a disposable email",
-          name: "Org invite"
+        users.push({
+          ...user,
+          orgId
         });
       }
-      // not invited before
-      const user = await userDAL.create(
-        {
-          username: inviteeEmail,
-          email: inviteeEmail,
-          isAccepted: false,
-          authMethods: [AuthMethod.EMAIL],
-          isGhost: false
-        },
-        tx
-      );
-      await orgDAL.createMembership(
-        {
-          inviteEmail: inviteeEmail,
-          orgId,
-          userId: user.id,
-          role: OrgMembershipRole.Member,
-          status: OrgMembershipStatus.Invited,
-          isActive: true
-        },
-        tx
-      );
-      return user;
-    });
-
-    const token = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-      userId: invitee.id,
-      orgId
+      return users;
     });
 
     const user = await userDAL.findById(userId);
-    const appCfg = getConfig();
-    await smtpService.sendMail({
-      template: SmtpTemplates.OrgInvite,
-      subjectLine: "Infisical organization invitation",
-      recipients: [inviteeEmail],
-      substitutions: {
-        inviterFirstName: user.firstName,
-        inviterUsername: user.username,
-        organizationName: org?.name,
-        email: inviteeEmail,
-        organizationId: org?.id.toString(),
-        token,
-        callback_url: `${appCfg.SITE_URL}/signupinvite`
-      }
-    });
 
+    const tokenMap: { email: string; link: string }[] = [];
+    if (inviteeUsers) {
+      for await (const invitee of inviteeUsers) {
+        const token = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+          userId: invitee.id,
+          orgId
+        });
+
+        let inviteMetadata: string = "";
+        if (projectIds && projectIds.length > 0) {
+          inviteMetadata = jwt.sign(
+            {
+              type: TokenMetadataType.InviteToProjects,
+              projectIds,
+              userId: invitee.id
+            },
+            appCfg.AUTH_SECRET,
+            {
+              expiresIn: appCfg.JWT_INVITE_LIFETIME
+            }
+          );
+        }
+
+        tokenMap.push({
+          email: invitee.email || invitee.username,
+          link: `${appCfg.SITE_URL}/signupinvite?token=${token}${
+            inviteMetadata ? `&metadata=${inviteMetadata}` : ""
+          }&to=${invitee.email || invitee.username}&organization_id=${org?.id}`
+        });
+
+        await smtpService.sendMail({
+          template: SmtpTemplates.OrgInvite,
+          subjectLine: "Infisical organization invitation",
+          recipients: [invitee.email || invitee.username],
+          substitutions: {
+            metadata: inviteMetadata,
+            inviterFirstName: user.firstName,
+            inviterUsername: user.username,
+            organizationName: org?.name,
+            email: invitee.email || invitee.username,
+            organizationId: org?.id.toString(),
+            token,
+            callback_url: `${appCfg.SITE_URL}/signupinvite`
+          }
+        });
+      }
+    }
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
+
     if (!appCfg.isSmtpConfigured) {
-      return `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${inviteeEmail}&organization_id=${org?.id}`;
+      return tokenMap;
     }
   };
 
