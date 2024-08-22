@@ -621,7 +621,7 @@ export const orgServiceFactory = ({
 
     const user = await userDAL.findById(userId);
 
-    const tokenMap: { email: string; link: string }[] = [];
+    const signupTokens: { email: string; link: string }[] = [];
     if (inviteeUsers) {
       for await (const invitee of inviteeUsers) {
         const token = await tokenService.createTokenForUser({
@@ -649,7 +649,7 @@ export const orgServiceFactory = ({
           );
         }
 
-        tokenMap.push({
+        signupTokens.push({
           email: invitee.email || invitee.username,
           link: `${appCfg.SITE_URL}/signupinvite?token=${token}${
             inviteMetadata ? `&metadata=${inviteMetadata}` : ""
@@ -676,7 +676,7 @@ export const orgServiceFactory = ({
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
 
     if (!appCfg.isSmtpConfigured) {
-      return tokenMap;
+      return signupTokens;
     }
   };
 
