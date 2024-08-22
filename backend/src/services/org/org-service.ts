@@ -34,7 +34,7 @@ import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/a
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenMetadataType, TokenType, TTokenMetadata } from "../auth-token/auth-token-types";
 import { TProjectDALFactory } from "../project/project-dal";
-import { verifyProjectVersion } from "../project/project-fns";
+import { verifyProjectVersions } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -485,7 +485,7 @@ export const orgServiceFactory = ({
       });
 
       // if its not v3, throw an error
-      if (!verifyProjectVersion(projects, ProjectVersion.V3)) {
+      if (!verifyProjectVersions(projects, ProjectVersion.V3)) {
         throw new BadRequestError({
           message: "One or more selected projects are not compatible with this operation. Please upgrade your projects."
         });

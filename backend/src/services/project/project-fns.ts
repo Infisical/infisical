@@ -54,7 +54,7 @@ export const createProjectKey = ({ publicKey, privateKey, plainProjectKey }: TCr
   return { key: encryptedProjectKey, iv: encryptedProjectKeyIv };
 };
 
-export const verifyProjectVersion = (projects: Pick<TProjects, "version">[], version: ProjectVersion) => {
+export const verifyProjectVersions = (projects: Pick<TProjects, "version">[], version: ProjectVersion) => {
   for (const project of projects) {
     if (project.version !== version) {
       return false;
