@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { useToggle } from "@app/hooks/useToggle";
 
+import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
   GetSecretVersionsDTO,
   SecretType,
@@ -135,11 +136,13 @@ export const useGetProjectSecretsAllEnv = ({
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
           const serverResponse = error.response?.data as { message: string };
-          createNotification({
-            title: "Error fetching secrets",
-            type: "error",
-            text: serverResponse.message
-          });
+          if (serverResponse.message !== ERROR_NOT_ALLOWED_READ_SECRETS) {
+            createNotification({
+              title: "Error fetching secrets",
+              type: "error",
+              text: serverResponse.message
+            });
+          }
 
           setIsErrorHandled.on();
         }

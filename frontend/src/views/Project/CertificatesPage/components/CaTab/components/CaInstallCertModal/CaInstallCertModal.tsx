@@ -1,53 +1,10 @@
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
-import {
-  // DatePicker,
-  Button,
-  FormControl,
-  Input,
-  Modal,
-  ModalContent,
-  Select,
-  SelectItem
-} from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import {
-  CaStatus,
-  useGetCaById,
-  useGetCaCsr,
-  useImportCaCertificate,
-  useListWorkspaceCas,
-  useSignIntermediate
-} from "@app/hooks/api";
-import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
+import { FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const isValidDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return !Number.isNaN(date.getTime());
-};
-
-const getMiddleDate = (date1: Date, date2: Date) => {
-  const timestamp1 = date1.getTime();
-  const timestamp2 = date2.getTime();
-
-  const middleTimestamp = (timestamp1 + timestamp2) / 2;
-
-  return new Date(middleTimestamp);
-};
-
-const schema = z.object({
-  parentCaId: z.string(),
-  notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
-  maxPathLength: z.string()
-});
-
-export type FormData = z.infer<typeof schema>;
+import { ExternalCaInstallForm } from "./ExternalCaInstallForm";
+import { InternalCaInstallForm } from "./InternalCaInstallForm";
 
 type Props = {
   popUp: UsePopUpState<["installCaCert"]>;
@@ -60,234 +17,23 @@ enum ParentCaType {
 }
 
 export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const [parentCaType] = useState<ParentCaType>(ParentCaType.Internal);
-  const { currentWorkspace } = useWorkspace();
-  const caId = (popUp?.installCaCert?.data as { caId: string })?.caId || "";
-
-  // const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
-  const { data: cas } = useListWorkspaceCas({
-    projectSlug: currentWorkspace?.slug ?? "",
-    status: CaStatus.ACTIVE
-  });
-  const { data: ca } = useGetCaById(caId);
-  const { data: csr } = useGetCaCsr(caId);
-
-  const { mutateAsync: signIntermediate } = useSignIntermediate();
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate();
-
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-    setValue,
-    watch
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      maxPathLength: "0"
-    }
-  });
+  const popupData = popUp?.installCaCert?.data;
+  const caId = popupData?.caId || "";
+  const isParentCaExternal = popupData?.isParentCaExternal || false;
+  const [parentCaType, setParentCaType] = useState<ParentCaType>(ParentCaType.Internal);
 
   useEffect(() => {
-    if (cas?.length) {
-      setValue("parentCaId", cas[0].id);
+    if (popupData?.isParentCaExternal) {
+      setParentCaType(ParentCaType.External);
     }
-  }, [cas, setValue]);
-
-  const parentCaId = watch("parentCaId");
-  const { data: parentCa } = useGetCaById(parentCaId);
-
-  useEffect(() => {
-    if (parentCa?.maxPathLength) {
-      setValue(
-        "maxPathLength",
-        (parentCa.maxPathLength === -1 ? 3 : parentCa.maxPathLength - 1).toString()
-      );
-    }
-
-    if (parentCa?.notAfter) {
-      const parentCaNotAfter = new Date(parentCa.notAfter);
-      const middleDate = getMiddleDate(new Date(), parentCaNotAfter);
-      setValue("notAfter", format(middleDate, "yyyy-MM-dd"));
-    }
-  }, [parentCa]);
-
-  const onFormSubmit = async ({ notAfter, maxPathLength }: FormData) => {
-    try {
-      if (!csr || !caId || !currentWorkspace?.slug) return;
-
-      const { certificate, certificateChain } = await signIntermediate({
-        caId: parentCaId,
-        csr,
-        maxPathLength: Number(maxPathLength),
-        notAfter,
-        notBefore: new Date().toISOString()
-      });
-
-      await importCaCertificate({
-        caId,
-        projectSlug: currentWorkspace?.slug,
-        certificate,
-        certificateChain
-      });
-
-      reset();
-
-      createNotification({
-        text: "Successfully installed certificate for CA",
-        type: "success"
-      });
-      handlePopUpToggle("installCaCert", false);
-    } catch (err) {
-      createNotification({
-        text: "Failed to install certificate for CA",
-        type: "error"
-      });
-    }
-  };
-
-  function generatePathLengthOpts(parentCaMaxPathLength: number): number[] {
-    if (parentCaMaxPathLength === -1) {
-      return [-1, 0, 1, 2, 3];
-    }
-
-    return Array.from({ length: parentCaMaxPathLength }, (_, index) => index);
-  }
+  }, [popupData]);
 
   const renderForm = (parentCaTypeInput: ParentCaType) => {
     switch (parentCaTypeInput) {
       case ParentCaType.Internal:
-        return (
-          <form onSubmit={handleSubmit(onFormSubmit)}>
-            <Controller
-              control={control}
-              name="parentCaId"
-              defaultValue=""
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Parent CA"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  className="mt-4"
-                  isRequired
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {(cas || [])
-                      .filter((c) => {
-                        const isParentCaNotSelf = c.id !== ca?.id;
-                        const isParentCaActive = c.status === CaStatus.ACTIVE;
-                        const isParentCaAllowedChildrenCas =
-                          c.maxPathLength && c.maxPathLength !== 0;
-
-                        return (
-                          isParentCaNotSelf && isParentCaActive && isParentCaAllowedChildrenCas
-                        );
-                      })
-                      .map(({ id, type, dn }) => (
-                        <SelectItem value={id} key={`parent-ca-${id}`}>
-                          {`${caTypeToNameMap[type]}: ${dn}`}
-                        </SelectItem>
-                      ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-            {/* <Controller
-              name="notAfter"
-              control={control}
-              defaultValue={getDefaultNotAfterDate()}
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-                return (
-                  <FormControl
-                    label="Validity"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    className="mr-4"
-                  >
-                    <DatePicker
-                      value={field.value || undefined}
-                      onChange={(date) => {
-                        onChange(date);
-                        setIsStartDatePickerOpen(false);
-                      }}
-                      popUpProps={{
-                        open: isStartDatePickerOpen,
-                        onOpenChange: setIsStartDatePickerOpen
-                      }}
-                      popUpContentProps={{}}
-                    />
-                  </FormControl>
-                );
-              }}
-            /> */}
-            <Controller
-              control={control}
-              name="notAfter"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Valid Until"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="YYYY-MM-DD" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="maxPathLength"
-              // defaultValue="0"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Path Length"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  className="mt-4"
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {generatePathLengthOpts(parentCa?.maxPathLength || 0).map((value) => (
-                      <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
-                        {`${value}`}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <div className="flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Install
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("installCaCert", false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        );
+        return <InternalCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
       default:
-        return <div>External TODO</div>;
+        return <ExternalCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
     }
   };
 
@@ -296,31 +42,32 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
       isOpen={popUp?.installCaCert?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("installCaCert", isOpen);
-        reset();
       }}
     >
-      <ModalContent title="Install Intermediate CA certificate">
-        {/* <FormControl label="Parent CA Type" className="mt-4">
+      <ModalContent
+        title={`${isParentCaExternal ? "Renew" : "Install"} Intermediate CA certificate`}
+      >
+        <FormControl label="Parent CA Type">
           <Select
-            defaultValue={ParentCaType.Internal}
             value={parentCaType}
             onValueChange={(e) => setParentCaType(e as ParentCaType)}
             className="w-full"
+            isDisabled={isParentCaExternal}
           >
             <SelectItem
               value={ParentCaType.Internal}
               key={`parent-ca-type-${ParentCaType.Internal}`}
             >
-              Infisical Private CA
+              Infisical CA
             </SelectItem>
             <SelectItem
               value={ParentCaType.External}
               key={`parent-ca-type-${ParentCaType.External}`}
             >
-              External Private CA
+              External CA
             </SelectItem>
           </Select>
-        </FormControl> */}
+        </FormControl>
         {renderForm(parentCaType)}
       </ModalContent>
     </Modal>

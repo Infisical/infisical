@@ -18,7 +18,7 @@ import {
 
 type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
   projectUserAdditionalPrivilegeDAL: TProjectUserAdditionalPrivilegeDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -53,12 +53,17 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
-    const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({ slug, projectMembershipId });
+    const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({
+      slug,
+      projectId: projectMembership.projectId,
+      userId: projectMembership.userId
+    });
     if (existingSlug) throw new BadRequestError({ message: "Additional privilege of provided slug exist" });
 
     if (!dto.isTemporary) {
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
-        projectMembershipId,
+        userId: projectMembership.userId,
+        projectId: projectMembership.projectId,
         slug,
         permissions: customPermission
       });
@@ -67,7 +72,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
 
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
-      projectMembershipId,
+      projectId: projectMembership.projectId,
+      userId: projectMembership.userId,
       slug,
       permissions: customPermission,
       isTemporary: true,
@@ -90,7 +96,11 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
-    const projectMembership = await projectMembershipDAL.findById(userPrivilege.projectMembershipId);
+    const projectMembership = await projectMembershipDAL.findOne({
+      userId: userPrivilege.userId,
+      projectId: userPrivilege.projectId
+    });
+
     if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -105,7 +115,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (dto?.slug) {
       const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({
         slug: dto.slug,
-        projectMembershipId: projectMembership.id
+        userId: projectMembership.id,
+        projectId: projectMembership.projectId
       });
       if (existingSlug && existingSlug.id !== userPrivilege.id)
         throw new BadRequestError({ message: "Additional privilege of provided slug exist" });
@@ -138,7 +149,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
-    const projectMembership = await projectMembershipDAL.findById(userPrivilege.projectMembershipId);
+    const projectMembership = await projectMembershipDAL.findOne({
+      userId: userPrivilege.userId,
+      projectId: userPrivilege.projectId
+    });
     if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -164,7 +178,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
 
-    const projectMembership = await projectMembershipDAL.findById(userPrivilege.projectMembershipId);
+    const projectMembership = await projectMembershipDAL.findOne({
+      userId: userPrivilege.userId,
+      projectId: userPrivilege.projectId
+    });
     if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -198,7 +215,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find({ projectMembershipId });
+    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find({
+      userId: projectMembership.userId,
+      projectId: projectMembership.projectId
+    });
     return userPrivileges;
   };
 

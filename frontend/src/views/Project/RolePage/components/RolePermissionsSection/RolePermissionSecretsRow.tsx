@@ -151,6 +151,7 @@ export const RowPermissionSecretsRow = ({
                             <Controller
                               name={`permissions.${formName}.${slug}.secretPath`}
                               control={control}
+                              defaultValue="/**"
                               render={({ field }) => (
                                 /* eslint-disable-next-line no-template-curly-in-string */
                                 <FormControl helperText="Supports glob path pattern string">
