@@ -236,13 +236,12 @@ export const AddOrgMemberModal = ({
                     >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          {filteredProjects && filteredProjects.length > 0 ? (
+                          {projects && projects.length > 0 ? (
                             <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                               {/* eslint-disable-next-line no-nested-ternary */}
                               {selectedProjectIds.length === 1
-                                ? filteredProjects.find(
-                                    (project) => project.id === selectedProjectIds[0]
-                                  )?.name
+                                ? projects.find((project) => project.id === selectedProjectIds[0])
+                                    ?.name
                                 : selectedProjectIds.length === 0
                                 ? "No projects selected"
                                 : `${selectedProjectIds.length} projects selected`}
@@ -258,14 +257,14 @@ export const AddOrgMemberModal = ({
                           align="start"
                           className="thin-scrollbar z-[100] max-h-80"
                         >
-                          {filteredProjects && filteredProjects.length > 0 ? (
-                            filteredProjects.map((project) => {
+                          {projects && projects.length > 0 ? (
+                            projects.map((project) => {
                               const isSelected = selectedProjectIds.includes(String(project.id));
 
                               return (
                                 <DropdownMenuItem
                                   onSelect={(event) =>
-                                    filteredProjects.length > 0 && event.preventDefault()
+                                    projects.length > 1 && event.preventDefault()
                                   }
                                   onClick={() => {
                                     if (selectedProjectIds.includes(String(project.id))) {
