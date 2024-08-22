@@ -368,7 +368,6 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     if (ca.type === CaType.ROOT) throw new BadRequestError({ message: "Root CA cannot generate CSR" });
-    if (ca.activeCaCertId) throw new BadRequestError({ message: "CA already has a certificate installed" });
 
     const { caPrivateKey, caPublicKey } = await getCaCredentials({
       caId,
@@ -407,7 +406,8 @@ export const certificateAuthorityServiceFactory = ({
 
   /**
    * Renew certificate for CA with id [caId]
-   * Note: Currently implements CA renewal with same key-pair only
+   * Note 1: This CA renewal method is only applicable to CAs with internal parent CAs
+   * Note 2: Currently implements CA renewal with same key-pair only
    */
   const renewCaCert = async ({ caId, notAfter, actorId, actorAuthMethod, actor, actorOrgId }: TRenewCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
@@ -888,9 +888,9 @@ export const certificateAuthorityServiceFactory = ({
   };
 
   /**
-   * Import certificate for (un-installed) CA with id [caId].
+   * Import certificate for CA with id [caId].
    * Note: Can be used to import an external certificate and certificate chain
-   * to be installed into the CA.
+   * to be into an installed or uninstalled CA.
    */
   const importCertToCa = async ({
     caId,
@@ -917,7 +917,18 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    if (ca.activeCaCertId) throw new BadRequestError({ message: "CA has already imported a certificate" });
+    if (ca.parentCaId) {
+      /**
+       * re-evaluate in the future if we should allow users to import a new CA certificate for an intermediate
+       * CA chained to an internal parent CA. Doing so would allow users to re-chain the CA to a different
+       * internal CA.
+       */
+      throw new BadRequestError({
+        message: "Cannot import certificate to intermediate CA chained to internal parent CA"
+      });
+    }
+
+    const caCert = ca.activeCaCertId ? await certificateAuthorityCertDAL.findById(ca.activeCaCertId) : undefined;
 
     const certObj = new x509.X509Certificate(certificate);
     const maxPathLength = certObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
@@ -988,7 +999,7 @@ export const certificateAuthorityServiceFactory = ({
           caId: ca.id,
           encryptedCertificate,
           encryptedCertificateChain,
-          version: 1,
+          version: caCert ? caCert.version + 1 : 1,
           caSecretId: caSecret.id
         },
         tx
