@@ -395,10 +395,14 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async ({ actorId, includeRoles, actor, actorAuthMethod, actorOrgId }: TListProjectsDTO) => {
+  const getProjects = async ({ actorId, includeRoles, actorAuthMethod, actorOrgId }: TListProjectsDTO) => {
     const workspaces = await projectDAL.findAllProjects(actorId);
 
     if (includeRoles) {
+      const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+
+      // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
       const customRoles = await projectRoleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)
@@ -409,14 +413,6 @@ export const projectServiceFactory = ({
 
       const workspacesWithRoles = await Promise.all(
         workspaces.map(async (workspace) => {
-          const { permission } = await permissionService.getProjectPermission(
-            actor,
-            actorId,
-            workspace.id,
-            actorAuthMethod,
-            actorOrgId
-          );
-          ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
           return {
             ...workspace,
             roles: [...(workspaceMappedToRoles[workspace.id] || []), ...getPredefinedRoles(workspace.id)]
@@ -426,6 +422,7 @@ export const projectServiceFactory = ({
 
       return workspacesWithRoles;
     }
+
     return workspaces;
   };
 
