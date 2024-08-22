@@ -16,23 +16,35 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     schema: {
       body: z.object({
-        inviteeEmail: z.string().trim().email(),
-        organizationId: z.string().trim()
+        inviteeEmails: z.array(z.string().trim().email()),
+        organizationId: z.string().trim(),
+        projectIds: z.array(z.string().trim()).optional(),
+        organizationRoleSlug: z.string().trim().optional()
       }),
       response: {
         200: z.object({
           message: z.string(),
-          completeInviteLink: z.string().optional()
+          completeInviteLinks: z
+            .array(
+              z.object({
+                email: z.string(),
+                link: z.string()
+              })
+            )
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
-      const completeInviteLink = await server.services.org.inviteUserToOrganization({
+
+      const completeInviteLinks = await server.services.org.inviteUserToOrganization({
         orgId: req.body.organizationId,
         userId: req.permission.id,
-        inviteeEmail: req.body.inviteeEmail,
+        inviteeEmails: req.body.inviteeEmails,
+        projectIds: req.body.projectIds,
+        organizationRoleSlug: req.body.organizationRoleSlug,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
@@ -41,14 +53,15 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
         properties: {
-          inviteeEmail: req.body.inviteeEmail,
+          inviteeEmails: req.body.inviteeEmails,
+          organizationRoleSlug: req.body.organizationRoleSlug,
           ...req.auditLogInfo
         }
       });
 
       return {
-        completeInviteLink,
-        message: `Send an invite link to ${req.body.inviteeEmail}`
+        completeInviteLinks,
+        message: `Send an invite link to ${req.body.inviteeEmails.join(", ")}`
       };
     }
   });
