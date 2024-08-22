@@ -1,10 +1,13 @@
 import bcrypt from "bcrypt";
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerCertificateEstRouter = async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
+
   // add support for CSR bodies
   server.addContentTypeParser("application/pkcs10", { parseAs: "string" }, (_, body, done) => {
     try {
@@ -99,7 +102,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       return server.services.certificateEst.simpleEnroll({
         csr: req.body,
         certificateTemplateId: req.params.certificateTemplateId,
-        sslClientCert: req.headers["x-ssl-client-cert"] as string
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
       });
     }
   });
@@ -126,7 +129,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       return server.services.certificateEst.simpleReenroll({
         csr: req.body,
         certificateTemplateId: req.params.certificateTemplateId,
-        sslClientCert: req.headers["x-ssl-client-cert"] as string
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
       });
     }
   });
