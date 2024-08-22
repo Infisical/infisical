@@ -114,10 +114,11 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findOrgMembersByUsername = async (orgId: string, usernames: string[]) => {
+  const findOrgMembersByUsername = async (orgId: string, usernames: string[], tx?: Knex) => {
     try {
-      const members = await db
-        .replicaNode()(TableName.OrgMembership)
+      const conn = tx || db;
+      const members = await conn(TableName.OrgMembership)
+        // .replicaNode()(TableName.OrgMembership)
         .where(`${TableName.OrgMembership}.orgId`, orgId)
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
@@ -126,18 +127,18 @@ export const orgDALFactory = (db: TDbClient) => {
           `${TableName.Users}.id`
         )
         .select(
-          db.ref("id").withSchema(TableName.OrgMembership),
-          db.ref("inviteEmail").withSchema(TableName.OrgMembership),
-          db.ref("orgId").withSchema(TableName.OrgMembership),
-          db.ref("role").withSchema(TableName.OrgMembership),
-          db.ref("roleId").withSchema(TableName.OrgMembership),
-          db.ref("status").withSchema(TableName.OrgMembership),
-          db.ref("username").withSchema(TableName.Users),
-          db.ref("email").withSchema(TableName.Users),
-          db.ref("firstName").withSchema(TableName.Users),
-          db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+          conn.ref("id").withSchema(TableName.OrgMembership),
+          conn.ref("inviteEmail").withSchema(TableName.OrgMembership),
+          conn.ref("orgId").withSchema(TableName.OrgMembership),
+          conn.ref("role").withSchema(TableName.OrgMembership),
+          conn.ref("roleId").withSchema(TableName.OrgMembership),
+          conn.ref("status").withSchema(TableName.OrgMembership),
+          conn.ref("username").withSchema(TableName.Users),
+          conn.ref("email").withSchema(TableName.Users),
+          conn.ref("firstName").withSchema(TableName.Users),
+          conn.ref("lastName").withSchema(TableName.Users),
+          conn.ref("id").withSchema(TableName.Users).as("userId"),
+          conn.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
         .where({ isGhost: false })
         .whereIn("username", usernames);
