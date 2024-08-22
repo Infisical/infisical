@@ -327,10 +327,10 @@ the certificate back to the intermediate CA.
     At the moment, Infisical only supports CA renewal via same key pair. We
     anticipate supporting CA renewal via new key pair in the coming month.
   </Accordion>
-  <Accordion title="Does Infisical support chaining an Intermediate CA to an external Root CA?">
+  <Accordion title="Does Infisical support chaining an Intermediate CA to an external CA?">
     Yes. You may obtain a CSR from the Intermediate CA and use it to generate a
-    certificate from your external Root CA. The certificate, along with the Root
-    CA certificate, can be imported back to the Intermediate CA as part of the
-    CA installation step.
+    certificate from your external CA. The certificate, along with the external
+    CA certificate chain, can be imported back to the Intermediate CA as part of
+    the CA installation step.
   </Accordion>
 </AccordionGroup>
