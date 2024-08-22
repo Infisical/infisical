@@ -14,6 +14,8 @@ Infisical's EST service is based on [RFC 7030](https://datatracker.ietf.org/doc/
 - **simpleenroll** - allows an EST client to request a new certificate from Infisical's EST server
 - **simplereenroll** - similar to the /simpleenroll endpoint but is used for renewing an existing certificate.
 
+These endpoints are exposed on port 8443.
+
 ## Prerequisites
 
 - You need to have an existing [CA hierarchy](/documentation/platform/pki/private-ca).
@@ -41,6 +43,6 @@ Infisical's EST service is based on [RFC 7030](https://datatracker.ietf.org/doc/
 
    For demonstration, the complete URL of the supported EST endpoints will look like the following:
 
-   - https://www.example.com/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/cacerts
-   - https://www.example.com/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simpleenroll
-   - https://www.example.com/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simplereenroll
+   - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/cacerts
+   - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simpleenroll
+   - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simplereenroll
