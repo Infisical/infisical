@@ -1,6 +1,9 @@
-import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faChevronDown,
+  faExclamationCircle
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,7 +20,8 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
@@ -66,6 +70,7 @@ export const AddOrgMemberModal = ({
   const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
+  const { data: projects } = useGetUserWorkspaces(true);
 
   const {
     control,
@@ -75,6 +80,8 @@ export const AddOrgMemberModal = ({
     formState: { isSubmitting }
   } = useForm<TAddMemberForm>({ resolver: zodResolver(addMemberFormSchema) });
 
+  const selectedProjectIds = watch("projectIds", []);
+
   const onAddMembers = async ({
     emails,
     organizationRoleSlug,
@@ -82,6 +89,21 @@ export const AddOrgMemberModal = ({
     projectRoleSlug
   }: TAddMemberForm) => {
     if (!currentOrg?.id) return;
+
+    const selectedProjects = projects?.filter((project) => projectIds.includes(String(project.id)));
+
+    if (selectedProjects?.length) {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const project of selectedProjects) {
+        if (project.version !== ProjectVersion.V3) {
+          createNotification({
+            type: "error",
+            text: `Cannot add users to project "${project.name}" because it's incompatible. Please upgrade the project.`
+          });
+          return;
+        }
+      }
+    }
 
     try {
       const parsedEmails = emails
@@ -137,14 +159,6 @@ export const AddOrgMemberModal = ({
     reset();
   };
 
-  const projectIds = watch("projectIds", []);
-  const { data: projects } = useGetUserWorkspaces(true);
-
-  const filteredProjects = useMemo(
-    () => projects?.filter((project) => project.version === ProjectVersion.V3),
-    [projects]
-  );
-
   return (
     <Modal
       isOpen={popUp?.addMember?.isOpen}
@@ -171,7 +185,7 @@ export const AddOrgMemberModal = ({
               control={control}
               name="emails"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
+                <FormControl label="Emails" isError={Boolean(error)} errorText={error?.message}>
                   <TextArea
                     {...field}
                     className="mt-1 h-20 w-full min-w-[30rem] rounded-md border border-mineshaft-500 bg-mineshaft-900/70 py-1 px-2 text-sm text-bunker-300 outline-none ring-primary-800 ring-opacity-70 transition-all placeholder:text-bunker-400 focus:ring-2"
@@ -181,34 +195,33 @@ export const AddOrgMemberModal = ({
               )}
             />
 
-            <div>
-              <Controller
-                control={control}
-                name="organizationRoleSlug"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    tooltipText="Select which organization role you want to assign to the user."
-                    label="Assign organization role"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <div>
-                      <Select
-                        defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
-                        {...field}
-                        onValueChange={(val) => field.onChange(val)}
-                      >
-                        {organizationRoles?.map((role) => (
-                          <SelectItem key={role.id} value={role.slug}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </div>
-                  </FormControl>
-                )}
-              />
-            </div>
+            <Controller
+              control={control}
+              name="organizationRoleSlug"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  tooltipText="Select which organization role you want to assign to the user."
+                  label="Assign organization role"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <div>
+                    <Select
+                      className="w-full"
+                      defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
+                      {...field}
+                      onValueChange={(val) => field.onChange(val)}
+                    >
+                      {organizationRoles?.map((role) => (
+                        <SelectItem key={role.id} value={role.slug}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                </FormControl>
+              )}
+            />
 
             <div className="flex items-center justify-between gap-2">
               <div className="w-full">
@@ -217,7 +230,7 @@ export const AddOrgMemberModal = ({
                   name="projectIds"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Add user to projects"
+                      label="Assign users to projects (optional)"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -225,10 +238,14 @@ export const AddOrgMemberModal = ({
                         <DropdownMenuTrigger asChild>
                           {filteredProjects && filteredProjects.length > 0 ? (
                             <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                              {projectIds.length === 1
-                                ? filteredProjects.find((project) => project.id === projectIds[0])
-                                    ?.name
-                                : `${projectIds.length} projects selected`}
+                              {/* eslint-disable-next-line no-nested-ternary */}
+                              {selectedProjectIds.length === 1
+                                ? filteredProjects.find(
+                                    (project) => project.id === selectedProjectIds[0]
+                                  )?.name
+                                : selectedProjectIds.length === 0
+                                ? "No projects selected"
+                                : `${selectedProjectIds.length} projects selected`}
                               <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
                             </div>
                           ) : (
@@ -243,7 +260,7 @@ export const AddOrgMemberModal = ({
                         >
                           {filteredProjects && filteredProjects.length > 0 ? (
                             filteredProjects.map((project) => {
-                              const isSelected = projectIds.includes(String(project.id));
+                              const isSelected = selectedProjectIds.includes(String(project.id));
 
                               return (
                                 <DropdownMenuItem
@@ -251,14 +268,14 @@ export const AddOrgMemberModal = ({
                                     filteredProjects.length > 0 && event.preventDefault()
                                   }
                                   onClick={() => {
-                                    if (projectIds.includes(String(project.id))) {
+                                    if (selectedProjectIds.includes(String(project.id))) {
                                       field.onChange(
-                                        projectIds.filter(
+                                        selectedProjectIds.filter(
                                           (projectId: string) => projectId !== String(project.id)
                                         )
                                       );
                                     } else {
-                                      field.onChange([...projectIds, String(project.id)]);
+                                      field.onChange([...selectedProjectIds, String(project.id)]);
                                     }
                                   }}
                                   key={`project-id-${project.id}`}
@@ -275,7 +292,17 @@ export const AddOrgMemberModal = ({
                                   iconPos="left"
                                   className="w-[28.4rem] text-sm"
                                 >
-                                  {project.name}
+                                  <div className="flex items-center gap-2 capitalize">
+                                    {project.name}
+                                    {project.version !== ProjectVersion.V3 && (
+                                      <Tooltip content="Project is not compatible with this action, please upgrade this project.">
+                                        <FontAwesomeIcon
+                                          icon={faExclamationCircle}
+                                          className="text-xs opacity-50"
+                                        />
+                                      </Tooltip>
+                                    )}
+                                  </div>
                                 </DropdownMenuItem>
                               );
                             })
@@ -301,7 +328,7 @@ export const AddOrgMemberModal = ({
                     >
                       <div>
                         <Select
-                          isDisabled={projectIds.length === 0}
+                          isDisabled={selectedProjectIds.length === 0}
                           defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
                           {...field}
                           onValueChange={(val) => field.onChange(val)}
