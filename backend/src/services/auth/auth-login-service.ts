@@ -583,7 +583,13 @@ export const authLoginServiceFactory = ({
     } else {
       const isLinkingRequired = !user?.authMethods?.includes(authMethod);
       if (isLinkingRequired) {
-        user = await userDAL.updateById(user.id, { authMethods: [...(user.authMethods || []), authMethod] });
+        // we update the names here because upon org invitation, the names are set to be NULL
+        // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
+        user = await userDAL.updateById(user.id, {
+          authMethods: [...(user.authMethods || []), authMethod],
+          firstName: !user.isAccepted ? firstName : undefined,
+          lastName: !user.isAccepted ? lastName : undefined
+        });
       }
     }
 
