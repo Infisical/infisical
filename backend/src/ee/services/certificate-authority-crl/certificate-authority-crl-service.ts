@@ -54,9 +54,6 @@ export const certificateAuthorityCrlServiceFactory = ({
 
     const crl = new x509.X509Crl(decryptedCrl);
 
-    // const base64crl = crl.toString("base64");
-    // const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
-
     return {
       ca,
       caCrl,
