@@ -692,7 +692,7 @@
             "api-reference/endpoints/certificate-authorities/import-cert",
             "api-reference/endpoints/certificate-authorities/issue-cert",
             "api-reference/endpoints/certificate-authorities/sign-cert",
-            "api-reference/endpoints/certificate-authorities/crl"
+            "api-reference/endpoints/certificate-authorities/crls"
           ]
         },
         {

@@ -4,7 +4,6 @@ import {
   faCertificate,
   faEllipsis,
   faEye,
-  faFile,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,12 +28,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useSubscription,
-  useWorkspace
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
 import {
   caStatusToNameMap,
@@ -46,7 +40,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "caCrl", "upgradePlan"]
+      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "upgradePlan"]
     >,
     data?: {
       caId?: string;
@@ -59,7 +53,6 @@ type Props = {
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
   const router = useRouter();
-  const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useListWorkspaceCas({
     projectSlug: currentWorkspace?.slug ?? ""
@@ -158,38 +151,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   icon={<FontAwesomeIcon icon={faCertificate} />}
                                 >
                                   View Certificate
-                                </DropdownMenuItem>
-                              )}
-                            </ProjectPermissionCan>
-                          )}
-                          {ca.status !== CaStatus.PENDING_CERTIFICATE && (
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Read}
-                              a={ProjectPermissionSub.CertificateAuthorities}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  className={twMerge(
-                                    !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
-                                  )}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!subscription?.caCrl) {
-                                      handlePopUpOpen("upgradePlan", {
-                                        description:
-                                          "You can use the certificate revocation list (CRL) feature if you upgrade your Infisical plan."
-                                      });
-                                    } else {
-                                      handlePopUpOpen("caCrl", {
-                                        caId: ca.id
-                                      });
-                                    }
-                                  }}
-                                  disabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faFile} />}
-                                >
-                                  View CRL
                                 </DropdownMenuItem>
                               )}
                             </ProjectPermissionCan>

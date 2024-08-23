@@ -646,8 +646,8 @@ export const registerRoutes = async (
     certificateAuthorityCrlDAL,
     projectDAL,
     kmsService,
-    permissionService,
-    licenseService
+    permissionService
+    // licenseService
   });
 
   const certificateTemplateService = certificateTemplateServiceFactory({

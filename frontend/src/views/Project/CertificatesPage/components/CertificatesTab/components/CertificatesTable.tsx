@@ -32,6 +32,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { getCertValidUntilBadgeDetails } from "./CertificatesTable.utils";
@@ -82,9 +83,11 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                 <Tr className="h-10" key={`certificate-${certificate.id}`}>
                   <Td>{certificate.friendlyName}</Td>
                   <Td>
-                    <Badge className="" variant={variant}>
-                      {label}
-                    </Badge>
+                    {certificate.status === CertStatus.REVOKED ? (
+                      <Badge variant="danger">Revoked</Badge>
+                    ) : (
+                      <Badge variant={variant}>{label}</Badge>
+                    )}
                   </Td>
                   <Td>
                     {certificate.notBefore

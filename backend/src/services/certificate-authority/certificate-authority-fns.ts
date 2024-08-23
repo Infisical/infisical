@@ -13,6 +13,13 @@ import {
   TRebuildCaCrlDTO
 } from "./certificate-authority-types";
 
+/* eslint-disable no-bitwise */
+export const createSerialNumber = () => {
+  const randomBytes = crypto.randomBytes(32);
+  randomBytes[0] &= 0x7f; // ensure the first bit is 0
+  return randomBytes.toString("hex");
+};
+
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];
   if (parts.country) dnParts.push(`C=${parts.country}`);
@@ -284,12 +291,11 @@ export const rebuildCaCrl = async ({
     thisUpdate: new Date(),
     nextUpdate: new Date("2025/12/12"),
     entries: revokedCerts.map((revokedCert) => {
+      const revocationDate = new Date(revokedCert.revokedAt as Date);
       return {
         serialNumber: revokedCert.serialNumber,
-        revocationDate: new Date(revokedCert.revokedAt as Date),
-        reason: revokedCert.revocationReason as number,
-        invalidity: new Date("2022/01/01"),
-        issuer: ca.dn
+        revocationDate,
+        reason: revokedCert.revocationReason as number
       };
     }),
     signingAlgorithm: alg,

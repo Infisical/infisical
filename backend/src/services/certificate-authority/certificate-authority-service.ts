@@ -8,6 +8,7 @@ import { z } from "zod";
 import { TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -25,6 +26,7 @@ import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cer
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   createDistinguishedName,
+  createSerialNumber,
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaCredentials,
@@ -147,7 +149,7 @@ export const certificateAuthorityServiceFactory = ({
         ? new Date(notAfter)
         : new Date(new Date().setFullYear(new Date().getFullYear() + 10));
 
-      const serialNumber = crypto.randomBytes(32).toString("hex");
+      const serialNumber = createSerialNumber();
 
       const ca = await certificateAuthorityDAL.create(
         {
@@ -263,7 +265,8 @@ export const certificateAuthorityServiceFactory = ({
       await certificateAuthorityCrlDAL.create(
         {
           caId: ca.id,
-          encryptedCrl
+          encryptedCrl,
+          caSecretId: caSecret.id
         },
         tx
       );
@@ -433,7 +436,7 @@ export const certificateAuthorityServiceFactory = ({
     // get latest CA certificate
     const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
 
-    const serialNumber = crypto.randomBytes(32).toString("hex");
+    const serialNumber = createSerialNumber();
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -846,7 +849,7 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
-    const serialNumber = crypto.randomBytes(32).toString("hex");
+    const serialNumber = createSerialNumber();
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -1142,7 +1145,7 @@ export const certificateAuthorityServiceFactory = ({
       attributes: [new x509.ChallengePasswordAttribute("password")]
     });
 
-    const { caPrivateKey } = await getCaCredentials({
+    const { caPrivateKey, caSecret } = await getCaCredentials({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
@@ -1150,9 +1153,15 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
+    const appCfg = getConfig();
+
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
+
     const extensions: x509.Extension[] = [
       new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
+      new x509.CRLDistributionPointsExtension([distributionPointUrl]),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
@@ -1203,7 +1212,7 @@ export const certificateAuthorityServiceFactory = ({
       );
     }
 
-    const serialNumber = crypto.randomBytes(32).toString("hex");
+    const serialNumber = createSerialNumber();
     const leafCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -1462,7 +1471,7 @@ export const certificateAuthorityServiceFactory = ({
       );
     }
 
-    const serialNumber = crypto.randomBytes(32).toString("hex");
+    const serialNumber = createSerialNumber();
     const leafCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
