@@ -36,6 +36,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
@@ -52,6 +53,8 @@ import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/i
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
+import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -116,6 +119,7 @@ declare module "fastify" {
       group: TGroupServiceFactory;
       groupProject: TGroupProjectServiceFactory;
       apiKey: TApiKeyServiceFactory;
+      pkiAlert: TPkiAlertServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;
       projectEnv: TProjectEnvServiceFactory;
@@ -153,8 +157,10 @@ declare module "fastify" {
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
+      certificateTemplate: TCertificateTemplateServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
+      pkiCollection: TPkiCollectionServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

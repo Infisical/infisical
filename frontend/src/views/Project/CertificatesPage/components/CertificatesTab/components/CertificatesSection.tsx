@@ -61,7 +61,7 @@ export const CertificatesSection = () => {
               onClick={() => handlePopUpOpen("certificate")}
               isDisabled={!isAllowed}
             >
-              Issue Certificate
+              Issue
             </Button>
           )}
         </ProjectPermissionCan>

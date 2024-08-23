@@ -107,7 +107,9 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
-            "documentation/platform/pki/certificates"
+            "documentation/platform/pki/certificates",
+            "documentation/platform/pki/certificate-templates",
+            "documentation/platform/pki/alerting"
           ]
         },
         {
@@ -682,13 +684,15 @@
             "api-reference/endpoints/certificate-authorities/read",
             "api-reference/endpoints/certificate-authorities/update",
             "api-reference/endpoints/certificate-authorities/delete",
+            "api-reference/endpoints/certificate-authorities/renew",
+            "api-reference/endpoints/certificate-authorities/list-ca-certs",
             "api-reference/endpoints/certificate-authorities/csr",
             "api-reference/endpoints/certificate-authorities/cert",
             "api-reference/endpoints/certificate-authorities/sign-intermediate",
             "api-reference/endpoints/certificate-authorities/import-cert",
             "api-reference/endpoints/certificate-authorities/issue-cert",
             "api-reference/endpoints/certificate-authorities/sign-cert",
-            "api-reference/endpoints/certificate-authorities/crl"
+            "api-reference/endpoints/certificate-authorities/crls"
           ]
         },
         {
@@ -698,7 +702,39 @@
             "api-reference/endpoints/certificates/read",
             "api-reference/endpoints/certificates/revoke",
             "api-reference/endpoints/certificates/delete",
-            "api-reference/endpoints/certificates/cert-body"
+            "api-reference/endpoints/certificates/cert-body",
+            "api-reference/endpoints/certificates/issue-certificate",
+            "api-reference/endpoints/certificates/sign-certificate"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/certificate-templates/create",
+            "api-reference/endpoints/certificate-templates/update",
+            "api-reference/endpoints/certificate-templates/get-by-id",
+            "api-reference/endpoints/certificate-templates/delete"
+          ]
+        },
+        {
+          "group": "Certificate Collections",
+          "pages": [
+            "api-reference/endpoints/pki-collections/create",
+            "api-reference/endpoints/pki-collections/read",
+            "api-reference/endpoints/pki-collections/update",
+            "api-reference/endpoints/pki-collections/delete",
+            "api-reference/endpoints/pki-collections/add-item",
+            "api-reference/endpoints/pki-collections/list-items",
+            "api-reference/endpoints/pki-collections/delete-item"
+          ]
+        },
+        {
+          "group": "PKI Alerting",
+          "pages": [
+            "api-reference/endpoints/pki-alerts/create",
+            "api-reference/endpoints/pki-alerts/read",
+            "api-reference/endpoints/pki-alerts/update",
+            "api-reference/endpoints/pki-alerts/delete"
           ]
         }
       ]

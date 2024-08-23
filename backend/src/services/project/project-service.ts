@@ -16,12 +16,15 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
+import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
@@ -37,7 +40,9 @@ import {
   TDeleteProjectDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
+  TListProjectAlertsDTO,
   TListProjectCasDTO,
+  TListProjectCertificateTemplatesDTO,
   TListProjectCertsDTO,
   TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
@@ -70,6 +75,9 @@ type TProjectServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
+  certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
+  pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
+  pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -107,6 +115,9 @@ export const projectServiceFactory = ({
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
+  certificateTemplateDAL,
+  pkiCollectionDAL,
+  pkiAlertDAL,
   keyStore,
   kmsService,
   projectBotDAL
@@ -676,6 +687,90 @@ export const projectServiceFactory = ({
     };
   };
 
+  /**
+   * Return list of (PKI) alerts configured for project
+   */
+  const listProjectAlerts = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectAlertsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+
+    const alerts = await pkiAlertDAL.find({ projectId });
+
+    return {
+      alerts
+    };
+  };
+
+  /**
+   * Return list of PKI collections for project
+   */
+  const listProjectPkiCollections = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListProjectAlertsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+
+    const pkiCollections = await pkiCollectionDAL.find({ projectId });
+
+    return {
+      pkiCollections
+    };
+  };
+
+  /**
+   * Return list of certificate templates for project
+   */
+  const listProjectCertificateTemplates = async ({
+    projectId,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor
+  }: TListProjectCertificateTemplatesDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateTemplates
+    );
+
+    const certificateTemplates = await certificateTemplateDAL.getCertTemplatesByProjectId(projectId);
+
+    return {
+      certificateTemplates
+    };
+  };
+
   const updateProjectKmsKey = async ({
     projectId,
     kms,
@@ -794,6 +889,9 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    listProjectAlerts,
+    listProjectPkiCollections,
+    listProjectCertificateTemplates,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,

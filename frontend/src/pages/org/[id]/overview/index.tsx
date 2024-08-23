@@ -552,8 +552,10 @@ const OrganizationPage = () => {
 
         await addUsersToProject.mutateAsync({
           usernames: orgUsers
-            .map((member) => member.user.username)
-            .filter((username) => username !== user.username),
+            .filter(
+              (member) => member.user.username !== user.username && member.status === "accepted"
+            )
+            .map((member) => member.user.username),
           projectId: newProjectId,
           orgId: currentOrg.id
         });

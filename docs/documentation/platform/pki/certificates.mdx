@@ -151,18 +151,24 @@ In the following steps, we explore how to revoke a X.509 certificate under a CA 
   </Step>
   <Step title="Obtaining a CRL">
     In order to check the revocation status of a certificate, you can check it
-    against the CRL of a CA by selecting the **View CRL** option under the
-    issuing CA and downloading the CRL file.
+    against the CRL of a CA by heading to its Issuing CA and downloading the CRL.
 
     ![pki view crl](/images/platform/pki/ca-crl.png)
-
-    ![pki download crl](/images/platform/pki/ca-crl-modal.png)
 
     To verify a certificate against the
     downloaded CRL with OpenSSL, you can use the following command:
 
 ```bash
 openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
+```
+
+Note that you can also obtain the CRL from the certificate itself by
+referencing the CRL distribution point extension on the certificate itself.
+
+To check a certificate against the CRL distribution point specified within it with OpenSSL, you can use the following command:
+
+```bash
+openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
 ```
 
   </Step>
@@ -197,21 +203,25 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
       </Step>
       <Step title="Obtaining a CRL">
         In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
-        To obtain the CRL of the CA, make an API request to the [Get CRL](/api-reference/endpoints/certificate-authorities/crl) API endpoint.
+        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crls) API endpoint.
 
         ### Sample request
 
         ```bash Request
-        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crl' \
+        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crls' \
           --header 'Authorization: Bearer <access-token>'
         ```
 
         ### Sample response
 
         ```bash Response
-        {
-          crl: "..."
-        }
+        [
+          {
+            id: "...",
+            crl: "..."
+          },
+          ...
+        ]
         ```
 
         To verify a certificate against the CRL with OpenSSL, you can use the following command:

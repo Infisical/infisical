@@ -5,11 +5,14 @@ import { apiRequest } from "@app/config/request";
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
+import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
 import { identitiesKeys } from "../identities/queries";
 import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
+import { TPkiAlert } from "../pkiAlerts/types";
+import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
 import { userKeys } from "../users/queries";
 import { TWorkspaceUser } from "../users/types";
@@ -62,7 +65,13 @@ export const workspaceKeys = {
     slug: string;
     offset: number;
     limit: number;
-  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const
+  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
+  getWorkspacePkiAlerts: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-pki-alerts"] as const,
+  getWorkspacePkiCollections: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-pki-collections"] as const,
+  getWorkspaceCertificateTemplates: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-certificate-templates"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -368,14 +377,19 @@ export const useDeleteWsEnvironment = () => {
   });
 };
 
-export const useGetWorkspaceUsers = (workspaceId: string) => {
+export const useGetWorkspaceUsers = (workspaceId: string, includeGroupMembers?: boolean) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceUsers(workspaceId),
     queryFn: async () => {
       const {
         data: { users }
       } = await apiRequest.get<{ users: TWorkspaceUser[] }>(
-        `/api/v1/workspace/${workspaceId}/users`
+        `/api/v1/workspace/${workspaceId}/users`,
+        {
+          params: {
+            includeGroupMembers
+          }
+        }
       );
       return users;
     },
@@ -599,5 +613,53 @@ export const useListWorkspaceCertificates = ({
       return { certificates, totalCount };
     },
     enabled: Boolean(projectSlug)
+  });
+};
+
+export const useListWorkspacePkiAlerts = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspacePkiAlerts(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { alerts }
+      } = await apiRequest.get<{ alerts: TPkiAlert[] }>(
+        `/api/v2/workspace/${workspaceId}/pki-alerts`
+      );
+
+      return { alerts };
+    },
+    enabled: Boolean(workspaceId)
+  });
+};
+
+export const useListWorkspacePkiCollections = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspacePkiCollections(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { collections }
+      } = await apiRequest.get<{ collections: TPkiCollection[] }>(
+        `/api/v2/workspace/${workspaceId}/pki-collections`
+      );
+
+      return { collections };
+    },
+    enabled: Boolean(workspaceId)
+  });
+};
+
+export const useListWorkspaceCertificateTemplates = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceCertificateTemplates(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { certificateTemplates }
+      } = await apiRequest.get<{ certificateTemplates: TCertificateTemplate[] }>(
+        `/api/v2/workspace/${workspaceId}/certificate-templates`
+      );
+
+      return { certificateTemplates };
+    },
+    enabled: Boolean(workspaceId)
   });
 };

@@ -16,6 +16,7 @@ export enum QueueName {
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
+  DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -26,7 +27,8 @@ export enum QueueName {
   CaCrlRotation = "ca-crl-rotation",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
-  ProjectV3Migration = "project-v3-migration"
+  ProjectV3Migration = "project-v3-migration",
+  AccessTokenStatusUpdate = "access-token-status-update"
 }
 
 export enum QueueJobs {
@@ -36,6 +38,7 @@ export enum QueueJobs {
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
+  DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
@@ -46,7 +49,9 @@ export enum QueueJobs {
   CaCrlRotation = "ca-crl-rotation-job",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
-  ProjectV3Migration = "project-v3-migration"
+  ProjectV3Migration = "project-v3-migration",
+  IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
+  ServiceTokenStatusUpdate = "service-token-status-update"
 }
 
 export type TQueueJobTypes = {
@@ -69,6 +74,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.DailyResourceCleanUp]: {
     name: QueueJobs.DailyResourceCleanUp;
+    payload: undefined;
+  };
+  [QueueName.DailyExpiringPkiItemAlert]: {
+    name: QueueJobs.DailyExpiringPkiItemAlert;
     payload: undefined;
   };
   [QueueName.AuditLogPrune]: {
@@ -142,6 +151,15 @@ export type TQueueJobTypes = {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
   };
+  [QueueName.AccessTokenStatusUpdate]:
+    | {
+        name: QueueJobs.IdentityAccessTokenStatusUpdate;
+        payload: { identityAccessTokenId: string; numberOfUses: number };
+      }
+    | {
+        name: QueueJobs.ServiceTokenStatusUpdate;
+        payload: { serviceTokenId: string };
+      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

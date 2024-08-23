@@ -20,7 +20,9 @@ export const CertificatesSchema = z.object({
   notAfter: z.date(),
   revokedAt: z.date().nullable().optional(),
   revocationReason: z.number().nullable().optional(),
-  altNames: z.string().default("").nullable().optional()
+  altNames: z.string().default("").nullable().optional(),
+  caCertId: z.string().uuid(),
+  certificateTemplateId: z.string().uuid().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

@@ -1,9 +1,9 @@
+import { useRouter } from "next/router";
 import {
   faBan,
   faCertificate,
   faEllipsis,
   faEye,
-  faFile,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,6 +12,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,19 +28,19 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useSubscription,
-  useWorkspace} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { CaStatus, useListWorkspaceCas } from "@app/hooks/api";
-import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
+import {
+  caStatusToNameMap,
+  caTypeToNameMap,
+  getCaStatusBadgeVariant
+} from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "caCrl", "upgradePlan"]
+      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "upgradePlan"]
     >,
     data?: {
       caId?: string;
@@ -51,11 +52,12 @@ type Props = {
 };
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
-  const { subscription } = useSubscription();
+  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useListWorkspaceCas({
     projectSlug: currentWorkspace?.slug ?? ""
   });
+
   return (
     <div>
       <TableContainer>
@@ -76,11 +78,23 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
               data.length > 0 &&
               data.map((ca) => {
                 return (
-                  <Tr className="h-10" key={`ca-${ca.id}`}>
+                  <Tr
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    key={`ca-${ca.id}`}
+                    onClick={() => router.push(`/project/${currentWorkspace?.id}/ca/${ca.id}`)}
+                  >
                     <Td>{ca.friendlyName}</Td>
-                    <Td>{caStatusToNameMap[ca.status]}</Td>
+                    <Td>
+                      <Badge variant={getCaStatusBadgeVariant(ca.status)}>
+                        {caStatusToNameMap[ca.status]}
+                      </Badge>
+                    </Td>
                     <Td>{caTypeToNameMap[ca.type]}</Td>
-                    <Td>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</Td>
+                    <Td>
+                      <div className="flex items-center ">
+                        <p>{ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}</p>
+                      </div>
+                    </Td>
                     <Td className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
@@ -102,7 +116,8 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("installCaCert", {
                                       caId: ca.id
                                     });
@@ -110,7 +125,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   disabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faCertificate} />}
                                 >
-                                  Install Certificate
+                                  Install CA Certificate
                                 </DropdownMenuItem>
                               )}
                             </ProjectPermissionCan>
@@ -126,7 +141,8 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("caCert", {
                                       caId: ca.id
                                     });
@@ -135,37 +151,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   icon={<FontAwesomeIcon icon={faCertificate} />}
                                 >
                                   View Certificate
-                                </DropdownMenuItem>
-                              )}
-                            </ProjectPermissionCan>
-                          )}
-                          {ca.status !== CaStatus.PENDING_CERTIFICATE && (
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Read}
-                              a={ProjectPermissionSub.CertificateAuthorities}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  className={twMerge(
-                                    !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
-                                  )}
-                                  onClick={async () => {
-                                    if (!subscription?.caCrl) {
-                                      handlePopUpOpen("upgradePlan", {
-                                        description:
-                                          "You can use the certificate revocation list (CRL) feature if you upgrade your Infisical plan."
-                                      });
-                                    } else {
-                                      handlePopUpOpen("caCrl", {
-                                        caId: ca.id
-                                      });
-                                    }
-                                  }}
-                                  disabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faFile} />}
-                                >
-                                  View CRL
                                 </DropdownMenuItem>
                               )}
                             </ProjectPermissionCan>
@@ -179,11 +164,12 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
-                                onClick={async () =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handlePopUpOpen("ca", {
                                     caId: ca.id
-                                  })
-                                }
+                                  });
+                                }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faEye} />}
                               >
@@ -202,15 +188,16 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () =>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
                                       caId: ca.id,
                                       status:
                                         ca.status === CaStatus.ACTIVE
                                           ? CaStatus.DISABLED
                                           : CaStatus.ACTIVE
-                                    })
-                                  }
+                                    });
+                                  }}
                                   disabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faBan} />}
                                 >
@@ -228,12 +215,13 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
-                                onClick={async () =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handlePopUpOpen("deleteCa", {
                                     caId: ca.id,
                                     dn: ca.dn
-                                  })
-                                }
+                                  });
+                                }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}
                               >

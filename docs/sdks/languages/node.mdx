@@ -360,6 +360,12 @@ By default, `getSecret()` fetches and returns a shared secret.
         <ParamField query="type" type="string" optional>
             The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
         </ParamField>
+        <ParamField query="includeImports" type="boolean" optional>
+          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+        </ParamField>
+        <ParamField query="expandSecretReferences" type="boolean" default="true" optional>
+            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
+        </ParamField>
     </Expandable>
 </ParamField>
 

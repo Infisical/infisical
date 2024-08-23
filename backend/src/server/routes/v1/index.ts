@@ -3,6 +3,7 @@ import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { registerCertRouter } from "./certificate-router";
+import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
@@ -18,6 +19,8 @@ import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
+import { registerPkiAlertRouter } from "./pki-alert-router";
+import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -74,6 +77,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (pkiRouter) => {
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(registerCertRouter, { prefix: "/certificates" });
+      await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
+      await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
     },
     { prefix: "/pki" }
   );

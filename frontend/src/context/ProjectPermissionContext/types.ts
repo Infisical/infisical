@@ -28,6 +28,9 @@ export enum ProjectPermissionSub {
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
+  CertificateTemplates = "certificate-templates",
+  PkiAlerts = "pki-alerts",
+  PkiCollections = "pki-collections",
   Kms = "kms"
 }
 
@@ -40,6 +43,13 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
+      )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
@@ -57,6 +67,9 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
+  | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]

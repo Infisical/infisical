@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -7,21 +9,33 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
   Input,
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CaStatus, useCreateCertificate, useGetCert, useListWorkspaceCas } from "@app/hooks/api";
+import {
+  CaStatus,
+  useCreateCertificate,
+  useGetCert,
+  useGetCertTemplate,
+  useListWorkspaceCas,
+  useListWorkspaceCertificateTemplates,
+  useListWorkspacePkiCollections
+} from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
 
 const schema = z.object({
+  certificateTemplateId: z.string().optional(),
   caId: z.string(),
+  collectionId: z.string().optional(),
   friendlyName: z.string(),
   commonName: z.string().trim().min(1),
   altNames: z.string(),
@@ -42,6 +56,8 @@ type TCertificateDetails = {
   privateKey: string;
 };
 
+const CERT_TEMPLATE_NONE_VALUE = "none";
+
 export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const { currentWorkspace } = useWorkspace();
@@ -54,6 +70,14 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     status: CaStatus.ACTIVE
   });
 
+  const { data } = useListWorkspacePkiCollections({
+    workspaceId: currentWorkspace?.id || ""
+  });
+
+  const { data: templatesData } = useListWorkspaceCertificateTemplates({
+    workspaceId: currentWorkspace?.id || ""
+  });
+
   const { mutateAsync: createCertificate } = useCreateCertificate();
 
   const {
@@ -61,10 +85,19 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    setValue
+    setValue,
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
+
+  const selectedCertTemplateId = watch("certificateTemplateId");
+  const hasCertTemplateSelected =
+    selectedCertTemplateId !== "" && selectedCertTemplateId !== CERT_TEMPLATE_NONE_VALUE;
+
+  const { data: selectedCertTemplate } = useGetCertTemplate(
+    hasCertTemplateSelected ? (selectedCertTemplateId as string) : ""
+  );
 
   useEffect(() => {
     if (cert) {
@@ -73,6 +106,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         friendlyName: cert.friendlyName,
         commonName: cert.commonName,
         altNames: cert.altNames,
+        certificateTemplateId: cert.certificateTemplateId ?? CERT_TEMPLATE_NONE_VALUE,
         ttl: ""
       });
     } else {
@@ -81,18 +115,34 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         friendlyName: "",
         commonName: "",
         altNames: "",
-        ttl: ""
+        ttl: "",
+        certificateTemplateId: CERT_TEMPLATE_NONE_VALUE
       });
     }
   }, [cert]);
 
-  const onFormSubmit = async ({ caId, friendlyName, commonName, altNames, ttl }: FormData) => {
+  useEffect(() => {
+    if (!cert && selectedCertTemplate) {
+      setValue("ttl", selectedCertTemplate.ttl);
+    }
+  }, [selectedCertTemplate, cert]);
+
+  const onFormSubmit = async ({
+    caId,
+    friendlyName,
+    collectionId,
+    commonName,
+    altNames,
+    ttl
+  }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
 
       const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
+        caId: !selectedCertTemplate ? caId : undefined,
+        certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
         projectSlug: currentWorkspace.slug,
-        caId,
+        pkiCollectionId: collectionId,
         friendlyName,
         commonName,
         altNames,
@@ -141,11 +191,31 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
-              name="caId"
+              name="certificateTemplateId"
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
-                  label="Issuing CA"
+                  label={
+                    <div>
+                      <FormLabel
+                        isRequired
+                        label="Certificate Template"
+                        icon={
+                          <Tooltip
+                            className="text-center"
+                            content={
+                              <span>
+                                When a template is selected, the details provided are validated
+                                against the template policies.
+                              </span>
+                            }
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                          </Tooltip>
+                        }
+                      />
+                    </div>
+                  }
                   errorText={error?.message}
                   isError={Boolean(error)}
                   className="mt-4"
@@ -158,15 +228,77 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     className="w-full"
                     isDisabled={Boolean(cert)}
                   >
-                    {(cas || []).map(({ id, type, dn }) => (
-                      <SelectItem value={id} key={`ca-${id}`}>
-                        {`${caTypeToNameMap[type]}: ${dn}`}
+                    <SelectItem value={CERT_TEMPLATE_NONE_VALUE} key="cert-template-none">
+                      None
+                    </SelectItem>
+                    {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
+                      <SelectItem value={id} key={`cert-template-${id}`}>
+                        {name}
                       </SelectItem>
                     ))}
                   </Select>
                 </FormControl>
               )}
             />
+            {(!selectedCertTemplateId ||
+              selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE ||
+              cert) && (
+              <>
+                <Controller
+                  control={control}
+                  name="caId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Issuing CA"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="mt-4"
+                      isRequired
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                        isDisabled={Boolean(cert)}
+                      >
+                        {(cas || []).map(({ id, type, dn }) => (
+                          <SelectItem value={id} key={`ca-${id}`}>
+                            {`${caTypeToNameMap[type]}: ${dn}`}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="collectionId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Certificate Collection (Optional)"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="mt-4"
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                        isDisabled={Boolean(cert)}
+                      >
+                        {(data?.collections || []).map(({ id, name }) => (
+                          <SelectItem value={id} key={`pki-collection-${id}`}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </>
+            )}
             <Controller
               control={control}
               defaultValue=""

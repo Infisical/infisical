@@ -2,6 +2,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 
 export type TListProjectAuditLogDTO = {
   auditLogActor?: string;
@@ -130,17 +131,30 @@ export enum EventType {
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
   DELETE_CA = "delete-certificate-authority",
+  RENEW_CA = "renew-certificate-authority",
   GET_CA_CSR = "get-certificate-authority-csr",
+  GET_CA_CERTS = "get-certificate-authority-certs",
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
-  GET_CA_CRL = "get-certificate-authority-crl",
+  GET_CA_CRLS = "get-certificate-authority-crls",
   ISSUE_CERT = "issue-cert",
   SIGN_CERT = "sign-cert",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
   GET_CERT_BODY = "get-cert-body",
+  CREATE_PKI_ALERT = "create-pki-alert",
+  GET_PKI_ALERT = "get-pki-alert",
+  UPDATE_PKI_ALERT = "update-pki-alert",
+  DELETE_PKI_ALERT = "delete-pki-alert",
+  CREATE_PKI_COLLECTION = "create-pki-collection",
+  GET_PKI_COLLECTION = "get-pki-collection",
+  UPDATE_PKI_COLLECTION = "update-pki-collection",
+  DELETE_PKI_COLLECTION = "delete-pki-collection",
+  GET_PKI_COLLECTION_ITEMS = "get-pki-collection-items",
+  ADD_PKI_COLLECTION_ITEM = "add-pki-collection-item",
+  DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
   CREATE_KMS = "create-kms",
   UPDATE_KMS = "update-kms",
   DELETE_KMS = "delete-kms",
@@ -148,7 +162,11 @@ export enum EventType {
   UPDATE_PROJECT_KMS = "update-project-kms",
   GET_PROJECT_KMS_BACKUP = "get-project-kms-backup",
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
-  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project"
+  ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
+  CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
+  UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
+  DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
+  GET_CERTIFICATE_TEMPLATE = "get-certificate-template"
 }
 
 interface UserActorMetadata {
@@ -1096,8 +1114,24 @@ interface DeleteCa {
   };
 }
 
+interface RenewCa {
+  type: EventType.RENEW_CA;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
 interface GetCaCsr {
   type: EventType.GET_CA_CSR;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
+interface GetCaCerts {
+  type: EventType.GET_CA_CERTS;
   metadata: {
     caId: string;
     dn: string;
@@ -1129,8 +1163,8 @@ interface ImportCaCert {
   };
 }
 
-interface GetCaCrl {
-  type: EventType.GET_CA_CRL;
+interface GetCaCrls {
+  type: EventType.GET_CA_CRLS;
   metadata: {
     caId: string;
     dn: string;
@@ -1191,6 +1225,95 @@ interface GetCertBody {
   };
 }
 
+interface CreatePkiAlert {
+  type: EventType.CREATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId: string;
+    name: string;
+    alertBeforeDays: number;
+    recipientEmails: string;
+  };
+}
+interface GetPkiAlert {
+  type: EventType.GET_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface UpdatePkiAlert {
+  type: EventType.UPDATE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+    pkiCollectionId?: string;
+    name?: string;
+    alertBeforeDays?: number;
+    recipientEmails?: string;
+  };
+}
+interface DeletePkiAlert {
+  type: EventType.DELETE_PKI_ALERT;
+  metadata: {
+    pkiAlertId: string;
+  };
+}
+
+interface CreatePkiCollection {
+  type: EventType.CREATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name: string;
+  };
+}
+
+interface GetPkiCollection {
+  type: EventType.GET_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface UpdatePkiCollection {
+  type: EventType.UPDATE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+    name?: string;
+  };
+}
+
+interface DeletePkiCollection {
+  type: EventType.DELETE_PKI_COLLECTION;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface GetPkiCollectionItems {
+  type: EventType.GET_PKI_COLLECTION_ITEMS;
+  metadata: {
+    pkiCollectionId: string;
+  };
+}
+
+interface AddPkiCollectionItem {
+  type: EventType.ADD_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+    type: PkiItemType;
+    itemId: string;
+  };
+}
+
+interface DeletePkiCollectionItem {
+  type: EventType.DELETE_PKI_COLLECTION_ITEM;
+  metadata: {
+    pkiCollectionItemId: string;
+    pkiCollectionId: string;
+  };
+}
+
 interface CreateKmsEvent {
   type: EventType.CREATE_KMS;
   metadata: {
@@ -1245,6 +1368,46 @@ interface GetProjectKmsBackupEvent {
 interface LoadProjectKmsBackupEvent {
   type: EventType.LOAD_PROJECT_KMS_BACKUP;
   metadata: Record<string, string>; // no metadata yet
+}
+
+interface CreateCertificateTemplate {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface GetCertificateTemplate {
+  type: EventType.GET_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface UpdateCertificateTemplate {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    caId: string;
+    pkiCollectionId?: string;
+    name: string;
+    commonName: string;
+    subjectAlternativeName: string;
+    ttl: string;
+  };
+}
+
+interface DeleteCertificateTemplate {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+  };
 }
 
 interface OrgAdminAccessProjectEvent {
@@ -1349,17 +1512,30 @@ export type Event =
   | GetCa
   | UpdateCa
   | DeleteCa
+  | RenewCa
   | GetCaCsr
+  | GetCaCerts
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
-  | GetCaCrl
+  | GetCaCrls
   | IssueCert
   | SignCert
   | GetCert
   | DeleteCert
   | RevokeCert
   | GetCertBody
+  | CreatePkiAlert
+  | GetPkiAlert
+  | UpdatePkiAlert
+  | DeletePkiAlert
+  | CreatePkiCollection
+  | GetPkiCollection
+  | UpdatePkiCollection
+  | DeletePkiCollection
+  | GetPkiCollectionItems
+  | AddPkiCollectionItem
+  | DeletePkiCollectionItem
   | CreateKmsEvent
   | UpdateKmsEvent
   | DeleteKmsEvent
@@ -1367,4 +1543,8 @@ export type Event =
   | UpdateProjectKmsEvent
   | GetProjectKmsBackupEvent
   | LoadProjectKmsBackupEvent
-  | OrgAdminAccessProjectEvent;
+  | OrgAdminAccessProjectEvent
+  | CreateCertificateTemplate
+  | UpdateCertificateTemplate
+  | GetCertificateTemplate
+  | DeleteCertificateTemplate;

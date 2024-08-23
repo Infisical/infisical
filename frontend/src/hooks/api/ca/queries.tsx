@@ -6,6 +6,8 @@ import { TCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
+  getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
+  getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"]
@@ -24,6 +26,24 @@ export const useGetCaById = (caId: string) => {
   });
 };
 
+export const useGetCaCerts = (caId: string) => {
+  return useQuery({
+    queryKey: caKeys.getCaCerts(caId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<
+        {
+          certificate: string;
+          certificateChain: string;
+          serialNumber: string;
+          version: number;
+        }[]
+      >(`/api/v1/pki/ca/${caId}/ca-certificates`); // TODO: consider updating endpoint structure
+      return data;
+    },
+    enabled: Boolean(caId)
+  });
+};
+
 export const useGetCaCert = (caId: string) => {
   return useQuery({
     queryKey: caKeys.getCaCert(caId),
@@ -32,7 +52,7 @@ export const useGetCaCert = (caId: string) => {
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-      }>(`/api/v1/pki/ca/${caId}/certificate`);
+      }>(`/api/v1/pki/ca/${caId}/certificate`); // TODO: consider updating endpoint structure
       return data;
     },
     enabled: Boolean(caId)
@@ -54,16 +74,17 @@ export const useGetCaCsr = (caId: string) => {
   });
 };
 
-export const useGetCaCrl = (caId: string) => {
+export const useGetCaCrls = (caId: string) => {
   return useQuery({
-    queryKey: caKeys.getCaCrl(caId),
+    queryKey: caKeys.getCaCrls(caId),
     queryFn: async () => {
-      const {
-        data: { crl }
-      } = await apiRequest.get<{
-        crl: string;
-      }>(`/api/v1/pki/ca/${caId}/crl`);
-      return crl;
+      const { data } = await apiRequest.get<
+        {
+          id: string;
+          crl: string;
+        }[]
+      >(`/api/v1/pki/ca/${caId}/crls`);
+      return data;
     },
     enabled: Boolean(caId)
   });

@@ -14,7 +14,8 @@ export const CertificateAuthorityCrlSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   caId: z.string().uuid(),
-  encryptedCrl: zodBuffer
+  encryptedCrl: zodBuffer,
+  caSecretId: z.string().uuid()
 });
 
 export type TCertificateAuthorityCrl = z.infer<typeof CertificateAuthorityCrlSchema>;
