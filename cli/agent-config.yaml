@@ -11,12 +11,25 @@ sinks:
     config:
       path: "access-token"
 templates:
-  - source-path: my-dot-ev-secret-template
+  - template-content: |
+      {{- with secret "202f04d7-e4cb-43d4-a292-e893712d61fc" "dev" "/" }}
+      {{- range . }}
+      {{ .Key }}={{ .Value }}
+      {{- end }}
+      {{- end }}
+    destination-path: my-dot-env-0.env
+    config:
+      polling-interval: 60s
+      execute:
+        command: docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d
+
+  - base64-template-content: e3stIHdpdGggc2VjcmV0ICIyMDJmMDRkNy1lNGNiLTQzZDQtYTI5Mi1lODkzNzEyZDYxZmMiICJkZXYiICIvIiB9fQp7ey0gcmFuZ2UgLiB9fQp7eyAuS2V5IH19PXt7IC5WYWx1ZSB9fQp7ey0gZW5kIH19Cnt7LSBlbmQgfX0=
     destination-path: my-dot-env.env
     config:
       polling-interval: 60s
       execute:
         command: docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d
+
   - source-path: my-dot-ev-secret-template1
     destination-path: my-dot-env-1.env
     config:
