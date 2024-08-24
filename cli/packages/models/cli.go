@@ -16,6 +16,7 @@ type ConfigFile struct {
 	LoggedInUsers          []LoggedInUser `json:"loggedInUsers,omitempty"`
 	VaultBackendType       string         `json:"vaultBackendType,omitempty"`
 	VaultBackendPassphrase string         `json:"vaultBackendPassphrase,omitempty"`
+	Domains                []string       `json:"domains,omitempty"`
 }
 
 type LoggedInUser struct {
