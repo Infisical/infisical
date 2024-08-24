@@ -220,6 +220,19 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
     const username = entityId;
 
+    if (providerInputs.client === RedisProviders.Elasticache) {
+      await ElastiCacheUserManager(
+        {
+          accessKeyId: providerInputs.username,
+          secretAccessKey: providerInputs.password!
+        },
+        providerInputs.elastiCacheRegion!
+      ).deleteUser({ UserId: username });
+
+      await connection.quit();
+      return { entityId: username };
+    }
+
     const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
 
