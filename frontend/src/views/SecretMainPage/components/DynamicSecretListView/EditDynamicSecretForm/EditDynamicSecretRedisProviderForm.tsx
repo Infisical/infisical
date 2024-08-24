@@ -14,24 +14,55 @@ import {
   FormControl,
   Input,
   SecretInput,
+  Select,
+  SelectItem,
   TextArea
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
-import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { RedisProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
   inputs: z
     .object({
+      client: z.nativeEnum(RedisProviders),
       host: z.string().toLowerCase().min(1),
       port: z.coerce.number(),
-      username: z.string().min(1),
-      password: z.string().min(1).optional(),
+      username: z.string().min(1), // In case of Elasticache, this is accessKeyId
+      password: z.string().min(1).optional(), // In case of Elasticache, this is secretAccessKey
+
+      elastiCacheIamUsername: z.string().trim().optional(),
+      elastiCacheRegion: z.string().trim().optional(),
+
       creationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
       revocationStatement: z.string().min(1),
       ca: z.string().optional()
     })
-    .partial(),
+    .partial()
+    .refine(
+      (data) => {
+        if (data.client === RedisProviders.Elasticache) {
+          return !!data.elastiCacheIamUsername;
+        }
+        return true;
+      },
+      {
+        message: "elastiCacheIamUsername is required when client is ElastiCache",
+        path: ["elastiCacheIamUsername"]
+      }
+    )
+    .refine(
+      (data) => {
+        if (data.client === RedisProviders.Elasticache) {
+          return !!data.elastiCacheRegion;
+        }
+        return true;
+      },
+      {
+        message: "AWS region is required when using ElastiCache",
+        path: ["elastiCacheRegion"]
+      }
+    ),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
     if (valMs < 60 * 1000)
@@ -78,7 +109,8 @@ export const EditDynamicSecretRedisProviderForm = ({
   const {
     control,
     formState: { isSubmitting },
-    handleSubmit
+    handleSubmit,
+    watch
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
@@ -121,6 +153,8 @@ export const EditDynamicSecretRedisProviderForm = ({
       });
     }
   };
+
+  const selectedProvider = watch("inputs.client");
 
   return (
     <div>
@@ -173,52 +207,90 @@ export const EditDynamicSecretRedisProviderForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            Configuration
+          </div>
           <div className="flex flex-col">
-            <div className="flex items-center space-x-2">
+            <div className="flex w-full items-center gap-2">
               <Controller
                 control={control}
-                name="inputs.host"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
+                name="inputs.client"
+                defaultValue={RedisProviders.Redis}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
-                    label="Host"
-                    className="flex-grow"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="inputs.port"
-                defaultValue={6379}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Port"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input
-                      {...field}
-                      type="number"
-                      onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
-                    />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="flex w-full space-x-2">
-              <Controller
-                control={control}
-                name="inputs.username"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
+                    label="Service"
                     className="w-full"
-                    label="User"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                  >
+                    <Select
+                      value={value}
+                      onValueChange={(val) => onChange(val)}
+                      className="w-full border border-mineshaft-500"
+                    >
+                      <SelectItem value={RedisProviders.Redis}>Redis</SelectItem>
+                      <SelectItem value={RedisProviders.Elasticache}>AWS ElastiCache</SelectItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              {selectedProvider === RedisProviders.Elasticache && (
+                <Controller
+                  control={control}
+                  name="inputs.elastiCacheRegion"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Region"
+                      className="w-full"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} placeholder="us-east-1" />
+                    </FormControl>
+                  )}
+                />
+              )}
+            </div>
+            <Controller
+              control={control}
+              name="inputs.host"
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Host"
+                  className="flex-grow"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="inputs.port"
+              defaultValue={6379}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Port"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} type="number" />
+                </FormControl>
+              )}
+            />
+          </div>
+          {selectedProvider === RedisProviders.Elasticache && (
+            <div className="flex w-full">
+              <Controller
+                control={control}
+                name="inputs.elastiCacheIamUsername"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Redis Username"
+                    className="w-full"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -226,107 +298,132 @@ export const EditDynamicSecretRedisProviderForm = ({
                   </FormControl>
                 )}
               />
-              <Controller
-                control={control}
-                name="inputs.password"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    className="w-full"
-                    label="Password"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} type="password" autoComplete="new-password" />
-                  </FormControl>
-                )}
-              />
             </div>
-            <div>
-              <Controller
-                control={control}
-                name="inputs.ca"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isOptional
-                    label="CA(SSL)"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <SecretInput
-                      {...field}
-                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Accordion type="multiple" className="w-full bg-mineshaft-700">
-                <AccordionItem value="modify-redis-statement">
-                  <AccordionTrigger>Modify Redis Statements</AccordionTrigger>
-                  <AccordionContent>
-                    <Controller
-                      control={control}
-                      name="inputs.creationStatement"
-                      defaultValue="ACL SETUSER {{username}} on >{{password}} ~* &* +@all"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label="Creation Statement"
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
-                          helperText="username, password and expiration are dynamically provisioned"
-                        >
-                          <TextArea
-                            {...field}
-                            reSize="none"
-                            rows={3}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
-                          />
-                        </FormControl>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="inputs.revocationStatement"
-                      defaultValue="ACL DELUSER {{username}}"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label="Revocation Statement"
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
-                          helperText="username is dynamically provisioned"
-                        >
-                          <TextArea
-                            {...field}
-                            reSize="none"
-                            rows={3}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
-                          />
-                        </FormControl>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="inputs.renewStatement"
-                      defaultValue=""
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label="Renew Statement"
-                          helperText="username and expiration are dynamically provisioned"
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
-                        >
-                          <TextArea
-                            {...field}
-                            reSize="none"
-                            rows={3}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
-                          />
-                        </FormControl>
-                      )}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
+          )}
+          <div className="flex space-x-2">
+            <Controller
+              control={control}
+              name="inputs.username"
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label={
+                    selectedProvider === RedisProviders.Elasticache ? "Access Key ID" : "Username"
+                  }
+                  className="w-full"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} autoComplete="off" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="inputs.password"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="w-full"
+                  tooltipText={
+                    selectedProvider === RedisProviders.Redis
+                      ? "Required if your Redis server is password protected."
+                      : undefined
+                  }
+                  label={
+                    selectedProvider === RedisProviders.Elasticache
+                      ? "Secret Access Key"
+                      : "Username"
+                  }
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} type="password" autoComplete="new-password" />
+                </FormControl>
+              )}
+            />
+          </div>
+          <div>
+            <Controller
+              control={control}
+              name="inputs.ca"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  isOptional
+                  label="CA(SSL)"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <SecretInput
+                    {...field}
+                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                  />
+                </FormControl>
+              )}
+            />
+            <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
+              <AccordionItem value="advance-statements">
+                <AccordionTrigger>Modify Redis Statements</AccordionTrigger>
+                <AccordionContent>
+                  <Controller
+                    control={control}
+                    name="inputs.creationStatement"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Creation Statement"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        helperText="username, password and expiration are dynamically provisioned"
+                      >
+                        <TextArea
+                          {...field}
+                          reSize="none"
+                          rows={3}
+                          className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="inputs.revocationStatement"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Revocation Statement"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        helperText="username is dynamically provisioned"
+                      >
+                        <TextArea
+                          {...field}
+                          reSize="none"
+                          rows={3}
+                          className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="inputs.renewStatement"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Renew Statement"
+                        helperText="username and expiration are dynamically provisioned"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <TextArea
+                          {...field}
+                          reSize="none"
+                          rows={3}
+                          className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
         <div className="mt-4 flex items-center space-x-4">
