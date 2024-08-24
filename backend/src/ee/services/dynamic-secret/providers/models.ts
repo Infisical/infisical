@@ -7,16 +7,51 @@ export enum SqlProviders {
   MsSQL = "mssql"
 }
 
-export const DynamicSecretRedisDBSchema = z.object({
-  host: z.string().trim().toLowerCase(),
-  port: z.number(),
-  username: z.string().trim(), // this is often "default".
-  password: z.string().trim().optional(), // only required if requirepass is set.
-  creationStatement: z.string().trim(),
-  revocationStatement: z.string().trim(),
-  renewStatement: z.string().trim().optional(),
-  ca: z.string().optional()
-});
+export enum RedisProviders {
+  Redis = "redis",
+  Elasticache = "elasticache"
+}
+
+export const DynamicSecretRedisDBSchema = z
+  .object({
+    client: z.nativeEnum(RedisProviders),
+    host: z.string().trim().toLowerCase(),
+    port: z.number(),
+    username: z.string().trim(), // this is often "default".
+    password: z.string().trim().optional(),
+
+    elastiCacheIamUsername: z.string().trim().optional(),
+    elastiCacheRegion: z.string().trim().optional(),
+
+    creationStatement: z.string().trim(),
+    revocationStatement: z.string().trim(),
+    renewStatement: z.string().trim().optional(),
+    ca: z.string().optional()
+  })
+  .refine(
+    (data) => {
+      if (data.client === RedisProviders.Elasticache) {
+        return !!data.elastiCacheIamUsername;
+      }
+      return true;
+    },
+    {
+      message: "elastiCacheIamUsername is required when client is ElastiCache",
+      path: ["elastiCacheIamUsername"]
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.client === RedisProviders.Elasticache) {
+        return !!data.elastiCacheRegion;
+      }
+      return true;
+    },
+    {
+      message: "elastiCacheRegion is required when client is ElastiCache",
+      path: ["elastiCacheRegion"]
+    }
+  );
 
 export const DynamicSecretSqlDBSchema = z.object({
   client: z.nativeEnum(SqlProviders),

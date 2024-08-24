@@ -6,6 +6,7 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
+import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 
 type Props = {
@@ -84,6 +85,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretAwsIamForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Redis && (
+        <motion.div
+          key="redis-provider-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretRedisProviderForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

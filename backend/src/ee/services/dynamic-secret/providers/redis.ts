@@ -4,19 +4,25 @@ import { Redis } from "ioredis";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { CreateElastiCacheUserSchema, ElastiCacheConnector, ElastiCacheUserManager } from "@app/lib/aws";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { getDbConnectionHost } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretRedisDBSchema, RedisProviders, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = () => {
+const generateUsername = (provider: RedisProviders) => {
+  if (provider === RedisProviders.Elasticache) {
+    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
+    return `inf-${customAlphabet(charset, 32)()}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
+  }
+
   return alphaNumericNanoId(32);
 };
 
@@ -54,9 +60,22 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const appCfg = getConfig();
     const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not
-    const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
+    const dbHost = appCfg.REDIS_URL || getDbConnectionHost(appCfg.REDIS_URL);
 
-    const providerInputs = await DynamicSecretRedisDBSchema.parseAsync(inputs);
+    const providerInputs = DynamicSecretRedisDBSchema.parse(inputs);
+
+    if (providerInputs.client === RedisProviders.Elasticache) {
+      JSON.parse(providerInputs.creationStatement);
+      JSON.parse(providerInputs.revocationStatement);
+      if (providerInputs.renewStatement) {
+        JSON.parse(providerInputs.renewStatement);
+      }
+
+      if (!providerInputs.elastiCacheRegion) {
+        throw new BadRequestError({ message: "elastiCacheRegion is required when client is ElastiCache" });
+      }
+    }
+
     if (
       isCloud &&
       // localhost
@@ -66,36 +85,62 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
         providerInputs.host.match(/^192\.168\.\d+\.\d+/))
     )
       throw new BadRequestError({ message: "Invalid db host" });
-    if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1" || dbHost === providerInputs.host)
+    if (providerInputs.host === "localhost" || dbHost === providerInputs.host)
       throw new BadRequestError({ message: "Invalid db host" });
     return providerInputs;
   };
 
   const getClient = async (providerInputs: z.infer<typeof DynamicSecretRedisDBSchema>) => {
     let connection: Redis | null = null;
-    try {
-      connection = new Redis({
-        username: providerInputs.username,
-        host: providerInputs.host,
-        port: providerInputs.port,
-        password: providerInputs.password,
-        ...(providerInputs.ca && {
-          tls: {
-            rejectUnauthorized: false,
-            ca: providerInputs.ca
-          }
-        })
-      });
 
-      let result: string;
-      if (providerInputs.password) {
-        result = await connection.auth(providerInputs.username, providerInputs.password, () => {});
-      } else {
-        result = await connection.auth(providerInputs.username, () => {});
+    try {
+      if (providerInputs.client === RedisProviders.Elasticache) {
+        const connectionUri = await ElastiCacheConnector(
+          {
+            host: providerInputs.host,
+            port: providerInputs.port,
+            userId: providerInputs.elastiCacheIamUsername!
+          },
+          {
+            accessKeyId: providerInputs.username,
+            secretAccessKey: providerInputs.password!
+          },
+          providerInputs.elastiCacheRegion!
+        ).createConnectionUri();
+
+        connection = new Redis(connectionUri, {
+          ...(providerInputs.ca && {
+            tls: {
+              rejectUnauthorized: false,
+              ca: providerInputs.ca
+            }
+          })
+        });
+      } else if (providerInputs.client === RedisProviders.Redis) {
+        connection = new Redis({
+          username: providerInputs.username,
+          host: providerInputs.host,
+          port: providerInputs.port,
+          password: providerInputs.password || undefined,
+          ...(providerInputs.ca && {
+            tls: {
+              rejectUnauthorized: false,
+              ca: providerInputs.ca
+            }
+          })
+        });
       }
 
-      if (result !== "OK") {
-        throw new BadRequestError({ message: `Invalid credentials, Redis returned ${result} status` });
+      if (connection === null) {
+        throw new BadRequestError({ message: "Failed to obtain a valid Redis client" });
+      }
+
+      let result: string;
+      if (providerInputs.password && providerInputs.client === RedisProviders.Redis) {
+        result = await connection.auth(providerInputs.username, providerInputs.password, () => {});
+        if (result !== "OK") {
+          throw new BadRequestError({ message: `Invalid credentials, Redis returned ${result} status` });
+        }
       }
 
       return connection;
@@ -119,25 +164,54 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
   };
 
   const create = async (inputs: unknown, expireAt: number) => {
+    console.log(inputs);
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await getClient(providerInputs);
 
-    const username = generateUsername();
-    const password = generatePassword();
-    const expiration = new Date(expireAt).toISOString();
+    const leaseUsername = generateUsername(providerInputs.client);
+    const leasePassword = generatePassword();
+    const leaseExpiration = new Date(expireAt).toISOString();
 
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-      username,
-      password,
-      expiration
-    });
+    if (providerInputs.client === RedisProviders.Redis) {
+      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+        username: leaseUsername,
+        password: leasePassword,
+        expiration: leaseExpiration
+      });
+      const queries = creationStatement.toString().split(";").filter(Boolean);
 
-    const queries = creationStatement.toString().split(";").filter(Boolean);
+      await executeTransactions(connection, queries);
 
-    await executeTransactions(connection, queries);
+      await connection.quit();
+      return { entityId: leaseUsername, data: { DB_USERNAME: leaseUsername, DB_PASSWORD: leasePassword } };
+    }
+    if (providerInputs.client === RedisProviders.Elasticache) {
+      const parsedCreationData = CreateElastiCacheUserSchema.parse(JSON.parse(providerInputs.creationStatement));
 
-    await connection.quit();
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+      await ElastiCacheUserManager(
+        {
+          accessKeyId: providerInputs.username,
+          secretAccessKey: providerInputs.password!
+        },
+        providerInputs.elastiCacheRegion!
+      ).createUser({
+        AccessString: parsedCreationData.AccessString,
+        Engine: parsedCreationData.Engine,
+        UserId: leaseUsername,
+        UserName: leaseUsername,
+        Passwords: [leasePassword]
+      });
+
+      return {
+        entityId: leaseUsername,
+        data: {
+          DB_USERNAME: leaseUsername,
+          DB_PASSWORD: leasePassword
+        }
+      };
+    }
+
+    throw new BadRequestError({ message: "Invalid client type" });
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {

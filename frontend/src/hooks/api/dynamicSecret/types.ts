@@ -29,6 +29,11 @@ export enum SqlProviders {
   MsSQL = "mssql"
 }
 
+export enum RedisProviders {
+  Redis = "redis",
+  Elasticache = "elasticache"
+}
+
 export type TDynamicSecretProvider =
   | {
       type: DynamicSecretProviders.SqlDatabase;
