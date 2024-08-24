@@ -546,15 +546,11 @@ export const orgServiceFactory = ({
                 });
               }
 
+              await projectMembershipDAL.insertMany(
+                projectIds.map((id) => ({ projectId: id, userId: inviteeUser.id })),
+                tx
+              );
               for await (const projectId of projectIds) {
-                await projectMembershipDAL.create(
-                  {
-                    projectId,
-                    userId: inviteeUser.id
-                  },
-                  tx
-                );
-
                 await addMembersToProject({
                   orgDAL,
                   projectDAL,

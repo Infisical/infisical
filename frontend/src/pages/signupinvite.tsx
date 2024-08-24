@@ -165,7 +165,7 @@ export default function SignupInvite() {
                 encryptedPrivateKeyTag,
                 salt: result.salt,
                 verifier: result.verifier,
-                metadata
+                tokenMetadata: metadata
               });
 
               // unset temporary signup JWT token and set JWT token

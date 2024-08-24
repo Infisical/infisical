@@ -313,7 +313,7 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     authorization,
-    metadata
+    tokenMetadata
   }: TCompleteAccountInviteDTO) => {
     const user = await userDAL.findUserByUsername(email);
     if (!user || (user && user.isAccepted)) {
@@ -370,13 +370,13 @@ export const authSignupServiceFactory = ({
         tx
       );
 
-      if (metadata) {
-        const metadataObj = jwt.verify(metadata, appCfg.AUTH_SECRET) as TTokenMetadata;
+      if (tokenMetadata) {
+        const metadataObj = jwt.verify(tokenMetadata, appCfg.AUTH_SECRET) as TTokenMetadata;
 
         if (
-          metadataObj.payload.userId !== user.id ||
-          metadataObj.payload.orgId !== orgMembership.orgId ||
-          metadataObj.type !== TokenMetadataType.InviteToProjects
+          metadataObj?.payload?.userId !== user.id ||
+          metadataObj?.payload?.orgId !== orgMembership.orgId ||
+          metadataObj?.type !== TokenMetadataType.InviteToProjects
         ) {
           throw new UnauthorizedError({
             message: "Malformed or invalid metadata token"

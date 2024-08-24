@@ -180,7 +180,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         encryptedPrivateKeyTag: z.string().trim(),
         salt: z.string().trim(),
         verifier: z.string().trim(),
-        metadata: z.string().optional()
+        tokenMetadata: z.string().optional()
       }),
       response: {
         200: z.object({
