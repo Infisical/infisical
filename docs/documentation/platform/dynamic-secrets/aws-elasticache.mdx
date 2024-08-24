@@ -1,12 +1,52 @@
 ---
-title: "Redis"
+title: "AWS Elasticahe"
 description: "Learn how to dynamically generate Redis Database user credentials."
 ---
 
 The Infisical Redis dynamic secret allows you to generate Redis Database credentials on demand based on configured role.
 
-## Prerequisite
-Create a user with the required permission in your Redis instance. This user will be used to create new accounts on-demand.
+## Prerequisites
+
+
+
+1. Infisical's ElastiCache integration requires you to create a new user in the AWS ElastiCache service. This user must use IAM authentication.
+![aws-iam-user](/images/platform/dynamic-secrets/aws-elasticache-iam-user.png)
+
+2. Create an AWS IAM user with the following permissions:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:ModifyUser",
+        "elasticache:DescribeUsers",
+        "elasticache:CreateUser",
+        "elasticache:DeleteUser"
+      ],
+      "Resource": "arn:aws:elasticache:<region>:<account-id>:user:*"
+    }
+  ]
+}
+```
+
+3. Create an access key ID and secret access key for the user you created in the previous step. You will need these to configure the Infisical dynamic secret.
+
+<Note>
+  New leases may take up-to a couple of minutes before ElastiCache has the chance to complete their configuration.
+  It is recommended to use a retry strategy when establishing new Redis ElastiCache connections.
+  This may prevent errors when trying to use a password that isn't yet live on the targeted ElastiCache cluster.
+
+  While a leasing is being created, you will be unable to create new leases for the same dynamic secret.
+</Note>
+
+<Note>
+  Please ensure that your ElastiCache cluster has transit encryption enabled and set to required. This is required for the dynamic secret to work.
+</Note>
+
+
 
 
 ## Set up Dynamic Secrets with Redis
@@ -34,6 +74,11 @@ Create a user with the required permission in your Redis instance. This user wil
 		Maximum time-to-live for a generated secret.
 	</ParamField>
 
+
+	<ParamField path="AWS Region" type="string" required>
+    The region that the ElastiCache cluster is located in. _(e.g. us-east-1)_
+	</ParamField>
+
 	<ParamField path="Host" type="string" required>
 		The database host, this can be an IP address or a domain name as long as Infisical can reach it.
 	</ParamField>
@@ -42,12 +87,12 @@ Create a user with the required permission in your Redis instance. This user wil
 		The database port, this is the port that the Redis instance is listening on.
 	</ParamField>
 
-	<ParamField path="User" type="string" required>
-    Redis username that will be used to create new users on-demand. This is often 'default' or 'admin'.
+	<ParamField path="Access Key ID" type="string" required>
+    This is the access key ID of the AWS IAM user you created in the prerequisites. This will be used to provision and manage the dynamic secret leases.
 	</ParamField>
 
-	<ParamField path="Password" type="string" optional>
-		Password that will be used to create dynamic secrets. This is required if your Redis instance is password protected.
+	<ParamField path="Secret Access Key" type="string" required>
+		This is the secret access key of the AWS IAM user you created in the prerequisites. This will be used to provision and manage the dynamic secret leases.
 	</ParamField>
 
 	<ParamField path="CA(SSL)" type="string">
@@ -58,7 +103,7 @@ Create a user with the required permission in your Redis instance. This user wil
   <Step title="(Optional) Modify Redis Statements">
   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the Redis statement to your needs. This is useful if you want to only give access to a specific table(s).
 
-	![Modify Redis Statements Modal](/images/platform/dynamic-secrets/modify-redis-statement.png)
+	![Modify Redis Statements Modal](/images/platform/dynamic-secrets/modify-elasticache-statement.png)
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard. 
