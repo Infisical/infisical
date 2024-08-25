@@ -14,55 +14,25 @@ import {
   FormControl,
   Input,
   SecretInput,
-  Select,
-  SelectItem,
   TextArea
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
-import { RedisProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
   inputs: z
     .object({
-      client: z.nativeEnum(RedisProviders),
       host: z.string().toLowerCase().min(1),
       port: z.coerce.number(),
-      username: z.string().min(1), // In case of Elasticache, this is accessKeyId
-      password: z.string().min(1).optional(), // In case of Elasticache, this is secretAccessKey
-
-      elastiCacheIamUsername: z.string().trim().optional(),
-      elastiCacheRegion: z.string().trim().optional(),
+      username: z.string().min(1),
+      password: z.string().min(1).optional(),
 
       creationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
       revocationStatement: z.string().min(1),
       ca: z.string().optional()
     })
-    .partial()
-    .refine(
-      (data) => {
-        if (data.client === RedisProviders.Elasticache) {
-          return !!data.elastiCacheIamUsername;
-        }
-        return true;
-      },
-      {
-        message: "elastiCacheIamUsername is required when client is ElastiCache",
-        path: ["elastiCacheIamUsername"]
-      }
-    )
-    .refine(
-      (data) => {
-        if (data.client === RedisProviders.Elasticache) {
-          return !!data.elastiCacheRegion;
-        }
-        return true;
-      },
-      {
-        message: "AWS region is required when using ElastiCache",
-        path: ["elastiCacheRegion"]
-      }
-    ),
+    .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
     if (valMs < 60 * 1000)
@@ -109,8 +79,7 @@ export const EditDynamicSecretRedisProviderForm = ({
   const {
     control,
     formState: { isSubmitting },
-    handleSubmit,
-    watch
+    handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
@@ -153,8 +122,6 @@ export const EditDynamicSecretRedisProviderForm = ({
       });
     }
   };
-
-  const selectedProvider = watch("inputs.client");
 
   return (
     <div>
@@ -211,47 +178,6 @@ export const EditDynamicSecretRedisProviderForm = ({
             Configuration
           </div>
           <div className="flex flex-col">
-            <div className="flex w-full items-center gap-2">
-              <Controller
-                control={control}
-                name="inputs.client"
-                defaultValue={RedisProviders.Redis}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Service"
-                    className="w-full"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Select
-                      value={value}
-                      onValueChange={(val) => onChange(val)}
-                      className="w-full border border-mineshaft-500"
-                    >
-                      <SelectItem value={RedisProviders.Redis}>Redis</SelectItem>
-                      <SelectItem value={RedisProviders.Elasticache}>AWS ElastiCache</SelectItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              {selectedProvider === RedisProviders.Elasticache && (
-                <Controller
-                  control={control}
-                  name="inputs.elastiCacheRegion"
-                  defaultValue=""
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="AWS Region"
-                      className="w-full"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <Input {...field} placeholder="us-east-1" />
-                    </FormControl>
-                  )}
-                />
-              )}
-            </div>
             <Controller
               control={control}
               name="inputs.host"
@@ -282,24 +208,6 @@ export const EditDynamicSecretRedisProviderForm = ({
               )}
             />
           </div>
-          {selectedProvider === RedisProviders.Elasticache && (
-            <div className="flex w-full">
-              <Controller
-                control={control}
-                name="inputs.elastiCacheIamUsername"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Redis Username"
-                    className="w-full"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} autoComplete="off" />
-                  </FormControl>
-                )}
-              />
-            </div>
-          )}
           <div className="flex space-x-2">
             <Controller
               control={control}
@@ -307,9 +215,7 @@ export const EditDynamicSecretRedisProviderForm = ({
               defaultValue=""
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label={
-                    selectedProvider === RedisProviders.Elasticache ? "Access Key ID" : "Username"
-                  }
+                  label="Username"
                   className="w-full"
                   isError={Boolean(error?.message)}
                   errorText={error?.message}
@@ -324,16 +230,8 @@ export const EditDynamicSecretRedisProviderForm = ({
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   className="w-full"
-                  tooltipText={
-                    selectedProvider === RedisProviders.Redis
-                      ? "Required if your Redis server is password protected."
-                      : undefined
-                  }
-                  label={
-                    selectedProvider === RedisProviders.Elasticache
-                      ? "Secret Access Key"
-                      : "Username"
-                  }
+                  tooltipText="Required if your Redis server is password protected."
+                  label="Username"
                   isError={Boolean(error?.message)}
                   errorText={error?.message}
                 >

@@ -21,13 +21,13 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
   provider: z.object({
-    host: z.string().toLowerCase().min(1),
-    port: z.coerce.number(),
-    username: z.string().min(1),
-    password: z.string().min(1).optional(),
-    creationStatement: z.string().min(1),
-    renewStatement: z.string().optional(),
-    revocationStatement: z.string().min(1),
+    clusterName: z.string().trim().min(1),
+    accessKeyId: z.string().trim().min(1),
+    secretAccessKey: z.string().trim().min(1),
+
+    region: z.string().trim(),
+    creationStatement: z.string().trim(),
+    revocationStatement: z.string().trim(),
     ca: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -62,7 +62,7 @@ type Props = {
   environment: string;
 };
 
-export const RedisInputForm = ({
+export const AwsElastiCacheInputForm = ({
   onCompleted,
   onCancel,
   environment,
@@ -71,28 +71,35 @@ export const RedisInputForm = ({
 }: Props) => {
   const {
     control,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       provider: {
-        username: "default",
-        port: 6379,
-        creationStatement: "ACL SETUSER {{username}} on >{{password}} ~* &* +@all",
-        revocationStatement: "ACL DELUSER {{username}}"
+        creationStatement: `{
+        "UserId": "{{username}}",
+        "UserName": "{{username}}",
+        "Engine": "redis",
+        "Passwords": ["{{password}}"],
+        "AccessString": "on ~* +@all"
+}`,
+        revocationStatement: `{
+        "UserId": "{{username}}"
+}`
       }
     }
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
 
+  console.log("formState", errors);
   const handleCreateDynamicSecret = async ({ name, maxTTL, provider, defaultTTL }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isLoading) return;
     try {
       await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.Redis, inputs: provider },
+        provider: { type: DynamicSecretProviders.AwsElastiCache, inputs: provider },
         maxTTL,
         name,
         path: secretPath,
@@ -171,30 +178,30 @@ export const RedisInputForm = ({
               <div className="flex items-center space-x-2">
                 <Controller
                   control={control}
-                  name="provider.host"
+                  name="provider.clusterName"
                   defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Host"
+                      label="Cluster name"
                       className="flex-grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} />
+                      <Input {...field} placeholder="redis-oss-cluster" />
                     </FormControl>
                   )}
                 />
                 <Controller
                   control={control}
-                  name="provider.port"
-                  defaultValue={5432}
+                  defaultValue=""
+                  name="provider.region"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Port"
+                      label="Region"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input {...field} type="number" />
+                      <Input placeholder="us-east-1" {...field} type="text" />
                     </FormControl>
                   )}
                 />
@@ -202,11 +209,11 @@ export const RedisInputForm = ({
               <div className="flex w-full items-center space-x-2">
                 <Controller
                   control={control}
-                  name="provider.username"
+                  name="provider.accessKeyId"
                   defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="User"
+                      label="Access Key ID"
                       className="w-full"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
@@ -217,11 +224,10 @@ export const RedisInputForm = ({
                 />
                 <Controller
                   control={control}
-                  name="provider.password"
+                  name="provider.secretAccessKey"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      tooltipText="Required if your Redis instance is password protected."
-                      label="Password"
+                      label="Secret Access Key"
                       className="w-full"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
@@ -251,7 +257,7 @@ export const RedisInputForm = ({
                 />
                 <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="advance-statements">
-                    <AccordionTrigger>Modify Redis Statements</AccordionTrigger>
+                    <AccordionTrigger>Modify ElastiCache Statements</AccordionTrigger>
                     <AccordionContent>
                       <Controller
                         control={control}
@@ -281,25 +287,6 @@ export const RedisInputForm = ({
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
                             helperText="username is dynamically provisioned"
-                          >
-                            <TextArea
-                              {...field}
-                              reSize="none"
-                              rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
-                            />
-                          </FormControl>
-                        )}
-                      />
-                      <Controller
-                        control={control}
-                        name="provider.renewStatement"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Renew Statement"
-                            helperText="username and expiration are dynamically provisioned"
-                            isError={Boolean(error?.message)}
-                            errorText={error?.message}
                           >
                             <TextArea
                               {...field}

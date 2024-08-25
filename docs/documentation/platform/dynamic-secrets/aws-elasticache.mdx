@@ -9,9 +9,6 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
 
 
 
-1. Infisical's ElastiCache integration requires you to create a new user in the AWS ElastiCache service. This user must use IAM authentication.
-![aws-iam-user](/images/platform/dynamic-secrets/aws-elasticache-iam-user.png)
-
 2. Create an AWS IAM user with the following permissions:
 ```json
 {
@@ -21,10 +18,15 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
       "Sid": "",
       "Effect": "Allow",
       "Action": [
-        "elasticache:ModifyUser",
         "elasticache:DescribeUsers",
+        "elasticache:ModifyUser",
         "elasticache:CreateUser",
-        "elasticache:DeleteUser"
+        "elasticache:CreateUserGroup",
+        "elasticache:DeleteUser",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:DescribeUserGroups",
+        "elasticache:ModifyReplicationGroup",
+        "elasticache:ModifyUserGroup"
       ],
       "Resource": "arn:aws:elasticache:<region>:<account-id>:user:*"
     }
@@ -59,7 +61,7 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button-redis.png)
   </Step>
   <Step title="Select 'Redis'">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-redis.png)
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-elasti-cache)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
 	<ParamField path="Secret Name" type="string" required>
@@ -75,16 +77,8 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
 	</ParamField>
 
 
-	<ParamField path="AWS Region" type="string" required>
+	<ParamField path="Region" type="string" required>
     The region that the ElastiCache cluster is located in. _(e.g. us-east-1)_
-	</ParamField>
-
-	<ParamField path="Host" type="string" required>
-		The database host, this can be an IP address or a domain name as long as Infisical can reach it.
-	</ParamField>
-
-	<ParamField path="Port" type="number" required>
-		The database port, this is the port that the Redis instance is listening on.
 	</ParamField>
 
 	<ParamField path="Access Key ID" type="string" required>

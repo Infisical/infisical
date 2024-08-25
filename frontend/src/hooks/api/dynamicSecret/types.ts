@@ -19,7 +19,8 @@ export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
   AwsIam = "aws-iam",
-  Redis = "redis"
+  Redis = "redis",
+  AwsElastiCache = "aws-elasticache"
 }
 
 export enum SqlProviders {
@@ -27,11 +28,6 @@ export enum SqlProviders {
   MySql = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql"
-}
-
-export enum RedisProviders {
-  Redis = "redis",
-  Elasticache = "elasticache"
 }
 
 export type TDynamicSecretProvider =
@@ -86,6 +82,18 @@ export type TDynamicSecretProvider =
         password?: string;
         creationStatement: string;
         renewStatement?: string;
+        revocationStatement: string;
+        ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.AwsElastiCache;
+      inputs: {
+        clusterName: string;
+        accessKeyId: string;
+        secretAccessKey: string;
+        region: string;
+        creationStatement: string;
         revocationStatement: string;
         ca?: string | undefined;
       };

@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { RedisInputForm } from "./RedisInputForm";
@@ -40,6 +41,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: faDatabase,
     provider: DynamicSecretProviders.Redis,
     title: "Redis"
+  },
+  {
+    icon: faAws,
+    provider: DynamicSecretProviders.AwsElastiCache,
+    title: "AWS ElastiCache"
   },
   {
     icon: faAws,
@@ -134,6 +140,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <RedisInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.AwsElastiCache && (
+              <motion.div
+                key="dynamic-aws-elasticache-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <AwsElastiCacheInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

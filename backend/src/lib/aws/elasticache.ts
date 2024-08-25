@@ -1,4 +1,3 @@
-import { Sha256 } from "@aws-crypto/sha256-js";
 import {
   CreateUserCommand,
   CreateUserGroupCommand,
@@ -9,9 +8,6 @@ import {
   ModifyReplicationGroupCommand,
   ModifyUserGroupCommand
 } from "@aws-sdk/client-elasticache";
-import { QueryParameterBag } from "@aws-sdk/types";
-import { HttpRequest } from "@smithy/protocol-http";
-import { SignatureV4 } from "@smithy/signature-v4";
 import { z } from "zod";
 
 type TElastiCacheRedisUser = {
@@ -20,11 +16,6 @@ type TElastiCacheRedisUser = {
 };
 
 type TBasicAWSCredentials = { accessKeyId: string; secretAccessKey: string };
-type TElastiCacheConnection = {
-  host: string;
-  port: number;
-  userId: string; // the redis user configured for IAM auth
-};
 
 export const CreateElastiCacheUserSchema = z.object({
   UserId: z.string().trim().min(1),
@@ -99,10 +90,10 @@ export const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region
     await elastiCache.send(addUserToGroupCommand);
   };
 
-  const createUser = async (creationInput: TCreateElastiCacheUserInput) => {
-    await ensureInfisicalGroupExists("newtest-redis-oss"); // TODO: Make this not hardcoded (currently hardcoded for testing)
+  const createUser = async (creationInput: TCreateElastiCacheUserInput, clusterName: string) => {
+    await ensureInfisicalGroupExists(clusterName);
 
-    await elastiCache.send(new CreateUserCommand({ ...creationInput })); // First create the user
+    await elastiCache.send(new CreateUserCommand(creationInput)); // First create the user
     await addUserToInfisicalGroup(creationInput.UserId); // Then add the user to the group. We know the group is already a part of the cluster because of ensureInfisicalGroupExists()
 
     return {
@@ -118,91 +109,17 @@ export const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region
     return { userId: deletionInput.UserId };
   };
 
+  const verifyCredentials = async (clusterName: string) => {
+    await elastiCache.send(
+      new DescribeReplicationGroupsCommand({
+        ReplicationGroupId: clusterName
+      })
+    );
+  };
+
   return {
     createUser,
-    deleteUser
+    deleteUser,
+    verifyCredentials
   };
-};
-
-export const ElastiCacheConnector = (
-  connection: TElastiCacheConnection,
-  credentials: TBasicAWSCredentials,
-  region: string,
-  isServerless = false
-) => {
-  const constants = {
-    REQUEST_METHOD: "GET",
-    PARAM_ACTION: "Action",
-    PARAM_USER: "User",
-    PARAM_RESOURCE_TYPE: "ResourceType",
-    RESOURCE_TYPE_SERVERLESS_CACHE: "ServerlessCache",
-    ACTION_NAME: "connect",
-    SERVICE_NAME: "elasticache",
-    TOKEN_EXPIRY_SECONDS: 900
-  };
-
-  const getSignableRequest = () => {
-    const query: Record<string, string> = {
-      [constants.PARAM_ACTION]: constants.ACTION_NAME,
-      [constants.PARAM_USER]: connection.userId
-    };
-
-    if (isServerless) {
-      query[constants.PARAM_RESOURCE_TYPE] = constants.RESOURCE_TYPE_SERVERLESS_CACHE;
-    }
-
-    return new HttpRequest({
-      method: constants.REQUEST_METHOD,
-      hostname: `${connection.host}:${connection.port}`,
-      headers: {
-        host: `${connection.host}:${connection.port}`
-      },
-      path: "/",
-      query
-    });
-  };
-
-  const sign = async (request: HttpRequest) => {
-    const signer = new SignatureV4({
-      credentials,
-      region,
-      service: constants.SERVICE_NAME,
-      sha256: Sha256
-    });
-
-    const expiresIn = constants.TOKEN_EXPIRY_SECONDS;
-    const signedRequest = await signer.presign(request, { expiresIn });
-
-    // Create a new HttpRequest object with the signed properties
-    return new HttpRequest({
-      method: signedRequest.method,
-      hostname: signedRequest.hostname,
-      headers: signedRequest.headers,
-      path: signedRequest.path,
-      query: signedRequest.query
-    });
-  };
-
-  const queryToString = (query: QueryParameterBag) => {
-    return Object.entries(query)
-      .map(([key, value]) => {
-        if (Array.isArray(value)) {
-          return value.map((v) => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`).join("&");
-        }
-        if (value !== null) {
-          return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
-        }
-        return encodeURIComponent(key);
-      })
-      .join("&");
-  };
-
-  const createConnectionUri = async () => {
-    const request = getSignableRequest();
-    const signedRequest = await sign(request);
-
-    return `redis://${signedRequest.hostname}${signedRequest.path}?${queryToString(signedRequest.query)}`;
-  };
-
-  return { createConnectionUri };
 };
