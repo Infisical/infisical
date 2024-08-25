@@ -410,7 +410,7 @@ export const expandSecretReferencesFactory = ({
   };
 
   const recursivelyExpandSecret = async (dto: { value?: string; secretPath: string; environment: string }) => {
-    if (!value) return "";
+    if (!dto.value) return "";
 
     const stack = [{ ...dto, depth: 0 }];
     let expandedValue = dto.value;
@@ -419,7 +419,7 @@ export const expandSecretReferencesFactory = ({
       const { value, secretPath, environment, depth } = stack.pop()!;
       // eslint-disable-next-line
 			if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
-      const refs = value.match(INTERPOLATION_SYNTAX_REG);
+      const refs = value?.match(INTERPOLATION_SYNTAX_REG);
 
       if (refs) {
         for (const interpolationSyntax of refs) {
