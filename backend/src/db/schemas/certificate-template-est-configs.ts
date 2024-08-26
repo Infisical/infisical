@@ -14,7 +14,7 @@ export const CertificateTemplateEstConfigsSchema = z.object({
   certificateTemplateId: z.string().uuid(),
   encryptedCaChain: zodBuffer,
   hashedPassphrase: z.string(),
-  isEnabled: z.boolean().nullable().optional(),
+  isEnabled: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
