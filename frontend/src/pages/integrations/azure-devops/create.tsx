@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
 import { useCreateIntegration } from "@app/hooks/api";
@@ -83,9 +88,40 @@ export default function AzureDevopsCreateIntegrationPage() {
     integrationAuthApps &&
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">AzureDevops Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
+      <Head>
+        <title>Set Up Azure DevOps Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
+          subTitle="Choose which environment in Infisical you want to sync to secrets in Azure DevOps."
+        >
+          <div className="flex flex-row items-center">
+            <div className="inline flex items-center">
+              <Image
+                src="/images/integrations/Amazon Web Services.png"
+                height={35}
+                width={35}
+                alt="Azure DevOps logo"
+              />
+            </div>
+            <span className="ml-1.5">Azure DevOps Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/azure-devops" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
+                </div>
+              </a>
+            </Link>
+          </div>
+        </CardTitle>
+        <FormControl label="Project Environment" className="mt-4 px-6">
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
@@ -101,14 +137,14 @@ export default function AzureDevopsCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl label="Secrets Path">
+        <FormControl className="px-6" label="Secrets Path">
           <Input
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="AzureDevops Project" className="mt-4">
+        <FormControl label="Azure DevOps Project" className="px-6">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
@@ -133,10 +169,10 @@ export default function AzureDevopsCreateIntegrationPage() {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
         >
           Create Integration
         </Button>
