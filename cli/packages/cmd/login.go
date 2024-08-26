@@ -604,11 +604,14 @@ func askForDomain() error {
 	config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", domain)
 
 	// Write the new domain to the config file, to allow the user to select it in the future if needed
-	infisicalConfig.Domains = append(infisicalConfig.Domains, domain)
-	err = util.WriteConfigFile(&infisicalConfig)
+	// First check if infiscialConfig.Domains already includes the domain, if it does, do not add it again
+	if !util.ArrayContains(infisicalConfig.Domains, domain) {
+		infisicalConfig.Domains = append(infisicalConfig.Domains, domain)
+		err = util.WriteConfigFile(&infisicalConfig)
 
-	if err != nil {
-		return fmt.Errorf("askForDomain: unable to write domains to config file because [err=%s]", err)
+		if err != nil {
+			return fmt.Errorf("askForDomain: unable to write domains to config file because [err=%s]", err)
+		}
 	}
 
 	return nil
