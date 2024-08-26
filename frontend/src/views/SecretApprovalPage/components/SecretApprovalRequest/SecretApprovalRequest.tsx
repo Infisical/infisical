@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import {
   faCheck,
   faCheckCircle,
@@ -65,16 +66,17 @@ export const SecretApprovalRequest = () => {
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
     useGetSecretApprovalRequestCount({ workspaceId });
   const { user: userSession } = useUser();
+  const router = useRouter();
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const queryParams = new URLSearchParams(window.location.search);
-  const requestId = queryParams.get("requestId");
+  const { requestId } = router.query;
 
   useEffect(() => {
     if (!requestId || usingUrlRequestId) return;
 
-    setSelectedApprovalId(requestId);
+    setSelectedApprovalId(requestId as string);
     setUsingUrlRequestId(true);
   }, [queryParams]);
 
