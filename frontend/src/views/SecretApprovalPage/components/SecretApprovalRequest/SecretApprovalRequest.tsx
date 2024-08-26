@@ -28,11 +28,10 @@ import {
 } from "@app/context";
 import {
   useGetSecretApprovalRequestCount,
-  useGetSecretApprovalRequestDetails,
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ApprovalStatus, TSecretApprovalRequest } from "@app/hooks/api/types";
+import { ApprovalStatus } from "@app/hooks/api/types";
 
 import {
   generateCommitText,
@@ -42,7 +41,7 @@ import {
 export const SecretApprovalRequest = () => {
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
-  const [selectedApproval, setSelectedApproval] = useState<TSecretApprovalRequest | null>(null);
+  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
 
   // filters
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
@@ -68,28 +67,19 @@ export const SecretApprovalRequest = () => {
   const { user: userSession } = useUser();
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
-  const isSecretApprovalScreen = Boolean(selectedApproval);
+  const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const queryParams = new URLSearchParams(window.location.search);
   const requestId = queryParams.get("requestId");
-
-  const { data: secretApprovalRequestDetails } = useGetSecretApprovalRequestDetails({
-    id: requestId!,
-    options: {
-      enabled: !!requestId && !usingUrlRequestId
-    }
-  });
 
   useEffect(() => {
     if (!requestId || usingUrlRequestId) return;
 
-    if (secretApprovalRequestDetails) {
-      setSelectedApproval(secretApprovalRequestDetails);
-      setUsingUrlRequestId(true);
-    }
-  }, [queryParams, secretApprovalRequestDetails]);
+    setSelectedApprovalId(requestId);
+    setUsingUrlRequestId(true);
+  }, [queryParams]);
 
   const handleGoBackSecretRequestDetail = () => {
-    setSelectedApproval(null);
+    setSelectedApprovalId(null);
     refetch({ refetchPage: (_page, index) => index === 0 });
   };
 
@@ -108,7 +98,7 @@ export const SecretApprovalRequest = () => {
         >
           <SecretApprovalRequestChanges
             workspaceId={workspaceId}
-            approvalRequestId={selectedApproval?.id || ""}
+            approvalRequestId={selectedApprovalId || ""}
             onGoBack={handleGoBackSecretRequestDetail}
           />
         </motion.div>
@@ -239,9 +229,9 @@ export const SecretApprovalRequest = () => {
                       className="flex flex-col px-8 py-4 hover:bg-mineshaft-700"
                       role="button"
                       tabIndex={0}
-                      onClick={() => setSelectedApproval(secretApproval)}
+                      onClick={() => setSelectedApprovalId(secretApproval.id)}
                       onKeyDown={(evt) => {
-                        if (evt.key === "Enter") setSelectedApproval(secretApproval);
+                        if (evt.key === "Enter") setSelectedApprovalId(secretApproval.id);
                       }}
                     >
                       <div className="mb-1">
