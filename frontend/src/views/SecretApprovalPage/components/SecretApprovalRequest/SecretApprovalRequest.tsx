@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   faCheck,
   faCheckCircle,
@@ -28,6 +28,7 @@ import {
 } from "@app/context";
 import {
   useGetSecretApprovalRequestCount,
+  useGetSecretApprovalRequestDetails,
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
@@ -47,6 +48,7 @@ export const SecretApprovalRequest = () => {
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
+  const [usingUrlRequestId, setUsingUrlRequestId] = useState(false);
 
   const {
     data: secretApprovalRequests,
@@ -67,6 +69,24 @@ export const SecretApprovalRequest = () => {
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const isSecretApprovalScreen = Boolean(selectedApproval);
+  const queryParams = new URLSearchParams(window.location.search);
+  const requestId = queryParams.get("requestId");
+
+  const { data: secretApprovalRequestDetails } = useGetSecretApprovalRequestDetails({
+    id: requestId!,
+    options: {
+      enabled: !!requestId && !usingUrlRequestId
+    }
+  });
+
+  useEffect(() => {
+    if (!requestId || usingUrlRequestId) return;
+
+    if (secretApprovalRequestDetails) {
+      setSelectedApproval(secretApprovalRequestDetails);
+      setUsingUrlRequestId(true);
+    }
+  }, [queryParams, secretApprovalRequestDetails]);
 
   const handleGoBackSecretRequestDetail = () => {
     setSelectedApproval(null);
