@@ -28,21 +28,19 @@ export const sendApprovalEmailsFn = async ({
 
   // now we need to go through each of the reviewers and print out all the commits that they need to approve
   for await (const reviewerUser of policy.userApprovers) {
-    if (reviewerUser) {
-      await smtpService.sendMail({
-        recipients: [reviewerUser?.email as string],
-        subjectLine: "Infisical Secret Change Request",
+    await smtpService.sendMail({
+      recipients: [reviewerUser?.email as string],
+      subjectLine: "Infisical Secret Change Request",
 
-        substitutions: {
-          firstName: reviewerUser.firstName,
-          projectName: project.name,
-          organizationName: project.organization.name,
-          approvalUrl: `${cfg.isDevelopmentMode ? "https" : "http"}://${cfg.SITE_URL}/project/${
-            project.id
-          }/approval?requestId=${secretApprovalRequest.id}`
-        },
-        template: SmtpTemplates.SecretApprovalRequestNeedsReview
-      });
-    }
+      substitutions: {
+        firstName: reviewerUser.firstName,
+        projectName: project.name,
+        organizationName: project.organization.name,
+        approvalUrl: `${cfg.isDevelopmentMode ? "https" : "http"}://${cfg.SITE_URL}/project/${
+          project.id
+        }/approval?requestId=${secretApprovalRequest.id}`
+      },
+      template: SmtpTemplates.SecretApprovalRequestNeedsReview
+    });
   }
 };
