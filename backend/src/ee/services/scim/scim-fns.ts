@@ -50,8 +50,8 @@ export const buildScimUser = ({
   orgMembershipId: string;
   username: string;
   email?: string | null;
-  firstName: string;
-  lastName: string;
+  firstName: string | null | undefined;
+  lastName: string | null | undefined;
   groups?: {
     value: string;
     display: string;
@@ -64,9 +64,9 @@ export const buildScimUser = ({
     userName: username,
     displayName: `${firstName} ${lastName}`,
     name: {
-      givenName: firstName,
+      givenName: firstName || "",
       middleName: null,
-      familyName: lastName
+      familyName: lastName || ""
     },
     emails: email
       ? [

@@ -110,8 +110,10 @@ export type TUpdateScimGroupNamePatchDTO = {
   operations: (TRemoveOp | TReplaceOp | TAddOp)[];
 };
 
+// akhilmhdh: I know, this is done due to lack of time. Need to change later to support as normalized rather than like this
+// Forgive akhil blame tony
 type TReplaceOp = {
-  op: "replace";
+  op: "replace" | "Replace";
   value: {
     id: string;
     displayName: string;
@@ -119,12 +121,12 @@ type TReplaceOp = {
 };
 
 type TRemoveOp = {
-  op: "remove";
+  op: "remove" | "Remove";
   path: string;
 };
 
 type TAddOp = {
-  op: "add";
+  op: "add" | "Add";
   path: string;
   value: {
     value: string;

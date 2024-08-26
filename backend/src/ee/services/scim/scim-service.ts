@@ -267,8 +267,8 @@ export const scimServiceFactory = ({
       orgMembershipId: membership.id,
       username: membership.externalId ?? membership.username,
       email: membership.email ?? "",
-      firstName: membership.firstName as string,
-      lastName: membership.lastName as string,
+      firstName: membership.firstName,
+      lastName: membership.lastName,
       active: membership.isActive,
       groups: groupMembershipsInOrg.map((group) => ({
         value: group.groupId,
@@ -427,8 +427,8 @@ export const scimServiceFactory = ({
     return buildScimUser({
       orgMembershipId: createdOrgMembership.id,
       username: externalId,
-      firstName: createdUser.firstName as string,
-      lastName: createdUser.lastName as string,
+      firstName: createdUser.firstName,
+      lastName: createdUser.lastName,
       email: createdUser.email ?? "",
       active: createdOrgMembership.isActive
     });
@@ -483,8 +483,8 @@ export const scimServiceFactory = ({
       orgMembershipId: membership.id,
       username: membership.externalId ?? membership.username,
       email: membership.email,
-      firstName: membership.firstName as string,
-      lastName: membership.lastName as string,
+      firstName: membership.firstName,
+      lastName: membership.lastName,
       active
     });
   };
@@ -527,8 +527,8 @@ export const scimServiceFactory = ({
       orgMembershipId: membership.id,
       username: membership.externalId ?? membership.username,
       email: membership.email,
-      firstName: membership.firstName as string,
-      lastName: membership.lastName as string,
+      firstName: membership.firstName,
+      lastName: membership.lastName,
       active,
       groups: groupMembershipsInOrg.map((group) => ({
         value: group.groupId,
@@ -884,59 +884,50 @@ export const scimServiceFactory = ({
     }
 
     for await (const operation of operations) {
-      switch (operation.op) {
-        case "replace": {
-          group = await groupDAL.updateById(group.id, {
-            name: operation.value.displayName
+      if (operation.op === "replace" || operation.op === "Replace") {
+        group = await groupDAL.updateById(group.id, {
+          name: operation.value.displayName
+        });
+      } else if (operation.op === "add" || operation.op === "Add") {
+        try {
+          const orgMemberships = await orgMembershipDAL.find({
+            $in: {
+              id: operation.value.map((member) => member.value)
+            }
           });
-          break;
-        }
-        case "add": {
-          try {
-            const orgMemberships = await orgMembershipDAL.find({
-              $in: {
-                id: operation.value.map((member) => member.value)
-              }
-            });
 
-            await addUsersToGroupByUserIds({
-              group,
-              userIds: orgMemberships.map((membership) => membership.userId as string),
-              userDAL,
-              userGroupMembershipDAL,
-              orgDAL,
-              groupProjectDAL,
-              projectKeyDAL,
-              projectDAL,
-              projectBotDAL
-            });
-          } catch {
-            logger.info("Repeat SCIM user-group add operation");
-          }
-
-          break;
-        }
-        case "remove": {
-          const orgMembershipId = extractScimValueFromPath(operation.path);
-          if (!orgMembershipId) throw new ScimRequestError({ detail: "Invalid path value", status: 400 });
-          const orgMembership = await orgMembershipDAL.findById(orgMembershipId);
-          if (!orgMembership) throw new ScimRequestError({ detail: "Org Membership Not Found", status: 400 });
-          await removeUsersFromGroupByUserIds({
+          await addUsersToGroupByUserIds({
             group,
-            userIds: [orgMembership.userId as string],
+            userIds: orgMemberships.map((membership) => membership.userId as string),
             userDAL,
             userGroupMembershipDAL,
+            orgDAL,
             groupProjectDAL,
-            projectKeyDAL
+            projectKeyDAL,
+            projectDAL,
+            projectBotDAL
           });
-          break;
+        } catch {
+          logger.info("Repeat SCIM user-group add operation");
         }
-        default: {
-          throw new ScimRequestError({
-            detail: "Invalid Operation",
-            status: 400
-          });
-        }
+      } else if (operation.op === "remove" || operation.op === "Remove") {
+        const orgMembershipId = extractScimValueFromPath(operation.path);
+        if (!orgMembershipId) throw new ScimRequestError({ detail: "Invalid path value", status: 400 });
+        const orgMembership = await orgMembershipDAL.findById(orgMembershipId);
+        if (!orgMembership) throw new ScimRequestError({ detail: "Org Membership Not Found", status: 400 });
+        await removeUsersFromGroupByUserIds({
+          group,
+          userIds: [orgMembership.userId as string],
+          userDAL,
+          userGroupMembershipDAL,
+          groupProjectDAL,
+          projectKeyDAL
+        });
+      } else {
+        throw new ScimRequestError({
+          detail: "Invalid Operation",
+          status: 400
+        });
       }
     }
 
