@@ -1030,11 +1030,31 @@ const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
+const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: string; orgName: string }) => {
+  const res = (
+    await request.get<{ count: number; value: Record<string, string>[] }>(
+      `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/projects?api-version=7.2-preview.2`,
+      {
+        headers: {
+          Authorization: `Basic ${accessToken}`
+        }
+      }
+    )
+  ).data;
+  const apps = res.value.map((a) => ({
+    name: a.name,
+    appId: a.id
+  }));
+
+  return apps;
+};
+
 export const getApps = async ({
   integration,
   accessToken,
   accessId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug,
   url
 }: {
@@ -1042,6 +1062,7 @@ export const getApps = async ({
   accessToken: string;
   accessId?: string;
   teamId?: string | null;
+  azureDevOpsOrgName?: string | null;
   workspaceSlug?: string;
   url?: string | null;
 }): Promise<App[]> => {
@@ -1182,6 +1203,12 @@ export const getApps = async ({
     case Integrations.HASURA_CLOUD:
       return getAppsHasuraCloud({
         accessToken
+      });
+
+    case Integrations.AZURE_DEVOPS:
+      return getAppsAzureDevOps({
+        accessToken,
+        orgName: azureDevOpsOrgName as string
       });
 
     default:

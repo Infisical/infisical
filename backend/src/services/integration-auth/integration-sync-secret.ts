@@ -35,6 +35,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
+import { TIntegrationsWithEnvironment } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -2078,6 +2079,116 @@ const syncSecretsTravisCI = async ({
 /**
  * Sync/push [secrets] to GitLab repo with name [integration.app]
  */
+const syncSecretsAzureDevops = async ({
+  integrationAuth,
+  integration,
+  secrets,
+  accessToken
+}: {
+  integrationAuth: TIntegrationAuths;
+  integration: TIntegrationsWithEnvironment;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  if (!integration.appId || !integration.app) {
+    throw new Error("Azure DevOps: orgId and projectId are required");
+  }
+  if (!integration.environment || !integration.environment.name) {
+    throw new Error("Azure DevOps: environment is required");
+  }
+  const headers = {
+    Authorization: `Basic ${accessToken}`
+  };
+  const azureDevopsApiUrl = integrationAuth.url ? `${integrationAuth.url}` : IntegrationUrls.AZURE_DEVOPS_API_URL;
+
+  const getEnvGroupId = async (orgId: string, project: string, env: string) => {
+    let groupId;
+    const url: string | null =
+      `${azureDevopsApiUrl}/${orgId}/${project}/_apis/distributedtask/variablegroups?api-version=7.2-preview.2`;
+
+    const response = await request.get(url, { headers });
+    for (const group of response.data.value) {
+      const groupName = group.name;
+      if (groupName === env) {
+        groupId = group.id;
+        return { groupId, groupName };
+      }
+    }
+    return { groupId: "", groupName: "" };
+  };
+
+  const { groupId, groupName } = await getEnvGroupId(integration.app, integration.appId, integration.environment.name);
+
+  const variables: Record<string, { value: string }> = {};
+  for (const key of Object.keys(secrets)) {
+    variables[key] = { value: secrets[key].value };
+  }
+
+  if (!groupId) {
+    // create new variable group if not present
+    const url = `${azureDevopsApiUrl}/${integration.app}/_apis/distributedtask/variablegroups?api-version=7.2-preview.2`;
+    const config = {
+      method: "POST",
+      url,
+      data: {
+        name: integration.environment.name,
+        description: integration.environment.name,
+        type: "Vsts",
+        owner: "Library",
+        variables,
+        variableGroupProjectReferences: [
+          {
+            name: integration.environment.name,
+            projectReference: {
+              name: integration.appId
+            }
+          }
+        ]
+      },
+      headers: {
+        headers
+      }
+    };
+
+    const res = await request.post(url, config.data, config.headers);
+    if (res.status !== 200) {
+      throw new Error(`Azure DevOps: Failed to create variable group: ${res.statusText}`);
+    }
+  } else {
+    // sync variables for pre-existing variable group
+    const url = `${azureDevopsApiUrl}/${integration.app}/_apis/distributedtask/variablegroups/${groupId}?api-version=7.2-preview.2`;
+    const config = {
+      method: "PUT",
+      url,
+      data: {
+        name: groupName,
+        description: groupName,
+        type: "Vsts",
+        owner: "Library",
+        variables,
+        variableGroupProjectReferences: [
+          {
+            name: groupName,
+            projectReference: {
+              name: integration.appId
+            }
+          }
+        ]
+      },
+      headers: {
+        headers
+      }
+    };
+    const res = await request.put(url, config.data, config.headers);
+    if (res.status !== 200) {
+      throw new Error(`Azure DevOps: Failed to update variable group: ${res.statusText}`);
+    }
+  }
+};
+
+/**
+ * Sync/push [secrets] to GitLab repo with name [integration.app]
+ */
 const syncSecretsGitLab = async ({
   integrationAuth,
   integration,
@@ -3712,6 +3823,15 @@ export const syncIntegrationSecrets = async ({
         accessToken,
         createManySecretsRawFn,
         updateManySecretsRawFn
+      });
+      break;
+
+    case Integrations.AZURE_DEVOPS:
+      await syncSecretsAzureDevops({
+        integrationAuth,
+        integration,
+        secrets,
+        accessToken
       });
       break;
     case Integrations.AWS_PARAMETER_STORE:

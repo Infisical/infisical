@@ -293,6 +293,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }),
       querystring: z.object({
         teamId: z.string().trim().optional(),
+        azureDevOpsOrgName: z.string().trim().optional(),
         workspaceSlug: z.string().trim().optional()
       }),
       response: {

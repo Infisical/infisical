@@ -120,16 +120,22 @@ const fetchIntegrationAuthById = async (integrationAuthId: string) => {
 const fetchIntegrationAuthApps = async ({
   integrationAuthId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
+  azureDevOpsOrgName?: string;
   workspaceSlug?: string;
 }) => {
   const params: Record<string, string> = {};
   if (teamId) {
     params.teamId = teamId;
   }
+  if (azureDevOpsOrgName) {
+    params.azureDevOpsOrgName = azureDevOpsOrgName;
+  }
+
   if (workspaceSlug) {
     params.workspaceSlug = workspaceSlug;
   }
@@ -452,10 +458,12 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
 export const useGetIntegrationAuthApps = ({
   integrationAuthId,
   teamId,
+  azureDevOpsOrgName,
   workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
+  azureDevOpsOrgName?: string;
   workspaceSlug?: string;
 }) => {
   return useQuery({
@@ -464,6 +472,7 @@ export const useGetIntegrationAuthApps = ({
       fetchIntegrationAuthApps({
         integrationAuthId,
         teamId,
+        azureDevOpsOrgName,
         workspaceSlug
       }),
     enabled: true
