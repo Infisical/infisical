@@ -70,7 +70,6 @@ export const SecretApprovalRequest = () => {
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const isSecretApprovalScreen = Boolean(selectedApprovalId);
-  const queryParams = new URLSearchParams(window.location.search);
   const { requestId } = router.query;
 
   useEffect(() => {
@@ -78,7 +77,7 @@ export const SecretApprovalRequest = () => {
 
     setSelectedApprovalId(requestId as string);
     setUsingUrlRequestId(true);
-  }, [queryParams]);
+  }, [requestId]);
 
   const handleGoBackSecretRequestDetail = () => {
     setSelectedApprovalId(null);
