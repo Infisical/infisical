@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -605,7 +606,7 @@ func askForDomain() error {
 
 	// Write the new domain to the config file, to allow the user to select it in the future if needed
 	// First check if infiscialConfig.Domains already includes the domain, if it does, do not add it again
-	if !util.ArrayContains(infisicalConfig.Domains, domain) {
+	if !slices.Contains(infisicalConfig.Domains, domain) {
 		infisicalConfig.Domains = append(infisicalConfig.Domains, domain)
 		err = util.WriteConfigFile(&infisicalConfig)
 

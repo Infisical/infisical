@@ -298,12 +298,3 @@ func GenerateRandomString(length int) string {
 	}
 	return string(b)
 }
-
-func ArrayContains(arr []string, val string) bool {
-	for _, item := range arr {
-		if item == val {
-			return true
-		}
-	}
-	return false
-}
