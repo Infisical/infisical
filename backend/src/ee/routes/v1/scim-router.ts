@@ -9,7 +9,10 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
   server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
-
+      if (!strBody) {
+        done(null, undefined);
+        return;
+      }
       const json: unknown = JSON.parse(strBody);
       done(null, json);
     } catch (err) {
@@ -474,18 +477,18 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         Operations: z.array(
           z.union([
             z.object({
-              op: z.literal("replace"),
+              op: z.union([z.literal("replace"), z.literal("Replace")]),
               value: z.object({
                 id: z.string().trim(),
                 displayName: z.string().trim()
               })
             }),
             z.object({
-              op: z.literal("remove"),
+              op: z.union([z.literal("remove"), z.literal("Remove")]),
               path: z.string().trim()
             }),
             z.object({
-              op: z.literal("add"),
+              op: z.union([z.literal("add"), z.literal("Add")]),
               path: z.string().trim(),
               value: z.array(
                 z.object({
