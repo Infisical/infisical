@@ -25,6 +25,7 @@ export enum SmtpTemplates {
   UnlockAccount = "unlockAccount.handlebars",
   AccessApprovalRequest = "accessApprovalRequest.handlebars",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed.handlebars",
+  SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview.handlebars",
   HistoricalSecretList = "historicalSecretLeakIncident.handlebars",
   NewDeviceJoin = "newDevice.handlebars",
   OrgInvite = "organizationInvitation.handlebars",
