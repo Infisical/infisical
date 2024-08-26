@@ -144,7 +144,7 @@ export default function AzureDevopsCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Azure DevOps Project" className="mt-4 px-6">
+        <FormControl label="Azure DevOps Project" className="px-6">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
