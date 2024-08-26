@@ -324,6 +324,7 @@
         },
         "integrations/cloud/vercel",
         "integrations/cloud/azure-key-vault",
+        "integrations/cloud/azure-devops",
         "integrations/cloud/gcp-secret-manager",
         {
           "group": "Cloudflare",
