@@ -30,11 +30,6 @@ export const isCertChainValid = async (certificates: x509.X509Certificate[]) => 
     return true;
   }
 
-  // check for self-signed
-  if (certificates.length === 2 && certificates[0].equal(certificates[1])) {
-    return true;
-  }
-
   const leafCert = certificates[0];
   const chain = new x509.X509ChainBuilder({
     certificates: certificates.slice(1)

@@ -158,7 +158,9 @@ export const certificateEstServiceFactory = ({
         return new x509.X509Certificate(cert);
       });
 
-    if (!caCerts) throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    if (!caCerts) {
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    }
 
     const leafCertificate = decodeURIComponent(sslClientCert).match(
       /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
@@ -213,14 +215,11 @@ export const certificateEstServiceFactory = ({
       .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
       ?.map((cert) => new x509.X509Certificate(cert));
 
-    if (!certificates) throw new BadRequestError({ message: "Failed to parse certificate chain" });
-
-    const caCertificate = new x509.X509Certificate(caCert);
-
-    if (!(await isCertChainValid([caCertificate, ...certificates]))) {
-      throw new BadRequestError({ message: "Invalid certificate chain" });
+    if (!certificates) {
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
     }
 
+    const caCertificate = new x509.X509Certificate(caCert);
     return convertRawCertsToPkcs7([caCertificate.rawData, ...certificates.map((cert) => cert.rawData)]);
   };
 

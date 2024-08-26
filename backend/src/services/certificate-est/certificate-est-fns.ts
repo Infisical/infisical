@@ -16,7 +16,9 @@ export const convertRawCertsToPkcs7 = (rawCertificate: ArrayBuffer[]) => {
   });
 
   const derBuffer = cmsContent.toSchema().toBER(false);
-  const base64Pkcs7 = Buffer.from(derBuffer).toString("base64");
+  const base64Pkcs7 = Buffer.from(derBuffer)
+    .toString("base64")
+    .replace(/(.{64})/g, "$1\n"); // we add a linebreak for CURL clients
 
   return base64Pkcs7;
 };

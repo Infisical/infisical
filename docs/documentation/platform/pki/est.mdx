@@ -37,7 +37,7 @@ These endpoints are exposed on port 8443 under the .well-known/est path e.g.
    - **Certificate Authority Chain** - This is the certificate chain used to validate your devices' manufacturing/pre-installed certificates. This will be used to authenticate your devices with Infisical's EST server.
    - **Passphrase** - This is also used to authenticate your devices with Infisical's EST server. When configuring the clients, use the value defined here as the EST password.
 
-   For security reasons, Infisical authenticates EST clients using both client certificate authentication (against the configured certificate authority chain) and passphrase authentication.
+   For security reasons, Infisical authenticates EST clients using both client certificate and passphrase.
 
 4. Once the configuration of enrollment options is completed, a new **EST Label** field appears in the enrollment settings. This is the value to use as label in the URL when configuring the connection of EST clients to Infisical.
    ![est enrollment modal create](/images/platform/pki/est/template-enrollment-est-label.png)
@@ -47,3 +47,11 @@ These endpoints are exposed on port 8443 under the .well-known/est path e.g.
    - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/cacerts
    - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simpleenroll
    - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simplereenroll
+
+## Setting up EST clients
+
+- To use the EST passphrase in your clients, configure it as the EST password. The EST username can be set to any arbitrary value.
+- Use the appropriate client certificates for invoking the EST endpoints.
+  - For `simpleenroll`, use the bootstrapped/manufacturer client certificate.
+  - For `simplereenroll`, use a valid EST-issued client certificate.
+- When configuring the PKCS#12 objects for the client certificates, only include the leaf certificate and the private key.

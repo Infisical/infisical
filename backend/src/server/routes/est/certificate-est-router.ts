@@ -11,7 +11,15 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
   // add support for CSR bodies
   server.addContentTypeParser("application/pkcs10", { parseAs: "string" }, (_, body, done) => {
     try {
-      done(null, (body as string).replace(/\n/g, "").replace(/ /g, ""));
+      let csrBody = body as string;
+      // some EST clients send CSRs in PEM format and some in base64 format
+      // for CSRs sent in PEM, we leave them as is
+      // for CSRs sent in base64, we preprocess them to remove new lines and spaces
+      if (!csrBody.includes("BEGIN CERTIFICATE REQUEST")) {
+        csrBody = csrBody.replace(/\n/g, "").replace(/ /g, "");
+      }
+
+      done(null, csrBody);
     } catch (err) {
       const error = err as Error;
       done(error, undefined);
