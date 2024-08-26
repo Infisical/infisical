@@ -43,9 +43,9 @@ export default function AzureDevopsCreateIntegrationPage() {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">AzureDevops Integration</CardTitle>
+        <CardTitle className="text-center">Azure DevOps Integration</CardTitle>
         <FormControl
-          label="AzureDevops API Token"
+          label="Azure DevOps API Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >

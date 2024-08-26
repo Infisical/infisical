@@ -84,7 +84,7 @@ export default function AzureDevopsCreateIntegrationPage() {
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">AzureDevops Integration</CardTitle>
+        <CardTitle className="text-center">Azure DevOps Integration</CardTitle>
         <FormControl label="Project Environment" className="mt-4">
           <Select
             value={selectedSourceEnvironment}
@@ -108,7 +108,7 @@ export default function AzureDevopsCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="AzureDevops Project" className="mt-4">
+        <FormControl label="Azure DevOps Project" className="mt-4">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
