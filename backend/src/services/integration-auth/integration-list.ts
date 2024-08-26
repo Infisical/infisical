@@ -31,7 +31,8 @@ export enum Integrations {
   CLOUD_66 = "cloud-66",
   NORTHFLANK = "northflank",
   HASURA_CLOUD = "hasura-cloud",
-  RUNDECK = "rundeck"
+  RUNDECK = "rundeck",
+  AZURE_DEVOPS = "azure-devops"
 }
 
 export enum IntegrationType {
@@ -88,6 +89,7 @@ export enum IntegrationUrls {
   CLOUD_66_API_URL = "https://app.cloud66.com/api",
   NORTHFLANK_API_URL = "https://api.northflank.com",
   HASURA_CLOUD_API_URL = "https://data.pro.hasura.io/v1/graphql",
+  AZURE_DEVOPS_API_URL = "https://dev.azure.com",
 
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
@@ -374,6 +376,15 @@ export const getIntegrationOptions = async () => {
       name: "Rundeck",
       slug: "rundeck",
       image: "Rundeck.svg",
+      isAvailable: true,
+      type: "pat",
+      clientId: "",
+      docsLink: ""
+    },
+    {
+      name: "Azure DevOps",
+      slug: "azure-devops",
+      image: "Microsoft Azure.png",
       isAvailable: true,
       type: "pat",
       clientId: "",

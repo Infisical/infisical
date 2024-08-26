@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { IntegrationsSchema, ProjectMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import {
+  IntegrationsSchema,
+  ProjectMembershipsSchema,
+  ProjectRolesSchema,
+  UserEncryptionKeysSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -122,15 +128,31 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      querystring: z.object({
+        includeRoles: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       response: {
         200: z.object({
-          workspaces: projectWithEnv.array()
+          workspaces: projectWithEnv
+            .extend({
+              roles: ProjectRolesSchema.array().optional()
+            })
+            .array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const workspaces = await server.services.project.getProjects(req.permission.id);
+      const workspaces = await server.services.project.getProjects({
+        includeRoles: req.query.includeRoles,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
       return { workspaces };
     }
   });

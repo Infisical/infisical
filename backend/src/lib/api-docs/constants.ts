@@ -1120,9 +1120,10 @@ export const CERTIFICATE_AUTHORITIES = {
     certificateChain: "The certificate chain of the issued certificate",
     serialNumber: "The serial number of the issued certificate"
   },
-  GET_CRL: {
-    caId: "The ID of the CA to get the certificate revocation list (CRL) for",
-    crl: "The certificate revocation list (CRL) of the CA"
+  GET_CRLS: {
+    caId: "The ID of the CA to get the certificate revocation lists (CRLs) for",
+    id: "The ID of certificate revocation list (CRL)",
+    crl: "The certificate revocation list (CRL)"
   }
 };
 
@@ -1171,6 +1172,13 @@ export const CERTIFICATE_TEMPLATES = {
   },
   DELETE: {
     certificateTemplateId: "The ID of the certificate template to delete"
+  }
+};
+
+export const CA_CRLS = {
+  GET: {
+    crlId: "The ID of the certificate revocation list (CRL) to get",
+    crl: "The certificate revocation list (CRL)"
   }
 };
 

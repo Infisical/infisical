@@ -47,7 +47,7 @@ export const roleQueryKeys = {
     ["user-project-permissions", { workspaceId }] as const
 };
 
-const getProjectRoles = async (projectId: string) => {
+export const getProjectRoles = async (projectId: string) => {
   const { data } = await apiRequest.get<{ roles: Array<Omit<TProjectRole, "permissions">> }>(
     `/api/v1/workspace/${projectId}/roles`
   );

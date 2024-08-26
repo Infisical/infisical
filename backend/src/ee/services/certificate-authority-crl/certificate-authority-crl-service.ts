@@ -2,24 +2,24 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+// import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { TGetCrl } from "./certificate-authority-crl-types";
+import { TGetCaCrlsDTO, TGetCrlById } from "./certificate-authority-crl-types";
 
 type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  // licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateAuthorityCrlServiceFactory = ReturnType<typeof certificateAuthorityCrlServiceFactory>;
@@ -29,13 +29,42 @@ export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthorityCrlDAL,
   projectDAL,
   kmsService,
-  permissionService,
-  licenseService
+  permissionService // licenseService
 }: TCertificateAuthorityCrlServiceFactoryDep) => {
   /**
-   * Return the Certificate Revocation List (CRL) for CA with id [caId]
+   * Return CRL with id [crlId]
    */
-  const getCaCrl = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCrl) => {
+  const getCrlById = async (crlId: TGetCrlById) => {
+    const caCrl = await certificateAuthorityCrlDAL.findById(crlId);
+    if (!caCrl) throw new NotFoundError({ message: "CRL not found" });
+
+    const ca = await certificateAuthorityDAL.findById(caCrl.caId);
+
+    const keyId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: keyId
+    });
+
+    const decryptedCrl = await kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
+
+    const crl = new x509.X509Crl(decryptedCrl);
+
+    return {
+      ca,
+      caCrl,
+      crl: crl.rawData
+    };
+  };
+
+  /**
+   * Returns a list of CRL ids for CA with id [caId]
+   */
+  const getCaCrls = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCrlsDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new BadRequestError({ message: "CA not found" });
 
@@ -52,15 +81,14 @@ export const certificateAuthorityCrlServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.caCrl)
-      throw new BadRequestError({
-        message:
-          "Failed to get CA certificate revocation list (CRL) due to plan restriction. Upgrade plan to get the CA CRL."
-      });
+    // const plan = await licenseService.getPlan(actorOrgId);
+    // if (!plan.caCrl)
+    //   throw new BadRequestError({
+    //     message:
+    //       "Failed to get CA certificate revocation lists (CRLs) due to plan restriction. Upgrade plan to get the CA CRL."
+    //   });
 
-    const caCrl = await certificateAuthorityCrlDAL.findOne({ caId: ca.id });
-    if (!caCrl) throw new BadRequestError({ message: "CRL not found" });
+    const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 
     const keyId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -72,15 +100,23 @@ export const certificateAuthorityCrlServiceFactory = ({
       kmsId: keyId
     });
 
-    const decryptedCrl = await kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
-    const crl = new x509.X509Crl(decryptedCrl);
+    const decryptedCrls = await Promise.all(
+      caCrls.map(async (caCrl) => {
+        const decryptedCrl = await kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
+        const crl = new x509.X509Crl(decryptedCrl);
 
-    const base64crl = crl.toString("base64");
-    const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
+        const base64crl = crl.toString("base64");
+        const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
+        return {
+          id: caCrl.id,
+          crl: crlPem
+        };
+      })
+    );
 
     return {
-      crl: crlPem,
-      ca
+      ca,
+      crls: decryptedCrls
     };
   };
 
@@ -166,7 +202,8 @@ export const certificateAuthorityCrlServiceFactory = ({
   // };
 
   return {
-    getCaCrl
+    getCrlById,
+    getCaCrls
     // rotateCaCrl
   };
 };

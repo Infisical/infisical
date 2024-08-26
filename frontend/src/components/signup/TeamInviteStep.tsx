@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 
-import { useAddUserToOrg } from "@app/hooks/api";
+import { useAddUsersToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -17,7 +17,7 @@ export default function TeamInviteStep(): JSX.Element {
   const [emails, setEmails] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
 
-  const { mutateAsync } = useAddUserToOrg();
+  const { mutateAsync } = useAddUsersToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   // Redirect user to the getting started page
@@ -31,8 +31,9 @@ export default function TeamInviteStep(): JSX.Element {
       .map((email) => email.trim())
       .map(async (email) => {
         mutateAsync({
-          inviteeEmail: email,
-          organizationId: String(localStorage.getItem("orgData.id"))
+          inviteeEmails: [email],
+          organizationId: String(localStorage.getItem("orgData.id")),
+          organizationRoleSlug: "member"
         });
       });
 

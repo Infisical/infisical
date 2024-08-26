@@ -1,5 +1,6 @@
 import crypto from "crypto";
 
+import { ProjectVersion, TProjects } from "@app/db/schemas";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -51,6 +52,16 @@ export const createProjectKey = ({ publicKey, privateKey, plainProjectKey }: TCr
   );
 
   return { key: encryptedProjectKey, iv: encryptedProjectKeyIv };
+};
+
+export const verifyProjectVersions = (projects: Pick<TProjects, "version">[], version: ProjectVersion) => {
+  for (const project of projects) {
+    if (project.version !== version) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 export const getProjectKmsCertificateKeyId = async ({

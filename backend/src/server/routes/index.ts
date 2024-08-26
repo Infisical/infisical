@@ -480,9 +480,12 @@ export const registerRoutes = async (
     orgRoleDAL,
     permissionService,
     orgDAL,
+    userGroupMembershipDAL,
+    projectBotDAL,
     incidentContactDAL,
     tokenService,
     projectUserAdditionalPrivilegeDAL,
+    projectUserMembershipRoleDAL,
     projectDAL,
     projectMembershipDAL,
     orgMembershipDAL,
@@ -502,6 +505,8 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     groupProjectDAL,
+    projectMembershipDAL,
+    projectUserMembershipRoleDAL,
     orgDAL,
     orgService,
     licenseService
@@ -650,8 +655,8 @@ export const registerRoutes = async (
     certificateAuthorityCrlDAL,
     projectDAL,
     kmsService,
-    permissionService,
-    licenseService
+    permissionService
+    // licenseService
   });
 
   const certificateTemplateService = certificateTemplateServiceFactory({
@@ -700,6 +705,7 @@ export const registerRoutes = async (
     orgDAL,
     orgService,
     projectMembershipDAL,
+    projectRoleDAL,
     folderDAL,
     licenseService,
     certificateAuthorityDAL,
@@ -856,6 +862,7 @@ export const registerRoutes = async (
     secretQueueService,
     kmsService,
     secretV2BridgeDAL,
+    secretApprovalPolicyDAL,
     secretVersionV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     smtpService,

@@ -38,6 +38,7 @@ export default function LoginPage() {
   const { user, isLoading: userLoading } = useUser();
 
   const queryParams = new URLSearchParams(window.location.search);
+  const callbackPort = queryParams.get("callback_port");
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -52,8 +53,6 @@ export default function LoginPage() {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
-      const callbackPort = queryParams.get("callback_port");
-
       if (organization.authEnforced) {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
@@ -116,9 +115,8 @@ export default function LoginPage() {
     [selectOrg]
   );
 
-  useEffect(() => {
+  const handleCliRedirect = useCallback(() => {
     const authToken = getAuthToken();
-    const callbackPort = queryParams.get("callback_port");
 
     if (authToken && !callbackPort) {
       const decodedJwt = jwt_decode(authToken) as any;
@@ -131,13 +129,27 @@ export default function LoginPage() {
     if (!isLoggedIn()) {
       router.push("/login");
     }
+  }, []);
+
+  useEffect(() => {
+    if (callbackPort) {
+      handleCliRedirect();
+    }
   }, [router]);
 
   // Case: User has no organizations.
   // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
   useEffect(() => {
-    if (!organizations.isLoading && organizations.data?.length === 0) {
+    if (organizations.isLoading || !organizations.data) return;
+
+    if (organizations.data.length === 0) {
       router.push("/org/none");
+    } else if (organizations.data.length === 1) {
+      if (callbackPort) {
+        handleCliRedirect();
+      } else {
+        handleSelectOrganization(organizations.data[0]);
+      }
     }
   }, [organizations.isLoading, organizations.data]);
 

@@ -37,4 +37,5 @@ export type TCompleteAccountInviteDTO = {
   ip: string;
   userAgent: string;
   authorization: string;
+  tokenMetadata?: string;
 };

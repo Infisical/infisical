@@ -33,7 +33,8 @@ const integrationSlugNameMapping: Mapping = {
   windmill: "Windmill",
   "gcp-secret-manager": "GCP Secret Manager",
   "hasura-cloud": "Hasura Cloud",
-  rundeck: "Rundeck"
+  rundeck: "Rundeck",
+  "azure-devops": "Azure DevOps"
 };
 
 const envMapping: Mapping = {

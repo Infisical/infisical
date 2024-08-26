@@ -138,8 +138,12 @@ export const useGetUpgradeProjectStatus = ({
   });
 };
 
-const fetchUserWorkspaces = async () => {
-  const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace");
+const fetchUserWorkspaces = async (includeRoles?: boolean) => {
+  const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace", {
+    params: {
+      includeRoles
+    }
+  });
   return data.workspaces;
 };
 
@@ -171,8 +175,8 @@ export const useGetWorkspaceById = (
   });
 };
 
-export const useGetUserWorkspaces = () =>
-  useQuery(workspaceKeys.getAllUserWorkspace, fetchUserWorkspaces);
+export const useGetUserWorkspaces = (includeRoles?: boolean) =>
+  useQuery(workspaceKeys.getAllUserWorkspace, () => fetchUserWorkspaces(includeRoles));
 
 const fetchUserWorkspaceMemberships = async (orgId: string) => {
   const { data } = await apiRequest.get<Record<string, Workspace[]>>(

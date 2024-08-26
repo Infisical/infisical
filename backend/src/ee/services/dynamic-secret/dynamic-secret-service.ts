@@ -98,6 +98,7 @@ export const dynamicSecretServiceFactory = ({
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const encryptedInput = infisicalSymmetricEncypt(JSON.stringify(inputs));
+
     const dynamicSecretCfg = await dynamicSecretDAL.create({
       type: provider.type,
       version: 1,

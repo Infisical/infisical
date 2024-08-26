@@ -279,6 +279,34 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectWithOrg = async (projectId: string) => {
+    // we just need the project, and we need to include a new .organization field that includes the org from the orgId reference
+
+    const project = await db(TableName.Project)
+      .where({ [`${TableName.Project}.id` as "id"]: projectId })
+
+      .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
+
+      .select(
+        db.ref("id").withSchema(TableName.Organization).as("organizationId"),
+        db.ref("name").withSchema(TableName.Organization).as("organizationName")
+      )
+      .select(selectAllTableCols(TableName.Project))
+      .first();
+
+    if (!project) {
+      throw new BadRequestError({ message: "Project not found" });
+    }
+
+    return {
+      ...ProjectsSchema.parse(project),
+      organization: {
+        id: project.organizationId,
+        name: project.organizationName
+      }
+    };
+  };
+
   return {
     ...projectOrm,
     findAllProjects,
@@ -288,6 +316,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectById,
     findProjectByFilter,
     findProjectBySlug,
+    findProjectWithOrg,
     checkProjectUpgradeStatus
   };
 };

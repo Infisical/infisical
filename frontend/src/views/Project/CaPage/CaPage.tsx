@@ -22,7 +22,12 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CaModal } from "@app/views/Project/CertificatesPage/components/CaTab/components/CaModal";
 
 import { CaInstallCertModal } from "../CertificatesPage/components/CaTab/components/CaInstallCertModal";
-import { CaCertificatesSection, CaDetailsSection, CaRenewalModal } from "./components";
+import {
+  CaCertificatesSection,
+  CaCrlsSection,
+  CaDetailsSection,
+  CaRenewalModal
+} from "./components";
 
 export const CaPage = withProjectPermission(
   () => {
@@ -118,7 +123,10 @@ export const CaPage = withProjectPermission(
               <div className="mr-4 w-96">
                 <CaDetailsSection caId={caId} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              <CaCertificatesSection caId={caId} />
+              <div className="w-full">
+                <CaCertificatesSection caId={caId} />
+                <CaCrlsSection caId={caId} />
+              </div>
             </div>
           </div>
         )}

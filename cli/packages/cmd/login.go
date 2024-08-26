@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -151,6 +152,28 @@ var loginCmd = &cobra.Command{
 	Short:                 "Login into your Infisical account",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		clearSelfHostedDomains, err := cmd.Flags().GetBool("clear-domains")
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		if clearSelfHostedDomains {
+			infisicalConfig, err := util.GetConfigFile()
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			infisicalConfig.Domains = []string{}
+			err = util.WriteConfigFile(&infisicalConfig)
+
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			fmt.Println("Cleared all self-hosted domains from the config file")
+			return
+		}
 
 		infisicalClient := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
 			SiteUrl:   config.INFISICAL_URL,
@@ -464,6 +487,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
+	loginCmd.Flags().Bool("clear-domains", false, "clear all self-hosting domains from the config file")
 	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
 	loginCmd.Flags().String("method", "user", "login method [user, universal-auth]")
 	loginCmd.Flags().Bool("plain", false, "only output the token without any formatting")
@@ -499,10 +523,12 @@ func DomainOverridePrompt() (bool, error) {
 }
 
 func askForDomain() error {
-	//query user to choose between Infisical cloud or self hosting
+
+	// query user to choose between Infisical cloud or self hosting
 	const (
 		INFISICAL_CLOUD = "Infisical Cloud"
 		SELF_HOSTING    = "Self Hosting"
+		ADD_NEW_DOMAIN  = "Add a new domain"
 	)
 
 	options := []string{INFISICAL_CLOUD, SELF_HOSTING}
@@ -524,6 +550,36 @@ func askForDomain() error {
 		return nil
 	}
 
+	infisicalConfig, err := util.GetConfigFile()
+	if err != nil {
+		return fmt.Errorf("askForDomain: unable to get config file because [err=%s]", err)
+	}
+
+	if infisicalConfig.Domains != nil && len(infisicalConfig.Domains) > 0 {
+		// If domains are present in the config, let the user select from the list or select to add a new domain
+
+		items := append(infisicalConfig.Domains, ADD_NEW_DOMAIN)
+
+		prompt := promptui.Select{
+			Label: "Which domain would you like to use?",
+			Items: items,
+			Size:  5,
+		}
+
+		_, selectedOption, err := prompt.Run()
+		if err != nil {
+			return err
+		}
+
+		if selectedOption != ADD_NEW_DOMAIN {
+			config.INFISICAL_URL = fmt.Sprintf("%s/api", selectedOption)
+			config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", selectedOption)
+			return nil
+
+		}
+
+	}
+
 	urlValidation := func(input string) error {
 		_, err := url.ParseRequestURI(input)
 		if err != nil {
@@ -542,12 +598,23 @@ func askForDomain() error {
 	if err != nil {
 		return err
 	}
-	//trimmed the '/' from the end of the self hosting url
+
+	// Trimmed the '/' from the end of the self hosting url, and set the api & login url
 	domain = strings.TrimRight(domain, "/")
-	//set api and login url
 	config.INFISICAL_URL = fmt.Sprintf("%s/api", domain)
 	config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", domain)
-	//return nil
+
+	// Write the new domain to the config file, to allow the user to select it in the future if needed
+	// First check if infiscialConfig.Domains already includes the domain, if it does, do not add it again
+	if !slices.Contains(infisicalConfig.Domains, domain) {
+		infisicalConfig.Domains = append(infisicalConfig.Domains, domain)
+		err = util.WriteConfigFile(&infisicalConfig)
+
+		if err != nil {
+			return fmt.Errorf("askForDomain: unable to write domains to config file because [err=%s]", err)
+		}
+	}
+
 	return nil
 }
 

@@ -75,6 +75,10 @@ export type TDeleteProjectDTO = {
   actorOrgId: string | undefined;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TListProjectsDTO = {
+  includeRoles: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpgradeProjectDTO = {
   userPrivateKey: string;
 } & TProjectPermission;
