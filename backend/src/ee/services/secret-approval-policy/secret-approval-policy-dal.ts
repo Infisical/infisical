@@ -20,7 +20,15 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicy}.id`,
         `${TableName.SecretApprovalPolicyApprover}.policyId`
       )
-      .select(tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover))
+
+      .leftJoin(TableName.Users, `${TableName.SecretApprovalPolicyApprover}.approverUserId`, `${TableName.Users}.id`)
+
+      .select(
+        tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
+        tx.ref("email").withSchema(TableName.Users).as("approverEmail"),
+        tx.ref("firstName").withSchema(TableName.Users).as("approverFirstName"),
+        tx.ref("lastName").withSchema(TableName.Users).as("approverLastName")
+      )
       .select(
         tx.ref("name").withSchema(TableName.Environment).as("envName"),
         tx.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -47,8 +55,11 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "userApprovers" as const,
-            mapper: ({ approverUserId }) => ({
-              userId: approverUserId
+            mapper: ({ approverUserId, approverEmail, approverFirstName, approverLastName }) => ({
+              userId: approverUserId,
+              email: approverEmail,
+              firstName: approverFirstName,
+              lastName: approverLastName
             })
           }
         ]
