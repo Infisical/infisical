@@ -10,6 +10,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -30,6 +31,8 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
+import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
+import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
@@ -44,6 +47,7 @@ import {
   TListProjectCasDTO,
   TListProjectCertificateTemplatesDTO,
   TListProjectCertsDTO,
+  TListProjectsDTO,
   TLoadProjectKmsBackupDTO,
   TToggleProjectAutoCapitalizationDTO,
   TUpdateAuditLogsRetentionDTO,
@@ -84,6 +88,7 @@ type TProjectServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -112,6 +117,7 @@ export const projectServiceFactory = ({
   projectEnvDAL,
   licenseService,
   projectUserMembershipRoleDAL,
+  projectRoleDAL,
   identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
@@ -389,8 +395,34 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async (actorId: string) => {
+  const getProjects = async ({ actorId, includeRoles, actorAuthMethod, actorOrgId }: TListProjectsDTO) => {
     const workspaces = await projectDAL.findAllProjects(actorId);
+
+    if (includeRoles) {
+      const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+
+      // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+      const customRoles = await projectRoleDAL.find({
+        $in: {
+          projectId: workspaces.map((workspace) => workspace.id)
+        }
+      });
+
+      const workspaceMappedToRoles = groupBy(customRoles, (role) => role.projectId);
+
+      const workspacesWithRoles = await Promise.all(
+        workspaces.map(async (workspace) => {
+          return {
+            ...workspace,
+            roles: [...(workspaceMappedToRoles[workspace.id] || []), ...getPredefinedRoles(workspace.id)]
+          };
+        })
+      );
+
+      return workspacesWithRoles;
+    }
+
     return workspaces;
   };
 

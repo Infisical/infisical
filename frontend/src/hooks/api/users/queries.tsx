@@ -157,12 +157,15 @@ export const useGetOrgUsers = (orgId: string) =>
 
 // mutation
 // TODO(akhilmhdh): move all mutation to mutation file
-export const useAddUserToOrg = () => {
+export const useAddUsersToOrg = () => {
   const queryClient = useQueryClient();
   type Response = {
     data: {
       message: string;
-      completeInviteLink: string | undefined;
+      completeInviteLinks?: {
+        email: string;
+        link: string;
+      }[];
     };
   };
 

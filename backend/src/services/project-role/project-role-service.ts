@@ -5,13 +5,9 @@ import { ProjectMembershipRole } from "@app/db/schemas";
 import { UnpackedPermissionSchema } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
-  projectAdminPermissions,
-  projectMemberPermissions,
-  projectNoAccessPermissions,
   ProjectPermissionActions,
   ProjectPermissionSet,
-  ProjectPermissionSub,
-  projectViewerPermission
+  ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -20,6 +16,7 @@ import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/id
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "./project-role-dal";
+import { getPredefinedRoles } from "./project-role-fns";
 import { TCreateRoleDTO, TDeleteRoleDTO, TGetRoleBySlugDTO, TListRolesDTO, TUpdateRoleDTO } from "./project-role-types";
 
 type TProjectRoleServiceFactoryDep = {
@@ -36,51 +33,6 @@ const unpackPermissions = (permissions: unknown) =>
   UnpackedPermissionSchema.array().parse(
     unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
   );
-
-const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRole) => {
-  return [
-    {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid
-      projectId,
-      name: "Admin",
-      slug: ProjectMembershipRole.Admin,
-      permissions: projectAdminPermissions,
-      description: "Full administrative access over a project",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c70", // dummy user for zod validation in response
-      projectId,
-      name: "Developer",
-      slug: ProjectMembershipRole.Member,
-      permissions: projectMemberPermissions,
-      description: "Limited read/write role in a project",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c71", // dummy user for zod validation in response
-      projectId,
-      name: "Viewer",
-      slug: ProjectMembershipRole.Viewer,
-      permissions: projectViewerPermission,
-      description: "Only read role in a project",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c72", // dummy user for zod validation in response
-      projectId,
-      name: "No Access",
-      slug: ProjectMembershipRole.NoAccess,
-      permissions: projectNoAccessPermissions,
-      description: "No access to any resources in the project",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ].filter(({ slug }) => !roleFilter || roleFilter.includes(slug));
-};
 
 export const projectRoleServiceFactory = ({
   projectRoleDAL,

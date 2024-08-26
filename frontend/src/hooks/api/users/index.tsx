@@ -6,7 +6,7 @@ export {
 } from "./mutation";
 export {
   fetchOrgUsers,
-  useAddUserToOrg,
+  useAddUsersToOrg,
   useCreateAPIKey,
   useDeleteAPIKey,
   useDeleteMe,
@@ -26,4 +26,5 @@ export {
   useRevokeMySessions,
   useUpdateMfaEnabled,
   useUpdateOrgMembership,
-  useUpdateUserAuthMethods} from "./queries";
+  useUpdateUserAuthMethods
+} from "./queries";

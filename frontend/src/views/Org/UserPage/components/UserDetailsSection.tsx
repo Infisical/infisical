@@ -18,7 +18,7 @@ import {
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import {
-  useAddUserToOrg,
+  useAddUsersToOrg,
   useFetchServerStatus,
   useGetOrgMembership,
   useGetOrgRoles
@@ -44,18 +44,19 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const { data: roles } = useGetOrgRoles(orgId);
   const { data: serverDetails } = useFetchServerStatus();
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { mutateAsync: inviteUser, isLoading } = useAddUserToOrg();
+  const { mutateAsync: inviteUsers, isLoading } = useAddUsersToOrg();
 
   const onResendInvite = async (email: string) => {
     try {
-      const { data } = await inviteUser({
+      const { data } = await inviteUsers({
         organizationId: orgId,
-        inviteeEmail: email
+        inviteeEmails: [email],
+        organizationRoleSlug: "member"
       });
 
       //   setCompleteInviteLink(data?.completeInviteLink || "");
 
-      if (!data.completeInviteLink) {
+      if (!data.completeInviteLinks) {
         createNotification({
           text: `Successfully resent invite to ${email}`,
           type: "success"

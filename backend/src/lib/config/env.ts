@@ -74,6 +74,7 @@ const envSchema = z
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
+    JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
     // Oauth

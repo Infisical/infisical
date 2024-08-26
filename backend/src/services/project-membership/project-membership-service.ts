@@ -2,19 +2,12 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import {
-  ProjectMembershipRole,
-  ProjectVersion,
-  SecretKeyEncoding,
-  TableName,
-  TProjectMemberships
-} from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
@@ -23,13 +16,13 @@ import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { assignWorkspaceKeysToMembers } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
+import { addMembersToProject } from "./project-membership-fns";
 import {
   ProjectUserMembershipTemporaryMode,
   TAddUsersToWorkspaceDTO,
@@ -53,7 +46,7 @@ type TProjectMembershipServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
@@ -247,116 +240,23 @@ export const projectMembershipServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
 
-    const usernamesAndEmails = [...emails, ...usernames];
-
-    const orgMembers = await orgDAL.findOrgMembersByUsername(project.orgId, [
-      ...new Set(usernamesAndEmails.map((element) => element.toLowerCase()))
-    ]);
-
-    if (orgMembers.length !== usernamesAndEmails.length)
-      throw new BadRequestError({ message: "Some users are not part of org" });
-
-    if (!orgMembers.length) return [];
-
-    const existingMembers = await projectMembershipDAL.find({
+    const members = await addMembersToProject({
+      orgDAL,
+      projectDAL,
+      projectMembershipDAL,
+      projectKeyDAL,
+      userGroupMembershipDAL,
+      projectBotDAL,
+      projectUserMembershipRoleDAL,
+      smtpService
+    }).addMembersToNonE2EEProject({
+      emails,
+      usernames,
       projectId,
-      $in: { userId: orgMembers.map(({ user }) => user.id).filter(Boolean) }
-    });
-    if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
-
-    const ghostUser = await projectDAL.findProjectGhostUser(projectId);
-
-    if (!ghostUser) {
-      throw new BadRequestError({
-        message: "Failed to find sudo user"
-      });
-    }
-
-    const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId);
-
-    if (!ghostUserLatestKey) {
-      throw new BadRequestError({
-        message: "Failed to find sudo user latest key"
-      });
-    }
-
-    const bot = await projectBotDAL.findOne({ projectId });
-    if (!bot) {
-      throw new BadRequestError({
-        message: "Failed to find bot"
-      });
-    }
-
-    const botPrivateKey = infisicalSymmetricDecrypt({
-      keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-      iv: bot.iv,
-      tag: bot.tag,
-      ciphertext: bot.encryptedPrivateKey
+      projectMembershipRole: ProjectMembershipRole.Member,
+      sendEmails
     });
 
-    const newWsMembers = assignWorkspaceKeysToMembers({
-      decryptKey: ghostUserLatestKey,
-      userPrivateKey: botPrivateKey,
-      members: orgMembers.map((membership) => ({
-        orgMembershipId: membership.id,
-        projectMembershipRole: ProjectMembershipRole.Member,
-        userPublicKey: membership.user.publicKey
-      }))
-    });
-
-    const members: TProjectMemberships[] = [];
-
-    const userIdsToExcludeForProjectKeyAddition = new Set(
-      await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
-    );
-
-    await projectMembershipDAL.transaction(async (tx) => {
-      const projectMemberships = await projectMembershipDAL.insertMany(
-        orgMembers.map(({ user }) => ({
-          projectId,
-          userId: user.id
-        })),
-        tx
-      );
-      await projectUserMembershipRoleDAL.insertMany(
-        projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: ProjectMembershipRole.Member })),
-        tx
-      );
-
-      members.push(...projectMemberships);
-
-      const encKeyGroupByOrgMembId = groupBy(newWsMembers, (i) => i.orgMembershipId);
-      await projectKeyDAL.insertMany(
-        orgMembers
-          .filter(({ user }) => !userIdsToExcludeForProjectKeyAddition.has(user.id))
-          .map(({ user, id }) => ({
-            encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
-            nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
-            senderId: ghostUser.id,
-            receiverId: user.id,
-            projectId
-          })),
-        tx
-      );
-    });
-
-    if (sendEmails) {
-      const recipients = orgMembers.filter((i) => i.user.email).map((i) => i.user.email as string);
-
-      const appCfg = getConfig();
-
-      if (recipients.length) {
-        await smtpService.sendMail({
-          template: SmtpTemplates.WorkspaceInvite,
-          subjectLine: "Infisical project invitation",
-          recipients: orgMembers.filter((i) => i.user.email).map((i) => i.user.email as string),
-          substitutions: {
-            workspaceName: project.name,
-            callback_url: `${appCfg.SITE_URL}/login`
-          }
-        });
-      }
-    }
     return members;
   };
 

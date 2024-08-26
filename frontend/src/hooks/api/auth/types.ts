@@ -93,6 +93,7 @@ export type CompleteAccountDTO = {
   salt: string;
   verifier: string;
   password: string;
+  tokenMetadata?: string;
 };
 
 export type CompleteAccountSignupDTO = CompleteAccountDTO & {

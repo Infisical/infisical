@@ -33,7 +33,7 @@ import {
   useUser
 } from "@app/context";
 import {
-  useAddUserToOrg,
+  useAddUsersToOrg,
   useFetchServerStatus,
   useGetOrgRoles,
   useGetOrgUsers,
@@ -50,10 +50,10 @@ type Props = {
       description?: string;
     }
   ) => void;
-  setCompleteInviteLink: (link: string) => void;
+  setCompleteInviteLinks: (links: Array<{ email: string; link: string }> | null) => void;
 };
 
-export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Props) => {
+export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Props) => {
   const router = useRouter();
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -68,7 +68,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
 
-  const { mutateAsync: addUserMutateAsync } = useAddUserToOrg();
+  const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
   const onRoleChange = async (membershipId: string, role: string) => {
@@ -106,14 +106,15 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
 
   const onResendInvite = async (email: string) => {
     try {
-      const { data } = await addUserMutateAsync({
+      const { data } = await addUsersMutateAsync({
         organizationId: orgId,
-        inviteeEmail: email
+        inviteeEmails: [email],
+        organizationRoleSlug: "member"
       });
 
-      setCompleteInviteLink(data?.completeInviteLink || "");
+      setCompleteInviteLinks(data?.completeInviteLinks || null);
 
-      if (!data.completeInviteLink) {
+      if (!data.completeInviteLinks) {
         createNotification({
           text: `Successfully resent invite to ${email}`,
           type: "success"

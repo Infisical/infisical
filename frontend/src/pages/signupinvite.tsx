@@ -64,6 +64,10 @@ export default function SignupInvite() {
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
   const { config } = useServerConfig();
 
+  const queryParams = new URLSearchParams(window.location.search);
+
+  const metadata = queryParams.get("metadata") || undefined;
+
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   useEffect(() => {
@@ -160,7 +164,8 @@ export default function SignupInvite() {
                 encryptedPrivateKeyIV,
                 encryptedPrivateKeyTag,
                 salt: result.salt,
-                verifier: result.verifier
+                verifier: result.verifier,
+                tokenMetadata: metadata
               });
 
               // unset temporary signup JWT token and set JWT token
