@@ -45,11 +45,11 @@ const formSchema = z
     name: z.string().optional(),
     secretPath: z.string().optional(),
     approvals: z.number().min(1),
-    approverUserIds: z.string().array().min(1),
+    approvers: z.string().array().min(1),
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel)
   })
-  .refine((data) => data.approvals <= data.approverUserIds.length, {
+  .refine((data) => data.approvals <= data.approvers.length, {
     path: ["approvals"],
     message: "The number of approvals should be lower than the number of approvers."
   });
@@ -75,8 +75,7 @@ export const AccessPolicyForm = ({
       ? {
           ...editValues,
           environment: editValues.environment.slug,
-          approverUserIds:
-            editValues?.userApprovers?.map((user) => user.userId) || editValues?.approvers
+          approvers: editValues?.userApprovers?.map((user) => user.userId) || editValues?.approvers
         }
       : undefined
   });
@@ -264,7 +263,7 @@ export const AccessPolicyForm = ({
             />
             <Controller
               control={control}
-              name="approverUserIds"
+              name="approvers"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   label="Required Approvers"

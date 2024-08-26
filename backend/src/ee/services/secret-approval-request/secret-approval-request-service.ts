@@ -53,8 +53,10 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
+import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
@@ -89,7 +91,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find" | "findOne">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById" | "findProjectById">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "checkProjectUpgradeStatus" | "findById" | "findProjectById" | "findProjectWithOrg"
+  >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
@@ -98,6 +103,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -121,6 +127,7 @@ export const secretApprovalRequestServiceFactory = ({
   smtpService,
   userDAL,
   projectEnvDAL,
+  secretApprovalPolicyDAL,
   kmsService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
@@ -1061,6 +1068,15 @@ export const secretApprovalRequestServiceFactory = ({
       }
       return { ...doc, commits: approvalCommits };
     });
+
+    await sendApprovalEmailsFn({
+      projectDAL,
+      secretApprovalPolicyDAL,
+      secretApprovalRequest,
+      smtpService,
+      projectId
+    });
+
     return secretApprovalRequest;
   };
 
@@ -1311,7 +1327,16 @@ export const secretApprovalRequestServiceFactory = ({
           tx
         );
       }
+
       return { ...doc, commits: approvalCommits };
+    });
+
+    await sendApprovalEmailsFn({
+      projectDAL,
+      secretApprovalPolicyDAL,
+      secretApprovalRequest,
+      smtpService,
+      projectId
     });
     return secretApprovalRequest;
   };
