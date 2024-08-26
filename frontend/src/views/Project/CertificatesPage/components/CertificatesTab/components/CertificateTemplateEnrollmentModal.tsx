@@ -3,6 +3,8 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 
+// import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -178,6 +180,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
                   type={isPassphraseFocused ? "text" : "password"}
                   onFocus={() => setIsPassphraseFocused.on()}
                   onBlur={() => setIsPassphraseFocused.off()}
+                  // rightIcon={<FontAwesomeIcon icon={faEyeSlash} />}
                 />
               </FormControl>
             )}
@@ -193,7 +196,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
                     onCheckedChange={(value) => field.onChange(value)}
                     isChecked={field.value}
                   >
-                    <p className="ml-1 w-full">Enabled</p>
+                    <p className="ml-1 w-full">EST Enabled</p>
                   </Switch>
                 </FormControl>
               );

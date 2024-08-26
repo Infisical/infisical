@@ -232,7 +232,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        certificate,
+        certificate: certificate.toString("pem"),
         certificateChain,
         issuingCaCertificate,
         serialNumber
