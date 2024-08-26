@@ -845,6 +845,7 @@ export const registerRoutes = async (
     secretQueueService,
     kmsService,
     secretV2BridgeDAL,
+    secretApprovalPolicyDAL,
     secretVersionV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     smtpService,
