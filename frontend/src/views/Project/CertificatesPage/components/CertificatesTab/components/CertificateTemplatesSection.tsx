@@ -54,7 +54,7 @@ export const CertificateTemplatesSection = () => {
         <p className="text-xl font-semibold text-mineshaft-100">Certificate Templates</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
-          a={ProjectPermissionSub.Certificates}
+          a={ProjectPermissionSub.CertificateTemplates}
         >
           {(isAllowed) => (
             <Button

@@ -1554,9 +1554,6 @@ export const certificateAuthorityServiceFactory = ({
 
     return {
       certificate: leafCert,
-      // certificate: leafCert.toString("pem"),
-      // certificateObj: leafCert,
-      // rawCertificate: leafCert.rawData,
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       serialNumber,

@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
 
 import { TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
@@ -7,6 +8,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -241,6 +243,19 @@ export const certificateTemplateServiceFactory = ({
       kmsService
     });
 
+    // validate CA chain
+    const certificates = caChain
+      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
+      ?.map((cert) => new x509.X509Certificate(cert));
+
+    if (!certificates) {
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    }
+
+    if (!(await isCertChainValid(certificates))) {
+      throw new BadRequestError({ message: "Invalid certificate chain" });
+    }
+
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
@@ -313,6 +328,18 @@ export const certificateTemplateServiceFactory = ({
     };
 
     if (caChain) {
+      const certificates = caChain
+        .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
+        ?.map((cert) => new x509.X509Certificate(cert));
+
+      if (!certificates) {
+        throw new BadRequestError({ message: "Failed to parse certificate chain" });
+      }
+
+      if (!(await isCertChainValid(certificates))) {
+        throw new BadRequestError({ message: "Invalid certificate chain" });
+      }
+
       const kmsEncryptor = await kmsService.encryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });

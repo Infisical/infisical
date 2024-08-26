@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
+import { isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { getCaCertChain, getCaCertChains } from "../certificate-authority/certificate-authority-fns";
@@ -10,6 +11,7 @@ import { TCertificateTemplateDALFactory } from "../certificate-template/certific
 import { TCertificateTemplateServiceFactory } from "../certificate-template/certificate-template-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
+import { convertRawCertsToPkcs7 } from "./certificate-est-fns";
 
 type TCertificateEstServiceFactoryDep = {
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "signCertFromCa">;
@@ -62,15 +64,7 @@ export const certificateEstServiceFactory = ({
       throw new UnauthorizedError({ message: "Missing client certificate" });
     }
 
-    const clientCertBody = leafCertificate
-      .replace("-----BEGIN CERTIFICATE-----", "")
-      .replace("-----END CERTIFICATE-----", "")
-      .replace(/\n/g, "")
-      .replace(/ /g, "")
-      .trim();
-
-    const cert = new x509.X509Certificate(clientCertBody);
-
+    const cert = new x509.X509Certificate(leafCertificate);
     // We have to assert that the client certificate provided can be traced back to the Root CA
     const caCertChains = await getCaCertChains({
       caId: certTemplate.caId,
@@ -80,21 +74,15 @@ export const certificateEstServiceFactory = ({
       kmsService
     });
 
-    const caChainBuilders = caCertChains.map((chain) => {
-      const caCert = new x509.X509Certificate(chain.certificate);
-      const caChain =
-        chain.certificateChain
-          .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-          ?.map((c) => new x509.X509Certificate(c)) || [];
-      return new x509.X509ChainBuilder({
-        certificates: [caCert, ...caChain]
-      });
-    });
-
     const verifiedChains = await Promise.all(
-      caChainBuilders.map(async (caChainBuilder) => {
-        const chainItems = await caChainBuilder.build(cert);
-        return chainItems.length === caChainBuilder.certificates.length + 1;
+      caCertChains.map((chain) => {
+        const caCert = new x509.X509Certificate(chain.certificate);
+        const caChain =
+          chain.certificateChain
+            .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
+            ?.map((c) => new x509.X509Certificate(c)) || [];
+
+        return isCertChainValid([cert, caCert, ...caChain]);
       })
     );
 
@@ -138,8 +126,7 @@ export const certificateEstServiceFactory = ({
       csr
     });
 
-    const certs = new x509.X509Certificates([certificate]);
-    return certs.export("base64");
+    return convertRawCertsToPkcs7([certificate.rawData]);
   };
 
   const simpleEnroll = async ({
@@ -173,10 +160,6 @@ export const certificateEstServiceFactory = ({
 
     if (!caCerts) throw new BadRequestError({ message: "Failed to parse certificate chain" });
 
-    const caChain = new x509.X509ChainBuilder({
-      certificates: caCerts
-    });
-
     const leafCertificate = decodeURIComponent(sslClientCert).match(
       /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
     )?.[0];
@@ -185,17 +168,10 @@ export const certificateEstServiceFactory = ({
       throw new BadRequestError({ message: "Missing client certificate" });
     }
 
-    const clientCertBody = leafCertificate
-      .replace("-----BEGIN CERTIFICATE-----", "")
-      .replace("-----END CERTIFICATE-----", "")
-      .replace(/\n/g, "")
-      .replace(/ /g, "")
-      .trim();
-
-    const certObj = new x509.X509Certificate(clientCertBody);
-    const chainItems = await caChain.build(certObj);
-
-    if (chainItems.length !== caCerts.length + 1) throw new BadRequestError({ message: "Invalid certificate chain" });
+    const certObj = new x509.X509Certificate(leafCertificate);
+    if (!(await isCertChainValid([certObj, ...caCerts]))) {
+      throw new BadRequestError({ message: "Invalid certificate chain" });
+    }
 
     const { certificate } = await certificateAuthorityService.signCertFromCa({
       isInternal: true,
@@ -203,8 +179,7 @@ export const certificateEstServiceFactory = ({
       csr
     });
 
-    const certs = new x509.X509Certificates([certificate]);
-    return certs.export("base64");
+    return convertRawCertsToPkcs7([certificate.rawData]);
   };
 
   /**
@@ -240,16 +215,13 @@ export const certificateEstServiceFactory = ({
 
     if (!certificates) throw new BadRequestError({ message: "Failed to parse certificate chain" });
 
-    const chain = new x509.X509ChainBuilder({
-      certificates
-    });
+    const caCertificate = new x509.X509Certificate(caCert);
 
-    const chainItems = await chain.build(new x509.X509Certificate(caCert));
-
-    if (chainItems.length !== certificates.length + 1)
+    if (!(await isCertChainValid([caCertificate, ...certificates]))) {
       throw new BadRequestError({ message: "Invalid certificate chain" });
+    }
 
-    return chainItems.export("base64");
+    return convertRawCertsToPkcs7([caCertificate.rawData, ...certificates.map((cert) => cert.rawData)]);
   };
 
   return {

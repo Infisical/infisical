@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       tb.foreign("certificateTemplateId").references("id").inTable(TableName.CertificateTemplate).onDelete("CASCADE");
       tb.binary("encryptedCaChain").notNullable();
       tb.string("hashedPassphrase").notNullable();
-      tb.boolean("isEnabled");
+      tb.boolean("isEnabled").notNullable();
       tb.timestamps(true, true, true);
     });
 
