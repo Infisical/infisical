@@ -4,6 +4,7 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -77,6 +79,11 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		hotReloadEnabled, err := cmd.Flags().GetBool("watch")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -116,68 +123,16 @@ var runCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-			request.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-			request.UniversalAuthAccessToken = token.Token
-		}
-
-		secrets, err := util.GetAllEnvironmentVariables(request, projectConfigDir)
-
+		env, initialETag, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, shouldExpandSecrets, token)
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
-		}
-
-		if secretOverriding {
-			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
-		} else {
-			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-		}
-
-		if shouldExpandSecrets {
-
-			authParams := models.ExpandSecretsAuthentication{}
-
-			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-				authParams.UniversalAuthAccessToken = token.Token
-			}
-
-			secrets = util.ExpandSecrets(secrets, authParams, projectConfigDir)
-		}
-
-		secretsByKey := getSecretsByKeys(secrets)
-		environmentVariables := make(map[string]string)
-
-		// add all existing environment vars
-		for _, s := range os.Environ() {
-			kv := strings.SplitN(s, "=", 2)
-			key := kv[0]
-			value := kv[1]
-			environmentVariables[key] = value
-		}
-
-		// check to see if there are any reserved key words in secrets to inject
-		filterReservedEnvVars(secretsByKey)
-
-		// now add infisical secrets
-		for k, v := range secretsByKey {
-			environmentVariables[k] = v.Value
-		}
-
-		// turn it back into a list of envs
-		var env []string
-		for key, value := range environmentVariables {
-			s := key + "=" + value
-			env = append(env, s)
 		}
 
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
 
 		Telemetry.CaptureEvent("cli-command:run",
 			posthog.NewProperties().
-				Set("secretsCount", len(secrets)).
+				Set("secretsCount", len(env)).
 				Set("environment", environmentName).
 				Set("isUsingServiceToken", token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER).
 				Set("isUsingUniversalAuthToken", token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
@@ -185,21 +140,23 @@ var runCmd = &cobra.Command{
 				Set("multi-command", cmd.Flag("command").Value.String()).
 				Set("version", util.CLI_VERSION))
 
+		hotReloadParameters := models.ExecuteCommandHotReloadParameters{
+			Enabled:           hotReloadEnabled,
+			GetSecretsDetails: request,
+			ProjectConfigDir:  projectConfigDir,
+			SecretOverriding:  secretOverriding,
+			ExpandSecrets:     shouldExpandSecrets,
+			InitialETag:       initialETag,
+		}
+
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
 
-			err = executeMultipleCommandWithEnvs(command, len(secretsByKey), env)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			executeMultipleCommandWithEnvs(command, len(env), env, hotReloadParameters, token)
 
 		} else {
-			err = executeSingleCommandWithEnvs(args, len(secretsByKey), env)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			executeSingleCommandWithEnvs(args, len(env), env, hotReloadParameters, token)
+
 		}
 	},
 }
@@ -244,6 +201,7 @@ func init() {
 	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")
 	runCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
 	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	runCmd.Flags().Bool("watch", false, "Enable reload of application when secrets change")
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
 	runCmd.Flags().String("path", "/", "get secrets within a folder path")
@@ -251,66 +209,301 @@ func init() {
 }
 
 // Will execute a single command and pass in the given secrets into the process
-func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
-	command := args[0]
-	argsForCommand := args[1:]
+func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string, reloadParameters models.ExecuteCommandHotReloadParameters, token *models.TokenDetails) {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
 
-	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
+	// Set up signal handling
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	cmd := exec.Command(command, argsForCommand...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = env
+	if reloadParameters.Enabled {
+		log.Info().Msgf(color.YellowString("[HOT RELOAD] Watching for secret changes..."))
+		go func() {
+			<-sigChan
+			log.Info().Msg("Received termination signal. Cleaning up...")
+			cancelCtx()
+		}()
+	}
 
-	return execCmd(cmd)
-}
+	var cmd *exec.Cmd
 
-func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string) error {
-	shell := [2]string{"sh", "-c"}
-	if runtime.GOOS == "windows" {
-		shell = [2]string{"cmd", "/C"}
-	} else {
-		currentShell := os.Getenv("SHELL")
-		if currentShell != "" {
-			shell[0] = currentShell
+	startCmd := func() error {
+		command := args[0]
+		argsForCommand := args[1:]
+
+		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
+
+		cmd := exec.Command(command, argsForCommand...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = env
+
+		if reloadParameters.Enabled {
+			go func() {
+				execCommandWithReload(cmd, cancelCtx)
+			}()
+		} else {
+			return execCmd(cmd)
 		}
+		return nil
 	}
 
-	cmd := exec.Command(shell[0], shell[1], fullCommand)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = env
-
-	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
-	log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
-
-	return execCmd(cmd)
-}
-
-// Credit: inspired by AWS Valut
-func execCmd(cmd *exec.Cmd) error {
-	sigChannel := make(chan os.Signal, 1)
-	signal.Notify(sigChannel)
-
-	if err := cmd.Start(); err != nil {
-		return err
+	err := startCmd() // Initial command start, if no --watch flag is passed, it will work like in old versions of infisical CLI.
+	if err != nil {
+		util.HandleError(err, "Failed to start command")
 	}
 
-	go func() {
+	// This part is only relevant when the --watch flag is passed, as it's purpose is to solely watch for changes and manage process reloads.
+	if reloadParameters.Enabled {
+		ticker := time.NewTicker(10 * time.Second) // We check every 10 seconds for secret changes
+		defer ticker.Stop()
+
 		for {
-			sig := <-sigChannel
-			_ = cmd.Process.Signal(sig) // process all sigs
+			select {
+
+			case <-ctx.Done():
+				log.Debug().Msg("Exiting hot reload...")
+				handleCommandTermination(cmd, cancelCtx)
+				return
+			case <-ticker.C:
+				log.Debug().Msg("Checking for environment updates...")
+				newEnv, newEtag, err := createInjectableEnvironment(
+					reloadParameters.GetSecretsDetails,
+					reloadParameters.ProjectConfigDir,
+					reloadParameters.SecretOverriding,
+					reloadParameters.ExpandSecrets,
+					token,
+				)
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to fetch new secrets")
+					continue
+				}
+
+				if newEtag != reloadParameters.InitialETag {
+					log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
+					reloadParameters.InitialETag = newEtag
+					env = newEnv
+					secretsCount = len(newEnv)
+					startCmd() // Restart the command with new environment
+				} else {
+					log.Debug().Msg("Not reloading because environments are identical")
+				}
+			}
 		}
-	}()
+	}
+}
+func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string, reloadParameters models.ExecuteCommandHotReloadParameters, token *models.TokenDetails) {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
+
+	// Set up signal handling
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	if reloadParameters.Enabled {
+		log.Info().Msgf(color.HiMagentaString("[HOT RELOAD] Watching for secret changes..."))
+		go func() {
+			<-sigChan
+			log.Info().Msg(color.HiMagentaString("Received termination signal. Cleaning up..."))
+			cancelCtx()
+		}()
+	}
+
+	var cmd *exec.Cmd
+
+	startCmd := func() error {
+		shell := [2]string{"sh", "-c"}
+		if runtime.GOOS == "windows" {
+			shell = [2]string{"cmd", "/C"}
+		} else {
+			currentShell := os.Getenv("SHELL")
+			if currentShell != "" {
+				shell[0] = currentShell
+			}
+		}
+
+		cmd = exec.CommandContext(ctx, shell[0], shell[1], fullCommand)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = env
+
+		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
+		log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
+
+		if reloadParameters.Enabled {
+			go func() {
+				execCommandWithReload(cmd, cancelCtx)
+			}()
+		} else {
+			return execCmd(cmd)
+		}
+		return nil
+	}
+
+	err := startCmd() // Initial command start, if no --watch flag is passed, it will work like in old versions of infisical CLI.
+	if err != nil {
+		util.HandleError(err, "Failed to start command")
+	}
+
+	// This part is only relevant when the --watch flag is passed, as it's purpose is to solely watch for changes and manage process reloads.
+	if reloadParameters.Enabled {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Exiting..."))
+				handleCommandTermination(cmd, cancelCtx)
+				return
+			case <-ticker.C:
+				log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] | Checking for environment updates..."))
+				newEnv, newEtag, err := createInjectableEnvironment(
+					reloadParameters.GetSecretsDetails,
+					reloadParameters.ProjectConfigDir,
+					reloadParameters.SecretOverriding,
+					reloadParameters.ExpandSecrets,
+					token,
+				)
+				if err != nil {
+					log.Error().Err(err).Msg("[HOT RELOAD] | Failed to fetch new secrets")
+					continue
+				}
+
+				if newEtag != reloadParameters.InitialETag {
+					log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
+					reloadParameters.InitialETag = newEtag
+					env = newEnv
+					secretsCount = len(newEnv)
+					startCmd() // Restart the command with new environment
+				} else {
+					log.Debug().Msg("Not reloading because environments are identical")
+				}
+			}
+		}
+	}
+}
+
+func execCmd(cmd *exec.Cmd) error {
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start command: %v", err)
+	}
 
 	if err := cmd.Wait(); err != nil {
-		_ = cmd.Process.Signal(os.Kill)
-		return fmt.Errorf("failed to wait for command termination: %v", err)
+		return err // Return the raw error for more detailed handling in the caller
 	}
 
-	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
-	os.Exit(waitStatus.ExitStatus())
 	return nil
+}
+
+func execCommandWithReload(cmd *exec.Cmd, cancel context.CancelFunc) {
+	err := execCmd(cmd)
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == -1 {
+				// This is hit when the command exits due to a reload signal.
+				log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] Process was terminated as part of reload, this is expected behavior"))
+			} else {
+				// This is hit when the command exits with an unexpected exit code.
+				// This should stop the reload logic and exit the CLI.
+				log.Error().Err(err).Msgf("[HOT RELOAD] Command execution failed with exit code: %d", exitErr.ExitCode())
+
+				// ? Question: If the command throws an error, then the infisical CLI should terminate as well, right?
+				cancel()
+				util.PrintErrorAndExit(exitErr.ExitCode(), err, "[HOT RELOAD] Failed to start command")
+			}
+		} else {
+			// This is hit due to generic errors, not exit errors. This is a catch-all for any other errors.
+			cancel()
+			util.HandleError(err, "[HOT RELOAD] Command execution failed")
+		}
+	} else {
+		// If the command exits, the CLI should terminate as well
+		log.Debug().Msg(color.HiMagentaString("Command exited without faults"))
+		cancel()
+		return
+	}
+}
+
+func handleCommandTermination(cmd *exec.Cmd, cmdCancel context.CancelFunc) {
+
+	{
+		if cmd != nil && cmd.Process != nil {
+			log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Terminating existing process..."))
+			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+				log.Error().Err(err).Msg("[HOT RELOAD] Failed to terminate process")
+				if err := cmd.Process.Kill(); err != nil {
+					log.Error().Err(err).Msg("[HOT RELOAD] Failed to kill process")
+				}
+			}
+			if cmdCancel != nil {
+				cmdCancel()
+			}
+			// Wait for the process to finish
+			_, err := cmd.Process.Wait()
+			if err != nil {
+				if err.Error() != "wait: no child processes" {
+					log.Error().Err(err).Msg("[HOT RELOAD] Error waiting for process to terminate")
+				}
+			}
+		}
+	}
+}
+
+func createInjectableEnvironment(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) ([]string, string, error) {
+
+	secrets, err := util.GetAllEnvironmentVariables(request, projectConfigDir)
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	if secretOverriding {
+		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+	} else {
+		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
+	}
+
+	if shouldExpandSecrets {
+
+		authParams := models.ExpandSecretsAuthentication{}
+
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			authParams.InfisicalToken = token.Token
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			authParams.UniversalAuthAccessToken = token.Token
+		}
+
+		secrets = util.ExpandSecrets(secrets, authParams, projectConfigDir)
+	}
+
+	secretsByKey := getSecretsByKeys(secrets)
+	environmentVariables := make(map[string]string)
+
+	// add all existing environment vars
+	for _, s := range os.Environ() {
+		kv := strings.SplitN(s, "=", 2)
+		key := kv[0]
+		value := kv[1]
+		environmentVariables[key] = value
+	}
+
+	// check to see if there are any reserved key words in secrets to inject
+	filterReservedEnvVars(secretsByKey)
+
+	// now add infisical secrets
+	for k, v := range secretsByKey {
+		environmentVariables[k] = v.Value
+	}
+
+	// Create and sort the env slice using slices.SortFunc
+	env := make([]string, 0, len(environmentVariables))
+	for key, value := range environmentVariables {
+		env = append(env, key+"="+value)
+	}
+
+	return env, util.GenerateETagFromSecrets(secrets), nil
 }
