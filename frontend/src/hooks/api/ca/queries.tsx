@@ -10,7 +10,8 @@ export const caKeys = {
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
-  getCaCrl: (caId: string) => [{ caId }, "ca-crl"]
+  getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
+  getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"]
 };
 
 export const useGetCaById = (caId: string) => {

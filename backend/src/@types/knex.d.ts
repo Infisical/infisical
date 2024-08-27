@@ -53,6 +53,9 @@ import {
   TCertificateSecretsUpdate,
   TCertificatesInsert,
   TCertificatesUpdate,
+  TCertificateTemplateEstConfigs,
+  TCertificateTemplateEstConfigsInsert,
+  TCertificateTemplateEstConfigsUpdate,
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
@@ -371,6 +374,11 @@ declare module "knex/types/tables" {
       TCertificateTemplates,
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
+    >;
+    [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
+      TCertificateTemplateEstConfigs,
+      TCertificateTemplateEstConfigsInsert,
+      TCertificateTemplateEstConfigsUpdate
     >;
     [TableName.CertificateBody]: KnexOriginal.CompositeTableType<
       TCertificateBodies,

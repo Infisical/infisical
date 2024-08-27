@@ -26,3 +26,27 @@ export type TGetCertTemplateDTO = {
 export type TDeleteCertTemplateDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TCreateEstConfigurationDTO = {
+  certificateTemplateId: string;
+  caChain: string;
+  passphrase: string;
+  isEnabled: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateEstConfigurationDTO = {
+  certificateTemplateId: string;
+  caChain?: string;
+  passphrase?: string;
+  isEnabled?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetEstConfigurationDTO =
+  | {
+      isInternal: true;
+      certificateTemplateId: string;
+    }
+  | ({
+      isInternal: false;
+      certificateTemplateId: string;
+    } & Omit<TProjectPermission, "projectId">);

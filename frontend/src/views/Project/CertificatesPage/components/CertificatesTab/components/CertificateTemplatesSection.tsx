@@ -8,13 +8,15 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplate } from "@app/hooks/api";
 
+import { CertificateTemplateEnrollmentModal } from "./CertificateTemplateEnrollmentModal";
 import { CertificateTemplateModal } from "./CertificateTemplateModal";
 import { CertificateTemplatesTable } from "./CertificateTemplatesTable";
 
 export const CertificateTemplatesSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificateTemplate",
-    "deleteCertificateTemplate"
+    "deleteCertificateTemplate",
+    "enrollmentOptions"
   ] as const);
 
   const { currentWorkspace } = useWorkspace();
@@ -52,7 +54,7 @@ export const CertificateTemplatesSection = () => {
         <p className="text-xl font-semibold text-mineshaft-100">Certificate Templates</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
-          a={ProjectPermissionSub.Certificates}
+          a={ProjectPermissionSub.CertificateTemplates}
         >
           {(isAllowed) => (
             <Button
@@ -69,6 +71,7 @@ export const CertificateTemplatesSection = () => {
       </div>
       <CertificateTemplatesTable handlePopUpOpen={handlePopUpOpen} />
       <CertificateTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCertificateTemplate.isOpen}
         title={`Are you sure want to delete the certificate template ${

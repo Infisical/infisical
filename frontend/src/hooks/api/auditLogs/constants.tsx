@@ -72,7 +72,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_CERTIFICATE_TEMPLATE]: "Create certificate template",
   [EventType.UPDATE_CERTIFICATE_TEMPLATE]: "Update certificate template",
   [EventType.DELETE_CERTIFICATE_TEMPLATE]: "Delete certificate template",
-  [EventType.GET_CERTIFICATE_TEMPLATE]: "Get certificate template"
+  [EventType.GET_CERTIFICATE_TEMPLATE]: "Get certificate template",
+  [EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG]: "Get certificate template EST configuration",
+  [EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG]:
+    "Create certificate template EST configuration",
+  [EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG]:
+    "Update certificate template EST configuration"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

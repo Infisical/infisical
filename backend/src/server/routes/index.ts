@@ -90,7 +90,9 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { certificateEstServiceFactory } from "@app/services/certificate-est/certificate-est-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
+import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
@@ -195,6 +197,7 @@ import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
+import { registerCertificateEstRouter } from "./est/certificate-est-router";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
@@ -600,6 +603,7 @@ export const registerRoutes = async (
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
+  const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
@@ -657,8 +661,21 @@ export const registerRoutes = async (
 
   const certificateTemplateService = certificateTemplateServiceFactory({
     certificateTemplateDAL,
+    certificateTemplateEstConfigDAL,
     certificateAuthorityDAL,
-    permissionService
+    permissionService,
+    kmsService,
+    projectDAL
+  });
+
+  const certificateEstService = certificateEstServiceFactory({
+    certificateAuthorityService,
+    certificateTemplateService,
+    certificateTemplateDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityDAL,
+    projectDAL,
+    kmsService
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
@@ -1196,6 +1213,7 @@ export const registerRoutes = async (
     certificateAuthority: certificateAuthorityService,
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
+    certificateEst: certificateEstService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     secretScanning: secretScanningService,
@@ -1262,6 +1280,9 @@ export const registerRoutes = async (
       };
     }
   });
+
+  // register special routes
+  await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
 
   // register routes for v1
   await server.register(

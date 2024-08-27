@@ -24,3 +24,19 @@ export const revocationReasonToCrlCode = (crlReason: CrlReason) => {
       return x509.X509CrlReason.unspecified;
   }
 };
+
+export const isCertChainValid = async (certificates: x509.X509Certificate[]) => {
+  if (certificates.length === 1) {
+    return true;
+  }
+
+  const leafCert = certificates[0];
+  const chain = new x509.X509ChainBuilder({
+    certificates: certificates.slice(1)
+  });
+
+  const chainItems = await chain.build(leafCert);
+
+  // chain.build() implicitly verifies the chain
+  return chainItems.length === certificates.length;
+};

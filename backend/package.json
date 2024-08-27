@@ -171,6 +171,7 @@
     "pg-query-stream": "^4.5.3",
     "picomatch": "^3.0.1",
     "pino": "^8.16.2",
+    "pkijs": "^3.2.4",
     "posthog-node": "^3.6.2",
     "probot": "^13.0.0",
     "safe-regex": "^2.1.1",

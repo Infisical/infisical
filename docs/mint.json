@@ -109,6 +109,7 @@
             "documentation/platform/pki/private-ca",
             "documentation/platform/pki/certificates",
             "documentation/platform/pki/certificate-templates",
+            "documentation/platform/pki/est",
             "documentation/platform/pki/alerting"
           ]
         },

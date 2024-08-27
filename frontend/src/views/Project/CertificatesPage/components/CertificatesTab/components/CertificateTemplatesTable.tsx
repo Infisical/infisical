@@ -1,4 +1,4 @@
-import { faEllipsis, faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faFileAlt, faTrash, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -25,7 +25,9 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["certificateTemplate", "deleteCertificateTemplate"]>,
+    popUpName: keyof UsePopUpState<
+      ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions"]
+    >,
     data?: {
       id?: string;
       name?: string;
@@ -74,10 +76,31 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                                 id: certificateTemplate.id
                               })
                             }
-                            icon={<FontAwesomeIcon icon={faFileAlt} />}
+                            icon={<FontAwesomeIcon icon={faFileAlt} size="sm" className="mr-1" />}
                           >
                             Manage Policies
                           </DropdownMenuItem>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.CertificateTemplates}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handlePopUpOpen("enrollmentOptions", {
+                                    id: certificateTemplate.id
+                                  })
+                                }
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faUserPlus} size="sm" />}
+                              >
+                                Manage Enrollment
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.CertificateTemplates}
@@ -88,7 +111,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faTrash} />}
+                                icon={<FontAwesomeIcon icon={faTrash} size="sm" className="mr-1" />}
                                 onClick={() =>
                                   handlePopUpOpen("deleteCertificateTemplate", {
                                     id: certificateTemplate.id,

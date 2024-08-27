@@ -142,7 +142,8 @@ const envSchema = z
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     PLAIN_API_KEY: zpStr(z.string().optional()),
     PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
-    DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false")
+    DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
+    SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert")
   })
   .transform((data) => ({
     ...data,

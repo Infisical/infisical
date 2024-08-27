@@ -719,6 +719,29 @@ interface DeleteCertificateTemplate {
   };
 }
 
+interface CreateCertificateTemplateEstConfig {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
+  metadata: {
+    certificateTemplateId: string;
+    isEnabled: boolean;
+  };
+}
+
+interface UpdateCertificateTemplateEstConfig {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
+  metadata: {
+    certificateTemplateId: string;
+    isEnabled: boolean;
+  };
+}
+
+interface GetCertificateTemplateEstConfig {
+  type: EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -791,7 +814,10 @@ export type Event =
   | CreateCertificateTemplate
   | UpdateCertificateTemplate
   | GetCertificateTemplate
-  | DeleteCertificateTemplate;
+  | DeleteCertificateTemplate
+  | UpdateCertificateTemplateEstConfig
+  | CreateCertificateTemplateEstConfig
+  | GetCertificateTemplateEstConfig;
 
 export type AuditLog = {
   id: string;

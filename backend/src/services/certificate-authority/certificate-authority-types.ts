@@ -97,18 +97,33 @@ export type TIssueCertFromCaDTO = {
   notAfter?: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TSignCertFromCaDTO = {
-  caId?: string;
-  csr: string;
-  certificateTemplateId?: string;
-  pkiCollectionId?: string;
-  friendlyName?: string;
-  commonName?: string;
-  altNames: string;
-  ttl: string;
-  notBefore?: string;
-  notAfter?: string;
-} & Omit<TProjectPermission, "projectId">;
+export type TSignCertFromCaDTO =
+  | {
+      isInternal: true;
+      caId?: string;
+      csr: string;
+      certificateTemplateId?: string;
+      pkiCollectionId?: string;
+      friendlyName?: string;
+      commonName?: string;
+      altNames?: string;
+      ttl?: string;
+      notBefore?: string;
+      notAfter?: string;
+    }
+  | ({
+      isInternal: false;
+      caId?: string;
+      csr: string;
+      certificateTemplateId?: string;
+      pkiCollectionId?: string;
+      friendlyName?: string;
+      commonName?: string;
+      altNames: string;
+      ttl: string;
+      notBefore?: string;
+      notAfter?: string;
+    } & Omit<TProjectPermission, "projectId">);
 
 export type TDNParts = {
   commonName?: string;

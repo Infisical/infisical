@@ -1295,24 +1295,23 @@ export const certificateAuthorityServiceFactory = ({
    * Return new leaf certificate issued by CA with id [caId].
    * Note: CSR is generated externally and submitted to Infisical.
    */
-  const signCertFromCa = async ({
-    caId,
-    certificateTemplateId,
-    csr,
-    pkiCollectionId,
-    friendlyName,
-    commonName,
-    altNames,
-    ttl,
-    notBefore,
-    notAfter,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TSignCertFromCaDTO) => {
+  const signCertFromCa = async (dto: TSignCertFromCaDTO) => {
     let ca: TCertificateAuthorities | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
+
+    const {
+      caId,
+      certificateTemplateId,
+      csr,
+      pkiCollectionId,
+      friendlyName,
+      commonName,
+      altNames,
+      ttl,
+      notBefore,
+      notAfter
+    } = dto;
+
     let collectionId = pkiCollectionId;
 
     if (caId) {
@@ -1333,15 +1332,20 @@ export const certificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "CA not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      ca.projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!dto.isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        dto.actor,
+        dto.actorId,
+        ca.projectId,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -1382,6 +1386,8 @@ export const certificateAuthorityServiceFactory = ({
       notAfterDate = new Date(notAfter);
     } else if (ttl) {
       notAfterDate = new Date(new Date().getTime() + ms(ttl));
+    } else if (certificateTemplate?.ttl) {
+      notAfterDate = new Date(new Date().getTime() + ms(certificateTemplate.ttl));
     }
 
     const caCertNotBeforeDate = new Date(caCertObj.notBefore);
@@ -1426,6 +1432,7 @@ export const certificateAuthorityServiceFactory = ({
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
 
+    let altNamesFromCsr: string = "";
     let altNamesArray: {
       type: "email" | "dns";
       value: string;
@@ -1454,7 +1461,24 @@ export const certificateAuthorityServiceFactory = ({
           // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
           throw new Error(`Invalid altName: ${altName}`);
         });
+    } else {
+      // attempt to read from CSR if altNames is not explicitly provided
+      const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
+      if (sanExtension) {
+        const sanNames = new x509.GeneralNames(sanExtension.value);
 
+        altNamesArray = sanNames.items
+          .filter((value) => value.type === "email" || value.type === "dns")
+          .map((name) => ({
+            type: name.type as "email" | "dns",
+            value: name.value
+          }));
+
+        altNamesFromCsr = sanNames.items.map((item) => item.value).join(",");
+      }
+    }
+
+    if (altNamesArray.length) {
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
       extensions.push(altNamesExtension);
     }
@@ -1500,7 +1524,7 @@ export const certificateAuthorityServiceFactory = ({
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
           commonName: cn,
-          altNames,
+          altNames: altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
           notAfter: notAfterDate
@@ -1538,7 +1562,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     return {
-      certificate: leafCert.toString("pem"),
+      certificate: leafCert,
       certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       issuingCaCertificate,
       serialNumber,

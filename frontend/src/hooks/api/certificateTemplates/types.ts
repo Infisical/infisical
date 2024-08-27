@@ -35,3 +35,24 @@ export type TDeleteCertificateTemplateDTO = {
   id: string;
   projectId: string;
 };
+
+export type TCreateEstConfigDTO = {
+  certificateTemplateId: string;
+  caChain: string;
+  passphrase: string;
+  isEnabled: boolean;
+};
+
+export type TUpdateEstConfigDTO = {
+  certificateTemplateId: string;
+  caChain?: string;
+  passphrase?: string;
+  isEnabled?: boolean;
+};
+
+export type TEstConfig = {
+  id: string;
+  certificateTemplateId: string;
+  caChain: string;
+  isEnabled: false;
+};

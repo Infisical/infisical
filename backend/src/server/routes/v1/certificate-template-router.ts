@@ -1,6 +1,7 @@
 import ms from "ms";
 import { z } from "zod";
 
+import { CertificateTemplateEstConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -8,6 +9,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
+
+const sanitizedEstConfig = CertificateTemplateEstConfigsSchema.pick({
+  id: true,
+  certificateTemplateId: true,
+  isEnabled: true
+});
 
 export const registerCertificateTemplateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -200,6 +207,143 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       });
 
       return certificateTemplate;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:certificateTemplateId/est-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Create Certificate Template EST configuration",
+      params: z.object({
+        certificateTemplateId: z.string().trim()
+      }),
+      body: z.object({
+        caChain: z.string().trim().min(1),
+        passphrase: z.string().min(1),
+        isEnabled: z.boolean().default(true)
+      }),
+      response: {
+        200: sanitizedEstConfig
+      }
+    },
+    handler: async (req) => {
+      const estConfig = await server.services.certificateTemplate.createEstConfiguration({
+        certificateTemplateId: req.params.certificateTemplateId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: estConfig.projectId,
+        event: {
+          type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG,
+          metadata: {
+            certificateTemplateId: estConfig.certificateTemplateId,
+            isEnabled: estConfig.isEnabled as boolean
+          }
+        }
+      });
+
+      return estConfig;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:certificateTemplateId/est-config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Update Certificate Template EST configuration",
+      params: z.object({
+        certificateTemplateId: z.string().trim()
+      }),
+      body: z.object({
+        caChain: z.string().trim().min(1).optional(),
+        passphrase: z.string().min(1).optional(),
+        isEnabled: z.boolean().optional()
+      }),
+      response: {
+        200: sanitizedEstConfig
+      }
+    },
+    handler: async (req) => {
+      const estConfig = await server.services.certificateTemplate.updateEstConfiguration({
+        certificateTemplateId: req.params.certificateTemplateId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: estConfig.projectId,
+        event: {
+          type: EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG,
+          metadata: {
+            certificateTemplateId: estConfig.certificateTemplateId,
+            isEnabled: estConfig.isEnabled as boolean
+          }
+        }
+      });
+
+      return estConfig;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:certificateTemplateId/est-config",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get Certificate Template EST configuration",
+      params: z.object({
+        certificateTemplateId: z.string().trim()
+      }),
+      response: {
+        200: sanitizedEstConfig.extend({
+          caChain: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const estConfig = await server.services.certificateTemplate.getEstConfiguration({
+        isInternal: false,
+        certificateTemplateId: req.params.certificateTemplateId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: estConfig.projectId,
+        event: {
+          type: EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG,
+          metadata: {
+            certificateTemplateId: estConfig.certificateTemplateId
+          }
+        }
+      });
+
+      return estConfig;
     }
   });
 };

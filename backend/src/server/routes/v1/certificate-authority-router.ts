@@ -669,6 +669,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca } =
         await server.services.certificateAuthority.signCertFromCa({
+          isInternal: false,
           caId: req.params.caId,
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -691,7 +692,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        certificate,
+        certificate: certificate.toString("pem"),
         certificateChain,
         issuingCaCertificate,
         serialNumber

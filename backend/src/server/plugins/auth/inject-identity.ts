@@ -57,7 +57,6 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
-
   if (!authHeader) return { authMode: null, token: null };
 
   const authTokenValue = authHeader.slice(7); // slice of after Bearer
@@ -103,11 +102,12 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
-    const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
-    if (req.url.includes("/api/v3/auth/")) {
+    if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
       return;
     }
+
+    const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
     if (!authMode) return;
 
