@@ -218,86 +218,51 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string,
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	if reloadParameters.Enabled {
-		log.Info().Msgf(color.YellowString("[HOT RELOAD] Watching for secret changes..."))
-		go func() {
-			<-sigChan
-			log.Info().Msg("Received termination signal. Cleaning up...")
-			cancelCtx()
-		}()
+		handleHotReloadCleanup(sigChan, cancelCtx)
 	}
 
-	var cmd *exec.Cmd
+	var currentCmd *exec.Cmd
 
 	startCmd := func() error {
+		if currentCmd != nil {
+			terminateProcessGroup(currentCmd)
+		}
+
 		command := args[0]
 		argsForCommand := args[1:]
 
 		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
 
-		cmd := exec.Command(command, argsForCommand...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = env
+		currentCmd = exec.Command(command, argsForCommand...)
+		currentCmd.Stdin = os.Stdin
+		currentCmd.Stdout = os.Stdout
+		currentCmd.Stderr = os.Stderr
+		currentCmd.Env = env
+		currentCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		if reloadParameters.Enabled {
-			go func() {
-				execCommandWithReload(cmd, cancelCtx)
-			}()
+			go runCommandWithReloading(currentCmd)
 		} else {
-			return execCmd(cmd)
+			return currentCmd.Run()
 		}
 		return nil
 	}
 
-	err := startCmd() // Initial command start, if no --watch flag is passed, it will work like in old versions of infisical CLI.
+	err := startCmd() // Initial command start
 	if err != nil {
 		if err.Error() == ErrManualInterrupt.Error() {
-			log.Debug().Msg(("Process was terminated manually by the user"))
+			log.Debug().Msg("Process was terminated manually by the user")
 			os.Exit(1)
 		}
 		util.HandleError(err, "Failed to start command")
 	}
 
-	// This part is only relevant when the --watch flag is passed, as it's purpose is to solely watch for changes and manage process reloads.
+	// This part is only relevant when the --watch flag is passed
 	if reloadParameters.Enabled {
-		ticker := time.NewTicker(10 * time.Second) // We check every 10 seconds for secret changes
-		defer ticker.Stop()
-
-		for {
-			select {
-
-			case <-ctx.Done():
-				log.Debug().Msg("Exiting hot reload...")
-				handleCommandTermination(cmd, cancelCtx)
-				return
-			case <-ticker.C:
-				log.Debug().Msg("Checking for environment updates...")
-				injectableEnvironment, err := createInjectableEnvironment(
-					reloadParameters.GetSecretsDetails,
-					reloadParameters.ProjectConfigDir,
-					reloadParameters.SecretOverriding,
-					reloadParameters.ExpandSecrets,
-					token,
-				)
-				if err != nil {
-					log.Error().Err(err).Msg("Failed to fetch new secrets")
-					continue
-				}
-
-				if injectableEnvironment.ETag != reloadParameters.CurrentETag {
-					log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
-					reloadParameters.CurrentETag = injectableEnvironment.ETag
-					env = injectableEnvironment.Variables
-					secretsCount = injectableEnvironment.SecretsCount
-					startCmd() // Restart the command with new environment
-				} else {
-					log.Debug().Msg("Not reloading because environments are identical")
-				}
-			}
-		}
+		runHotReloadLoop(ctx, &reloadParameters, token, &currentCmd, &env, &secretsCount, startCmd)
 	}
 }
+
 func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string, reloadParameters models.ExecuteCommandHotReloadParameters, token *models.TokenDetails) {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
@@ -307,17 +272,16 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	if reloadParameters.Enabled {
-		log.Info().Msgf(color.HiMagentaString("[HOT RELOAD] Watching for secret changes..."))
-		go func() {
-			<-sigChan
-			log.Info().Msg(color.HiMagentaString("Received termination signal. Cleaning up..."))
-			cancelCtx()
-		}()
+		handleHotReloadCleanup(sigChan, cancelCtx)
 	}
 
-	var cmd *exec.Cmd
+	var currentCmd *exec.Cmd
 
 	startCmd := func() error {
+		if currentCmd != nil {
+			terminateProcessGroup(currentCmd)
+		}
+
 		shell := [2]string{"sh", "-c"}
 		if runtime.GOOS == "windows" {
 			shell = [2]string{"cmd", "/C"}
@@ -328,134 +292,149 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 			}
 		}
 
-		cmd = exec.CommandContext(ctx, shell[0], shell[1], fullCommand)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = env
+		currentCmd = exec.Command(shell[0], shell[1], fullCommand)
+		currentCmd.Stdin = os.Stdin
+		currentCmd.Stdout = os.Stdout
+		currentCmd.Stderr = os.Stderr
+		currentCmd.Env = env
+		currentCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
 		log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
 
 		if reloadParameters.Enabled {
-			go func() {
-				execCommandWithReload(cmd, cancelCtx)
-			}()
+			go runCommandWithReloading(currentCmd)
 		} else {
-			return execCmd(cmd)
+			return currentCmd.Run()
 		}
 		return nil
 	}
 
-	err := startCmd() // Initial command start, if no --watch flag is passed, it will work like in old versions of infisical CLI.
+	err := startCmd() // Initial command start
 	if err != nil {
 		if err.Error() == ErrManualInterrupt.Error() {
-			log.Debug().Msg(("Process was terminated manually by the user"))
+			log.Debug().Msg("Process was terminated manually by the user")
 			os.Exit(1)
 		}
 		util.HandleError(err, "Failed to start command")
 	}
 
-	// This part is only relevant when the --watch flag is passed, as it's purpose is to solely watch for changes and manage process reloads.
+	// This part is only relevant when the --watch flag is passed
 	if reloadParameters.Enabled {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Exiting..."))
-				handleCommandTermination(cmd, cancelCtx)
-				return
-			case <-ticker.C:
-				log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] | Checking for environment updates..."))
-				injectableEnvironment, err := createInjectableEnvironment(
-					reloadParameters.GetSecretsDetails,
-					reloadParameters.ProjectConfigDir,
-					reloadParameters.SecretOverriding,
-					reloadParameters.ExpandSecrets,
-					token,
-				)
-				if err != nil {
-					log.Error().Err(err).Msg("[HOT RELOAD] | Failed to fetch new secrets")
-					continue
-				}
-
-				if injectableEnvironment.ETag != reloadParameters.CurrentETag {
-					log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
-					reloadParameters.CurrentETag = injectableEnvironment.ETag
-					env = injectableEnvironment.Variables
-					secretsCount = injectableEnvironment.SecretsCount
-					startCmd() // Restart the command with new environment
-				} else {
-					log.Debug().Msg("Not reloading because environments are identical")
-				}
-			}
-		}
+		runHotReloadLoop(ctx, &reloadParameters, token, &currentCmd, &env, &secretsCount, startCmd)
 	}
 }
 
-func execCmd(cmd *exec.Cmd) error {
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start command: %v", err)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return err // Return the raw error for more detailed handling in the caller
-	}
-
-	return nil
-}
-
-func execCommandWithReload(cmd *exec.Cmd, cancel context.CancelFunc) {
-	err := execCmd(cmd)
+func runCommandWithReloading(cmd *exec.Cmd) {
+	err := cmd.Run()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if exitErr.ExitCode() == -1 {
-				// This is hit when the command exits due to a reload signal.
 				log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] Process was terminated as part of reload, this is expected behavior"))
 			} else {
-				// This is hit when the command exits with an unexpected exit code.
-				// This should stop the reload logic and exit the CLI.
 				log.Error().Err(err).Msgf("[HOT RELOAD] Command execution failed with exit code: %d", exitErr.ExitCode())
-
-				// ? Question: If the command throws an error, then the infisical CLI should terminate as well, right?
-				cancel()
-				util.PrintErrorAndExit(exitErr.ExitCode(), err, "[HOT RELOAD] Failed to start command")
 			}
 		} else {
-			// This is hit due to generic errors, not exit errors. This is a catch-all for any other errors.
-			cancel()
-			util.HandleError(err, "[HOT RELOAD] Command execution failed")
+			log.Error().Err(err).Msg("[HOT RELOAD] Command execution failed")
 		}
 	} else {
-		// If the command exits, the CLI should terminate as well
 		log.Debug().Msg(color.HiMagentaString("Command exited without faults"))
-		cancel()
-		return
 	}
 }
 
-func handleCommandTermination(cmd *exec.Cmd, cmdCancel context.CancelFunc) {
+func handleHotReloadCleanup(sigChan chan os.Signal, cancelCtx context.CancelFunc) {
+	log.Info().Msgf(color.YellowString("[HOT RELOAD] Watching for secret changes..."))
+	go func() {
+		<-sigChan
+		log.Info().Msg("Received termination signal. Cleaning up...")
+		cancelCtx()
+	}()
+}
 
-	{
-		if cmd != nil && cmd.Process != nil {
-			log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Terminating existing process..."))
-			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-				log.Error().Err(err).Msg("[HOT RELOAD] Failed to terminate process")
-				if err := cmd.Process.Kill(); err != nil {
-					log.Error().Err(err).Msg("[HOT RELOAD] Failed to kill process")
-				}
+func terminateProcessGroup(cmd *exec.Cmd) {
+	if cmd == nil || cmd.Process == nil {
+		return
+	}
+
+	log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Terminating existing process group..."))
+
+	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	if err == nil {
+		// Send SIGTERM to the process group
+		if err := syscall.Kill(-pgid, syscall.SIGTERM); err != nil {
+			log.Error().Err(err).Msg("[HOT RELOAD] Failed to terminate process group")
+		}
+
+		// Wait for a short time to allow for graceful shutdown
+		time.Sleep(2 * time.Second)
+
+		// If the process is still running, force kill the process group
+		if cmd.ProcessState == nil {
+			if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
+				log.Error().Err(err).Msg("[HOT RELOAD] Failed to kill process group")
 			}
-			if cmdCancel != nil {
-				cmdCancel()
+		}
+	} else {
+		log.Error().Err(err).Msg("[HOT RELOAD] Failed to get process group ID")
+	}
+
+	// Wait for the process to finish
+	_, err = cmd.Process.Wait()
+	if err != nil {
+		if err.Error() != "wait: no child processes" {
+			log.Error().Err(err).Msg("[HOT RELOAD] Error waiting for process to terminate")
+		}
+	}
+}
+
+func runHotReloadLoop(
+	ctx context.Context,
+	reloadParameters *models.ExecuteCommandHotReloadParameters,
+	token *models.TokenDetails,
+	currentCmd **exec.Cmd,
+	env *[]string,
+	secretsCount *int,
+	startCmd func() error,
+) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Debug().Msg("Exiting hot reload...")
+			if *currentCmd != nil {
+				terminateProcessGroup(*currentCmd)
 			}
-			// Wait for the process to finish
-			_, err := cmd.Process.Wait()
+			return
+		case <-ticker.C:
+			log.Debug().Msg("Checking for environment updates...")
+			injectableEnvironment, err := createInjectableEnvironment(
+				reloadParameters.GetSecretsDetails,
+				reloadParameters.ProjectConfigDir,
+				reloadParameters.SecretOverriding,
+				reloadParameters.ExpandSecrets,
+				token,
+			)
 			if err != nil {
-				if err.Error() != "wait: no child processes" {
-					log.Error().Err(err).Msg("[HOT RELOAD] Error waiting for process to terminate")
+				log.Error().Err(err).Msg("Failed to fetch new secrets")
+				continue
+			}
+
+			if injectableEnvironment.ETag != reloadParameters.CurrentETag {
+				log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
+				reloadParameters.CurrentETag = injectableEnvironment.ETag
+				*env = injectableEnvironment.Variables
+				*secretsCount = injectableEnvironment.SecretsCount
+
+				// Start a new process (this will also terminate the existing one if any)
+				err := startCmd()
+				if err != nil {
+					log.Error().Err(err).Msg("[HOT RELOAD] Failed to restart command")
+					continue
 				}
+			} else {
+				log.Debug().Msg("Not reloading because environments are identical")
 			}
 		}
 	}
