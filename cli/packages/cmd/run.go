@@ -238,12 +238,12 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string,
 		currentCmd.Stdout = os.Stdout
 		currentCmd.Stderr = os.Stderr
 		currentCmd.Env = env
-		currentCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		if reloadParameters.Enabled {
+			currentCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			go runCommandWithReloading(currentCmd)
 		} else {
-			return currentCmd.Run()
+			return execCmd(currentCmd)
 		}
 		return nil
 	}
@@ -254,7 +254,7 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string,
 			log.Debug().Msg("Process was terminated manually by the user")
 			os.Exit(1)
 		}
-		util.HandleError(err, "Failed to start command")
+		util.HandleError(err, "Failed to run command")
 	}
 
 	// This part is only relevant when the --watch flag is passed
@@ -297,15 +297,15 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 		currentCmd.Stdout = os.Stdout
 		currentCmd.Stderr = os.Stderr
 		currentCmd.Env = env
-		currentCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
 		log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
 
 		if reloadParameters.Enabled {
+			currentCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			go runCommandWithReloading(currentCmd)
 		} else {
-			return currentCmd.Run()
+			return execCmd(currentCmd)
 		}
 		return nil
 	}
@@ -316,13 +316,25 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 			log.Debug().Msg("Process was terminated manually by the user")
 			os.Exit(1)
 		}
-		util.HandleError(err, "Failed to start command")
+		util.HandleError(err, "Failed to run command")
 	}
 
 	// This part is only relevant when the --watch flag is passed
 	if reloadParameters.Enabled {
 		runHotReloadLoop(ctx, &reloadParameters, token, &currentCmd, &env, &secretsCount, startCmd)
 	}
+}
+
+func execCmd(cmd *exec.Cmd) error {
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start command: %v", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return err // Return the raw error for more detailed handling in the caller
+	}
+
+	return nil
 }
 
 func runCommandWithReloading(cmd *exec.Cmd) {
@@ -332,13 +344,14 @@ func runCommandWithReloading(cmd *exec.Cmd) {
 			if exitErr.ExitCode() == -1 {
 				log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] Process was terminated as part of reload, this is expected behavior"))
 			} else {
-				log.Error().Err(err).Msgf("[HOT RELOAD] Command execution failed with exit code: %d", exitErr.ExitCode())
+				util.HandleError(err, "Command execution failed")
 			}
 		} else {
 			log.Error().Err(err).Msg("[HOT RELOAD] Command execution failed")
 		}
 	} else {
-		log.Debug().Msg(color.HiMagentaString("Command exited without faults"))
+		log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] Command exited without faults"))
+		os.Exit(0)
 	}
 }
 
