@@ -104,13 +104,19 @@ type GetAllSecretsParameters struct {
 	Recursive                bool
 }
 
+type InjectableEnvironmentResult struct {
+	Variables    []string
+	ETag         string
+	SecretsCount int
+}
+
 type ExecuteCommandHotReloadParameters struct {
 	Enabled           bool
 	GetSecretsDetails GetAllSecretsParameters
 	ProjectConfigDir  string
 	SecretOverriding  bool
 	ExpandSecrets     bool
-	InitialETag       string
+	CurrentETag       string
 }
 
 type GetAllFoldersParameters struct {

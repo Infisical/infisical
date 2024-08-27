@@ -123,16 +123,16 @@ var runCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		env, initialETag, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, shouldExpandSecrets, token)
+		injectableEnvironment, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, shouldExpandSecrets, token)
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
 		}
 
-		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
+		log.Debug().Msgf("injecting the following environment variables into shell: %v", injectableEnvironment.Variables)
 
 		Telemetry.CaptureEvent("cli-command:run",
 			posthog.NewProperties().
-				Set("secretsCount", len(env)).
+				Set("secretsCount", injectableEnvironment.SecretsCount).
 				Set("environment", environmentName).
 				Set("isUsingServiceToken", token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER).
 				Set("isUsingUniversalAuthToken", token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
@@ -146,16 +146,14 @@ var runCmd = &cobra.Command{
 			ProjectConfigDir:  projectConfigDir,
 			SecretOverriding:  secretOverriding,
 			ExpandSecrets:     shouldExpandSecrets,
-			InitialETag:       initialETag,
+			CurrentETag:       injectableEnvironment.ETag,
 		}
 
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
-
-			executeMultipleCommandWithEnvs(command, len(env), env, hotReloadParameters, token)
-
+			executeMultipleCommandWithEnvs(command, injectableEnvironment.SecretsCount, injectableEnvironment.Variables, hotReloadParameters, token)
 		} else {
-			executeSingleCommandWithEnvs(args, len(env), env, hotReloadParameters, token)
+			executeSingleCommandWithEnvs(args, injectableEnvironment.SecretsCount, injectableEnvironment.Variables, hotReloadParameters, token)
 
 		}
 	},
@@ -269,7 +267,7 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string,
 				return
 			case <-ticker.C:
 				log.Debug().Msg("Checking for environment updates...")
-				newEnv, newEtag, err := createInjectableEnvironment(
+				injectableEnvironment, err := createInjectableEnvironment(
 					reloadParameters.GetSecretsDetails,
 					reloadParameters.ProjectConfigDir,
 					reloadParameters.SecretOverriding,
@@ -281,11 +279,11 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string,
 					continue
 				}
 
-				if newEtag != reloadParameters.InitialETag {
+				if injectableEnvironment.ETag != reloadParameters.CurrentETag {
 					log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
-					reloadParameters.InitialETag = newEtag
-					env = newEnv
-					secretsCount = len(newEnv)
+					reloadParameters.CurrentETag = injectableEnvironment.ETag
+					env = injectableEnvironment.Variables
+					secretsCount = injectableEnvironment.SecretsCount
 					startCmd() // Restart the command with new environment
 				} else {
 					log.Debug().Msg("Not reloading because environments are identical")
@@ -361,7 +359,7 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 				return
 			case <-ticker.C:
 				log.Debug().Msg(color.HiMagentaString("[HOT RELOAD] | Checking for environment updates..."))
-				newEnv, newEtag, err := createInjectableEnvironment(
+				injectableEnvironment, err := createInjectableEnvironment(
 					reloadParameters.GetSecretsDetails,
 					reloadParameters.ProjectConfigDir,
 					reloadParameters.SecretOverriding,
@@ -373,11 +371,11 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 					continue
 				}
 
-				if newEtag != reloadParameters.InitialETag {
+				if injectableEnvironment.ETag != reloadParameters.CurrentETag {
 					log.Info().Msg("[HOT RELOAD] Environment changed. Reloading application...")
-					reloadParameters.InitialETag = newEtag
-					env = newEnv
-					secretsCount = len(newEnv)
+					reloadParameters.CurrentETag = injectableEnvironment.ETag
+					env = injectableEnvironment.Variables
+					secretsCount = injectableEnvironment.SecretsCount
 					startCmd() // Restart the command with new environment
 				} else {
 					log.Debug().Msg("Not reloading because environments are identical")
@@ -453,12 +451,12 @@ func handleCommandTermination(cmd *exec.Cmd, cmdCancel context.CancelFunc) {
 	}
 }
 
-func createInjectableEnvironment(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) ([]string, string, error) {
+func createInjectableEnvironment(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
 
 	secrets, err := util.GetAllEnvironmentVariables(request, projectConfigDir)
 
 	if err != nil {
-		return nil, "", err
+		return models.InjectableEnvironmentResult{}, err
 	}
 
 	if secretOverriding {
@@ -505,5 +503,9 @@ func createInjectableEnvironment(request models.GetAllSecretsParameters, project
 		env = append(env, key+"="+value)
 	}
 
-	return env, util.GenerateETagFromSecrets(secrets), nil
+	return models.InjectableEnvironmentResult{
+		Variables:    env,
+		ETag:         util.GenerateETagFromSecrets(secrets),
+		SecretsCount: len(secretsByKey),
+	}, nil
 }
