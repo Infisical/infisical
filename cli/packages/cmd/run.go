@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var INTERRUPT_ERR = fmt.Errorf("signal: interrupt")
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Example: `
@@ -250,6 +252,10 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string,
 
 	err := startCmd() // Initial command start, if no --watch flag is passed, it will work like in old versions of infisical CLI.
 	if err != nil {
+		if err.Error() == INTERRUPT_ERR.Error() {
+			log.Debug().Msg(color.HiMagentaString("Process was terminated manually by the user"))
+			os.Exit(1)
+		}
 		util.HandleError(err, "Failed to start command")
 	}
 
@@ -343,6 +349,10 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 
 	err := startCmd() // Initial command start, if no --watch flag is passed, it will work like in old versions of infisical CLI.
 	if err != nil {
+		if err.Error() == INTERRUPT_ERR.Error() {
+			log.Debug().Msg(color.HiMagentaString("Process was terminated manually by the user"))
+			os.Exit(1)
+		}
 		util.HandleError(err, "Failed to start command")
 	}
 
