@@ -104,6 +104,15 @@ type GetAllSecretsParameters struct {
 	Recursive                bool
 }
 
+type ExecuteCommandHotReloadParameters struct {
+	Enabled           bool
+	GetSecretsDetails GetAllSecretsParameters
+	ProjectConfigDir  string
+	SecretOverriding  bool
+	ExpandSecrets     bool
+	InitialETag       string
+}
+
 type GetAllFoldersParameters struct {
 	WorkspaceId              string
 	Environment              string
