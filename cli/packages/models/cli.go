@@ -110,15 +110,6 @@ type InjectableEnvironmentResult struct {
 	SecretsCount int
 }
 
-type ExecuteCommandHotReloadParameters struct {
-	Enabled           bool
-	GetSecretsDetails GetAllSecretsParameters
-	ProjectConfigDir  string
-	SecretOverriding  bool
-	ExpandSecrets     bool
-	CurrentETag       string
-}
-
 type GetAllFoldersParameters struct {
 	WorkspaceId              string
 	Environment              string
