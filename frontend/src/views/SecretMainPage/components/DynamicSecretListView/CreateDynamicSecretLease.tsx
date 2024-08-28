@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,7 +21,7 @@ const OutputDisplay = ({
 }: {
   value: string;
   label: string;
-  helperText?: string;
+  helperText?: ReactNode;
 }) => {
   const [copyText, isCopying, setCopyText] = useTimedReset<string>({
     initialState: "Copy to clipboard"
@@ -89,6 +90,54 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
       </div>
     );
   }
+
+  if (provider === DynamicSecretProviders.Redis) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Redis Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Redis Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.AwsElastiCache) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Cluster Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Cluster Password"
+          value={DB_PASSWORD}
+          helperText={
+            <div className="space-y-4">
+              <p>
+                Important: Copy these credentials now. You will not be able to see them again after
+                you close the modal.
+              </p>
+              <p className="font-medium">
+                Please note that it may take a few minutes before the credentials are available for
+                use.
+              </p>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 

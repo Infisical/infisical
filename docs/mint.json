@@ -154,6 +154,8 @@
             "documentation/platform/dynamic-secrets/mssql",
             "documentation/platform/dynamic-secrets/oracle",
             "documentation/platform/dynamic-secrets/cassandra",
+            "documentation/platform/dynamic-secrets/redis",
+            "documentation/platform/dynamic-secrets/aws-elasticache",
             "documentation/platform/dynamic-secrets/aws-iam"
           ]
         },
