@@ -239,7 +239,7 @@ export const IdentityKubernetesAuthForm = ({
           <FormControl
             label="Allowed Service Account Names"
             isError={Boolean(error)}
-            tooltipText="A comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
+            tooltipText="A optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
             errorText={error?.message}
           >
             <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
@@ -255,7 +255,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Allowed Namespaces"
             isError={Boolean(error)}
             errorText={error?.message}
-            tooltipText="A comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any namespaces."
+            tooltipText="A optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any namespaces."
           >
             <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
           </FormControl>
@@ -282,7 +282,7 @@ export const IdentityKubernetesAuthForm = ({
           <FormControl 
             label="CA Certificate" 
             errorText={error?.message} isError={Boolean(error)} 
-            tooltipText="The PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
+            tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
           >
             <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
           </FormControl>
