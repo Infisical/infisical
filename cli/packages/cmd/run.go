@@ -36,6 +36,8 @@ var runCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Check if the --command flag has been set
 		commandFlagSet := cmd.Flags().Changed("command")
+		watchIntervalFlagSet := cmd.Flags().Changed("watch-interval")
+		watchFlagSet := cmd.Flags().Changed("watch")
 
 		// If the --command flag has been set, check if a value was provided
 		if commandFlagSet {
@@ -52,6 +54,20 @@ var runCmd = &cobra.Command{
 			// If the --command flag has not been set, at least one arg should be provided
 			if len(args) == 0 {
 				return fmt.Errorf("at least one argument is required after the run command, received %d", len(args))
+			}
+		}
+
+		// If the --watch flag has been set, the --watch-interval flag should also be set
+		if watchFlagSet && watchIntervalFlagSet {
+			// Ensure that the --watch-interval flag is set to a positive integer, and is at least 10 seconds
+
+			watchInterval, err := cmd.Flags().GetInt("watch-interval")
+			if err != nil {
+				util.HandleError(err, "Unable to parse flag")
+			}
+
+			if watchInterval < 5 {
+				return fmt.Errorf("watch interval must be at least 5 seconds, you passed %d seconds", watchInterval)
 			}
 		}
 
@@ -96,6 +112,11 @@ var runCmd = &cobra.Command{
 		}
 
 		watchMode, err := cmd.Flags().GetBool("watch")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		watchModeInterval, err := cmd.Flags().GetInt("watch-interval")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -151,12 +172,12 @@ var runCmd = &cobra.Command{
 				Set("multi-command", cmd.Flag("command").Value.String()).
 				Set("version", util.CLI_VERSION))
 
-		executeSpecifiedCommand(command, args, watchMode, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
+		executeSpecifiedCommand(command, args, watchMode, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
 
 	},
 }
 
-func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
+func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
 
 	var cmd *exec.Cmd
 	var err error
@@ -264,7 +285,7 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 		// a simple goroutine that triggers the recheckSecretsChan every 5 seconds
 		go func() {
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(time.Duration(watchModeInterval) * time.Second)
 				recheckSecretsChannel <- true
 			}
 		}()
@@ -324,14 +345,15 @@ func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
+	runCmd.Flags().String("token", "", "fetch secrets using service token or machine identity access token")
 	runCmd.Flags().String("projectId", "", "manually set the project ID to fetch secrets from when using machine identity based auth")
-	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
-	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")
-	runCmd.Flags().Bool("recursive", false, "Fetch secrets from all sub-folders")
-	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
-	runCmd.Flags().Bool("watch", false, "Enable reload of application when secrets change")
+	runCmd.Flags().StringP("env", "e", "dev", "set the environment (dev, prod, etc.) from which your secrets should be pulled from")
+	runCmd.Flags().Bool("expand", true, "parse shell parameter expansions in your secrets")
+	runCmd.Flags().Bool("include-imports", true, "import linked secrets ")
+	runCmd.Flags().Bool("recursive", false, "fetch secrets from all sub-folders")
+	runCmd.Flags().Bool("secret-overriding", true, "prioritizes personal secrets, if any, with the same name over shared secrets")
+	runCmd.Flags().Bool("watch", false, "enable reload of application when secrets change")
+	runCmd.Flags().Int("watch-interval", 10, "interval in seconds to check for secret changes")
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
 	runCmd.Flags().String("path", "/", "get secrets within a folder path")
