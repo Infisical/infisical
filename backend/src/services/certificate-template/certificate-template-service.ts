@@ -75,23 +75,28 @@ export const certificateTemplateServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    const { id } = await certificateTemplateDAL.create({
-      caId,
-      pkiCollectionId,
-      name,
-      commonName,
-      subjectAlternativeName,
-      ttl
+    return certificateTemplateDAL.transaction(async (tx) => {
+      const { id } = await certificateTemplateDAL.create(
+        {
+          caId,
+          pkiCollectionId,
+          name,
+          commonName,
+          subjectAlternativeName,
+          ttl
+        },
+        tx
+      );
+
+      const certificateTemplate = await certificateTemplateDAL.getById(id, tx);
+      if (!certificateTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      return certificateTemplate;
     });
-
-    const certificateTemplate = await certificateTemplateDAL.getById(id);
-    if (!certificateTemplate) {
-      throw new NotFoundError({
-        message: "Certificate template not found"
-      });
-    }
-
-    return certificateTemplate;
   };
 
   const updateCertTemplate = async ({
@@ -136,23 +141,29 @@ export const certificateTemplateServiceFactory = ({
       }
     }
 
-    await certificateTemplateDAL.updateById(certTemplate.id, {
-      caId,
-      pkiCollectionId,
-      commonName,
-      subjectAlternativeName,
-      name,
-      ttl
+    return certificateTemplateDAL.transaction(async (tx) => {
+      await certificateTemplateDAL.updateById(
+        certTemplate.id,
+        {
+          caId,
+          pkiCollectionId,
+          commonName,
+          subjectAlternativeName,
+          name,
+          ttl
+        },
+        tx
+      );
+
+      const updatedTemplate = await certificateTemplateDAL.getById(id, tx);
+      if (!updatedTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      return updatedTemplate;
     });
-
-    const updatedTemplate = await certificateTemplateDAL.getById(id);
-    if (!updatedTemplate) {
-      throw new NotFoundError({
-        message: "Certificate template not found"
-      });
-    }
-
-    return updatedTemplate;
   };
 
   const deleteCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertTemplateDTO) => {
