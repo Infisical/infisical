@@ -32,7 +32,7 @@ Every time the agent successfully retrieves a new access token, it writes the ne
 
 The Infisical agent can help deliver formatted secrets to your application in a variety of environments. To achieve this, the agent will retrieve secrets from Infisical, format them using a specified template, and then save these formatted secrets to a designated file path.
 
-Templating process is done through the use of Go language's [text/template feature](https://pkg.go.dev/text/template). Multiple template definitions can be set in the agent configuration file to generate a variety of formatted secret files.
+Templating process is done through the use of Go language's [text/template feature](https://pkg.go.dev/text/template).You can refer to the available secret template functions [here](#available-secret-template-functions). Multiple template definitions can be set in the agent configuration file to generate a variety of formatted secret files.
 
 When the agent is started and templates are defined in the agent configuration file, the agent will attempt to acquire a valid access token using the set authentication method outlined in the agent's configuration.
 If this initial attempt is unsuccessful, the agent will momentarily pauses before continuing to make more attempts.
