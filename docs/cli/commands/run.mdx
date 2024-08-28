@@ -47,20 +47,20 @@ $ infisical run -- npm run dev
     Used to fetch secrets via a [machine identity](/documentation/platform/identities/machine-identities) apposed to logged in credentials. Simply, export this variable in the terminal before running this command.
 
     ```bash
-    # Example
-    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
+      # Example
+      export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<identity-client-id> --client-secret=<identity-client-secret> --silent --plain) # --plain flag will output only the token, so it can be fed to an environment variable. --silent will disable any update messages.
     ```
 
     <Info>
       Alternatively, you may use service tokens.
 
       Please note, however, that service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities). They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+      
       ```bash
-      # Example
-      export INFISICAL_TOKEN=<service-token>
+        # Example
+        export INFISICAL_TOKEN=<service-token>
       ```
-
-  </Info>
+    </Info>
   </Accordion>
 
   <Accordion title="INFISICAL_DISABLE_UPDATE_CHECK">
@@ -69,22 +69,30 @@ $ infisical run -- npm run dev
     To use, simply export this variable in the terminal before running this command.
 
     ```bash
-    # Example
-    export INFISICAL_DISABLE_UPDATE_CHECK=true
+      # Example
+      export INFISICAL_DISABLE_UPDATE_CHECK=true
     ```
-
   </Accordion>
 
 ### Flags
 
-   <Accordion title="--project-config-dir">
+  <Accordion title="--watch">
+    By passing the `watch` flag, you are telling the CLI to watch for changes that happen in your Infisical project.
+    If secret changes happen, the command you provided will automatically be restarted with the new environment variables attached.
+
+    ```bash
+      # Example
+      infisical run --watch -- printenv
+    ```
+  </Accordion>
+
+  <Accordion title="--project-config-dir">
     Explicitly set the directory where the .infisical.json resides. This is useful for some monorepo setups.
 
     ```bash
-    # Example
-    infisical run --project-config-dir=/some-dir -- printenv
+      # Example
+      infisical run --project-config-dir=/some-dir -- printenv
     ```
-
   </Accordion>
 
   <Accordion title="--command">
@@ -172,3 +180,19 @@ $ infisical run -- npm run dev
   </Accordion>
 
 </Accordion>
+
+
+## Automatically reload command when secrets change
+
+To automatically reload your command when secrets change, use the `--watch` flag.
+
+```bash
+infisical run --watch -- npm run dev
+```
+
+This will watch for changes in your secrets and automatically restart your command with the new secrets.
+When your command restarts, it will have the new environment variables injeceted into it.
+
+<Note>
+  Please note that this feature is intended for development purposes. It is not recommended to use this in production environments. Generally it's not recommended to automatically reload your application in production when remote changes are made.
+</Note>
