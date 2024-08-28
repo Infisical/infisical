@@ -86,6 +86,7 @@ templates:
 #### Secret template
 
 The Infisical agent accepts one or more optional templates. If provided, the agent will fetch secrets using the set authentication method and format the fetched secrets according to the given template.
+Typically, these templates are passed in to the agent configuration file via file reference using the `source-path` property but for simplicity we define them inline.
 
 In the agent configuration above, the template defined will transform the secrets from Infisical project with the ID `202f04d7-e4cb-43d4-a292-e893712d61fc`, in the `dev` environment, and secrets located in the path `/`, into a `KEY=VALUE` format.
 
