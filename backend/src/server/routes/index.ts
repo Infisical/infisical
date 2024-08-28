@@ -3,6 +3,7 @@ import { Redis } from "ioredis";
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
@@ -17,6 +18,7 @@ import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audi
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
+import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -92,7 +94,6 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
-import { certificateEstServiceFactory } from "@app/services/certificate-est/certificate-est-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
@@ -199,7 +200,6 @@ import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
-import { registerCertificateEstRouter } from "./est/certificate-est-router";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
@@ -667,7 +667,8 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     permissionService,
     kmsService,
-    projectDAL
+    projectDAL,
+    licenseService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -677,7 +678,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateAuthorityDAL,
     projectDAL,
-    kmsService
+    kmsService,
+    licenseService
   });
 
   const pkiAlertService = pkiAlertServiceFactory({

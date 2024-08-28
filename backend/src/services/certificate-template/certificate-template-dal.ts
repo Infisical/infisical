@@ -40,11 +40,13 @@ export const certificateTemplateDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`,
           `${TableName.CertificateTemplate}.caId`
         )
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.CertificateAuthority}.projectId`)
         .where(`${TableName.CertificateTemplate}.id`, "=", id)
         .select(selectAllTableCols(TableName.CertificateTemplate))
         .select(
           db.ref("projectId").withSchema(TableName.CertificateAuthority),
-          db.ref("friendlyName").as("caName").withSchema(TableName.CertificateAuthority)
+          db.ref("friendlyName").as("caName").withSchema(TableName.CertificateAuthority),
+          db.ref("orgId").withSchema(TableName.Project)
         )
         .first();
 

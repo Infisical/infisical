@@ -7,6 +7,7 @@ import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-se
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
+import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
@@ -36,7 +37,6 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
-import { TCertificateEstServiceFactory } from "@app/services/certificate-est/certificate-est-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
