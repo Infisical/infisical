@@ -21,7 +21,8 @@ These endpoints are exposed on port 8443 under the .well-known/est path e.g.
 
 - You need to have an existing [CA hierarchy](/documentation/platform/pki/private-ca).
 - The client devices need to have a bootstrap/pre-installed certificate.
-- The client devices must trust the server certificates used by Infisical's EST server. If the devices are new or lack existing trust configurations, you need to manually establish trust for the appropriate certificates. When using Infisical Cloud, this means establishing trust for certificates issued by AWS.
+- The client devices must trust the server certificates used by Infisical's EST server. If the devices are new or lack existing trust configurations, you need to manually establish trust for the appropriate certificates.
+  - For Infisical Cloud users, the devices must be configured to trust the [Amazon root CA certificates](https://www.amazontrust.com/repository).
 
 ## Guide to configuring EST
 
@@ -42,7 +43,7 @@ These endpoints are exposed on port 8443 under the .well-known/est path e.g.
 4. Once the configuration of enrollment options is completed, a new **EST Label** field appears in the enrollment settings. This is the value to use as label in the URL when configuring the connection of EST clients to Infisical.
    ![est enrollment modal create](/images/platform/pki/est/template-enrollment-est-label.png)
 
-   For demonstration, the complete URL of the supported EST endpoints will look like the following:
+   The complete URL of the supported EST endpoints will look like the following:
 
    - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/cacerts
    - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simpleenroll

@@ -210,6 +210,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Kubernetes Host / Base Kubernetes API URL "
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
             isRequired
           >
             <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
@@ -224,6 +225,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Token Reviewer JWT"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="A long-lived service account JWT token for Infisical to access the TokenReview API to validate other service account JWT tokens submitted by applications/pods."
             isRequired
           >
             <Input {...field} placeholder="" type="password" />
@@ -237,6 +239,7 @@ export const IdentityKubernetesAuthForm = ({
           <FormControl
             label="Allowed Service Account Names"
             isError={Boolean(error)}
+            tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
             errorText={error?.message}
           >
             <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
@@ -252,6 +255,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Allowed Namespaces"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any namespaces."
           >
             <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
           </FormControl>
@@ -262,7 +266,11 @@ export const IdentityKubernetesAuthForm = ({
         defaultValue=""
         name="allowedAudience"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Allowed Audience" isError={Boolean(error)} errorText={error?.message}>
+          <FormControl 
+            label="Allowed Audience" 
+            isError={Boolean(error)} errorText={error?.message} 
+            tooltipText="An optional audience claim that the service account JWT token must have to authenticate with Infisical. Leave empty to allow any audience claim."
+            >
             <Input {...field} placeholder="" type="text" />
           </FormControl>
         )}
@@ -271,7 +279,11 @@ export const IdentityKubernetesAuthForm = ({
         control={control}
         name="caCert"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="CA Certificate" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl 
+            label="CA Certificate" 
+            errorText={error?.message} isError={Boolean(error)} 
+            tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
+          >
             <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
           </FormControl>
         )}
@@ -283,6 +295,7 @@ export const IdentityKubernetesAuthForm = ({
         render={({ field, fieldState: { error } }) => (
           <FormControl
             label="Access Token TTL (seconds)"
+            tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
             isError={Boolean(error)}
             errorText={error?.message}
           >
@@ -299,6 +312,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Access Token Max TTL (seconds)"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
           >
             <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
           </FormControl>
@@ -313,6 +327,7 @@ export const IdentityKubernetesAuthForm = ({
             label="Access Token Max Number of Uses"
             isError={Boolean(error)}
             errorText={error?.message}
+            tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
           >
             <Input {...field} placeholder="0" type="number" min="0" step="1" />
           </FormControl>
@@ -331,6 +346,7 @@ export const IdentityKubernetesAuthForm = ({
                   label={index === 0 ? "Access Token Trusted IPs" : undefined}
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  tooltipText="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
                 >
                   <Input
                     value={field.value}

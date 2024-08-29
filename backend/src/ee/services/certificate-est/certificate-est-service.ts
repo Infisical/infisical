@@ -1,16 +1,17 @@
 import * as x509 from "@peculiar/x509";
 
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
+import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { isCertChainValid } from "../certificate/certificate-fns";
-import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
-import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
-import { getCaCertChain, getCaCertChains } from "../certificate-authority/certificate-authority-fns";
-import { TCertificateAuthorityServiceFactory } from "../certificate-authority/certificate-authority-service";
-import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
-import { TCertificateTemplateServiceFactory } from "../certificate-template/certificate-template-service";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { TProjectDALFactory } from "../project/project-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { convertRawCertsToPkcs7 } from "./certificate-est-fns";
 
 type TCertificateEstServiceFactoryDep = {
@@ -21,6 +22,7 @@ type TCertificateEstServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateEstServiceFactory = ReturnType<typeof certificateEstServiceFactory>;
@@ -32,7 +34,8 @@ export const certificateEstServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
-  kmsService
+  kmsService,
+  licenseService
 }: TCertificateEstServiceFactoryDep) => {
   const simpleReenroll = async ({
     csr,
@@ -47,6 +50,14 @@ export const certificateEstServiceFactory = ({
       isInternal: true,
       certificateTemplateId
     });
+
+    const plan = await licenseService.getPlan(estConfig.orgId);
+    if (!plan.pkiEst) {
+      throw new BadRequestError({
+        message:
+          "Failed to perform EST operation - simpleReenroll due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
 
     if (!estConfig.isEnabled) {
       throw new BadRequestError({
@@ -146,6 +157,14 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
+    const plan = await licenseService.getPlan(estConfig.orgId);
+    if (!plan.pkiEst) {
+      throw new BadRequestError({
+        message:
+          "Failed to perform EST operation - simpleEnroll due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     if (!estConfig.isEnabled) {
       throw new BadRequestError({
         message: "EST is disabled"
@@ -193,6 +212,24 @@ export const certificateEstServiceFactory = ({
     if (!certTemplate) {
       throw new NotFoundError({
         message: "Certificate template not found"
+      });
+    }
+
+    const estConfig = await certificateTemplateService.getEstConfiguration({
+      isInternal: true,
+      certificateTemplateId
+    });
+
+    const plan = await licenseService.getPlan(estConfig.orgId);
+    if (!plan.pkiEst) {
+      throw new BadRequestError({
+        message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
+    if (!estConfig.isEnabled) {
+      throw new BadRequestError({
+        message: "EST is disabled"
       });
     }
 

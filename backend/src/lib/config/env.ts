@@ -1,6 +1,7 @@
 import { Logger } from "pino";
 import { z } from "zod";
 
+import { removeTrailingSlash } from "../fn";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
@@ -63,7 +64,9 @@ const envSchema = z
       .string()
       .min(32)
       .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
-    SITE_URL: zpStr(z.string().optional()),
+
+    // Ensure that the SITE_URL never ends with a trailing slash
+    SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),

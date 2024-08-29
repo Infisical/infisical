@@ -95,6 +95,7 @@ type Template struct {
 	SourcePath            string `yaml:"source-path"`
 	Base64TemplateContent string `yaml:"base64-template-content"`
 	DestinationPath       string `yaml:"destination-path"`
+	TemplateContent       string `yaml:"template-content"`
 
 	Config struct { // Configurations for the template
 		PollingInterval string `yaml:"polling-interval"` // How often to poll for changes in the secret
@@ -431,6 +432,30 @@ func ProcessBase64Template(templateId int, encodedTemplate string, data interfac
 
 	return &buf, nil
 }
+
+func ProcessLiteralTemplate(templateId int, templateString string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretLeaser *DynamicSecretLeaseManager) (*bytes.Buffer, error) {
+	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag) // TODO: Fix this
+	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretLeaser, templateId)
+	funcs := template.FuncMap{
+		"secret":         secretFunction,
+		"dynamic_secret": dynamicSecretFunction,
+	}
+
+	templateName := "literalTemplate"
+
+	tmpl, err := template.New(templateName).Funcs(funcs).Parse(templateString)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
 
 type AgentManager struct {
 	accessToken              string
@@ -820,6 +845,8 @@ func (tm *AgentManager) MonitorSecretChanges(secretTemplate Template, templateId
 
 					if secretTemplate.SourcePath != "" {
 						processedTemplate, err = ProcessTemplate(templateId, secretTemplate.SourcePath, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
+					} else if secretTemplate.TemplateContent != "" {
+						processedTemplate, err = ProcessLiteralTemplate(templateId, secretTemplate.TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
 					} else {
 						processedTemplate, err = ProcessBase64Template(templateId, secretTemplate.Base64TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
 					}

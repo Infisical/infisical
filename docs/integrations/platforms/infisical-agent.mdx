@@ -9,56 +9,60 @@ It eliminates the need to modify application logic by enabling clients to decide
 ![agent diagram](/images/agent/infisical-agent-diagram.png)
 
 ### Key features:
+
 - Token renewal: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
 - Templating: Renders secrets via user provided templates to desired formats for applications to consume
 
 ### Token renewal
+
 The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a `Method`, which is the authentication process suitable for your current setup, and `Sinks`, which are the places where the agent deposits the new access token whenever it receives updates.
 
-When the Infisical Agent is started, it will attempt to obtain a valid access token using the authentication method you have configured. If the agent is unable to fetch a valid token, the agent will keep trying, increasing the time between each attempt. 
+When the Infisical Agent is started, it will attempt to obtain a valid access token using the authentication method you have configured. If the agent is unable to fetch a valid token, the agent will keep trying, increasing the time between each attempt.
 
 Once a access token is successfully fetched, the agent will make sure the access token stays valid, continuing to renew it before it expires.
 
 Every time the agent successfully retrieves a new access token, it writes the new token to the Sinks you've configured.
 
 <Info>
-  Access tokens can be utilized with Infisical SDKs or directly in API requests to retrieve secrets from Infisical
+  Access tokens can be utilized with Infisical SDKs or directly in API requests
+  to retrieve secrets from Infisical
 </Info>
 
 ### Templating
-The Infisical agent can help deliver formatted secrets to your application in a variety of environments. To achieve this, the agent will retrieve secrets from Infisical, format them using a specified template, and then save these formatted secrets to a designated file path. 
 
-Templating process is done through the use of Go language's [text/template feature](https://pkg.go.dev/text/template). Multiple template definitions can be set in the agent configuration file to generate a variety of formatted secret files.
+The Infisical agent can help deliver formatted secrets to your application in a variety of environments. To achieve this, the agent will retrieve secrets from Infisical, format them using a specified template, and then save these formatted secrets to a designated file path.
 
-When the agent is started and templates are defined in the agent configuration file, the agent will attempt to acquire a valid access token using the set authentication method outlined in the agent's configuration. 
+Templating process is done through the use of Go language's [text/template feature](https://pkg.go.dev/text/template).You can refer to the available secret template functions [here](#available-secret-template-functions). Multiple template definitions can be set in the agent configuration file to generate a variety of formatted secret files.
+
+When the agent is started and templates are defined in the agent configuration file, the agent will attempt to acquire a valid access token using the set authentication method outlined in the agent's configuration.
 If this initial attempt is unsuccessful, the agent will momentarily pauses before continuing to make more attempts.
 
-Once the agent successfully obtains a valid access token, the agent proceeds to fetch the secrets from Infisical using it. 
+Once the agent successfully obtains a valid access token, the agent proceeds to fetch the secrets from Infisical using it.
 It then formats these secrets using the user provided templates and writes the formatted data to configured file paths.
 
-## Agent configuration file 
+## Agent configuration file
 
-To set up the authentication method for token renewal and to define secret templates, the Infisical agent requires a YAML configuration file containing properties defined below. 
+To set up the authentication method for token renewal and to define secret templates, the Infisical agent requires a YAML configuration file containing properties defined below.
 While specifying an authentication method is mandatory to start the agent, configuring sinks and secret templates are optional.
 
-| Field                                           | Description                   |
-| ------------------------------------------------| ----------------------------- |
-| `infisical.address`                             | The URL of the Infisical service. Default: `"https://app.infisical.com"`. |
-| `auth.type`                                     | The type of authentication method used. Available options: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`|
-| `auth.config.identity-id`                       | The file path where the machine identity id is stored<br/><br/>This field is required when using any of the following auth types: `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, or `aws-iam`. |
-| `auth.config.service-account-token`             | Path to the Kubernetes service account token to use (optional)<br/><br/>Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`  |
-| `auth.config.service-account-key`               | Path to your GCP service account key file. This field is required when using `gcp-iam` auth type.<br/><br/>Please note that the file should be in JSON format. |
-| `auth.config.client-id`                         | The file path where the universal-auth client id is stored.  |
-| `auth.config.client-secret`                     | The file path where the universal-auth client secret is stored.  |
-| `auth.config.remove_client_secret_on_read`      | This will instruct the agent to remove the client secret from disk.  |
-| `sinks[].type`                                  | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available. |
-| `sinks[].config.path`                           | The file path where the access token should be stored for each sink in the list. |
-| `templates[].source-path`                       | The path to the template file that should be used to render secrets. |
-| `templates[].destination-path`                  | The path where the rendered secrets from the source template will be saved to. |
-| `templates[].config.polling-interval`           | How frequently to check for secret changes. Default: `5 minutes` (optional)  |
-| `templates[].config.execute.command`            | The command to execute when secret change is detected (optional) |
-| `templates[].config.execute.timeout`            | How long in seconds to wait for command to execute before timing out (optional) |
-
+| Field                                      | Description                                                                                                                                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `infisical.address`                        | The URL of the Infisical service. Default: `"https://app.infisical.com"`.                                                                                                                         |
+| `auth.type`                                | The type of authentication method used. Available options: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`                                                          |
+| `auth.config.identity-id`                  | The file path where the machine identity id is stored<br/><br/>This field is required when using any of the following auth types: `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, or `aws-iam`. |
+| `auth.config.service-account-token`        | Path to the Kubernetes service account token to use (optional)<br/><br/>Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`                                                            |
+| `auth.config.service-account-key`          | Path to your GCP service account key file. This field is required when using `gcp-iam` auth type.<br/><br/>Please note that the file should be in JSON format.                                    |
+| `auth.config.client-id`                    | The file path where the universal-auth client id is stored.                                                                                                                                       |
+| `auth.config.client-secret`                | The file path where the universal-auth client secret is stored.                                                                                                                                   |
+| `auth.config.remove_client_secret_on_read` | This will instruct the agent to remove the client secret from disk.                                                                                                                               |
+| `sinks[].type`                             | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available.                                                                                 |
+| `sinks[].config.path`                      | The file path where the access token should be stored for each sink in the list.                                                                                                                  |
+| `templates[].source-path`                  | The path to the template file that should be used to render secrets.                                                                                                                              |
+| `templates[].template-content`             | The inline secret template to be used for rendering the secrets.                                                                                                                                                      |
+| `templates[].destination-path`             | The path where the rendered secrets from the source template will be saved to.                                                                                                                    |
+| `templates[].config.polling-interval`      | How frequently to check for secret changes. Default: `5 minutes` (optional)                                                                                                                       |
+| `templates[].config.execute.command`       | The command to execute when secret change is detected (optional)                                                                                                                                  |
+| `templates[].config.execute.timeout`       | How long in seconds to wait for command to execute before timing out (optional)                                                                                                                   |
 
 ## Authentication
 
@@ -68,19 +72,20 @@ The Infisical agent supports multiple authentication methods. Below are the avai
 <Accordion title="Universal Auth">
   The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
 
-  <ParamField query="config" type="UniversalAuthConfig">
-    <Expandable title="properties">
-        <ParamField query="client-id" type="string" required>
-          Path to the file containing the universal auth client ID.
-        </ParamField>
-        <ParamField query="client-secret" type="string" required>
-          Path to the file containing the universal auth client secret.
-        </ParamField>
-        <ParamField query="remove_client_secret_on_read" type="boolean" optional>
-          Instructs the agent to remove the client secret from disk after reading it.
-        </ParamField>
-    </Expandable>
-  </ParamField>
+<ParamField query="config" type="UniversalAuthConfig">
+  <Expandable title="properties">
+    <ParamField query="client-id" type="string" required>
+      Path to the file containing the universal auth client ID.
+    </ParamField>
+    <ParamField query="client-secret" type="string" required>
+      Path to the file containing the universal auth client secret.
+    </ParamField>
+    <ParamField query="remove_client_secret_on_read" type="boolean" optional>
+      Instructs the agent to remove the client secret from disk after reading
+      it.
+    </ParamField>
+  </Expandable>
+</ParamField>
 
   <Steps>
     <Step title="Create a universal auth machine identity">
@@ -98,21 +103,25 @@ The Infisical agent supports multiple authentication methods. Below are the avai
         remove_client_secret_on_read: false # Optional field, instructs the agent to remove the client secret from disk after reading it
     ```
     </Step>
+
   </Steps>
 </Accordion>
 <Accordion title="Native Kubernetes">
   The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
 
-  <ParamField query="config" type="KubernetesAuthConfig">
-    <Expandable title="properties">
-        <ParamField query="identity-id" type="string" required>
-          Path to the file containing the machine identity ID.
-        </ParamField>
-        <ParamField query="service-account-token" type="string" optional>
-          Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
-        </ParamField>
-    </Expandable>
-  </ParamField>
+{" "}
+
+<ParamField query="config" type="KubernetesAuthConfig">
+  <Expandable title="properties">
+    <ParamField query="identity-id" type="string" required>
+      Path to the file containing the machine identity ID.
+    </ParamField>
+    <ParamField query="service-account-token" type="string" optional>
+      Path to the Kubernetes service account token to use. Default:
+      `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+    </ParamField>
+  </Expandable>
+</ParamField>
 
   <Steps>
     <Step title="Create a Kubernetes machine identity">
@@ -129,6 +138,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
         service-account-token: "/var/run/secrets/kubernetes.io/serviceaccount/token" # Optional field, custom path to the Kubernetes service account token to use
     ```
     </Step>
+
   </Steps>
 
 </Accordion>
@@ -186,6 +196,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       ```
       </Step>
     </Steps>
+
   </Accordion>
   <Accordion title="GCP IAM">
     The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
@@ -217,6 +228,7 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       ```
       </Step>
     </Steps>
+
   </Accordion>
   <Accordion title="Native AWS IAM">
     The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
@@ -244,10 +256,12 @@ The Infisical agent supports multiple authentication methods. Below are the avai
       ```
       </Step>
     </Steps>
+
   </Accordion>
 </AccordionGroup>
 
 ## Quick start Infisical Agent
+
 To install the Infisical agent, you must first install the [Infisical CLI](../cli/overview) in the desired environment where you'd like the agent to run. This is because the Infisical agent is a sub-command of the Infisical CLI.
 
 Once you have the CLI installed, you will need to provision programmatic access for the agent via [Universal Auth](/documentation/platform/identities/universal-auth). To obtain a **Client ID** and a **Client Secret**, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
@@ -277,8 +291,8 @@ templates:
         command: ./reload-app.sh
 ```
 
-The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `secret` is used to fetch the secrets. 
-This function takes the following arguments: `secret "<project-id>" "<environment-slug>" "<secret-path>"`. 
+The secret template below will be used to render the secrets with the key and the value separated by `=` sign. You'll notice that a custom function named `secret` is used to fetch the secrets.
+This function takes the following arguments: `secret "<project-id>" "<environment-slug>" "<secret-path>"`.
 
 ```text my-dot-ev-secret-template
 {{- with secret "6553ccb2b7da580d7f6e7260" "dev" "/" }}
@@ -290,13 +304,12 @@ This function takes the following arguments: `secret "<project-id>" "<environmen
 
 After defining the agent configuration file, run the command below pointing to the path where the agent configuration file is located.
 
-
-```bash 
+```bash
 infisical agent --config example-agent-config-file.yaml
 ```
 
-
 ### Available secret template functions
+
 <Accordion title="listSecrets">
   ```bash
     listSecrets "<project-id>" "environment-slug" "<secret-path>"
@@ -309,11 +322,12 @@ infisical agent --config example-agent-config-file.yaml
   {{- end }}
   ```
 
-  **Function name**: listSecrets
+**Function name**: listSecrets
 
-  **Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
+**Description**: This function can be used to render the full list of secrets within a given project, environment and secret path.
 
-  **Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`  
+**Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
+
 </Accordion>
 
 <Accordion title="getSecretByName">
@@ -321,18 +335,18 @@ infisical agent --config example-agent-config-file.yaml
   getSecretByName "<project-id>" "<environment-slug>" "<secret-path>" "<secret-name>"
   ```
 
-  ```bash example-template-usage
-  {{ with getSecretByName "d821f21d-aa90-453b-8448-8c78c1160a0e" "dev" "/" "POSTHOG_HOST"}}
-  {{ if .Value }}
-  password = "{{ .Value }}"
-  {{ end }}
-  {{ end }}
-  ```
+```bash example-template-usage
+{{ with getSecretByName "d821f21d-aa90-453b-8448-8c78c1160a0e" "dev" "/" "POSTHOG_HOST"}}
+{{ if .Value }}
+password = "{{ .Value }}"
+{{ end }}
+{{ end }}
+```
 
-  **Function name**: getSecretByName
+**Function name**: getSecretByName
 
-  **Description**: This function can be used to render a single secret by it's name.
+**Description**: This function can be used to render a single secret by it's name.
 
-  **Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
+**Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
 
 </Accordion>

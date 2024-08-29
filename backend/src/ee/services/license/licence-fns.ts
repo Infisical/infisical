@@ -45,7 +45,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     readLimit: 60,
     writeLimit: 200,
     secretsLimit: 40
-  }
+  },
+  pkiEst: false
 });
 
 export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {

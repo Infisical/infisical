@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplate } from "@app/hooks/api";
@@ -16,7 +16,8 @@ export const CertificateTemplatesSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificateTemplate",
     "deleteCertificateTemplate",
-    "enrollmentOptions"
+    "enrollmentOptions",
+    "upgradePlan"
   ] as const);
 
   const { currentWorkspace } = useWorkspace();
@@ -84,6 +85,11 @@ export const CertificateTemplatesSection = () => {
             (popUp?.deleteCertificateTemplate?.data as { id: string })?.id
           )
         }
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Managing template enrollment options for EST is only available on Infisical's Enterprise plan."
       />
     </div>
   );

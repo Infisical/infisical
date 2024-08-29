@@ -18,7 +18,9 @@ export type TDynamicSecret = {
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
-  AwsIam = "aws-iam"
+  AwsIam = "aws-iam",
+  Redis = "redis",
+  AwsElastiCache = "aws-elasticache"
 }
 
 export enum SqlProviders {
@@ -30,47 +32,72 @@ export enum SqlProviders {
 
 export type TDynamicSecretProvider =
   | {
-    type: DynamicSecretProviders.SqlDatabase;
-    inputs: {
-      client: SqlProviders;
-      host: string;
-      port: number;
-      database: string;
-      username: string;
-      password: string;
-      creationStatement: string;
-      revocationStatement: string;
-      renewStatement?: string;
-      ca?: string | undefined;
-    };
-  }
+      type: DynamicSecretProviders.SqlDatabase;
+      inputs: {
+        client: SqlProviders;
+        host: string;
+        port: number;
+        database: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+        ca?: string | undefined;
+      };
+    }
   | {
-    type: DynamicSecretProviders.Cassandra;
-    inputs: {
-      host: string;
-      port: number;
-      keyspace?: string;
-      localDataCenter: string;
-      username: string;
-      password: string;
-      creationStatement: string;
-      revocationStatement: string;
-      renewStatement?: string;
-      ca?: string | undefined;
-    };
-  }
+      type: DynamicSecretProviders.Cassandra;
+      inputs: {
+        host: string;
+        port: number;
+        keyspace?: string;
+        localDataCenter: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+        ca?: string | undefined;
+      };
+    }
   | {
-    type: DynamicSecretProviders.AwsIam;
-    inputs: {
-      accessKey: string;
-      secretAccessKey: string;
-      region: string;
-      awsPath?: string;
-      policyDocument?: string;
-      userGroups?: string;
-      policyArns?: string;
+      type: DynamicSecretProviders.AwsIam;
+      inputs: {
+        accessKey: string;
+        secretAccessKey: string;
+        region: string;
+        awsPath?: string;
+        policyDocument?: string;
+        userGroups?: string;
+        policyArns?: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Redis;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        password?: string;
+        creationStatement: string;
+        renewStatement?: string;
+        revocationStatement: string;
+        ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.AwsElastiCache;
+      inputs: {
+        clusterName: string;
+        accessKeyId: string;
+        secretAccessKey: string;
+        region: string;
+        creationStatement: string;
+        revocationStatement: string;
+        ca?: string | undefined;
+      };
     };
-  };
 
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;

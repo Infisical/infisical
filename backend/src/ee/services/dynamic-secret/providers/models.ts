@@ -7,6 +7,29 @@ export enum SqlProviders {
   MsSQL = "mssql"
 }
 
+export const DynamicSecretRedisDBSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  username: z.string().trim(), // this is often "default".
+  password: z.string().trim().optional(),
+
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  renewStatement: z.string().trim().optional(),
+  ca: z.string().optional()
+});
+
+export const DynamicSecretAwsElastiCacheSchema = z.object({
+  clusterName: z.string().trim().min(1),
+  accessKeyId: z.string().trim().min(1),
+  secretAccessKey: z.string().trim().min(1),
+
+  region: z.string().trim(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  ca: z.string().optional()
+});
+
 export const DynamicSecretSqlDBSchema = z.object({
   client: z.nativeEnum(SqlProviders),
   host: z.string().trim().toLowerCase(),
@@ -47,13 +70,17 @@ export const DynamicSecretAwsIamSchema = z.object({
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
-  AwsIam = "aws-iam"
+  AwsIam = "aws-iam",
+  Redis = "redis",
+  AwsElastiCache = "aws-elasticache"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), inputs: DynamicSecretAwsElastiCacheSchema })
 ]);
 
 export type TDynamicProviderFns = {

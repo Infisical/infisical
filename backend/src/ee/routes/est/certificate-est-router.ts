@@ -42,6 +42,11 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
       await res.hijack();
 
+      // definitive connection timeout to clean-up open connections and prevent memory leak
+      res.raw.setTimeout(10 * 1000, () => {
+        res.raw.end();
+      });
+
       res.raw.setHeader(wwwAuthenticateHeader, `Basic realm="infisical"`);
       res.raw.setHeader("Content-Length", 0);
       res.raw.statusCode = 401;
