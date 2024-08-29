@@ -243,7 +243,9 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 
 		// start the process
 		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", environment.SecretsCount))
-		cmd, err = util.RunCommand(commandFlag, args, environment.Variables)
+
+		shouldWaitForExit := !watchMode
+		cmd, err = util.RunCommand(commandFlag, args, environment.Variables, shouldWaitForExit)
 		if err != nil {
 			defer WaitGroup.Done()
 			util.HandleError(err)
@@ -276,10 +278,11 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 		util.HandleError(err, "Failed to fetch secrets")
 	}
 	startProcess(initialEnvironment)
-	recheckSecretsChannel := make(chan bool, 1)
 
 	// this is the only logic strictly related to watch mode, the rest is shared with non-watch mode
 	if watchMode {
+		recheckSecretsChannel := make(chan bool, 1)
+
 		log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Watching for secret changes..."))
 
 		// a simple goroutine that triggers the recheckSecretsChan every watch interval (defaults to 10 seconds)
@@ -361,6 +364,12 @@ func init() {
 }
 
 func createInjectableEnvironment(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
+
+	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+		request.InfisicalToken = token.Token
+	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		request.UniversalAuthAccessToken = token.Token
+	}
 
 	secrets, err := util.GetAllEnvironmentVariables(request, projectConfigDir)
 
