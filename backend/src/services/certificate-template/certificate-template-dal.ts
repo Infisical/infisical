@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -30,20 +32,21 @@ export const certificateTemplateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getById = async (id: string) => {
+  const getById = async (id: string, tx?: Knex) => {
     try {
-      const certTemplate = await db
-        .replicaNode()(TableName.CertificateTemplate)
+      const certTemplate = await (tx || db.replicaNode())(TableName.CertificateTemplate)
         .join(
           TableName.CertificateAuthority,
           `${TableName.CertificateAuthority}.id`,
           `${TableName.CertificateTemplate}.caId`
         )
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.CertificateAuthority}.projectId`)
         .where(`${TableName.CertificateTemplate}.id`, "=", id)
         .select(selectAllTableCols(TableName.CertificateTemplate))
         .select(
           db.ref("projectId").withSchema(TableName.CertificateAuthority),
-          db.ref("friendlyName").as("caName").withSchema(TableName.CertificateAuthority)
+          db.ref("friendlyName").as("caName").withSchema(TableName.CertificateAuthority),
+          db.ref("orgId").withSchema(TableName.Project)
         )
         .first();
 

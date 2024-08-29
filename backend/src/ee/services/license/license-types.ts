@@ -63,6 +63,7 @@ export type TFeatureSet = {
     writeLimit: number;
     secretsLimit: number;
   };
+  pkiEst: boolean;
 };
 
 export type TOrgPlansTableDTO = {

@@ -19,14 +19,19 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import { useListWorkspaceCertificateTemplates } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions"]
+      ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions", "upgradePlan"]
     >,
     data?: {
       id?: string;
@@ -37,6 +42,7 @@ type Props = {
 
 export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const { subscription } = useSubscription();
   const { data, isLoading } = useListWorkspaceCertificateTemplates({
     workspaceId: currentWorkspace?.id ?? ""
   });
@@ -86,11 +92,16 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
-                                onClick={() =>
+                                onClick={() => {
+                                  if (!subscription?.pkiEst) {
+                                    handlePopUpOpen("upgradePlan");
+                                    return;
+                                  }
+
                                   handlePopUpOpen("enrollmentOptions", {
                                     id: certificateTemplate.id
-                                  })
-                                }
+                                  });
+                                }}
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}

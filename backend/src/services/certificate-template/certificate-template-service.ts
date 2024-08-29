@@ -3,6 +3,7 @@ import * as x509 from "@peculiar/x509";
 import bcrypt from "bcrypt";
 
 import { TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -32,6 +33,7 @@ type TCertificateTemplateServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateTemplateServiceFactory = ReturnType<typeof certificateTemplateServiceFactory>;
@@ -42,7 +44,8 @@ export const certificateTemplateServiceFactory = ({
   certificateAuthorityDAL,
   permissionService,
   kmsService,
-  projectDAL
+  projectDAL,
+  licenseService
 }: TCertificateTemplateServiceFactoryDep) => {
   const createCertTemplate = async ({
     caId,
@@ -75,23 +78,28 @@ export const certificateTemplateServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    const { id } = await certificateTemplateDAL.create({
-      caId,
-      pkiCollectionId,
-      name,
-      commonName,
-      subjectAlternativeName,
-      ttl
+    return certificateTemplateDAL.transaction(async (tx) => {
+      const { id } = await certificateTemplateDAL.create(
+        {
+          caId,
+          pkiCollectionId,
+          name,
+          commonName,
+          subjectAlternativeName,
+          ttl
+        },
+        tx
+      );
+
+      const certificateTemplate = await certificateTemplateDAL.getById(id, tx);
+      if (!certificateTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      return certificateTemplate;
     });
-
-    const certificateTemplate = await certificateTemplateDAL.getById(id);
-    if (!certificateTemplate) {
-      throw new NotFoundError({
-        message: "Certificate template not found"
-      });
-    }
-
-    return certificateTemplate;
   };
 
   const updateCertTemplate = async ({
@@ -136,23 +144,29 @@ export const certificateTemplateServiceFactory = ({
       }
     }
 
-    await certificateTemplateDAL.updateById(certTemplate.id, {
-      caId,
-      pkiCollectionId,
-      commonName,
-      subjectAlternativeName,
-      name,
-      ttl
+    return certificateTemplateDAL.transaction(async (tx) => {
+      await certificateTemplateDAL.updateById(
+        certTemplate.id,
+        {
+          caId,
+          pkiCollectionId,
+          commonName,
+          subjectAlternativeName,
+          name,
+          ttl
+        },
+        tx
+      );
+
+      const updatedTemplate = await certificateTemplateDAL.getById(id, tx);
+      if (!updatedTemplate) {
+        throw new NotFoundError({
+          message: "Certificate template not found"
+        });
+      }
+
+      return updatedTemplate;
     });
-
-    const updatedTemplate = await certificateTemplateDAL.getById(id);
-    if (!updatedTemplate) {
-      throw new NotFoundError({
-        message: "Certificate template not found"
-      });
-    }
-
-    return updatedTemplate;
   };
 
   const deleteCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertTemplateDTO) => {
@@ -215,6 +229,13 @@ export const certificateTemplateServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateEstConfigurationDTO) => {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.pkiEst) {
+      throw new BadRequestError({
+        message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const certTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
     if (!certTemplate) {
       throw new NotFoundError({
@@ -285,6 +306,13 @@ export const certificateTemplateServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateEstConfigurationDTO) => {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.pkiEst) {
+      throw new BadRequestError({
+        message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const certTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
     if (!certTemplate) {
       throw new NotFoundError({
@@ -416,7 +444,8 @@ export const certificateTemplateServiceFactory = ({
       isEnabled: estConfig.isEnabled,
       caChain: decryptedCaChain.toString(),
       hashedPassphrase: estConfig.hashedPassphrase,
-      projectId: certTemplate.projectId
+      projectId: certTemplate.projectId,
+      orgId: certTemplate.orgId
     };
   };
 
