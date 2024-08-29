@@ -7,8 +7,8 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { EditDynamicSecretAwsElastiCacheProviderForm } from "./EditDynamicSecretAwsElastiCacheProviderForm";
 import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
-import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
 import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasForm";
+import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 
 type Props = {

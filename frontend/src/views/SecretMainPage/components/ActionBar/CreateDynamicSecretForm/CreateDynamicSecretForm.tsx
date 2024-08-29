@@ -11,8 +11,8 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
-import { RedisInputForm } from "./RedisInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
+import { RedisInputForm } from "./RedisInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 
 type Props = {
