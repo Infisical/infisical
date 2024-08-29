@@ -59,7 +59,7 @@ var runCmd = &cobra.Command{
 
 		// If the --watch flag has been set, the --watch-interval flag should also be set
 		if watchFlagSet && watchIntervalFlagSet {
-			// Ensure that the --watch-interval flag is set to a positive integer, and is at least 10 seconds
+			// Ensure that the --watch-interval flag is set to a positive integer, and is at least 5 seconds
 
 			watchInterval, err := cmd.Flags().GetInt("watch-interval")
 			if err != nil {
@@ -273,7 +273,7 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 
 	initialEnvironment, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, expandSecrets, token)
 	if err != nil {
-		util.HandleError(err, "[HOT RELOAD] Failed to fetch secrets")
+		util.HandleError(err, "Failed to fetch secrets")
 	}
 	startProcess(initialEnvironment)
 	recheckSecretsChannel := make(chan bool, 1)
@@ -282,7 +282,7 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 	if watchMode {
 		log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Watching for secret changes..."))
 
-		// a simple goroutine that triggers the recheckSecretsChan every 5 seconds
+		// a simple goroutine that triggers the recheckSecretsChan every watch interval (defaults to 10 seconds)
 		go func() {
 			for {
 				time.Sleep(time.Duration(watchModeInterval) * time.Second)
@@ -406,7 +406,6 @@ func createInjectableEnvironment(request models.GetAllSecretsParameters, project
 		environmentVariables[k] = v.Value
 	}
 
-	// Create and sort the env slice using slices.SortFunc
 	env := make([]string, 0, len(environmentVariables))
 	for key, value := range environmentVariables {
 		env = append(env, key+"="+value)
