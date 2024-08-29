@@ -3,6 +3,7 @@ import { AwsIamProvider } from "./aws-iam";
 import { CassandraProvider } from "./cassandra";
 import { DynamicSecretProviders } from "./models";
 import { RedisDatabaseProvider } from "./redis";
+import { MongoAtlasProvider } from "./mongo-atlas";
 import { SqlDatabaseProvider } from "./sql-database";
 
 export const buildDynamicSecretProviders = () => ({
@@ -10,5 +11,6 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),
-  [DynamicSecretProviders.AwsElastiCache]: AwsElastiCacheDatabaseProvider()
+  [DynamicSecretProviders.AwsElastiCache]: AwsElastiCacheDatabaseProvider(),
+  [DynamicSecretProviders.MongoAtlas]: MongoAtlasProvider()
 });
