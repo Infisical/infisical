@@ -1,3 +1,12 @@
+export const DEFAULT_REQUEST_SCHEMA = {
+  // Add more default attributes here if needed
+  security: [
+    {
+      bearerAuth: []
+    }
+  ]
+};
+
 export const GROUPS = {
   CREATE: {
     name: "The name of the group to create.",

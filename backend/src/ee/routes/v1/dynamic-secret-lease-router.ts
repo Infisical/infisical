@@ -2,7 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
-import { DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
+import { DEFAULT_REQUEST_SCHEMA, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -18,6 +18,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       rateLimit: writeLimit
     },
     schema: {
+      ...DEFAULT_REQUEST_SCHEMA,
       body: z.object({
         dynamicSecretName: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.dynamicSecretName).toLowerCase(),
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.projectSlug),
@@ -65,6 +66,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       rateLimit: writeLimit
     },
     schema: {
+      ...DEFAULT_REQUEST_SCHEMA,
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.DELETE.leaseId)
       }),
@@ -107,6 +109,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       rateLimit: writeLimit
     },
     schema: {
+      ...DEFAULT_REQUEST_SCHEMA,
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.leaseId)
       }),
@@ -160,6 +163,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       rateLimit: readLimit
     },
     schema: {
+      ...DEFAULT_REQUEST_SCHEMA,
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.GET_BY_LEASEID.leaseId)
       }),
