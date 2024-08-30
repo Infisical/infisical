@@ -1,3 +1,6 @@
+import bcrypt from "bcrypt";
+
+import { TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -36,6 +39,7 @@ export const secretSharingServiceFactory = ({
     iv,
     tag,
     name,
+    password,
     accessType,
     expiresAt,
     expiresAfterViews
@@ -60,8 +64,10 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     const newSharedSecret = await secretSharingDAL.create({
       name,
+      password: hashedPassword,
       encryptedValue,
       hashedHex,
       iv,
@@ -77,6 +83,7 @@ export const secretSharingServiceFactory = ({
   };
 
   const createPublicSharedSecret = async ({
+    password,
     encryptedValue,
     hashedHex,
     iv,
@@ -102,7 +109,9 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     const newSharedSecret = await secretSharingDAL.create({
+      password: hashedPassword,
       encryptedValue,
       hashedHex,
       iv,
@@ -111,6 +120,7 @@ export const secretSharingServiceFactory = ({
       expiresAfterViews,
       accessType
     });
+
     return { id: newSharedSecret.id };
   };
 
@@ -152,7 +162,21 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const getActiveSharedSecretById = async ({ sharedSecretId, hashedHex, orgId }: TGetActiveSharedSecretByIdDTO) => {
+  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
+    const { expiresAfterViews } = sharedSecret;
+
+    if (expiresAfterViews) {
+      // decrement view count if view count expiry set
+      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+    }
+
+    await secretSharingDAL.updateById(sharedSecretId, {
+      lastViewedAt: new Date()
+    });
+  };
+
+  /** Get's passwordless secret. validates all secret's requested (must be fresh). */
+  const getSharedSecretById = async ({ sharedSecretId, hashedHex, orgId, password }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = await secretSharingDAL.findOne({
       id: sharedSecretId,
       hashedHex
@@ -169,6 +193,8 @@ export const secretSharingServiceFactory = ({
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
       throw new UnauthorizedError();
 
+    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
+    // or can be safely sent to the client.
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
       await secretSharingDAL.softDeleteById(sharedSecretId);
@@ -185,21 +211,29 @@ export const secretSharingServiceFactory = ({
       });
     }
 
-    if (expiresAfterViews) {
-      // decrement view count if view count expiry set
-      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+    const isPasswordProtected = Boolean(sharedSecret.password);
+    const hasProvidedPassword = Boolean(password);
+    if (isPasswordProtected) {
+      if (hasProvidedPassword) {
+        const isMatch = await bcrypt.compare(password as string, sharedSecret.password as string);
+        if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
+      } else {
+        return { isPasswordProtected };
+      }
     }
 
-    await secretSharingDAL.updateById(sharedSecretId, {
-      lastViewedAt: new Date()
-    });
+    // decrement when we are sure the user will view secret.
+    await $decrementSecretViewCount(sharedSecret, sharedSecretId);
 
     return {
-      ...sharedSecret,
-      orgName:
-        sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
-          ? orgName
-          : undefined
+      isPasswordProtected,
+      secret: {
+        ...sharedSecret,
+        orgName:
+          sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
+            ? orgName
+            : undefined
+      }
     };
   };
 
@@ -216,6 +250,6 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
-    getActiveSharedSecretById
+    getSharedSecretById
   };
 };
