@@ -32,4 +32,4 @@ export const getDefaultOnPremFeatures = () => {
   };
 };
 
-export const setupLicenceRequestWithStore = () => {};
+export const setupLicenseRequestWithStore = () => {};

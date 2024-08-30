@@ -482,7 +482,7 @@ export const secretServiceFactory = ({
       projectId,
       environmentSlug: folder.environment.slug
     });
-    // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
+    // TODO(akhilmhdh-pg): license check, posthog service and snapshot
     return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
