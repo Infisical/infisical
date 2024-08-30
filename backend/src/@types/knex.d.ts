@@ -14,6 +14,9 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
+  TAdminSlackConfigs,
+  TAdminSlackConfigsInsert,
+  TAdminSlackConfigsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -299,6 +302,9 @@ import {
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
+  TSlackIntegrations,
+  TSlackIntegrationsInsert,
+  TSlackIntegrationsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -775,6 +781,16 @@ declare module "knex/types/tables" {
       TKmsKeyVersions,
       TKmsKeyVersionsInsert,
       TKmsKeyVersionsUpdate
+    >;
+    [TableName.SlackIntegrations]: KnexOriginal.CompositeTableType<
+      TSlackIntegrations,
+      TSlackIntegrationsInsert,
+      TSlackIntegrationsUpdate
+    >;
+    [TableName.AdminSlackConfig]: KnexOriginal.CompositeTableType<
+      TAdminSlackConfigs,
+      TAdminSlackConfigsInsert,
+      TAdminSlackConfigsUpdate
     >;
   }
 }

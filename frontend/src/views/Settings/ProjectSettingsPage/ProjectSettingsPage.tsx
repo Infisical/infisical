@@ -6,6 +6,7 @@ import { useWorkspace } from "@app/context";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { EncryptionTab } from "./components/EncryptionTab";
+import { NotificationTab } from "./components/NotificationSection";
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 
@@ -19,6 +20,7 @@ export const ProjectSettingsPage = () => {
       key: "tab-project-encryption",
       isHidden: currentWorkspace?.version !== ProjectVersion.V3
     },
+    { name: "Notification", key: "tab-project-notification" },
     { name: "Webhooks", key: "tab-project-webhooks" }
   ];
 
@@ -56,6 +58,9 @@ export const ProjectSettingsPage = () => {
                 <EncryptionTab />
               </Tab.Panel>
             )}
+            <Tab.Panel>
+              <NotificationTab />
+            </Tab.Panel>
             <Tab.Panel>
               <WebhooksTab />
             </Tab.Panel>

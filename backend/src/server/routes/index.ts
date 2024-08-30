@@ -182,6 +182,8 @@ import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
+import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -321,6 +323,8 @@ export const registerRoutes = async (
   const internalKmsDAL = internalKmsDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
+
+  const slackIntegrationDAL = slackIntegrationDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1150,6 +1154,13 @@ export const registerRoutes = async (
     userDAL
   });
 
+  const slackService = slackServiceFactory({
+    projectDAL,
+    permissionService,
+    kmsService,
+    slackIntegrationDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1231,7 +1242,8 @@ export const registerRoutes = async (
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
-    orgAdmin: orgAdminService
+    orgAdmin: orgAdminService,
+    slack: slackService
   });
 
   const cronJobs: CronJob[] = [];
