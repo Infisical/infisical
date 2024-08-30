@@ -30,7 +30,7 @@ export default {
     });
 
     const redis = new Redis(cfg.REDIS_URL);
-    await redis.flushdb("ASYNC");
+    await redis.flushdb("SYNC");
 
     try {
       await db.migrate.rollback(

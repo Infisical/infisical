@@ -5,9 +5,9 @@ import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from 
 import { seedData1 } from "@app/db/seed-data";
 
 // dev <- stage <- prod
-describe.each([{ path: "/" }, { path: "/deep" }])(
-  "Secret replication waterfall pattern testing - %path",
-  ({ path: testSuitePath }) => {
+describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
+  "Secret replication waterfall pattern testing - %secretPath",
+  ({ secretPath: testSuitePath }) => {
     beforeAll(async () => {
       let prodFolder: { id: string };
       let stagingFolder: { id: string };
@@ -140,6 +140,7 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         secretPath: testSuitePath,
         authToken: jwtAuthToken
       });
+
       expect(listSecrets.imports).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
