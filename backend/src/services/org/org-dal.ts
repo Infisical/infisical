@@ -12,6 +12,7 @@ import {
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt, withTransaction } from "@app/lib/knex";
+import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
@@ -280,6 +281,67 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("scimEnabled").withSchema(TableName.Organization),
+          db.ref("externalId").withSchema(TableName.UserAliases)
+        )
+        .where({ isGhost: false });
+
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      }
+      const res = await query;
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
+  const findMembershipWithScimFilter = async (
+    orgId: string,
+    scimFilter: string | undefined,
+    { offset, limit, sort, tx }: TFindOpt<TOrgMemberships> = {}
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.OrgMembership)
+        // eslint-disable-next-line
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .where((qb) => {
+          if (scimFilter) {
+            void generateKnexQueryFromScim(qb, scimFilter, (attrPath) => {
+              switch (attrPath) {
+                case "active":
+                  return `${TableName.OrgMembership}.isActive`;
+                case "userName":
+                  return `${TableName.UserAliases}.externalId`;
+                case "name.givenName":
+                  return `${TableName.Users}.firstName`;
+                case "name.familyName":
+                  return `${TableName.Users}.lastName`;
+                case "email.value":
+                  return `${TableName.Users}.email`;
+                default:
+                  return null;
+              }
+            });
+          }
+        })
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .leftJoin(TableName.UserAliases, function joinUserAlias() {
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.OrgMembership}.userId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.OrgMembership}.orgId`)
+            .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
+        })
+        .select(
+          selectAllTableCols(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
@@ -314,6 +376,7 @@ export const orgDALFactory = (db: TDbClient) => {
     updateById,
     deleteById,
     findMembership,
+    findMembershipWithScimFilter,
     createMembership,
     updateMembershipById,
     deleteMembershipById,

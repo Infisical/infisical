@@ -1,3 +1,5 @@
+import { ScimPatchOperation } from "scim-patch";
+
 import { TOrgPermission } from "@app/lib/types";
 
 export type TCreateScimTokenDTO = {
@@ -34,29 +36,24 @@ export type TGetScimUserDTO = {
 export type TCreateScimUserDTO = {
   externalId: string;
   email?: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   orgId: string;
 };
 
 export type TUpdateScimUserDTO = {
   orgMembershipId: string;
   orgId: string;
-  operations: {
-    op: string;
-    path?: string;
-    value?:
-      | string
-      | {
-          active: boolean;
-        };
-  }[];
+  operations: ScimPatchOperation[];
 };
 
 export type TReplaceScimUserDTO = {
   orgMembershipId: string;
   active: boolean;
   orgId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 export type TDeleteScimUserDTO = {
@@ -166,7 +163,8 @@ export type TScimUser = {
   }[];
   meta: {
     resourceType: string;
-    location: null;
+    created: Date;
+    lastModified: Date;
   };
 };
 

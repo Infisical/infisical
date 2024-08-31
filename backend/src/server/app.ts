@@ -49,6 +49,21 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
 
+  server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
+    try {
+      const strBody = body instanceof Buffer ? body.toString() : body;
+      if (!strBody) {
+        done(null, undefined);
+        return;
+      }
+      const json: unknown = JSON.parse(strBody);
+      done(null, json);
+    } catch (err) {
+      const error = err as Error;
+      done(error, undefined);
+    }
+  });
+
   try {
     await server.register<FastifyCookieOptions>(cookie, {
       secret: appCfg.COOKIE_SECRET_SIGN_KEY
