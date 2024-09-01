@@ -26,7 +26,6 @@ export const generateKnexQueryFromScim = (
     switch (scimFilterAst.op) {
       case "eq": {
         const attrPath = getAttributeField(scimFilterAst.attrPath);
-        console.log(attrPath, scimFilterAst.compValue);
         if (attrPath) void query.where(attrPath, scimFilterAst.compValue);
         break;
       }

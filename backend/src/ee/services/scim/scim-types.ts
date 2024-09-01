@@ -66,6 +66,7 @@ export type TListScimGroupsDTO = {
   filter?: string;
   limit: number;
   orgId: string;
+  isMembersExcluded?: boolean;
 };
 
 export type TListScimGroups = {
@@ -104,31 +105,7 @@ export type TUpdateScimGroupNamePutDTO = {
 export type TUpdateScimGroupNamePatchDTO = {
   groupId: string;
   orgId: string;
-  operations: (TRemoveOp | TReplaceOp | TAddOp)[];
-};
-
-// akhilmhdh: I know, this is done due to lack of time. Need to change later to support as normalized rather than like this
-// Forgive akhil blame tony
-type TReplaceOp = {
-  op: "replace" | "Replace";
-  value: {
-    id: string;
-    displayName: string;
-  };
-};
-
-type TRemoveOp = {
-  op: "remove" | "Remove";
-  path: string;
-};
-
-type TAddOp = {
-  op: "add" | "Add";
-  path: string;
-  value: {
-    value: string;
-    display?: string;
-  }[];
+  operations: ScimPatchOperation[];
 };
 
 export type TDeleteScimGroupDTO = {
@@ -174,10 +151,11 @@ export type TScimGroup = {
   displayName: string;
   members: {
     value: string;
-    display: string;
+    display?: string;
   }[];
   meta: {
     resourceType: string;
-    location: null;
+    created: Date;
+    lastModified: Date;
   };
 };

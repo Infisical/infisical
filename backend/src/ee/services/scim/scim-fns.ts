@@ -114,14 +114,18 @@ export const buildScimGroupList = ({
 export const buildScimGroup = ({
   groupId,
   name,
-  members
+  members,
+  updatedAt,
+  createdAt
 }: {
   groupId: string;
   name: string;
   members: {
     value: string;
-    display: string;
+    display?: string;
   }[];
+  createdAt: Date;
+  updatedAt: Date;
 }): TScimGroup => {
   const scimGroup = {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
@@ -130,7 +134,8 @@ export const buildScimGroup = ({
     members,
     meta: {
       resourceType: "Group",
-      location: null
+      created: createdAt,
+      lastModified: updatedAt
     }
   };
 
