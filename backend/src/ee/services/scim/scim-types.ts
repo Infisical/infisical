@@ -135,10 +135,6 @@ export type TScimUser = {
     type: string;
   }[];
   active: boolean;
-  groups: {
-    value: string;
-    display: string;
-  }[];
   meta: {
     resourceType: string;
     created: Date;

@@ -44,7 +44,6 @@ export const buildScimUser = ({
   email,
   firstName,
   lastName,
-  groups = [],
   active,
   createdAt,
   updatedAt
@@ -54,10 +53,6 @@ export const buildScimUser = ({
   email?: string | null;
   firstName: string | null | undefined;
   lastName: string | null | undefined;
-  groups?: {
-    value: string;
-    display: string;
-  }[];
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -82,7 +77,6 @@ export const buildScimUser = ({
         ]
       : [],
     active,
-    groups,
     meta: {
       resourceType: "User",
       created: createdAt,
