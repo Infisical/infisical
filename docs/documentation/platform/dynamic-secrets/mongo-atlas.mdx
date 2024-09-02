@@ -38,11 +38,11 @@ Create a project scopped API Key with the required permission in your Mongo Atla
 	</ParamField>
 
 	<ParamField path="Admin public key" type="string" required>
-				Admin public API key
+				The public key of your generated Atlas API Key. This acts as a username.
 	</ParamField>
 
 	<ParamField path="Admin private key" type="string" required>
-				Admin private API key
+				The private key of your generated Atlas API Key. This acts as a password.
 	</ParamField>
 
 	<ParamField path="Group ID" type="number" required>
@@ -63,7 +63,7 @@ Create a project scopped API Key with the required permission in your Mongo Atla
   <Step title="(Optional) Modify Access Scope">
   	List that contains clusters, MongoDB Atlas Data Lakes, and MongoDB Atlas Streams Instances that this database user can access. If omitted, MongoDB Cloud grants the database user access to all the clusters, MongoDB Atlas Data Lakes, and MongoDB Atlas Streams Instances in the project.
 
-				![Modify Scope Modal](../../../images/platform/dynamic-secrets/advance-option-atlas.png)
+				![Modify Scope Modal](../../../images/platform/dynamic-secrets/advanced-option-atlas.png)
 				- **Label**: Human-readable label that identifies the cluster or MongoDB Atlas Data Lake that this database user can access.
 				- **Type**: Category of resource that this database user can access.
   </Step>
