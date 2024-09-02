@@ -177,6 +177,8 @@
     "posthog-node": "^3.6.2",
     "probot": "^13.0.0",
     "safe-regex": "^2.1.1",
+    "scim-patch": "^0.8.3",
+    "scim2-parse-filter": "^0.2.10",
     "smee-client": "^2.0.0",
     "tedious": "^18.2.1",
     "tweetnacl": "^1.0.3",

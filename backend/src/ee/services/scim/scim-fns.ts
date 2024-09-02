@@ -44,19 +44,18 @@ export const buildScimUser = ({
   email,
   firstName,
   lastName,
-  groups = [],
-  active
+  active,
+  createdAt,
+  updatedAt
 }: {
   orgMembershipId: string;
   username: string;
   email?: string | null;
   firstName: string | null | undefined;
   lastName: string | null | undefined;
-  groups?: {
-    value: string;
-    display: string;
-  }[];
   active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }): TScimUser => {
   const scimUser = {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -78,10 +77,10 @@ export const buildScimUser = ({
         ]
       : [],
     active,
-    groups,
     meta: {
       resourceType: "User",
-      location: null
+      created: createdAt,
+      lastModified: updatedAt
     }
   };
 
@@ -109,14 +108,18 @@ export const buildScimGroupList = ({
 export const buildScimGroup = ({
   groupId,
   name,
-  members
+  members,
+  updatedAt,
+  createdAt
 }: {
   groupId: string;
   name: string;
   members: {
     value: string;
-    display: string;
+    display?: string;
   }[];
+  createdAt: Date;
+  updatedAt: Date;
 }): TScimGroup => {
   const scimGroup = {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
@@ -125,7 +128,8 @@ export const buildScimGroup = ({
     members,
     meta: {
       resourceType: "Group",
-      location: null
+      created: createdAt,
+      lastModified: updatedAt
     }
   };
 
