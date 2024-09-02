@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SiApachecassandra,SiMongodb } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,6 +11,7 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
+import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { RedisInputForm } from "./RedisInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 
@@ -28,29 +30,34 @@ enum WizardSteps {
 
 const DYNAMIC_SECRET_LIST = [
   {
-    icon: faDatabase,
+    icon: <FontAwesomeIcon icon={faDatabase} size="lg" />,
     provider: DynamicSecretProviders.SqlDatabase,
     title: "SQL\nDatabase"
   },
   {
-    icon: faDatabase,
+    icon: <SiApachecassandra size="2rem" />,
     provider: DynamicSecretProviders.Cassandra,
     title: "Cassandra"
   },
   {
-    icon: faDatabase,
+    icon:  <FontAwesomeIcon icon={faDatabase} size="lg" />,
     provider: DynamicSecretProviders.Redis,
     title: "Redis"
   },
   {
-    icon: faAws,
+    icon:  <FontAwesomeIcon icon={faAws} size="lg" />,
     provider: DynamicSecretProviders.AwsElastiCache,
     title: "AWS ElastiCache"
   },
   {
-    icon: faAws,
+    icon: <FontAwesomeIcon icon={faAws} size="lg" />,
     provider: DynamicSecretProviders.AwsIam,
     title: "AWS IAM"
+  },
+  {
+    icon: <SiMongodb size="2rem" />,
+    provider: DynamicSecretProviders.MongoAtlas,
+    title: "Mongo Atlas"
   }
 ];
 
@@ -105,7 +112,7 @@ export const CreateDynamicSecretForm = ({
                       }
                     }}
                   >
-                    <FontAwesomeIcon icon={icon} size="lg" />
+                    {icon}
                     <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
                   </div>
                 ))}
@@ -194,6 +201,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <AwsIamInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.MongoAtlas && (
+              <motion.div
+                key="dynamic-atlas-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <MongoAtlasInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

@@ -9,36 +9,42 @@ import { Tooltip } from "../Tooltip";
 export type FormLabelProps = {
   id?: string;
   isRequired?: boolean;
-  isOptional?:boolean;
+  isOptional?: boolean;
   label?: ReactNode;
   icon?: ReactNode;
   className?: string;
   tooltipText?: string;
+  tooltipClassName?: string;
 };
 
-export const FormLabel = ({ id, label, isRequired, icon, className,isOptional, tooltipText }: FormLabelProps) => (
+export const FormLabel = ({
+  id,
+  label,
+  isRequired,
+  icon,
+  className,
+  isOptional,
+  tooltipText,
+  tooltipClassName
+}: FormLabelProps) => (
   <Label.Root
     className={twMerge(
-      "mb-0.5 ml-1 flex items-center text-sm font-normal text-mineshaft-400",
+      "mb-0.5 flex items-center text-sm font-normal text-mineshaft-400",
       className
     )}
     htmlFor={id}
   >
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
-    {isOptional && <span className="ml-1 text-gray-500 italic text-xs">- Optional</span>}
+    {isOptional && <span className="ml-1 text-xs italic text-gray-500">- Optional</span>}
     {icon && !tooltipText && (
       <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
         {icon}
       </span>
     )}
     {tooltipText && (
-      <Tooltip content={tooltipText}>
-          <FontAwesomeIcon
-            icon={faQuestionCircle}
-            size="1x"
-            className="ml-2"
-          />
+      <Tooltip content={tooltipText} className={tooltipClassName}>
+        <FontAwesomeIcon icon={faQuestionCircle} size="1x" className="ml-2" />
       </Tooltip>
     )}
   </Label.Root>
