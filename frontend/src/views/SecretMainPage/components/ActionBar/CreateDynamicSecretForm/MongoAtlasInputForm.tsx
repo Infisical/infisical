@@ -348,7 +348,7 @@ export const MongoAtlasInputForm = ({
               </div>
               <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="advance-section">
-                  <AccordionTrigger>Advance</AccordionTrigger>
+                  <AccordionTrigger>Advanced</AccordionTrigger>
                   <AccordionContent>
                     <FormLabel
                       label="Scopes"

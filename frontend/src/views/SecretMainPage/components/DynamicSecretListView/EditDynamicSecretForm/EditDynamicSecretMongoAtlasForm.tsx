@@ -18,7 +18,8 @@ import {
   IconButton,
   Input,
   Select,
-  SelectItem} from "@app/components/v2";
+  SelectItem
+} from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
@@ -359,7 +360,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
             </div>
             <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
               <AccordionItem value="advance-section">
-                <AccordionTrigger>Advance</AccordionTrigger>
+                <AccordionTrigger>Advanced</AccordionTrigger>
                 <AccordionContent>
                   <FormLabel
                     label="Scopes"
