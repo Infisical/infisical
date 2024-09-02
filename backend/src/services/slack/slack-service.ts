@@ -162,7 +162,7 @@ export const slackServiceFactory = ({
       actorOrgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({

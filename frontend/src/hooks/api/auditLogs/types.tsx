@@ -742,6 +742,31 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
+interface UpdateSlackIntegration {
+  type: EventType.UPDATE_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+    isAccessRequestNotificationEnabled: boolean;
+    accessRequestChannels: string;
+    isSecretRequestNotificationEnabled: boolean;
+    secretRequestChannels: string;
+  };
+}
+
+interface DeleteSlackIntegration {
+  type: EventType.DELETE_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetSlackIntegration {
+  type: EventType.GET_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -817,7 +842,10 @@ export type Event =
   | DeleteCertificateTemplate
   | UpdateCertificateTemplateEstConfig
   | CreateCertificateTemplateEstConfig
-  | GetCertificateTemplateEstConfig;
+  | GetCertificateTemplateEstConfig
+  | UpdateSlackIntegration
+  | DeleteSlackIntegration
+  | GetSlackIntegration;
 
 export type AuditLog = {
   id: string;

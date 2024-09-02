@@ -16,10 +16,10 @@ export async function up(knex: Knex): Promise<void> {
       tb.binary("encryptedBotAccessToken").notNullable();
       tb.string("slackBotId").notNullable();
       tb.string("slackBotUserId").notNullable();
-      tb.boolean("isAccessRequestNotificationEnabled").defaultTo(false);
-      tb.string("accessRequestChannels").defaultTo("");
-      tb.boolean("isSecretRequestNotificationEnabled").defaultTo(false);
-      tb.string("secretRequestChannels").defaultTo("");
+      tb.boolean("isAccessRequestNotificationEnabled").notNullable().defaultTo(false);
+      tb.string("accessRequestChannels").notNullable().defaultTo("");
+      tb.boolean("isSecretRequestNotificationEnabled").notNullable().defaultTo(false);
+      tb.string("secretRequestChannels").notNullable().defaultTo("");
       tb.timestamps(true, true, true);
     });
 

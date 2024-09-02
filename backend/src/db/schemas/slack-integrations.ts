@@ -19,10 +19,10 @@ export const SlackIntegrationsSchema = z.object({
   encryptedBotAccessToken: zodBuffer,
   slackBotId: z.string(),
   slackBotUserId: z.string(),
-  isAccessRequestNotificationEnabled: z.boolean().nullable().optional(),
-  accessRequestChannels: z.string().nullable().optional(),
-  isSecretRequestNotificationEnabled: z.boolean().nullable().optional(),
-  secretRequestChannels: z.string().nullable().optional(),
+  isAccessRequestNotificationEnabled: z.boolean().default(false),
+  accessRequestChannels: z.string().default(""),
+  isSecretRequestNotificationEnabled: z.boolean().default(false),
+  secretRequestChannels: z.string().default(""),
   createdAt: z.date(),
   updatedAt: z.date()
 });

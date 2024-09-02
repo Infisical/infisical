@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SlackIntegrationsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -31,14 +32,24 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // TODO: add audit logs
-      return server.services.slack.getInstallUrl({
+      const url = await server.services.slack.getInstallUrl({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.query.projectId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION,
+          metadata: {}
+        }
+      });
+
+      return url;
     }
   });
 
@@ -70,13 +81,26 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.slack.getSlackIntegrationByProjectId({
+      const slackIntegration = await server.services.slack.getSlackIntegrationByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.query.projectId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.GET_SLACK_INTEGRATION,
+          metadata: {
+            id: slackIntegration?.id
+          }
+        }
+      });
+
+      return slackIntegration;
     }
   });
 
@@ -114,8 +138,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // TODO: add audit logs
-      return server.services.slack.updateSlackIntegration({
+      const updatedSlackIntegration = await server.services.slack.updateSlackIntegration({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -123,6 +146,23 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         id: req.params.slackIntegrationId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: updatedSlackIntegration.projectId,
+        event: {
+          type: EventType.UPDATE_SLACK_INTEGRATION,
+          metadata: {
+            id: updatedSlackIntegration.id,
+            isAccessRequestNotificationEnabled: updatedSlackIntegration.isAccessRequestNotificationEnabled,
+            accessRequestChannels: updatedSlackIntegration.accessRequestChannels,
+            isSecretRequestNotificationEnabled: updatedSlackIntegration.isSecretRequestNotificationEnabled,
+            secretRequestChannels: updatedSlackIntegration.secretRequestChannels
+          }
+        }
+      });
+
+      return updatedSlackIntegration;
     }
   });
 
@@ -154,15 +194,26 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // TODO: add audit logs
-
-      return server.services.slack.deleteSlackIntegration({
+      const deletedSlackIntegration = await server.services.slack.deleteSlackIntegration({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.slackIntegrationId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: deletedSlackIntegration.projectId,
+        event: {
+          type: EventType.DELETE_SLACK_INTEGRATION,
+          metadata: {
+            id: deletedSlackIntegration.id
+          }
+        }
+      });
+
+      return deletedSlackIntegration;
     }
   });
 
