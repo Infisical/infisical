@@ -2,6 +2,16 @@ import { TProjectPermission } from "@app/lib/types";
 
 export type TGetSlackInstallUrlDTO = TProjectPermission;
 
+export type TGetSlackIntegrationByProjectId = TProjectPermission;
+
+export type TUpdateSlackIntegration = {
+  id: string;
+  isAccessRequestNotificationEnabled?: boolean;
+  accessRequestChannels?: string;
+  isSecretRequestNotificationEnabled?: boolean;
+  secretRequestChannels?: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TCompleteSlackIntegrationDTO = {
   projectId: string;
   teamId: string;

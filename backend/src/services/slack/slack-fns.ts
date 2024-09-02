@@ -34,12 +34,12 @@ export const triggerSlackNotification = async ({
 
   let targetChannels: string[] = [];
   if (feature === SlackTriggerFeature.ACCESS_REQUEST) {
-    targetChannels = slackIntegration.accessRequestChannels?.split(",") || [];
+    targetChannels = slackIntegration.accessRequestChannels?.split(", ") || [];
     if (!targetChannels.length || !slackIntegration.isAccessRequestNotificationEnabled) {
       return;
     }
   } else if (feature === SlackTriggerFeature.SECRET_APPROVAL) {
-    targetChannels = slackIntegration.secretRequestChannels?.split(",") || [];
+    targetChannels = slackIntegration.secretRequestChannels?.split(", ") || [];
     if (!targetChannels.length || !slackIntegration.isSecretRequestNotificationEnabled) {
       return;
     }
