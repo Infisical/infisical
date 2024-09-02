@@ -127,6 +127,46 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/:slackIntegrationId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        slackIntegrationId: z.string()
+      }),
+      response: {
+        200: SlackIntegrationsSchema.pick({
+          id: true,
+          teamName: true,
+          isAccessRequestNotificationEnabled: true,
+          accessRequestChannels: true,
+          isSecretRequestNotificationEnabled: true,
+          secretRequestChannels: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      // TODO: add audit logs
+
+      return server.services.slack.deleteSlackIntegration({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.slackIntegrationId
+      });
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/oauth_redirect",
     config: {

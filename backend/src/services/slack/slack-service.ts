@@ -12,13 +12,17 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
 import {
   TCompleteSlackIntegrationDTO,
+  TDeleteSlackIntegrationDTO,
   TGetSlackInstallUrlDTO,
-  TGetSlackIntegrationByProjectId,
-  TUpdateSlackIntegration
+  TGetSlackIntegrationByProjectIdDTO,
+  TUpdateSlackIntegrationDTO
 } from "./slack-types";
 
 type TSlackServiceFactoryDep = {
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "create" | "findOne" | "findById" | "updateById">;
+  slackIntegrationDAL: Pick<
+    TSlackIntegrationDALFactory,
+    "create" | "findOne" | "findById" | "updateById" | "deleteById"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -156,7 +160,7 @@ export const slackServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     projectId
-  }: TGetSlackIntegrationByProjectId) => {
+  }: TGetSlackIntegrationByProjectIdDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -183,7 +187,7 @@ export const slackServiceFactory = ({
     accessRequestChannels,
     isSecretRequestNotificationEnabled,
     secretRequestChannels
-  }: TUpdateSlackIntegration) => {
+  }: TUpdateSlackIntegrationDTO) => {
     const slackIntegration = await slackIntegrationDAL.findById(id);
     if (!slackIntegration) {
       throw new NotFoundError({
@@ -208,11 +212,38 @@ export const slackServiceFactory = ({
     });
   };
 
+  const deleteSlackIntegration = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TDeleteSlackIntegrationDTO) => {
+    const slackIntegration = await slackIntegrationDAL.findById(id);
+    if (!slackIntegration) {
+      throw new NotFoundError({
+        message: "Slack integration not found"
+      });
+    }
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      slackIntegration.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
+
+    return slackIntegrationDAL.deleteById(id);
+  };
+
   return {
     getInstallUrl,
     getSlackIntegrationByProjectId,
     completeSlackIntegration,
     getSlackInstaller,
-    updateSlackIntegration
+    updateSlackIntegration,
+    deleteSlackIntegration
   };
 };

@@ -15,3 +15,8 @@ export type TUpdateSlackIntegrationDTO = {
   isSecretRequestNotificationEnabled?: boolean;
   secretRequestChannels?: string;
 };
+
+export type TDeleteSlackIntegrationDTO = {
+  id: string;
+  workspaceId: string;
+};
