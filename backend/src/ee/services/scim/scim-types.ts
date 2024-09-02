@@ -54,6 +54,7 @@ export type TReplaceScimUserDTO = {
   email?: string;
   firstName?: string;
   lastName?: string;
+  externalId: string;
 };
 
 export type TDeleteScimUserDTO = {

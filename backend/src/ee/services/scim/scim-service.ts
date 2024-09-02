@@ -59,7 +59,7 @@ type TScimServiceFactoryDep = {
     TUserDALFactory,
     "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch" | "findById" | "updateById"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete" | "update">;
   orgDAL: Pick<
     TOrgDALFactory,
     | "createMembership"
@@ -259,11 +259,6 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const groupMembershipsInOrg = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
-      membership.userId,
-      orgId
-    );
-
     return buildScimUser({
       orgMembershipId: membership.id,
       username: membership.externalId ?? membership.username,
@@ -271,10 +266,6 @@ export const scimServiceFactory = ({
       firstName: membership.firstName,
       lastName: membership.lastName,
       active: membership.isActive,
-      groups: groupMembershipsInOrg.map((group) => ({
-        value: group.groupId,
-        display: group.groupName
-      })),
       createdAt: membership.createdAt,
       updatedAt: membership.updatedAt
     });
@@ -475,7 +466,7 @@ export const scimServiceFactory = ({
       lastName: membership.lastName,
       firstName: membership.firstName,
       active: membership.isActive,
-      username: membership.username,
+      username: membership.externalId ?? membership.username,
       createdAt: membership.createdAt,
       updatedAt: membership.updatedAt
     });
@@ -512,7 +503,8 @@ export const scimServiceFactory = ({
     orgId,
     lastName,
     firstName,
-    email
+    email,
+    externalId
   }: TReplaceScimUserDTO) => {
     const [membership] = await orgDAL
       .findMembership({
@@ -540,6 +532,17 @@ export const scimServiceFactory = ({
 
     const serverCfg = await getServerCfg();
     await userDAL.transaction(async (tx) => {
+      await userAliasDAL.update(
+        {
+          orgId,
+          aliasType: UserAliasType.SAML,
+          userId: membership.userId
+        },
+        {
+          externalId
+        },
+        tx
+      );
       await orgMembershipDAL.updateById(
         membership.id,
         {
@@ -561,7 +564,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: membership.id,
-      username: membership.externalId ?? membership.username,
+      username: externalId,
       email: membership.email,
       firstName: membership.firstName,
       lastName: membership.lastName,

@@ -180,14 +180,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgMembershipId: z.string().trim()
       }),
       response: {
-        200: ScimUserSchema.extend({
-          groups: z.array(
-            z.object({
-              value: z.string().trim(),
-              display: z.string().trim()
-            })
-          )
-        })
+        200: ScimUserSchema
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
@@ -284,6 +277,15 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           })
           .optional(),
         displayName: z.string().trim(),
+        emails: z
+          .array(
+            z.object({
+              primary: z.boolean(),
+              value: z.string().email(),
+              type: z.string().trim()
+            })
+          )
+          .optional(),
         active: z.boolean()
       }),
       response: {
@@ -315,10 +317,15 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
+      const primaryEmail = req.body.emails?.find((email) => email.primary)?.value;
       const user = await req.server.services.scim.replaceScimUser({
         orgMembershipId: req.params.orgMembershipId,
         orgId: req.permission.orgId,
-        active: req.body.active
+        firstName: req.body?.name?.givenName,
+        lastName: req.body?.name?.familyName,
+        active: req.body?.active,
+        email: primaryEmail,
+        externalId: req.body.userName
       });
       return user;
     }
@@ -450,6 +457,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: req.params.groupId,
         orgId: req.permission.orgId
       });
+
       return group;
     }
   });
@@ -523,13 +531,11 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
-      console.log(JSON.stringify(req.body, null, 4));
       const group = await req.server.services.scim.updateScimGroup({
         groupId: req.params.groupId,
         orgId: req.permission.orgId,
         operations: req.body.Operations
       });
-      console.log(group);
       return group;
     }
   });
