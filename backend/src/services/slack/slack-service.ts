@@ -102,9 +102,12 @@ export const slackServiceFactory = ({
             slackBotUserId: installation.bot?.userId || ""
           });
         },
+        // for our use-case we don't need to implement this because this will only be used
+        // when listening for events from slack
         fetchInstallation: () => {
           return {} as never;
         },
+        // for our use-case we don't need to implement this yet
         deleteInstallation: () => {
           return {} as never;
         }
@@ -132,7 +135,7 @@ export const slackServiceFactory = ({
 
     const installer = await getSlackInstaller();
     const url = await installer.generateInstallUrl({
-      scopes: ["chat:write"],
+      scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"],
       metadata: JSON.stringify({
         projectId: project.id
       }),

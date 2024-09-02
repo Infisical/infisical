@@ -12,3 +12,8 @@ export type TCompleteSlackIntegrationDTO = {
   slackBotId: string;
   slackBotUserId: string;
 };
+
+export enum SlackTriggerFeature {
+  SECRET_APPROVAL = "secret-approval",
+  ACCESS_REQUEST = "access-request"
+}

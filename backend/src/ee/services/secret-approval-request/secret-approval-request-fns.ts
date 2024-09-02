@@ -1,7 +1,12 @@
 import { TSecretApprovalRequests } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { triggerSlackNotification } from "@app/services/slack/slack-fns";
+import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
+import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 
@@ -11,6 +16,69 @@ type TSendApprovalEmails = {
   smtpService: Pick<TSmtpService, "sendMail">;
   projectId: string;
   secretApprovalRequest: TSecretApprovalRequests;
+};
+
+type TTriggerSecretApprovalSlackNotif = {
+  environment: string;
+  projectId: string;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretApprovalRequest: TSecretApprovalRequests;
+  secretPath: string;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findOne">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+};
+
+export const triggerSecretApprovalSlackNotif = async ({
+  projectId,
+  projectDAL,
+  kmsService,
+  secretApprovalRequest,
+  slackIntegrationDAL,
+  userDAL,
+  environment,
+  secretPath
+}: TTriggerSecretApprovalSlackNotif) => {
+  // construct message here
+  const appCfg = getConfig();
+  const project = await projectDAL.findProjectWithOrg(projectId);
+  const user = await userDAL.findById(secretApprovalRequest.committerUserId);
+
+  const messageBody = `A secret approval request has been opened by ${user.email}.
+  *Environment*: ${environment}
+  *Secret path*: ${secretPath || "/"}
+
+  View the complete details <${appCfg.SITE_URL}/project/${project.id}/approval?requestId=${
+    secretApprovalRequest.id
+  }|here>.`;
+
+  const payloadBlocks = [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "Secret approval request",
+        emoji: true
+      }
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: messageBody
+      }
+    }
+  ];
+
+  await triggerSlackNotification({
+    projectId,
+    projectDAL,
+    kmsService,
+    slackIntegrationDAL,
+    payloadMessage: messageBody,
+    payloadBlocks,
+    feature: SlackTriggerFeature.SECRET_APPROVAL
+  });
 };
 
 export const sendApprovalEmailsFn = async ({

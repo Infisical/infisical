@@ -47,6 +47,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -56,7 +57,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/pr
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
-import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
+import { sendApprovalEmailsFn, triggerSecretApprovalSlackNotif } from "./secret-approval-request-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
@@ -89,7 +90,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  userDAL: Pick<TUserDALFactory, "find" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
     TProjectDALFactory,
@@ -104,6 +105,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -132,6 +134,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
+  slackIntegrationDAL,
   licenseService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
@@ -1069,6 +1072,18 @@ export const secretApprovalRequestServiceFactory = ({
       return { ...doc, commits: approvalCommits };
     });
 
+    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    await triggerSecretApprovalSlackNotif({
+      projectId,
+      secretPath: policy.secretPath as string,
+      environment: env.name,
+      projectDAL,
+      kmsService,
+      secretApprovalRequest,
+      slackIntegrationDAL,
+      userDAL
+    });
+
     await sendApprovalEmailsFn({
       projectDAL,
       secretApprovalPolicyDAL,
@@ -1329,6 +1344,18 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       return { ...doc, commits: approvalCommits };
+    });
+
+    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    await triggerSecretApprovalSlackNotif({
+      secretPath: policy.secretPath as string,
+      environment: env.name,
+      projectId,
+      projectDAL,
+      kmsService,
+      secretApprovalRequest,
+      slackIntegrationDAL,
+      userDAL
     });
 
     await sendApprovalEmailsFn({
