@@ -59,6 +59,7 @@ export const NotificationTab = () => {
 
   const router = useRouter();
   const [isConnectToSlackLoading, setIsConnectToSlackLoading] = useToggle(false);
+  const [isReinstallLoading, setIsReinstallLoading] = useToggle(false);
   const secretRequestNotifState = watch("isSecretRequestNotificationEnabled");
   const accessRequestNotifState = watch("isAccessRequestNotificationEnabled");
 
@@ -93,6 +94,13 @@ export const NotificationTab = () => {
       type: "success",
       text: "Successfully deleted slack integration"
     });
+  };
+
+  const triggerSlackInstall = async () => {
+    const slackInstallUrl = await fetchSlackInstallUrl(currentWorkspace?.id);
+    if (slackInstallUrl) {
+      router.push(slackInstallUrl);
+    }
   };
 
   useEffect(() => {
@@ -131,10 +139,7 @@ export const NotificationTab = () => {
             isLoading={isConnectToSlackLoading}
             onClick={async () => {
               setIsConnectToSlackLoading.on();
-              const slackInstallUrl = await fetchSlackInstallUrl(currentWorkspace?.id);
-              if (slackInstallUrl) {
-                router.push(slackInstallUrl);
-              }
+              await triggerSlackInstall();
             }}
           >
             Connect to Slack
@@ -144,8 +149,16 @@ export const NotificationTab = () => {
           <form onSubmit={handleSubmit(handleIntegrationSave)}>
             <div>Connected Slack workspace: {slackIntegration.teamName}</div>
             <div className="mt-2 mb-6">
-              <Button colorSchema="secondary" size="xs">
-                Reinstall integration
+              <Button
+                colorSchema="secondary"
+                size="xs"
+                isLoading={isReinstallLoading}
+                onClick={async () => {
+                  setIsReinstallLoading.on();
+                  await triggerSlackInstall();
+                }}
+              >
+                Reinstall
               </Button>
               <Button
                 colorSchema="secondary"
@@ -156,6 +169,7 @@ export const NotificationTab = () => {
                 Delete
               </Button>
             </div>
+            <h2 className="mb-2 flex-1 text-lg font-semibold text-mineshaft-100">Events</h2>
             <Controller
               control={control}
               name="isSecretRequestNotificationEnabled"

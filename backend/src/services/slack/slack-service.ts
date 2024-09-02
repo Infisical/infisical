@@ -21,7 +21,7 @@ import {
 type TSlackServiceFactoryDep = {
   slackIntegrationDAL: Pick<
     TSlackIntegrationDALFactory,
-    "create" | "findOne" | "findById" | "updateById" | "deleteById"
+    "create" | "findOne" | "findById" | "updateById" | "deleteById" | "transaction"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -62,15 +62,43 @@ export const slackServiceFactory = ({
       plainText: Buffer.from(botAccessToken, "utf8")
     });
 
-    await slackIntegrationDAL.create({
-      projectId,
-      teamId,
-      teamName,
-      slackUserId,
-      slackAppId,
-      slackBotId,
-      slackBotUserId,
-      encryptedBotAccessToken
+    await slackIntegrationDAL.transaction(async (tx) => {
+      const slackIntegration = await slackIntegrationDAL.findOne(
+        {
+          projectId
+        },
+        tx
+      );
+
+      if (slackIntegration) {
+        return slackIntegrationDAL.updateById(
+          slackIntegration.id,
+          {
+            teamId,
+            teamName,
+            slackUserId,
+            slackAppId,
+            slackBotId,
+            slackBotUserId,
+            encryptedBotAccessToken
+          },
+          tx
+        );
+      }
+
+      return slackIntegrationDAL.create(
+        {
+          projectId,
+          teamId,
+          teamName,
+          slackUserId,
+          slackAppId,
+          slackBotId,
+          slackBotUserId,
+          encryptedBotAccessToken
+        },
+        tx
+      );
     });
   };
 
