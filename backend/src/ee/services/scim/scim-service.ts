@@ -316,7 +316,7 @@ export const scimServiceFactory = ({
               userId: userAlias.userId,
               inviteEmail: email,
               orgId,
-              role: OrgMembershipRole.Member,
+              role: OrgMembershipRole.NoAccess,
               status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
               isActive: true
             },
