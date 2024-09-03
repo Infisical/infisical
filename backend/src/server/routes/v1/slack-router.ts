@@ -262,7 +262,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
             orgId: string;
           };
 
-          return res.redirect(`${appCfg.SITE_URL}/org/${metadata.orgId}/settings`);
+          return res.redirect(`${appCfg.SITE_URL}/org/${metadata.orgId}/settings?selectedTab=workflow-integrations`);
         }
       });
     }

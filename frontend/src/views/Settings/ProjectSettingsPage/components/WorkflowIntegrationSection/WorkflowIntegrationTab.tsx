@@ -99,7 +99,7 @@ export const WorkflowIntegrationTab = () => {
 
   return !slackIntegrations?.length ? (
     <EmptyState title="You do not have any integrations configured.">
-      <Link href={`/org/${currentWorkspace?.orgId}/settings?tab=workflowIntegrations`}>
+      <Link href={`/org/${currentWorkspace?.orgId}/settings?selectedTab=workflow-integrations`}>
         <div className="mt-2 underline decoration-primary-800 underline-offset-4 duration-200 hover:cursor-pointer hover:text-mineshaft-100 hover:decoration-primary-600">
           Create one now
         </div>
