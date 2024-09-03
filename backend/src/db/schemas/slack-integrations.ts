@@ -11,7 +11,9 @@ import { TImmutableDBKeys } from "./models";
 
 export const SlackIntegrationsSchema = z.object({
   id: z.string().uuid(),
-  projectId: z.string(),
+  slug: z.string(),
+  orgId: z.string().uuid(),
+  description: z.string().nullable().optional(),
   teamId: z.string(),
   teamName: z.string(),
   slackUserId: z.string(),
@@ -19,10 +21,6 @@ export const SlackIntegrationsSchema = z.object({
   encryptedBotAccessToken: zodBuffer,
   slackBotId: z.string(),
   slackBotUserId: z.string(),
-  isAccessRequestNotificationEnabled: z.boolean().default(false),
-  accessRequestChannels: z.string().default(""),
-  isSecretRequestNotificationEnabled: z.boolean().default(false),
-  secretRequestChannels: z.string().default(""),
   createdAt: z.date(),
   updatedAt: z.date()
 });

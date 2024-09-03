@@ -1,23 +1,27 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TOrgPermission } from "@app/lib/types";
 
-export type TGetSlackInstallUrlDTO = TProjectPermission;
+export type TGetSlackInstallUrlDTO = {
+  slug: string;
+  description?: string;
+} & Omit<TOrgPermission, "orgId">;
 
-export type TGetSlackIntegrationByProjectIdDTO = TProjectPermission;
+export type TGetSlackIntegrationByOrgDTO = Omit<TOrgPermission, "orgId">;
 
-export type TUpdateSlackIntegrationDTO = {
-  id: string;
-  isAccessRequestNotificationEnabled?: boolean;
-  accessRequestChannels?: string;
-  isSecretRequestNotificationEnabled?: boolean;
-  secretRequestChannels?: string;
-} & Omit<TProjectPermission, "projectId">;
+export type TGetSlackIntegrationByIdDTO = { id: string } & Omit<TOrgPermission, "orgId">;
+
+export type TUpdateSlackIntegrationDTO = { id: string; slug?: string; description?: string } & Omit<
+  TOrgPermission,
+  "orgId"
+>;
 
 export type TDeleteSlackIntegrationDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & Omit<TOrgPermission, "orgId">;
 
 export type TCompleteSlackIntegrationDTO = {
-  projectId: string;
+  orgId: string;
+  slug: string;
+  description?: string;
   teamId: string;
   teamName: string;
   slackUserId: string;

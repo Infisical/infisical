@@ -196,6 +196,9 @@ import {
   TProjectRolesUpdate,
   TProjects,
   TProjectsInsert,
+  TProjectSlackConfigs,
+  TProjectSlackConfigsInsert,
+  TProjectSlackConfigsUpdate,
   TProjectsUpdate,
   TProjectUserAdditionalPrivilege,
   TProjectUserAdditionalPrivilegeInsert,
@@ -786,6 +789,11 @@ declare module "knex/types/tables" {
       TSlackIntegrations,
       TSlackIntegrationsInsert,
       TSlackIntegrationsUpdate
+    >;
+    [TableName.ProjectSlackConfigs]: KnexOriginal.CompositeTableType<
+      TProjectSlackConfigs,
+      TProjectSlackConfigsInsert,
+      TProjectSlackConfigsUpdate
     >;
     [TableName.AdminSlackConfig]: KnexOriginal.CompositeTableType<
       TAdminSlackConfigs,

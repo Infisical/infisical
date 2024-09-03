@@ -61,7 +61,13 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
-  await server.register(registerSlackRouter, { prefix: "/slack" });
+
+  await server.register(
+    async (workflowIntegrationRouter) => {
+      await workflowIntegrationRouter.register(registerSlackRouter, { prefix: "/slack" });
+    },
+    { prefix: "/workflow-integrations" }
+  );
 
   await server.register(
     async (projectRouter) => {

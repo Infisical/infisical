@@ -116,6 +116,7 @@ export enum TableName {
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   SlackIntegrations = "slack_integrations",
+  ProjectSlackConfigs = "project_slack_configs",
   AdminSlackConfig = "admin_slack_configs"
 }
 

@@ -11,16 +11,6 @@ export const slackKeys = {
   ]
 };
 
-export const fetchSlackInstallUrl = async (workspaceId?: string) => {
-  const { data } = await apiRequest.get<string>("/api/v1/slack/install", {
-    params: {
-      projectId: workspaceId
-    }
-  });
-
-  return data;
-};
-
 export const fetchSlackIntegrationByProject = async (workspaceId?: string) => {
   const { data } = await apiRequest.get<ProjectSlackIntegration>("/api/v1/slack", {
     params: {

@@ -1453,18 +1453,17 @@ interface GetCertificateTemplateEstConfig {
 interface AttemptCreateSlackIntegration {
   type: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION;
   metadata: {
-    projectId?: string;
-  }; // no metadata
+    slug: string;
+    description?: string;
+  };
 }
 
 interface UpdateSlackIntegration {
   type: EventType.UPDATE_SLACK_INTEGRATION;
   metadata: {
     id: string;
-    isAccessRequestNotificationEnabled: boolean;
-    accessRequestChannels: string;
-    isSecretRequestNotificationEnabled: boolean;
-    secretRequestChannels: string;
+    slug: string;
+    description?: string;
   };
 }
 
