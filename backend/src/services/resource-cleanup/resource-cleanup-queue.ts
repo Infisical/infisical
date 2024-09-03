@@ -37,13 +37,21 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   queueService.start(QueueName.DailyResourceCleanUp, async () => {
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+    logger.info(`${QueueName.DailyResourceCleanUp}: audit log`);
     await auditLogDAL.pruneAuditLog();
+    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token`);
     await identityAccessTokenDAL.removeExpiredTokens();
+    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired univesal auth client secret`);
     await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret`);
     await secretSharingDAL.pruneExpiredSharedSecrets();
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret snapshots`);
     await snapshotDAL.pruneExcessSnapshots();
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v1`);
     await secretVersionDAL.pruneExcessVersions();
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v2`);
     await secretVersionV2DAL.pruneExcessVersions();
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret folder versions`);
     await secretFolderVersionDAL.pruneExcessVersions();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
