@@ -62,6 +62,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     const today = new Date();
     let deletedAuditLogIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
+    let isRetrying = false;
 
     do {
       try {
@@ -84,7 +85,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
           setTimeout(resolve, 10); // time to breathe for db
         });
       }
-    } while (deletedAuditLogIds.length > 0 || numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
   };
 
   return { ...auditLogOrm, pruneAuditLog, find };

@@ -30,6 +30,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
 
     let deletedClientSecret: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
+    let isRetrying = false;
 
     do {
       try {
@@ -71,7 +72,8 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
           setTimeout(resolve, 10); // time to breathe for db
         });
       }
-    } while (deletedClientSecret.length > 0 || numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedClientSecret.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
   };
 
   return { ...uaClientSecretOrm, incrementUsage, removeExpiredClientSecrets };
