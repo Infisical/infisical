@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName, TSecretSharing } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TSecretSharingDALFactory = ReturnType<typeof secretSharingDALFactory>;
 
@@ -30,6 +32,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   };
 
   const pruneExpiredSharedSecrets = async (tx?: Knex) => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret started`);
     try {
       const today = new Date();
       const docs = await (tx || db)(TableName.SecretSharing)
@@ -40,6 +43,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
           tag: "",
           iv: ""
         });
+      logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret completed`);
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "pruneExpiredSharedSecrets" });

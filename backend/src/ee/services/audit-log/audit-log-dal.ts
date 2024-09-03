@@ -5,6 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, stripUndefinedInWhere } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
 
@@ -62,7 +63,9 @@ export const auditLogDALFactory = (db: TDbClient) => {
     const today = new Date();
     let deletedAuditLogIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
+    let isRetrying = false;
 
+    logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
     do {
       try {
         const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
@@ -84,7 +87,9 @@ export const auditLogDALFactory = (db: TDbClient) => {
           setTimeout(resolve, 10); // time to breathe for db
         });
       }
-    } while (deletedAuditLogIds.length > 0 || numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+    logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
   return { ...auditLogOrm, pruneAuditLog, find };

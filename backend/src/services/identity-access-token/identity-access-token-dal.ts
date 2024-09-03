@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TIdentityAccessTokenDALFactory = ReturnType<typeof identityAccessTokenDALFactory>;
 
@@ -95,6 +97,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
   };
 
   const removeExpiredTokens = async (tx?: Knex) => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
     try {
       const docs = (tx || db)(TableName.IdentityAccessToken)
         .where({
@@ -131,7 +134,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           });
         })
         .delete();
-      return await docs;
+      await docs;
+      logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenPrune" });
     }
