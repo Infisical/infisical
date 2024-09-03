@@ -21,14 +21,15 @@ describe("Secret Import Router", async () => {
     expect(payload).toEqual(
       expect.objectContaining({
         id: expect.any(String),
-        importPath: expect.any(String),
+        importPath,
         importEnv: expect.objectContaining({
           name: expect.any(String),
-          slug: expect.any(String),
+          slug: importEnv,
           id: expect.any(String)
         })
       })
     );
+
     await deleteSecretImport({
       id: payload.id,
       workspaceId: seedData1.project.id,
@@ -76,10 +77,19 @@ describe("Secret Import Router", async () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: expect.any(String),
-          importPath: expect.any(String),
+          importPath: "/",
           importEnv: expect.objectContaining({
             name: expect.any(String),
-            slug: expect.any(String),
+            slug: "prod",
+            id: expect.any(String)
+          })
+        }),
+        expect.objectContaining({
+          id: expect.any(String),
+          importPath: "/",
+          importEnv: expect.objectContaining({
+            name: expect.any(String),
+            slug: "staging",
             id: expect.any(String)
           })
         })
@@ -219,10 +229,10 @@ describe("Secret Import Router", async () => {
     expect(deletedImport).toEqual(
       expect.objectContaining({
         id: expect.any(String),
-        importPath: expect.any(String),
+        importPath: "/",
         importEnv: expect.objectContaining({
           name: expect.any(String),
-          slug: expect.any(String),
+          slug: "prod",
           id: expect.any(String)
         })
       })
@@ -461,7 +471,7 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
 
 // dev <- stage, dev <- prod
 describe.each([{ path: "/" }, { path: "/deep" }])(
-  "Secret import 1-N pattern testing - %path",
+  "Secret import multiple destination to one source pattern testing - %path",
   ({ path: testSuitePath }) => {
     beforeAll(async () => {
       let prodFolder: { id: string };
@@ -627,6 +637,167 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
       });
       await deleteSecretV2({
         environmentSlug: "prod",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "PROD_KEY"
+      });
+    });
+  }
+);
+
+// dev -> stage, prod
+describe.each([{ path: "/" }, { path: "/deep" }])(
+  "Secret import one source to multiple destination pattern testing - %path",
+  ({ path: testSuitePath }) => {
+    beforeAll(async () => {
+      let prodFolder: { id: string };
+      let stagingFolder: { id: string };
+      let devFolder: { id: string };
+
+      if (testSuitePath !== "/") {
+        prodFolder = await createFolder({
+          authToken: jwtAuthToken,
+          environmentSlug: "prod",
+          workspaceId: seedData1.projectV3.id,
+          secretPath: "/",
+          name: "deep"
+        });
+
+        stagingFolder = await createFolder({
+          authToken: jwtAuthToken,
+          environmentSlug: "staging",
+          workspaceId: seedData1.projectV3.id,
+          secretPath: "/",
+          name: "deep"
+        });
+
+        devFolder = await createFolder({
+          authToken: jwtAuthToken,
+          environmentSlug: seedData1.environment.slug,
+          workspaceId: seedData1.projectV3.id,
+          secretPath: "/",
+          name: "deep"
+        });
+      }
+
+      const stageImportFromDev = await createSecretImport({
+        authToken: jwtAuthToken,
+        secretPath: testSuitePath,
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        importPath: testSuitePath,
+        importEnv: seedData1.environment.slug
+      });
+
+      const prodImportFromDev = await createSecretImport({
+        authToken: jwtAuthToken,
+        secretPath: testSuitePath,
+        environmentSlug: "prod",
+        workspaceId: seedData1.projectV3.id,
+        importPath: testSuitePath,
+        importEnv: seedData1.environment.slug
+      });
+
+      return async () => {
+        await deleteSecretImport({
+          id: prodImportFromDev.id,
+          workspaceId: seedData1.projectV3.id,
+          environmentSlug: "prod",
+          secretPath: testSuitePath,
+          authToken: jwtAuthToken
+        });
+
+        await deleteSecretImport({
+          id: stageImportFromDev.id,
+          workspaceId: seedData1.projectV3.id,
+          environmentSlug: "staging",
+          secretPath: testSuitePath,
+          authToken: jwtAuthToken
+        });
+
+        if (prodFolder) {
+          await deleteFolder({
+            authToken: jwtAuthToken,
+            secretPath: "/",
+            id: prodFolder.id,
+            workspaceId: seedData1.projectV3.id,
+            environmentSlug: "prod"
+          });
+        }
+
+        if (stagingFolder) {
+          await deleteFolder({
+            authToken: jwtAuthToken,
+            secretPath: "/",
+            id: stagingFolder.id,
+            workspaceId: seedData1.projectV3.id,
+            environmentSlug: "staging"
+          });
+        }
+
+        if (devFolder) {
+          await deleteFolder({
+            authToken: jwtAuthToken,
+            secretPath: "/",
+            id: devFolder.id,
+            workspaceId: seedData1.projectV3.id,
+            environmentSlug: seedData1.environment.slug
+          });
+        }
+      };
+    });
+
+    test("Check imported secret exist", async () => {
+      await createSecretV2({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "STAGING_KEY",
+        value: "stage-value"
+      });
+
+      await createSecretV2({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "PROD_KEY",
+        value: "prod-value"
+      });
+
+      const stagingSecret = await getSecretByNameV2({
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "STAGING_KEY"
+      });
+
+      expect(stagingSecret.secretKey).toBe("STAGING_KEY");
+      expect(stagingSecret.secretValue).toBe("stage-value");
+
+      const prodSecret = await getSecretByNameV2({
+        environmentSlug: "prod",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "PROD_KEY"
+      });
+
+      expect(prodSecret.secretKey).toBe("PROD_KEY");
+      expect(prodSecret.secretValue).toBe("prod-value");
+
+      await deleteSecretV2({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "STAGING_KEY"
+      });
+      await deleteSecretV2({
+        environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
         authToken: jwtAuthToken,

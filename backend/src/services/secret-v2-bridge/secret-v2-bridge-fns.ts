@@ -399,8 +399,8 @@ export const expandSecretReferencesFactory = ({
     const secrets = await secretDAL.findByFolderId(folder.id);
 
     const decryptedSecret = secrets.reduce<Record<string, string>>((prev, secret) => {
-      // eslint-disable-next-line
-			prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
+      // eslint-disable-next-line no-param-reassign
+      prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
       return prev;
     }, {});
 
@@ -417,21 +417,23 @@ export const expandSecretReferencesFactory = ({
 
     while (stack.length) {
       const { value, secretPath, environment, depth } = stack.pop()!;
-      // eslint-disable-next-line
-			if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
+      // eslint-disable-next-line no-continue
+      if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
       const refs = value?.match(INTERPOLATION_SYNTAX_REG);
 
       if (refs) {
         for (const interpolationSyntax of refs) {
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
           const entities = interpolationKey.trim().split(".");
-          // eslint-disable-next-line
-					if (!entities.length) continue;
+
+          // eslint-disable-next-line no-continue
+          if (!entities.length) continue;
 
           if (entities.length === 1) {
             const [secretKey] = entities;
-            // eslint-disable-next-line
-						const referedValue = await fetchSecret(environment, secretPath, secretKey);
+
+            // eslint-disable-next-line no-continue,no-await-in-loop
+            const referedValue = await fetchSecret(environment, secretPath, secretKey);
             const cacheKey = getCacheUniqueKey(environment, secretPath);
             secretCache[cacheKey][secretKey] = referedValue;
             if (INTERPOLATION_SYNTAX_REG.test(referedValue)) {
@@ -448,8 +450,8 @@ export const expandSecretReferencesFactory = ({
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
             const secretReferenceKey = entities[entities.length - 1];
 
-            // eslint-disable-next-line
-						let referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
+            // eslint-disable-next-line no-await-in-loop
+            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             secretCache[cacheKey][secretReferenceKey] = referedValue;
             if (INTERPOLATION_SYNTAX_REG.test(referedValue)) {
