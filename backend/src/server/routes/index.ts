@@ -881,7 +881,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     userDAL,
     licenseService,
-    slackIntegrationDAL
+    projectSlackConfigDAL
   });
 
   const secretService = secretServiceFactory({

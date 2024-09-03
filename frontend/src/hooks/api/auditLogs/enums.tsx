@@ -90,8 +90,6 @@ export enum EventType {
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
-  ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
-  GET_SLACK_INTEGRATION = "get-slack-integration",
-  UPDATE_SLACK_INTEGRATION = "update-slack-integration",
-  DELETE_SLACK_INTEGRATION = "delete-slack-integration"
+  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config"
 }

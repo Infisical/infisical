@@ -173,7 +173,9 @@ export enum EventType {
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   GET_SLACK_INTEGRATION = "get-slack-integration",
   UPDATE_SLACK_INTEGRATION = "update-slack-integration",
-  DELETE_SLACK_INTEGRATION = "delete-slack-integration"
+  DELETE_SLACK_INTEGRATION = "delete-slack-integration",
+  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
+  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config"
 }
 
 interface UserActorMetadata {
@@ -1481,6 +1483,25 @@ interface GetSlackIntegration {
   };
 }
 
+interface UpdateProjectSlackConfig {
+  type: EventType.UPDATE_PROJECT_SLACK_CONFIG;
+  metadata: {
+    id: string;
+    slackIntegrationId: string;
+    isAccessRequestNotificationEnabled: boolean;
+    accessRequestChannels: string;
+    isSecretRequestNotificationEnabled: boolean;
+    secretRequestChannels: string;
+  };
+}
+
+interface GetProjectSlackConfig {
+  type: EventType.GET_PROJECT_SLACK_CONFIG;
+  metadata: {
+    id: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1615,4 +1636,6 @@ export type Event =
   | AttemptCreateSlackIntegration
   | UpdateSlackIntegration
   | DeleteSlackIntegration
-  | GetSlackIntegration;
+  | GetSlackIntegration
+  | UpdateProjectSlackConfig
+  | GetProjectSlackConfig;

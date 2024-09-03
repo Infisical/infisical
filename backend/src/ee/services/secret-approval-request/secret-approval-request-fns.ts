@@ -2,8 +2,8 @@ import { TSecretApprovalRequests } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { triggerSlackNotification } from "@app/services/slack/slack-fns";
-import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -23,9 +23,9 @@ type TTriggerSecretApprovalSlackNotif = {
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   secretApprovalRequest: TSecretApprovalRequests;
   secretPath: string;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
 };
 
@@ -34,7 +34,7 @@ export const triggerSecretApprovalSlackNotif = async ({
   projectDAL,
   kmsService,
   secretApprovalRequest,
-  slackIntegrationDAL,
+  projectSlackConfigDAL,
   userDAL,
   environment,
   secretPath
@@ -74,8 +74,8 @@ export const triggerSecretApprovalSlackNotif = async ({
     projectId,
     projectDAL,
     kmsService,
-    slackIntegrationDAL,
     payloadMessage: messageBody,
+    projectSlackConfigDAL,
     payloadBlocks,
     feature: SlackTriggerFeature.SECRET_APPROVAL
   });

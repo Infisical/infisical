@@ -3,14 +3,14 @@ import { Block, WebClient } from "@slack/web-api";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
+import { TProjectSlackConfigDALFactory } from "./project-slack-config-dal";
 import { SlackTriggerFeature } from "./slack-types";
 
 export const triggerSlackNotification = async ({
   projectId,
   payloadBlocks,
   payloadMessage,
-  slackIntegrationDAL,
+  projectSlackConfigDAL,
   projectDAL,
   kmsService,
   feature
@@ -18,15 +18,13 @@ export const triggerSlackNotification = async ({
   projectId: string;
   payloadBlocks: Block[];
   payloadMessage: string;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findOne">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   feature: SlackTriggerFeature;
 }) => {
   const project = await projectDAL.findById(projectId);
-  const slackIntegration = await slackIntegrationDAL.findOne({
-    projectId
-  });
+  const slackIntegration = await projectSlackConfigDAL.getIntegrationDetailsByProject(project.id);
 
   if (!slackIntegration) {
     return;

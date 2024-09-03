@@ -8,6 +8,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -575,6 +576,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.GET_PROJECT_SLACK_CONFIG,
+          metadata: {
+            id: slackConfig.id
+          }
+        }
+      });
+
       return slackConfig;
     }
   });
@@ -616,6 +628,22 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId: req.params.workspaceId,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT_SLACK_CONFIG,
+          metadata: {
+            id: slackConfig.id,
+            slackIntegrationId: slackConfig.slackIntegrationId,
+            isAccessRequestNotificationEnabled: slackConfig.isAccessRequestNotificationEnabled,
+            accessRequestChannels: slackConfig.accessRequestChannels,
+            isSecretRequestNotificationEnabled: slackConfig.isSecretRequestNotificationEnabled,
+            secretRequestChannels: slackConfig.secretRequestChannels
+          }
+        }
       });
 
       return slackConfig;

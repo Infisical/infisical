@@ -47,7 +47,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
-import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -105,7 +105,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findOne">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -134,8 +134,8 @@ export const secretApprovalRequestServiceFactory = ({
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  slackIntegrationDAL,
-  licenseService
+  licenseService,
+  projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -1080,8 +1080,8 @@ export const secretApprovalRequestServiceFactory = ({
       projectDAL,
       kmsService,
       secretApprovalRequest,
-      slackIntegrationDAL,
-      userDAL
+      userDAL,
+      projectSlackConfigDAL
     });
 
     await sendApprovalEmailsFn({
@@ -1354,8 +1354,8 @@ export const secretApprovalRequestServiceFactory = ({
       projectDAL,
       kmsService,
       secretApprovalRequest,
-      slackIntegrationDAL,
-      userDAL
+      userDAL,
+      projectSlackConfigDAL
     });
 
     await sendApprovalEmailsFn({
