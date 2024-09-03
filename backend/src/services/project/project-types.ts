@@ -123,3 +123,13 @@ export type TLoadProjectKmsBackupDTO = {
 export type TGetProjectKmsKey = TProjectPermission;
 
 export type TListProjectCertificateTemplatesDTO = TProjectPermission;
+
+export type TGetProjectSlackConfig = TProjectPermission;
+
+export type TUpdateProjectSlackConfig = {
+  slackIntegrationId: string;
+  isAccessRequestNotificationEnabled: boolean;
+  accessRequestChannels: string;
+  isSecretRequestNotificationEnabled: boolean;
+  secretRequestChannels: string;
+} & TProjectPermission;

@@ -1,4 +1,8 @@
-export { useDeleteSlackIntegration, useUpdateSlackIntegration } from "./mutation";
+export {
+  useDeleteSlackIntegration,
+  useUpdateProjectSlackConfig,
+  useUpdateSlackIntegration
+} from "./mutation";
 export {
   fetchSlackInstallUrl,
   useGetSlackIntegrationById,

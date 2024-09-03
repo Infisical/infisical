@@ -22,6 +22,7 @@ export {
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
+  useGetWorkspaceSlackConfig,
   useGetWorkspaceUsers,
   useListWorkspaceCas,
   useListWorkspaceCertificates,

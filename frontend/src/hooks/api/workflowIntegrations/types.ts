@@ -20,3 +20,21 @@ export type TDeleteSlackIntegrationDTO = {
   id: string;
   orgId: string;
 };
+
+export type ProjectSlackConfig = {
+  id: string;
+  slackIntegrationId: string;
+  isAccessRequestNotificationEnabled: boolean;
+  accessRequestChannels: string;
+  isSecretRequestNotificationEnabled: boolean;
+  secretRequestChannels: string;
+};
+
+export type TUpdateProjectSlackConfigDTO = {
+  workspaceId: string;
+  slackIntegrationId: string;
+  isAccessRequestNotificationEnabled: boolean;
+  accessRequestChannels: string;
+  isSecretRequestNotificationEnabled: boolean;
+  secretRequestChannels: string;
+};

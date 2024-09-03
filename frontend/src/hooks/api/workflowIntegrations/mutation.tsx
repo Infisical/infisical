@@ -2,8 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { workspaceKeys } from "../workspace/queries";
 import { workflowIntegrationKeys } from "./queries";
-import { TDeleteSlackIntegrationDTO, TUpdateSlackIntegrationDTO } from "./types";
+import {
+  TDeleteSlackIntegrationDTO,
+  TUpdateProjectSlackConfigDTO,
+  TUpdateSlackIntegrationDTO
+} from "./types";
 
 export const useUpdateSlackIntegration = () => {
   const queryClient = useQueryClient();
@@ -33,6 +38,23 @@ export const useDeleteSlackIntegration = () => {
     onSuccess: (_, { orgId, id }) => {
       queryClient.invalidateQueries(workflowIntegrationKeys.getSlackWorkflowIntegration(id));
       queryClient.invalidateQueries(workflowIntegrationKeys.getSlackWorkflowIntegrations(orgId));
+    }
+  });
+};
+
+export const useUpdateProjectSlackConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: TUpdateProjectSlackConfigDTO) => {
+      const { data } = await apiRequest.put(
+        `/api/v1/workspace/${dto.workspaceId}/slack-config`,
+        dto
+      );
+
+      return data;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceSlackConfig(workspaceId));
     }
   });
 };
