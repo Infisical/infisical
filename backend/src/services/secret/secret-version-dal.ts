@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TSecretVersionDALFactory = ReturnType<typeof secretVersionDALFactory>;
 
@@ -112,6 +114,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
   };
 
   const pruneExcessVersions = async () => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v1 started`);
     try {
       await db(TableName.SecretVersion)
         .with("version_cte", (qb) => {
@@ -137,6 +140,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         name: "Secret Version Prune"
       });
     }
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret version v1 completed`);
   };
 
   return {

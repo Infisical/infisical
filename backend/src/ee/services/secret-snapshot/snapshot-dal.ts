@@ -16,6 +16,7 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TSnapshotDALFactory = ReturnType<typeof snapshotDALFactory>;
 
@@ -599,6 +600,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
   const pruneExcessSnapshots = async () => {
     const PRUNE_FOLDER_BATCH_SIZE = 10000;
 
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret snapshots started`);
     try {
       let uuidOffset = "00000000-0000-0000-0000-000000000000";
       // cleanup snapshots from current folders
@@ -714,6 +716,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
     } catch (error) {
       throw new DatabaseError({ error, name: "SnapshotPrune" });
     }
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret snapshots completed`);
   };
 
   // special query for migration for secret v2
