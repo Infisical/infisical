@@ -13,8 +13,8 @@ export type FormLabelProps = {
   label?: ReactNode;
   icon?: ReactNode;
   className?: string;
-  tooltipText?: string;
   tooltipClassName?: string;
+  tooltipText?: ReactNode;
 };
 
 export const FormLabel = ({
@@ -24,8 +24,8 @@ export const FormLabel = ({
   icon,
   className,
   isOptional,
-  tooltipText,
-  tooltipClassName
+  tooltipClassName,
+  tooltipText
 }: FormLabelProps) => (
   <Label.Root
     className={twMerge(
