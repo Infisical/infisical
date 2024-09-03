@@ -49,15 +49,15 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiEst: false
 });
 
-export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
+export const setupLicenseRequestWithStore = (baseURL: string, refreshUrl: string, licenseKey: string) => {
   let token: string;
-  const licenceReq = axios.create({
+  const licenseReq = axios.create({
     baseURL,
     timeout: 35 * 1000
     // signal: AbortSignal.timeout(60 * 1000)
   });
 
-  const refreshLicence = async () => {
+  const refreshLicense = async () => {
     const appCfg = getConfig();
     const {
       data: { token: authToken }
@@ -75,7 +75,7 @@ export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string
     return token;
   };
 
-  licenceReq.interceptors.request.use(
+  licenseReq.interceptors.request.use(
     (config) => {
       if (token && config.headers) {
         // eslint-disable-next-line no-param-reassign
@@ -86,7 +86,7 @@ export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string
     (err) => Promise.reject(err)
   );
 
-  licenceReq.interceptors.response.use(
+  licenseReq.interceptors.response.use(
     (response) => response,
     async (err) => {
       const originalRequest = (err as AxiosError).config;
@@ -97,15 +97,15 @@ export const setupLicenceRequestWithStore = (baseURL: string, refreshUrl: string
         (originalRequest as any)._retry = true; // injected
 
         // refresh
-        await refreshLicence();
+        await refreshLicense();
 
-        licenceReq.defaults.headers.common.Authorization = `Bearer ${token}`;
-        return licenceReq(originalRequest!);
+        licenseReq.defaults.headers.common.Authorization = `Bearer ${token}`;
+        return licenseReq(originalRequest!);
       }
 
       return Promise.reject(err);
     }
   );
 
-  return { request: licenceReq, refreshLicence };
+  return { request: licenseReq, refreshLicense };
 };

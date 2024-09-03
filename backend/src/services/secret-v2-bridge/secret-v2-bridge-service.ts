@@ -521,27 +521,22 @@ export const secretV2BridgeServiceFactory = ({
 
     if (shouldExpandSecretReferences) {
       const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
-      for (const secretPathKey in secretsGroupByPath) {
-        if (Object.hasOwn(secretsGroupByPath, secretPathKey)) {
-          const secretsGroupByKey = secretsGroupByPath[secretPathKey].reduce(
-            (acc, item) => {
-              acc[item.secretKey] = {
-                value: item.secretValue,
-                comment: item.secretComment,
-                skipMultilineEncoding: item.skipMultilineEncoding
-              };
-              return acc;
-            },
-            {} as Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
-          );
-          // eslint-disable-next-line
-          await expandSecretReferences(secretsGroupByKey);
-          secretsGroupByPath[secretPathKey].forEach((decryptedSecret) => {
-            // eslint-disable-next-line no-param-reassign
-            decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value || "";
-          });
-        }
-      }
+      await Promise.allSettled(
+        Object.keys(secretsGroupByPath).map((groupedPath) =>
+          Promise.allSettled(
+            secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
+              const expandedSecretValue = await expandSecretReferences({
+                value: decryptedSecret.secretValue,
+                secretPath: groupedPath,
+                environment,
+                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+              });
+              // eslint-disable-next-line no-param-reassign
+              secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
+            })
+          )
+        )
+      );
     }
 
     if (!includeImports) {
@@ -693,12 +688,14 @@ export const secretV2BridgeServiceFactory = ({
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : "";
     if (shouldExpandSecretReferences && secretValue) {
-      const secretReferenceExpandedRecord = {
-        [secret.key]: { value: secretValue }
-      };
       // eslint-disable-next-line
-      await expandSecretReferences(secretReferenceExpandedRecord);
-      secretValue = secretReferenceExpandedRecord[secret.key].value;
+      const expandedSecretValue = await expandSecretReferences({
+        environment,
+        secretPath: path,
+        value: secretValue,
+        skipMultilineEncoding: secret.skipMultilineEncoding
+      });
+      secretValue = expandedSecretValue || "";
     }
 
     return reshapeBridgeSecret(projectId, environment, path, {

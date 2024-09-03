@@ -377,150 +377,116 @@ type TInterpolateSecretArg = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
 
+const MAX_SECRET_REFERENCE_DEPTH = 10;
 export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
   secretDAL,
   folderDAL
 }: TInterpolateSecretArg) => {
-  const fetchSecretFactory = () => {
-    const secretCache: Record<string, Record<string, string>> = {};
+  const secretCache: Record<string, Record<string, string>> = {};
+  const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
-    return async (secRefEnv: string, secRefPath: string[], secRefKey: string) => {
-      const referredSecretPathURL = path.join("/", ...secRefPath);
-      const uniqueKey = `${secRefEnv}-${referredSecretPathURL}`;
+  const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
+    const cacheKey = getCacheUniqueKey(environment, secretPath);
 
-      if (secretCache?.[uniqueKey]) {
-        return secretCache[uniqueKey][secRefKey];
-      }
+    if (secretCache?.[cacheKey]) {
+      return secretCache[cacheKey][secretKey] || "";
+    }
 
-      const folder = await folderDAL.findBySecretPath(projectId, secRefEnv, referredSecretPathURL);
-      if (!folder) return "";
-      const secrets = await secretDAL.findByFolderId(folder.id);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) return "";
+    const secrets = await secretDAL.findByFolderId(folder.id);
 
-      const decryptedSecret = secrets.reduce<Record<string, string>>((prev, secret) => {
-        // eslint-disable-next-line
-        prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
-        return prev;
-      }, {});
+    const decryptedSecret = secrets.reduce<Record<string, string>>((prev, secret) => {
+      // eslint-disable-next-line no-param-reassign
+      prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
+      return prev;
+    }, {});
 
-      secretCache[uniqueKey] = decryptedSecret;
+    secretCache[cacheKey] = decryptedSecret;
 
-      return secretCache[uniqueKey][secRefKey];
-    };
+    return secretCache[cacheKey][secretKey] || "";
   };
 
-  const recursivelyExpandSecret = async (
-    expandedSec: Record<string, string | undefined>,
-    interpolatedSec: Record<string, string | undefined>,
-    fetchSecret: (env: string, secPath: string[], secKey: string) => Promise<string>,
-    recursionChainBreaker: Record<string, boolean>,
-    key: string
-  ): Promise<string | undefined> => {
-    if (expandedSec?.[key] !== undefined) {
-      return expandedSec[key];
-    }
-    if (recursionChainBreaker?.[key]) {
-      return "";
-    }
-    // eslint-disable-next-line
-    recursionChainBreaker[key] = true;
+  const recursivelyExpandSecret = async (dto: { value?: string; secretPath: string; environment: string }) => {
+    if (!dto.value) return "";
 
-    let interpolatedValue = interpolatedSec[key];
-    if (!interpolatedValue) {
-      // eslint-disable-next-line no-console
-      console.error(`Couldn't find referenced value - ${key}`);
-      return "";
-    }
+    const stack = [{ ...dto, depth: 0 }];
+    let expandedValue = dto.value;
 
-    const refs = interpolatedValue.match(INTERPOLATION_SYNTAX_REG);
-    if (refs) {
-      for (const interpolationSyntax of refs) {
-        const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
-        const entities = interpolationKey.trim().split(".");
+    while (stack.length) {
+      const { value, secretPath, environment, depth } = stack.pop()!;
+      // eslint-disable-next-line no-continue
+      if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
+      const refs = value?.match(INTERPOLATION_SYNTAX_REG);
 
-        if (entities.length === 1) {
-          // eslint-disable-next-line
-          const val = await recursivelyExpandSecret(
-            expandedSec,
-            interpolatedSec,
-            fetchSecret,
-            recursionChainBreaker,
-            interpolationKey
-          );
-          if (val) {
-            interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
+      if (refs) {
+        for (const interpolationSyntax of refs) {
+          const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
+          const entities = interpolationKey.trim().split(".");
+
+          // eslint-disable-next-line no-continue
+          if (!entities.length) continue;
+
+          if (entities.length === 1) {
+            const [secretKey] = entities;
+
+            // eslint-disable-next-line no-continue,no-await-in-loop
+            const referedValue = await fetchSecret(environment, secretPath, secretKey);
+            const cacheKey = getCacheUniqueKey(environment, secretPath);
+            secretCache[cacheKey][secretKey] = referedValue;
+            if (INTERPOLATION_SYNTAX_REG.test(referedValue)) {
+              stack.push({
+                value: referedValue,
+                secretPath,
+                environment,
+                depth: depth + 1
+              });
+            }
+            expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
+          } else {
+            const secretReferenceEnvironment = entities[0];
+            const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
+            const secretReferenceKey = entities[entities.length - 1];
+
+            // eslint-disable-next-line no-await-in-loop
+            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
+            const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+            secretCache[cacheKey][secretReferenceKey] = referedValue;
+            if (INTERPOLATION_SYNTAX_REG.test(referedValue)) {
+              stack.push({
+                value: referedValue,
+                secretPath: secretReferencePath,
+                environment: secretReferenceEnvironment,
+                depth: depth + 1
+              });
+            }
+
+            expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
           }
-          // eslint-disable-next-line
-          continue;
-        }
-
-        if (entities.length > 1) {
-          const secRefEnv = entities[0];
-          const secRefPath = entities.slice(1, entities.length - 1);
-          const secRefKey = entities[entities.length - 1];
-
-          // eslint-disable-next-line
-          const val = await fetchSecret(secRefEnv, secRefPath, secRefKey);
-          if (val) {
-            interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
-          }
         }
       }
     }
 
-    // eslint-disable-next-line
-    expandedSec[key] = interpolatedValue;
-    return interpolatedValue;
+    return expandedValue;
   };
 
-  const fetchSecret = fetchSecretFactory();
-  const expandSecrets = async (
-    inputSecrets: Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
-  ) => {
-    const expandedSecrets: Record<string, string | undefined> = {};
-    const toBeExpandedSecrets: Record<string, string | undefined> = {};
+  const expandSecret = async (inputSecret: {
+    value?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretPath: string;
+    environment: string;
+  }) => {
+    if (!inputSecret.value) return inputSecret.value;
 
-    Object.keys(inputSecrets).forEach((key) => {
-      if (inputSecrets[key].value?.match(INTERPOLATION_SYNTAX_REG)) {
-        toBeExpandedSecrets[key] = inputSecrets[key].value;
-      } else {
-        expandedSecrets[key] = inputSecrets[key].value;
-      }
-    });
+    const shouldExpand = Boolean(inputSecret.value?.match(INTERPOLATION_SYNTAX_REG));
+    if (!shouldExpand) return inputSecret.value;
 
-    for (const key of Object.keys(inputSecrets)) {
-      if (expandedSecrets?.[key]) {
-        // should not do multi line encoding if user has set it to skip
-        // eslint-disable-next-line
-        inputSecrets[key].value = inputSecrets[key].skipMultilineEncoding
-          ? formatMultiValueEnv(expandedSecrets[key])
-          : expandedSecrets[key];
-        // eslint-disable-next-line
-        continue;
-      }
-
-      // this is to avoid recursion loop. So the graph should be direct graph rather than cyclic
-      // so for any recursion building if there is an entity two times same key meaning it will be looped
-      const recursionChainBreaker: Record<string, boolean> = {};
-      // eslint-disable-next-line
-      const expandedVal = await recursivelyExpandSecret(
-        expandedSecrets,
-        toBeExpandedSecrets,
-        fetchSecret,
-        recursionChainBreaker,
-        key
-      );
-
-      // eslint-disable-next-line
-      inputSecrets[key].value = inputSecrets[key].skipMultilineEncoding
-        ? formatMultiValueEnv(expandedVal)
-        : expandedVal;
-    }
-
-    return inputSecrets;
+    const expandedSecretValue = await recursivelyExpandSecret(inputSecret);
+    return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedSecretValue) : expandedSecretValue;
   };
-  return expandSecrets;
+  return expandSecret;
 };
 
 export const reshapeBridgeSecret = (

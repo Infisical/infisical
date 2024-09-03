@@ -8,6 +8,7 @@ type TRawSecret = {
   secretComment?: string;
   version: number;
 };
+
 const createSecret = async (dto: { path: string; key: string; value: string; comment: string; type?: SecretType }) => {
   const createSecretReqBody = {
     workspaceId: seedData1.projectV3.id,
