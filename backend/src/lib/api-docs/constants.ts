@@ -964,6 +964,10 @@ export const INTEGRATION = {
       shouldAutoRedeploy: "Used by Render to trigger auto deploy.",
       secretGCPLabel: "The label for GCP secrets.",
       secretAWSTag: "The tags for AWS secrets.",
+      githubVisibility:
+        "Define where the secrets from the Github Integration should be visible. Option 'selected' lets you directly define which repositories to sync secrets to.",
+      githubVisibilityRepoIds:
+        "The repository IDs to sync secrets to when using the Github Integration. Only applicable when using Organization scope, and visibility is set to 'selected'",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
       shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
       shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
