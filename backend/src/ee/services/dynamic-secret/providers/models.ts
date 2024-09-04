@@ -7,6 +7,11 @@ export enum SqlProviders {
   MsSQL = "mssql"
 }
 
+export enum ElasticSearchAuthTypes {
+  User = "user",
+  ApiKey = "api-key"
+}
+
 export const DynamicSecretRedisDBSchema = z.object({
   host: z.string().trim().toLowerCase(),
   port: z.number(),
@@ -38,12 +43,12 @@ export const DynamicSecretElasticSearchSchema = z.object({
   // two auth types "user, apikey"
   auth: z.discriminatedUnion("type", [
     z.object({
-      type: z.literal("user"),
+      type: z.literal(ElasticSearchAuthTypes.User),
       username: z.string().trim(),
       password: z.string().trim()
     }),
     z.object({
-      type: z.literal("api-key"),
+      type: z.literal(ElasticSearchAuthTypes.ApiKey),
       apiKey: z.string().trim(),
       apiKeyId: z.string().trim()
     })

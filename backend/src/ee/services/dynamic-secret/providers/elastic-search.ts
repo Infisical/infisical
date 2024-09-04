@@ -1,4 +1,4 @@
-import { Client as ElasticCacheClient } from "@elastic/elasticsearch";
+import { Client as ElasticSearchClient } from "@elastic/elasticsearch";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { DynamicSecretElasticSearchSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretElasticSearchSchema, ElasticSearchAuthTypes, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -41,7 +41,7 @@ export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
   };
 
   const getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
-    const connection = new ElasticCacheClient({
+    const connection = new ElasticSearchClient({
       node: {
         url: new URL(`${providerInputs.host}:${providerInputs.port}`),
         ...(providerInputs.ca && {
@@ -52,7 +52,7 @@ export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
         })
       },
       auth: {
-        ...(providerInputs.auth.type === "api-key"
+        ...(providerInputs.auth.type === ElasticSearchAuthTypes.ApiKey
           ? {
               apiKey: {
                 api_key: providerInputs.auth.apiKey,
