@@ -41,6 +41,13 @@ Prerequisites:
           </Tab>
           <Tab title="Organization">
             ![integrations github](../../images/integrations/github/integrations-github-scope-org.png)
+
+            When using the organization scope, your secrets will be saved in the top-level of your Github Organization.
+
+            You can choose the visibility, which defines which repositories can access the secrets. The options are:
+            - **All public repositories**: All public repositories in the organization can access the secrets.
+            - **All private repositories**: All private repositories in the organization can access the secrets.
+            - **Selected repositories**: Only the selected repositories can access the secrets. This gives a more fine-grained control over which repositories can access the secrets. You can select _both_ private and public repositories with this option.
           </Tab>
           <Tab title="Repository Environment">
           ![integrations github](../../images/integrations/github/integrations-github-scope-env.png)

@@ -27,6 +27,10 @@ export type TCreateIntegrationDTO = {
       key: string;
       value: string;
     }[];
+
+    githubVisibility?: string;
+    githubVisibilityRepoIds?: string[];
+
     kmsKeyId?: string;
     shouldDisableDelete?: boolean;
     shouldMaskSecrets?: boolean;
