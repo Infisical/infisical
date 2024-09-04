@@ -130,7 +130,7 @@ export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
   environment: string;
-  approverUserIds?: string[];
+  approvers?: string[];
   approvals?: number;
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
