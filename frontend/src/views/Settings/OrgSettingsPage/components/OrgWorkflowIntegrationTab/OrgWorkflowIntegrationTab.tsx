@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faEllipsis, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import axios from "axios";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -71,12 +72,21 @@ export const OrgWorkflowIntegrationTab = withPermission(
 
     const triggerReinstall = async (platform: WorkflowIntegrationPlatform, id: string) => {
       if (platform === WorkflowIntegrationPlatform.SLACK) {
-        const slackReinstallUrl = await fetchSlackReinstallUrl({
-          slackIntegrationId: id
-        });
+        try {
+          const slackReinstallUrl = await fetchSlackReinstallUrl({
+            slackIntegrationId: id
+          });
 
-        if (slackReinstallUrl) {
-          router.push(slackReinstallUrl);
+          if (slackReinstallUrl) {
+            router.push(slackReinstallUrl);
+          }
+        } catch (err) {
+          if (axios.isAxiosError(err)) {
+            createNotification({
+              text: (err.response?.data as { message: string })?.message,
+              type: "error"
+            });
+          }
         }
       }
     };

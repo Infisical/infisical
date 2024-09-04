@@ -125,7 +125,11 @@ export const slackServiceFactory = ({
 
     if (!slackClientId || !slackClientSecret) {
       throw new BadRequestError({
-        message: "Invalid slack configuration"
+        message: `Invalid Slack configuration. ${
+          appCfg.isCloud
+            ? "Please contact the Infisical team."
+            : "Contact your instance admin to setup Slack integration in the Admin settings."
+        }`
       });
     }
 

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -51,12 +52,23 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
 
   const triggerSlackInstall = async (slug: string, description?: string) => {
     setIsConnectLoading.on();
-    const slackInstallUrl = await fetchSlackInstallUrl({
-      slug,
-      description
-    });
-    if (slackInstallUrl) {
-      router.push(slackInstallUrl);
+    try {
+      const slackInstallUrl = await fetchSlackInstallUrl({
+        slug,
+        description
+      });
+      if (slackInstallUrl) {
+        router.push(slackInstallUrl);
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        createNotification({
+          text: (err.response?.data as { message: string })?.message,
+          type: "error"
+        });
+      }
+    } finally {
+      setIsConnectLoading.off();
     }
   };
 
