@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
@@ -53,6 +53,21 @@ enum TabSections {
   Options = "options"
 }
 
+const secretsVisibility = [
+  {
+    value: "selected",
+    label: "Select repositories"
+  },
+  {
+    value: "all",
+    label: "All public repositories"
+  },
+  {
+    value: "private",
+    label: "All private repositories"
+  }
+] as const;
+
 const targetEnv = ["github-repo", "github-org", "github-env"] as const;
 type TargetEnv = (typeof targetEnv)[number];
 
@@ -63,9 +78,12 @@ const schema = yup.object({
   shouldEnableDelete: yup.boolean().optional(),
   scope: yup.mixed<TargetEnv>().oneOf(targetEnv.slice()).required(),
 
-  repoIds: yup.mixed().when("scope", {
-    is: "github-repo",
-    then: yup.array(yup.string().required()).min(1, "Select at least one repositories")
+  // Explanation: If scope is (github-repo) OR (github-org AND visibility is set to selected), then repoIds is required
+  repoIds: yup.mixed().when(["scope", "visibility"], {
+    is: (scope: string, visibility: string) =>
+      scope === "github-repo" || (scope === "github-org" && visibility === "selected"),
+    then: yup.array(yup.string().required()).min(1, "Select at least one repository"),
+    otherwise: yup.mixed().notRequired()
   }),
 
   repoId: yup.mixed().when("scope", {
@@ -91,6 +109,10 @@ const schema = yup.object({
   orgId: yup.mixed().when("scope", {
     is: "github-org",
     then: yup.string().required("Organization is required")
+  }),
+  visibility: yup.mixed().when("scope", {
+    is: "github-org",
+    then: yup.string().required("Visibility is required")
   })
 });
 
@@ -121,6 +143,7 @@ export default function GitHubCreateIntegrationPage() {
       secretPath: "/",
       scope: "github-repo",
       repoIds: [],
+      visibility: "all",
       shouldEnableDelete: false
     }
   });
@@ -130,6 +153,7 @@ export default function GitHubCreateIntegrationPage() {
   const repoIds = watch("repoIds");
   const repoName = watch("repoName");
   const repoOwner = watch("repoOwner");
+  const selectedOrgId = watch("orgId");
 
   const { data: integrationAuthGithubEnvs } = useGetIntegrationAuthGithubEnvs(
     integrationAuthId as string,
@@ -196,6 +220,8 @@ export default function GitHubCreateIntegrationPage() {
             scope: data.scope,
             owner: integrationAuthOrgs?.find((e) => e.orgId === data.orgId)?.name,
             metadata: {
+              githubVisibility: data.visibility,
+              githubVisibilityRepoIds: data.repoIds,
               secretSuffix: data.secretSuffix,
               shouldEnableDelete: data.shouldEnableDelete
             }
@@ -241,6 +267,15 @@ export default function GitHubCreateIntegrationPage() {
       setIsLoading(false);
     }
   };
+
+  const selectedOrganization = useMemo(() => {
+    if (!integrationAuthApps) return null;
+
+    return integrationAuthApps.filter(
+      (authApp) =>
+        integrationAuthOrgs?.find((e) => e.orgId === selectedOrgId)?.name === authApp.owner
+    );
+  }, [selectedOrgId, integrationAuthApps]);
 
   return integrationAuth && workspace && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center py-4">
@@ -339,7 +374,10 @@ export default function GitHubCreateIntegrationPage() {
                     <FormControl label="Scope" errorText={error?.message} isError={Boolean(error)}>
                       <Select
                         defaultValue={field.value}
-                        onValueChange={onChange}
+                        onValueChange={(e) => {
+                          setValue("repoIds", []);
+                          onChange(e);
+                        }}
                         className="w-full border border-mineshaft-500"
                       >
                         <SelectItem value="github-org">Organization</SelectItem>
@@ -430,32 +468,143 @@ export default function GitHubCreateIntegrationPage() {
                   />
                 )}
                 {scope === "github-org" && (
-                  <Controller
-                    control={control}
-                    name="orgId"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Organization"
-                        errorText={
-                          integrationAuthOrgs?.length ? error?.message : "No organizations found"
-                        }
-                        isError={Boolean(integrationAuthOrgs?.length && error?.message)}
-                      >
-                        <Select
-                          value={field.value}
-                          onValueChange={onChange}
-                          className="w-full border border-mineshaft-500"
+                  <>
+                    <Controller
+                      control={control}
+                      name="orgId"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                          label="Organization"
+                          errorText={
+                            integrationAuthOrgs?.length ? error?.message : "No organizations found"
+                          }
+                          isError={Boolean(integrationAuthOrgs?.length && error?.message)}
                         >
-                          {integrationAuthOrgs &&
-                            integrationAuthOrgs.map(({ name, orgId }) => (
-                              <SelectItem key={`github-organization-${orgId}`} value={orgId}>
-                                {name}
+                          <Select
+                            value={field.value}
+                            onValueChange={onChange}
+                            className="w-full border border-mineshaft-500"
+                          >
+                            {integrationAuthOrgs &&
+                              integrationAuthOrgs.map(({ name, orgId }) => (
+                                <SelectItem key={`github-organization-${orgId}`} value={orgId}>
+                                  {name}
+                                </SelectItem>
+                              ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="visibility"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                          tooltipText="Select which type of repositories that the secrets should be synced to."
+                          label="Visibility"
+                          errorText={error?.message}
+                          isError={Boolean(error?.message)}
+                        >
+                          <Select
+                            value={field.value}
+                            onValueChange={onChange}
+                            className="w-full border border-mineshaft-500"
+                          >
+                            {secretsVisibility.map(({ label, value }) => (
+                              <SelectItem key={`github-visibility-${value}`} value={value}>
+                                {label}
                               </SelectItem>
                             ))}
-                        </Select>
-                      </FormControl>
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+
+                    {watch("visibility") === "selected" && (
+                      <Controller
+                        control={control}
+                        name="repoIds"
+                        render={({ field: { onChange }, fieldState: { error } }) => (
+                          <FormControl
+                            label="Selected Repositories"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                {integrationAuthApps.length > 0 ? (
+                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                                    {repoIds.length === 1
+                                      ? integrationAuthApps?.reduce(
+                                          (acc, { appId, name, owner }) =>
+                                            repoIds[0] === appId ? `${owner}/${name}` : acc,
+                                          ""
+                                        )
+                                      : `${repoIds.length} repositories selected`}
+                                    <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                                    No repositories found
+                                  </div>
+                                )}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="start"
+                                className="thin-scrollbar z-[100] max-h-80 overflow-y-scroll"
+                              >
+                                {selectedOrganization ? (
+                                  selectedOrganization.map((integrationAuthApp) => {
+                                    const isSelected = repoIds.includes(
+                                      String(integrationAuthApp.appId)
+                                    );
+
+                                    return (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          if (repoIds.includes(String(integrationAuthApp.appId))) {
+                                            onChange(
+                                              repoIds.filter(
+                                                (appId: string) =>
+                                                  appId !== String(integrationAuthApp.appId)
+                                              )
+                                            );
+                                          } else {
+                                            onChange([
+                                              ...repoIds,
+                                              String(integrationAuthApp.appId)
+                                            ]);
+                                          }
+                                        }}
+                                        key={`repos-id-${integrationAuthApp.appId}`}
+                                        icon={
+                                          isSelected ? (
+                                            <FontAwesomeIcon
+                                              icon={faCheckCircle}
+                                              className="pr-0.5 text-primary"
+                                            />
+                                          ) : (
+                                            <div className="pl-[1.01rem]" />
+                                          )
+                                        }
+                                        iconPos="left"
+                                        className="w-[28.4rem] text-sm"
+                                      >
+                                        {integrationAuthApp.owner}/{integrationAuthApp.name}
+                                      </DropdownMenuItem>
+                                    );
+                                  })
+                                ) : (
+                                  <div />
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </FormControl>
+                        )}
+                      />
                     )}
-                  />
+                  </>
                 )}
                 {scope === "github-env" && (
                   <Controller

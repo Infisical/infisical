@@ -482,7 +482,7 @@ export const secretServiceFactory = ({
       projectId,
       environmentSlug: folder.environment.slug
     });
-    // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
+    // TODO(akhilmhdh-pg): license check, posthog service and snapshot
     return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
@@ -1047,74 +1047,47 @@ export const secretServiceFactory = ({
       };
     });
 
+    const expandSecret = interpolateSecrets({
+      folderDAL,
+      projectId,
+      secretDAL,
+      secretEncKey: botKey
+    });
+
     if (expandSecretReferences) {
-      const expandSecrets = interpolateSecrets({
-        folderDAL,
-        projectId,
-        secretDAL,
-        secretEncKey: botKey
-      });
-
-      const batchSecretsExpand = async (
-        secretBatch: {
-          secretKey: string;
-          secretValue: string;
-          secretComment?: string;
-          secretPath: string;
-          skipMultilineEncoding: boolean | null | undefined;
-        }[]
-      ) => {
-        // Group secrets by secretPath
-        const secretsByPath: Record<
-          string,
-          {
-            secretKey: string;
-            secretValue: string;
-            secretComment?: string;
-            skipMultilineEncoding: boolean | null | undefined;
-          }[]
-        > = {};
-
-        secretBatch.forEach((secret) => {
-          if (!secretsByPath[secret.secretPath]) {
-            secretsByPath[secret.secretPath] = [];
-          }
-          secretsByPath[secret.secretPath].push(secret);
-        });
-
-        // Expand secrets for each group
-        for (const secPath in secretsByPath) {
-          if (!Object.hasOwn(secretsByPath, path)) {
-            // eslint-disable-next-line no-continue
-            continue;
-          }
-
-          const secretRecord: Record<
-            string,
-            { value: string; comment?: string; skipMultilineEncoding: boolean | null | undefined }
-          > = {};
-          secretsByPath[secPath].forEach((decryptedSecret) => {
-            secretRecord[decryptedSecret.secretKey] = {
-              value: decryptedSecret.secretValue,
-              comment: decryptedSecret.secretComment,
-              skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
-            };
-          });
-
-          await expandSecrets(secretRecord);
-
-          secretsByPath[secPath].forEach((decryptedSecret) => {
-            // eslint-disable-next-line no-param-reassign
-            decryptedSecret.secretValue = secretRecord[decryptedSecret.secretKey].value;
-          });
-        }
-      };
-
-      // expand secrets
-      await batchSecretsExpand(filteredSecrets);
-
-      // expand imports by batch
-      await Promise.all(processedImports.map((processedImport) => batchSecretsExpand(processedImport.secrets)));
+      const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
+      await Promise.allSettled(
+        Object.keys(secretsGroupByPath).map((groupedPath) =>
+          Promise.allSettled(
+            secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
+              const expandedSecretValue = await expandSecret({
+                value: decryptedSecret.secretValue,
+                secretPath: groupedPath,
+                environment,
+                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+              });
+              // eslint-disable-next-line no-param-reassign
+              secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
+            })
+          )
+        )
+      );
+      await Promise.allSettled(
+        processedImports.map((processedImport) =>
+          Promise.allSettled(
+            processedImport.secrets.map(async (decryptedSecret, index) => {
+              const expandedSecretValue = await expandSecret({
+                value: decryptedSecret.secretValue,
+                secretPath: path,
+                environment,
+                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+              });
+              // eslint-disable-next-line no-param-reassign
+              processedImport.secrets[index].secretValue = expandedSecretValue || "";
+            })
+          )
+        )
+      );
     }
 
     return {
@@ -1177,40 +1150,19 @@ export const secretServiceFactory = ({
     const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
 
     if (expandSecretReferences) {
-      const expandSecrets = interpolateSecrets({
+      const expandSecret = interpolateSecrets({
         folderDAL,
         projectId,
         secretDAL,
         secretEncKey: botKey
       });
-
-      const expandSingleSecret = async (secret: {
-        secretKey: string;
-        secretValue: string;
-        secretComment?: string;
-        secretPath: string;
-        skipMultilineEncoding: boolean | null | undefined;
-      }) => {
-        const secretRecord: Record<
-          string,
-          { value: string; comment?: string; skipMultilineEncoding: boolean | null | undefined }
-        > = {
-          [secret.secretKey]: {
-            value: secret.secretValue,
-            comment: secret.secretComment,
-            skipMultilineEncoding: secret.skipMultilineEncoding
-          }
-        };
-
-        await expandSecrets(secretRecord);
-
-        // Update the secret with the expanded value
-        // eslint-disable-next-line no-param-reassign
-        secret.secretValue = secretRecord[secret.secretKey].value;
-      };
-
-      // Expand the secret
-      await expandSingleSecret(decryptedSecret);
+      const expandedSecretValue = await expandSecret({
+        environment,
+        secretPath: path,
+        value: decryptedSecret.secretValue,
+        skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+      });
+      decryptedSecret.secretValue = expandedSecretValue || "";
     }
 
     return decryptedSecret;

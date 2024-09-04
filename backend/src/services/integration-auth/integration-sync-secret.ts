@@ -1625,7 +1625,11 @@ const syncSecretsGitHub = async ({
           await octokit.request("PUT /orgs/{org}/actions/secrets/{secret_name}", {
             org: integration.owner as string,
             secret_name: key,
-            visibility: "all",
+            visibility: metadata.githubVisibility ?? "all",
+            ...(metadata.githubVisibility === "selected" && {
+              // we need to map the githubVisibilityRepoIds to numbers
+              selected_repository_ids: metadata.githubVisibilityRepoIds?.map(Number) ?? []
+            }),
             encrypted_value: encryptedSecret,
             key_id: repoPublicKey.key_id
           });

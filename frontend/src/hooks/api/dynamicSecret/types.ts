@@ -20,7 +20,9 @@ export enum DynamicSecretProviders {
   Cassandra = "cassandra",
   AwsIam = "aws-iam",
   Redis = "redis",
-  AwsElastiCache = "aws-elasticache"
+  AwsElastiCache = "aws-elasticache",
+  MongoAtlas = "mongo-db-atlas",
+  ElasticSearch = "elastic-search"
 }
 
 export enum SqlProviders {
@@ -96,6 +98,44 @@ export type TDynamicSecretProvider =
         creationStatement: string;
         revocationStatement: string;
         ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.MongoAtlas;
+      inputs: {
+        adminPublicKey: string;
+        adminPrivateKey: string;
+        groupId: string;
+        roles: {
+          databaseName: string;
+          roleName: string;
+          collectionName?: string;
+        }[];
+        scopes?: {
+          name: string;
+          type: string;
+        }[];
+      };
+    }
+  | {
+      type: DynamicSecretProviders.ElasticSearch;
+      inputs: {
+        host: string;
+        port: number;
+        ca?: string | undefined;
+        roles: string[];
+
+        auth:
+          | {
+              type: "user";
+              username: string;
+              password: string;
+            }
+          | {
+              type: "api-key";
+              apiKey: string;
+              apiKeyId: string;
+            };
       };
     };
 

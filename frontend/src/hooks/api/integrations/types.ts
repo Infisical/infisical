@@ -34,6 +34,9 @@ export type TIntegration = {
   syncMessage?: string;
   __v: number;
   metadata?: {
+    githubVisibility?: string;
+    githubVisibilityRepoIds?: string[];
+
     secretSuffix?: string;
     syncBehavior?: IntegrationSyncBehavior;
     mappingBehavior?: IntegrationMappingBehavior;

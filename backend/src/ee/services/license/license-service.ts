@@ -16,8 +16,8 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { getDefaultOnPremFeatures, setupLicenceRequestWithStore } from "./licence-fns";
 import { TLicenseDALFactory } from "./license-dal";
+import { getDefaultOnPremFeatures, setupLicenseRequestWithStore } from "./license-fns";
 import {
   InstanceType,
   TAddOrgPmtMethodDTO,
@@ -64,13 +64,13 @@ export const licenseServiceFactory = ({
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
 
   const appCfg = getConfig();
-  const licenseServerCloudApi = setupLicenceRequestWithStore(
+  const licenseServerCloudApi = setupLicenseRequestWithStore(
     appCfg.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_CLOUD_LOGIN,
     appCfg.LICENSE_SERVER_KEY || ""
   );
 
-  const licenseServerOnPremApi = setupLicenceRequestWithStore(
+  const licenseServerOnPremApi = setupLicenseRequestWithStore(
     appCfg.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_ON_PREM_LOGIN,
     appCfg.LICENSE_KEY || ""
@@ -79,7 +79,7 @@ export const licenseServiceFactory = ({
   const init = async () => {
     try {
       if (appCfg.LICENSE_SERVER_KEY) {
-        const token = await licenseServerCloudApi.refreshLicence();
+        const token = await licenseServerCloudApi.refreshLicense();
         if (token) instanceType = InstanceType.Cloud;
         logger.info(`Instance type: ${InstanceType.Cloud}`);
         isValidLicense = true;
@@ -87,7 +87,7 @@ export const licenseServiceFactory = ({
       }
 
       if (appCfg.LICENSE_KEY) {
-        const token = await licenseServerOnPremApi.refreshLicence();
+        const token = await licenseServerOnPremApi.refreshLicense();
         if (token) {
           const {
             data: { currentPlan }

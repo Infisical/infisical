@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import handlebars from "handlebars";
 import { Redis } from "ioredis";
 import { customAlphabet } from "nanoid";

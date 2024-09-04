@@ -6,9 +6,15 @@ permissions:
   contents: read
 
 jobs:
+  infisical-tests:
+    name: Run tests before deployment
+    # https://docs.github.com/en/actions/using-workflows/reusing-workflows#overview
+    uses: ./.github/workflows/run-backend-tests.yml
+    
   infisical-image:
     name: Build backend image
     runs-on: ubuntu-latest
+    needs: [infisical-tests]
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3

@@ -158,9 +158,12 @@ export const fnSecretsV2FromImports = async ({
   depth?: number;
   cyclicDetector?: Set<string>;
   decryptor: (value?: Buffer | null) => string;
-  expandSecretReferences?: (
-    secrets: Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>
-  ) => Promise<Record<string, { value?: string; comment?: string; skipMultilineEncoding?: boolean | null }>>;
+  expandSecretReferences?: (inputSecret: {
+    value?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretPath: string;
+    environment: string;
+  }) => Promise<string | undefined>;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
@@ -244,26 +247,21 @@ export const fnSecretsV2FromImports = async ({
   });
 
   if (expandSecretReferences) {
-    await Promise.all(
-      processedImports.map(async (processedImport) => {
-        const secretsGroupByKey = processedImport.secrets.reduce(
-          (acc, item) => {
-            acc[item.secretKey] = {
-              value: item.secretValue,
-              comment: item.secretComment,
-              skipMultilineEncoding: item.skipMultilineEncoding
-            };
-            return acc;
-          },
-          {} as Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean | null }>
-        );
-        // eslint-disable-next-line
-        await expandSecretReferences(secretsGroupByKey);
-        processedImport.secrets.forEach((decryptedSecret) => {
-          // eslint-disable-next-line no-param-reassign
-          decryptedSecret.secretValue = secretsGroupByKey[decryptedSecret.secretKey].value;
-        });
-      })
+    await Promise.allSettled(
+      processedImports.map((processedImport) =>
+        Promise.allSettled(
+          processedImport.secrets.map(async (decryptedSecret, index) => {
+            const expandedSecretValue = await expandSecretReferences({
+              value: decryptedSecret.secretValue,
+              secretPath: processedImport.secretPath,
+              environment: processedImport.environment,
+              skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+            });
+            // eslint-disable-next-line no-param-reassign
+            processedImport.secrets[index].secretValue = expandedSecretValue || "";
+          })
+        )
+      )
     );
   }
 

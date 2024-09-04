@@ -258,6 +258,7 @@ export const secretQueueFactory = ({
   const getIntegrationSecretsV2 = async (dto: {
     projectId: string;
     environment: string;
+    secretPath: string;
     folderId: string;
     depth: number;
     decryptor: (value: Buffer | null | undefined) => string;
@@ -269,30 +270,36 @@ export const secretQueueFactory = ({
       );
       return content;
     }
-
-    // process secrets in current folder
-    const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
-    secrets.forEach((secret) => {
-      const secretKey = secret.key;
-      const secretValue = dto.decryptor(secret.encryptedValue);
-      content[secretKey] = { value: secretValue };
-
-      if (secret.encryptedComment) {
-        const commentValue = dto.decryptor(secret.encryptedComment);
-        content[secretKey].comment = commentValue;
-      }
-
-      content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-    });
-
     const expandSecretReferences = expandSecretReferencesFactory({
       decryptSecretValue: dto.decryptor,
       secretDAL: secretV2BridgeDAL,
       folderDAL,
       projectId: dto.projectId
     });
+    // process secrets in current folder
+    const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
 
-    await expandSecretReferences(content);
+    await Promise.allSettled(
+      secrets.map(async (secret) => {
+        const secretKey = secret.key;
+        const secretValue = dto.decryptor(secret.encryptedValue);
+        const expandedSecretValue = await expandSecretReferences({
+          environment: dto.environment,
+          secretPath: dto.secretPath,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          value: secretValue
+        });
+        content[secretKey] = { value: expandedSecretValue || "" };
+
+        if (secret.encryptedComment) {
+          const commentValue = dto.decryptor(secret.encryptedComment);
+          content[secretKey].comment = commentValue;
+        }
+
+        content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+      })
+    );
+
     // check if current folder has any imports from other folders
     const secretImports = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
 
@@ -329,6 +336,7 @@ export const secretQueueFactory = ({
   const getIntegrationSecrets = async (dto: {
     projectId: string;
     environment: string;
+    secretPath: string;
     folderId: string;
     key: string;
     depth: number;
@@ -341,46 +349,52 @@ export const secretQueueFactory = ({
       return content;
     }
 
-    // process secrets in current folder
-    const secrets = await secretDAL.findByFolderId(dto.folderId);
-    secrets.forEach((secret) => {
-      const secretKey = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: secret.secretKeyCiphertext,
-        iv: secret.secretKeyIV,
-        tag: secret.secretKeyTag,
-        key: dto.key
-      });
-
-      const secretValue = decryptSymmetric128BitHexKeyUTF8({
-        ciphertext: secret.secretValueCiphertext,
-        iv: secret.secretValueIV,
-        tag: secret.secretValueTag,
-        key: dto.key
-      });
-
-      content[secretKey] = { value: secretValue };
-
-      if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
-        const commentValue = decryptSymmetric128BitHexKeyUTF8({
-          ciphertext: secret.secretCommentCiphertext,
-          iv: secret.secretCommentIV,
-          tag: secret.secretCommentTag,
-          key: dto.key
-        });
-        content[secretKey].comment = commentValue;
-      }
-
-      content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-    });
-
-    const expandSecrets = interpolateSecrets({
+    const expandSecretReferences = interpolateSecrets({
       projectId: dto.projectId,
       secretEncKey: dto.key,
       folderDAL,
       secretDAL
     });
 
-    await expandSecrets(content);
+    // process secrets in current folder
+    const secrets = await secretDAL.findByFolderId(dto.folderId);
+    await Promise.allSettled(
+      secrets.map(async (secret) => {
+        const secretKey = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: secret.secretKeyCiphertext,
+          iv: secret.secretKeyIV,
+          tag: secret.secretKeyTag,
+          key: dto.key
+        });
+
+        const secretValue = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: secret.secretValueCiphertext,
+          iv: secret.secretValueIV,
+          tag: secret.secretValueTag,
+          key: dto.key
+        });
+        const expandedSecretValue = await expandSecretReferences({
+          environment: dto.environment,
+          secretPath: dto.secretPath,
+          skipMultilineEncoding: secret.skipMultilineEncoding,
+          value: secretValue
+        });
+
+        content[secretKey] = { value: expandedSecretValue || "" };
+
+        if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+          const commentValue = decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: secret.secretCommentCiphertext,
+            iv: secret.secretCommentIV,
+            tag: secret.secretCommentTag,
+            key: dto.key
+          });
+          content[secretKey].comment = commentValue;
+        }
+
+        content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
+      })
+    );
 
     // check if current folder has any imports from other folders
     const secretImport = await secretImportDAL.find({ folderId: dto.folderId, isReplication: false });
@@ -404,7 +418,8 @@ export const secretQueueFactory = ({
           projectId: dto.projectId,
           folderId: folder.id,
           key: dto.key,
-          depth: dto.depth + 1
+          depth: dto.depth + 1,
+          secretPath: dto.secretPath
         });
 
         // add the imported secrets to the current folder secrets
@@ -686,6 +701,7 @@ export const secretQueueFactory = ({
             projectId,
             folderId: folder.id,
             depth: 1,
+            secretPath,
             decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
           })
         : await getIntegrationSecrets({
@@ -693,7 +709,8 @@ export const secretQueueFactory = ({
             projectId,
             folderId: folder.id,
             key: botKey as string,
-            depth: 1
+            depth: 1,
+            secretPath
           });
 
       for (const integration of toBeSyncedIntegrations) {

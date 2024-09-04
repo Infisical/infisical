@@ -7,7 +7,11 @@ import { TSharedSecret, TViewSharedSecretResponse } from "./types";
 export const secretSharingKeys = {
   allSharedSecrets: () => ["sharedSecrets"] as const,
   specificSharedSecrets: ({ offset, limit }: { offset: number; limit: number }) =>
-    [...secretSharingKeys.allSharedSecrets(), { offset, limit }] as const
+    [...secretSharingKeys.allSharedSecrets(), { offset, limit }] as const,
+  getSecretById: (arg: { id: string; hashedHex: string; password?: string }) => [
+    "shared-secret",
+    arg
+  ]
 };
 
 export const useGetSharedSecrets = ({
@@ -38,31 +42,28 @@ export const useGetSharedSecrets = ({
 
 export const useGetActiveSharedSecretById = ({
   sharedSecretId,
-  hashedHex
+  hashedHex,
+  password
 }: {
   sharedSecretId: string;
   hashedHex: string;
+  password?: string;
 }) => {
-  return useQuery<TViewSharedSecretResponse, [string]>({
-    enabled: Boolean(sharedSecretId) && Boolean(hashedHex),
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        hashedHex
-      });
-
-      const { data } = await apiRequest.get<TViewSharedSecretResponse>(
+  return useQuery<TViewSharedSecretResponse>(
+    secretSharingKeys.getSecretById({ id: sharedSecretId, hashedHex, password }),
+    async () => {
+      const { data } = await apiRequest.post<TViewSharedSecretResponse>(
         `/api/v1/secret-sharing/public/${sharedSecretId}`,
         {
-          params
+          hashedHex,
+          password
         }
       );
-      return {
-        encryptedValue: data.encryptedValue,
-        iv: data.iv,
-        tag: data.tag,
-        accessType: data.accessType,
-        orgName: data.orgName
-      };
+
+      return data;
+    },
+    {
+      enabled: Boolean(sharedSecretId) && Boolean(hashedHex)
     }
-  });
+  );
 };

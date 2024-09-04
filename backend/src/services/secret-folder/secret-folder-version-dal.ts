@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName, TSecretFolderVersions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { QueueName } from "@app/queue";
 
 export type TSecretFolderVersionDALFactory = ReturnType<typeof secretFolderVersionDALFactory>;
 
@@ -65,6 +67,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
   };
 
   const pruneExcessVersions = async () => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret folder versions started`);
     try {
       await db(TableName.SecretFolderVersion)
         .with("folder_cte", (qb) => {
@@ -89,6 +92,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         name: "Secret Folder Version Prune"
       });
     }
+    logger.info(`${QueueName.DailyResourceCleanUp}: pruning secret folder versions completed`);
   };
 
   return { ...secretFolderVerOrm, findLatestFolderVersions, findLatestVersionByFolderId, pruneExcessVersions };
