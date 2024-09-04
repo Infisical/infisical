@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-que
 import { apiRequest } from "@app/config/request";
 
 import { User } from "../types";
-import { AdminGetUsersFilters, TServerConfig } from "./types";
+import { AdminGetUsersFilters, AdminSlackConfig, TServerConfig } from "./types";
 
 export const adminStandaloneKeys = {
   getUsers: "get-users"
@@ -11,7 +11,9 @@ export const adminStandaloneKeys = {
 
 export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
-  getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const
+  getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
+  getCustomSlackAppCreationUrl: () => ["custom-slack-app-creation-url"] as const,
+  getAdminSlackConfig: () => ["admin-slack-config"] as const
 };
 
 const fetchServerConfig = async () => {
@@ -59,3 +61,27 @@ export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
       lastPage.length !== 0 ? pages.length * filters.limit : undefined
   });
 };
+
+export const useGetCustomSlackAppCreationUrl = () =>
+  useQuery({
+    queryKey: adminQueryKeys.getCustomSlackAppCreationUrl(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<string>(
+        "/api/v1/admin/integrations/slack/bot-creation-url"
+      );
+
+      return data;
+    }
+  });
+
+export const useGetAdminSlackConfig = () =>
+  useQuery({
+    queryKey: adminQueryKeys.getAdminSlackConfig(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<AdminSlackConfig>(
+        "/api/v1/admin/integrations/slack/config"
+      );
+
+      return data;
+    }
+  });

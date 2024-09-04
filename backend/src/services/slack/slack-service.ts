@@ -8,7 +8,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { fetchSlackChannels } from "./slack-fns";
+import { TAdminSlackConfigDALFactory } from "./admin-slack-config-dal";
+import { fetchSlackChannels, getAdminSlackCredentials } from "./slack-fns";
 import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
 import {
   TCompleteSlackIntegrationDTO,
@@ -25,7 +26,8 @@ import {
 type TSlackServiceFactoryDep = {
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "find" | "findById" | "deleteById" | "updateById" | "create">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithRootKey" | "decryptWithRootKey">;
+  adminSlackConfigDAL: Pick<TAdminSlackConfigDALFactory, "findById">;
 };
 
 export type TSlackServiceFactory = ReturnType<typeof slackServiceFactory>;
@@ -33,7 +35,8 @@ export type TSlackServiceFactory = ReturnType<typeof slackServiceFactory>;
 export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
-  kmsService
+  kmsService,
+  adminSlackConfigDAL
 }: TSlackServiceFactoryDep) => {
   const completeSlackIntegration = async ({
     orgId,
@@ -104,16 +107,31 @@ export const slackServiceFactory = ({
 
   const getSlackInstaller = async () => {
     const appCfg = getConfig();
+    const adminSlackCredentials = await getAdminSlackCredentials({
+      kmsService,
+      adminSlackConfigDAL
+    });
 
-    if (!appCfg.SLACK_CLIENT_ID || !appCfg.SLACK_CLIENT_SECRET) {
+    let slackClientId = "";
+    let slackClientSecret = "";
+
+    if (adminSlackCredentials.clientId && adminSlackCredentials.clientSecret) {
+      slackClientId = adminSlackCredentials.clientId;
+      slackClientSecret = adminSlackCredentials.clientSecret;
+    } else {
+      slackClientId = appCfg.SLACK_CLIENT_ID as string;
+      slackClientSecret = appCfg.SLACK_CLIENT_SECRET as string;
+    }
+
+    if (!slackClientId || !slackClientSecret) {
       throw new BadRequestError({
         message: "Invalid slack configuration"
       });
     }
 
     return new InstallProvider({
-      clientId: appCfg.SLACK_CLIENT_ID,
-      clientSecret: appCfg.SLACK_CLIENT_SECRET,
+      clientId: slackClientId,
+      clientSecret: slackClientSecret,
       stateSecret: appCfg.AUTH_SECRET,
       legacyStateVerification: true,
       installationStore: {

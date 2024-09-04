@@ -10,15 +10,20 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TAdminSlackConfigDALFactory } from "../slack/admin-slack-config-dal";
+import { getAdminSlackCredentials, getCustomSlackBotManifest } from "../slack/slack-fns";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
-import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
+import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO, TUpdateAdminSlackConfigDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
+  adminSlackConfigDAL: Pick<TAdminSlackConfigDALFactory, "create" | "updateById" | "transaction" | "findById">;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
+  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
@@ -38,7 +43,9 @@ export const superAdminServiceFactory = ({
   userDAL,
   authService,
   orgService,
+  adminSlackConfigDAL,
   keyStore,
+  kmsService,
   licenseService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
@@ -232,11 +239,63 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
+  const getCustomSlackBotCreationUrl = async () => {
+    return `https://api.slack.com/apps?new_app=1&manifest_json=${encodeURIComponent(
+      JSON.stringify(getCustomSlackBotManifest())
+    )}`;
+  };
+
+  const updateAdminSlackConfig = async ({ clientId, clientSecret }: TUpdateAdminSlackConfigDTO) => {
+    return adminSlackConfigDAL.transaction(async (tx) => {
+      const adminSlackConfig = await adminSlackConfigDAL.findById(ADMIN_CONFIG_DB_UUID, tx);
+      const encrypt = await kmsService.encryptWithRootKey();
+
+      const { cipherTextBlob: encryptedClientId } = await encrypt({ plainText: Buffer.from(clientId) });
+      const { cipherTextBlob: encryptedClientSecret } = await encrypt({ plainText: Buffer.from(clientSecret) });
+
+      if (adminSlackConfig) {
+        await adminSlackConfigDAL.updateById(
+          ADMIN_CONFIG_DB_UUID,
+          {
+            encryptedClientId,
+            encryptedClientSecret
+          },
+          tx
+        );
+      } else {
+        await adminSlackConfigDAL.create(
+          {
+            // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+            id: ADMIN_CONFIG_DB_UUID,
+            encryptedClientId,
+            encryptedClientSecret
+          },
+          tx
+        );
+      }
+
+      return {
+        clientId,
+        clientSecret
+      };
+    });
+  };
+
+  const getAdminSlackConfig = async () => {
+    return getAdminSlackCredentials({
+      kmsService,
+      adminSlackConfigDAL
+    });
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
     adminSignUp,
     getUsers,
-    deleteUser
+    deleteUser,
+    getCustomSlackBotCreationUrl,
+    updateAdminSlackConfig,
+    getAdminSlackConfig
   };
 };

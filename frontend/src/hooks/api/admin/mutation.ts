@@ -5,7 +5,12 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { User } from "../users/types";
 import { adminQueryKeys, adminStandaloneKeys } from "./queries";
-import { TCreateAdminUserDTO, TServerConfig } from "./types";
+import {
+  AdminSlackConfig,
+  TCreateAdminUserDTO,
+  TServerConfig,
+  TUpdateAdminSlackConfigDTO
+} from "./types";
 
 export const useCreateAdminUser = () => {
   const queryClient = useQueryClient();
@@ -56,6 +61,23 @@ export const useAdminDeleteUser = () => {
       queryClient.invalidateQueries({
         queryKey: [adminStandaloneKeys.getUsers]
       });
+    }
+  });
+};
+
+export const useUpdateAdminSlackConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<AdminSlackConfig, {}, TUpdateAdminSlackConfigDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.put<AdminSlackConfig>(
+        "/api/v1/admin/integrations/slack/config",
+        dto
+      );
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(adminQueryKeys.getAdminSlackConfig());
     }
   });
 };

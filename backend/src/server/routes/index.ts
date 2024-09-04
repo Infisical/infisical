@@ -182,6 +182,7 @@ import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { adminSlackConfigDALFactory } from "@app/services/slack/admin-slack-config-dal";
 import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { slackServiceFactory } from "@app/services/slack/slack-service";
@@ -327,6 +328,7 @@ export const registerRoutes = async (
 
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
+  const adminSlackConfigDAL = adminSlackConfigDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -526,8 +528,11 @@ export const registerRoutes = async (
     serverCfgDAL: superAdminDAL,
     orgService,
     keyStore,
-    licenseService
+    licenseService,
+    adminSlackConfigDAL,
+    kmsService
   });
+
   const orgAdminService = orgAdminServiceFactory({
     projectDAL,
     permissionService,
@@ -1162,7 +1167,8 @@ export const registerRoutes = async (
   const slackService = slackServiceFactory({
     permissionService,
     kmsService,
-    slackIntegrationDAL
+    slackIntegrationDAL,
+    adminSlackConfigDAL
   });
 
   await superAdminService.initServerCfg();

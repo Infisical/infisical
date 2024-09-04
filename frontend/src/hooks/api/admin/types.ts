@@ -38,7 +38,17 @@ export type TCreateAdminUserDTO = {
   salt: string;
 };
 
+export type TUpdateAdminSlackConfigDTO = {
+  clientId: string;
+  clientSecret: string;
+};
+
 export type AdminGetUsersFilters = {
   limit: number;
   searchTerm: string;
+};
+
+export type AdminSlackConfig = {
+  clientId: string;
+  clientSecret: string;
 };
