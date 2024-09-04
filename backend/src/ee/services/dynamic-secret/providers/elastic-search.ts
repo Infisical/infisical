@@ -1,5 +1,4 @@
 import { Client as ElasticCacheClient } from "@elastic/elasticsearch";
-import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -17,40 +16,6 @@ const generatePassword = () => {
 const generateUsername = () => {
   return alphaNumericNanoId(32);
 };
-
-const parseJsonStatement = (str: string) => {
-  try {
-    return JSON.parse(str) as object;
-  } catch {
-    throw new BadRequestError({ message: "Failed to parse ElasticSearch statements" });
-  }
-};
-
-const CreateElasticSearchUserSchema = z
-  .object({
-    username: z.string(),
-    password: z.string().optional(),
-    password_hash: z.string().optional(),
-
-    refresh: z.any(),
-    email: z.string().optional(),
-    full_name: z.string().optional().default("Managed by Infisical.com"), // We are overriding this
-    metadata: z.any().optional(),
-
-    roles: z.array(z.string()).min(1), // i.e ['superuser']
-    enabled: z.boolean().default(true)
-  })
-  .refine((data) => {
-    // Ensure either password_hash or password is present
-    if (!data.password && !data.password_hash) {
-      throw new Error("Either password or password_hash is required");
-    }
-    return true;
-  });
-
-const DeleteElasticSearchUserSchema = z.object({
-  username: z.string().trim().min(1)
-});
 
 export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -70,13 +35,6 @@ export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
     }
     if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1") {
       throw new BadRequestError({ message: "Invalid db host" });
-    }
-
-    if (!CreateElasticSearchUserSchema.safeParse(parseJsonStatement(providerInputs.creationStatement)).success) {
-      throw new BadRequestError({ message: "Invalid creation statement" });
-    }
-    if (!DeleteElasticSearchUserSchema.safeParse(parseJsonStatement(providerInputs.revocationStatement)).success) {
-      throw new BadRequestError({ message: "Invalid revocation statement" });
     }
 
     return providerInputs;
@@ -123,24 +81,19 @@ export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
     return infoResponse;
   };
 
-  const create = async (inputs: unknown, expireAt: number) => {
+  const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await getClient(providerInputs);
 
     const username = generateUsername();
     const password = generatePassword();
 
-    const expiration = new Date(expireAt).toISOString();
-
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+    await connection.security.putUser({
       username,
       password,
-      expiration
+      full_name: "Managed by Infisical.com",
+      roles: providerInputs.roles
     });
-
-    const parsedStatement = CreateElasticSearchUserSchema.parse(parseJsonStatement(creationStatement));
-
-    await connection.security.putUser(parsedStatement);
 
     await connection.close();
     return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
@@ -150,15 +103,12 @@ export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await getClient(providerInputs);
 
-    const username = entityId;
-
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
-    const parsedStatement = DeleteElasticSearchUserSchema.parse(parseJsonStatement(revokeStatement));
-
-    await connection.security.deleteUser(parsedStatement);
+    await connection.security.deleteUser({
+      username: entityId
+    });
 
     await connection.close();
-    return { entityId: username };
+    return { entityId };
   };
 
   const renew = async (inputs: unknown, entityId: string) => {

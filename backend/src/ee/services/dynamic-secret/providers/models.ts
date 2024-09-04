@@ -33,6 +33,7 @@ export const DynamicSecretAwsElastiCacheSchema = z.object({
 export const DynamicSecretElasticSearchSchema = z.object({
   host: z.string().trim().min(1),
   port: z.number(),
+  roles: z.array(z.string().trim().min(1)).min(1),
 
   // two auth types "user, apikey"
   auth: z.discriminatedUnion("type", [
@@ -48,8 +49,6 @@ export const DynamicSecretElasticSearchSchema = z.object({
     })
   ]),
 
-  creationStatement: z.string().trim(),
-  revocationStatement: z.string().trim(),
   ca: z.string().optional()
 });
 

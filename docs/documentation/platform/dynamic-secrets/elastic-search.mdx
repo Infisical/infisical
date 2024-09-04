@@ -49,6 +49,10 @@ The Infisical Elastic Search dynamic secret allows you to generate Elastic Searc
   The port that your Elastic Search instance is running on. _(Example: 9200)_
 	</ParamField>
 
+  <ParamField path="Roles" type="string[]" required>
+    The roles that the new user that is created when a lease is provisioned will be assigned to. This is a required field. This defaults to `superuser`, which is highly privileged. It is recommended to create a new role with the least privileges required for the lease.
+  </ParamField>
+
 	<ParamField path="Authentication Method" type="API Key | Username/Password" required>
     Select the authentication method you want to use to connect to your Elastic Search instance.
 	</ParamField>
@@ -73,24 +77,9 @@ The Infisical Elastic Search dynamic secret allows you to generate Elastic Searc
 		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
 	</ParamField>
 
-  </Step>
-  <Step title="(Optional) Modify Elastic Search Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the Elastic Search statement to your needs. This is useful if you want to only give access to a specific table(s).
+  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
 
 
-    **Valid JSON attributes for creation statement:**
-    - `username` (string): The username of new user that is created when a lease is provisioned. Setting this to `"{{username}}"` will automatically generate a new username for each lease, which is highly recommended.
-    - `password` (string): The password of the new user that is created when a lease is provisioned. Setting this to `"{{password}}"` will automatically generate a new password for each lease, which is highly recommended.
-    - `refresh` (`true`, `false`, `wait_for`): The refresh state for the newly created user. [Read more here](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-user.html#security-api-put-user-query-params). Defaults to true.
-    - `email` (string): The email of the new user that is created when a lease is provisioned. By default this field is unset.
-    - `full_name` (string): The full name of the new user that is created when a lease is provisioned. Defaults to "Managed by Infisical.com".
-    - `metadata` (object): Additional metadata to be associated with the new user that is created when a lease is provisioned. By default this field is an empty object.
-    - `roles` (array of strings): The roles that the new user that is created when a lease is provisioned will be assigned to. This is a required field. This defaults to `superuser`, which is highly privileged. It is recommended to create a new role with the least privileges required for the lease.
-
-    **Valid JSON attributes for revocation statement:**
-    - `username` (string): The username of the user that is being revoked. This is a required field..
-
-	![Modify ElasticSearch Statements Modal](/images/platform/dynamic-secrets/modify-elastic-search-statement.png)
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard. 

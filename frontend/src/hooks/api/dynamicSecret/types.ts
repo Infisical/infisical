@@ -122,9 +122,8 @@ export type TDynamicSecretProvider =
       inputs: {
         host: string;
         port: number;
-        creationStatement: string;
-        revocationStatement: string;
         ca?: string | undefined;
+        roles: string[];
 
         auth:
           | {
