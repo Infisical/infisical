@@ -30,6 +30,29 @@ export const DynamicSecretAwsElastiCacheSchema = z.object({
   ca: z.string().optional()
 });
 
+export const DynamicSecretElasticSearchSchema = z.object({
+  host: z.string().trim().min(1),
+  port: z.number(),
+
+  // two auth types "user, apikey"
+  auth: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("user"),
+      username: z.string().trim(),
+      password: z.string().trim()
+    }),
+    z.object({
+      type: z.literal("api-key"),
+      apiKey: z.string().trim(),
+      apiKeyId: z.string().trim()
+    })
+  ]),
+
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  ca: z.string().optional()
+});
+
 export const DynamicSecretSqlDBSchema = z.object({
   client: z.nativeEnum(SqlProviders),
   host: z.string().trim().toLowerCase(),
@@ -110,7 +133,8 @@ export enum DynamicSecretProviders {
   AwsIam = "aws-iam",
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
-  MongoAtlas = "mongo-db-atlas"
+  MongoAtlas = "mongo-db-atlas",
+  ElasticSearch = "elastic-search"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -119,7 +143,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), inputs: DynamicSecretAwsElastiCacheSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), inputs: DynamicSecretElasticSearchSchema })
 ]);
 
 export type TDynamicProviderFns = {
