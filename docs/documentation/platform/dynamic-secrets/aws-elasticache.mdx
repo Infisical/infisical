@@ -1,6 +1,6 @@
 ---
 title: "AWS Elasticahe"
-description: "Learn how to dynamically generate Redis Database user credentials."
+description: "Learn how to dynamically generate AWS ElastiCache user credentials."
 ---
 
 The Infisical Redis dynamic secret allows you to generate Redis Database credentials on demand based on configured role.
@@ -38,7 +38,7 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
 
 <Note>
   New leases may take up-to a couple of minutes before ElastiCache has the chance to complete their configuration.
-  It is recommended to use a retry strategy when establishing new Redis ElastiCache connections.
+  It is recommended to use a retry strategy when establishing new ElastiCache connections.
   This may prevent errors when trying to use a password that isn't yet live on the targeted ElastiCache cluster.
 
   While a leasing is being created, you will be unable to create new leases for the same dynamic secret.
@@ -51,7 +51,7 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
 
 
 
-## Set up Dynamic Secrets with Redis
+## Set up Dynamic Secrets with AWS ElastiCache
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -60,7 +60,7 @@ The Infisical Redis dynamic secret allows you to generate Redis Database credent
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button-redis.png)
   </Step>
-  <Step title="Select 'Redis'">
+  <Step title="Select 'AWS ElastiCache'">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-elasti-cache)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
