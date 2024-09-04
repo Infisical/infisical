@@ -936,7 +936,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     userDAL,
     smtpService,
-    accessApprovalPolicyApproverDAL
+    accessApprovalPolicyApproverDAL,
+    projectSlackConfigDAL,
+    kmsService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
