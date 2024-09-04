@@ -154,6 +154,7 @@ export const WorkflowIntegrationTab = () => {
                     <Select
                       {...field}
                       isDisabled={!isAllowed}
+                      placeholder="None"
                       onValueChange={onChange}
                       defaultValue={slackConfig?.slackIntegrationId}
                       className="w-3/4 bg-mineshaft-600"
