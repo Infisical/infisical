@@ -358,6 +358,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           </Link>
         </div>
       )}
+      <div className="pb-4" />
     </form>
   );
 };
