@@ -316,13 +316,12 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 	var processMutex sync.Mutex
 	var beingTerminated = false
 	var currentETag string
-	environmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
 
 	if err != nil {
 		util.HandleError(err, "Failed to fetch secrets")
 	}
 
-	runCommandWithWatcher := func() {
+	runCommandWithWatcher := func(environmentVariables models.InjectableEnvironmentResult) {
 		currentETag = environmentVariables.ETag
 		secretsFetchedAt := time.Now()
 		if secretsFetchedAt.After(lastSecretsFetch) {
@@ -404,7 +403,12 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 		}()
 	}
 
-	runCommandWithWatcher()
+	initialEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
+	if err != nil {
+		util.HandleError(err, "Failed to fetch secrets")
+	}
+
+	runCommandWithWatcher(initialEnvironmentVariables)
 
 	// this is the only logic strictly related to watch mode, the rest is shared with non-watch mode
 	if watchMode {
@@ -424,14 +428,14 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 			<-recheckSecretsChannel
 			watchMutex.Lock()
 
-			environmentVariables, err = fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
+			newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
 			if err != nil {
 				log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
 				continue
 			}
 
-			if environmentVariables.ETag != currentETag {
-				runCommandWithWatcher()
+			if newEnvironmentVariables.ETag != currentETag {
+				runCommandWithWatcher(newEnvironmentVariables)
 			} else {
 				log.Debug().Msg("[HOT RELOAD] No changes detected in secrets, not reloading process")
 			}
