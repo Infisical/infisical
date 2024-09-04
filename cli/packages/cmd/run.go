@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -172,12 +174,161 @@ var runCmd = &cobra.Command{
 				Set("multi-command", cmd.Flag("command").Value.String()).
 				Set("version", util.CLI_VERSION))
 
-		executeSpecifiedCommand(command, args, watchMode, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
+		if watchMode {
+			executeCommandWithWatchMode(command, args, watchMode, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
+		} else {
+			if cmd.Flags().Changed("command") {
+				command := cmd.Flag("command").Value.String()
+				err = executeMultipleCommandWithEnvs(command, injectableEnvironment.SecretsCount, injectableEnvironment.Variables)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+
+			} else {
+				err = executeSingleCommandWithEnvs(args, injectableEnvironment.SecretsCount, injectableEnvironment.Variables)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			}
+		}
 
 	},
 }
 
-func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
+func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
+	var (
+		reservedEnvVars = []string{
+			"HOME", "PATH", "PS1", "PS2",
+			"PWD", "EDITOR", "XAUTHORITY", "USER",
+			"TERM", "TERMINFO", "SHELL", "MAIL",
+		}
+
+		reservedEnvVarPrefixes = []string{
+			"XDG_",
+			"LC_",
+		}
+	)
+
+	for _, reservedEnvName := range reservedEnvVars {
+		if _, ok := env[reservedEnvName]; ok {
+			delete(env, reservedEnvName)
+			util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
+		}
+	}
+
+	for _, reservedEnvPrefix := range reservedEnvVarPrefixes {
+		for envName := range env {
+			if strings.HasPrefix(envName, reservedEnvPrefix) {
+				delete(env, envName)
+				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it contains a reserved prefix", envName))
+			}
+		}
+	}
+}
+
+func init() {
+	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().String("token", "", "fetch secrets using service token or machine identity access token")
+	runCmd.Flags().String("projectId", "", "manually set the project ID to fetch secrets from when using machine identity based auth")
+	runCmd.Flags().StringP("env", "e", "dev", "set the environment (dev, prod, etc.) from which your secrets should be pulled from")
+	runCmd.Flags().Bool("expand", true, "parse shell parameter expansions in your secrets")
+	runCmd.Flags().Bool("include-imports", true, "import linked secrets ")
+	runCmd.Flags().Bool("recursive", false, "fetch secrets from all sub-folders")
+	runCmd.Flags().Bool("secret-overriding", true, "prioritizes personal secrets, if any, with the same name over shared secrets")
+	runCmd.Flags().Bool("watch", false, "enable reload of application when secrets change")
+	runCmd.Flags().Int("watch-interval", 10, "interval in seconds to check for secret changes")
+	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
+	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
+	runCmd.Flags().String("path", "/", "get secrets within a folder path")
+	runCmd.Flags().String("project-config-dir", "", "explicitly set the directory where the .infisical.json resides")
+}
+
+// Will execute a single command and pass in the given secrets into the process
+func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
+	command := args[0]
+	argsForCommand := args[1:]
+
+	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
+
+	cmd := exec.Command(command, argsForCommand...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = env
+
+	return execBasicCmd(cmd)
+}
+
+func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string) error {
+	shell := [2]string{"sh", "-c"}
+	if runtime.GOOS == "windows" {
+		shell = [2]string{"cmd", "/C"}
+	} else {
+		currentShell := os.Getenv("SHELL")
+		if currentShell != "" {
+			shell[0] = currentShell
+		}
+	}
+
+	cmd := exec.Command(shell[0], shell[1], fullCommand)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = env
+
+	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
+	log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
+
+	return execBasicCmd(cmd)
+}
+
+func execBasicCmd(cmd *exec.Cmd) error {
+	sigChannel := make(chan os.Signal, 1)
+	signal.Notify(sigChannel)
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			sig := <-sigChannel
+			_ = cmd.Process.Signal(sig) // process all sigs
+		}
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		_ = cmd.Process.Signal(os.Kill)
+		return fmt.Errorf("failed to wait for command termination: %v", err)
+	}
+
+	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	os.Exit(waitStatus.ExitStatus())
+	return nil
+}
+
+func waitForExitCommand(cmd *exec.Cmd) (int, error) {
+	if err := cmd.Wait(); err != nil {
+		// ignore errors
+		cmd.Process.Signal(os.Kill) // #nosec G104
+
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return exitError.ExitCode(), exitError
+		}
+
+		return 2, err
+	}
+
+	waitStatus, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	if !ok {
+		return 2, fmt.Errorf("unexpected ProcessState type, expected syscall.WaitStatus, got %T", waitStatus)
+	}
+	return waitStatus.ExitStatus(), nil
+}
+
+func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bool, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
 
 	var cmd *exec.Cmd
 	var err error
@@ -255,7 +406,7 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 			defer processMutex.Unlock()
 			defer WaitGroup.Done()
 
-			exitCode, err := WaitForExitCommand(cmd)
+			exitCode, err := waitForExitCommand(cmd)
 
 			// ignore errors if we are being terminated
 			if !beingTerminated {
@@ -313,54 +464,6 @@ func executeSpecifiedCommand(commandFlag string, args []string, watchMode bool, 
 
 		}
 	}
-}
-
-func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
-	var (
-		reservedEnvVars = []string{
-			"HOME", "PATH", "PS1", "PS2",
-			"PWD", "EDITOR", "XAUTHORITY", "USER",
-			"TERM", "TERMINFO", "SHELL", "MAIL",
-		}
-
-		reservedEnvVarPrefixes = []string{
-			"XDG_",
-			"LC_",
-		}
-	)
-
-	for _, reservedEnvName := range reservedEnvVars {
-		if _, ok := env[reservedEnvName]; ok {
-			delete(env, reservedEnvName)
-			util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
-		}
-	}
-
-	for _, reservedEnvPrefix := range reservedEnvVarPrefixes {
-		for envName := range env {
-			if strings.HasPrefix(envName, reservedEnvPrefix) {
-				delete(env, envName)
-				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it contains a reserved prefix", envName))
-			}
-		}
-	}
-}
-
-func init() {
-	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().String("token", "", "fetch secrets using service token or machine identity access token")
-	runCmd.Flags().String("projectId", "", "manually set the project ID to fetch secrets from when using machine identity based auth")
-	runCmd.Flags().StringP("env", "e", "dev", "set the environment (dev, prod, etc.) from which your secrets should be pulled from")
-	runCmd.Flags().Bool("expand", true, "parse shell parameter expansions in your secrets")
-	runCmd.Flags().Bool("include-imports", true, "import linked secrets ")
-	runCmd.Flags().Bool("recursive", false, "fetch secrets from all sub-folders")
-	runCmd.Flags().Bool("secret-overriding", true, "prioritizes personal secrets, if any, with the same name over shared secrets")
-	runCmd.Flags().Bool("watch", false, "enable reload of application when secrets change")
-	runCmd.Flags().Int("watch-interval", 10, "interval in seconds to check for secret changes")
-	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
-	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
-	runCmd.Flags().String("path", "/", "get secrets within a folder path")
-	runCmd.Flags().String("project-config-dir", "", "explicitly set the directory where the .infisical.json resides")
 }
 
 func createInjectableEnvironment(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
@@ -425,23 +528,4 @@ func createInjectableEnvironment(request models.GetAllSecretsParameters, project
 		ETag:         util.GenerateETagFromSecrets(secrets),
 		SecretsCount: len(secretsByKey),
 	}, nil
-}
-
-func WaitForExitCommand(cmd *exec.Cmd) (int, error) {
-	if err := cmd.Wait(); err != nil {
-		// ignore errors
-		cmd.Process.Signal(os.Kill) // #nosec G104
-
-		if exitError, ok := err.(*exec.ExitError); ok {
-			return exitError.ExitCode(), exitError
-		}
-
-		return 2, err
-	}
-
-	waitStatus, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
-	if !ok {
-		return 2, fmt.Errorf("unexpected ProcessState type, expected syscall.WaitStatus, got %T", waitStatus)
-	}
-	return waitStatus.ExitStatus(), nil
 }
