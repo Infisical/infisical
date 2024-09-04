@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Link from "next/link";
+import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -9,6 +11,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   ContentLoader,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   FormControl,
   Input,
@@ -18,6 +24,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import {
+  useGetSlackIntegrationChannels,
   useGetSlackIntegrations,
   useGetWorkspaceSlackConfig,
   useUpdateProjectSlackConfig
@@ -26,9 +33,9 @@ import {
 const formSchema = z.object({
   slackIntegrationId: z.string(),
   isSecretRequestNotificationEnabled: z.boolean(),
-  secretRequestChannels: z.string().default(""),
+  secretRequestChannels: z.string().array(),
   isAccessRequestNotificationEnabled: z.boolean(),
-  accessRequestChannels: z.string().default("")
+  accessRequestChannels: z.string().array()
 });
 
 type TSlackConfigForm = z.infer<typeof formSchema>;
@@ -51,15 +58,23 @@ export const WorkflowIntegrationTab = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       isAccessRequestNotificationEnabled: false,
-      accessRequestChannels: "",
+      accessRequestChannels: [],
       isSecretRequestNotificationEnabled: false,
-      secretRequestChannels: ""
+      secretRequestChannels: []
     }
   });
 
   const secretRequestNotifState = watch("isSecretRequestNotificationEnabled");
   const selectedSlackIntegrationId = watch("slackIntegrationId");
   const accessRequestNotifState = watch("isAccessRequestNotificationEnabled");
+
+  const { data: slackChannels } = useGetSlackIntegrationChannels(selectedSlackIntegrationId);
+  const slackChannelIdToName = Object.fromEntries(
+    (slackChannels || []).map((channel) => [channel.id, channel.name])
+  );
+  const sortedSlackChannels = slackChannels?.sort((a, b) =>
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+  );
 
   const handleIntegrationSave = async (data: TSlackConfigForm) => {
     if (!currentWorkspace) {
@@ -68,7 +83,9 @@ export const WorkflowIntegrationTab = () => {
 
     await updateProjectSlackConfig({
       workspaceId: currentWorkspace.id,
-      ...data
+      ...data,
+      accessRequestChannels: data.accessRequestChannels.filter(Boolean).join(", "),
+      secretRequestChannels: data.secretRequestChannels.filter(Boolean).join(", ")
     });
 
     createNotification({
@@ -84,14 +101,27 @@ export const WorkflowIntegrationTab = () => {
         "isSecretRequestNotificationEnabled",
         slackConfig.isSecretRequestNotificationEnabled
       );
-      setValue("secretRequestChannels", slackConfig.secretRequestChannels);
       setValue(
         "isAccessRequestNotificationEnabled",
         slackConfig.isAccessRequestNotificationEnabled
       );
-      setValue("accessRequestChannels", slackConfig.accessRequestChannels);
+
+      if (slackChannels) {
+        setValue(
+          "secretRequestChannels",
+          slackConfig.secretRequestChannels
+            .split(", ")
+            .filter((channel) => channel in slackChannelIdToName)
+        );
+        setValue(
+          "accessRequestChannels",
+          slackConfig.accessRequestChannels
+            .split(", ")
+            .filter((channel) => channel in slackChannelIdToName)
+        );
+      }
     }
-  }, [slackConfig]);
+  }, [slackConfig, slackChannels]);
 
   if (isSlackConfigLoading) {
     return <ContentLoader />;
@@ -173,19 +203,49 @@ export const WorkflowIntegrationTab = () => {
               <Controller
                 control={control}
                 name="secretRequestChannels"
-                render={({ field, fieldState: { error } }) => (
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
                     label="Slack channels"
-                    errorText={error?.message}
                     isError={Boolean(error)}
-                    isRequired={false}
+                    errorText={error?.message}
                   >
-                    <Input
-                      autoCorrect="off"
-                      spellCheck={false}
-                      placeholder="general, bot"
-                      {...field}
-                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Input
+                          isReadOnly
+                          value={value
+                            ?.filter(Boolean)
+                            .map((entry) => slackChannelIdToName[entry])
+                            .join(", ")}
+                          className="text-left"
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                        align="start"
+                      >
+                        {sortedSlackChannels?.map((slackChannel) => {
+                          const isChecked = value?.includes(slackChannel.id);
+                          return (
+                            <DropdownMenuItem
+                              onClick={(evt) => {
+                                evt.preventDefault();
+                                onChange(
+                                  isChecked
+                                    ? value?.filter((el: string) => el !== slackChannel.id)
+                                    : [...(value || []), slackChannel.id]
+                                );
+                              }}
+                              key={`secret-requests-slack-channel-${slackChannel.id}`}
+                              iconPos="right"
+                              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                            >
+                              {slackChannel.name}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </FormControl>
                 )}
               />
@@ -211,20 +271,49 @@ export const WorkflowIntegrationTab = () => {
               <Controller
                 control={control}
                 name="accessRequestChannels"
-                render={({ field, fieldState: { error } }) => (
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
                     label="Slack channels"
-                    className="mt-0"
-                    errorText={error?.message}
                     isError={Boolean(error)}
-                    isRequired={false}
+                    errorText={error?.message}
                   >
-                    <Input
-                      autoCorrect="off"
-                      spellCheck={false}
-                      placeholder="general, bot"
-                      {...field}
-                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Input
+                          isReadOnly
+                          value={value
+                            ?.filter(Boolean)
+                            .map((entry) => slackChannelIdToName[entry])
+                            .join(", ")}
+                          className="text-left"
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                        align="start"
+                      >
+                        {sortedSlackChannels?.map((slackChannel) => {
+                          const isChecked = value?.includes(slackChannel.id);
+                          return (
+                            <DropdownMenuItem
+                              onClick={(evt) => {
+                                evt.preventDefault();
+                                onChange(
+                                  isChecked
+                                    ? value?.filter((el: string) => el !== slackChannel.id)
+                                    : [...(value || []), slackChannel.id]
+                                );
+                              }}
+                              key={`access-requests-slack-channel-${slackChannel.id}`}
+                              iconPos="right"
+                              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                            >
+                              {slackChannel.name}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </FormControl>
                 )}
               />

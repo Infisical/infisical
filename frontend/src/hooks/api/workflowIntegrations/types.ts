@@ -9,6 +9,11 @@ export type SlackIntegration = {
   teamName: string;
 };
 
+export type SlackIntegrationChannel = {
+  id: string;
+  name: string;
+};
+
 export type TUpdateSlackIntegrationDTO = {
   id: string;
   orgId: string;

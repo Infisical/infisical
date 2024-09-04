@@ -576,16 +576,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.GET_PROJECT_SLACK_CONFIG,
-          metadata: {
-            id: slackConfig.id
+      if (slackConfig) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.GET_PROJECT_SLACK_CONFIG,
+            metadata: {
+              id: slackConfig.id
+            }
           }
-        }
-      });
+        });
+      }
 
       return slackConfig;
     }

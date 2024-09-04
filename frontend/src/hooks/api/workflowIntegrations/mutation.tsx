@@ -20,8 +20,8 @@ export const useUpdateSlackIntegration = () => {
       return data;
     },
     onSuccess: (_, { orgId, id }) => {
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackWorkflowIntegration(id));
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackWorkflowIntegrations(orgId));
+      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegration(id));
+      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegrations(orgId));
     }
   });
 };
@@ -36,8 +36,8 @@ export const useDeleteSlackIntegration = () => {
       return data;
     },
     onSuccess: (_, { orgId, id }) => {
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackWorkflowIntegration(id));
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackWorkflowIntegrations(orgId));
+      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegration(id));
+      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegrations(orgId));
     }
   });
 };

@@ -13,6 +13,8 @@ export type TGetSlackIntegrationByOrgDTO = Omit<TOrgPermission, "orgId">;
 
 export type TGetSlackIntegrationByIdDTO = { id: string } & Omit<TOrgPermission, "orgId">;
 
+export type TGetSlackIntegrationChannelsDTO = { id: string } & Omit<TOrgPermission, "orgId">;
+
 export type TUpdateSlackIntegrationDTO = { id: string; slug?: string; description?: string } & Omit<
   TOrgPermission,
   "orgId"

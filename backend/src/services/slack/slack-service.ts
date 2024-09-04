@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { fetchSlackChannels } from "./slack-fns";
 import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
 import {
   TCompleteSlackIntegrationDTO,
@@ -16,6 +17,7 @@ import {
   TGetSlackInstallUrlDTO,
   TGetSlackIntegrationByIdDTO,
   TGetSlackIntegrationByOrgDTO,
+  TGetSlackIntegrationChannelsDTO,
   TReinstallSlackIntegrationDTO,
   TUpdateSlackIntegrationDTO
 } from "./slack-types";
@@ -285,6 +287,42 @@ export const slackServiceFactory = ({
     return slackIntegration;
   };
 
+  const getSlackIntegrationChannels = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TGetSlackIntegrationChannelsDTO) => {
+    const slackIntegration = await slackIntegrationDAL.findById(id);
+    if (!slackIntegration) {
+      throw new NotFoundError({
+        message: "Slack integration not found."
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      slackIntegration.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      orgId: slackIntegration.orgId,
+      type: KmsDataKey.Organization
+    });
+
+    const botKey = orgDataKeyDecryptor({
+      cipherTextBlob: slackIntegration.encryptedBotAccessToken
+    }).toString("utf8");
+
+    return fetchSlackChannels(botKey);
+  };
+
   const updateSlackIntegration = async ({
     actorId,
     actor,
@@ -352,6 +390,7 @@ export const slackServiceFactory = ({
     completeSlackIntegration,
     getSlackInstaller,
     updateSlackIntegration,
-    deleteSlackIntegration
+    deleteSlackIntegration,
+    getSlackIntegrationChannels
   };
 };

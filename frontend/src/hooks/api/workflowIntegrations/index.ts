@@ -7,5 +7,6 @@ export {
   fetchSlackInstallUrl,
   fetchSlackReinstallUrl,
   useGetSlackIntegrationById,
+  useGetSlackIntegrationChannels,
   useGetSlackIntegrations
 } from "./queries";

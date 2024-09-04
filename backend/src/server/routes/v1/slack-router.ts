@@ -233,6 +233,44 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:slackIntegrationId/channels",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        slackIntegrationId: z.string()
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string(),
+            id: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const slackChannels = await server.services.slack.getSlackIntegrationChannels({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.slackIntegrationId
+      });
+
+      return slackChannels;
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:slackIntegrationId",
     config: {
