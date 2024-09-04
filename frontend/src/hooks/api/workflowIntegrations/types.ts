@@ -1,5 +1,5 @@
 export enum WorkflowIntegrationPlatform {
-  SLACK = "slack"
+  SLACK = "Slack"
 }
 
 export type SlackIntegration = {

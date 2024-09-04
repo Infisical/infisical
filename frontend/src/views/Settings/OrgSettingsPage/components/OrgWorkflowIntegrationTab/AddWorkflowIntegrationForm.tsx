@@ -38,11 +38,7 @@ export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
 
   return (
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
-      <ModalContent
-        title="Add a workflow integration"
-        subTitle="Configure a workflow integration"
-        className="my-4"
-      >
+      <ModalContent title={`Add a ${selectedPlatform ?? "workflow"} integration`} className="my-4">
         <AnimatePresence exitBeforeEnter>
           {wizardStep === WizardSteps.SelectPlatform && (
             <motion.div

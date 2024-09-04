@@ -39,7 +39,6 @@ export const triggerSecretApprovalSlackNotif = async ({
   environment,
   secretPath
 }: TTriggerSecretApprovalSlackNotif) => {
-  // construct message here
   const appCfg = getConfig();
   const project = await projectDAL.findProjectWithOrg(projectId);
   const user = await userDAL.findById(secretApprovalRequest.committerUserId);

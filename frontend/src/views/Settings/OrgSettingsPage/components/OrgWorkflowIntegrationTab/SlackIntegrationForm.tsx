@@ -89,7 +89,7 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         control={control}
         name="slug"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="Alias" isRequired errorText={error?.message} isError={Boolean(error)}>
             <Input placeholder="" {...field} />
           </FormControl>
         )}
@@ -104,13 +104,13 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         )}
       />
       {slackIntegration && (
-        <FormControl label="Slack workspace">
+        <FormControl label="Connected Slack workspace">
           <Input value={slackIntegration?.teamName} isReadOnly className="bg-white/[0.07]" />
         </FormControl>
       )}
       <div className="mt-6 flex items-center space-x-4">
         <Button type="submit" isLoading={isSubmitting || isConnectLoading} isDisabled={!isDirty}>
-          {slackIntegration ? "Save" : "Connect"}
+          {slackIntegration ? "Save" : "Connect Slack"}
         </Button>
         <Button variant="outline_bg" onClick={onClose}>
           Cancel
