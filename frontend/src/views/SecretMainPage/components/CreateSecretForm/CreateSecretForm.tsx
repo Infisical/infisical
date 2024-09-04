@@ -61,8 +61,9 @@ export const CreateSecretForm = ({
       });
       closePopUp(PopUpNames.CreateSecretForm);
       reset();
+
       createNotification({
-        type: "success",
+        type: isProtectedBranch ? "info" : "success",
         text: isProtectedBranch
           ? "Requested changes have been sent for review"
           : "Successfully created secret"

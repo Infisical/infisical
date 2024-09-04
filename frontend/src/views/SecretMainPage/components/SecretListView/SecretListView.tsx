@@ -270,7 +270,7 @@ export const SecretListView = ({
         queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
         handlePopUpClose("secretDetail");
         createNotification({
-          type: "success",
+          type: isProtectedBranch ? "info" : "success",
           text: isProtectedBranch
             ? "Requested changes have been sent for review"
             : "Successfully saved secrets"
@@ -304,7 +304,7 @@ export const SecretListView = ({
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
       createNotification({
-        type: "success",
+        type: isProtectedBranch ? "info" : "success",
         text: isProtectedBranch
           ? "Requested changes have been sent for review"
           : "Successfully deleted secret"
