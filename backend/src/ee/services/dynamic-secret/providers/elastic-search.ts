@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Client as ElasticCacheClient } from "@elastic/elasticsearch";
 import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
