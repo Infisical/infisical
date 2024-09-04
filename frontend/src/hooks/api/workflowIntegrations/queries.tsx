@@ -26,6 +26,20 @@ export const fetchSlackInstallUrl = async ({
   return data;
 };
 
+export const fetchSlackReinstallUrl = async ({
+  slackIntegrationId
+}: {
+  slackIntegrationId: string;
+}) => {
+  const { data } = await apiRequest.get<string>("/api/v1/workflow-integrations/slack/reinstall", {
+    params: {
+      slackIntegrationId
+    }
+  });
+
+  return data;
+};
+
 export const fetchSlackIntegrations = async () => {
   const { data } = await apiRequest.get<SlackIntegration[]>("/api/v1/workflow-integrations/slack");
 

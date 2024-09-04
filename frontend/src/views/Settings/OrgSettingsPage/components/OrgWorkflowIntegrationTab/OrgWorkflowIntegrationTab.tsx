@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faEllipsis, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,7 +25,11 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
-import { useDeleteSlackIntegration, useGetSlackIntegrations } from "@app/hooks/api";
+import {
+  fetchSlackReinstallUrl,
+  useDeleteSlackIntegration,
+  useGetSlackIntegrations
+} from "@app/hooks/api";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
 import { AddWorkflowIntegrationForm } from "./AddWorkflowIntegrationForm";
@@ -39,6 +44,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
     ] as const);
 
     const { currentOrg } = useOrganization();
+    const router = useRouter();
     const { data: slackIntegrations, isLoading: isSlackIntegrationsLoading } =
       useGetSlackIntegrations(currentOrg?.id);
     const { mutateAsync: deleteSlackIntegration } = useDeleteSlackIntegration();
@@ -61,6 +67,18 @@ export const OrgWorkflowIntegrationTab = withPermission(
         text: "Successfully deleted integration",
         type: "success"
       });
+    };
+
+    const triggerReinstall = async (platform: WorkflowIntegrationPlatform, id: string) => {
+      if (platform === WorkflowIntegrationPlatform.SLACK) {
+        const slackReinstallUrl = await fetchSlackReinstallUrl({
+          slackIntegrationId: id
+        });
+
+        if (slackReinstallUrl) {
+          router.push(slackReinstallUrl);
+        }
+      }
     };
 
     const isIntegrationsLoading = isSlackIntegrationsLoading;
@@ -132,6 +150,29 @@ export const OrgWorkflowIntegrationTab = withPermission(
                         >
                           More details
                         </DropdownMenuItem>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Create}
+                          an={OrgPermissionSubjects.Settings}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              disabled={!isAllowed}
+                              className={twMerge(
+                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+
+                                triggerReinstall(
+                                  WorkflowIntegrationPlatform.SLACK,
+                                  slackIntegration.id
+                                );
+                              }}
+                            >
+                              Reinstall
+                            </DropdownMenuItem>
+                          )}
+                        </OrgPermissionCan>
                         <OrgPermissionCan
                           I={OrgPermissionActions.Delete}
                           an={OrgPermissionSubjects.Settings}

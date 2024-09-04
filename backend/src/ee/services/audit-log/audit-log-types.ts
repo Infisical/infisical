@@ -171,6 +171,7 @@ export enum EventType {
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
+  ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_SLACK_INTEGRATION = "get-slack-integration",
   UPDATE_SLACK_INTEGRATION = "update-slack-integration",
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
@@ -1460,6 +1461,13 @@ interface AttemptCreateSlackIntegration {
   };
 }
 
+interface AttemptReinstallSlackIntegration {
+  type: EventType.ATTEMPT_REINSTALL_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+  };
+}
+
 interface UpdateSlackIntegration {
   type: EventType.UPDATE_SLACK_INTEGRATION;
   metadata: {
@@ -1634,6 +1642,7 @@ export type Event =
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
   | AttemptCreateSlackIntegration
+  | AttemptReinstallSlackIntegration
   | UpdateSlackIntegration
   | DeleteSlackIntegration
   | GetSlackIntegration

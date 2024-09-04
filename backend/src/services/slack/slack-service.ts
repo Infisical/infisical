@@ -12,9 +12,11 @@ import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
 import {
   TCompleteSlackIntegrationDTO,
   TDeleteSlackIntegrationDTO,
+  TGetReinstallUrlDTO,
   TGetSlackInstallUrlDTO,
   TGetSlackIntegrationByIdDTO,
   TGetSlackIntegrationByOrgDTO,
+  TReinstallSlackIntegrationDTO,
   TUpdateSlackIntegrationDTO
 } from "./slack-types";
 
@@ -66,6 +68,38 @@ export const slackServiceFactory = ({
     });
   };
 
+  const reinstallSlackIntegration = async ({
+    id,
+    teamId,
+    teamName,
+    slackUserId,
+    slackAppId,
+    botAccessToken,
+    slackBotId,
+    slackBotUserId
+  }: TReinstallSlackIntegrationDTO) => {
+    const slackIntegration = await slackIntegrationDAL.findById(id);
+
+    const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
+      orgId: slackIntegration.orgId,
+      type: KmsDataKey.Organization
+    });
+
+    const { cipherTextBlob: encryptedBotAccessToken } = orgDataKeyEncryptor({
+      plainText: Buffer.from(botAccessToken, "utf8")
+    });
+
+    await slackIntegrationDAL.updateById(id, {
+      teamId,
+      teamName,
+      slackUserId,
+      slackAppId,
+      slackBotId,
+      slackBotUserId,
+      encryptedBotAccessToken
+    });
+  };
+
   const getSlackInstaller = async () => {
     const appCfg = getConfig();
 
@@ -89,10 +123,24 @@ export const slackServiceFactory = ({
           }
 
           const metadata = JSON.parse(installation.metadata || "") as {
+            id?: string;
             orgId: string;
             slug: string;
             description?: string;
           };
+
+          if (metadata.id) {
+            return reinstallSlackIntegration({
+              id: metadata.id,
+              teamId: installation.team?.id || "",
+              teamName: installation.team?.name || "",
+              slackUserId: installation.user.id,
+              slackAppId: installation.appId || "",
+              botAccessToken: installation.bot?.token || "",
+              slackBotId: installation.bot?.id || "",
+              slackBotUserId: installation.bot?.userId || ""
+            });
+          }
 
           return completeSlackIntegration({
             orgId: metadata.orgId,
@@ -147,6 +195,39 @@ export const slackServiceFactory = ({
         slug,
         description,
         orgId: actorOrgId
+      }),
+      redirectUri: `${appCfg.SITE_URL}/api/v1/workflow-integrations/slack/oauth_redirect`
+    });
+
+    return url;
+  };
+
+  const getReinstallUrl = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetReinstallUrlDTO) => {
+    const appCfg = getConfig();
+    const slackIntegration = await slackIntegrationDAL.findById(id);
+
+    if (!slackIntegration) {
+      throw new NotFoundError({
+        message: "Slack integration not found"
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      slackIntegration.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+
+    const installer = await getSlackInstaller();
+    const url = await installer.generateInstallUrl({
+      scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"],
+      metadata: JSON.stringify({
+        id,
+        orgId: slackIntegration.orgId
       }),
       redirectUri: `${appCfg.SITE_URL}/api/v1/workflow-integrations/slack/oauth_redirect`
     });
@@ -265,6 +346,7 @@ export const slackServiceFactory = ({
 
   return {
     getInstallUrl,
+    getReinstallUrl,
     getSlackIntegrationsByOrg,
     getSlackIntegrationById,
     completeSlackIntegration,

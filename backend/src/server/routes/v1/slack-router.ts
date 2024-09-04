@@ -58,6 +58,50 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/reinstall",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        slackIntegrationId: z.string()
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const url = await server.services.slack.getReinstallUrl({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.query.slackIntegrationId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.ATTEMPT_REINSTALL_SLACK_INTEGRATION,
+          metadata: {
+            id: req.query.slackIntegrationId
+          }
+        }
+      });
+
+      return url;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     config: {
       rateLimit: readLimit
