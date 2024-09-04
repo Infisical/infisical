@@ -44,10 +44,10 @@ export const triggerSecretApprovalSlackNotif = async ({
   const user = await userDAL.findById(secretApprovalRequest.committerUserId);
 
   const messageBody = `A secret approval request has been opened by ${user.email}.
-  *Environment*: ${environment}
-  *Secret path*: ${secretPath || "/"}
+*Environment*: ${environment}
+*Secret path*: ${secretPath || "/"}
 
-  View the complete details <${appCfg.SITE_URL}/project/${project.id}/approval?requestId=${
+View the complete details <${appCfg.SITE_URL}/project/${project.id}/approval?requestId=${
     secretApprovalRequest.id
   }|here>.`;
 

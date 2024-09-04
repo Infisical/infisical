@@ -15,12 +15,12 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
-import { triggerAccessRequestSlackNotif, verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
+import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { triggerAccessRequestSlackNotif, verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import {
   ApprovalStatus,
