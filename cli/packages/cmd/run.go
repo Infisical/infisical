@@ -153,7 +153,7 @@ var runCmd = &cobra.Command{
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", injectableEnvironment.Variables)
 
 		if watchMode {
-			executeCommandWithWatchMode(command, args, watchMode, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
+			executeCommandWithWatchMode(command, args, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
 		} else {
 			if cmd.Flags().Changed("command") {
 				command := cmd.Flag("command").Value.String()
@@ -306,7 +306,7 @@ func waitForExitCommand(cmd *exec.Cmd) (int, error) {
 	return waitStatus.ExitStatus(), nil
 }
 
-func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bool, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
+func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
 
 	var cmd *exec.Cmd
 	var err error
@@ -359,6 +359,9 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 			}
 
 			cmd = nil
+		} else {
+			// If `cmd` is nil, we know this is the first time we are starting the process
+			log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Watching for secret changes..."))
 		}
 
 		processMutex.Lock()
@@ -374,8 +377,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 		// start the process
 		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", environmentVariables.SecretsCount))
 
-		shouldWaitForExit := !watchMode
-		cmd, err = util.RunCommand(commandFlag, args, environmentVariables.Variables, shouldWaitForExit)
+		cmd, err = util.RunCommand(commandFlag, args, environmentVariables.Variables, false)
 		if err != nil {
 			defer watcherWaitGroup.Done()
 			util.HandleError(err)
@@ -403,46 +405,35 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 		}()
 	}
 
-	initialEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
-	if err != nil {
-		util.HandleError(err, "Failed to fetch secrets")
-	}
+	recheckSecretsChannel := make(chan bool, 1)
+	recheckSecretsChannel <- true
 
-	runCommandWithWatcher(initialEnvironmentVariables)
-
-	// this is the only logic strictly related to watch mode, the rest is shared with non-watch mode
-	if watchMode {
-		recheckSecretsChannel := make(chan bool, 1)
-
-		log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Watching for secret changes..."))
-
-		// a simple goroutine that triggers the recheckSecretsChan every watch interval (defaults to 10 seconds)
-		go func() {
-			for {
-				time.Sleep(time.Duration(watchModeInterval) * time.Second)
-				recheckSecretsChannel <- true
-			}
-		}()
-
+	// a simple goroutine that triggers the recheckSecretsChan every watch interval (defaults to 10 seconds)
+	go func() {
 		for {
-			<-recheckSecretsChannel
-			watchMutex.Lock()
-
-			newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
-			if err != nil {
-				log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
-				continue
-			}
-
-			if newEnvironmentVariables.ETag != currentETag {
-				runCommandWithWatcher(newEnvironmentVariables)
-			} else {
-				log.Debug().Msg("[HOT RELOAD] No changes detected in secrets, not reloading process")
-			}
-
-			watchMutex.Unlock()
-
+			time.Sleep(time.Duration(watchModeInterval) * time.Second)
+			recheckSecretsChannel <- true
 		}
+	}()
+
+	for {
+		<-recheckSecretsChannel
+		watchMutex.Lock()
+
+		newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
+		if err != nil {
+			log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
+			continue
+		}
+
+		if newEnvironmentVariables.ETag != currentETag {
+			runCommandWithWatcher(newEnvironmentVariables)
+		} else {
+			log.Debug().Msg("[HOT RELOAD] No changes detected in secrets, not reloading process")
+		}
+
+		watchMutex.Unlock()
+
 	}
 }
 
