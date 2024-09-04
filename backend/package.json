@@ -112,6 +112,7 @@
     "@aws-sdk/client-secrets-manager": "^3.504.0",
     "@aws-sdk/client-sts": "^3.600.0",
     "@casl/ability": "^6.5.0",
+    "@elastic/elasticsearch": "^8.15.0",
     "@fastify/cookie": "^9.3.1",
     "@fastify/cors": "^8.5.0",
     "@fastify/etag": "^5.1.0",

@@ -1,57 +1,22 @@
 ---
-title: "AWS ElastiCache"
-description: "Learn how to dynamically generate AWS ElastiCache user credentials."
+title: "Elastic Search"
+description: "Learn how to dynamically generate Elastic Search user credentials."
 ---
 
-The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCache credentials on demand based on configured role.
+The Infisical Elastic Search dynamic secret allows you to generate Elastic Search credentials on demand based on configured role.
 
 ## Prerequisites
 
 
 
-2. Create an AWS IAM user with the following permissions:
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Action": [
-        "elasticache:DescribeUsers",
-        "elasticache:ModifyUser",
-        "elasticache:CreateUser",
-        "elasticache:CreateUserGroup",
-        "elasticache:DeleteUser",
-        "elasticache:DescribeReplicationGroups",
-        "elasticache:DescribeUserGroups",
-        "elasticache:ModifyReplicationGroup",
-        "elasticache:ModifyUserGroup"
-      ],
-      "Resource": "arn:aws:elasticache:<region>:<account-id>:user:*"
-    }
-  ]
-}
-```
-
-3. Create an access key ID and secret access key for the user you created in the previous step. You will need these to configure the Infisical dynamic secret.
+1. Create a role with at least `manage_security` and `monitor` permissions.
+2. Assign the newly created role to your API key or user that you'll use later in the dynamic secret configuration.
 
 <Note>
-  New leases may take up-to a couple of minutes before ElastiCache has the chance to complete their configuration.
-  It is recommended to use a retry strategy when establishing new ElastiCache connections.
-  This may prevent errors when trying to use a password that isn't yet live on the targeted ElastiCache cluster.
-
-  While a leasing is being created, you will be unable to create new leases for the same dynamic secret.
+  For testing purposes, you can also use a highly privileged role like `superuser`, that will have full control over the cluster. This is not recommended in production environments following the principle of least privilege.
 </Note>
 
-<Note>
-  Please ensure that your ElastiCache cluster has transit encryption enabled and set to required. This is required for the dynamic secret to work.
-</Note>
-
-
-
-
-## Set up Dynamic Secrets with AWS ElastiCache
+## Set up Dynamic Secrets with Elastic Search
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -60,8 +25,8 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button-redis.png)
   </Step>
-  <Step title="Select 'AWS ElastiCache'">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-elasti-cache.png)
+  <Step title="Select 'Elastic Search'">
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-elastic-search.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
 	<ParamField path="Secret Name" type="string" required>
@@ -76,27 +41,45 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 		Maximum time-to-live for a generated secret.
 	</ParamField>
 
-	<ParamField path="Region" type="string" required>
-    The region that the ElastiCache cluster is located in. _(e.g. us-east-1)_
+	<ParamField path="Host" type="string" required>
+    Your Elastic Search host. This is the endpoint that your instance runs on. _(Example: https://your-cluster-ip)_
 	</ParamField>
 
-	<ParamField path="Access Key ID" type="string" required>
-    This is the access key ID of the AWS IAM user you created in the prerequisites. This will be used to provision and manage the dynamic secret leases.
+	<ParamField path="Port" type="string" required>
+  The port that your Elastic Search instance is running on. _(Example: 9200)_
 	</ParamField>
 
-	<ParamField path="Secret Access Key" type="string" required>
-		This is the secret access key of the AWS IAM user you created in the prerequisites. This will be used to provision and manage the dynamic secret leases.
+  <ParamField path="Roles" type="string[]" required>
+    The roles that the new user that is created when a lease is provisioned will be assigned to. This is a required field. This defaults to `superuser`, which is highly privileged. It is recommended to create a new role with the least privileges required for the lease.
+  </ParamField>
+
+	<ParamField path="Authentication Method" type="API Key | Username/Password" required>
+    Select the authentication method you want to use to connect to your Elastic Search instance.
 	</ParamField>
+
+  <ParamField path="Username" type="string" required>
+    The username of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
+	</ParamField>
+
+  <ParamField path="Password" type="string" required>
+    The password of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
+  </ParamField>
+
+  <ParamField path="API Key ID" required>
+    The ID of the API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
+  </ParamField>
+
+  <ParamField path="API Key" required>
+    The API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
+  </ParamField>
 
 	<ParamField path="CA(SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
 	</ParamField>
 
-  </Step>
-  <Step title="(Optional) Modify ElastiCache Statements">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the ElastiCache statement to your needs. This is useful if you want to only give access to a specific table(s).
+  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
 
-	![Modify ElastiCache Statements Modal](/images/platform/dynamic-secrets/modify-elasticache-statement.png)
+
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard. 
@@ -125,7 +108,7 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 
 	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
 
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values-redis.png)
+	![Provision Lease](/images/platform/dynamic-secrets/lease-values-elastic-search.png)
   </Step>
 </Steps>
 

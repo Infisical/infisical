@@ -7,6 +7,11 @@ export enum SqlProviders {
   MsSQL = "mssql"
 }
 
+export enum ElasticSearchAuthTypes {
+  User = "user",
+  ApiKey = "api-key"
+}
+
 export const DynamicSecretRedisDBSchema = z.object({
   host: z.string().trim().toLowerCase(),
   port: z.number(),
@@ -27,6 +32,28 @@ export const DynamicSecretAwsElastiCacheSchema = z.object({
   region: z.string().trim(),
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
+  ca: z.string().optional()
+});
+
+export const DynamicSecretElasticSearchSchema = z.object({
+  host: z.string().trim().min(1),
+  port: z.number(),
+  roles: z.array(z.string().trim().min(1)).min(1),
+
+  // two auth types "user, apikey"
+  auth: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal(ElasticSearchAuthTypes.User),
+      username: z.string().trim(),
+      password: z.string().trim()
+    }),
+    z.object({
+      type: z.literal(ElasticSearchAuthTypes.ApiKey),
+      apiKey: z.string().trim(),
+      apiKeyId: z.string().trim()
+    })
+  ]),
+
   ca: z.string().optional()
 });
 
@@ -110,7 +137,8 @@ export enum DynamicSecretProviders {
   AwsIam = "aws-iam",
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
-  MongoAtlas = "mongo-db-atlas"
+  MongoAtlas = "mongo-db-atlas",
+  ElasticSearch = "elastic-search"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -119,7 +147,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), inputs: DynamicSecretAwsElastiCacheSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), inputs: DynamicSecretElasticSearchSchema })
 ]);
 
 export type TDynamicProviderFns = {
