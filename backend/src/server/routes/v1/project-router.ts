@@ -14,6 +14,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
+import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
@@ -606,9 +607,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         slackIntegrationId: z.string(),
         isAccessRequestNotificationEnabled: z.boolean(),
-        accessRequestChannels: z.string(),
+        accessRequestChannels: validateSlackChannelsField,
         isSecretRequestNotificationEnabled: z.boolean(),
-        secretRequestChannels: z.string()
+        secretRequestChannels: validateSlackChannelsField
       }),
       response: {
         200: ProjectSlackConfigsSchema.pick({

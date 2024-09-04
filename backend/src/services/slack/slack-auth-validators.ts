@@ -10,4 +10,7 @@ export const validateSlackChannelsField = z
       .split(",")
       .map((id) => id.trim())
       .join(", ");
+  })
+  .refine((data) => data.split(",").length <= 20, {
+    message: "You can only select up to 20 slack channels"
   });
