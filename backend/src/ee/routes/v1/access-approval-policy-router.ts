@@ -17,11 +17,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           name: z.string().optional(),
           secretPath: z.string().trim().default("/"),
           environment: z.string(),
-          approverUserIds: z.string().array().min(1),
+          approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approverUserIds.length, {
+        .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -127,11 +127,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .trim()
             .optional()
             .transform((val) => (val === "" ? "/" : val)),
-          approverUserIds: z.string().array().min(1),
+          approvers: z.string().array().min(1),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approverUserIds.length, {
+        .refine((data) => data.approvals <= data.approvers.length, {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),

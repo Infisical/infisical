@@ -20,7 +20,7 @@ export const useCreateAccessApprovalPolicy = () => {
       environment,
       projectSlug,
       approvals,
-      approverUserIds,
+      approvers,
       name,
       secretPath,
       enforcementLevel
@@ -29,7 +29,7 @@ export const useCreateAccessApprovalPolicy = () => {
         environment,
         projectSlug,
         approvals,
-        approverUserIds,
+        approvers,
         secretPath,
         name,
         enforcementLevel

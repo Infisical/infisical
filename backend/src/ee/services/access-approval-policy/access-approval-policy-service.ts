@@ -44,7 +44,7 @@ export const accessApprovalPolicyServiceFactory = ({
     secretPath,
     actorAuthMethod,
     approvals,
-    approverUserIds,
+    approvers,
     projectSlug,
     environment,
     enforcementLevel
@@ -52,7 +52,7 @@ export const accessApprovalPolicyServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new BadRequestError({ message: "Project not found" });
 
-    if (approvals > approverUserIds.length)
+    if (approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -76,7 +76,7 @@ export const accessApprovalPolicyServiceFactory = ({
       secretPath,
       actorAuthMethod,
       permissionService,
-      userIds: approverUserIds
+      userIds: approvers
     });
 
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
@@ -91,7 +91,7 @@ export const accessApprovalPolicyServiceFactory = ({
         tx
       );
       await accessApprovalPolicyApproverDAL.insertMany(
-        approverUserIds.map((userId) => ({
+        approvers.map((userId) => ({
           approverUserId: userId,
           policyId: doc.id
         })),
@@ -128,7 +128,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
   const updateAccessApprovalPolicy = async ({
     policyId,
-    approverUserIds,
+    approvers,
     secretPath,
     name,
     actorId,
@@ -161,7 +161,7 @@ export const accessApprovalPolicyServiceFactory = ({
         },
         tx
       );
-      if (approverUserIds) {
+      if (approvers) {
         await verifyApprovers({
           projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
@@ -169,12 +169,12 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath: doc.secretPath!,
           actorAuthMethod,
           permissionService,
-          userIds: approverUserIds
+          userIds: approvers
         });
 
         await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await accessApprovalPolicyApproverDAL.insertMany(
-          approverUserIds.map((userId) => ({
+          approvers.map((userId) => ({
             approverUserId: userId,
             policyId: doc.id
           })),
