@@ -18,13 +18,12 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/fatih/color"
-	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 var ErrManualSignalInterrupt = errors.New("signal: interrupt")
-var WaitGroup = new(sync.WaitGroup)
+var watcherWaitGroup = new(sync.WaitGroup)
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
@@ -38,8 +37,6 @@ var runCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Check if the --command flag has been set
 		commandFlagSet := cmd.Flags().Changed("command")
-		watchIntervalFlagSet := cmd.Flags().Changed("watch-interval")
-		watchFlagSet := cmd.Flags().Changed("watch")
 
 		// If the --command flag has been set, check if a value was provided
 		if commandFlagSet {
@@ -56,20 +53,6 @@ var runCmd = &cobra.Command{
 			// If the --command flag has not been set, at least one arg should be provided
 			if len(args) == 0 {
 				return fmt.Errorf("at least one argument is required after the run command, received %d", len(args))
-			}
-		}
-
-		// If the --watch flag has been set, the --watch-interval flag should also be set
-		if watchFlagSet && watchIntervalFlagSet {
-			// Ensure that the --watch-interval flag is set to a positive integer, and is at least 5 seconds
-
-			watchInterval, err := cmd.Flags().GetInt("watch-interval")
-			if err != nil {
-				util.HandleError(err, "Unable to parse flag")
-			}
-
-			if watchInterval < 5 {
-				return fmt.Errorf("watch interval must be at least 5 seconds, you passed %d seconds", watchInterval)
 			}
 		}
 
@@ -123,6 +106,11 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		// If the --watch flag has been set, the --watch-interval flag should also be set
+		if watchMode && watchModeInterval < 5 {
+			util.HandleError(fmt.Errorf("watch interval must be at least 5 seconds, you passed %d seconds", watchModeInterval))
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -157,22 +145,12 @@ var runCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		injectableEnvironment, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, shouldExpandSecrets, token)
+		injectableEnvironment, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, shouldExpandSecrets, token)
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
 		}
 
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", injectableEnvironment.Variables)
-
-		Telemetry.CaptureEvent("cli-command:run",
-			posthog.NewProperties().
-				Set("secretsCount", injectableEnvironment.SecretsCount).
-				Set("environment", environmentName).
-				Set("isUsingServiceToken", token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER).
-				Set("isUsingUniversalAuthToken", token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER).
-				Set("single-command", strings.Join(args, " ")).
-				Set("multi-command", cmd.Flag("command").Value.String()).
-				Set("version", util.CLI_VERSION))
 
 		if watchMode {
 			executeCommandWithWatchMode(command, args, watchMode, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
@@ -338,9 +316,14 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 	var processMutex sync.Mutex
 	var beingTerminated = false
 	var currentETag string
+	environmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
 
-	startProcess := func(environment models.InjectableEnvironmentResult) {
-		currentETag = environment.ETag
+	if err != nil {
+		util.HandleError(err, "Failed to fetch secrets")
+	}
+
+	runCommandWithWatcher := func() {
+		currentETag = environmentVariables.ETag
 		secretsFetchedAt := time.Now()
 		if secretsFetchedAt.After(lastSecretsFetch) {
 			lastSecretsFetch = secretsFetchedAt
@@ -349,6 +332,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 		shouldRestartProcess := cmd != nil
 		// terminate the old process before starting a new one
 		if shouldRestartProcess {
+			log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Environment changes detected. Reloading process..."))
 			beingTerminated = true
 
 			log.Debug().Msgf(color.HiMagentaString("[HOT RELOAD] Sending SIGTERM to PID %d", cmd.Process.Pid))
@@ -386,25 +370,21 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 		}
 
 		beingTerminated = false
-		WaitGroup.Add(1)
-
-		if shouldRestartProcess {
-			log.Info().Msg(color.HiMagentaString("[HOT RELOAD] Environment changes detected. Reloading process..."))
-		}
+		watcherWaitGroup.Add(1)
 
 		// start the process
-		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", environment.SecretsCount))
+		log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", environmentVariables.SecretsCount))
 
 		shouldWaitForExit := !watchMode
-		cmd, err = util.RunCommand(commandFlag, args, environment.Variables, shouldWaitForExit)
+		cmd, err = util.RunCommand(commandFlag, args, environmentVariables.Variables, shouldWaitForExit)
 		if err != nil {
-			defer WaitGroup.Done()
+			defer watcherWaitGroup.Done()
 			util.HandleError(err)
 		}
 
 		go func() {
 			defer processMutex.Unlock()
-			defer WaitGroup.Done()
+			defer watcherWaitGroup.Done()
 
 			exitCode, err := waitForExitCommand(cmd)
 
@@ -424,11 +404,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 		}()
 	}
 
-	initialEnvironment, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, expandSecrets, token)
-	if err != nil {
-		util.HandleError(err, "Failed to fetch secrets")
-	}
-	startProcess(initialEnvironment)
+	runCommandWithWatcher()
 
 	// this is the only logic strictly related to watch mode, the rest is shared with non-watch mode
 	if watchMode {
@@ -448,14 +424,14 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 			<-recheckSecretsChannel
 			watchMutex.Lock()
 
-			newEnvironmentVariables, err := createInjectableEnvironment(request, projectConfigDir, secretOverriding, expandSecrets, token)
+			environmentVariables, err = fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
 			if err != nil {
 				log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
 				continue
 			}
 
-			if newEnvironmentVariables.ETag != currentETag {
-				startProcess(newEnvironmentVariables)
+			if environmentVariables.ETag != currentETag {
+				runCommandWithWatcher()
 			} else {
 				log.Debug().Msg("[HOT RELOAD] No changes detected in secrets, not reloading process")
 			}
@@ -466,7 +442,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchMode bo
 	}
 }
 
-func createInjectableEnvironment(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
+func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
 
 	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 		request.InfisicalToken = token.Token
