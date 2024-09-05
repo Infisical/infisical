@@ -99,6 +99,7 @@ export const ConfiguredIntegrationItem = ({
             <FormLabel
               label={
                 (integration.integration === "qovery" && integration?.scope) ||
+                (integration.integration === "circleci" && "Project") ||
                 (integration.integration === "aws-secret-manager" && "Secret") ||
                 (["aws-parameter-store", "rundeck"].includes(integration.integration) && "Path") ||
                 (integration?.integration === "terraform-cloud" && "Project") ||
@@ -139,6 +140,14 @@ export const ConfiguredIntegrationItem = ({
             <FormLabel label="Group" />
             <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
               {integration.targetService}
+            </div>
+          </div>
+        )}
+        {integration.integration === "circleci" && integration.owner && (
+          <div className="ml-2">
+            <FormLabel label="Organization" />
+            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+              {integration.owner}
             </div>
           </div>
         )}

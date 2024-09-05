@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
+import { createNotification } from "@app/components/notifications";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
@@ -45,9 +46,10 @@ export default function CircleCICreateIntegrationPage() {
     });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [targetOrganization, setTargetOrganization] = useState("");
   const [secretPath, setSecretPath] = useState("/");
 
-  const [targetApp, setTargetApp] = useState("");
+  const [targetProjectId, setTargetProjectId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,29 +59,40 @@ export default function CircleCICreateIntegrationPage() {
     }
   }, [workspace]);
 
-  useEffect(() => {
-    if (integrationAuthApps) {
-      if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0]?.name);
-      } else {
-        setTargetApp("none");
-      }
-    }
-  }, [integrationAuthApps]);
-
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?.id) return;
 
+      if (!targetProjectId || targetOrganization === "none") {
+        createNotification({
+          type: "error",
+          text: "Please select a project"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
+
+      const selectedApp = integrationAuthApps?.find(
+        (integrationAuthApp) => integrationAuthApp.appId === targetProjectId
+      );
+
+      if (!selectedApp) {
+        createNotification({
+          type: "error",
+          text: "Invalid project selected"
+        });
+        setIsLoading(false);
+        return;
+      }
 
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: targetApp,
-        appId: integrationAuthApps?.find(
-          (integrationAuthApp) => integrationAuthApp.name === targetApp
-        )?.appId,
+        app: selectedApp.name, // project name
+        owner: selectedApp.owner, // organization name
+        appId: selectedApp.appId, // project id (used for syncing)
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
@@ -92,11 +105,28 @@ export default function CircleCICreateIntegrationPage() {
     }
   };
 
-  return integrationAuth &&
-    workspace &&
-    selectedSourceEnvironment &&
-    integrationAuthApps &&
-    targetApp ? (
+  const filteredProjects = useMemo(() => {
+    if (!integrationAuthApps) return [];
+
+    return integrationAuthApps.filter((integrationAuthApp) => {
+      return integrationAuthApp.owner === targetOrganization;
+    });
+  }, [integrationAuthApps, targetOrganization]);
+
+  const filteredOrganizations = useMemo(() => {
+    const organizations = new Set<string>();
+
+    if (integrationAuthApps) {
+      integrationAuthApps.forEach((integrationAuthApp) => {
+        if (!integrationAuthApp.owner) return;
+        organizations.add(integrationAuthApp.owner);
+      });
+    }
+
+    return Array.from(organizations);
+  }, [integrationAuthApps]);
+
+  return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up CircleCI Integration</title>
@@ -108,7 +138,7 @@ export default function CircleCICreateIntegrationPage() {
           subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI environment variables."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center pb-0.5">
+            <div className="flex items-center pb-0.5">
               <Image
                 src="/images/integrations/Circle CI.png"
                 height={30}
@@ -131,6 +161,7 @@ export default function CircleCICreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
+
         <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
@@ -154,29 +185,55 @@ export default function CircleCICreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="CircleCI Project" className="px-6">
+
+        <FormControl label="CircleCI Organization" className="px-6">
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetOrganization}
+            onValueChange={(val) => {
+              setTargetOrganization(val);
+              setTargetProjectId("none");
+            }}
             className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
+            isDisabled={filteredOrganizations.length === 0}
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
+            {filteredOrganizations.length > 0 ? (
+              filteredOrganizations.map((org) => (
+                <SelectItem value={org} key={`target-org-${org}`}>
+                  {org}
                 </SelectItem>
               ))
             ) : (
               <SelectItem value="none" key="target-app-none">
-                No projects found
+                No organizations found
               </SelectItem>
             )}
           </Select>
         </FormControl>
+
+        {targetOrganization && (
+          <FormControl label="CircleCI Project ID" className="px-6">
+            <Select
+              value={targetProjectId}
+              onValueChange={(val) => {
+                setTargetProjectId(val);
+              }}
+              className="w-full border border-mineshaft-500"
+              isDisabled={filteredProjects.length === 0}
+            >
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((project) => (
+                  <SelectItem value={project.appId!} key={`target-project-${project.owner}`}>
+                    {project.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-app-none">
+                  No projects found
+                </SelectItem>
+              )}
+            </Select>
+          </FormControl>
+        )}
         <Button
           onClick={handleButtonClick}
           colorSchema="primary"

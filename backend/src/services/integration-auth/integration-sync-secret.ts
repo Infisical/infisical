@@ -1929,22 +1929,62 @@ const syncSecretsCircleCI = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  const circleciOrganizationDetail = (
-    await request.get(`${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`, {
+  const getProjectSlug = async () => {
+    const requestConfig = {
       headers: {
         "Circle-Token": accessToken,
         "Accept-Encoding": "application/json"
       }
-    })
-  ).data[0];
+    };
 
-  const { slug } = circleciOrganizationDetail;
+    try {
+      const projectDetails = (
+        await request.get<{ slug: string }>(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${integration.appId}`,
+          requestConfig
+        )
+      ).data;
+
+      return projectDetails.slug;
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        if (err.response?.data?.message !== "Not Found") {
+          throw new Error("Failed to get project slug from CircleCI during first attempt.");
+        }
+      }
+    }
+
+    // For backwards compatibility with old CircleCI integrations where we don't keep track of the organization name, so we can't filter by organization
+    try {
+      const circleCiOrganization = (
+        await request.get<{ slug: string; name: string }[]>(
+          `${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`,
+          requestConfig
+        )
+      ).data;
+
+      // Case 1: This is a new integration where the organization name is stored under `integration.owner`
+      if (integration.owner) {
+        const org = circleCiOrganization.find((o) => o.name === integration.owner);
+        if (org) {
+          return `${org.slug}/${integration.app}`;
+        }
+      }
+
+      // Case 2: This is an old integration where the organization name is not stored, so we have to assume the first organization is the correct one
+      return `${circleCiOrganization[0].slug}/${integration.app}`;
+    } catch (err) {
+      throw new Error("Failed to get project slug from CircleCI during second attempt.");
+    }
+  };
+
+  const projectSlug = await getProjectSlug();
 
   // sync secrets to CircleCI
   await Promise.all(
     Object.keys(secrets).map(async (key) =>
       request.post(
-        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
         {
           name: key,
           value: secrets[key].value
@@ -1962,7 +2002,7 @@ const syncSecretsCircleCI = async ({
   // get secrets from CircleCI
   const getSecretsRes = (
     await request.get<{ items: { name: string }[] }>(
-      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
       {
         headers: {
           "Circle-Token": accessToken,
@@ -1976,15 +2016,12 @@ const syncSecretsCircleCI = async ({
   await Promise.all(
     getSecretsRes.map(async (sec) => {
       if (!(sec.name in secrets)) {
-        return request.delete(
-          `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
-          {
-            headers: {
-              "Circle-Token": accessToken,
-              "Content-Type": "application/json"
-            }
+        return request.delete(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar/${sec.name}`, {
+          headers: {
+            "Circle-Token": accessToken,
+            "Content-Type": "application/json"
           }
-        );
+        });
       }
     })
   );

@@ -69,7 +69,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
           subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center">
+            <div className="flex items-center">
               <Image
                 src="/images/integrations/Amazon Web Services.png"
                 height={35}

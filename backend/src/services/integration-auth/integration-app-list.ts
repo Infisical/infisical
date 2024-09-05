@@ -460,16 +460,21 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get<{ reponame: string }[]>(`${IntegrationUrls.CIRCLECI_API_URL}/v1.1/projects`, {
-      headers: {
-        "Circle-Token": accessToken,
-        "Accept-Encoding": "application/json"
+    await request.get<{ reponame: string; username: string; vcs_url: string }[]>(
+      `${IntegrationUrls.CIRCLECI_API_URL}/v1.1/projects`,
+      {
+        headers: {
+          "Circle-Token": accessToken,
+          "Accept-Encoding": "application/json"
+        }
       }
-    })
+    )
   ).data;
 
-  const apps = res?.map((a) => ({
-    name: a?.reponame
+  const apps = res.map((a) => ({
+    owner: a.username, // username maps to unique organization name in CircleCI
+    name: a.reponame, // reponame maps to project name within an organization in CircleCI
+    appId: a.vcs_url.split("/").pop() // vcs_url maps to the project id in CircleCI
   }));
 
   return apps;
