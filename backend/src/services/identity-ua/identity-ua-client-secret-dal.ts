@@ -42,7 +42,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
           })
           .orWhere((qb) => {
             void qb
-              .where("clientSecretNumUses", ">", 0)
+              .where("clientSecretNumUsesLimit", ">", 0)
               .andWhere(
                 "clientSecretNumUses",
                 ">=",
