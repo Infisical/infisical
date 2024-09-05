@@ -68,6 +68,7 @@ export default function CircleCICreateIntegrationPage() {
           type: "error",
           text: "Please select a project"
         });
+        setIsLoading(false);
         return;
       }
 
@@ -82,6 +83,7 @@ export default function CircleCICreateIntegrationPage() {
           type: "error",
           text: "Invalid project selected"
         });
+        setIsLoading(false);
         return;
       }
 
@@ -110,6 +112,19 @@ export default function CircleCICreateIntegrationPage() {
       return integrationAuthApp.owner === targetOrganization;
     });
   }, [integrationAuthApps, targetOrganization]);
+
+  const filteredOrganizations = useMemo(() => {
+    const organizations = new Set<string>();
+
+    if (integrationAuthApps) {
+      integrationAuthApps.forEach((integrationAuthApp) => {
+        if (!integrationAuthApp.owner) return;
+        organizations.add(integrationAuthApp.owner);
+      });
+    }
+
+    return Array.from(organizations);
+  }, [integrationAuthApps]);
 
   return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
@@ -179,15 +194,12 @@ export default function CircleCICreateIntegrationPage() {
               setTargetProjectId("none");
             }}
             className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
+            isDisabled={filteredOrganizations.length === 0}
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.owner!}
-                  key={`target-org-${integrationAuthApp.owner}`}
-                >
-                  {integrationAuthApp.owner}
+            {filteredOrganizations.length > 0 ? (
+              filteredOrganizations.map((org) => (
+                <SelectItem value={org} key={`target-org-${org}`}>
+                  {org}
                 </SelectItem>
               ))
             ) : (
