@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
+import { createNotification } from "@app/components/notifications";
 import { useCreateIntegration } from "@app/hooks/api";
 
 import {
@@ -48,7 +49,7 @@ export default function CircleCICreateIntegrationPage() {
   const [targetOrganization, setTargetOrganization] = useState("");
   const [secretPath, setSecretPath] = useState("/");
 
-  const [targetApp, setTargetApp] = useState("");
+  const [targetProjectId, setTargetProjectId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,18 +63,34 @@ export default function CircleCICreateIntegrationPage() {
     try {
       if (!integrationAuth?.id) return;
 
-      if (!targetApp || targetOrganization === "none") return;
+      if (!targetProjectId || targetOrganization === "none") {
+        createNotification({
+          type: "error",
+          text: "Please select a project"
+        });
+        return;
+      }
 
       setIsLoading(true);
+
+      const selectedApp = integrationAuthApps?.find(
+        (integrationAuthApp) => integrationAuthApp.appId === targetProjectId
+      );
+
+      if (!selectedApp) {
+        createNotification({
+          type: "error",
+          text: "Invalid project selected"
+        });
+        return;
+      }
 
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: targetApp,
-        owner: targetOrganization,
-        appId: integrationAuthApps?.find(
-          (integrationAuthApp) => integrationAuthApp.name === targetApp
-        )?.appId,
+        app: selectedApp.name, // project name
+        owner: selectedApp.owner, // organization name
+        appId: selectedApp.appId, // project id (used for syncing)
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
@@ -85,6 +102,14 @@ export default function CircleCICreateIntegrationPage() {
       console.error(err);
     }
   };
+
+  const filteredProjects = useMemo(() => {
+    if (!integrationAuthApps) return [];
+
+    return integrationAuthApps.filter((integrationAuthApp) => {
+      return integrationAuthApp.owner === targetOrganization;
+    });
+  }, [integrationAuthApps, targetOrganization]);
 
   return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
@@ -151,6 +176,7 @@ export default function CircleCICreateIntegrationPage() {
             value={targetOrganization}
             onValueChange={(val) => {
               setTargetOrganization(val);
+              setTargetProjectId("none");
             }}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
@@ -158,10 +184,10 @@ export default function CircleCICreateIntegrationPage() {
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
                 <SelectItem
-                  value={integrationAuthApp.appId!}
+                  value={integrationAuthApp.owner!}
                   key={`target-org-${integrationAuthApp.owner}`}
                 >
-                  {integrationAuthApp.name}
+                  {integrationAuthApp.owner}
                 </SelectItem>
               ))
             ) : (
@@ -174,11 +200,26 @@ export default function CircleCICreateIntegrationPage() {
 
         {targetOrganization && (
           <FormControl label="CircleCI Project ID" className="px-6">
-            <Input
-              placeholder="55a2071d-97b5-4f71-b285-990d73c41268"
-              value={targetApp}
-              onChange={(evt) => setTargetApp(evt.target.value)}
-            />
+            <Select
+              value={targetProjectId}
+              onValueChange={(val) => {
+                setTargetProjectId(val);
+              }}
+              className="w-full border border-mineshaft-500"
+              isDisabled={filteredProjects.length === 0}
+            >
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((project) => (
+                  <SelectItem value={project.appId!} key={`target-project-${project.owner}`}>
+                    {project.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-app-none">
+                  No projects found
+                </SelectItem>
+              )}
+            </Select>
           </FormControl>
         )}
         <Button

@@ -35,7 +35,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
-import { CircleCiVcsType, TIntegrationsWithEnvironment } from "./integration-auth-types";
+import { TIntegrationsWithEnvironment } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -1929,8 +1929,9 @@ const syncSecretsCircleCI = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  const circleciOrganizationDetail = (
-    await request.get<{ slug: string; name: string }[]>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`, {
+  let projectSlug: string | null = null;
+  const projectDetails = (
+    await request.get<{ slug: string }>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${integration.appId}`, {
       headers: {
         "Circle-Token": accessToken,
         "Accept-Encoding": "application/json"
@@ -1938,30 +1939,7 @@ const syncSecretsCircleCI = async ({
     })
   ).data;
 
-  let projectSlug: string | null = null;
-  if (!integration.owner) {
-    projectSlug = `${circleciOrganizationDetail[0].slug}/${integration.app}`;
-  } else {
-    const projectDetails = (
-      await request.get<{ vcs_info: { provider: CircleCiVcsType } }>(
-        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${integration.app}`,
-        {
-          headers: {
-            "Circle-Token": accessToken,
-            "Accept-Encoding": "application/json"
-          }
-        }
-      )
-    ).data;
-
-    const vcsProviderMap: Record<CircleCiVcsType, string> = {
-      [CircleCiVcsType.GitHub]: "gh",
-      [CircleCiVcsType.BitBucket]: "bb",
-      [CircleCiVcsType.CircleCI]: "circleci"
-    };
-
-    projectSlug = `${vcsProviderMap[projectDetails.vcs_info.provider]}/${integration.owner}/${integration.app}`;
-  }
+  projectSlug = `${projectDetails.slug}`;
 
   // sync secrets to CircleCI
   await Promise.all(
