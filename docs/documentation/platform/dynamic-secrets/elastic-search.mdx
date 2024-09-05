@@ -1,9 +1,9 @@
 ---
-title: "Elastic Search"
-description: "Learn how to dynamically generate Elastic Search user credentials."
+title: "Elasticsearch"
+description: "Learn how to dynamically generate Elasticsearch user credentials."
 ---
 
-The Infisical Elastic Search dynamic secret allows you to generate Elastic Search credentials on demand based on configured role.
+The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch credentials on demand based on configured role.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ The Infisical Elastic Search dynamic secret allows you to generate Elastic Searc
   For testing purposes, you can also use a highly privileged role like `superuser`, that will have full control over the cluster. This is not recommended in production environments following the principle of least privilege.
 </Note>
 
-## Set up Dynamic Secrets with Elastic Search
+## Set up Dynamic Secrets with Elasticsearch
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -25,7 +25,7 @@ The Infisical Elastic Search dynamic secret allows you to generate Elastic Searc
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button-redis.png)
   </Step>
-  <Step title="Select 'Elastic Search'">
+  <Step title="Select 'Elasticsearch'">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-elastic-search.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
@@ -42,11 +42,11 @@ The Infisical Elastic Search dynamic secret allows you to generate Elastic Searc
 	</ParamField>
 
 	<ParamField path="Host" type="string" required>
-    Your Elastic Search host. This is the endpoint that your instance runs on. _(Example: https://your-cluster-ip)_
+    Your Elasticsearch host. This is the endpoint that your instance runs on. _(Example: https://your-cluster-ip)_
 	</ParamField>
 
 	<ParamField path="Port" type="string" required>
-  The port that your Elastic Search instance is running on. _(Example: 9200)_
+  The port that your Elasticsearch instance is running on. _(Example: 9200)_
 	</ParamField>
 
   <ParamField path="Roles" type="string[]" required>
@@ -54,7 +54,7 @@ The Infisical Elastic Search dynamic secret allows you to generate Elastic Searc
   </ParamField>
 
 	<ParamField path="Authentication Method" type="API Key | Username/Password" required>
-    Select the authentication method you want to use to connect to your Elastic Search instance.
+    Select the authentication method you want to use to connect to your Elasticsearch instance.
 	</ParamField>
 
   <ParamField path="Username" type="string" required>
