@@ -28,7 +28,7 @@ The following guide provides a detailed step-by-step walkthrough on how you can 
     
   </Step>
   <Step title="Start Infisical">
-    For a minimal installation of Infisical, you must configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`.     [View all available configurations](/self-hosting/configuration/envars).
+    For a minimal installation of Infisical, you must configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, `SITE_URL`, and `REDIS_URL`.     [View all available configurations](/self-hosting/configuration/envars).
     
 
     We recommend using Cloud-based Platform as a Service (PaaS) solutions for PostgreSQL and Redis to ensure high availability. 
@@ -43,6 +43,7 @@ The following guide provides a detailed step-by-step walkthrough on how you can 
     -e AUTH_SECRET="q6LRi7c717a3DQ8JUxlWYkZpMhG4+RHLoFUVt3Bvo2U=" \
     -e DB_CONNECTION_URI="<>" \
     -e REDIS_URL="<>" \
+    -e SITE_URL="<>" \
     infisical/infisical:<version>
     ```
     
