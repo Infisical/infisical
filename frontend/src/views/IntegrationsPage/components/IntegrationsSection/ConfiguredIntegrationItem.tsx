@@ -99,6 +99,7 @@ export const ConfiguredIntegrationItem = ({
             <FormLabel
               label={
                 (integration.integration === "qovery" && integration?.scope) ||
+                (integration.integration === "circleci" && "Project ID") ||
                 (integration.integration === "aws-secret-manager" && "Secret") ||
                 (["aws-parameter-store", "rundeck"].includes(integration.integration) && "Path") ||
                 (integration?.integration === "terraform-cloud" && "Project") ||

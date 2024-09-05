@@ -45,6 +45,7 @@ export default function CircleCICreateIntegrationPage() {
     });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [targetOrganization, setTargetOrganization] = useState("");
   const [secretPath, setSecretPath] = useState("/");
 
   const [targetApp, setTargetApp] = useState("");
@@ -57,19 +58,11 @@ export default function CircleCICreateIntegrationPage() {
     }
   }, [workspace]);
 
-  useEffect(() => {
-    if (integrationAuthApps) {
-      if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0]?.name);
-      } else {
-        setTargetApp("none");
-      }
-    }
-  }, [integrationAuthApps]);
-
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?.id) return;
+
+      if (!targetApp || targetOrganization === "none") return;
 
       setIsLoading(true);
 
@@ -77,6 +70,7 @@ export default function CircleCICreateIntegrationPage() {
         integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp,
+        owner: targetOrganization,
         appId: integrationAuthApps?.find(
           (integrationAuthApp) => integrationAuthApp.name === targetApp
         )?.appId,
@@ -92,11 +86,7 @@ export default function CircleCICreateIntegrationPage() {
     }
   };
 
-  return integrationAuth &&
-    workspace &&
-    selectedSourceEnvironment &&
-    integrationAuthApps &&
-    targetApp ? (
+  return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up CircleCI Integration</title>
@@ -108,7 +98,7 @@ export default function CircleCICreateIntegrationPage() {
           subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI environment variables."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center pb-0.5">
+            <div className="flex items-center pb-0.5">
               <Image
                 src="/images/integrations/Circle CI.png"
                 height={30}
@@ -131,6 +121,7 @@ export default function CircleCICreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
+
         <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
@@ -154,29 +145,42 @@ export default function CircleCICreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="CircleCI Project" className="px-6">
+
+        <FormControl label="CircleCI Organization" className="px-6">
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetOrganization}
+            onValueChange={(val) => {
+              setTargetOrganization(val);
+            }}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
                 <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
+                  value={integrationAuthApp.appId!}
+                  key={`target-org-${integrationAuthApp.owner}`}
                 >
                   {integrationAuthApp.name}
                 </SelectItem>
               ))
             ) : (
               <SelectItem value="none" key="target-app-none">
-                No projects found
+                No organizations found
               </SelectItem>
             )}
           </Select>
         </FormControl>
+
+        {targetOrganization && (
+          <FormControl label="CircleCI Project ID" className="px-6">
+            <Input
+              placeholder="55a2071d-97b5-4f71-b285-990d73c41268"
+              value={targetApp}
+              onChange={(evt) => setTargetApp(evt.target.value)}
+            />
+          </FormControl>
+        )}
         <Button
           onClick={handleButtonClick}
           colorSchema="primary"

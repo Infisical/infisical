@@ -143,6 +143,12 @@ export type TBitbucketWorkspace = {
   updated_on: string;
 };
 
+export enum CircleCiVcsType {
+  GitHub = "GitHub",
+  CircleCI = "CircleCI",
+  BitBucket = "BitBucket"
+}
+
 export type TNorthflankSecretGroup = {
   id: string;
   name: string;

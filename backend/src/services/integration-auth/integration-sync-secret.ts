@@ -35,7 +35,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
-import { TIntegrationsWithEnvironment } from "./integration-auth-types";
+import { CircleCiVcsType, TIntegrationsWithEnvironment } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -1930,21 +1930,48 @@ const syncSecretsCircleCI = async ({
   accessToken: string;
 }) => {
   const circleciOrganizationDetail = (
-    await request.get(`${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`, {
+    await request.get<{ slug: string; name: string }[]>(`${IntegrationUrls.CIRCLECI_API_URL}/v2/me/collaborations`, {
       headers: {
         "Circle-Token": accessToken,
         "Accept-Encoding": "application/json"
       }
     })
-  ).data[0];
+  ).data;
 
-  const { slug } = circleciOrganizationDetail;
+  let orgSlug: string | null = null;
+  if (!integration.owner) {
+    orgSlug = `${circleciOrganizationDetail[0].slug}/${integration.app}`;
+  } else {
+    const projectDetails = (
+      await request.get<{ vcs_info: { provider: CircleCiVcsType } }>(
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${integration.app}`,
+        {
+          headers: {
+            "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )
+    ).data;
+
+    const vcsProviderMap: Record<CircleCiVcsType, string> = {
+      [CircleCiVcsType.GitHub]: "gh",
+      [CircleCiVcsType.BitBucket]: "bb",
+      [CircleCiVcsType.CircleCI]: "circleci"
+    };
+
+    orgSlug = `${vcsProviderMap[projectDetails.vcs_info.provider]}/${integration.owner}/${integration.app}`;
+
+    if (!orgSlug) {
+      throw new Error("CircleCI: Organization not found");
+    }
+  }
 
   // sync secrets to CircleCI
   await Promise.all(
     Object.keys(secrets).map(async (key) =>
       request.post(
-        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${orgSlug}/envvar`,
         {
           name: key,
           value: secrets[key].value
@@ -1962,7 +1989,7 @@ const syncSecretsCircleCI = async ({
   // get secrets from CircleCI
   const getSecretsRes = (
     await request.get<{ items: { name: string }[] }>(
-      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${orgSlug}/envvar`,
       {
         headers: {
           "Circle-Token": accessToken,
@@ -1976,15 +2003,12 @@ const syncSecretsCircleCI = async ({
   await Promise.all(
     getSecretsRes.map(async (sec) => {
       if (!(sec.name in secrets)) {
-        return request.delete(
-          `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
-          {
-            headers: {
-              "Circle-Token": accessToken,
-              "Content-Type": "application/json"
-            }
+        return request.delete(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${orgSlug}/envvar/${sec.name}`, {
+          headers: {
+            "Circle-Token": accessToken,
+            "Content-Type": "application/json"
           }
-        );
+        });
       }
     })
   );
