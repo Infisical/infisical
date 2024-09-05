@@ -1938,9 +1938,9 @@ const syncSecretsCircleCI = async ({
     })
   ).data;
 
-  let orgSlug: string | null = null;
+  let projectSlug: string | null = null;
   if (!integration.owner) {
-    orgSlug = `${circleciOrganizationDetail[0].slug}/${integration.app}`;
+    projectSlug = `${circleciOrganizationDetail[0].slug}/${integration.app}`;
   } else {
     const projectDetails = (
       await request.get<{ vcs_info: { provider: CircleCiVcsType } }>(
@@ -1960,18 +1960,14 @@ const syncSecretsCircleCI = async ({
       [CircleCiVcsType.CircleCI]: "circleci"
     };
 
-    orgSlug = `${vcsProviderMap[projectDetails.vcs_info.provider]}/${integration.owner}/${integration.app}`;
-
-    if (!orgSlug) {
-      throw new Error("CircleCI: Organization not found");
-    }
+    projectSlug = `${vcsProviderMap[projectDetails.vcs_info.provider]}/${integration.owner}/${integration.app}`;
   }
 
   // sync secrets to CircleCI
   await Promise.all(
     Object.keys(secrets).map(async (key) =>
       request.post(
-        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${orgSlug}/envvar`,
+        `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
         {
           name: key,
           value: secrets[key].value
@@ -1989,7 +1985,7 @@ const syncSecretsCircleCI = async ({
   // get secrets from CircleCI
   const getSecretsRes = (
     await request.get<{ items: { name: string }[] }>(
-      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${orgSlug}/envvar`,
+      `${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar`,
       {
         headers: {
           "Circle-Token": accessToken,
@@ -2003,7 +1999,7 @@ const syncSecretsCircleCI = async ({
   await Promise.all(
     getSecretsRes.map(async (sec) => {
       if (!(sec.name in secrets)) {
-        return request.delete(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${orgSlug}/envvar/${sec.name}`, {
+        return request.delete(`${IntegrationUrls.CIRCLECI_API_URL}/v2/project/${projectSlug}/envvar/${sec.name}`, {
           headers: {
             "Circle-Token": accessToken,
             "Content-Type": "application/json"
