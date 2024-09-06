@@ -10,7 +10,7 @@ import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
-import fasitfy from "fastify";
+import fastify from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
@@ -39,7 +39,7 @@ type TMain = {
 // Run the server!
 export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
-  const server = fasitfy({
+  const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
     connectionTimeout: 30 * 1000,
