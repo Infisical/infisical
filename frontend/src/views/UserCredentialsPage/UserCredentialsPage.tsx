@@ -14,12 +14,16 @@ import {
 	ModalContent,
 	Select,
 	SelectItem,
+	Tab,
 	Table,
 	TableContainer,
+	TabList,
+	TabPanel,
+	Tabs,
 	Td,
 	Th,
 	THead,
-	Tr,
+	Tr
 } from "@app/components/v2";
 import { usePopUp, UsePopUpReturn, UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -102,14 +106,16 @@ function FormInputField({ control, name, label, placeholder, type = "text" }: {
 		name={name}
 		defaultValue=""
 		render={({ field, fieldState: { error } }) =>
-		(<FormControl
-			className="mt-4"
-			label={label}
-			isError={Boolean(error)}
-			errorText={error?.message}
-		>
-			<Input {...field} type={type} placeholder={placeholder} />
-		</FormControl>)
+		(
+			<FormControl
+				className="mt-4"
+				label={label}
+				isError={Boolean(error)}
+				errorText={error?.message}
+			>
+				<Input {...field} type={type} placeholder={placeholder} />
+			</FormControl>
+		)
 		} />
 }
 
@@ -158,7 +164,7 @@ function CreateCredentialModal({ popUp, handlePopUpToggle }: CreateCredentialMod
 			reset({ kind: credentialKind });
 		}}
 	>
-		<ModalContent title="Create Credential" >
+		<ModalContent title="Add Credential" >
 			<form onSubmit={handleSubmit(onFormSubmit)}>
 				<FormInputField
 					control={control}
@@ -240,22 +246,22 @@ function CreateCredentialModal({ popUp, handlePopUpToggle }: CreateCredentialMod
 	</Modal >
 }
 
-function CredentialsTable() {
+function LoginTable() {
 	const credentials: Credential[] = [];
-
 	return (
 		<TableContainer>
 			<Table>
 				<THead>
 					<Tr>
-						<Th>Name</Th>
-						<Th>Type</Th>
+						<Th>Website  </Th>
+						<Th>Username </Th>
+						<Th>Password </Th>
 					</Tr>
 				</THead>
 
 				{credentials.length === 0 ? (
 					<Tr>
-						<Td colSpan={2}>
+						<Td colSpan={3}>
 							<EmptyState
 								title="No credentials have been added so far"
 								icon={faUserSecret}
@@ -268,11 +274,99 @@ function CredentialsTable() {
 	);
 }
 
+function CreditCardTable() {
+	const credentials: Credential[] = [];
+	return (
+		<TableContainer>
+			<Table>
+				<THead>
+					<Tr>
+						<Th>Card Number  </Th>
+						<Th>Expiry Date </Th>
+						<Th>CVV </Th>
+					</Tr>
+				</THead>
+
+				{credentials.length === 0 ? (
+					<Tr>
+						<Td colSpan={3}>
+							<EmptyState
+								title="No credentials have been added so far"
+								icon={faUserSecret}
+							/>
+						</Td>
+					</Tr>
+				) : null}
+			</Table>
+		</TableContainer>
+	);
+}
+
+function SecureNoteTable() {
+	const credentials: Credential[] = [];
+	return (
+		<TableContainer>
+			<Table>
+				<THead>
+					<Tr>
+						<Th>Title </Th>
+						<Th>Note     </Th>
+					</Tr>
+				</THead>
+
+				{credentials.length === 0 ? (
+					<Tr>
+						<Td colSpan={3}>
+							<EmptyState
+								title="No credentials have been added so far"
+								icon={faUserSecret}
+							/>
+						</Td>
+					</Tr>
+				) : null}
+			</Table>
+		</TableContainer>
+	);
+}
+
+function CredentialTabs() {
+	const [activeTab, setActiveTab] = useState<CredentialKind>(CredentialKind.login);
+
+	return <Tabs value={activeTab} onValueChange={v => setActiveTab(v as CredentialKind)}>
+		<TabList>
+			<Tab value={CredentialKind.login}>
+				Log in credentials
+			</Tab>
+
+			<Tab value={CredentialKind.creditCard} >
+				Credit Cards
+			</Tab>
+
+			<Tab value={CredentialKind.secureNote}>
+				Secure Notes
+			</Tab>
+		</TabList>
+
+		<TabPanel value={CredentialKind.login}>
+			<LoginTable />
+		</TabPanel>
+
+		<TabPanel value={CredentialKind.creditCard}>
+			<CreditCardTable />
+		</TabPanel>
+
+		<TabPanel value={CredentialKind.secureNote}>
+			<SecureNoteTable />
+		</TabPanel>
+	</Tabs>
+}
+
+
 function CredentialsView({ handlePopUpOpen }: { handlePopUpOpen: UsePopUpReturn<CredentialsPopup>["handlePopUpOpen"] }) {
 	return (
 		<div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 w-full">
 			<div className="mb-4 flex justify-between">
-				<p className="text-xl font-semibold text-mineshaft-100">Identities</p>
+				<p className="text-xl font-semibold text-mineshaft-100">Credentials</p>
 				<div className="flex w-full justify-end pr-4" />
 				<Button
 					colorSchema="primary"
@@ -281,10 +375,10 @@ function CredentialsView({ handlePopUpOpen }: { handlePopUpOpen: UsePopUpReturn<
 					onClick={() => handlePopUpOpen("credential")}
 					isDisabled={false}
 				>
-					New Credential
+					Add Credential
 				</Button>
 			</div>
-			<CredentialsTable />
+			<CredentialTabs />
 		</div>
 	);
 }
@@ -308,9 +402,7 @@ export function UserCredentialsPage() {
 					</div>
 				</div>
 
-				<CredentialsView
-					handlePopUpOpen={handlePopUpOpen}
-				/>
+				<CredentialsView handlePopUpOpen={handlePopUpOpen} />
 				<CreateCredentialModal
 					popUp={popUp}
 					handlePopUpToggle={handlePopUpToggle}
