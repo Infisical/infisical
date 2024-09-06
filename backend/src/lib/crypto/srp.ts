@@ -36,12 +36,16 @@ export const srpCheckClientProof = async (
 // Ghost user related:
 // This functionality is intended for ghost user logic. This happens on the frontend when a user is being created.
 // We replicate the same functionality on the backend when creating a ghost user.
-export const generateUserSrpKeys = async (email: string, password: string) => {
+export const generateUserSrpKeys = async (
+  email: string,
+  password: string,
+  customKeys?: { publicKey: string; privateKey: string }
+) => {
   const pair = nacl.box.keyPair();
   const secretKeyUint8Array = pair.secretKey;
   const publicKeyUint8Array = pair.publicKey;
-  const privateKey = tweetnacl.encodeBase64(secretKeyUint8Array);
-  const publicKey = tweetnacl.encodeBase64(publicKeyUint8Array);
+  const privateKey = customKeys?.privateKey || tweetnacl.encodeBase64(secretKeyUint8Array);
+  const publicKey = customKeys?.publicKey || tweetnacl.encodeBase64(publicKeyUint8Array);
 
   // eslint-disable-next-line
   const client = new jsrp.client();

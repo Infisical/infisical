@@ -82,10 +82,9 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserEncKeyByUserId = async (userId: string) => {
+  const findUserEncKeyByUserId = async (userId: string, tx?: Knex) => {
     try {
-      const user = await db
-        .replicaNode()(TableName.Users)
+      const user = await (tx || db.replicaNode())(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .first();
