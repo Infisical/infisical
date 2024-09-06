@@ -153,7 +153,6 @@ export const orgAdminServiceFactory = ({
       members: [
         {
           orgMembershipId: membership.id,
-          projectMembershipRole: ProjectMembershipRole.Admin,
           userPublicKey: userEncryptionKey.publicKey
         }
       ]
