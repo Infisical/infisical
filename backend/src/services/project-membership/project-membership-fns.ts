@@ -12,6 +12,8 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
+import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
@@ -24,6 +26,7 @@ type TAddMembersToProjectArg = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProject">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -31,7 +34,7 @@ type AddMembersToNonE2EEProjectDTO = {
   emails: string[];
   usernames: string[];
   projectId: string;
-  projectMembershipRole: ProjectMembershipRole;
+  projectMembershipRoles: string[];
   sendEmails?: boolean;
 };
 
@@ -48,11 +51,12 @@ export const addMembersToProject = ({
   projectBotDAL,
   userGroupMembershipDAL,
   projectUserMembershipRoleDAL,
+  projectRoleDAL,
   smtpService
 }: TAddMembersToProjectArg) => {
   // Can create multiple memberships for a singular project, based on user email / username
   const addMembersToNonE2EEProject = async (
-    { emails, usernames, projectId, projectMembershipRole, sendEmails }: AddMembersToNonE2EEProjectDTO,
+    { emails, usernames, projectId, projectMembershipRoles, sendEmails }: AddMembersToNonE2EEProjectDTO,
     options: AddMembersToNonE2EEProjectOptions = { throwOnProjectNotFound: true }
   ) => {
     const processTransaction = async (tx: Knex) => {
@@ -119,7 +123,6 @@ export const addMembersToProject = ({
         userPrivateKey: botPrivateKey,
         members: orgMembers.map((membership) => ({
           orgMembershipId: membership.id,
-          projectMembershipRole,
           userPublicKey: membership.user.publicKey
         }))
       });
@@ -136,10 +139,37 @@ export const addMembersToProject = ({
         })),
         tx
       );
-      await projectUserMembershipRoleDAL.insertMany(
-        projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: projectMembershipRole })),
-        tx
-      );
+
+      const defaultRoles = getPredefinedRoles(projectId).map((i) => i.slug) as string[];
+      for await (const projectMembershipRole of projectMembershipRoles) {
+        // Custom role
+        if (!defaultRoles.includes(projectMembershipRole)) {
+          const role = await projectRoleDAL.findOne({
+            projectId,
+            slug: projectMembershipRole
+          });
+
+          if (!role) {
+            throw new BadRequestError({ message: `Custom role "${projectMembershipRole}" not found` });
+          }
+
+          await projectUserMembershipRoleDAL.insertMany(
+            projectMemberships.map(({ id }) => ({
+              projectMembershipId: id,
+              role: ProjectMembershipRole.Custom,
+              customRoleId: role.id
+            })),
+            tx
+          );
+        }
+        // Predefined role
+        else {
+          await projectUserMembershipRoleDAL.insertMany(
+            projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: projectMembershipRole })),
+            tx
+          );
+        }
+      }
 
       members.push(...projectMemberships);
 

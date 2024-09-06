@@ -133,6 +133,7 @@ export type AddUserToWsDTOE2EE = {
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
   usernames: string[];
+  roleSlugs?: string[];
   orgId: string;
 };
 
