@@ -213,7 +213,6 @@ export const certificateAuthorityServiceFactory = ({
           keys,
           extensions: [
             new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
-            new x509.ExtendedKeyUsageExtension(["1.2.3.4.5.6.7", "2.3.4.5.6.7.8"], true),
             // eslint-disable-next-line no-bitwise
             new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
             await x509.SubjectKeyIdentifierExtension.create(keys.publicKey)
@@ -496,7 +495,6 @@ export const certificateAuthorityServiceFactory = ({
               ca.maxPathLength === -1 || !ca.maxPathLength ? undefined : ca.maxPathLength,
               true
             ),
-            new x509.ExtendedKeyUsageExtension(["1.2.3.4.5.6.7", "2.3.4.5.6.7.8"], true),
             // eslint-disable-next-line no-bitwise
             new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
             await x509.SubjectKeyIdentifierExtension.create(caPublicKey)
