@@ -376,6 +376,10 @@ export const useGetIdentityMembershipOrgs = (organizationId: string) => {
   });
 };
 
+export const useGetCredentialsInOrg = () => {
+	return { data: [], isLoading: true };
+}
+
 export const useDeleteOrgById = () => {
   const queryClient = useQueryClient();
 
