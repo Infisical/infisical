@@ -44,7 +44,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         inviteeEmails: usernamesAndEmails,
         orgId: req.permission.orgId,
-        organizationRoleSlug: OrgMembershipRole.Member,
+        organizationRoleSlug: OrgMembershipRole.NoAccess,
         projects: [
           {
             id: req.params.projectId,
