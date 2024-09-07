@@ -70,6 +70,11 @@ export enum TableName {
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
+
+  Credential = "credentials",
+  CredentialWebLogin = "credential_web_logins",
+  CredentialSecureNote = "credential_secure_notes",
+
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",

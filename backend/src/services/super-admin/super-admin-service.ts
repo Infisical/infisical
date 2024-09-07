@@ -103,8 +103,8 @@ export const superAdminServiceFactory = ({
 
       if (
         !data.enabledLoginMethods.some((loginMethod) =>
-          loginMethodToAuthMethod[loginMethod as LoginMethod].some(
-            (authMethod) => superAdminUser.authMethods?.includes(authMethod)
+          loginMethodToAuthMethod[loginMethod as LoginMethod].some((authMethod) =>
+            superAdminUser.authMethods?.includes(authMethod)
           )
         )
       ) {
