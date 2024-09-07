@@ -9,10 +9,13 @@ import { TImmutableDBKeys } from "./models";
 
 export const CredentialWebLoginsSchema = z.object({
   id: z.string().uuid(),
-  url: z.string(),
+  name: z.string(),
+  userId: z.string().uuid(),
+  website: z.string(),
   username: z.string(),
   encryptedPassword: z.string(),
-  credentialId: z.string().uuid()
+  encryptedPasswordIV: z.string(),
+  encryptedPasswordTag: z.string()
 });
 
 export type TCredentialWebLogins = z.infer<typeof CredentialWebLoginsSchema>;

@@ -71,7 +71,6 @@ export enum TableName {
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
 
-  Credential = "credentials",
   CredentialWebLogin = "credential_web_logins",
   CredentialSecureNote = "credential_secure_notes",
 

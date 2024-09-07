@@ -9,8 +9,11 @@ import { TImmutableDBKeys } from "./models";
 
 export const CredentialSecureNotesSchema = z.object({
   id: z.string().uuid(),
-  content: z.string(),
-  credentialId: z.string().uuid()
+  name: z.string(),
+  userId: z.string().uuid(),
+  encryptedNote: z.string(),
+  encryptedNoteIV: z.string(),
+  encryptedNoteTag: z.string()
 });
 
 export type TCredentialSecureNotes = z.infer<typeof CredentialSecureNotesSchema>;

@@ -191,6 +191,8 @@ import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-servi
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { credentialsDALFactory } from "@app/services/user-credentials/credentials-dal";
+import { userCredentialsServiceFactory } from "@app/services/user-credentials/user-credentials-service";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
@@ -231,6 +233,7 @@ export const registerRoutes = async (
   const superAdminDAL = superAdminDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
+  const credentialsDAL = credentialsDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
@@ -1146,6 +1149,11 @@ export const registerRoutes = async (
     oidcConfigDAL
   });
 
+  const credentialsService = userCredentialsServiceFactory({
+    orgDAL,
+    credentialsDAL,
+    orgBotDAL
+  });
   const userEngagementService = userEngagementServiceFactory({
     userDAL
   });
@@ -1201,6 +1209,7 @@ export const registerRoutes = async (
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
     identityOidcAuth: identityOidcAuthService,
+    credential: credentialsService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
     secretApprovalPolicy: secretApprovalPolicyService,

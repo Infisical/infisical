@@ -325,6 +325,16 @@ import {
   TWebhooksUpdate
 } from "@app/db/schemas";
 import {
+  TCredentialSecureNotes,
+  TCredentialSecureNotesInsert,
+  TCredentialSecureNotesUpdate
+} from "@app/db/schemas/credential-secure-notes";
+import {
+  TCredentialWebLogins,
+  TCredentialWebLoginsInsert,
+  TCredentialWebLoginsUpdate
+} from "@app/db/schemas/credential-web-logins";
+import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,
   TSecretV2TagJunctionUpdate
@@ -721,6 +731,19 @@ declare module "knex/types/tables" {
       TSecretReferencesV2Insert,
       TSecretReferencesV2Update
     >;
+
+    [TableName.CredentialWebLogin]: KnexOriginal.CompositeTableType<
+      TCredentialWebLogins,
+      TCredentialWebLoginsInsert,
+      TCredentialWebLoginsUpdate
+    >;
+
+    [TableName.CredentialSecureNote]: KnexOriginal.CompositeTableType<
+      TCredentialSecureNotes,
+      TCredentialSecureNotesInsert,
+      TCredentialSecureNotesUpdate
+    >;
+
     // Junction tables
     [TableName.SecretV2JnTag]: KnexOriginal.CompositeTableType<
       TSecretV2TagJunction,
