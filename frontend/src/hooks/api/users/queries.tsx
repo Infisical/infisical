@@ -5,6 +5,7 @@ import { SessionStorageKeys } from "@app/const";
 import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
+import { TGroupWithProjectMemberships } from "../groups/types";
 import {
   AddUserToOrgDTO,
   APIKeyData,
@@ -38,6 +39,7 @@ export const userKeys = {
   myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
   listUsers: ["user-list"] as const,
+  listUserGroupMemberships: (username: string) => ["user-group-memberships", username] as const,
 
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
@@ -443,4 +445,17 @@ export const fetchMyPrivateKey = async () => {
   } = await apiRequest.get<{ privateKey: string }>("/api/v1/user/private-key");
 
   return privateKey;
+};
+
+export const useListUserGroupMemberships = (username: string) => {
+  return useQuery({
+    queryKey: userKeys.listUserGroupMemberships(username),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGroupWithProjectMemberships[]>(
+        `/api/v1/user/me/${username}/groups`
+      );
+
+      return data;
+    }
+  });
 };
