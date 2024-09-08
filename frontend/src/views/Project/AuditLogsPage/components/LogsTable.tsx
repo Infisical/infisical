@@ -25,15 +25,22 @@ type Props = {
   actor?: string;
   startDate?: Date;
   endDate?: Date;
+  isOrgAuditLogs?: boolean;
 };
 
 const AUDIT_LOG_LIMIT = 15;
 
-export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate }: Props) => {
+export const LogsTable = ({
+  eventType,
+  userAgentType,
+  actor,
+  startDate,
+  endDate,
+  isOrgAuditLogs
+}: Props) => {
   const { currentWorkspace } = useWorkspace();
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
-    currentWorkspace?.id ?? "",
     {
       eventType,
       userAgentType,
@@ -41,7 +48,8 @@ export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate 
       startDate,
       endDate,
       limit: AUDIT_LOG_LIMIT
-    }
+    },
+    !isOrgAuditLogs ? currentWorkspace?.id ?? "" : null
   );
 
   const isEmpty = !isLoading && !data?.pages?.[0].length;
@@ -54,6 +62,7 @@ export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate 
             <Tr>
               <Th>Timestamp</Th>
               <Th>Event</Th>
+              {isOrgAuditLogs && <Th>Project</Th>}
               <Th>Actor</Th>
               <Th>Source</Th>
               <Th>Metadata</Th>
@@ -64,7 +73,11 @@ export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate 
               data?.pages?.map((group, i) => (
                 <Fragment key={`auditlog-item-${i + 1}`}>
                   {group.map((auditLog) => (
-                    <LogsTableRow auditLog={auditLog} key={`audit-log-${auditLog.id}`} />
+                    <LogsTableRow
+                      isOrgAuditLogs={isOrgAuditLogs}
+                      auditLog={auditLog}
+                      key={`audit-log-${auditLog.id}`}
+                    />
                   ))}
                 </Fragment>
               ))}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Control, Controller, UseFormReset } from "react-hook-form";
 import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { Button, DatePicker, FormControl, Select, SelectItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
@@ -19,11 +20,13 @@ const userAgentTypes = Object.entries(userAgentTTypeoNameMap).map(([value, label
 }));
 
 type Props = {
+  presetActor?: string;
+  className?: string;
   control: Control<AuditLogFilterFormData>;
   reset: UseFormReset<AuditLogFilterFormData>;
 };
 
-export const LogsFilter = ({ control, reset }: Props) => {
+export const LogsFilter = ({ presetActor, className, control, reset }: Props) => {
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
@@ -69,8 +72,13 @@ export const LogsFilter = ({ control, reset }: Props) => {
   };
 
   return (
-    <div className="sticky top-20 z-10 flex items-center justify-between bg-bunker-800">
-      <div className="flex items-center">
+    <div
+      className={twMerge(
+        "sticky top-20 z-10 flex items-center justify-between bg-bunker-800",
+        className
+      )}
+    >
+      <div className="flex items-center space-x-2">
         <Controller
           control={control}
           name="eventType"
@@ -79,7 +87,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
               label="Event"
               errorText={error?.message}
               isError={Boolean(error)}
-              className="mr-4 w-40"
+              className="w-40"
             >
               <Select
                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
@@ -96,7 +104,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
             </FormControl>
           )}
         />
-        {!isLoading && data && data.length > 0 && (
+        {!isLoading && data && data.length > 0 && !presetActor && (
           <Controller
             control={control}
             name="actor"
@@ -105,7 +113,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
                 label="Actor"
                 errorText={error?.message}
                 isError={Boolean(error)}
-                className="mr-4 w-40"
+                className="w-40"
               >
                 <Select
                   {...(field.value ? { value: field.value } : { placeholder: "Select" })}
@@ -127,7 +135,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
               label="Source"
               errorText={error?.message}
               isError={Boolean(error)}
-              className="mr-4 w-40"
+              className="w-40"
             >
               <Select
                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
@@ -149,12 +157,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
           control={control}
           render={({ field: { onChange, ...field }, fieldState: { error } }) => {
             return (
-              <FormControl
-                label="Start date"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                className="mr-4"
-              >
+              <FormControl label="Start date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
                   onChange={(date) => {
@@ -195,26 +198,25 @@ export const LogsFilter = ({ control, reset }: Props) => {
           }}
         />
       </div>
-      <div>
-        <Button
-          isLoading={false}
-          colorSchema="primary"
-          variant="outline_bg"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} className="mr-2" />}
-          onClick={() =>
-            reset({
-              eventType: undefined,
-              actor: undefined,
-              userAgentType: undefined,
-              startDate: undefined,
-              endDate: undefined
-            })
-          }
-        >
-          Clear filters
-        </Button>
-      </div>
+      <Button
+        isLoading={false}
+        colorSchema="primary"
+        variant="outline_bg"
+        className="mt-1.5"
+        type="submit"
+        leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
+        onClick={() =>
+          reset({
+            eventType: undefined,
+            actor: presetActor,
+            userAgentType: undefined,
+            startDate: undefined,
+            endDate: undefined
+          })
+        }
+      >
+        Clear filters
+      </Button>
     </div>
   );
 };
