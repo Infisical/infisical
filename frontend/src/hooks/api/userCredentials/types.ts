@@ -20,6 +20,7 @@ type CredentialVariant = {
 }
 
 export type TUserCredential = {
+  id?: string;
   name: string;
 } & CredentialVariant
 
