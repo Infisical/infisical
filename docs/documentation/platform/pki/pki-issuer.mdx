@@ -84,7 +84,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         </Tabs>
     </Step>
     <Step title="Create Infisical PKI Issuer">
-        Next, create the Infisical PKI Issuer by filling out `url`, `caId`, `clientId`, and applying the following configuration file for the `Issuer` resource.
+        Next, create the Infisical PKI Issuer by filling out `url`, `clientId`, either `caId` or `certificateTemplateId`, and applying the following configuration file for the `Issuer` resource.
         This configuration file specifies the connection details to your Infisical PKI CA to be used for issuing certificates.
 
         ```yaml infisical-issuer.yaml
@@ -96,6 +96,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         spec:
             url: "https://app.infisical.com" # the URL of your Infisical instance
             caId: <ca_id> # the ID of the CA you want to use to issue certificates
+            certificateTemplateId: <certificate_template_id> # the ID of the certificate template you want to use to issue certificates against
             authentication:
                 universalAuth:
                     clientId: <client_id> # the Client ID from step 1
@@ -107,6 +108,15 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         ```
         kubectl apply -f infisical-issuer.yaml
         ```
+        
+        <Warning>
+            The Infisical PKI Issuer supports issuing certificates against a specific CA or a specific certificate template.
+            
+            For this reason, you should only fill in the `caId` or the `certificateTemplateId` field but not both.
+            
+            We recommend using the `certificateTemplateId` field to issue certificates against a specific [certificate template](/documentation/platform/pki/certificate-templates)
+            since templates let you enforce constraints on issued certificates and may have alerting policies bound to them.
+        </Warning>
         
         You can check that the issuer was created successfully by running the following command:
 
