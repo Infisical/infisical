@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { validateLocalIps } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../audit-log/audit-log-queue";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -62,7 +62,7 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     if (appCfg.isCloud) {
-      validateLocalIps(url);
+      blockLocalAndPrivateIpAddresses(url);
     }
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
@@ -136,7 +136,7 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     const appCfg = getConfig();
-    if (url && appCfg.isCloud) validateLocalIps(url);
+    if (url && appCfg.isCloud) blockLocalAndPrivateIpAddresses(url);
 
     // testing connection first
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };

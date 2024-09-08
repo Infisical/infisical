@@ -1,6 +1,6 @@
 ---
 title: "Stream to Non-HTTP providers"
-description: "Learn how to stream Infisical Audit Logs to other Non-HTTP providers"
+description: "How to stream Infisical Audit Logs to Non-HTTP log providers"
 ---
 
 <Info>
@@ -10,23 +10,27 @@ description: "Learn how to stream Infisical Audit Logs to other Non-HTTP provide
     then you should contact team@infisical.com to purchase an enterprise license to use it.
 </Info>
 
-This guide explains how to store Infisical Audit log streams using a provider that doesn't support HTTP-based streaming, such as AWS S3. We'll use a log collector service to achieve this.
+This guide will demonstrate how you can send Infisical Audit log streams to storage solutions that do not support direct HTTP-based ingestion, such as AWS S3.
+To achieve this, you will learn how you can use a log collector like Fluent Bit to capture and forward logs from Infisical to non-HTTP storage options. 
+In this pattern, Fluent Bit acts as an intermediary, accepting HTTP log streams from Infisical and transforming them into a format that can be sent to your desired storage provider.
 
 ## Overview
 
-Log collectors are tools used to collect, analyze, transform, and send logs to storage. In this guide, we'll focus on [Fluent Bit](https://fluentbit.io), a popular and efficient log collector.
+Log collectors are tools used to collect, analyze, transform, and send logs to storage. 
+For the purposes of this guide, we will use [Fluent Bit](https://fluentbit.io) as our log collector and send logs from Infisical to AWS S3. 
+However, this is just a example and you can use any log collector of your choice. 
 
-You can deploy Fluent Bit in two ways:
+## Deploy Fluent Bit
+
+You can deploy Fluent Bit in one of two ways:
 1. As a sidecar to your self-hosted Infisical instance
-2. As a standalone service in any deployment service (e.g., AWS EC2, ECS, or GCP Compute Engine)
+2. As a standalone service in any deployment/compute service (e.g., AWS EC2, ECS, or GCP Compute Engine)
 
-For various deployment options, refer to the [Fluent Bit Getting Started guide](https://docs.fluentbit.io/manual/installation/getting-started-with-fluent-bit).
+To view all deployment methods, visit the [Fluent Bit Getting Started guide](https://docs.fluentbit.io/manual/installation/getting-started-with-fluent-bit).
 
-## Configuration
+## Configure Fluent Bit
 
-To set up Fluent Bit, you'll need to provide a configuration file that establishes an HTTP listener and configures an output to send JSON data to your chosen storage solution (e.g., S3, Elasticsearch).
-
-### Example Configuration: HTTP to AWS S3
+To set up Fluent Bit, you'll need to provide a configuration file that establishes an HTTP listener and configures an output to send JSON data to your chosen storage solution.
 
 The following Fluent Bit configuration sets up an HTTP listener on port `8888` and sends logs to AWS S3:
 
@@ -53,9 +57,5 @@ The following Fluent Bit configuration sets up an HTTP listener on port `8888` a
 ```
 ### Connecting Infisical Audit Log Stream
 
-Once you have set up and configured Fluent Bit, you can direct the Infisical Audit log stream to the Fluent Bit HTTP listener address.
-
-
-By following this guide, you can effectively store Infisical Audit log streams in AWS S3 or other storage solutions that don't natively support HTTP-based streaming. 
-
-This approach provides flexibility and allows you to leverage the power of log collectors like Fluent Bit to manage and store your audit logs efficiently.
+Once Fluent Bit is set up and configured, you can point the Infisical [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to Fluent Bit's HTTP listener, which will then forward the logs to your chosen provider. 
+Using this pattern, you are able to send Infisical Audit logs to various providers that do not support HTTP based log ingestion by default. 
