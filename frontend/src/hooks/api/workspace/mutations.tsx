@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { userKeys } from "../users/queries";
 import { workspaceKeys } from "./queries";
 import { TUpdateWorkspaceGroupRoleDTO } from "./types";
 
@@ -51,14 +52,25 @@ export const useUpdateGroupWorkspaceRole = () => {
 export const useDeleteGroupFromWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ groupSlug, projectSlug }: { groupSlug: string; projectSlug: string }) => {
+    mutationFn: async ({
+      groupSlug,
+      projectSlug
+    }: {
+      groupSlug: string;
+      projectSlug: string;
+      username?: string;
+    }) => {
       const {
         data: { groupMembership }
       } = await apiRequest.delete(`/api/v2/workspace/${projectSlug}/groups/${groupSlug}`);
       return groupMembership;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectSlug, username }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(projectSlug));
+
+      if (username) {
+        queryClient.invalidateQueries(userKeys.listUserGroupMemberships(username));
+      }
     }
   });
 };
