@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { ProjectsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -132,6 +132,55 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         req.body.orgId,
         req.body.projectFavorites
       );
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/me/:username/groups",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        username: z.string().trim()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            slug: z.string(),
+            orgId: z.string(),
+            projectMemberships: z.array(
+              z.object({
+                id: z.string(),
+                project: ProjectsSchema.pick({ id: true, name: true, slug: true }),
+                roles: z.array(
+                  z.object({
+                    id: z.string(),
+                    role: z.string(),
+                    customRoleId: z.string().nullable(),
+                    customRoleName: z.string().nullable(),
+                    customRoleSlug: z.string().nullable(),
+                    temporaryRange: z.string().nullable(),
+                    temporaryMode: z.string().nullable(),
+                    temporaryAccessEndTime: z.string().nullable(),
+                    temporaryAccessStartTime: z.string().nullable(),
+                    isTemporary: z.boolean()
+                  })
+                )
+              })
+            )
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const groupMemberships = await server.services.user.listUserGroups(req.params.username, req.permission.orgId);
+
+      return groupMemberships;
     }
   });
 };

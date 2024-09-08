@@ -8,6 +8,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { AuthMethod } from "../auth/auth-type";
+import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserDALFactory } from "./user-dal";
 
@@ -27,6 +28,7 @@ type TUserServiceFactoryDep = {
     | "delete"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "find" | "insertMany">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
@@ -40,6 +42,7 @@ export const userServiceFactory = ({
   userAliasDAL,
   orgMembershipDAL,
   projectMembershipDAL,
+  groupProjectDAL,
   tokenService,
   smtpService
 }: TUserServiceFactoryDep) => {
@@ -295,6 +298,16 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
+  const listUserGroups = async (username: string, orgId: string) => {
+    const user = await userDAL.findOne({
+      username
+    });
+
+    const memberships = await groupProjectDAL.findByUserId(user.id, orgId);
+
+    return memberships;
+  };
+
   return {
     sendEmailVerificationCode,
     verifyEmailVerificationCode,
@@ -304,6 +317,7 @@ export const userServiceFactory = ({
     deleteUser,
     getMe,
     createUserAction,
+    listUserGroups,
     getUserAction,
     unlockUser,
     getUserPrivateKey,
