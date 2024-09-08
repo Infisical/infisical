@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { AuditLogsSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, stripUndefinedInWhere } from "@app/lib/knex";
+import { ormify, selectAllTableCols, stripUndefinedInWhere } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
@@ -33,23 +33,44 @@ export const auditLogDALFactory = (db: TDbClient) => {
         .where(
           stripUndefinedInWhere({
             projectId,
-            orgId,
+            [`${TableName.AuditLog}.orgId`]: orgId,
             eventType,
-            actor,
             userAgentType
           })
         )
+
+        .leftJoin(TableName.Project, `${TableName.AuditLog}.projectId`, `${TableName.Project}.id`)
+
+        .select(selectAllTableCols(TableName.AuditLog))
+
+        .select(
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("slug").withSchema(TableName.Project).as("projectSlug")
+        )
+
         .limit(limit)
         .offset(offset)
-        .orderBy("createdAt", "desc");
+        .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
+
+      if (actor) {
+        void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actor]);
+      }
+
       if (startDate) {
-        void sqlQuery.where("createdAt", ">=", startDate);
+        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, ">=", startDate);
       }
       if (endDate) {
-        void sqlQuery.where("createdAt", "<=", endDate);
+        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
       }
       const docs = await sqlQuery;
-      return docs;
+
+      return docs.map((doc) => ({
+        ...AuditLogsSchema.parse(doc),
+        project: {
+          name: doc.projectName,
+          slug: doc.projectSlug
+        }
+      }));
     } catch (error) {
       throw new DatabaseError({ error });
     }

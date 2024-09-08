@@ -22,7 +22,7 @@ export const auditLogServiceFactory = ({
   auditLogQueue,
   permissionService
 }: TAuditLogServiceFactoryDep) => {
-  const listProjectAuditLogs = async ({
+  const listAuditLogs = async ({
     userAgentType,
     eventType,
     offset,
@@ -36,14 +36,19 @@ export const auditLogServiceFactory = ({
     projectId,
     auditLogActor
   }: TListProjectAuditLogDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+    if (projectId) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+    }
+
+    // If project ID is not provided, then we need to return all the audit logs for the organization itself.
+
     const auditLogs = await auditLogDAL.find({
       startDate,
       endDate,
@@ -52,8 +57,9 @@ export const auditLogServiceFactory = ({
       eventType,
       userAgentType,
       actor: auditLogActor,
-      projectId
+      ...(projectId ? { projectId } : { orgId: actorOrgId })
     });
+
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({
       ...el,
       event: { type: logEventType, metadata: eventMetadata },
@@ -76,6 +82,6 @@ export const auditLogServiceFactory = ({
 
   return {
     createAuditLog,
-    listProjectAuditLogs
+    listAuditLogs
   };
 };

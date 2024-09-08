@@ -6,14 +6,14 @@ import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 
 export type TListProjectAuditLogDTO = {
   auditLogActor?: string;
-  projectId: string;
+  projectId: string | null;
   eventType?: string;
   startDate?: string;
   endDate?: string;
   userAgentType?: string;
   limit?: number;
   offset?: number;
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TCreateAuditLogDTO = {
   event: Event;
