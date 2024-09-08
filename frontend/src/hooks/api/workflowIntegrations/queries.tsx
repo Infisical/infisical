@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { SlackIntegration, SlackIntegrationChannel } from "./types";
+import { SlackIntegration, SlackIntegrationChannel, WorkflowIntegration } from "./types";
 
 export const workflowIntegrationKeys = {
+  getIntegrations: (orgId?: string) => [{ orgId }, "workflow-integrations"],
   getSlackIntegrations: (orgId?: string) => [{ orgId }, "slack-workflow-integrations"],
   getSlackIntegration: (id?: string) => [{ id }, "slack-workflow-integration"],
   getSlackIntegrationChannels: (id?: string) => [{ id }, "slack-workflow-integration-channels"]
@@ -27,14 +28,10 @@ export const fetchSlackInstallUrl = async ({
   return data;
 };
 
-export const fetchSlackReinstallUrl = async ({
-  slackIntegrationId
-}: {
-  slackIntegrationId: string;
-}) => {
+export const fetchSlackReinstallUrl = async ({ id }: { id: string }) => {
   const { data } = await apiRequest.get<string>("/api/v1/workflow-integrations/slack/reinstall", {
     params: {
-      slackIntegrationId
+      id
     }
   });
 
@@ -63,6 +60,12 @@ export const fetchSlackIntegrationChannels = async (id?: string) => {
   return data;
 };
 
+export const fetchWorkflowIntegrations = async () => {
+  const { data } = await apiRequest.get<WorkflowIntegration[]>("/api/v1/workflow-integrations");
+
+  return data;
+};
+
 export const useGetSlackIntegrations = (orgId?: string) =>
   useQuery({
     queryKey: workflowIntegrationKeys.getSlackIntegrations(orgId),
@@ -81,5 +84,12 @@ export const useGetSlackIntegrationChannels = (id?: string) =>
   useQuery({
     queryKey: workflowIntegrationKeys.getSlackIntegrationChannels(id),
     queryFn: () => fetchSlackIntegrationChannels(id),
+    enabled: Boolean(id)
+  });
+
+export const useGetWorkflowIntegrations = (id?: string) =>
+  useQuery({
+    queryKey: workflowIntegrationKeys.getIntegrations(id),
+    queryFn: () => fetchWorkflowIntegrations(),
     enabled: Boolean(id)
   });

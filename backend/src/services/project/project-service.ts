@@ -81,7 +81,7 @@ type TProjectServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "findOne" | "transaction" | "updateById" | "create">;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findById">;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findById" | "findByIdWithWorkflowIntegrationDetails">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
@@ -965,7 +965,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const slackIntegration = await slackIntegrationDAL.findById(slackIntegrationId);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(slackIntegrationId);
     if (!slackIntegration) {
       throw new NotFoundError({
         message: "Slack integration not found"

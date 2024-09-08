@@ -11,9 +11,12 @@ type Props = {
 };
 
 export const IntegrationFormDetails = ({ isOpen, id, onOpenChange, workflowPlatform }: Props) => {
+  const modalTitle =
+    workflowPlatform === WorkflowIntegrationPlatform.SLACK ? "Slack integration" : "Integration";
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title={`${WorkflowIntegrationPlatform.SLACK} integration`}>
+      <ModalContent title={modalTitle}>
         {workflowPlatform === WorkflowIntegrationPlatform.SLACK && (
           <SlackIntegrationForm id={id} onClose={() => onOpenChange(false)} />
         )}

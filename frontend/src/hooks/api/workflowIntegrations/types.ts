@@ -1,6 +1,13 @@
 export enum WorkflowIntegrationPlatform {
-  SLACK = "Slack"
+  SLACK = "slack"
 }
+
+export type WorkflowIntegration = {
+  id: string;
+  slug: string;
+  description: string;
+  integration: WorkflowIntegrationPlatform;
+};
 
 export type SlackIntegration = {
   id: string;

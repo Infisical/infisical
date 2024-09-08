@@ -29,7 +29,7 @@ import { usePopUp } from "@app/hooks";
 import {
   fetchSlackReinstallUrl,
   useDeleteSlackIntegration,
-  useGetSlackIntegrations
+  useGetWorkflowIntegrations
 } from "@app/hooks/api";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
@@ -46,8 +46,9 @@ export const OrgWorkflowIntegrationTab = withPermission(
 
     const { currentOrg } = useOrganization();
     const router = useRouter();
-    const { data: slackIntegrations, isLoading: isSlackIntegrationsLoading } =
-      useGetSlackIntegrations(currentOrg?.id);
+    const { data: workflowIntegrations, isLoading: isWorkflowIntegrationsLoading } =
+      useGetWorkflowIntegrations(currentOrg?.id);
+
     const { mutateAsync: deleteSlackIntegration } = useDeleteSlackIntegration();
 
     const handleRemoveIntegration = async () => {
@@ -74,7 +75,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
       if (platform === WorkflowIntegrationPlatform.SLACK) {
         try {
           const slackReinstallUrl = await fetchSlackReinstallUrl({
-            slackIntegrationId: id
+            id
           });
 
           if (slackReinstallUrl) {
@@ -90,8 +91,6 @@ export const OrgWorkflowIntegrationTab = withPermission(
         }
       }
     };
-
-    const isIntegrationsLoading = isSlackIntegrationsLoading;
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -123,23 +122,25 @@ export const OrgWorkflowIntegrationTab = withPermission(
               </Tr>
             </THead>
             <TBody>
-              {isIntegrationsLoading && (
+              {isWorkflowIntegrationsLoading && (
                 <TableSkeleton columns={2} innerKey="integrations-loading" />
               )}
-              {!isIntegrationsLoading && slackIntegrations && slackIntegrations.length === 0 && (
-                <Tr>
-                  <Td colSpan={5}>
-                    <EmptyState title="No workflow integrations found" icon={faGear} />
-                  </Td>
-                </Tr>
-              )}
-              {slackIntegrations?.map((slackIntegration) => (
-                <Tr key={slackIntegration.id}>
+              {!isWorkflowIntegrationsLoading &&
+                workflowIntegrations &&
+                workflowIntegrations.length === 0 && (
+                  <Tr>
+                    <Td colSpan={5}>
+                      <EmptyState title="No workflow integrations found" icon={faGear} />
+                    </Td>
+                  </Tr>
+                )}
+              {workflowIntegrations?.map((workflowIntegration) => (
+                <Tr key={workflowIntegration.id}>
                   <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                     <FontAwesomeIcon icon={faSlack} />
-                    <div className="ml-2">SLACK</div>
+                    <div className="ml-2">{workflowIntegration.integration.toUpperCase()}</div>
                   </Td>
-                  <Td>{slackIntegration.slug}</Td>
+                  <Td>{workflowIntegration.slug}</Td>
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
@@ -153,8 +154,8 @@ export const OrgWorkflowIntegrationTab = withPermission(
                             e.stopPropagation();
 
                             handlePopUpOpen("integrationDetails", {
-                              id: slackIntegration.id,
-                              platform: WorkflowIntegrationPlatform.SLACK
+                              id: workflowIntegration.id,
+                              platform: workflowIntegration.integration
                             });
                           }}
                         >
@@ -174,8 +175,8 @@ export const OrgWorkflowIntegrationTab = withPermission(
                                 e.stopPropagation();
 
                                 triggerReinstall(
-                                  WorkflowIntegrationPlatform.SLACK,
-                                  slackIntegration.id
+                                  workflowIntegration.integration,
+                                  workflowIntegration.id
                                 );
                               }}
                             >
@@ -197,9 +198,9 @@ export const OrgWorkflowIntegrationTab = withPermission(
                                 e.stopPropagation();
 
                                 handlePopUpOpen("removeIntegration", {
-                                  id: slackIntegration.id,
-                                  slug: slackIntegration.slug,
-                                  platform: WorkflowIntegrationPlatform.SLACK
+                                  id: workflowIntegration.id,
+                                  slug: workflowIntegration.slug,
+                                  platform: workflowIntegration.integration
                                 });
                               }}
                             >

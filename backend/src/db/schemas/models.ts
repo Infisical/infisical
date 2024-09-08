@@ -115,6 +115,7 @@ export enum TableName {
   InternalKmsKeyVersion = "internal_kms_key_version",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
+  WorkflowIntegrations = "workflow_integrations",
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
   AdminSlackConfig = "admin_slack_configs"

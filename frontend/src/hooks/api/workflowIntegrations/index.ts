@@ -8,5 +8,6 @@ export {
   fetchSlackReinstallUrl,
   useGetSlackIntegrationById,
   useGetSlackIntegrationChannels,
-  useGetSlackIntegrations
+  useGetSlackIntegrations,
+  useGetWorkflowIntegrations
 } from "./queries";

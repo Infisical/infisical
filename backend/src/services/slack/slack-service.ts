@@ -8,6 +8,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
+import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 import { TAdminSlackConfigDALFactory } from "./admin-slack-config-dal";
 import { fetchSlackChannels, getAdminSlackCredentials } from "./slack-fns";
 import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
@@ -24,10 +26,18 @@ import {
 } from "./slack-types";
 
 type TSlackServiceFactoryDep = {
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "find" | "findById" | "deleteById" | "updateById" | "create">;
+  slackIntegrationDAL: Pick<
+    TSlackIntegrationDALFactory,
+    | "deleteById"
+    | "updateById"
+    | "create"
+    | "findByIdWithWorkflowIntegrationDetails"
+    | "findWithWorkflowIntegrationDetails"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithRootKey" | "decryptWithRootKey">;
   adminSlackConfigDAL: Pick<TAdminSlackConfigDALFactory, "findById">;
+  workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
 };
 
 export type TSlackServiceFactory = ReturnType<typeof slackServiceFactory>;
@@ -36,7 +46,8 @@ export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
   kmsService,
-  adminSlackConfigDAL
+  adminSlackConfigDAL,
+  workflowIntegrationDAL
 }: TSlackServiceFactoryDep) => {
   const completeSlackIntegration = async ({
     orgId,
@@ -59,17 +70,31 @@ export const slackServiceFactory = ({
       plainText: Buffer.from(botAccessToken, "utf8")
     });
 
-    await slackIntegrationDAL.create({
-      orgId,
-      slug,
-      description,
-      teamId,
-      teamName,
-      slackUserId,
-      slackAppId,
-      slackBotId,
-      slackBotUserId,
-      encryptedBotAccessToken
+    await workflowIntegrationDAL.transaction(async (tx) => {
+      const workflowIntegration = await workflowIntegrationDAL.create(
+        {
+          description,
+          orgId,
+          slug,
+          integration: WorkflowIntegration.SLACK
+        },
+        tx
+      );
+
+      await slackIntegrationDAL.create(
+        {
+          // @ts-expect-error id is kept as fixed because it is always equal to the workflow integration ID
+          id: workflowIntegration.id,
+          teamId,
+          teamName,
+          slackUserId,
+          slackAppId,
+          slackBotId,
+          slackBotUserId,
+          encryptedBotAccessToken
+        },
+        tx
+      );
     });
   };
 
@@ -83,7 +108,13 @@ export const slackServiceFactory = ({
     slackBotId,
     slackBotUserId
   }: TReinstallSlackIntegrationDTO) => {
-    const slackIntegration = await slackIntegrationDAL.findById(id);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
+
+    if (!slackIntegration) {
+      throw new NotFoundError({
+        message: "Slack integration not found"
+      });
+    }
 
     const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
       orgId: slackIntegration.orgId,
@@ -228,7 +259,7 @@ export const slackServiceFactory = ({
 
   const getReinstallUrl = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetReinstallUrlDTO) => {
     const appCfg = getConfig();
-    const slackIntegration = await slackIntegrationDAL.findById(id);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
 
     if (!slackIntegration) {
       throw new NotFoundError({
@@ -275,7 +306,7 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    const slackIntegrations = await slackIntegrationDAL.find({
+    const slackIntegrations = await slackIntegrationDAL.findWithWorkflowIntegrationDetails({
       orgId: actorOrgId
     });
 
@@ -289,7 +320,7 @@ export const slackServiceFactory = ({
     actorAuthMethod,
     id
   }: TGetSlackIntegrationByIdDTO) => {
-    const slackIntegration = await slackIntegrationDAL.findById(id);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
         message: "Slack integration not found."
@@ -316,7 +347,7 @@ export const slackServiceFactory = ({
     actorAuthMethod,
     id
   }: TGetSlackIntegrationChannelsDTO) => {
-    const slackIntegration = await slackIntegrationDAL.findById(id);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
         message: "Slack integration not found."
@@ -354,7 +385,7 @@ export const slackServiceFactory = ({
     slug,
     description
   }: TUpdateSlackIntegrationDTO) => {
-    const slackIntegration = await slackIntegrationDAL.findById(id);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
         message: "Slack integration not found"
@@ -371,9 +402,22 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    return slackIntegrationDAL.updateById(slackIntegration.id, {
-      slug,
-      description
+    return workflowIntegrationDAL.transaction(async (tx) => {
+      await workflowIntegrationDAL.updateById(
+        slackIntegration.id,
+        {
+          slug,
+          description
+        },
+        tx
+      );
+
+      const updatedIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(
+        slackIntegration.id,
+        tx
+      );
+
+      return updatedIntegration!;
     });
   };
 
@@ -384,7 +428,7 @@ export const slackServiceFactory = ({
     actorAuthMethod,
     id
   }: TDeleteSlackIntegrationDTO) => {
-    const slackIntegration = await slackIntegrationDAL.findById(id);
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
         message: "Slack integration not found"
@@ -401,7 +445,9 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
-    return slackIntegrationDAL.deleteById(id);
+    await workflowIntegrationDAL.deleteById(id);
+
+    return slackIntegration;
   };
 
   return {

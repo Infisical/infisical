@@ -37,7 +37,7 @@ export const useDeleteSlackIntegration = () => {
     },
     onSuccess: (_, { orgId, id }) => {
       queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegration(id));
-      queryClient.invalidateQueries(workflowIntegrationKeys.getSlackIntegrations(orgId));
+      queryClient.invalidateQueries(workflowIntegrationKeys.getIntegrations(orgId));
     }
   });
 };

@@ -11,9 +11,6 @@ import { TImmutableDBKeys } from "./models";
 
 export const SlackIntegrationsSchema = z.object({
   id: z.string().uuid(),
-  slug: z.string(),
-  orgId: z.string().uuid(),
-  description: z.string().nullable().optional(),
   teamId: z.string(),
   teamName: z.string(),
   slackUserId: z.string(),

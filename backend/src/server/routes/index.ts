@@ -198,6 +198,8 @@ import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
+import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
+import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
@@ -329,6 +331,7 @@ export const registerRoutes = async (
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const adminSlackConfigDAL = adminSlackConfigDALFactory(db);
+  const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1170,7 +1173,13 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     slackIntegrationDAL,
-    adminSlackConfigDAL
+    adminSlackConfigDAL,
+    workflowIntegrationDAL
+  });
+
+  const workflowIntegrationService = workflowIntegrationServiceFactory({
+    permissionService,
+    workflowIntegrationDAL
   });
 
   await superAdminService.initServerCfg();
@@ -1255,7 +1264,8 @@ export const registerRoutes = async (
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
     orgAdmin: orgAdminService,
-    slack: slackService
+    slack: slackService,
+    workflowIntegration: workflowIntegrationService
   });
 
   const cronJobs: CronJob[] = [];
