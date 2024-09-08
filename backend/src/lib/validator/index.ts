@@ -1,2 +1,2 @@
 export { isDisposableEmail } from "./validate-email";
-export { validateLocalIps } from "./validate-url";
+export { blockLocalAndPrivateIpAddresses } from "./validate-url";

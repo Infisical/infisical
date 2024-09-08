@@ -130,9 +130,16 @@
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-logs",
             "documentation/platform/audit-log-streams",
             "documentation/platform/groups"
+          ]
+        },
+        {
+          "group": "Audit Logs",
+          "pages": [
+            "documentation/platform/audit-logs",
+            "documentation/platform/audit-log-streams/audit-log-streams",
+            "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
           ]
         },
         {

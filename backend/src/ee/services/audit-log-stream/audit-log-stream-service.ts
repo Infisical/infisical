@@ -2,10 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 import { RawAxiosRequestHeaders } from "axios";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { validateLocalIps } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../audit-log/audit-log-queue";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -44,6 +45,7 @@ export const auditLogStreamServiceFactory = ({
   }: TCreateAuditLogStreamDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Missing org id from token" });
 
+    const appCfg = getConfig();
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.auditLogStreams)
       throw new BadRequestError({
@@ -59,7 +61,9 @@ export const auditLogStreamServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    validateLocalIps(url);
+    if (appCfg.isCloud) {
+      blockLocalAndPrivateIpAddresses(url);
+    }
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
     if (totalStreams.length >= plan.auditLogStreamLimit) {
@@ -131,7 +135,8 @@ export const auditLogStreamServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
-    if (url) validateLocalIps(url);
+    const appCfg = getConfig();
+    if (url && appCfg.isCloud) blockLocalAndPrivateIpAddresses(url);
 
     // testing connection first
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
