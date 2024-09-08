@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, FieldPath, FieldValues, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -18,17 +18,19 @@ import { useCreateCredential } from "@app/hooks/api/userCredentials/mutation";
 import { CredentialKind, TUserCredential } from "@app/hooks/api/userCredentials/types";
 import { UsePopUpReturn, UsePopUpState } from "@app/hooks/usePopUp";
 
-import { Login, SecureNote } from "./UserCredentialsTable";
+import { readableCredentialKind } from "../util";
 
 export type CredentialsPopup = ["credential"]
 
-type CreateCredentialModalProps = {
+type CredentialModalProps = {
   popUp: UsePopUpState<["credential"]>,
   handlePopUpToggle: UsePopUpReturn<CredentialsPopup>["handlePopUpToggle"];
   credentialToEdit?: TUserCredential;
+  onEditDone?: () => void;
+  onCredentialAdded: (credential: TUserCredential) => void;
 }
 
-const schema = yup.object({
+const credentialSchema = yup.object({
   kind: yup.mixed().oneOf(Object.values(CredentialKind)).required(),
   name: yup.string().required(),
 
@@ -40,8 +42,8 @@ const schema = yup.object({
   }),
 
   // Login
-  url: yup.string().when("kind", {
-    is: CredentialKind.creditCard,
+  website: yup.string().when("kind", {
+    is: CredentialKind.login,
     then: yup.string().required(),
     otherwise: yup.string().notRequired(),
   }),
@@ -57,51 +59,25 @@ const schema = yup.object({
     then: yup.string().required(),
     otherwise: yup.string().notRequired(),
   }),
-
-  // Credit card
-  cardNumber: yup.string().when("kind", {
-    is: CredentialKind.creditCard,
-    then: yup.string().required(),
-    otherwise: yup.string().notRequired(),
-    // some people might enter spaces in their credit card numbers.
-  }).transform(v => v.replaceAll(" ", "d")),
-
-  expiry: yup.date().when("kind", {
-    is: CredentialKind.creditCard,
-    then: yup.date().default(new Date()).required(),
-    otherwise: yup.date().notRequired(),
-  }),
-
-  cvv: yup.string().when("kind", {
-    is: CredentialKind.creditCard,
-    then: yup.string().length(3).matches(/\d{3}/).required(),
-    otherwise: yup.string().notRequired(),
-  }),
 }).required();
 
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = yup.InferType<typeof credentialSchema>;
 
 type Control<T extends FieldValues> = ReturnType<typeof useForm<T>>["control"]
 
 function FormInputField({
-  control,
-  name,
-  label,
-  placeholder,
-  type = "text",
-  defaultValue
+  control, name, label,
+  placeholder, type = "text",
 }: {
   control: Control<FormData>,
   name: FieldPath<FormData>,
   label: string,
   type?: string,
   placeholder?: string
-  defaultValue?: string
 }) {
   return <Controller
     control={control}
     name={name}
-    defaultValue={defaultValue}
     render={({ field, fieldState: { error } }) =>
     (
       <FormControl
@@ -120,42 +96,37 @@ function FormInputField({
     } />
 }
 
-function CreditCardFields({ control }: { control: Control<FormData> }) {
-  return (
-    <>
-      <FormInputField control={control} name="cardNumber" label="Card Number" placeholder="1234-XXXX-XXXX-XXXX" />
-      <FormInputField control={control} name="cvv" label="CVV" placeholder="000" />
-      <FormInputField control={control} name="expiry" label="Expiry Date" type="date" />
-    </>
-  );
-}
 
-function LoginFields({ control, loginToEdit }: { control: Control<FormData>, loginToEdit?: Login }) {
+function LoginFields({ control }: { control: Control<FormData> }) {
   return (
     <>
       <FormInputField
         control={control}
-        name="url" label="Website"
+        name="website" label="Website"
         placeholder="example.com"
-        defaultValue={loginToEdit?.website}
       />
       <FormInputField control={control}
         name="username" label="Username"
         placeholder="example@email.com"
-        defaultValue={loginToEdit?.username}
       />
       <FormInputField control={control}
         name="password" label="Password"
         type="password"
-        defaultValue={loginToEdit?.password}
       />
     </>
   );
 }
 
-export function CreateCredentialModal(
-  { popUp, handlePopUpToggle, credentialToEdit }: CreateCredentialModalProps
+export function CredentialModal(
+  {
+    popUp,
+    handlePopUpToggle,
+    credentialToEdit,
+    onEditDone,
+    onCredentialAdded,
+  }: CredentialModalProps
 ) {
+
   const [credentialKind, setCredentialKind] = useState(
     credentialToEdit?.kind ?? CredentialKind.login
   );
@@ -168,30 +139,35 @@ export function CreateCredentialModal(
     control,
     handleSubmit,
     reset,
-    // formState: { isSubmitting }
+    // formState: { isSubmitting },
     setValue,
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(credentialSchema),
   });
 
-  const onFormSubmit = async (formData: FormData) => {
+  // Reset form when the credential being edited changes
+  useEffect(() => {
+    reset();
+    if (credentialToEdit) {
+      setCredentialKind(credentialToEdit.kind);
+      reset({
+        ...credentialToEdit,
+      })
+    } else {
+      reset({ kind: credentialKind });
+    }
+  }, [credentialToEdit, reset]);
+
+  const getCredentialFromFormData = (formData: FormData) => {
     let credential: TUserCredential;
     if (formData.kind === CredentialKind.login) {
       credential = {
         kind: CredentialKind.login,
-        website: formData.url!,
+        website: formData.website!,
         username: formData.username!,
         password: formData.password!,
         name: formData.name,
       };
-    } else if (formData.kind === CredentialKind.creditCard) {
-      credential = {
-        kind: CredentialKind.creditCard,
-        cardNumber: formData.cardNumber!,
-        expiry: (Number(formData.expiry!)).toString(),
-        cvv: formData.cvv!,
-        name: formData.name!,
-      }
     } else {
       credential = {
         kind: CredentialKind.secureNote,
@@ -199,13 +175,19 @@ export function CreateCredentialModal(
         name: formData.name!,
       }
     }
+    return credential;
+  }
 
-    credential.id = credentialToEdit?.id;
+  const onFormSubmit = async (formData: FormData) => {
+    const credential = getCredentialFromFormData(formData);
+    // If we're editing a credential, we need to set the credentialId
+    // so that the backend performs an upsert.
+    credential.credentialId = credentialToEdit?.credentialId;
 
     try {
       const orgId = organization?.currentOrg?.id;
       if (orgId) {
-        await createCredential.mutateAsync({
+        const addedCredential = await createCredential.mutateAsync({
           orgId,
           credential,
           userId: user.id,
@@ -219,8 +201,7 @@ export function CreateCredentialModal(
           type: "success"
         });
 
-      } else {
-        // TODO(@srijan): Queue to request so it fires when the org is loaded 
+        onCredentialAdded(addedCredential);
       }
     } catch (error) {
       const action = credentialToEdit ? "update" : "add";
@@ -230,13 +211,15 @@ export function CreateCredentialModal(
         type: "error"
       });
     }
-  }
+  };
 
   return <Modal
     isOpen={popUp.credential.isOpen}
     onOpenChange={(isOpen) => {
+      if (!isOpen && credentialToEdit !== undefined) {
+          onEditDone?.();
+      }
       handlePopUpToggle("credential", isOpen);
-      reset({ kind: credentialKind });
     }}
   >
     <ModalContent title={`${credentialToEdit ? "Edit" : "Add"} Credential`} >
@@ -246,7 +229,6 @@ export function CreateCredentialModal(
           name="name"
           label="Name"
           placeholder="Credential Name"
-          defaultValue={credentialToEdit?.name}
         />
 
         {!credentialToEdit &&
@@ -271,9 +253,9 @@ export function CreateCredentialModal(
                   }}
                   className="w-full"
                 >
-                  {Object.values(CredentialKind).map((name) => (
-                    <SelectItem value={name} key={`st-role-${name}`}>
-                      {name}
+                  {Object.values(CredentialKind).map((credKind) => (
+                    <SelectItem value={credKind} key={`st-role-${credKind}`}>
+                      {readableCredentialKind(credKind)}
                     </SelectItem>
                   ))}
                 </Select>
@@ -285,15 +267,12 @@ export function CreateCredentialModal(
           (() => {
             switch (credentialKind) {
               case CredentialKind.login:
-                return <LoginFields control={control} loginToEdit={credentialToEdit as Login} />
-              case CredentialKind.creditCard:
-                return <CreditCardFields control={control} />
+                return <LoginFields control={control} />
               case CredentialKind.secureNote:
                 return <FormInputField
                   control={control}
                   name="note"
                   label="Note"
-                  defaultValue={credentialToEdit ? (credentialToEdit as SecureNote).note : undefined}
                 />
               default:
                 // We've covered all cases, but for some reason,
@@ -319,7 +298,10 @@ export function CreateCredentialModal(
           <Button
             colorSchema="secondary"
             variant="plain"
-            onClick={() => handlePopUpToggle("credential", false)}
+            onClick={() => {
+              if (onEditDone) onEditDone();
+              handlePopUpToggle("credential", false)
+            }}
           >
             Cancel
           </Button>

@@ -1,46 +1,72 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
-import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+import {
+  createOnUpdateTrigger,
+  createUpdateAtTriggerFunction,
+  dropOnUpdateTrigger,
+  dropUpdatedAtTriggerFunction
+} from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.CredentialWebLogin))) {
     await knex.schema.createTable(TableName.CredentialWebLogin, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.uuid("credentialId").notNullable().defaultTo(knex.fn.uuid());
+      t.unique(["credentialId"]);
+
       t.string("name").notNullable();
 
       t.uuid("userId").notNullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+
+      t.uuid("orgId").notNullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
       t.string("website").notNullable();
       t.string("username").notNullable();
       t.string("encryptedPassword").notNullable();
       t.string("encryptedPasswordIV").notNullable();
       t.string("encryptedPasswordTag").notNullable();
+      t.timestamps(true, true, true);
     });
+
+    await createUpdateAtTriggerFunction(knex);
+    await createOnUpdateTrigger(knex, TableName.CredentialWebLogin);
   }
-  await createOnUpdateTrigger(knex, TableName.CredentialWebLogin);
 
   if (!(await knex.schema.hasTable(TableName.CredentialSecureNote))) {
     await knex.schema.createTable(TableName.CredentialSecureNote, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
 
+      t.uuid("credentialId").notNullable().defaultTo(knex.fn.uuid());
+      t.unique(["credentialId"]);
+
       t.uuid("userId").notNullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+
+      t.uuid("orgId").notNullable();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
       t.text("encryptedNote").notNullable();
       t.text("encryptedNoteIV").notNullable();
       t.text("encryptedNoteTag").notNullable();
+      t.timestamps(true, true, true);
     });
+
+    await createUpdateAtTriggerFunction(knex);
+    await createOnUpdateTrigger(knex, TableName.CredentialSecureNote);
   }
-  await createOnUpdateTrigger(knex, TableName.CredentialSecureNote);
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.CredentialSecureNote);
   await dropOnUpdateTrigger(knex, TableName.CredentialSecureNote);
+  await dropUpdatedAtTriggerFunction(knex);
 
   await knex.schema.dropTableIfExists(TableName.CredentialWebLogin);
   await dropOnUpdateTrigger(knex, TableName.CredentialWebLogin);
+  await dropUpdatedAtTriggerFunction(knex);
 }

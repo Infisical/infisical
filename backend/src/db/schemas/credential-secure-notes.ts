@@ -10,7 +10,9 @@ import { TImmutableDBKeys } from "./models";
 export const CredentialSecureNotesSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  credentialId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
   userId: z.string().uuid(),
+  orgId: z.string().uuid(),
   encryptedNote: z.string(),
   encryptedNoteIV: z.string(),
   encryptedNoteTag: z.string()

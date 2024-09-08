@@ -9,8 +9,11 @@ import { TImmutableDBKeys } from "./models";
 
 export const CredentialWebLoginsSchema = z.object({
   id: z.string().uuid(),
+  credentialId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
   name: z.string(),
+  updatedAt: z.string().default(CURRENT_TIMESTAMP),
   userId: z.string().uuid(),
+  orgId: z.string().uuid(),
   website: z.string(),
   username: z.string(),
   encryptedPassword: z.string(),

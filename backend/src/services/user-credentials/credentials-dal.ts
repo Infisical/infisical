@@ -10,22 +10,25 @@ export const enum CredentialKind {
   secureNote = "secureNote"
 }
 
-type CredentialVariants =
-  | {
-      kind: CredentialKind.login;
-      website: string;
-      username: string;
-      password: string;
-    }
-  | {
-      kind: CredentialKind.secureNote;
-      note: string;
-    };
+type Login = {
+  kind: CredentialKind.login;
+  website: string;
+  username: string;
+  password: string;
+};
 
-export type Credential = { name: string } & CredentialVariants;
+type SecureNote = {
+  kind: CredentialKind.secureNote;
+  note: string;
+};
+
+type CredentialVariants = Login | SecureNote;
+export type Credential = { name: string; credentialId?: string } & CredentialVariants;
 
 type TUpsertWebLoginDTO = {
   userId: string;
+  orgId: string;
+  credentialId?: string; // used for update
   name: string;
   website: string;
   username: string;
@@ -36,6 +39,8 @@ type TUpsertWebLoginDTO = {
 
 type TUpsertSecureNoteDTO = {
   userId: string;
+  orgId: string;
+  credentialId?: string; // used for update
   name: string;
   encryptedNote: string;
   encryptedNoteIV: string;
@@ -45,9 +50,10 @@ type TUpsertSecureNoteDTO = {
 export type CredentialDAL = ReturnType<typeof credentialsDALFactory>;
 
 export const credentialsDALFactory = (db: TDbClient) => {
-  // TODO: ormify the tables as well.
   const upsertWebLoginCredential = async ({
     userId,
+    orgId,
+    credentialId,
     name,
     website,
     username,
@@ -56,69 +62,98 @@ export const credentialsDALFactory = (db: TDbClient) => {
     encryptedPasswordIV
   }: TUpsertWebLoginDTO) => {
     try {
-      await db(TableName.CredentialWebLogin)
+      const [upsertedLogin] = await db(TableName.CredentialWebLogin)
         .insert({
           name,
+          credentialId,
           website,
           username,
           encryptedPassword,
           encryptedPasswordIV,
           encryptedPasswordTag,
-          userId
+          userId,
+          orgId
         })
-        .onConflict("id")
-        .merge();
+        .onConflict("credentialId")
+        .merge()
+        .returning("*");
+
+      return upsertedLogin;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Upsert user enc key" });
+      throw new DatabaseError({ error, name: "Upsert web login" });
     }
   };
 
   const upsertSecureNoteCredential = async ({
     userId,
+    orgId,
+    credentialId,
     name,
     encryptedNote,
     encryptedNoteIV,
     encryptedNoteTag
   }: TUpsertSecureNoteDTO) => {
     try {
-      await db(TableName.CredentialSecureNote)
+      const [upsertedNote] = await db(TableName.CredentialSecureNote)
         .insert({
-          name,
+          credentialId,
           userId,
+          orgId,
+          name,
           encryptedNote,
           encryptedNoteIV,
           encryptedNoteTag
         })
-        .onConflict("id")
-        .merge();
+        .onConflict("credentialId")
+        .merge()
+        .returning("*");
+      return upsertedNote;
     } catch (error) {
       throw new DatabaseError({ error, name: "Upsert secure note" });
     }
   };
 
-  const findWebLoginCredentials = async (userId: string, tx?: Knex) => {
+  const findWebLoginCredentials = async (orgId: string, userId: string, tx?: Knex) => {
     try {
       return await (tx ?? db)(TableName.CredentialWebLogin)
-        .where({ userId })
+        .where({ userId, orgId })
         .select(selectAllTableCols(TableName.CredentialWebLogin));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find login credentials" });
     }
   };
 
-  const findSecureNoteCredentials = async (userId: string, tx?: Knex) => {
+  const findSecureNoteCredentials = async (orgId: string, userId: string, tx?: Knex) => {
     try {
       return await (tx ?? db)(TableName.CredentialSecureNote)
-        .where({ userId })
+        .where({ userId, orgId })
         .select(selectAllTableCols(TableName.CredentialSecureNote));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secure note credentials" });
     }
   };
 
+  const deleteWebLoginCredential = async (credentialId: string, userId: string) => {
+    try {
+      await db(TableName.CredentialWebLogin).where({ credentialId, userId }).delete().count();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete web login credential" });
+    }
+  };
+
+  const deleteSecureNoteCredential = async (credentialId: string, userId: string) => {
+    try {
+      await db(TableName.CredentialSecureNote).where({ credentialId, userId }).delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete secure note credential" });
+    }
+  };
+
   return {
     upsertWebLoginCredential,
     upsertSecureNoteCredential,
+    deleteWebLoginCredential,
+    deleteSecureNoteCredential,
     findWebLoginCredentials,
     findSecureNoteCredentials
   };

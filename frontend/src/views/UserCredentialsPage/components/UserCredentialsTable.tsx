@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { faPen, faUserSecret } from "@fortawesome/free-solid-svg-icons";
+import { useCallback, useState } from "react";
+import { faPen, faTrash, faUserSecret } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,26 +17,46 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useGetCredentials } from "@app/hooks/api/userCredentials/queries";
+import { useDeleteCredential } from "@app/hooks/api/userCredentials/mutation";
 import { CredentialKind, TUserCredential } from "@app/hooks/api/userCredentials/types";
 
-export type Login = TUserCredential & { kind: CredentialKind.login; id: string }
-export type SecureNote = TUserCredential & { kind: CredentialKind.secureNote; id: string }
+import { readableCredentialKind } from "../util";
 
-type LoginTableProps = {
-  credentials?: TUserCredential[],
-  isLoading: boolean
-  onEditTriggered?: (credential: Login) => void
+export type Login = TUserCredential & {
+  kind: CredentialKind.login;
+  credentialId: string;
+}
+
+export type SecureNote = TUserCredential & {
+  kind: CredentialKind.secureNote;
+  credentialId: string
 }
 
 type LoginRowProps = {
   credential: Login,
-  onClick?: (credential: Login) => void
+  onEdit?: (credential: Login) => void
+  onDelete: (credential: Login) => void
 }
 
-function LoginItemRow({ credential, onClick }: LoginRowProps) {
+function LoginItemRow({ credential, onEdit, onDelete }: LoginRowProps) {
   return (
     <Tr key={credential.name}>
+
+      <Td>
+        <IconButton
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onEdit) onEdit(credential);
+          }}
+          variant="plain"
+          ariaLabel="edit"
+        >
+          <FontAwesomeIcon icon={faPen} />
+        </IconButton>
+      </Td>
+
+
+      <Td>{credential.name}</Td>
       <Td>{credential.website}</Td>
       <Td>{credential.username}</Td>
       <Td className="hover:bg-mineshaft-700 duration-100 cursor-pointer" onClick={async () => {
@@ -48,138 +68,182 @@ function LoginItemRow({ credential, onClick }: LoginRowProps) {
       }} >
         {"•".repeat(12)}
       </Td>
+
       <Td>
         <IconButton
           onClick={(e) => {
             e.stopPropagation();
-            // handlePopUpOpen("deleteSharedSecretConfirmation", {
-            //  name: "delete",
-            //  id: credential.id
-            // });
-            if (onClick) onClick(credential);
+            onDelete(credential);
           }}
           variant="plain"
           ariaLabel="delete"
         >
+          <FontAwesomeIcon icon={faTrash} />
+        </IconButton>
+      </Td>
+
+    </Tr>
+  );
+}
+
+type SecureNoteItemRowProps = {
+  credential: SecureNote,
+  onEdit?: (credential: SecureNote) => void
+  onDelete: (credential: SecureNote) => void
+}
+
+function SecureNoteItemRow({ credential, onEdit, onDelete }: SecureNoteItemRowProps) {
+  return (
+    <Tr key={credential.name}>
+      <Td>
+        <IconButton
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onEdit) onEdit(credential);
+          }}
+          variant="plain"
+          ariaLabel="edit"
+        >
           <FontAwesomeIcon icon={faPen} />
+        </IconButton>
+      </Td>
+
+      <Td>{credential.name}</Td>
+      <Td className="hover:bg-mineshaft-700 duration-100 cursor-pointer" onClick={async () => {
+        await navigator.clipboard.writeText(credential.note);
+        createNotification({
+          text: <> Copied Note ({credential.name}) to clipboard.</>,
+          type: "info"
+        });
+      }} >
+        {"•".repeat(Math.max(12, credential.note.length))}
+      </Td>
+
+      <Td>
+        <IconButton
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(credential);
+          }}
+          variant="plain"
+          ariaLabel="delete"
+        >
+          <FontAwesomeIcon icon={faTrash} />
         </IconButton>
       </Td>
     </Tr>
   );
 }
 
-function LoginTable({ credentials, isLoading, onEditTriggered }: LoginTableProps) {
-  const loginCreds: Login[] | undefined =
-    credentials?.filter(cred => cred.kind === CredentialKind.login) as Login[];
-
-  return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Website  </Th>
-            <Th>Username </Th>
-            <Th>Password </Th>
-            <Th aria-label="button" className="w-5" />
-          </Tr>
-        </THead>
-        {!isLoading && Array.isArray(loginCreds) && loginCreds.length === 0 ? (
-          <Tr>
-            <Td colSpan={3}>
-              <EmptyState
-                title="No web logins have been added so far"
-                icon={faUserSecret}
-              />
-            </Td>
-          </Tr>
-        ) : null}
-
-        {!isLoading && Array.isArray(loginCreds) && loginCreds.length > 0 &&
-          loginCreds?.map((credential) =>
-          (<LoginItemRow
-            credential={credential}
-            onClick={onEditTriggered}
-            key={credential.id}
-          />))
-        }
-
-      </Table>
-    </TableContainer>
-  );
+type CredentialTableProps = {
+  credentials?: TUserCredential[],
+  isLoading: boolean;
+  credentialKind: CredentialKind;
+  tableHeaders: string[];
+  onEditTriggered?: (credential: TUserCredential) => void
+  onDelete: (credential: TUserCredential) => void
 }
 
-function CreditCardTable() {
-  const credentials: Credential[] = [];
+
+function CredentialTable({
+  credentials,
+  credentialKind,
+  tableHeaders,
+  isLoading,
+  onEditTriggered,
+  onDelete,
+}: CredentialTableProps) {
+  const credentialsToShow = credentials?.filter(cred => cred.kind === credentialKind);
+
+  const tHeaders = tableHeaders.map(header => <Th key={header}>{header}</Th>);
+  // columns for "edit" and "delete" buttons on each credential
+  tHeaders.unshift(<Th aria-label="button" className="w-5" />);
+  tHeaders.push(<Th aria-label="button" className="w-5" />);
 
   return (
     <TableContainer>
       <Table>
         <THead>
-          <Tr>
-            <Th>Card Number  </Th>
-            <Th>Expiry Date </Th>
-            <Th>CVV </Th>
-          </Tr>
+          <Tr> {tHeaders}  </Tr>
         </THead>
+        {(() => {
+          if (credentialsToShow?.length === 0) {
+            return (
+              <Tr>
+                <Td colSpan={tHeaders.length}>
+                  <EmptyState
+                    title={`No ${readableCredentialKind(credentialKind)}s have been added so far`}
+                    icon={faUserSecret}
+                  />
+                </Td>
+              </Tr>
+            )
+          }
 
-        {credentials.length === 0 ? (
-          <Tr>
-            <Td colSpan={3}>
-              <EmptyState
-                title="No credit cards have been added so far"
-                icon={faUserSecret}
-              />
-            </Td>
-          </Tr>
-        ) : null}
-      </Table>
-    </TableContainer>
-  );
-}
+          if (isLoading) return null; // TODO(@srijan): show loader here
 
-function SecureNoteTable() {
-  const credentials: Credential[] = [];
-  return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Title </Th>
-            <Th>Note     </Th>
-          </Tr>
-        </THead>
+          switch (credentialKind) {
+            case CredentialKind.login:
+              return credentialsToShow?.map((login) =>
+              (<LoginItemRow
+                credential={login as Login}
+                key={login.credentialId}
+                onEdit={onEditTriggered}
+                onDelete={(credential) => {
+                  onDelete(credential);
+                }}
+              />))
+            case CredentialKind.secureNote:
+              return credentialsToShow?.map((secureNote) =>
+              (<SecureNoteItemRow
+                credential={secureNote as SecureNote}
+                key={secureNote.credentialId}
+                onEdit={onEditTriggered}
+                onDelete={
+                  (credential) => {
+                    onDelete(credential);
+                  }
+                }
+              />))
+            default: return null
+          }
+        })()}
 
-        {credentials.length === 0 ? (
-          <Tr>
-            <Td colSpan={3}>
-              <EmptyState
-                title="No secure notes have been added yet"
-                icon={faUserSecret}
-              />
-            </Td>
-          </Tr>
-        ) : null}
       </Table>
     </TableContainer>
   );
 }
 
 type CredentialTabsProps = {
-  onEditTriggered?: (credential: Login) => void
+  isLoading: boolean,
+  allCredentials: TUserCredential[];
+  onEditTriggered?: (credential: TUserCredential) => void
+  onCredentialDeleted: (credential: TUserCredential) => void
 }
 
-export default function CredentialTabs({ onEditTriggered }: CredentialTabsProps) {
+export default function CredentialTabs({
+  allCredentials,
+  onEditTriggered,
+  onCredentialDeleted,
+  isLoading
+}: CredentialTabsProps) {
   const [activeTab, setActiveTab] = useState<CredentialKind>(CredentialKind.login);
-  const { isLoading, data } = useGetCredentials();
+  const deleteCredential = useDeleteCredential();
+
+  const onDelete = useCallback((credential: TUserCredential) => {
+    if (credential.credentialId) {
+      deleteCredential.mutate({
+        kind: credential.kind,
+        credentialId: credential.credentialId
+      });
+      onCredentialDeleted(credential);
+    }
+  }, [deleteCredential])
 
   return <Tabs value={activeTab} onValueChange={v => setActiveTab(v as CredentialKind)}>
     <TabList>
       <Tab value={CredentialKind.login}>
         Log in credentials
-      </Tab>
-
-      <Tab value={CredentialKind.creditCard} >
-        Credit Cards
       </Tab>
 
       <Tab value={CredentialKind.secureNote}>
@@ -188,21 +252,26 @@ export default function CredentialTabs({ onEditTriggered }: CredentialTabsProps)
     </TabList>
 
     <TabPanel value={CredentialKind.login}>
-      <LoginTable
+      <CredentialTable
         isLoading={isLoading}
-        credentials={data?.credentials}
+        credentials={allCredentials}
+        credentialKind={CredentialKind.login}
+        tableHeaders={["Name", "Website", "Username", "Password"]}
         onEditTriggered={onEditTriggered}
+        onDelete={onDelete}
       />
     </TabPanel>
 
-    <TabPanel value={CredentialKind.creditCard}>
-      <CreditCardTable />
-    </TabPanel>
-
     <TabPanel value={CredentialKind.secureNote}>
-      <SecureNoteTable />
+      <CredentialTable
+        isLoading={isLoading}
+        credentials={allCredentials}
+        credentialKind={CredentialKind.secureNote}
+        tableHeaders={["Name", "Note"]}
+        onEditTriggered={onEditTriggered}
+        onDelete={onDelete}
+      />
     </TabPanel>
   </Tabs>
 }
-
 

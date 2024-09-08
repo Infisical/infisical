@@ -21,7 +21,7 @@ type AddCredentialArgs = {
 export type TCredentialsServiceFactory = ReturnType<typeof userCredentialsServiceFactory>;
 
 export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDAL }: TCredentialsServiceFactoryDep) => {
-  const upsertCredential = async ({ credential, orgId, actorId }: AddCredentialArgs) => {
+  const upsertCredential = async ({ credential, orgId, actorId }: AddCredentialArgs): Promise<Credential> => {
     const org = await orgDAL.findOrgById(orgId);
     if (!org) {
       throw new BadRequestError({
@@ -51,8 +51,10 @@ export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDA
         tag: encryptedPasswordTag
       } = encryptSymmetric(password, key);
 
-      await credentialsDAL.upsertWebLoginCredential({
+      const upsertedCredential = await credentialsDAL.upsertWebLoginCredential({
+        credentialId: credential.credentialId,
         userId: actorId,
+        orgId,
         name: credential.name,
         website,
         username,
@@ -60,18 +62,30 @@ export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDA
         encryptedPasswordIV,
         encryptedPasswordTag
       });
-    } else if (credential.kind === CredentialKind.secureNote) {
-      const { note } = credential;
-      const { ciphertext: encryptedNote, iv: encryptedNoteIV, tag: encryptedNoteTag } = encryptSymmetric(note, key);
 
-      await credentialsDAL.upsertSecureNoteCredential({
-        userId: actorId,
-        name: credential.name,
-        encryptedNote,
-        encryptedNoteIV,
-        encryptedNoteTag
-      });
+      return {
+        ...credential,
+        credentialId: upsertedCredential.credentialId
+      };
     }
+
+    const { note } = credential;
+    const { ciphertext: encryptedNote, iv: encryptedNoteIV, tag: encryptedNoteTag } = encryptSymmetric(note, key);
+
+    const upsertedNote = await credentialsDAL.upsertSecureNoteCredential({
+      credentialId: credential.credentialId,
+      userId: actorId,
+      orgId,
+      name: credential.name,
+      encryptedNote,
+      encryptedNoteIV,
+      encryptedNoteTag
+    });
+
+    return {
+      ...credential,
+      credentialId: upsertedNote.credentialId
+    };
   };
 
   const findCredentialsById = async ({ actorId, orgId }: { actorId: string; orgId: string }) => {
@@ -95,8 +109,8 @@ export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDA
       keyEncoding: orgBot.symmetricKeyKeyEncoding as SecretKeyEncoding
     });
 
-    const webLogins = await credentialsDAL.findWebLoginCredentials(actorId);
-    const secureNotes = await credentialsDAL.findSecureNoteCredentials(actorId);
+    const webLogins = await credentialsDAL.findWebLoginCredentials(orgId, actorId);
+    const secureNotes = await credentialsDAL.findSecureNoteCredentials(orgId, actorId);
 
     const decryptedCredentials: Credential[] = [];
 
@@ -109,6 +123,7 @@ export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDA
       });
 
       decryptedCredentials.push({
+        credentialId: webLogin.credentialId,
         name: webLogin.name,
         kind: CredentialKind.login,
         website: webLogin.website,
@@ -126,6 +141,7 @@ export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDA
       });
 
       decryptedCredentials.push({
+        credentialId: secureNote.credentialId,
         name: secureNote.name,
         kind: CredentialKind.secureNote,
         note
@@ -135,8 +151,25 @@ export const userCredentialsServiceFactory = ({ orgDAL, credentialsDAL, orgBotDA
     return decryptedCredentials;
   };
 
+  const deleteCredentialById = async ({
+    credentialId,
+    userId,
+    kind
+  }: {
+    userId: string;
+    credentialId: string;
+    kind: CredentialKind;
+  }) => {
+    if (kind === CredentialKind.login) {
+      await credentialsDAL.deleteWebLoginCredential(credentialId, userId);
+    } else if (kind === CredentialKind.secureNote) {
+      await credentialsDAL.deleteSecureNoteCredential(credentialId, userId);
+    }
+  };
+
   return {
     upsertCredential,
-    findCredentialsById
+    findCredentialsById,
+    deleteCredentialById
   };
 };
