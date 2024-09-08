@@ -4,7 +4,7 @@ import { TOrgRole } from "../roles/types";
 
 export type TGroupOrgMembership = TGroup & {
   customRole?: TOrgRole;
-}
+};
 
 export type TGroup = {
   id: string;
@@ -33,4 +33,31 @@ export type TGroupMembership = {
   }[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type TGroupWithProjectMemberships = {
+  id: string;
+  name: string;
+  slug: string;
+  orgId: string;
+  projectMemberships: {
+    id: string;
+    project: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    roles: {
+      id: string;
+      role: string;
+      customRoleId: string | null;
+      customRoleName: string | null;
+      customRoleSlug: string | null;
+      temporaryRange: string | null;
+      temporaryMode: string | null;
+      temporaryAccessEndTime: string | null;
+      temporaryAccessStartTime: string | null;
+      isTemporary: boolean;
+    }[];
+  }[];
 };
