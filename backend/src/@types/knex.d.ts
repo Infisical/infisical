@@ -14,9 +14,6 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
-  TAdminSlackConfigs,
-  TAdminSlackConfigsInsert,
-  TAdminSlackConfigsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -797,11 +794,6 @@ declare module "knex/types/tables" {
       TProjectSlackConfigs,
       TProjectSlackConfigsInsert,
       TProjectSlackConfigsUpdate
-    >;
-    [TableName.AdminSlackConfig]: KnexOriginal.CompositeTableType<
-      TAdminSlackConfigs,
-      TAdminSlackConfigsInsert,
-      TAdminSlackConfigsUpdate
     >;
     [TableName.WorkflowIntegrations]: KnexOriginal.CompositeTableType<
       TWorkflowIntegrations,
