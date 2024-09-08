@@ -1,4 +1,4 @@
-import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCheckCircle, faCopy, faMinusCircle, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -39,6 +39,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                     handlePopUpOpen("identity", {
                       identityId,
                       name: data.identity.name,
+                      isDisabled: data.identity.isDisabled,
                       role: data.role,
                       customRole: data.customRole
                     });
@@ -76,6 +77,15 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Status</p>
+          <p className={`text-sm ${data.identity.isDisabled ? "text-gray-400" : "text-green-600"}`}>
+            <span className="inline-flex items-center gap-0.5">
+              <FontAwesomeIcon icon={data.identity.isDisabled ? faMinusCircle : faCheckCircle} />
+              {data.identity.isDisabled ? "Disabled" : "Active"}
+            </span>
+          </p>
         </div>
         <div>
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>

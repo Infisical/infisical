@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -77,13 +78,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Role</Th>
+            <Th>Status</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
           {isLoading && <TableSkeleton columns={4} innerKey="org-identities" />}
           {!isLoading &&
-            data?.map(({ identity: { id, name }, role, customRole }) => {
+            data?.map(({ identity: { id, name, isDisabled }, role, customRole }) => {
               return (
                 <Tr
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -119,6 +121,19 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         );
                       }}
                     </OrgPermissionCan>
+                  </Td>
+                  <Td>
+                    {isDisabled ? (
+                      <Button
+                        isDisabled
+                        className="w-40"
+                        colorSchema="primary"
+                        variant="outline_bg"
+                        onClick={() => {}}
+                      >
+                        Disabled
+                      </Button>
+                    ) : "Enabled"}
                   </Td>
                   <Td>
                     <DropdownMenu>

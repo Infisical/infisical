@@ -17,10 +17,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
         .select(db.ref("name").withSchema(TableName.Identity))
-        .select(db.ref("authMethod").withSchema(TableName.Identity));
+        .select(db.ref("authMethod").withSchema(TableName.Identity))
+        .select(db.ref("isDisabled").withSchema(TableName.Identity));
       if (data) {
-        const { name, authMethod } = data;
-        return { ...data, identity: { id: data.identityId, name, authMethod } };
+        const { name, authMethod, isDisabled } = data;
+        return { ...data, identity: { id: data.identityId, name, authMethod, isDisabled } };
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "FindOne" });
@@ -43,6 +44,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.OrgRoles))
         .select(db.ref("id").as("identityId").withSchema(TableName.Identity))
         .select(db.ref("name").as("identityName").withSchema(TableName.Identity))
+        .select(db.ref("isDisabled").as("identityIsDisabled").withSchema(TableName.Identity))
         .select(db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity));
       return docs.map(
         ({
@@ -54,6 +56,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identityId,
           identityName,
           identityAuthMethod,
+          identityIsDisabled,
           ...el
         }) => ({
           ...el,
@@ -61,7 +64,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
-            authMethod: identityAuthMethod
+            authMethod: identityAuthMethod,
+            isDisabled: identityIsDisabled
           },
           customRole: el.roleId
             ? {
