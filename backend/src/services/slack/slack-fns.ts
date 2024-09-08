@@ -6,11 +6,8 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TAdminSlackConfigDALFactory } from "./admin-slack-config-dal";
 import { TProjectSlackConfigDALFactory } from "./project-slack-config-dal";
 import { SlackTriggerFeature } from "./slack-types";
-
-const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const getCustomSlackBotManifest = () => {
   const appCfg = getConfig();
@@ -141,30 +138,4 @@ export const triggerSlackNotification = async ({
       })
       .catch((err) => void logger.error(err));
   }
-};
-
-export const getAdminSlackCredentials = async ({
-  adminSlackConfigDAL,
-  kmsService
-}: {
-  adminSlackConfigDAL: Pick<TAdminSlackConfigDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey">;
-}) => {
-  const adminSlackConfig = await adminSlackConfigDAL.findById(ADMIN_CONFIG_DB_UUID);
-  let clientId = "";
-  let clientSecret = "";
-  const decrypt = await kmsService.decryptWithRootKey();
-
-  if (adminSlackConfig.encryptedClientId) {
-    clientId = (await decrypt({ cipherTextBlob: adminSlackConfig.encryptedClientId })).toString();
-  }
-
-  if (adminSlackConfig.encryptedClientSecret) {
-    clientSecret = (await decrypt({ cipherTextBlob: adminSlackConfig.encryptedClientSecret })).toString();
-  }
-
-  return {
-    clientId,
-    clientSecret
-  };
 };

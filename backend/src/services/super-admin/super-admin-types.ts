@@ -31,8 +31,3 @@ export enum LoginMethod {
   LDAP = "ldap",
   OIDC = "oidc"
 }
-
-export type TUpdateAdminSlackConfigDTO = {
-  clientId: string;
-  clientSecret: string;
-};

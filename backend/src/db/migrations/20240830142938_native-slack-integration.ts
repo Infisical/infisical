@@ -53,16 +53,20 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.ProjectSlackConfigs);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AdminSlackConfig))) {
-    await knex.schema.createTable(TableName.AdminSlackConfig, (tb) => {
-      tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      tb.binary("encryptedClientId").notNullable();
-      tb.binary("encryptedClientSecret").notNullable();
-      tb.timestamps(true, true, true);
-    });
+  const doesSuperAdminHaveSlackClientId = await knex.schema.hasColumn(TableName.SuperAdmin, "encryptedSlackClientId");
+  const doesSuperAdminHaveSlackClientSecret = await knex.schema.hasColumn(
+    TableName.SuperAdmin,
+    "encryptedSlackClientSecret"
+  );
 
-    await createOnUpdateTrigger(knex, TableName.AdminSlackConfig);
-  }
+  await knex.schema.alterTable(TableName.SuperAdmin, (tb) => {
+    if (!doesSuperAdminHaveSlackClientId) {
+      tb.binary("encryptedSlackClientId");
+    }
+    if (!doesSuperAdminHaveSlackClientSecret) {
+      tb.binary("encryptedSlackClientSecret");
+    }
+  });
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -72,9 +76,21 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.SlackIntegrations);
   await dropOnUpdateTrigger(knex, TableName.SlackIntegrations);
 
-  await knex.schema.dropTableIfExists(TableName.AdminSlackConfig);
-  await dropOnUpdateTrigger(knex, TableName.AdminSlackConfig);
-
   await knex.schema.dropTableIfExists(TableName.WorkflowIntegrations);
   await dropOnUpdateTrigger(knex, TableName.WorkflowIntegrations);
+
+  const doesSuperAdminHaveSlackClientId = await knex.schema.hasColumn(TableName.SuperAdmin, "encryptedSlackClientId");
+  const doesSuperAdminHaveSlackClientSecret = await knex.schema.hasColumn(
+    TableName.SuperAdmin,
+    "encryptedSlackClientSecret"
+  );
+
+  await knex.schema.alterTable(TableName.SuperAdmin, (tb) => {
+    if (doesSuperAdminHaveSlackClientId) {
+      tb.dropColumn("encryptedSlackClientId");
+    }
+    if (doesSuperAdminHaveSlackClientSecret) {
+      tb.dropColumn("encryptedSlackClientSecret");
+    }
+  });
 }

@@ -8,7 +8,7 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import {
   useGetAdminSlackConfig,
   useGetCustomSlackAppCreationUrl,
-  useUpdateAdminSlackConfig
+  useUpdateServerConfig
 } from "@app/hooks/api";
 
 const slackFormSchema = z.object({
@@ -31,7 +31,7 @@ export const IntegrationPanel = () => {
   const { data: customSlackAppCreationUrl } = useGetCustomSlackAppCreationUrl();
   const { data: adminSlackConfig } = useGetAdminSlackConfig();
 
-  const { mutateAsync: updateAdminSlackConfig } = useUpdateAdminSlackConfig();
+  const { mutateAsync: updateAdminServerConfig } = useUpdateServerConfig();
 
   useEffect(() => {
     if (adminSlackConfig) {
@@ -41,7 +41,10 @@ export const IntegrationPanel = () => {
   }, [adminSlackConfig]);
 
   const onSlackFormSubmit = async (data: TSlackForm) => {
-    await updateAdminSlackConfig(data);
+    await updateAdminServerConfig({
+      slackClientId: data.clientId,
+      slackClientSecret: data.clientSecret
+    });
 
     createNotification({
       text: "Updated admin slack configuration",

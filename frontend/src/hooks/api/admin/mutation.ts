@@ -33,7 +33,11 @@ export const useCreateAdminUser = () => {
 export const useUpdateServerConfig = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TServerConfig, {}, Partial<TServerConfig>>({
+  return useMutation<
+    TServerConfig,
+    {},
+    Partial<TServerConfig & { slackClientId: string; slackClientSecret: string }>
+  >({
     mutationFn: async (opt) => {
       const { data } = await apiRequest.patch<{ config: TServerConfig }>(
         "/api/v1/admin/config",

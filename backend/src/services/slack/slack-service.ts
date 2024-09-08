@@ -8,10 +8,10 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { getServerCfg } from "../super-admin/super-admin-service";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
-import { TAdminSlackConfigDALFactory } from "./admin-slack-config-dal";
-import { fetchSlackChannels, getAdminSlackCredentials } from "./slack-fns";
+import { fetchSlackChannels } from "./slack-fns";
 import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
 import {
   TCompleteSlackIntegrationDTO,
@@ -36,7 +36,6 @@ type TSlackServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithRootKey" | "decryptWithRootKey">;
-  adminSlackConfigDAL: Pick<TAdminSlackConfigDALFactory, "findById">;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
 };
 
@@ -46,7 +45,6 @@ export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
   kmsService,
-  adminSlackConfigDAL,
   workflowIntegrationDAL
 }: TSlackServiceFactoryDep) => {
   const completeSlackIntegration = async ({
@@ -138,20 +136,21 @@ export const slackServiceFactory = ({
 
   const getSlackInstaller = async () => {
     const appCfg = getConfig();
-    const adminSlackCredentials = await getAdminSlackCredentials({
-      kmsService,
-      adminSlackConfigDAL
-    });
+    const serverCfg = await getServerCfg();
 
-    let slackClientId = "";
-    let slackClientSecret = "";
+    let slackClientId = appCfg.SLACK_CLIENT_ID as string;
+    let slackClientSecret = appCfg.SLACK_CLIENT_SECRET as string;
 
-    if (adminSlackCredentials.clientId && adminSlackCredentials.clientSecret) {
-      slackClientId = adminSlackCredentials.clientId;
-      slackClientSecret = adminSlackCredentials.clientSecret;
-    } else {
-      slackClientId = appCfg.SLACK_CLIENT_ID as string;
-      slackClientSecret = appCfg.SLACK_CLIENT_SECRET as string;
+    const decrypt = await kmsService.decryptWithRootKey();
+
+    if (serverCfg.encryptedSlackClientId) {
+      slackClientId = (await decrypt({ cipherTextBlob: Buffer.from(serverCfg.encryptedSlackClientId) })).toString();
+    }
+
+    if (serverCfg.encryptedSlackClientSecret) {
+      slackClientSecret = (
+        await decrypt({ cipherTextBlob: Buffer.from(serverCfg.encryptedSlackClientSecret) })
+      ).toString();
     }
 
     if (!slackClientId || !slackClientSecret) {
