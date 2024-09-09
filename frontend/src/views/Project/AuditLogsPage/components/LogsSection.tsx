@@ -68,6 +68,7 @@ export const LogsSection = ({
         isOrgAuditLogs={isOrgAuditLogs}
         eventType={eventType}
         userAgentType={userAgentType}
+        showActorColumn={!presetActor}
         actor={actor}
         startDate={startDate}
         endDate={endDate}

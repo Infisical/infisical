@@ -26,6 +26,7 @@ type Props = {
   startDate?: Date;
   endDate?: Date;
   isOrgAuditLogs?: boolean;
+  showActorColumn: boolean;
 };
 
 const AUDIT_LOG_LIMIT = 15;
@@ -33,6 +34,7 @@ const AUDIT_LOG_LIMIT = 15;
 export const LogsTable = ({
   eventType,
   userAgentType,
+  showActorColumn,
   actor,
   startDate,
   endDate,
@@ -63,7 +65,7 @@ export const LogsTable = ({
               <Th>Timestamp</Th>
               <Th>Event</Th>
               {isOrgAuditLogs && <Th>Project</Th>}
-              <Th>Actor</Th>
+              {showActorColumn && <Th>Actor</Th>}
               <Th>Source</Th>
               <Th>Metadata</Th>
             </Tr>
@@ -74,6 +76,7 @@ export const LogsTable = ({
                 <Fragment key={`auditlog-item-${i + 1}`}>
                   {group.map((auditLog) => (
                     <LogsTableRow
+                      showActorColumn={showActorColumn}
                       isOrgAuditLogs={isOrgAuditLogs}
                       auditLog={auditLog}
                       key={`audit-log-${auditLog.id}`}
