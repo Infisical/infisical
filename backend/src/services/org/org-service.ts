@@ -92,7 +92,6 @@ type TOrgServiceFactoryDep = {
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProject">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
 };
 
@@ -119,8 +118,7 @@ export const orgServiceFactory = ({
   samlConfigDAL,
   userGroupMembershipDAL,
   projectBotDAL,
-  projectUserMembershipRoleDAL,
-  projectRoleDAL
+  projectUserMembershipRoleDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id

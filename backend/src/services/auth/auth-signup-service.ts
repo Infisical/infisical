@@ -22,7 +22,6 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
-import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
@@ -53,7 +52,6 @@ type TAuthSignupDep = {
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "transaction" | "insertMany">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -68,7 +66,6 @@ export const authSignupServiceFactory = ({
   tokenService,
   smtpService,
   orgService,
-  projectRoleDAL,
   orgDAL,
   licenseService
 }: TAuthSignupDep) => {

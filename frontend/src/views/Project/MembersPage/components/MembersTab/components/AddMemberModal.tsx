@@ -21,10 +21,9 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
-  useAddUserToWsNonE2EE,
+  useAddUsersToOrg,
   useGetOrgUsers,
   useGetProjectRoles,
-  useGetUserWsKey,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -51,11 +50,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
 
-  const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
-
-  const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
 
   const { data: roles } = useGetProjectRoles(currentWorkspace?.slug || "");
 
@@ -70,17 +66,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: { orgMembershipIds: [], projectRoleSlugs: [ProjectMembershipRole.Member] }
   });
 
+  const { mutateAsync: addMembersToProject } = useAddUsersToOrg();
+
   const onAddMember = async ({ orgMembershipIds, projectRoleSlugs }: TAddMemberForm) => {
     if (!currentWorkspace) return;
     if (!currentOrg?.id) return;
-    // TODO(akhilmhdh): Move to memory storage
-    const userPrivateKey = localStorage.getItem("PRIVATE_KEY");
-    if (!userPrivateKey || !wsKey) {
-      createNotification({
-        text: "Failed to find private key. Try re-login"
-      });
-      return;
-    }
+
     const selectedMembers = orgMembershipIds.map((orgMembershipId) =>
       orgUsers?.find((orgUser) => orgUser.id === orgMembershipId)
     );
@@ -94,11 +85,13 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           text: "Please upgrade your project to invite new members to the project."
         });
       } else {
-        await addUserToWorkspaceNonE2EE({
-          projectId: workspaceId,
-          usernames: [...selectedMembers.map((member) => member?.user.username!)],
-          roleSlugs: projectRoleSlugs,
-          orgId
+        await addMembersToProject({
+          inviteeEmails: selectedMembers.map((member) => member?.user.username!),
+          organizationId: orgId,
+          projects: projectRoleSlugs.map((roleSlug) => ({
+            id: workspaceId,
+            projectRoleSlug: roleSlug
+          }))
         });
       }
       createNotification({
