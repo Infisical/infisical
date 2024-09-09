@@ -4,11 +4,11 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.CertificateAuthority)) {
-    const hasTemplateIssuanceRequiredColumn = await knex.schema.hasColumn(
+    const hasRequireTemplateForIssuanceColumn = await knex.schema.hasColumn(
       TableName.CertificateAuthority,
-      "templateIssuanceRequired"
+      "requireTemplateForIssuance"
     );
-    if (!hasTemplateIssuanceRequiredColumn) {
+    if (!hasRequireTemplateForIssuanceColumn) {
       await knex.schema.alterTable(TableName.CertificateAuthority, (t) => {
         t.boolean("requireTemplateForIssuance").notNullable().defaultTo(false);
       });
