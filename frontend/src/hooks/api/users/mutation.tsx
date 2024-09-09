@@ -6,8 +6,8 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
-import { userKeys } from "./queries";
+import { workspaceKeys } from "../workspace";
+import { userKeys } from "./query-keys";
 import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 
 export const useAddUserToWsE2EE = () => {

@@ -6,6 +6,8 @@ import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
+import { workspaceKeys } from "../workspace";
+import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
   APIKeyData,
@@ -20,29 +22,6 @@ import {
   User,
   UserEnc
 } from "./types";
-
-export const userKeys = {
-  getUser: ["user"] as const,
-  getPrivateKey: ["user"] as const,
-  userAction: ["user-action"] as const,
-  userProjectFavorites: (orgId: string) => [{ orgId }, "user-project-favorites"] as const,
-  getOrgMembership: (orgId: string, orgMembershipId: string) =>
-    [{ orgId, orgMembershipId }, "org-membership"] as const,
-  allOrgMembershipProjectMemberships: (orgId: string) => [orgId, "all-user-memberships"] as const,
-  forOrgMembershipProjectMemberships: (orgId: string, orgMembershipId: string) =>
-    [...userKeys.allOrgMembershipProjectMemberships(orgId), { orgMembershipId }] as const,
-  getOrgMembershipProjectMemberships: (orgId: string, username: string) =>
-    [{ orgId, username }, "org-membership-project-memberships"] as const,
-  getOrgUsers: (orgId: string) => [{ orgId }, "user"],
-  myIp: ["ip"] as const,
-  myAPIKeys: ["api-keys"] as const,
-  myAPIKeysV2: ["api-keys-v2"] as const,
-  mySessions: ["sessions"] as const,
-  listUsers: ["user-list"] as const,
-  listUserGroupMemberships: (username: string) => ["user-group-memberships", username] as const,
-
-  myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
-};
 
 export const fetchUserDetails = async () => {
   const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user");
@@ -175,8 +154,15 @@ export const useAddUsersToOrg = () => {
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
-    onSuccess: (_, { organizationId }) => {
+    onSuccess: (_, { organizationId, projects }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+
+      projects?.forEach((project) => {
+        if (project.slug) {
+          queryClient.invalidateQueries(workspaceKeys.getWorkspaceGroupMemberships(project.slug));
+        }
+        queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(project.id));
+      });
     }
   });
 };

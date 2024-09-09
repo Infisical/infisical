@@ -151,9 +151,11 @@ export type DeletOrgMembershipDTO = {
 
 export type AddUserToOrgDTO = {
   inviteeEmails: string[];
-  projects?: { id: string; projectRoleSlug: string[] }[];
   organizationRoleSlug: string;
   organizationId: string;
+
+  // We need the slug in order to invalidate the groups query. `slug` is only used for invalidation purposes.
+  projects?: { id: string; slug?: string; projectRoleSlug: string[] }[];
 };
 
 export type CreateAPIKeyRes = {

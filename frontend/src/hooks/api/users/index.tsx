@@ -29,3 +29,4 @@ export {
   useUpdateOrgMembership,
   useUpdateUserAuthMethods
 } from "./queries";
+export { userKeys } from "./query-keys";
