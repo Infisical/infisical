@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { caKeys } from "../ca/queries";
 import { workspaceKeys } from "../workspace/queries";
 import { certTemplateKeys } from "./queries";
 import {
@@ -23,8 +24,9 @@ export const useCreateCertTemplate = () => {
       );
       return certificateTemplate;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: ({ caId }, { projectId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
+      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
     }
   });
 };
@@ -40,22 +42,25 @@ export const useUpdateCertTemplate = () => {
 
       return certificateTemplate;
     },
-    onSuccess: (_, { projectId, id }) => {
+    onSuccess: ({ caId }, { projectId, id }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
       queryClient.invalidateQueries(certTemplateKeys.getCertTemplateById(id));
+      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
     }
   });
 };
 
 export const useDeleteCertTemplate = () => {
   const queryClient = useQueryClient();
-  return useMutation<void, {}, TDeleteCertificateTemplateDTO>({
+  return useMutation<TCertificateTemplate, {}, TDeleteCertificateTemplateDTO>({
     mutationFn: async (data) => {
-      return apiRequest.delete(`/api/v1/pki/certificate-templates/${data.id}`);
+      const { data: certificateTemplate } = await apiRequest.delete<TCertificateTemplate>(`/api/v1/pki/certificate-templates/${data.id}`);
+      return certificateTemplate;
     },
-    onSuccess: (_, { projectId, id }) => {
+    onSuccess: ({ caId }, { projectId, id }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceCertificateTemplates(projectId));
       queryClient.invalidateQueries(certTemplateKeys.getCertTemplateById(id));
+      queryClient.invalidateQueries(caKeys.getCaCertTemplates(caId));
     }
   });
 };

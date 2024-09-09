@@ -3,7 +3,6 @@ import {
   faBan,
   faCertificate,
   faEllipsis,
-  faEye,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -155,28 +154,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </ProjectPermissionCan>
                           )}
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Read}
-                            a={ProjectPermissionSub.CertificateAuthorities}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("ca", {
-                                    caId: ca.id
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faEye} />}
-                              >
-                                View CA
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
                           {(ca.status === CaStatus.ACTIVE || ca.status === CaStatus.DISABLED) && (
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Edit}

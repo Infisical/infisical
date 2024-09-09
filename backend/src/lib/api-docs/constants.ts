@@ -1037,14 +1037,18 @@ export const CERTIFICATE_AUTHORITIES = {
     maxPathLength:
       "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
     keyAlgorithm:
-      "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+      "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+    requireTemplateForIssuance:
+      "Whether or not certificates for this CA can only be issued through certificate templates."
   },
   GET: {
     caId: "The ID of the CA to get"
   },
   UPDATE: {
     caId: "The ID of the CA to update",
-    status: "The status of the CA to update to. This can be one of active or disabled"
+    status: "The status of the CA to update to. This can be one of active or disabled",
+    requireTemplateForIssuance:
+      "Whether or not certificates for this CA can only be issued through certificate templates."
   },
   DELETE: {
     caId: "The ID of the CA to delete"

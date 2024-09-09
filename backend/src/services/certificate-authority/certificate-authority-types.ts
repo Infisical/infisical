@@ -38,6 +38,7 @@ export type TCreateCaDTO = {
   notAfter?: string;
   maxPathLength: number;
   keyAlgorithm: CertKeyAlgorithm;
+  requireTemplateForIssuance: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCaDTO = {
@@ -47,6 +48,7 @@ export type TGetCaDTO = {
 export type TUpdateCaDTO = {
   caId: string;
   status?: CaStatus;
+  requireTemplateForIssuance?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteCaDTO = {
@@ -124,6 +126,10 @@ export type TSignCertFromCaDTO =
       notBefore?: string;
       notAfter?: string;
     } & Omit<TProjectPermission, "projectId">);
+
+export type TGetCaCertificateTemplatesDTO = {
+  caId: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDNParts = {
   commonName?: string;

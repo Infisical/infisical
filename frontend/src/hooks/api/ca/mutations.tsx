@@ -43,8 +43,9 @@ export const useUpdateCa = () => {
       } = await apiRequest.patch<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`, body);
       return ca;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: ({ id }, { projectSlug }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceCas({ projectSlug }));
+      queryClient.invalidateQueries(caKeys.getCaById(id));
     }
   });
 };
