@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DiRedis } from "react-icons/di";
-import { SiApachecassandra, SiElasticsearch, SiMongodb } from "react-icons/si";
+import { SiApachecassandra, SiElasticsearch, SiMongodb, SiRabbitmq } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,6 +15,7 @@ import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
+import { RabbitMqInputForm } from "./RabbitMqInputForm";
 import { RedisInputForm } from "./RedisInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 
@@ -71,6 +72,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiElasticsearch size="2rem" />,
     provider: DynamicSecretProviders.ElasticSearch,
     title: "Elastic Search"
+  },
+  {
+    icon: <SiRabbitmq size="1.5rem" />,
+    provider: DynamicSecretProviders.RabbitMq,
+    title: "RabbitMQ"
   }
 ];
 
@@ -268,6 +274,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <MongoDBDatabaseInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.RabbitMq && (
+              <motion.div
+                key="dynamic-rabbit-mq-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <RabbitMqInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
