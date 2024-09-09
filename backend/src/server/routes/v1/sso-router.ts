@@ -57,7 +57,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            cb(null, false);
+            cb(error as Error, false);
           }
         }
       )
@@ -91,7 +91,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            cb(null, false);
+            cb(error as Error, false);
           }
         }
       )
@@ -126,7 +126,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            cb(null, false);
+            cb(error as Error, false);
           }
         }
       )
