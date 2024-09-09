@@ -12,7 +12,6 @@ import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/erro
 import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
-import { TTokenDALFactory } from "../auth-token/auth-token-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -34,7 +33,6 @@ type TAuthLoginServiceFactoryDep = {
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  tokenDAL: TTokenDALFactory;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -42,8 +40,7 @@ export const authLoginServiceFactory = ({
   userDAL,
   tokenService,
   smtpService,
-  orgDAL,
-  tokenDAL
+  orgDAL
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -375,8 +372,6 @@ export const authLoginServiceFactory = ({
         message: `User does not have access to the organization named ${selectedOrg?.name}`
       });
     }
-
-    await tokenDAL.incrementTokenSessionVersion(user.id, decodedToken.tokenVersionId);
 
     const tokens = await generateUserTokens({
       authMethod: decodedToken.authMethod,

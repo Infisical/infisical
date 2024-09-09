@@ -68,7 +68,10 @@ export default function LoginPage() {
         return;
       }
 
-      const { token } = await selectOrg.mutateAsync({ organizationId: organization.id });
+      const { token } = await selectOrg.mutateAsync({
+        organizationId: organization.id,
+        customUserAgent: callbackPort ? "cli" : undefined
+      });
 
       if (callbackPort) {
         const privateKey = localStorage.getItem("PRIVATE_KEY");
