@@ -58,7 +58,8 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   if (
     provider === DynamicSecretProviders.SqlDatabase ||
     provider === DynamicSecretProviders.Cassandra ||
-    provider === DynamicSecretProviders.MongoAtlas
+    provider === DynamicSecretProviders.MongoAtlas ||
+    provider === DynamicSecretProviders.MongoDB
   ) {
     const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
     return (
