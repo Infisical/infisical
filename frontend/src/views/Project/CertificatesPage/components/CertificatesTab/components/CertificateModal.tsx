@@ -218,7 +218,6 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                   }
                   errorText={error?.message}
                   isError={Boolean(error)}
-                  className="mt-4"
                   isRequired
                 >
                   <Select

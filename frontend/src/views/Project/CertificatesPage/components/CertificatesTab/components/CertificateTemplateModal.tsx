@@ -132,8 +132,6 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           subjectAlternativeName,
           ttl
         });
-        
-        // TODO: requireTemplateForIssuance field
 
         createNotification({
           text: "Successfully updated certificate template",
@@ -177,6 +175,11 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
     >
       <ModalContent title={certTemplate ? "Certificate Template" : "Create Certificate Template"}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
+          {certTemplate && (
+            <FormControl label="Certificate Template ID">
+              <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+            </FormControl>
+          )}
           <Controller
             control={control}
             defaultValue=""

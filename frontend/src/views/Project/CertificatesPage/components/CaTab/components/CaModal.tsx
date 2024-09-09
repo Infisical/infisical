@@ -204,6 +204,11 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     >
       <ModalContent title={`${ca ? "View" : "Create"} Private CA`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
+          {ca && (
+            <FormControl label="CA ID">
+              <Input value={ca.id} isDisabled className="bg-white/[0.07]" />
+            </FormControl>
+          )}
           <Controller
             control={control}
             name="type"
