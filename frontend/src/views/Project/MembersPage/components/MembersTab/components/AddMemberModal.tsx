@@ -88,10 +88,13 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         await addMembersToProject({
           inviteeEmails: selectedMembers.map((member) => member?.user.username!),
           organizationId: orgId,
-          projects: projectRoleSlugs.map((roleSlug) => ({
-            id: workspaceId,
-            projectRoleSlug: roleSlug
-          }))
+          organizationRoleSlug: ProjectMembershipRole.Member, // ? This doesn't apply in this case, because we know the users being added are already part of the organization
+          projects: [
+            {
+              id: workspaceId,
+              projectRoleSlug: projectRoleSlugs
+            }
+          ]
         });
       }
       createNotification({
