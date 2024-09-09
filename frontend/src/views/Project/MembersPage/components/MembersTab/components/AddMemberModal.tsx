@@ -91,7 +91,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           organizationRoleSlug: ProjectMembershipRole.Member, // ? This doesn't apply in this case, because we know the users being added are already part of the organization
           projects: [
             {
-              id: workspaceId,
+              slug: currentWorkspace.slug,
+              id: currentWorkspace.id,
               projectRoleSlug: projectRoleSlugs
             }
           ]
