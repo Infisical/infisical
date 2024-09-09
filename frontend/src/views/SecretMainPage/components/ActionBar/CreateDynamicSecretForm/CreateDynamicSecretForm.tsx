@@ -14,6 +14,7 @@ import { AwsIamInputForm } from "./AwsIamInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
+import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
 import { RedisInputForm } from "./RedisInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 
@@ -60,6 +61,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiMongodb size="2rem" />,
     provider: DynamicSecretProviders.MongoAtlas,
     title: "Mongo Atlas"
+  },
+  {
+    icon: <SiMongodb size="2rem" />,
+    provider: DynamicSecretProviders.MongoDB,
+    title: "Mongo DB"
   },
   {
     icon: <SiElasticsearch size="2rem" />,
@@ -244,6 +250,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <ElasticSearchInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.MongoDB && (
+              <motion.div
+                key="dynamic-mongodb-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <MongoDBDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

@@ -22,7 +22,8 @@ export enum DynamicSecretProviders {
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
   MongoAtlas = "mongo-db-atlas",
-  ElasticSearch = "elastic-search"
+  ElasticSearch = "elastic-search",
+  MongoDB = "mongo-db"
 }
 
 export enum SqlProviders {
@@ -118,13 +119,30 @@ export type TDynamicSecretProvider =
       };
     }
   | {
+      type: DynamicSecretProviders.MongoDB;
+      inputs: {
+        host: string;
+        port?: number;
+        database: string;
+        username: string;
+        password: string;
+        ca?: string | undefined;
+        roles: (
+          | {
+              databaseName: string;
+              roleName: string;
+            }
+          | string
+        )[];
+      };
+    }
+  | {
       type: DynamicSecretProviders.ElasticSearch;
       inputs: {
         host: string;
         port: number;
         ca?: string | undefined;
         roles: string[];
-
         auth:
           | {
               type: "user";
