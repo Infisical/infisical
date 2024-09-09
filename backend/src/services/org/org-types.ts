@@ -34,7 +34,7 @@ export type TInviteUserToOrgDTO = {
   organizationRoleSlug: string;
   projects?: {
     id: string;
-    projectRoleSlug?: string;
+    projectRoleSlug?: string[];
   }[];
 };
 

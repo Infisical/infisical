@@ -21,7 +21,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         projects: z
           .object({
             id: z.string(),
-            projectRoleSlug: z.string().default(ProjectMembershipRole.Member)
+            projectRoleSlug: z.string().array().default([ProjectMembershipRole.Member])
           })
           .array()
           .optional(),

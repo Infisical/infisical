@@ -12,6 +12,7 @@ import {
   SecretKeyEncoding,
   TableName,
   TProjectMemberships,
+  TProjectUserMembershipRolesInsert,
   TUsers
 } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
@@ -88,7 +89,7 @@ type TOrgServiceFactoryDep = {
     "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
   >;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProject">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
@@ -652,18 +653,32 @@ export const orgServiceFactory = ({
         if (!userWithEncryptionKeyInvitedToProject.length) continue;
 
         // validate custom project role
-        const invitedProjectRole =
-          invitedProjects.find((el) => el.id === project.id)?.projectRoleSlug || ProjectMembershipRole.Member;
-        const isCustomProjectRole = !Object.values(ProjectMembershipRole).includes(
-          invitedProjectRole as ProjectMembershipRole
+        const invitedProjectRoles = invitedProjects.find((el) => el.id === project.id)?.projectRoleSlug || [
+          ProjectMembershipRole.Member
+        ];
+
+        const customProjectRoles = invitedProjectRoles.filter(
+          (role) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
         );
-        if (isCustomProjectRole) {
+        const hasCustomRole = Boolean(customProjectRoles.length);
+        if (hasCustomRole) {
           if (!plan?.rbac)
             throw new BadRequestError({
               message:
                 "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
             });
         }
+
+        const customRoles = hasCustomRole
+          ? await projectRoleDAL.find({
+              projectId,
+              $in: { slug: customProjectRoles.map((role) => role) }
+            })
+          : [];
+        if (customRoles.length !== customProjectRoles.length)
+          throw new BadRequestError({ message: "Custom role not found" });
+
+        const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
         const ghostUser = await projectDAL.findProjectGhostUser(projectId, tx);
         if (!ghostUser) {
@@ -698,7 +713,7 @@ export const orgServiceFactory = ({
           userPrivateKey: botPrivateKey,
           members: userWithEncryptionKeyInvitedToProject.map((userEnc) => ({
             orgMembershipId: userEnc.userId,
-            projectMembershipRole: invitedProjectRole as ProjectMembershipRole,
+            projectMembershipRole: ProjectMembershipRole.Admin,
             userPublicKey: userEnc.publicKey
           }))
         });
@@ -712,17 +727,18 @@ export const orgServiceFactory = ({
         );
         newProjectMemberships.push(...projectMemberships);
 
-        let customRoleId: string;
-        const projectRole = isCustomProjectRole ? ProjectMembershipRole.Custom : invitedProjectRole;
-        if (isCustomProjectRole) {
-          const customRole = await projectRoleDAL.findOne({ slug: invitedProjectRole, projectId });
-          if (!customRole) throw new BadRequestError({ name: "Invite membership", message: "Project role not found" });
-          customRoleId = customRole.id;
-        }
-        await projectUserMembershipRoleDAL.insertMany(
-          projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: projectRole, customRoleId })),
-          tx
-        );
+        const sanitizedProjectMembershipRoles: TProjectUserMembershipRolesInsert[] = [];
+        invitedProjectRoles.forEach((projectRole) => {
+          const isCustomRole = Boolean(customRolesGroupBySlug?.[projectRole]?.[0]);
+          projectMemberships.forEach((membership) => {
+            sanitizedProjectMembershipRoles.push({
+              projectMembershipId: membership.id,
+              role: isCustomRole ? ProjectMembershipRole.Custom : projectRole,
+              customRoleId: customRolesGroupBySlug[projectRole] ? customRolesGroupBySlug[projectRole][0].id : null
+            });
+          });
+        });
+        await projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
 
         await projectKeyDAL.insertMany(
           newWsMembers.map((el) => ({
