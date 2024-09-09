@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, TextArea } from "@app/components/v2";
+import { Button, FormControl, IconButton, Input, TextArea, Tooltip } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
@@ -258,7 +259,19 @@ export const IdentityOidcAuthForm = ({
         control={control}
         name="boundSubject"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Subject" isError={Boolean(error)} errorText={error?.message}>
+          <FormControl
+            label="Subject"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            icon={
+              <Tooltip
+                className="text-center"
+                content={<span>This field supports glob patterns</span>}
+              >
+                <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+              </Tooltip>
+            }
+          >
             <Input {...field} type="text" />
           </FormControl>
         )}
@@ -267,7 +280,19 @@ export const IdentityOidcAuthForm = ({
         control={control}
         name="boundAudiences"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Audiences" isError={Boolean(error)} errorText={error?.message}>
+          <FormControl
+            label="Audiences"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            icon={
+              <Tooltip
+                className="text-center"
+                content={<span>This field supports glob patterns</span>}
+              >
+                <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+              </Tooltip>
+            }
+          >
             <Input {...field} type="text" placeholder="service1, service2" />
           </FormControl>
         )}
@@ -282,6 +307,16 @@ export const IdentityOidcAuthForm = ({
                 <FormControl
                   className="mb-0 flex-grow"
                   label={index === 0 ? "Claims" : undefined}
+                  icon={
+                    index === 0 ? (
+                      <Tooltip
+                        className="text-center"
+                        content={<span>This field supports glob patterns</span>}
+                      >
+                        <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                      </Tooltip>
+                    ) : undefined
+                  }
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >

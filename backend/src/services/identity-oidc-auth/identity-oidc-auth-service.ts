@@ -28,6 +28,7 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TOrgBotDALFactory } from "../org/org-bot-dal";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
+import { doesFieldValueMatchOidcPolicy } from "./identity-oidc-auth-fns";
 import {
   TAttachOidcAuthDTO,
   TGetOidcAuthDTO,
@@ -123,7 +124,7 @@ export const identityOidcAuthServiceFactory = ({
     }) as Record<string, string>;
 
     if (identityOidcAuth.boundSubject) {
-      if (tokenData.sub !== identityOidcAuth.boundSubject) {
+      if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
         throw new ForbiddenRequestError({
           message: "Access denied: OIDC subject not allowed."
         });
@@ -131,7 +132,11 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     if (identityOidcAuth.boundAudiences) {
-      if (!identityOidcAuth.boundAudiences.split(", ").includes(tokenData.aud)) {
+      if (
+        !identityOidcAuth.boundAudiences
+          .split(", ")
+          .some((policyValue) => doesFieldValueMatchOidcPolicy(tokenData.aud, policyValue))
+      ) {
         throw new ForbiddenRequestError({
           message: "Access denied: OIDC audience not allowed."
         });
@@ -142,7 +147,9 @@ export const identityOidcAuthServiceFactory = ({
       Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
         // handle both single and multi-valued claims
-        if (!claimValue.split(", ").some((claimEntry) => tokenData[claimKey] === claimEntry)) {
+        if (
+          !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(tokenData[claimKey], claimEntry))
+        ) {
           throw new ForbiddenRequestError({
             message: "Access denied: OIDC claim not allowed."
           });
