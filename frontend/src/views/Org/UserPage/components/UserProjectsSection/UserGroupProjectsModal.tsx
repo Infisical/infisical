@@ -1,12 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { faFolder, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   EmptyState,
   Input,
   Modal,
@@ -20,8 +17,6 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { TGroupWithProjectMemberships } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -45,8 +40,6 @@ export const UserGroupsProjectsModal = ({
 
   const [filteredProjectName, setFilteredProjectName] = useState("");
 
-  const { mutateAsync: deleteGroupFromProject } = useDeleteGroupFromWorkspace();
-
   const filteredMemberships = useMemo(() => {
     if (!popupData?.group) return [];
 
@@ -55,27 +48,6 @@ export const UserGroupsProjectsModal = ({
     });
   }, [filteredProjectName, popupData?.group?.projectMemberships]);
 
-  const removeProjectFromGroup = useCallback(
-    async (projectSlug: string) => {
-      await deleteGroupFromProject({
-        groupSlug: popupData.groupSlug,
-        projectSlug,
-        username: popupData.username
-      });
-
-      createNotification({
-        type: "success",
-        text: "Project removed from group"
-      });
-
-      // Manually remove the project from the list, since the query invalidation won't trigger the popup data to be updated
-      popupData.group.projectMemberships = popupData.group.projectMemberships.filter(
-        (membership) => membership.project.slug !== projectSlug
-      );
-    },
-    [popupData]
-  );
-
   return (
     <Modal
       isOpen={popUp.userGroupsProjects.isOpen}
@@ -83,7 +55,10 @@ export const UserGroupsProjectsModal = ({
         handlePopUpToggle("userGroupsProjects", open);
       }}
     >
-      <ModalContent title="Manage Group Projects">
+      <ModalContent
+        title="View group projects"
+        subTitle="View which projects this group has access to"
+      >
         <Input
           value={filteredProjectName}
           onChange={(e) => setFilteredProjectName(e.target.value)}
@@ -95,57 +70,33 @@ export const UserGroupsProjectsModal = ({
             <THead>
               <Tr>
                 <Th>Project</Th>
+                <Th>Roles</Th>
               </Tr>
             </THead>
             <TBody className="w-full">
               {filteredMemberships?.map(({ project, roles }) => {
                 return (
-                  <Tr
-                    className="flex w-full items-center justify-between"
-                    key={`group-project-${project.id}`}
-                  >
+                  <Tr className="" key={`group-project-${project.id}`}>
                     <Td>
                       <Link href={`/project/${project.id}/secrets/overview`}>
                         <p className="cursor-pointer font-medium capitalize transition-all hover:text-primary-500">
                           {project.name}
                         </p>
                       </Link>
-                      {/* If there's only one role, display the role.name. If more, display role.name (+X more) */}
+                    </Td>
+                    <Td>
                       <Tooltip
                         isDisabled={roles.length === 1}
                         content={roles
                           .map((role) => role.role.charAt(0).toUpperCase() + role.role.slice(1))
                           .join(", ")}
                       >
-                        <p className="text-xs capitalize">
+                        <p className="w-fit capitalize">
                           {roles.length === 1
                             ? roles[0].role
                             : `${roles[0].role} (+${roles.length - 1} more)`}
                         </p>
                       </Tooltip>
-                    </Td>
-                    <Td className="flex h-full items-center justify-end">
-                      <OrgPermissionCan
-                        I={OrgPermissionActions.Edit}
-                        a={OrgPermissionSubjects.Groups}
-                      >
-                        {(isAllowed) => {
-                          return (
-                            <div className="flex h-full items-center">
-                              <Button
-                                isDisabled={!isAllowed}
-                                colorSchema="primary"
-                                size="xs"
-                                variant="outline_bg"
-                                type="submit"
-                                onClick={() => removeProjectFromGroup(project.slug)}
-                              >
-                                Remove group membership
-                              </Button>
-                            </div>
-                          );
-                        }}
-                      </OrgPermissionCan>
                     </Td>
                   </Tr>
                 );
