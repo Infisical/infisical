@@ -567,8 +567,8 @@ const syncSecretsAWSParameterStore = async ({
   });
   ssm.config.update(config);
 
-  const metadata = z.record(z.any()).parse(integration.metadata || {});
-  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter> = {};
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  const awsParameterStoreSecretsObj: Record<string, AWS.SSM.Parameter & { KeyId?: string }> = {};
   logger.info(
     `getIntegrationSecrets: integration sync triggered for ssm with [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [shouldDisableDelete=${metadata.shouldDisableDelete}]`
   );
@@ -598,18 +598,57 @@ const syncSecretsAWSParameterStore = async ({
     nextToken = parameters.NextToken;
   }
 
-  logger.info(
-    `getIntegrationSecrets: all fetched keys from AWS SSM [projectId=${projectId}] [environment=${
-      integration.environment.slug
-    }]  [secretPath=${integration.secretPath}] [awsParameterStoreSecretsObj=${Object.keys(
-      awsParameterStoreSecretsObj
-    ).join(",")}]`
-  );
-  logger.info(
-    `getIntegrationSecrets: all secrets from Infisical to send to AWS SSM [projectId=${projectId}] [environment=${
-      integration.environment.slug
-    }]  [secretPath=${integration.secretPath}] [secrets=${Object.keys(secrets).join(",")}]`
-  );
+  let areParametersKmsKeysFetched = false;
+
+  if (metadata.kmsKeyId) {
+    // we put this inside a try catch so that existing integrations without the ssm:DescribeParameters
+    // AWS permission will not break
+    try {
+      let hasNextDescribePage = true;
+      let describeNextToken: string | undefined;
+
+      while (hasNextDescribePage) {
+        const parameters = await ssm
+          .describeParameters({
+            MaxResults: 10,
+            NextToken: describeNextToken,
+            ParameterFilters: [
+              {
+                Key: "Path",
+                Option: "OneLevel",
+                Values: [integration.path as string]
+              }
+            ]
+          })
+          .promise();
+
+        if (parameters.Parameters) {
+          parameters.Parameters.forEach((parameter) => {
+            if (parameter.Name) {
+              const secKey = parameter.Name.substring((integration.path as string).length);
+              awsParameterStoreSecretsObj[secKey].KeyId = parameter.KeyId;
+            }
+          });
+        }
+        areParametersKmsKeysFetched = true;
+        hasNextDescribePage = Boolean(parameters.NextToken);
+        describeNextToken = parameters.NextToken;
+      }
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((error as any).code === "AccessDeniedException") {
+        logger.error(
+          `AWS Parameter Store Error [integration=${integration.id}]: double check AWS account permissions (refer to the Infisical docs)`
+        );
+      }
+
+      response = {
+        isSynced: false,
+        syncMessage: (error as AWSError)?.message || "Error syncing with AWS Parameter Store"
+      };
+    }
+  }
+
   // Identify secrets to create
   // don't use Promise.all() and promise map here
   // it will cause rate limit
@@ -620,7 +659,7 @@ const syncSecretsAWSParameterStore = async ({
         // -> create secret
         if (secrets[key].value) {
           logger.info(
-            `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [key=${key}]`
+            `getIntegrationSecrets: create secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
           );
           await ssm
             .putParameter({
@@ -648,7 +687,7 @@ const syncSecretsAWSParameterStore = async ({
             } catch (err) {
               logger.error(
                 err,
-                `getIntegrationSecrets: create secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+                `getIntegrationSecrets: create secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
               );
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               if ((err as any).code === "AccessDeniedException") {
@@ -667,16 +706,23 @@ const syncSecretsAWSParameterStore = async ({
         // case: secret exists in AWS parameter store
       } else {
         logger.info(
-          `getIntegrationSecrets: update secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+          `getIntegrationSecrets: update secret in AWS SSM for [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
         );
-        // -> update secret
-        if (awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+
+        const shouldUpdateKms =
+          areParametersKmsKeysFetched &&
+          Boolean(metadata.kmsKeyId) &&
+          awsParameterStoreSecretsObj[key].KeyId !== metadata.kmsKeyId;
+
+        // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
+        if (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
               Type: "SecureString",
               Value: secrets[key].value,
-              Overwrite: true
+              Overwrite: true,
+              ...(metadata.kmsKeyId && { KeyId: metadata.kmsKeyId })
             })
             .promise();
         }
@@ -698,7 +744,7 @@ const syncSecretsAWSParameterStore = async ({
           } catch (err) {
             logger.error(
               err,
-              `getIntegrationSecrets: update secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}]`
+              `getIntegrationSecrets: update secret in AWS SSM for failed  [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]`
             );
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((err as any).code === "AccessDeniedException") {
@@ -728,11 +774,11 @@ const syncSecretsAWSParameterStore = async ({
     for (const key in awsParameterStoreSecretsObj) {
       if (Object.hasOwn(awsParameterStoreSecretsObj, key)) {
         logger.info(
-          `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=2]`
+          `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=2]`
         );
         if (!(key in secrets)) {
           logger.info(
-            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=3]`
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=3]`
           );
           // case:
           // -> delete secret
@@ -742,7 +788,7 @@ const syncSecretsAWSParameterStore = async ({
             })
             .promise();
           logger.info(
-            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}]  [key=${key}] [step=4]`
+            `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=4]`
           );
         }
         await new Promise((resolve) => {
