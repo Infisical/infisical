@@ -184,7 +184,7 @@ export const auditLogQueueServiceFactory = ({
     });
 
   queueService.listen(QueueName.AuditLog, "failed", (_, err) => {
-    logger.error(err, `${QueueName.AuditLog}: Failed to do access token`);
+    logger.error(err, `${QueueName.AuditLog}: Failed to do audit log generation`);
   });
 
   return {
