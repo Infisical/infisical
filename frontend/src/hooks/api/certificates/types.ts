@@ -11,6 +11,7 @@ export type TCertificate = {
   serialNumber: string;
   notBefore: string;
   notAfter: string;
+  keyUsages: CertKeyUsage[];
 };
 
 export type TDeleteCertDTO = {
@@ -35,3 +36,15 @@ export enum CertKeyUsage {
   ENCIPHER_ONLY = "encipherOnly",
   DECIPHER_ONLY = "decipherOnly"
 }
+
+export const KEY_USAGES_OPTIONS = [
+  { value: CertKeyUsage.DIGITAL_SIGNATURE, label: "Digital Signature" },
+  { value: CertKeyUsage.KEY_ENCIPHERMENT, label: "Key Encipherment" },
+  { value: CertKeyUsage.NON_REPUDIATION, label: "Non Repudiation" },
+  { value: CertKeyUsage.DATA_ENCIPHERMENT, label: "Data Encipherment" },
+  { value: CertKeyUsage.KEY_AGREEMENT, label: "Key Agreement" },
+  { value: CertKeyUsage.KEY_CERT_SIGN, label: "Certificate Sign" },
+  { value: CertKeyUsage.CRL_SIGN, label: "CRL Sign" },
+  { value: CertKeyUsage.ENCIPHER_ONLY, label: "Encipher Only" },
+  { value: CertKeyUsage.DECIPHER_ONLY, label: "Decipher Only" }
+] as const;

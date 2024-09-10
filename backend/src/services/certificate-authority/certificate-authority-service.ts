@@ -19,7 +19,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertKeyUsage, CertStatus } from "../certificate/certificate-types";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../certificate-template/certificate-template-fns";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
@@ -1052,7 +1052,8 @@ export const certificateAuthorityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    keyUsages
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorities | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -1170,13 +1171,36 @@ export const certificateAuthorityServiceFactory = ({
 
     const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
 
+    let selectedKeyUsages: CertKeyUsage[] = keyUsages ?? [];
+    if (keyUsages === undefined && !certificateTemplate) {
+      selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+    }
+
+    if (keyUsages === undefined && certificateTemplate) {
+      selectedKeyUsages = (certificateTemplate.keyUsages ?? []) as CertKeyUsage[];
+    }
+
+    if (keyUsages?.length && certificateTemplate) {
+      const validKeyUsages = certificateTemplate.keyUsages || [];
+      if (keyUsages.some((keyUsage) => !validKeyUsages.includes(keyUsage))) {
+        throw new BadRequestError({
+          message: "Invalid key usage value for certificate"
+        });
+      }
+      selectedKeyUsages = keyUsages;
+    }
+
     const extensions: x509.Extension[] = [
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
       new x509.CRLDistributionPointsExtension([distributionPointUrl]),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
+
+    const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
+    if (keyUsagesBitValue) {
+      extensions.push(new x509.KeyUsagesExtension(keyUsagesBitValue, true));
+    }
 
     let altNamesArray: {
       type: "email" | "dns";
@@ -1259,7 +1283,8 @@ export const certificateAuthorityServiceFactory = ({
           altNames,
           serialNumber,
           notBefore: notBeforeDate,
-          notAfter: notAfterDate
+          notAfter: notAfterDate,
+          keyUsages: selectedKeyUsages
         },
         tx
       );

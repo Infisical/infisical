@@ -9,11 +9,11 @@ export const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
   commonName: true,
   subjectAlternativeName: true,
   pkiCollectionId: true,
-  ttl: true
+  ttl: true,
+  keyUsages: true
 }).merge(
   z.object({
     projectId: z.string(),
-    caName: z.string(),
-    keyUsages: z.string().array()
+    caName: z.string()
   })
 );

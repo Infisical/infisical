@@ -4,7 +4,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertKeyUsage } from "../certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -97,6 +97,7 @@ export type TIssueCertFromCaDTO = {
   ttl: string;
   notBefore?: string;
   notAfter?: string;
+  keyUsages?: CertKeyUsage[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO =

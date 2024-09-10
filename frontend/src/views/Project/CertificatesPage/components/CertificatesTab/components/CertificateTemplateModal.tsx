@@ -33,7 +33,7 @@ import {
   useUpdateCertTemplate
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
-import { CertKeyUsage } from "@app/hooks/api/certificates/types";
+import { CertKeyUsage, KEY_USAGES_OPTIONS } from "@app/hooks/api/certificates/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const validateTemplateRegexField = z
@@ -76,18 +76,6 @@ type Props = {
     state?: boolean
   ) => void;
 };
-
-const KEY_USAGES_OPTIONS = [
-  { value: CertKeyUsage.DIGITAL_SIGNATURE, label: "Digital Signature" },
-  { value: CertKeyUsage.KEY_ENCIPHERMENT, label: "Key Encipherment" },
-  { value: CertKeyUsage.NON_REPUDIATION, label: "Non Repudiation" },
-  { value: CertKeyUsage.DATA_ENCIPHERMENT, label: "Data Encipherment" },
-  { value: CertKeyUsage.KEY_AGREEMENT, label: "Key Agreement" },
-  { value: CertKeyUsage.KEY_CERT_SIGN, label: "Key Certification Sign" },
-  { value: CertKeyUsage.CRL_SIGN, label: "CRL Sign" },
-  { value: CertKeyUsage.ENCIPHER_ONLY, label: "Encipher Only" },
-  { value: CertKeyUsage.DECIPHER_ONLY, label: "Decipher Only" }
-] as const;
 
 export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Props) => {
   const { currentWorkspace } = useWorkspace();

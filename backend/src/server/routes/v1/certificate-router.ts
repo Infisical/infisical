@@ -7,7 +7,7 @@ import { CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CrlReason } from "@app/services/certificate/certificate-types";
+import { CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
   validateCaDateField
@@ -86,7 +86,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .refine((val) => ms(val) > 0, "TTL must be a positive number")
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.ttl),
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notBefore),
-          notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notAfter)
+          notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notAfter),
+          keyUsages: z.nativeEnum(CertKeyUsage).array().optional()
         })
         .refine(
           (data) => {
