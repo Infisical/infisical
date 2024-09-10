@@ -7,7 +7,7 @@ const isValidDate = (dateString: string) => {
 
 export const validateCaDateField = z.string().trim().refine(isValidDate, { message: "Invalid date format" });
 
-export const hostnameRegex = /^(?!:\/\/)([a-zA-Z0-9-_]{1,63}\.?)+(?!:\/\/)([a-zA-Z]{2,63})$/;
+export const hostnameRegex = /^(?!:\/\/)(\*\.)?([a-zA-Z0-9-_]{1,63}\.?)+(?!:\/\/)([a-zA-Z]{2,63})$/;
 export const validateAltNamesField = z
   .string()
   .trim()
