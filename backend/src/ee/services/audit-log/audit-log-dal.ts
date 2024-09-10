@@ -70,6 +70,18 @@ export const auditLogDALFactory = (db: TDbClient) => {
       try {
         const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
           .where("expiresAt", "<", today)
+          .orWhereNotExists((qb) => {
+            void qb
+              .select("*")
+              .from(TableName.Project)
+              .where(`${TableName.Project}.id`, "=", db.ref("projectId").withSchema(TableName.AuditLog));
+          })
+          .orWhereNotExists((qb) => {
+            void qb
+              .select("*")
+              .from(TableName.Organization)
+              .where(`${TableName.Organization}.id`, "=", db.ref("orgId").withSchema(TableName.AuditLog));
+          })
           .select("id")
           .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
         // eslint-disable-next-line no-await-in-loop
