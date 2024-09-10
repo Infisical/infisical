@@ -15,7 +15,9 @@ export const KeyStorePrefixes = {
   KmsOrgDataKeyCreation: "kms-org-data-key-creation-lock",
   WaitUntilReadyKmsOrgKeyCreation: "wait-until-ready-kms-org-key-creation-",
   WaitUntilReadyKmsOrgDataKeyCreation: "wait-until-ready-kms-org-data-key-creation-",
+  AuditLogBatch: "audit-log-batch:pending-to-db",
 
+  AuditLogBatchLock: "audit-log-batch:write-to-db-lock",
   SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
@@ -82,6 +84,41 @@ export const keyStoreFactory = (redisUrl: string) => {
     }
   };
 
+  // redis list operation
+  const listPrepend = async (key: string, value: string[]) => {
+    return redis.lpush(key, ...value);
+  };
+
+  const listAppend = async (key: string, value: string[]) => {
+    return redis.rpush(key, ...value);
+  };
+
+  const listTailPop = async (key: string, count?: number) => {
+    if (!count) {
+      return redis.rpop(key);
+    }
+    return redis.rpop(key, count);
+  };
+
+  const listHeadPop = async (key: string, count?: number) => {
+    if (!count) {
+      return redis.lpop(key);
+    }
+    return redis.lpop(key, count);
+  };
+
+  const listLength = async (key: string) => {
+    return redis.llen(key);
+  };
+
+  const listRemove = async (key: string, start: number, stop: number) => {
+    return redis.ltrim(key, start, stop);
+  };
+
+  const listGetElements = async (key: string, start: number, stop: number) => {
+    return redis.lrange(key, start, stop);
+  };
+
   return {
     setItem,
     getItem,
@@ -91,6 +128,13 @@ export const keyStoreFactory = (redisUrl: string) => {
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },
-    waitTillReady
+    waitTillReady,
+    listAppend,
+    listPrepend,
+    listTailPop,
+    listHeadPop,
+    listLength,
+    listRemove,
+    listGetElements
   };
 };

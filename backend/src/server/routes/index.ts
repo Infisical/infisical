@@ -358,7 +358,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamDAL,
+    keyStore
   });
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const auditLogStreamService = auditLogStreamServiceFactory({
@@ -1159,6 +1160,7 @@ export const registerRoutes = async (
   await dailyResourceCleanUp.startCleanUp();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await kmsService.startService();
+  await auditLogQueue.startPeriodicAuditLogBatchWriteToDB();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
