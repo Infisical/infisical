@@ -12,6 +12,18 @@ export enum CertKeyAlgorithm {
   ECDSA_P384 = "EC_secp384r1"
 }
 
+export enum CertKeyUsage {
+  DIGITAL_SIGNATURE = "digitalSignature",
+  KEY_ENCIPHERMENT = "keyEncipherment",
+  NON_REPUDIATION = "nonRepudiation",
+  DATA_ENCIPHERMENT = "dataEncipherment",
+  KEY_AGREEMENT = "keyAgreement",
+  KEY_CERT_SIGN = "keyCertSign",
+  CRL_SIGN = "cRLSign",
+  ENCIPHER_ONLY = "encipherOnly",
+  DECIPHER_ONLY = "decipherOnly"
+}
+
 export enum CrlReason {
   UNSPECIFIED = "UNSPECIFIED",
   KEY_COMPROMISE = "KEY_COMPROMISE",

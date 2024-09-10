@@ -1,3 +1,5 @@
+import { CertKeyUsage } from "../certificates/types";
+
 export type TCertificateTemplate = {
   id: string;
   caId: string;
@@ -8,6 +10,7 @@ export type TCertificateTemplate = {
   commonName: string;
   subjectAlternativeName: string;
   ttl: string;
+  keyUsages: CertKeyUsage[];
 };
 
 export type TCreateCertificateTemplateDTO = {
@@ -18,6 +21,7 @@ export type TCreateCertificateTemplateDTO = {
   subjectAlternativeName: string;
   ttl: string;
   projectId: string;
+  keyUsages: CertKeyUsage[];
 };
 
 export type TUpdateCertificateTemplateDTO = {
@@ -29,6 +33,7 @@ export type TUpdateCertificateTemplateDTO = {
   subjectAlternativeName?: string;
   ttl?: string;
   projectId: string;
+  keyUsages?: CertKeyUsage[];
 };
 
 export type TDeleteCertificateTemplateDTO = {

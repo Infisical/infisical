@@ -23,3 +23,15 @@ export type TRevokeCertDTO = {
   serialNumber: string;
   revocationReason: string;
 };
+
+export enum CertKeyUsage {
+  DIGITAL_SIGNATURE = "digitalSignature",
+  KEY_ENCIPHERMENT = "keyEncipherment",
+  NON_REPUDIATION = "nonRepudiation",
+  DATA_ENCIPHERMENT = "dataEncipherment",
+  KEY_AGREEMENT = "keyAgreement",
+  KEY_CERT_SIGN = "keyCertSign",
+  CRL_SIGN = "cRLSign",
+  ENCIPHER_ONLY = "encipherOnly",
+  DECIPHER_ONLY = "decipherOnly"
+}

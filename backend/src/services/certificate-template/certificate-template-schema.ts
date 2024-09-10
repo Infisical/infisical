@@ -13,6 +13,7 @@ export const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
 }).merge(
   z.object({
     projectId: z.string(),
-    caName: z.string()
+    caName: z.string(),
+    keyUsages: z.string().array()
   })
 );

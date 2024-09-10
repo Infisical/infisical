@@ -50,7 +50,9 @@ export const certificateTemplateDALFactory = (db: TDbClient) => {
         )
         .first();
 
-      return certTemplate;
+      if (certTemplate) {
+        return { ...certTemplate, keyUsages: certTemplate.keyUsages || [] };
+      }
     } catch (error) {
       throw new DatabaseError({ error, name: "Get certificate template by ID" });
     }
