@@ -123,10 +123,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await getClient(providerInputs);
 
-    const infoResponse = await connection
-      .get("/whoami")
-      .then(() => true)
-      .catch(() => false);
+    const infoResponse = await connection.get("/whoami").then(() => true);
 
     return infoResponse;
   };
