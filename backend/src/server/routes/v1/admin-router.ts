@@ -132,29 +132,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/integrations/slack/bot-creation-url",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      response: {
-        200: z.string()
-      }
-    },
-    onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
-        verifySuperAdmin(req, res, done);
-      });
-    },
-    handler: async () => {
-      const url = await server.services.superAdmin.getCustomSlackBotCreationUrl();
-
-      return url;
-    }
-  });
-
-  server.route({
-    method: "GET",
     url: "/integrations/slack/config",
     config: {
       rateLimit: readLimit

@@ -1,11 +1,6 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
 
 import { UnauthorizedError } from "@app/lib/errors";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
-import { triggerSlackNotification } from "@app/services/slack/slack-fns";
-import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 
 import { TVerifyPermission } from "./access-approval-request-types";
 
@@ -55,68 +50,4 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
     secretPath: permissionSecretPath,
     accessTypes: requestedPermissions.filter(filterUnique)
   };
-};
-
-export const triggerAccessRequestSlackNotif = async ({
-  projectId,
-  projectName,
-  requesterFullName,
-  isTemporary,
-  requesterEmail,
-  secretPath,
-  environment,
-  permissions,
-  approvalUrl,
-  projectDAL,
-  kmsService,
-  projectSlackConfigDAL
-}: {
-  projectId: string;
-  projectName: string;
-  requesterFullName: string;
-  isTemporary: boolean;
-  requesterEmail: string;
-  secretPath: string;
-  environment: string;
-  permissions: string[];
-  approvalUrl: string;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-}) => {
-  const messageBody = `${requesterFullName} (${requesterEmail}) has requested ${
-    isTemporary ? "temporary" : "permanent"
-  } access to ${secretPath} in the ${environment} environment of ${projectName}.
-
-The following permissions are requested: ${permissions.join(", ")}
-
-View the request and approve or deny it <${approvalUrl}|here>.`;
-
-  const payloadBlocks = [
-    {
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: "New access approval request pending for review",
-        emoji: true
-      }
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: messageBody
-      }
-    }
-  ];
-
-  await triggerSlackNotification({
-    projectId,
-    projectDAL,
-    kmsService,
-    payloadMessage: messageBody,
-    projectSlackConfigDAL,
-    payloadBlocks,
-    feature: SlackTriggerFeature.ACCESS_REQUEST
-  });
 };

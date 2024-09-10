@@ -10,6 +10,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { triggerSlackNotification } from "@app/services/slack/slack-fns";
+import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -20,7 +22,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
-import { triggerAccessRequestSlackNotif, verifyRequestedPermissions } from "./access-approval-request-fns";
+import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import {
   ApprovalStatus,
@@ -178,19 +180,24 @@ export const accessApprovalRequestServiceFactory = ({
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const approvalUrl = `${cfg.SITE_URL}/project/${project.id}/approval`;
 
-      await triggerAccessRequestSlackNotif({
+      await triggerSlackNotification({
         projectId: project.id,
-        projectName: project.name,
-        requesterFullName,
-        isTemporary,
-        requesterEmail: requestedByUser.email as string,
-        secretPath,
-        environment: envSlug,
-        permissions: accessTypes,
-        approvalUrl,
+        projectSlackConfigDAL,
         projectDAL,
         kmsService,
-        projectSlackConfigDAL
+        notification: {
+          type: SlackTriggerFeature.ACCESS_REQUEST,
+          payload: {
+            projectName: project.name,
+            requesterFullName,
+            isTemporary,
+            requesterEmail: requestedByUser.email as string,
+            secretPath,
+            environment: envSlug,
+            permissions: accessTypes,
+            approvalUrl
+          }
+        }
       });
 
       await smtpService.sendMail({

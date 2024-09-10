@@ -12,7 +12,6 @@ import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgServiceFactory } from "../org/org-service";
-import { getCustomSlackBotManifest } from "../slack/slack-fns";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import { LoginMethod, TAdminGetUsersDTO, TAdminSignUpDTO } from "./super-admin-types";
@@ -90,9 +89,7 @@ export const superAdminServiceFactory = ({
     data: TSuperAdminUpdate & { slackClientId?: string; slackClientSecret?: string },
     userId: string
   ) => {
-    const updatedData = {
-      ...data
-    };
+    const updatedData = data;
 
     if (data.enabledLoginMethods) {
       const superAdminUser = await userDAL.findById(userId);
@@ -263,12 +260,6 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
-  const getCustomSlackBotCreationUrl = async () => {
-    return `https://api.slack.com/apps?new_app=1&manifest_json=${encodeURIComponent(
-      JSON.stringify(getCustomSlackBotManifest())
-    )}`;
-  };
-
   const getAdminSlackConfig = async () => {
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
 
@@ -301,7 +292,6 @@ export const superAdminServiceFactory = ({
     adminSignUp,
     getUsers,
     deleteUser,
-    getCustomSlackBotCreationUrl,
     getAdminSlackConfig
   };
 };

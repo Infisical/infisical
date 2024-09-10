@@ -121,7 +121,11 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         </FormControl>
       )}
       <div className="mt-6 flex items-center space-x-4">
-        <Button type="submit" isLoading={isSubmitting || isConnectLoading} isDisabled={!isDirty}>
+        <Button
+          type="submit"
+          isLoading={isSubmitting || isConnectLoading}
+          isDisabled={!isDirty || isConnectLoading || isSubmitting}
+        >
           {slackIntegration ? "Save" : "Connect Slack"}
         </Button>
         <Button variant="outline_bg" onClick={onClose}>

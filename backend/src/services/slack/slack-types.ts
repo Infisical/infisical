@@ -52,3 +52,28 @@ export enum SlackTriggerFeature {
   SECRET_APPROVAL = "secret-approval",
   ACCESS_REQUEST = "access-request"
 }
+
+export type TSlackNotification =
+  | {
+      type: SlackTriggerFeature.SECRET_APPROVAL;
+      payload: {
+        userEmail: string;
+        environment: string;
+        secretPath: string;
+        requestId: string;
+        projectId: string;
+      };
+    }
+  | {
+      type: SlackTriggerFeature.ACCESS_REQUEST;
+      payload: {
+        requesterFullName: string;
+        requesterEmail: string;
+        isTemporary: boolean;
+        secretPath: string;
+        environment: string;
+        projectName: string;
+        permissions: string[];
+        approvalUrl: string;
+      };
+    };

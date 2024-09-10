@@ -48,6 +48,8 @@ import {
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { triggerSlackNotification } from "@app/services/slack/slack-fns";
+import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -57,7 +59,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/pr
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
-import { sendApprovalEmailsFn, triggerSecretApprovalSlackNotif } from "./secret-approval-request-fns";
+import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
@@ -1073,15 +1075,22 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ id: policy.envId });
-    await triggerSecretApprovalSlackNotif({
+    const user = await userDAL.findById(secretApprovalRequest.committerUserId);
+    await triggerSlackNotification({
       projectId,
-      secretPath: policy.secretPath as string,
-      environment: env.name,
       projectDAL,
       kmsService,
-      secretApprovalRequest,
-      userDAL,
-      projectSlackConfigDAL
+      projectSlackConfigDAL,
+      notification: {
+        type: SlackTriggerFeature.SECRET_APPROVAL,
+        payload: {
+          userEmail: user.email as string,
+          environment: env.name,
+          secretPath,
+          projectId,
+          requestId: secretApprovalRequest.id
+        }
+      }
     });
 
     await sendApprovalEmailsFn({
@@ -1346,16 +1355,23 @@ export const secretApprovalRequestServiceFactory = ({
       return { ...doc, commits: approvalCommits };
     });
 
+    const user = await userDAL.findById(secretApprovalRequest.committerUserId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });
-    await triggerSecretApprovalSlackNotif({
-      secretPath: policy.secretPath as string,
-      environment: env.name,
+    await triggerSlackNotification({
       projectId,
       projectDAL,
       kmsService,
-      secretApprovalRequest,
-      userDAL,
-      projectSlackConfigDAL
+      projectSlackConfigDAL,
+      notification: {
+        type: SlackTriggerFeature.SECRET_APPROVAL,
+        payload: {
+          userEmail: user.email as string,
+          environment: env.name,
+          secretPath,
+          projectId,
+          requestId: secretApprovalRequest.id
+        }
+      }
     });
 
     await sendApprovalEmailsFn({

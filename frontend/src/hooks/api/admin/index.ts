@@ -4,9 +4,4 @@ export {
   useUpdateAdminSlackConfig,
   useUpdateServerConfig
 } from "./mutation";
-export {
-  useAdminGetUsers,
-  useGetAdminSlackConfig,
-  useGetCustomSlackAppCreationUrl,
-  useGetServerConfig
-} from "./queries";
+export { useAdminGetUsers, useGetAdminSlackConfig, useGetServerConfig } from "./queries";
