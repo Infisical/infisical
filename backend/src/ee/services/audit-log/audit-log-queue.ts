@@ -31,7 +31,7 @@ export type TAuditLogQueueServiceFactory = ReturnType<typeof auditLogQueueServic
 export const AUDIT_LOG_STREAM_TIMEOUT = secondsToMillis(5);
 const AUDIT_LOG_BATCH_SIZE = 10000;
 const AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_SPEED = secondsToMillis(10);
-const AUDIT_LOG_BATCH_WRITE_TO_DB_DELAYED_JOB_ID = "audit-log-write-to-db-delayed";
+const AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_JOB_ID = "audit-log-write-to-db-cycle";
 
 export const auditLogQueueServiceFactory = ({
   auditLogDAL,
@@ -179,7 +179,7 @@ export const auditLogQueueServiceFactory = ({
       removeOnComplete: true,
       repeat: {
         every: AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_SPEED,
-        key: AUDIT_LOG_BATCH_WRITE_TO_DB_DELAYED_JOB_ID
+        key: AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_JOB_ID
       }
     });
 
