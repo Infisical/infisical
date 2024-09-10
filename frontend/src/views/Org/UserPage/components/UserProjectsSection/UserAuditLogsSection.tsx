@@ -1,9 +1,10 @@
 import { useState } from "react";
+import Link from "next/link";
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton, Tooltip } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { EmptyState, IconButton, Tooltip } from "@app/components/v2";
+import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
 import { LogsSection } from "@app/views/Project/AuditLogsPage/components";
@@ -15,8 +16,10 @@ type Props = {
 export const UserAuditLogsSection = withPermission(
   ({ orgMembership }: Props) => {
     const [showFilter, setShowFilter] = useState(false);
+    const { subscription, isLoading } = useSubscription();
 
-    return (
+    // eslint-disable-next-line no-nested-ternary
+    return subscription?.auditLogs ? (
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
           <p className="text-lg font-semibold text-gray-200">Audit Logs</p>
@@ -43,7 +46,39 @@ export const UserAuditLogsSection = withPermission(
           isOrgAuditLogs
         />
       </div>
-    );
+    ) : !isLoading ? (
+      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 opacity-50">
+        <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+          <p className="text-lg font-semibold text-gray-200">Audit Logs</p>
+        </div>
+        <EmptyState
+          className="rounded-lg"
+          title={
+            <div>
+              <p>
+                Please{" "}
+                <Link
+                  href={
+                    subscription && subscription.slug !== null
+                      ? `/org/${orgMembership.organization}/billing`
+                      : "https://infisical.com/scheduledemo"
+                  }
+                  passHref
+                >
+                  <a
+                    className="cursor-pointer font-medium text-primary-500 transition-all hover:text-primary-600"
+                    target="_blank"
+                  >
+                    upgrade your subscription
+                  </a>
+                </Link>{" "}
+                to view audit logs.
+              </p>
+            </div>
+          }
+        />
+      </div>
+    ) : null;
   },
   { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Member }
 );

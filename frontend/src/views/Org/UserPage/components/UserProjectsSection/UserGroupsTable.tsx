@@ -9,10 +9,7 @@ import { UserGroupsRow } from "./UserGroupsRow";
 
 type Props = {
   orgMembership: OrgUser;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeUserFromGroup", "userGroupsProjects"]>,
-    data?: {}
-  ) => void;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<["removeUserFromGroup"]>, data?: {}) => void;
 };
 
 export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
@@ -24,14 +21,12 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
         <THead>
           <Tr>
             <Th>Name</Th>
-            <Th>Projects</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
           {groups?.map((group) => (
             <UserGroupsRow
-              orgMembership={orgMembership}
               key={`user-group-${group.id}`}
               group={group}
               handlePopUpOpen={handlePopUpOpen}

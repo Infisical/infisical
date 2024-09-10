@@ -6,7 +6,6 @@ import { useRemoveUserFromGroup } from "@app/hooks/api";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { UserGroupsProjectsModal } from "./UserGroupProjectsModal";
 import { UserGroupsTable } from "./UserGroupsTable";
 
 type Props = {
@@ -15,8 +14,7 @@ type Props = {
 
 export const UserGroupsSection = ({ orgMembership }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "removeUserFromGroup",
-    "userGroupsProjects"
+    "removeUserFromGroup"
   ] as const);
 
   const { mutateAsync: removeUserFromGroup } = useRemoveUserFromGroup();
@@ -65,8 +63,6 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
           return handleRemoveUserFromGroup(popupData.groupSlug);
         }}
       />
-
-      <UserGroupsProjectsModal handlePopUpToggle={handlePopUpToggle} popUp={popUp} />
     </>
   );
 };
