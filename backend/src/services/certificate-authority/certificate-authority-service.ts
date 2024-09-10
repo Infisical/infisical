@@ -41,6 +41,7 @@ import {
   TCreateCaDTO,
   TDeleteCaDTO,
   TGetCaCertDTO,
+  TGetCaCertificateTemplatesDTO,
   TGetCaCertsDTO,
   TGetCaCsrDTO,
   TGetCaDTO,
@@ -64,7 +65,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
-  certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById">;
+  certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -108,6 +109,7 @@ export const certificateAuthorityServiceFactory = ({
     notAfter,
     maxPathLength,
     keyAlgorithm,
+    requireTemplateForIssuance,
     actorId,
     actorAuthMethod,
     actor,
@@ -170,7 +172,8 @@ export const certificateAuthorityServiceFactory = ({
             notBefore: notBeforeDate,
             notAfter: notAfterDate,
             serialNumber
-          })
+          }),
+          requireTemplateForIssuance
         },
         tx
       );
@@ -302,7 +305,15 @@ export const certificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({ caId, status, actorId, actorAuthMethod, actor, actorOrgId }: TUpdateCaDTO) => {
+  const updateCaById = async ({
+    caId,
+    status,
+    requireTemplateForIssuance,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new BadRequestError({ message: "CA not found" });
 
@@ -319,7 +330,7 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const updatedCa = await certificateAuthorityDAL.updateById(caId, { status });
+    const updatedCa = await certificateAuthorityDAL.updateById(caId, { status, requireTemplateForIssuance });
 
     return updatedCa;
   };
@@ -1077,6 +1088,9 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (ca.requireTemplateForIssuance && !certificateTemplate) {
+      throw new BadRequestError({ message: "Certificate template is required for issuance" });
+    }
     const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
 
     if (ca.notAfter && new Date() > new Date(ca.notAfter)) {
@@ -1347,6 +1361,9 @@ export const certificateAuthorityServiceFactory = ({
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (ca.requireTemplateForIssuance && !certificateTemplate) {
+      throw new BadRequestError({ message: "Certificate template is required for issuance" });
+    }
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.activeCaCertId);
 
@@ -1568,6 +1585,40 @@ export const certificateAuthorityServiceFactory = ({
     };
   };
 
+  /**
+   * Return list of certificate templates for CA with id [caId].
+   */
+  const getCaCertificateTemplates = async ({
+    caId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCaCertificateTemplatesDTO) => {
+    const ca = await certificateAuthorityDAL.findById(caId);
+    if (!ca) throw new BadRequestError({ message: "CA not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      ca.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateTemplates
+    );
+
+    const certificateTemplates = await certificateTemplateDAL.find({ caId });
+
+    return {
+      certificateTemplates,
+      ca
+    };
+  };
+
   return {
     createCa,
     getCaById,
@@ -1580,6 +1631,7 @@ export const certificateAuthorityServiceFactory = ({
     signIntermediate,
     importCertToCa,
     issueCertFromCa,
-    signCertFromCa
+    signCertFromCa,
+    getCaCertificateTemplates
   };
 };

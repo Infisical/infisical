@@ -21,11 +21,11 @@ import { useWorkspace } from "@app/context";
 import {
   CaStatus,
   useCreateCertTemplate,
+  useGetCaById,
   useGetCertTemplate,
   useListWorkspaceCas,
   useListWorkspacePkiCollections,
-  useUpdateCertTemplate
-} from "@app/hooks/api";
+  useUpdateCertTemplate} from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -51,6 +51,7 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
+  caId: string;
   popUp: UsePopUpState<["certificateTemplate"]>;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["certificateTemplate"]>,
@@ -58,8 +59,11 @@ type Props = {
   ) => void;
 };
 
-export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  
+  const { data: ca } = useGetCaById(caId);
+  
   const { data: certTemplate } = useGetCertTemplate(
     (popUp?.certificateTemplate?.data as { id: string })?.id || ""
   );
@@ -97,16 +101,15 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
       });
     } else {
       reset({
-        caId: "",
+        caId,
         name: "",
         commonName: "",
         ttl: ""
       });
     }
-  }, [certTemplate]);
+  }, [certTemplate, ca]);
 
   const onFormSubmit = async ({
-    caId,
     collectionId,
     name,
     commonName,
@@ -172,6 +175,11 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
     >
       <ModalContent title={certTemplate ? "Certificate Template" : "Create Certificate Template"}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
+          {certTemplate && (
+            <FormControl label="Certificate Template ID">
+              <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+            </FormControl>
+          )}
           <Controller
             control={control}
             defaultValue=""
@@ -190,7 +198,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
           <Controller
             control={control}
             name="caId"
-            defaultValue=""
+            defaultValue={caId}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
                 label="Issuing CA"
@@ -204,6 +212,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle }: Props) =>
                   {...field}
                   onValueChange={(e) => onChange(e)}
                   className="w-full"
+                  isDisabled
                 >
                   {(cas || []).map(({ id, type, dn }) => (
                     <SelectItem value={id} key={`ca-${id}`}>

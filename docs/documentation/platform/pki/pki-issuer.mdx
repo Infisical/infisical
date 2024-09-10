@@ -214,9 +214,12 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
 
         Data
         ====
+        ca.crt: 1306 bytes
+        tls.crt: 2380 bytes
         tls.key:  227 bytes
-        tls.crt:  912 bytes
         ```
+        
+        Here, `ca.crt` is the Root CA certificate, `tls.crt` is the requested certificate followed by the certificate chain, and `tls.key` is the private key for the certificate.
         
         We can decode the certificate and print it out using `openssl`:
 

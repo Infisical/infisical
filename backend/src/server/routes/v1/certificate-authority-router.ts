@@ -1,7 +1,7 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { CertificateAuthoritiesSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, CertificateTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -42,7 +42,11 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           keyAlgorithm: z
             .nativeEnum(CertKeyAlgorithm)
             .default(CertKeyAlgorithm.RSA_2048)
-            .describe(CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm)
+            .describe(CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm),
+          requireTemplateForIssuance: z
+            .boolean()
+            .default(false)
+            .describe(CERTIFICATE_AUTHORITIES.CREATE.requireTemplateForIssuance)
         })
         .refine(
           (data) => {
@@ -148,7 +152,11 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE.caId)
       }),
       body: z.object({
-        status: z.enum([CaStatus.ACTIVE, CaStatus.DISABLED]).optional().describe(CERTIFICATE_AUTHORITIES.UPDATE.status)
+        status: z.enum([CaStatus.ACTIVE, CaStatus.DISABLED]).optional().describe(CERTIFICATE_AUTHORITIES.UPDATE.status),
+        requireTemplateForIssuance: z
+          .boolean()
+          .optional()
+          .describe(CERTIFICATE_AUTHORITIES.CREATE.requireTemplateForIssuance)
       }),
       response: {
         200: z.object({
@@ -696,6 +704,51 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         certificateChain,
         issuingCaCertificate,
         serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get list of certificate templates for the CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.caId)
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: CertificateTemplatesSchema.array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificateTemplates, ca } = await server.services.certificateAuthority.getCaCertificateTemplates({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CERTIFICATE_TEMPLATES,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return {
+        certificateTemplates
       };
     }
   });

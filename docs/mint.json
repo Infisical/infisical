@@ -108,7 +108,6 @@
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
             "documentation/platform/pki/certificates",
-            "documentation/platform/pki/certificate-templates",
             "documentation/platform/pki/pki-issuer",
             "documentation/platform/pki/est",
             "documentation/platform/pki/alerting"
@@ -708,7 +707,7 @@
             "api-reference/endpoints/certificate-authorities/import-cert",
             "api-reference/endpoints/certificate-authorities/issue-cert",
             "api-reference/endpoints/certificate-authorities/sign-cert",
-            "api-reference/endpoints/certificate-authorities/crls"
+            "api-reference/endpoints/certificate-authorities/crl"
           ]
         },
         {
