@@ -247,9 +247,12 @@
           "pages": [
             "self-hosting/configuration/schema-migrations",
             "self-hosting/guides/mongo-to-postgres",
-            "self-hosting/guides/custom-certificates",
-            "self-hosting/guides/slack-integration"
+            "self-hosting/guides/custom-certificates"
           ]
+        },
+        {
+          "group": "Workflow Integrations",
+          "pages": ["self-hosting/guides/slack-integration"]
         },
         {
           "group": "Reference architectures",
