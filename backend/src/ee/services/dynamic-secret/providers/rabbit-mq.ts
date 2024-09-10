@@ -43,8 +43,6 @@ type TDeleteRabbitMqUser = {
 };
 
 async function createRabbitMqUser({ axiosInstance, createUser, virtualHost }: TCreateRabbitMQUser): Promise<void> {
-  // const baseUrl = `${removeTrailingSlash(connection.host)}:${connection.port}/api`;
-
   try {
     // Create user
     const userUrl = `/users/${createUser.username}`;
@@ -54,7 +52,6 @@ async function createRabbitMqUser({ axiosInstance, createUser, virtualHost }: TC
     };
 
     await axiosInstance.put(userUrl, userData);
-    console.log(`User ${createUser.username} created successfully`);
 
     // Set permissions for the virtual host
     if (virtualHost) {
@@ -68,7 +65,6 @@ async function createRabbitMqUser({ axiosInstance, createUser, virtualHost }: TC
         `/permissions/${encodeURIComponent(virtualHost.name)}/${createUser.username}`,
         permissionData
       );
-      console.log(`Permissions set for user ${createUser.username} on virtual host ${virtualHost.name}`);
     }
   } catch (error) {
     logger.error(error, "Error creating RabbitMQ user");
