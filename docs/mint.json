@@ -165,6 +165,7 @@
             "documentation/platform/dynamic-secrets/redis",
             "documentation/platform/dynamic-secrets/aws-elasticache",
             "documentation/platform/dynamic-secrets/elastic-search",
+            "documentation/platform/dynamic-secrets/rabbit-mq",
             "documentation/platform/dynamic-secrets/aws-iam",
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db"

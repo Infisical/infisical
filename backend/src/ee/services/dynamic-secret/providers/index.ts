@@ -1,10 +1,11 @@
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
 import { CassandraProvider } from "./cassandra";
-import { ElasticSearchDatabaseProvider } from "./elastic-search";
+import { ElasticSearchProvider } from "./elastic-search";
 import { DynamicSecretProviders } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
+import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
 import { SqlDatabaseProvider } from "./sql-database";
 
@@ -15,6 +16,7 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),
   [DynamicSecretProviders.AwsElastiCache]: AwsElastiCacheDatabaseProvider(),
   [DynamicSecretProviders.MongoAtlas]: MongoAtlasProvider(),
-  [DynamicSecretProviders.ElasticSearch]: ElasticSearchDatabaseProvider(),
-  [DynamicSecretProviders.MongoDB]: MongoDBProvider()
+  [DynamicSecretProviders.MongoDB]: MongoDBProvider(),
+  [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
+  [DynamicSecretProviders.RabbitMq]: RabbitMqProvider()
 });

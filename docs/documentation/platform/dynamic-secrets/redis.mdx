@@ -16,7 +16,7 @@ Create a user with the required permission in your Redis instance. This user wil
 	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
   </Step>
   <Step title="Click on the 'Add Dynamic Secret' button">
-	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button-redis.png)
+	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
   <Step title="Select 'Redis'">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-redis.png)
@@ -78,7 +78,7 @@ Create a user with the required permission in your Redis instance. This user wil
 
 	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate  how long the credentials are valid for.
 
-	![Provision Lease](/images/platform/dynamic-secrets/provision-lease-redis.png)
+	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
 	<Tip>
 		Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
@@ -87,7 +87,7 @@ Create a user with the required permission in your Redis instance. This user wil
 
 	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
 
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values-redis.png)
+	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
 
@@ -95,11 +95,11 @@ Create a user with the required permission in your Redis instance. This user wil
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard. 
 This will allow you see the expiration time of the lease or delete a lease before it's set time to live.
 
-![Provision Lease](/images/platform/dynamic-secrets/lease-data-redis.png)
+![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
 To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** as illustrated below.
-![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew-redis.png)
+![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
 	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
