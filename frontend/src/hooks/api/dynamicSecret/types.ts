@@ -23,7 +23,8 @@ export enum DynamicSecretProviders {
   AwsElastiCache = "aws-elasticache",
   MongoAtlas = "mongo-db-atlas",
   ElasticSearch = "elastic-search",
-  MongoDB = "mongo-db"
+  MongoDB = "mongo-db",
+  RabbitMq = "rabbit-mq"
 }
 
 export enum SqlProviders {
@@ -154,6 +155,27 @@ export type TDynamicSecretProvider =
               apiKey: string;
               apiKeyId: string;
             };
+      };
+    }
+  | {
+      type: DynamicSecretProviders.RabbitMq;
+      inputs: {
+        host: string;
+        port: number;
+
+        username: string;
+        password: string;
+
+        tags: string[];
+        virtualHost: {
+          name: string;
+          permissions: {
+            configure: string;
+            write: string;
+            read: string;
+          };
+        };
+        ca?: string;
       };
     };
 

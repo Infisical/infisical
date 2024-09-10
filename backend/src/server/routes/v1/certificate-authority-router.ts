@@ -45,7 +45,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
             .describe(CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm),
           requireTemplateForIssuance: z
             .boolean()
-            .default(true)
+            .default(false)
             .describe(CERTIFICATE_AUTHORITIES.CREATE.requireTemplateForIssuance)
         })
         .refine(

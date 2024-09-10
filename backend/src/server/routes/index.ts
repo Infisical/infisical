@@ -468,7 +468,7 @@ export const registerRoutes = async (
     projectMembershipDAL
   });
 
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, tokenDAL: authTokenDAL });
+  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,

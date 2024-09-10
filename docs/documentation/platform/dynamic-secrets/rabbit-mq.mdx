@@ -1,22 +1,16 @@
 ---
-title: "Elasticsearch"
-description: "Learn how to dynamically generate Elasticsearch user credentials."
+title: "RabbitMQ"
+description: "Learn how to dynamically generate RabbitMQ user credentials."
 ---
 
-The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch credentials on demand based on configured role.
+The Infisical RabbitMQ dynamic secret allows you to generate RabbitMQ credentials on demand based on configured role.
 
 ## Prerequisites
 
+1. Ensure that the `management` plugin is enabled on your RabbitMQ instance. This is required for the dynamic secret to work.
 
 
-1. Create a role with at least `manage_security` and `monitor` permissions.
-2. Assign the newly created role to your API key or user that you'll use later in the dynamic secret configuration.
-
-<Note>
-  For testing purposes, you can also use a highly privileged role like `superuser`, that will have full control over the cluster. This is not recommended in production environments following the principle of least privilege.
-</Note>
-
-## Set up Dynamic Secrets with Elasticsearch
+## Set up Dynamic Secrets with RabbitMQ
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -25,8 +19,8 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select 'Elasticsearch'">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-elastic-search.png)
+  <Step title="Select 'RabbitMQ'">
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-rabbit-mq.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
 	<ParamField path="Secret Name" type="string" required>
@@ -42,42 +36,37 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
 	</ParamField>
 
 	<ParamField path="Host" type="string" required>
-    Your Elasticsearch host. This is the endpoint that your instance runs on. _(Example: https://your-cluster-ip)_
+    Your RabbitMQ host. This must be in HTTP format. _(Example: http://your-cluster-ip)_
 	</ParamField>
 
 	<ParamField path="Port" type="string" required>
-  The port that your Elasticsearch instance is running on. _(Example: 9200)_
+  The port that the RabbitMQ management plugin is listening on. This is `15672` by default.
 	</ParamField>
 
-  <ParamField path="Roles" type="string[]" required>
-    The roles that the new user that is created when a lease is provisioned will be assigned to. This is a required field. This defaults to `superuser`, which is highly privileged. It is recommended to create a new role with the least privileges required for the lease.
+  <ParamField path="Virtual host name" type="string" required>
+    The name of the virtual host that the user will be assigned to. This defaults to `/`.
   </ParamField>
 
-	<ParamField path="Authentication Method" type="API Key | Username/Password" required>
-    Select the authentication method you want to use to connect to your Elasticsearch instance.
-	</ParamField>
+<ParamField path="Virtual host permissions (Read/Write/Configure)" type="string" required>
+    The permissions that the user will have on the virtual host. This defaults to `.*`.
+
+    The three permission fields all take a regular expression _(regex)_, that should match resource names for which the user is granted read / write / configuration permissions
+  </ParamField>
+
 
   <ParamField path="Username" type="string" required>
-    The username of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
+    The username of the user that will be used to provision new dynamic secret leases.
 	</ParamField>
 
   <ParamField path="Password" type="string" required>
-    The password of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
-  </ParamField>
-
-  <ParamField path="API Key ID" required>
-    The ID of the API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
-  </ParamField>
-
-  <ParamField path="API Key" required>
-    The API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
+    The password of the user that will be used to provision new dynamic secret leases.
   </ParamField>
 
 	<ParamField path="CA(SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
 	</ParamField>
 
-  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
+  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-rabbit-mq.png)
 
 
   </Step>

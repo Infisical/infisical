@@ -47,10 +47,6 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
   const { subscription } = useSubscription();
   
   const { data, isLoading } = useGetCaCertTemplates(caId);
-  
-  // const { data, isLoading } = useListWorkspaceCertificateTemplates({
-  //   workspaceId: currentWorkspace?.id ?? ""
-  // });
 
   return (
     <div>
@@ -59,7 +55,6 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
-              {/* <Th>Certificate Authority</Th> */}
               <Th />
             </Tr>
           </THead>
@@ -70,7 +65,6 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
                 return (
                   <Tr className="h-10" key={`certificate-${certificateTemplate.id}`}>
                     <Td>{certificateTemplate.name}</Td>
-                    {/* <Td>{certificateTemplate.caName}</Td> */}
                     <Td className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">

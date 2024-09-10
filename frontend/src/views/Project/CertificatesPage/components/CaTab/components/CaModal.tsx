@@ -446,26 +446,24 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               );
             }}
           />
-          {/* {!ca && ( */}
-            <div className="flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                {popUp?.ca?.data ? "Update" : "Create"}
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("ca", false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          {/* )} */}
+          <div className="flex items-center">
+            <Button
+              className="mr-4"
+              size="sm"
+              type="submit"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              {popUp?.ca?.data ? "Update" : "Create"}
+            </Button>
+            <Button
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("ca", false)}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       </ModalContent>
     </Modal>

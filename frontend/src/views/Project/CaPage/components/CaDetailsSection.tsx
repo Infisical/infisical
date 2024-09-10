@@ -36,7 +36,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Identity}>
           {(isAllowed) => {
             return (
-              <Tooltip content="Edit Identity">
+              <Tooltip content="Edit CA">
                 <IconButton
                   isDisabled={!isAllowed}
                   ariaLabel="copy icon"

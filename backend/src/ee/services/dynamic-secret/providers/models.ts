@@ -56,6 +56,26 @@ export const DynamicSecretElasticSearchSchema = z.object({
   ca: z.string().optional()
 });
 
+export const DynamicSecretRabbitMqSchema = z.object({
+  host: z.string().trim().min(1),
+  port: z.number(),
+  tags: z.array(z.string().trim()).default([]),
+
+  username: z.string().trim().min(1),
+  password: z.string().trim().min(1),
+
+  ca: z.string().optional(),
+
+  virtualHost: z.object({
+    name: z.string().trim().min(1),
+    permissions: z.object({
+      read: z.string().trim().min(1),
+      write: z.string().trim().min(1),
+      configure: z.string().trim().min(1)
+    })
+  })
+});
+
 export const DynamicSecretSqlDBSchema = z.object({
   client: z.nativeEnum(SqlProviders),
   host: z.string().trim().toLowerCase(),
@@ -154,7 +174,8 @@ export enum DynamicSecretProviders {
   AwsElastiCache = "aws-elasticache",
   MongoAtlas = "mongo-db-atlas",
   ElasticSearch = "elastic-search",
-  MongoDB = "mongo-db"
+  MongoDB = "mongo-db",
+  RabbitMq = "rabbit-mq"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -165,7 +186,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), inputs: DynamicSecretAwsElastiCacheSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), inputs: DynamicSecretElasticSearchSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema })
 ]);
 
 export type TDynamicProviderFns = {

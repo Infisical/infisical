@@ -101,7 +101,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         .refine(
           (data) =>
             (data.caId !== undefined && data.certificateTemplateId === undefined) ||
-            (data.caId === undefined && data.pkiCollectionId === undefined && data.certificateTemplateId !== undefined),
+            (data.caId === undefined && data.certificateTemplateId !== undefined),
           {
             message: "Either CA ID or Certificate Template ID must be present, but not both",
             path: ["caId", "certificateTemplateId"]
@@ -192,7 +192,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         .refine(
           (data) =>
             (data.caId !== undefined && data.certificateTemplateId === undefined) ||
-            (data.caId === undefined && data.pkiCollectionId === undefined && data.certificateTemplateId !== undefined),
+            (data.caId === undefined && data.certificateTemplateId !== undefined),
           {
             message: "Either CA ID or Certificate Template ID must be present, but not both",
             path: ["caId", "certificateTemplateId"]
