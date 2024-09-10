@@ -104,6 +104,12 @@ type GetAllSecretsParameters struct {
 	Recursive                bool
 }
 
+type InjectableEnvironmentResult struct {
+	Variables    []string
+	ETag         string
+	SecretsCount int
+}
+
 type GetAllFoldersParameters struct {
 	WorkspaceId              string
 	Environment              string

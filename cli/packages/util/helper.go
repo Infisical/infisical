@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
@@ -297,4 +298,17 @@ func GenerateRandomString(length int) string {
 		b[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+func GenerateETagFromSecrets(secrets []models.SingleEnvironmentVariable) string {
+	sortedSecrets := SortSecretsByKeys(secrets)
+	content := []byte{}
+
+	for _, secret := range sortedSecrets {
+		content = append(content, []byte(secret.Key)...)
+		content = append(content, []byte(secret.Value)...)
+	}
+
+	hash := sha256.Sum256(content)
+	return fmt.Sprintf(`"%s"`, hex.EncodeToString(hash[:]))
 }
