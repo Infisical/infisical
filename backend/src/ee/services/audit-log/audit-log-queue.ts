@@ -30,7 +30,7 @@ export type TAuditLogQueueServiceFactory = ReturnType<typeof auditLogQueueServic
 // audit log is a crowded queue thus needs to be fast
 export const AUDIT_LOG_STREAM_TIMEOUT = secondsToMillis(5);
 const AUDIT_LOG_BATCH_SIZE = 10000;
-const AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_SPEED = secondsToMillis(10);
+const AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_SPEED = secondsToMillis(5);
 const AUDIT_LOG_BATCH_WRITE_TO_DB_CYCLE_JOB_ID = "audit-log-write-to-db-cycle";
 
 export const auditLogQueueServiceFactory = ({
