@@ -145,3 +145,7 @@ export type IssueBackupPrivateKeyDTO = {
 export type GetBackupEncryptedPrivateKeyDTO = {
   verificationToken: string;
 };
+
+export enum UserAgentType {
+  CLI = "cli"
+}

@@ -42,7 +42,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim(),
+        userAgent: z.enum(["cli"]).optional()
       }),
       response: {
         200: z.object({
@@ -53,7 +54,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const cfg = getConfig();
       const tokens = await server.services.login.selectOrganization({
-        userAgent: req.headers["user-agent"],
+        userAgent: req.body.userAgent ?? req.headers["user-agent"],
         authJwtToken: req.headers.authorization,
         organizationId: req.body.organizationId,
         ipAddress: req.realIp
