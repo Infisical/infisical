@@ -21,6 +21,7 @@ export {
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
+  useListUserGroupMemberships,
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,

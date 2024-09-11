@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useRouter } from "next/router";
-import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faEllipsis, faFolder, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -31,6 +31,8 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 import { TabSections } from "@app/views/Org/Types";
 
+import { UserAuditLogsSection } from "./components/UserProjectsSection/UserAuditLogsSection";
+import { UserGroupsSection } from "./components/UserProjectsSection/UserGroupsSection";
 import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 
 export const UserPage = withPermission(
@@ -241,7 +243,13 @@ export const UserPage = withPermission(
               <div className="mr-4 w-96">
                 <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              <UserProjectsSection membershipId={membershipId} />
+              <div className="w-full space-y-2">
+                <div className="w-full space-y-4">
+                  <UserProjectsSection membershipId={membershipId} />
+                  <UserGroupsSection orgMembership={membership} />
+                  <UserAuditLogsSection orgMembership={membership} />
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -272,6 +280,7 @@ export const UserPage = withPermission(
           }
           buttonText="Deactivate"
         />
+
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

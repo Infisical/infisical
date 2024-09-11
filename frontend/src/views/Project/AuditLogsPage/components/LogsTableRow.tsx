@@ -5,9 +5,11 @@ import { Actor, AuditLog, Event } from "@app/hooks/api/auditLogs/types";
 
 type Props = {
   auditLog: AuditLog;
+  isOrgAuditLogs?: boolean;
+  showActorColumn: boolean;
 };
 
-export const LogsTableRow = ({ auditLog }: Props) => {
+export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Props) => {
   const renderActor = (actor: Actor) => {
     switch (actor.type) {
       case ActorType.USER:
@@ -486,7 +488,8 @@ export const LogsTableRow = ({ auditLog }: Props) => {
     <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
       <Td>{formatDate(auditLog.createdAt)}</Td>
       <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
-      {renderActor(auditLog.actor)}
+      {isOrgAuditLogs && <Td>{auditLog.project.name}</Td>}
+      {showActorColumn && renderActor(auditLog.actor)}
       <Td>
         <p>{userAgentTTypeoNameMap[auditLog.userAgentType]}</p>
         <p>{auditLog.ipAddress}</p>

@@ -12,7 +12,19 @@ import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
 import { AuditLogFilterFormData, auditLogFilterFormSchema } from "./types";
 
-export const LogsSection = () => {
+type Props = {
+  presetActor?: string;
+  showFilters?: boolean;
+  filterClassName?: string;
+  isOrgAuditLogs?: boolean;
+};
+
+export const LogsSection = ({
+  presetActor,
+  filterClassName,
+  isOrgAuditLogs,
+  showFilters
+}: Props) => {
   const { subscription } = useSubscription();
   const router = useRouter();
 
@@ -21,6 +33,7 @@ export const LogsSection = () => {
   const { control, reset, watch } = useForm<AuditLogFilterFormData>({
     resolver: yupResolver(auditLogFilterFormSchema),
     defaultValues: {
+      actor: presetActor,
       page: 1,
       perPage: 10,
       startDate: new Date(new Date().setDate(new Date().getDate() - 1)), // day before today
@@ -43,10 +56,19 @@ export const LogsSection = () => {
 
   return (
     <div>
-      <LogsFilter control={control} reset={reset} />
+      {showFilters && (
+        <LogsFilter
+          className={filterClassName}
+          presetActor={presetActor}
+          control={control}
+          reset={reset}
+        />
+      )}
       <LogsTable
+        isOrgAuditLogs={isOrgAuditLogs}
         eventType={eventType}
         userAgentType={userAgentType}
+        showActorColumn={!presetActor}
         actor={actor}
         startDate={startDate}
         endDate={endDate}

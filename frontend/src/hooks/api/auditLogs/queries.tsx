@@ -5,27 +5,29 @@ import { apiRequest } from "@app/config/request";
 import { Actor, AuditLog, AuditLogFilters } from "./types";
 
 export const workspaceKeys = {
-  getAuditLogs: (workspaceId: string, filters: AuditLogFilters) =>
+  getAuditLogs: (filters: AuditLogFilters, workspaceId: string | null) =>
     [{ workspaceId, filters }, "audit-logs"] as const,
   getAuditLogActorFilterOpts: (workspaceId: string) =>
     [{ workspaceId }, "audit-log-actor-filters"] as const
 };
 
-export const useGetAuditLogs = (workspaceId: string, filters: AuditLogFilters) => {
+export const useGetAuditLogs = (filters: AuditLogFilters, workspaceId: string | null) => {
   return useInfiniteQuery({
-    queryKey: workspaceKeys.getAuditLogs(workspaceId, filters),
+    queryKey: workspaceKeys.getAuditLogs(filters, workspaceId),
+    enabled: workspaceId !== "",
+
     queryFn: async ({ pageParam }) => {
-      const { data } = await apiRequest.get<{ auditLogs: AuditLog[] }>(
-        `/api/v1/workspace/${workspaceId}/audit-logs`,
-        {
-          params: {
-            ...filters,
-            offset: pageParam,
-            startDate: filters?.startDate?.toISOString(),
-            endDate: filters?.endDate?.toISOString()
-          }
+      const auditLogEndpoint = workspaceId
+        ? `/api/v1/workspace/${workspaceId}/audit-logs`
+        : "/api/v1/organization/audit-logs";
+      const { data } = await apiRequest.get<{ auditLogs: AuditLog[] }>(auditLogEndpoint, {
+        params: {
+          ...filters,
+          offset: pageParam,
+          startDate: filters?.startDate?.toISOString(),
+          endDate: filters?.endDate?.toISOString()
         }
-      );
+      });
       return data.auditLogs;
     },
     getNextPageParam: (lastPage, pages) =>

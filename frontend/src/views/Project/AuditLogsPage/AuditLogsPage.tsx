@@ -12,7 +12,7 @@ export const AuditLogsPage = withProjectPermission(
             <p className="text-3xl font-semibold text-gray-200">Audit Logs</p>
             <div />
           </div>
-          <LogsSection />
+          <LogsSection showFilters />
         </div>
       </div>
     );

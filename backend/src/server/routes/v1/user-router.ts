@@ -134,4 +134,39 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       );
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/me/:username/groups",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        username: z.string().trim()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            slug: z.string(),
+            orgId: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const groupMemberships = await server.services.user.listUserGroups({
+        username: req.params.username,
+        actorOrgId: req.permission.orgId,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return groupMemberships;
+    }
+  });
 };
