@@ -272,8 +272,8 @@ export const identityProjectServiceFactory = ({
     limit,
     offset,
     orderBy,
-    direction,
-    textFilter
+    orderDirection,
+    search
   }: TListProjectIdentityDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -288,11 +288,11 @@ export const identityProjectServiceFactory = ({
       limit,
       offset,
       orderBy,
-      direction,
-      textFilter
+      orderDirection,
+      search
     });
 
-    const totalCount = await identityProjectDAL.getCountByProjectId(projectId, { textFilter });
+    const totalCount = await identityProjectDAL.getCountByProjectId(projectId, { search });
 
     return { identityMemberships, totalCount };
   };

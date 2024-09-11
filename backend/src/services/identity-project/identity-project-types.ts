@@ -44,8 +44,8 @@ export type TListProjectIdentityDTO = {
   limit?: number;
   offset?: number;
   orderBy?: ProjectIdentityOrderBy;
-  direction?: OrderByDirection;
-  textFilter?: string;
+  orderDirection?: OrderByDirection;
+  search?: string;
 } & TProjectPermission;
 
 export type TGetProjectIdentityByIdentityIdDTO = {

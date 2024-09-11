@@ -34,8 +34,8 @@ export type TListOrgIdentitiesByOrgIdDTO = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
-  direction?: OrderByDirection;
-  textFilter?: string;
+  orderDirection?: OrderByDirection;
+  search?: string;
 } & TOrgPermission;
 
 export enum OrgIdentityOrderBy {

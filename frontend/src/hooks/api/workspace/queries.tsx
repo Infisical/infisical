@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
@@ -23,6 +24,7 @@ import {
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
   NameWorkspaceSecretsDTO,
+  ProjectIdentityOrderBy,
   RenameWorkspaceDTO,
   TGetUpgradeProjectStatusDTO,
   TListProjectIdentitiesDTO,
@@ -538,9 +540,9 @@ export const useGetWorkspaceIdentityMemberships = (
     workspaceId,
     offset = 0,
     limit = 100,
-    orderBy = "name",
-    direction = "asc",
-    textFilter = ""
+    orderBy = ProjectIdentityOrderBy.Name,
+    orderDirection = OrderByDirection.ASC,
+    search = ""
   }: TListProjectIdentitiesDTO,
   options?: Omit<
     UseQueryOptions<
@@ -558,16 +560,16 @@ export const useGetWorkspaceIdentityMemberships = (
       offset,
       limit,
       orderBy,
-      direction,
-      textFilter
+      orderDirection,
+      search
     }),
     queryFn: async () => {
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
         orderBy: String(orderBy),
-        direction: String(direction),
-        textFilter: String(textFilter)
+        orderDirection: String(orderDirection),
+        search: String(search)
       });
 
       const { data } = await apiRequest.get<TProjectIdentitiesList>(

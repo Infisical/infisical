@@ -34,11 +34,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       limit,
       offset = 0,
       orderBy,
-      direction = OrderByDirection.ASC,
-      textFilter,
+      orderDirection = OrderByDirection.ASC,
+      search,
       ...filter
     }: Partial<TIdentityOrgMemberships> &
-      Pick<TListOrgIdentitiesByOrgIdDTO, "offset" | "limit" | "orderBy" | "direction" | "textFilter">,
+      Pick<TListOrgIdentitiesByOrgIdDTO, "offset" | "limit" | "orderBy" | "orderDirection" | "search">,
     tx?: Knex
   ) => {
     try {
@@ -65,18 +65,18 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       if (orderBy) {
         switch (orderBy) {
           case "name":
-            void query.orderBy(`${TableName.Identity}.${orderBy}`, direction);
+            void query.orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
             break;
           case "role":
-            void query.orderBy(`${TableName.IdentityOrgMembership}.${orderBy}`, direction);
+            void query.orderBy(`${TableName.IdentityOrgMembership}.${orderBy}`, orderDirection);
             break;
           default:
           // do nothing
         }
       }
 
-      if (textFilter?.length) {
-        void query.whereILike(`${TableName.Identity}.name`, `%${textFilter}%`);
+      if (search?.length) {
+        void query.whereILike(`${TableName.Identity}.name`, `%${search}%`);
       }
 
       const docs = await query;
@@ -117,21 +117,22 @@ export const identityOrgDALFactory = (db: TDbClient) => {
   };
 
   const countAllOrgIdentities = async (
-    { textFilter, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListOrgIdentitiesByOrgIdDTO, "textFilter">,
+    { search, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListOrgIdentitiesByOrgIdDTO, "search">,
     tx?: Knex
   ) => {
     try {
       const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
-        .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`);
+        .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
+        .count();
 
-      if (textFilter?.length) {
-        void query.whereILike(`${TableName.Identity}.name`, `%${textFilter}%`);
+      if (search?.length) {
+        void query.whereILike(`${TableName.Identity}.name`, `%${search}%`);
       }
 
       const identities = await query;
 
-      return identities.length;
+      return Number(identities[0].count);
     } catch (error) {
       throw new DatabaseError({ error, name: "countAllOrgIdentities" });
     }

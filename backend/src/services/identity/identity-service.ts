@@ -204,8 +204,8 @@ export const identityServiceFactory = ({
     limit,
     offset,
     orderBy,
-    direction,
-    textFilter
+    orderDirection,
+    search
   }: TListOrgIdentitiesByOrgIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
@@ -215,13 +215,13 @@ export const identityServiceFactory = ({
       limit,
       offset,
       orderBy,
-      direction,
-      textFilter
+      orderDirection,
+      search
     });
 
     const totalCount = await identityOrgMembershipDAL.countAllOrgIdentities({
       [`${TableName.IdentityOrgMembership}.orgId` as "orgId"]: orgId,
-      textFilter
+      search
     });
 
     return { identityMemberships, totalCount };

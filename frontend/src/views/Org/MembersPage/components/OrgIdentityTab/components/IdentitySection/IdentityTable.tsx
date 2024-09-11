@@ -36,6 +36,8 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -55,10 +57,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-  const [direction, setDirection] = useState("asc");
-  const [orderBy, setOrderBy] = useState("name");
-  const [textFilter, setTextFilter] = useState("");
-  const debouncedTextFilter = useDebounce(textFilter);
+  const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
+  const [orderBy, setOrderBy] = useState(OrgIdentityOrderBy.Name);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search);
 
   const organizationId = currentOrg?.id || "";
 
@@ -70,9 +72,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
       organizationId,
       offset,
       limit: perPage,
-      direction,
+      orderDirection,
       orderBy,
-      textFilter: debouncedTextFilter
+      search: debouncedSearch
     },
     { keepPreviousData: true }
   );
@@ -84,14 +86,16 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const { data: roles } = useGetOrgRoles(organizationId);
 
-  const handleSort = (column: string) => {
+  const handleSort = (column: OrgIdentityOrderBy) => {
     if (column === orderBy) {
-      setDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      setOrderDirection((prev) =>
+        prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
+      );
       return;
     }
 
     setOrderBy(column);
-    setDirection("asc");
+    setOrderDirection(OrderByDirection.ASC);
   };
 
   const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
@@ -122,8 +126,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     <div>
       <Input
         containerClassName="mb-4"
-        value={textFilter}
-        onChange={(e) => setTextFilter(e.target.value)}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search identities by name..."
       />
@@ -136,12 +140,17 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   Name
                   <IconButton
                     variant="plain"
-                    className={`ml-2 ${orderBy === "name" ? "" : "opacity-30"}`}
+                    className={`ml-2 ${orderBy === OrgIdentityOrderBy.Name ? "" : "opacity-30"}`}
                     ariaLabel="sort"
-                    onClick={() => handleSort("name")}
+                    onClick={() => handleSort(OrgIdentityOrderBy.Name)}
                   >
                     <FontAwesomeIcon
-                      icon={direction === "desc" && orderBy === "name" ? faArrowUp : faArrowDown}
+                      icon={
+                        orderDirection === OrderByDirection.DESC &&
+                        orderBy === OrgIdentityOrderBy.Name
+                          ? faArrowUp
+                          : faArrowDown
+                      }
                     />
                   </IconButton>
                 </div>
@@ -151,12 +160,17 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   Role
                   <IconButton
                     variant="plain"
-                    className={`ml-2 ${orderBy === "role" ? "" : "opacity-30"}`}
+                    className={`ml-2 ${orderBy === OrgIdentityOrderBy.Role ? "" : "opacity-30"}`}
                     ariaLabel="sort"
-                    onClick={() => handleSort("role")}
+                    onClick={() => handleSort(OrgIdentityOrderBy.Role)}
                   >
                     <FontAwesomeIcon
-                      icon={direction === "desc" && orderBy === "role" ? faArrowUp : faArrowDown}
+                      icon={
+                        orderDirection === OrderByDirection.DESC &&
+                        orderBy === OrgIdentityOrderBy.Role
+                          ? faArrowUp
+                          : faArrowDown
+                      }
                     />
                   </IconButton>
                 </div>
@@ -275,7 +289,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
         {!isLoading && data && data?.identityMemberships.length === 0 && (
           <EmptyState
             title={
-              debouncedTextFilter.trim().length > 0
+              debouncedSearch.trim().length > 0
                 ? "No identities match search filter"
                 : "No identities have been created in this organization"
             }

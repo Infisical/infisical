@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
 import {
@@ -8,6 +9,7 @@ import {
   Invoice,
   License,
   Organization,
+  OrgIdentityOrderBy,
   OrgPlanTable,
   PlanBillingInfo,
   PmtMethod,
@@ -372,9 +374,9 @@ export const useGetIdentityMembershipOrgs = (
     organizationId,
     offset = 0,
     limit = 100,
-    orderBy = "name",
-    direction = "asc",
-    textFilter = ""
+    orderBy = OrgIdentityOrderBy.Name,
+    orderDirection = OrderByDirection.ASC,
+    search = ""
   }: TListOrgIdentitiesDTO,
   options?: Omit<
     UseQueryOptions<
@@ -390,8 +392,8 @@ export const useGetIdentityMembershipOrgs = (
     offset: String(offset),
     limit: String(limit),
     orderBy: String(orderBy),
-    direction: String(direction),
-    textFilter: String(textFilter)
+    orderDirection: String(orderDirection),
+    search: String(search)
   });
   return useQuery({
     queryKey: organizationKeys.getOrgIdentityMembershipsWithParams({
@@ -399,8 +401,8 @@ export const useGetIdentityMembershipOrgs = (
       offset,
       limit,
       orderBy,
-      direction,
-      textFilter
+      orderDirection,
+      search
     }),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOrgIdentitiesList>(

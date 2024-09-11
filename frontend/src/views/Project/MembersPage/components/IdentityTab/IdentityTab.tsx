@@ -46,8 +46,10 @@ import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@a
 import { withProjectPermission } from "@app/hoc";
 import { useDebounce } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityModal } from "./components/IdentityModal";
@@ -67,10 +69,10 @@ export const IdentityTab = withProjectPermission(
 
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-    const [direction, setDirection] = useState("asc");
-    const [orderBy, setOrderBy] = useState("name");
-    const [textFilter, setTextFilter] = useState("");
-    const debouncedTextFilter = useDebounce(textFilter);
+    const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
+    const [orderBy, setOrderBy] = useState(ProjectIdentityOrderBy.Name);
+    const [search, setSearch] = useState("");
+    const debouncedSearch = useDebounce(search);
 
     const workspaceId = currentWorkspace?.id ?? "";
 
@@ -80,9 +82,9 @@ export const IdentityTab = withProjectPermission(
         workspaceId: currentWorkspace?.id || "",
         offset,
         limit: perPage,
-        direction,
+        orderDirection,
         orderBy,
-        textFilter: debouncedTextFilter
+        search: debouncedSearch
       },
       { keepPreviousData: true }
     );
@@ -125,14 +127,16 @@ export const IdentityTab = withProjectPermission(
       if (data && data.totalCount < offset) setPage(1);
     }, [data?.totalCount]);
 
-    const handleSort = (column: string) => {
+    const handleSort = (column: ProjectIdentityOrderBy) => {
       if (column === orderBy) {
-        setDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+        setOrderDirection((prev) =>
+          prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
+        );
         return;
       }
 
       setOrderBy(column);
-      setDirection("asc");
+      setOrderDirection(OrderByDirection.ASC);
     };
 
     return (
@@ -176,8 +180,8 @@ export const IdentityTab = withProjectPermission(
           </div>
           <Input
             containerClassName="mb-4"
-            value={textFilter}
-            onChange={(e) => setTextFilter(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             placeholder="Search identities by name..."
           />
@@ -190,13 +194,18 @@ export const IdentityTab = withProjectPermission(
                       Name
                       <IconButton
                         variant="plain"
-                        className={`ml-2 ${orderBy === "name" ? "" : "opacity-30"}`}
+                        className={`ml-2 ${
+                          orderBy === ProjectIdentityOrderBy.Name ? "" : "opacity-30"
+                        }`}
                         ariaLabel="sort"
-                        onClick={() => handleSort("name")}
+                        onClick={() => handleSort(ProjectIdentityOrderBy.Name)}
                       >
                         <FontAwesomeIcon
                           icon={
-                            direction === "desc" && orderBy === "name" ? faArrowUp : faArrowDown
+                            orderDirection === OrderByDirection.DESC &&
+                            orderBy === ProjectIdentityOrderBy.Name
+                              ? faArrowUp
+                              : faArrowDown
                           }
                         />
                       </IconButton>
@@ -372,7 +381,7 @@ export const IdentityTab = withProjectPermission(
             {!isLoading && data && data?.identityMemberships.length === 0 && (
               <EmptyState
                 title={
-                  debouncedTextFilter.trim().length > 0
+                  debouncedSearch.trim().length > 0
                     ? "No identities match search filter"
                     : "No identities have been added to this project"
                 }

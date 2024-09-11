@@ -40,17 +40,12 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
           .default(OrgIdentityOrderBy.Name)
           .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderBy)
           .optional(),
-        direction: z
+        orderDirection: z
           .nativeEnum(OrderByDirection)
           .default(OrderByDirection.ASC)
-          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.direction)
+          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderDirection)
           .optional(),
-        textFilter: z
-          .string()
-          .trim()
-          .default("")
-          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.textFilter)
-          .optional()
+        search: z.string().trim().describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.search).optional()
       }),
       response: {
         200: z.object({
@@ -80,8 +75,8 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
         limit: req.query.limit,
         offset: req.query.offset,
         orderBy: req.query.orderBy,
-        direction: req.query.direction,
-        textFilter: req.query.textFilter
+        orderDirection: req.query.orderDirection,
+        search: req.query.search
       });
 
       return { identityMemberships, totalCount };

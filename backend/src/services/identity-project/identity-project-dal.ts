@@ -112,7 +112,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     projectId: string,
     filter: { identityId?: string } & Pick<
       TListProjectIdentityDTO,
-      "limit" | "offset" | "textFilter" | "orderBy" | "direction"
+      "limit" | "offset" | "search" | "orderBy" | "orderDirection"
     > = {},
     tx?: Knex
   ) => {
@@ -126,8 +126,8 @@ export const identityProjectDALFactory = (db: TDbClient) => {
             void qb.where("identityId", filter.identityId);
           }
 
-          if (filter.textFilter) {
-            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.textFilter}%`);
+          if (filter.search) {
+            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
           }
         })
         .join(
@@ -173,7 +173,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
       if (filter.orderBy) {
         switch (filter.orderBy) {
           case "name":
-            void query.orderBy(`${TableName.Identity}.${filter.orderBy}`, filter.direction);
+            void query.orderBy(`${TableName.Identity}.${filter.orderBy}`, filter.orderDirection);
             break;
           default:
           // do nothing
@@ -238,7 +238,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
 
   const getCountByProjectId = async (
     projectId: string,
-    filter: { identityId?: string } & Pick<TListProjectIdentityDTO, "textFilter"> = {},
+    filter: { identityId?: string } & Pick<TListProjectIdentityDTO, "search"> = {},
     tx?: Knex
   ) => {
     try {
@@ -251,12 +251,13 @@ export const identityProjectDALFactory = (db: TDbClient) => {
             void qb.where("identityId", filter.identityId);
           }
 
-          if (filter.textFilter) {
-            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.textFilter}%`);
+          if (filter.search) {
+            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
           }
-        });
+        })
+        .count();
 
-      return identities.length;
+      return Number(identities[0].count);
     } catch (error) {
       throw new DatabaseError({ error, name: "GetCountByProjectId" });
     }
