@@ -24,6 +24,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
 import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
@@ -174,7 +175,7 @@ export const authSignupServiceFactory = ({
       encryptedPrivateKey,
       iv: encryptedPrivateKeyIV,
       tag: encryptedPrivateKeyTag,
-      encryptionVersion: 2
+      encryptionVersion: UserEncryption.V2
     });
     const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
@@ -214,7 +215,7 @@ export const authSignupServiceFactory = ({
         userEncKey = await userDAL.upsertUserEncryptionKey(
           us.id,
           {
-            encryptionVersion: 2,
+            encryptionVersion: UserEncryption.V2,
             protectedKey: encKeys.protectedKey,
             protectedKeyIV: encKeys.protectedKeyIV,
             protectedKeyTag: encKeys.protectedKeyTag,
@@ -236,7 +237,7 @@ export const authSignupServiceFactory = ({
         userEncKey = await userDAL.upsertUserEncryptionKey(
           us.id,
           {
-            encryptionVersion: 2,
+            encryptionVersion: UserEncryption.V2,
             salt,
             verifier,
             publicKey,
@@ -452,7 +453,7 @@ export const authSignupServiceFactory = ({
         userEncKey = await userDAL.upsertUserEncryptionKey(
           us.id,
           {
-            encryptionVersion: 2,
+            encryptionVersion: UserEncryption.V2,
             salt,
             verifier,
             publicKey,
