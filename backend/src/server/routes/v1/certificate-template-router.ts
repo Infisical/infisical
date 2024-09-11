@@ -80,8 +80,14 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .nativeEnum(CertKeyUsage)
           .array()
           .optional()
-          .default([CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT]),
-        extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional().default([])
+          .default([CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT])
+          .describe(CERTIFICATE_TEMPLATES.CREATE.keyUsages),
+        extendedKeyUsages: z
+          .nativeEnum(CertExtendedKeyUsage)
+          .array()
+          .optional()
+          .default([])
+          .describe(CERTIFICATE_TEMPLATES.CREATE.extendedKeyUsages)
       }),
       response: {
         200: sanitizedCertificateTemplate
@@ -138,8 +144,12 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(CERTIFICATE_TEMPLATES.UPDATE.ttl),
-        keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
-        extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional()
+        keyUsages: z.nativeEnum(CertKeyUsage).array().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.keyUsages),
+        extendedKeyUsages: z
+          .nativeEnum(CertExtendedKeyUsage)
+          .array()
+          .optional()
+          .describe(CERTIFICATE_TEMPLATES.UPDATE.extendedKeyUsages)
       }),
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.UPDATE.certificateTemplateId)

@@ -1110,11 +1110,15 @@ export const CERTIFICATE_AUTHORITIES = {
     issuingCaCertificate: "The certificate of the issuing CA",
     certificateChain: "The certificate chain of the issued certificate",
     privateKey: "The private key of the issued certificate",
-    serialNumber: "The serial number of the issued certificate"
+    serialNumber: "The serial number of the issued certificate",
+    keyUsages: "The key usage extension of the certificate",
+    extendedKeyUsages: "The extended key usage extension of the certificate"
   },
   SIGN_CERT: {
     caId: "The ID of the CA to issue the certificate from",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to",
+    keyUsages: "The key usage extension of the certificate",
+    extendedKeyUsages: "The extended key usage extension of the certificate",
     csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
@@ -1164,7 +1168,9 @@ export const CERTIFICATE_TEMPLATES = {
     name: "The name of the template",
     commonName: "The regular expression string to use for validating common names",
     subjectAlternativeName: "The regular expression string to use for validating subject alternative names",
-    ttl: "The max TTL for the template"
+    ttl: "The max TTL for the template",
+    keyUsages: "The key usage constraint or default value",
+    extendedKeyUsages: "The extended key usage constraint or default value"
   },
   GET: {
     certificateTemplateId: "The ID of the certificate template to get"
@@ -1176,7 +1182,9 @@ export const CERTIFICATE_TEMPLATES = {
     name: "The updated name of the template",
     commonName: "The updated regular expression string for validating common names",
     subjectAlternativeName: "The updated regular expression string for validating subject alternative names",
-    ttl: "The updated max TTL for the template"
+    ttl: "The updated max TTL for the template",
+    keyUsages: "The updated key usage constraint or default value",
+    extendedKeyUsages: "The updated extended key usage constraint or default value"
   },
   DELETE: {
     certificateTemplateId: "The ID of the certificate template to delete"

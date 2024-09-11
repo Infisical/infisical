@@ -87,8 +87,16 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.ttl),
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notBefore),
           notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notAfter),
-          keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
-          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional()
+          keyUsages: z
+            .nativeEnum(CertKeyUsage)
+            .array()
+            .optional()
+            .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.keyUsages),
+          extendedKeyUsages: z
+            .nativeEnum(CertExtendedKeyUsage)
+            .array()
+            .optional()
+            .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.extendedKeyUsages)
         })
         .refine(
           (data) => {
@@ -180,8 +188,16 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.ttl),
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notBefore),
           notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notAfter),
-          keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
-          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional()
+          keyUsages: z
+            .nativeEnum(CertKeyUsage)
+            .array()
+            .optional()
+            .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.keyUsages),
+          extendedKeyUsages: z
+            .nativeEnum(CertExtendedKeyUsage)
+            .array()
+            .optional()
+            .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.extendedKeyUsages)
         })
         .refine(
           (data) => {
