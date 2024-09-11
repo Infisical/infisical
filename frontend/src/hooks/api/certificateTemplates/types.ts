@@ -1,4 +1,4 @@
-import { CertKeyUsage } from "../certificates/types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "../certificates/types";
 
 export type TCertificateTemplate = {
   id: string;
@@ -11,6 +11,7 @@ export type TCertificateTemplate = {
   subjectAlternativeName: string;
   ttl: string;
   keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
 export type TCreateCertificateTemplateDTO = {
@@ -22,6 +23,7 @@ export type TCreateCertificateTemplateDTO = {
   ttl: string;
   projectId: string;
   keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
 export type TUpdateCertificateTemplateDTO = {
@@ -34,6 +36,7 @@ export type TUpdateCertificateTemplateDTO = {
   ttl?: string;
   projectId: string;
   keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
 };
 
 export type TDeleteCertificateTemplateDTO = {

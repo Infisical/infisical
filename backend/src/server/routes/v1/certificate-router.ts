@@ -7,7 +7,7 @@ import { CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
   validateCaDateField
@@ -87,7 +87,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.ttl),
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notBefore),
           notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.notAfter),
-          keyUsages: z.nativeEnum(CertKeyUsage).array().optional()
+          keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
+          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional()
         })
         .refine(
           (data) => {
@@ -179,7 +180,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.ttl),
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notBefore),
           notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notAfter),
-          keyUsages: z.nativeEnum(CertKeyUsage).array().optional()
+          keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
+          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional()
         })
         .refine(
           (data) => {

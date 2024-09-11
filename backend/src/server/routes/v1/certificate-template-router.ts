@@ -7,7 +7,7 @@ import { CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
@@ -80,7 +80,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .nativeEnum(CertKeyUsage)
           .array()
           .optional()
-          .default([CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT])
+          .default([CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT]),
+        extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional().default([])
       }),
       response: {
         200: sanitizedCertificateTemplate
@@ -137,7 +138,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
           .describe(CERTIFICATE_TEMPLATES.UPDATE.ttl),
-        keyUsages: z.nativeEnum(CertKeyUsage).array().optional()
+        keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
+        extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional()
       }),
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.UPDATE.certificateTemplateId)

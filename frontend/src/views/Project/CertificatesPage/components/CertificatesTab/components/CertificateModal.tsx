@@ -33,7 +33,12 @@ import {
   useListWorkspacePkiCollections
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
-import { CertKeyUsage, KEY_USAGES_OPTIONS } from "@app/hooks/api/certificates/types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  EXTENDED_KEY_USAGES_OPTIONS,
+  KEY_USAGES_OPTIONS
+} from "@app/hooks/api/certificates/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
@@ -56,6 +61,14 @@ const schema = z.object({
     [CertKeyUsage.CRL_SIGN]: z.boolean().optional(),
     [CertKeyUsage.ENCIPHER_ONLY]: z.boolean().optional(),
     [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
+  }),
+  extendedKeyUsages: z.object({
+    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
+    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
+    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
+    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
+    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
+    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
   })
 });
 
@@ -110,7 +123,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
       keyUsages: {
         [CertKeyUsage.DIGITAL_SIGNATURE]: true,
         [CertKeyUsage.KEY_ENCIPHERMENT]: true
-      }
+      },
+      extendedKeyUsages: {}
     }
   });
 
@@ -131,7 +145,10 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         altNames: cert.altNames,
         certificateTemplateId: cert.certificateTemplateId ?? CERT_TEMPLATE_NONE_VALUE,
         ttl: "",
-        keyUsages: Object.fromEntries(cert.keyUsages.map((name) => [name, true]))
+        keyUsages: Object.fromEntries((cert.keyUsages || []).map((name) => [name, true])),
+        extendedKeyUsages: Object.fromEntries(
+          (cert.extendedKeyUsages || []).map((name) => [name, true])
+        )
       });
     } else {
       reset({
@@ -144,7 +161,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         keyUsages: {
           [CertKeyUsage.DIGITAL_SIGNATURE]: true,
           [CertKeyUsage.KEY_ENCIPHERMENT]: true
-        }
+        },
+        extendedKeyUsages: {}
       });
     }
   }, [cert]);
@@ -156,6 +174,10 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         "keyUsages",
         Object.fromEntries(selectedCertTemplate.keyUsages.map((name) => [name, true]))
       );
+      setValue(
+        "extendedKeyUsages",
+        Object.fromEntries(selectedCertTemplate.extendedKeyUsages.map((name) => [name, true]))
+      );
     }
   }, [selectedCertTemplate, cert]);
 
@@ -166,7 +188,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     commonName,
     altNames,
     ttl,
-    keyUsages
+    keyUsages,
+    extendedKeyUsages
   }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
@@ -182,7 +205,10 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         ttl,
         keyUsages: Object.entries(keyUsages)
           .filter(([, value]) => value)
-          .map(([key]) => key as CertKeyUsage)
+          .map(([key]) => key as CertKeyUsage),
+        extendedKeyUsages: Object.entries(extendedKeyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key as CertExtendedKeyUsage)
       });
 
       reset();
@@ -417,6 +443,41 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                         >
                           <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
                             {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                              return (
+                                <Checkbox
+                                  id={optionValue}
+                                  key={optionValue}
+                                  className="data-[state=checked]:bg-primary"
+                                  isDisabled={Boolean(cert)}
+                                  isChecked={value[optionValue]}
+                                  onCheckedChange={(state) => {
+                                    onChange({
+                                      ...value,
+                                      [optionValue]: state
+                                    });
+                                  }}
+                                >
+                                  {label}
+                                </Checkbox>
+                              );
+                            })}
+                          </div>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                  <Controller
+                    control={control}
+                    name="extendedKeyUsages"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => {
+                      return (
+                        <FormControl
+                          label="Extended Key Usages"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                            {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
                               return (
                                 <Checkbox
                                   id={optionValue}

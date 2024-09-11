@@ -1,5 +1,5 @@
 import { TProjectPermission } from "@app/lib/types";
-import { CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
 export type TCreateCertTemplateDTO = {
   caId: string;
@@ -9,6 +9,7 @@ export type TCreateCertTemplateDTO = {
   subjectAlternativeName: string;
   ttl: string;
   keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateCertTemplateDTO = {
@@ -20,6 +21,7 @@ export type TUpdateCertTemplateDTO = {
   subjectAlternativeName?: string;
   ttl?: string;
   keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertTemplateDTO = {

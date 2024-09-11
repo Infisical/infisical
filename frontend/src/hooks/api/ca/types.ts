@@ -1,5 +1,5 @@
 import { CertKeyAlgorithm } from "../certificates/enums";
-import { CertKeyUsage } from "../certificates/types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "../certificates/types";
 import { CaRenewalType, CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
@@ -93,6 +93,7 @@ export type TCreateCertificateDTO = {
   notBefore?: string;
   notAfter?: string;
   keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
 export type TCreateCertificateResponse = {

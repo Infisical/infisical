@@ -33,7 +33,12 @@ import {
   useUpdateCertTemplate
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
-import { CertKeyUsage, KEY_USAGES_OPTIONS } from "@app/hooks/api/certificates/types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  EXTENDED_KEY_USAGES_OPTIONS,
+  KEY_USAGES_OPTIONS
+} from "@app/hooks/api/certificates/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const validateTemplateRegexField = z
@@ -63,6 +68,14 @@ const schema = z.object({
     [CertKeyUsage.CRL_SIGN]: z.boolean().optional(),
     [CertKeyUsage.ENCIPHER_ONLY]: z.boolean().optional(),
     [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
+  }),
+  extendedKeyUsages: z.object({
+    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
+    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
+    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
+    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
+    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
+    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
   })
 });
 
@@ -122,7 +135,10 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         subjectAlternativeName: certTemplate.subjectAlternativeName,
         collectionId: certTemplate.pkiCollectionId ?? undefined,
         ttl: certTemplate.ttl,
-        keyUsages: Object.fromEntries(certTemplate.keyUsages.map((name) => [name, true]))
+        keyUsages: Object.fromEntries(certTemplate.keyUsages.map((name) => [name, true]) ?? []),
+        extendedKeyUsages: Object.fromEntries(
+          certTemplate.extendedKeyUsages.map((name) => [name, true]) ?? []
+        )
       });
     } else {
       reset({
@@ -133,7 +149,8 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         keyUsages: {
           [CertKeyUsage.DIGITAL_SIGNATURE]: true,
           [CertKeyUsage.KEY_ENCIPHERMENT]: true
-        }
+        },
+        extendedKeyUsages: {}
       });
     }
   }, [certTemplate, ca]);
@@ -144,7 +161,8 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
     commonName,
     subjectAlternativeName,
     ttl,
-    keyUsages
+    keyUsages,
+    extendedKeyUsages
   }: FormData) => {
     if (!currentWorkspace?.id) {
       return;
@@ -163,7 +181,10 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           ttl,
           keyUsages: Object.entries(keyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key as CertKeyUsage)
+            .map(([key]) => key as CertKeyUsage),
+          extendedKeyUsages: Object.entries(extendedKeyUsages)
+            .filter(([, value]) => value)
+            .map(([key]) => key as CertExtendedKeyUsage)
         });
 
         createNotification({
@@ -181,7 +202,10 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           ttl,
           keyUsages: Object.entries(keyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key as CertKeyUsage)
+            .map(([key]) => key as CertKeyUsage),
+          extendedKeyUsages: Object.entries(extendedKeyUsages)
+            .filter(([, value]) => value)
+            .map(([key]) => key as CertExtendedKeyUsage)
         });
 
         createNotification({
@@ -386,6 +410,40 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
                       >
                         <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
                           {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                            return (
+                              <Checkbox
+                                id={optionValue}
+                                key={optionValue}
+                                className="data-[state=checked]:bg-primary"
+                                isChecked={value[optionValue]}
+                                onCheckedChange={(state) => {
+                                  onChange({
+                                    ...value,
+                                    [optionValue]: state
+                                  });
+                                }}
+                              >
+                                {label}
+                              </Checkbox>
+                            );
+                          })}
+                        </div>
+                      </FormControl>
+                    );
+                  }}
+                />
+                <Controller
+                  control={control}
+                  name="extendedKeyUsages"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => {
+                    return (
+                      <FormControl
+                        label="Extended Key Usages"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                          {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
                             return (
                               <Checkbox
                                 id={optionValue}

@@ -1,3 +1,5 @@
+import * as x509 from "@peculiar/x509";
+
 import { TProjectPermission } from "@app/lib/types";
 
 export enum CertStatus {
@@ -23,6 +25,24 @@ export enum CertKeyUsage {
   ENCIPHER_ONLY = "encipherOnly",
   DECIPHER_ONLY = "decipherOnly"
 }
+
+export enum CertExtendedKeyUsage {
+  CLIENT_AUTH = "clientAuth",
+  SERVER_AUTH = "serverAuth",
+  CODE_SIGNING = "codeSigning",
+  EMAIL_PROTECTION = "emailProtection",
+  TIMESTAMPING = "timeStamping",
+  OCSP_SIGNING = "ocspSigning"
+}
+
+export const CertExtendedKeyUsageOIDToName: Record<string, CertExtendedKeyUsage> = {
+  [x509.ExtendedKeyUsage.clientAuth]: CertExtendedKeyUsage.CLIENT_AUTH,
+  [x509.ExtendedKeyUsage.serverAuth]: CertExtendedKeyUsage.SERVER_AUTH,
+  [x509.ExtendedKeyUsage.codeSigning]: CertExtendedKeyUsage.CODE_SIGNING,
+  [x509.ExtendedKeyUsage.emailProtection]: CertExtendedKeyUsage.EMAIL_PROTECTION,
+  [x509.ExtendedKeyUsage.ocspSigning]: CertExtendedKeyUsage.OCSP_SIGNING,
+  [x509.ExtendedKeyUsage.timeStamping]: CertExtendedKeyUsage.TIMESTAMPING
+};
 
 export enum CrlReason {
   UNSPECIFIED = "UNSPECIFIED",
