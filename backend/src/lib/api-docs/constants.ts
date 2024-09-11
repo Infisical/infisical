@@ -363,7 +363,12 @@ export const ORGANIZATIONS = {
     membershipId: "The ID of the membership to delete."
   },
   LIST_IDENTITY_MEMBERSHIPS: {
-    orgId: "The ID of the organization to get identity memberships from."
+    orgId: "The ID of the organization to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    orderBy: "The column to order identity memberships by.",
+    direction: "The direction identity memberships will be sorted in.",
+    textFilter: "The text string that identity membership names will be filtered by."
   },
   GET_PROJECTS: {
     organizationId: "The ID of the organization to get projects from."
@@ -470,7 +475,12 @@ export const PROJECT_USERS = {
 
 export const PROJECT_IDENTITIES = {
   LIST_IDENTITY_MEMBERSHIPS: {
-    projectId: "The ID of the project to get identity memberships from."
+    projectId: "The ID of the project to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    orderBy: "The column to order identity memberships by.",
+    direction: "The direction identity memberships will be sorted in.",
+    textFilter: "The text string that identity membership names will be filtered by."
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     identityId: "The ID of the identity to get the membership for.",

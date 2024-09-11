@@ -5,7 +5,15 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Modal,
+  ModalClose,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useAddIdentityToWorkspace,
@@ -33,12 +41,20 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
 
-  const orgId = currentOrg?.id || "";
+  const organizationId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
 
-  const { data: identityMembershipOrgs } = useGetIdentityMembershipOrgs(orgId);
-  const { data: identityMemberships } = useGetWorkspaceIdentityMemberships(workspaceId);
+  const { data: identityMembershipOrgsData } = useGetIdentityMembershipOrgs({
+    organizationId,
+    limit: 20000 // TODO: this is temp to preserve functionality for bitcoindepot, will replace with combobox in separate PR
+  });
+  const identityMembershipOrgs = identityMembershipOrgsData?.identityMemberships;
+  const { data: identityMembershipsData } = useGetWorkspaceIdentityMemberships({
+    workspaceId,
+    limit: 20000 // TODO: this is temp to preserve functionality for bitcoindepot, will optimize in PR referenced above
+  });
+  const identityMemberships = identityMembershipsData?.identityMemberships;
 
   const { data: roles } = useGetProjectRoles(projectSlug);
 
@@ -158,9 +174,11 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               >
                 {popUp?.identity?.data ? "Update" : "Create"}
               </Button>
-              <Button colorSchema="secondary" variant="plain">
-                Cancel
-              </Button>
+              <ModalClose asChild>
+                <Button colorSchema="secondary" variant="plain">
+                  Cancel
+                </Button>
+              </ModalClose>
             </div>
           </form>
         ) : (

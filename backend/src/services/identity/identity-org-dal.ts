@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName, TIdentityOrgMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
+import { TListOrgIdentitiesByOrgIdDTO } from "@app/services/identity/identity-types";
 
 export type TIdentityOrgDALFactory = ReturnType<typeof identityOrgDALFactory>;
 
@@ -27,9 +29,20 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: Partial<TIdentityOrgMemberships>, tx?: Knex) => {
+  const find = async (
+    {
+      limit,
+      offset = 0,
+      orderBy,
+      direction = OrderByDirection.ASC,
+      textFilter,
+      ...filter
+    }: Partial<TIdentityOrgMemberships> &
+      Pick<TListOrgIdentitiesByOrgIdDTO, "offset" | "limit" | "orderBy" | "direction" | "textFilter">,
+    tx?: Knex
+  ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.IdentityOrgMembership)
+      const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
@@ -44,6 +57,30 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("id").as("identityId").withSchema(TableName.Identity))
         .select(db.ref("name").as("identityName").withSchema(TableName.Identity))
         .select(db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity));
+
+      if (limit) {
+        void query.offset(offset).limit(limit);
+      }
+
+      if (orderBy) {
+        switch (orderBy) {
+          case "name":
+            void query.orderBy(`${TableName.Identity}.${orderBy}`, direction);
+            break;
+          case "role":
+            void query.orderBy(`${TableName.IdentityOrgMembership}.${orderBy}`, direction);
+            break;
+          default:
+          // do nothing
+        }
+      }
+
+      if (textFilter?.length) {
+        void query.whereILike(`${TableName.Identity}.name`, `%${textFilter}%`);
+      }
+
+      const docs = await query;
+
       return docs.map(
         ({
           crId,
@@ -79,5 +116,26 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...identityOrgOrm, find, findOne };
+  const countAllOrgIdentities = async (
+    { textFilter, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListOrgIdentitiesByOrgIdDTO, "textFilter">,
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
+        .where(filter)
+        .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`);
+
+      if (textFilter?.length) {
+        void query.whereILike(`${TableName.Identity}.name`, `%${textFilter}%`);
+      }
+
+      const identities = await query;
+
+      return identities.length;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countAllOrgIdentities" });
+    }
+  };
+
+  return { ...identityOrgOrm, find, findOne, countAllOrgIdentities };
 };

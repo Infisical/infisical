@@ -1,9 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
 import { TGroupOrgMembership } from "../groups/types";
-import { IdentityMembershipOrg } from "../identities/types";
 import {
   BillingDetails,
   Invoice,
@@ -14,6 +13,8 @@ import {
   PmtMethod,
   ProductsTable,
   TaxID,
+  TListOrgIdentitiesDTO,
+  TOrgIdentitiesList,
   UpdateOrgDTO
 } from "./types";
 
@@ -30,6 +31,12 @@ export const organizationKeys = {
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
   getOrgIdentityMemberships: (orgId: string) =>
     [{ orgId }, "organization-identity-memberships"] as const,
+  // allows invalidation using above key without knowing params
+  getOrgIdentityMembershipsWithParams: ({
+    organizationId: orgId,
+    ...params
+  }: TListOrgIdentitiesDTO) =>
+    [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const
 };
 
@@ -360,19 +367,51 @@ export const useGetOrgLicenses = (organizationId: string) => {
   });
 };
 
-export const useGetIdentityMembershipOrgs = (organizationId: string) => {
+export const useGetIdentityMembershipOrgs = (
+  {
+    organizationId,
+    offset = 0,
+    limit = 100,
+    orderBy = "name",
+    direction = "asc",
+    textFilter = ""
+  }: TListOrgIdentitiesDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TOrgIdentitiesList,
+      unknown,
+      TOrgIdentitiesList,
+      ReturnType<typeof organizationKeys.getOrgIdentityMembershipsWithParams>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const params = new URLSearchParams({
+    offset: String(offset),
+    limit: String(limit),
+    orderBy: String(orderBy),
+    direction: String(direction),
+    textFilter: String(textFilter)
+  });
   return useQuery({
-    queryKey: organizationKeys.getOrgIdentityMemberships(organizationId),
+    queryKey: organizationKeys.getOrgIdentityMembershipsWithParams({
+      organizationId,
+      offset,
+      limit,
+      orderBy,
+      direction,
+      textFilter
+    }),
     queryFn: async () => {
-      const {
-        data: { identityMemberships }
-      } = await apiRequest.get<{ identityMemberships: IdentityMembershipOrg[] }>(
-        `/api/v2/organizations/${organizationId}/identity-memberships`
+      const { data } = await apiRequest.get<TOrgIdentitiesList>(
+        `/api/v2/organizations/${organizationId}/identity-memberships`,
+        { params }
       );
 
-      return identityMemberships;
+      return data;
     },
-    enabled: true
+    enabled: true,
+    ...options
   });
 };
 

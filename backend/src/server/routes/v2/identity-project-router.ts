@@ -7,11 +7,13 @@ import {
   ProjectMembershipRole,
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
-import { PROJECT_IDENTITIES } from "@app/lib/api-docs";
+import { ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-project-types";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
@@ -214,6 +216,37 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       params: z.object({
         projectId: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.projectId)
       }),
+      querystring: z.object({
+        offset: z.coerce
+          .number()
+          .min(0)
+          .default(0)
+          .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.offset)
+          .optional(),
+        limit: z.coerce
+          .number()
+          .min(1)
+          .max(20000) // TODO: temp limit until combobox added to add identity to project modal, reduce once added
+          .default(100)
+          .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.limit)
+          .optional(),
+        orderBy: z
+          .nativeEnum(ProjectIdentityOrderBy)
+          .default(ProjectIdentityOrderBy.Name)
+          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderBy)
+          .optional(),
+        direction: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.direction)
+          .optional(),
+        textFilter: z
+          .string()
+          .trim()
+          .default("")
+          .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.textFilter)
+          .optional()
+      }),
       response: {
         200: z.object({
           identityMemberships: z
@@ -239,19 +272,25 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
               identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
               project: SanitizedProjectSchema.pick({ name: true, id: true })
             })
-            .array()
+            .array(),
+          totalCount: z.number()
         })
       }
     },
     handler: async (req) => {
-      const identityMemberships = await server.services.identityProject.listProjectIdentities({
+      const { identityMemberships, totalCount } = await server.services.identityProject.listProjectIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId
+        projectId: req.params.projectId,
+        limit: req.query.limit,
+        offset: req.query.offset,
+        orderBy: req.query.orderBy,
+        direction: req.query.direction,
+        textFilter: req.query.textFilter
       });
-      return { identityMemberships };
+      return { identityMemberships, totalCount };
     }
   });
 

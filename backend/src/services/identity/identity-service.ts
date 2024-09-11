@@ -6,7 +6,6 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { TOrgPermission } from "@app/lib/types";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
 import { ActorType } from "../auth/auth-type";
@@ -16,6 +15,7 @@ import {
   TCreateIdentityDTO,
   TDeleteIdentityDTO,
   TGetIdentityByIdDTO,
+  TListOrgIdentitiesByOrgIdDTO,
   TListProjectIdentitiesByIdentityIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
@@ -195,14 +195,36 @@ export const identityServiceFactory = ({
     return { ...deletedIdentity, orgId: identityOrgMembership.orgId };
   };
 
-  const listOrgIdentities = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TOrgPermission) => {
+  const listOrgIdentities = async ({
+    orgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    direction,
+    textFilter
+  }: TListOrgIdentitiesByOrgIdDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
     const identityMemberships = await identityOrgMembershipDAL.find({
-      [`${TableName.IdentityOrgMembership}.orgId` as "orgId"]: orgId
+      [`${TableName.IdentityOrgMembership}.orgId` as "orgId"]: orgId,
+      limit,
+      offset,
+      orderBy,
+      direction,
+      textFilter
     });
-    return identityMemberships;
+
+    const totalCount = await identityOrgMembershipDAL.countAllOrgIdentities({
+      [`${TableName.IdentityOrgMembership}.orgId` as "orgId"]: orgId,
+      textFilter
+    });
+
+    return { identityMemberships, totalCount };
   };
 
   const listProjectIdentitiesByIdentityId = async ({

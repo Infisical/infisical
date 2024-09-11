@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, sqlNestRelationships } from "@app/lib/knex";
+import { TListProjectIdentityDTO } from "@app/services/identity-project/identity-project-types";
 
 export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
@@ -107,15 +108,26 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectId = async (projectId: string, filter: { identityId?: string } = {}, tx?: Knex) => {
+  const findByProjectId = async (
+    projectId: string,
+    filter: { identityId?: string } & Pick<
+      TListProjectIdentityDTO,
+      "limit" | "offset" | "textFilter" | "orderBy" | "direction"
+    > = {},
+    tx?: Knex
+  ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
+      const query = (tx || db.replicaNode())(TableName.IdentityProjectMembership)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
         .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
         .where((qb) => {
           if (filter.identityId) {
             void qb.where("identityId", filter.identityId);
+          }
+
+          if (filter.textFilter) {
+            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.textFilter}%`);
           }
         })
         .join(
@@ -153,6 +165,22 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("name").as("projectName").withSchema(TableName.Project)
         );
+
+      if (filter.limit) {
+        void query.offset(filter.offset ?? 0).limit(filter.limit);
+      }
+
+      if (filter.orderBy) {
+        switch (filter.orderBy) {
+          case "name":
+            void query.orderBy(`${TableName.Identity}.${filter.orderBy}`, filter.direction);
+            break;
+          default:
+          // do nothing
+        }
+      }
+
+      const docs = await query;
 
       const members = sqlNestRelationships({
         data: docs,
@@ -208,9 +236,36 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getCountByProjectId = async (
+    projectId: string,
+    filter: { identityId?: string } & Pick<TListProjectIdentityDTO, "textFilter"> = {},
+    tx?: Knex
+  ) => {
+    try {
+      const identities = await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
+        .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
+        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
+        .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
+        .where((qb) => {
+          if (filter.identityId) {
+            void qb.where("identityId", filter.identityId);
+          }
+
+          if (filter.textFilter) {
+            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.textFilter}%`);
+          }
+        });
+
+      return identities.length;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetCountByProjectId" });
+    }
+  };
+
   return {
     ...identityProjectOrm,
     findByIdentityId,
-    findByProjectId
+    findByProjectId,
+    getCountByProjectId
   };
 };

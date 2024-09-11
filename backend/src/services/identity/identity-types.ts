@@ -1,5 +1,5 @@
 import { IPType } from "@app/lib/ip";
-import { TOrgPermission } from "@app/lib/types";
+import { OrderByDirection, TOrgPermission } from "@app/lib/types";
 
 export type TCreateIdentityDTO = {
   role: string;
@@ -29,3 +29,16 @@ export interface TIdentityTrustedIp {
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
 } & Omit<TOrgPermission, "orgId">;
+
+export type TListOrgIdentitiesByOrgIdDTO = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  direction?: OrderByDirection;
+  textFilter?: string;
+} & TOrgPermission;
+
+export enum OrgIdentityOrderBy {
+  Name = "name",
+  Role = "role"
+}

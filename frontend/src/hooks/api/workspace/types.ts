@@ -141,3 +141,12 @@ export type TUpdateWorkspaceGroupRoleDTO = {
       }
   )[];
 };
+
+export type TListProjectIdentitiesDTO = {
+  workspaceId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: string;
+  direction?: string;
+  textFilter?: string;
+};
