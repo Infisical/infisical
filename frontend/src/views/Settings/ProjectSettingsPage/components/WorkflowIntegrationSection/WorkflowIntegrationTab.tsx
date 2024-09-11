@@ -222,7 +222,12 @@ export const WorkflowIntegrationTab = () => {
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
-                        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                        style={{
+                          width: "var(--radix-dropdown-menu-trigger-width)",
+                          maxHeight: "350px",
+                          overflowY: "auto"
+                        }}
+                        side="bottom"
                         align="start"
                       >
                         {sortedSlackChannels?.map((slackChannel) => {
@@ -290,7 +295,12 @@ export const WorkflowIntegrationTab = () => {
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
-                        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                        style={{
+                          width: "var(--radix-dropdown-menu-trigger-width)",
+                          maxHeight: "350px",
+                          overflowY: "auto"
+                        }}
+                        side="bottom"
                         align="start"
                       >
                         {sortedSlackChannels?.map((slackChannel) => {
