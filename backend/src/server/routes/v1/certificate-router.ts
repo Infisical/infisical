@@ -178,7 +178,8 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .refine((val) => ms(val) > 0, "TTL must be a positive number")
             .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.ttl),
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notBefore),
-          notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notAfter)
+          notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.notAfter),
+          keyUsages: z.nativeEnum(CertKeyUsage).array().optional()
         })
         .refine(
           (data) => {

@@ -1346,7 +1346,8 @@ export const certificateAuthorityServiceFactory = ({
       altNames,
       ttl,
       notBefore,
-      notAfter
+      notAfter,
+      keyUsages
     } = dto;
 
     let collectionId = pkiCollectionId;
@@ -1466,11 +1467,56 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const extensions: x509.Extension[] = [
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
     ];
+
+    const csrKeyUsageExtension = csrObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
+    let csrKeyUsages: CertKeyUsage[] = [];
+    if (csrKeyUsageExtension) {
+      csrKeyUsages = Object.values(CertKeyUsage).filter(
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & csrKeyUsageExtension.usages) !== 0
+      );
+    }
+
+    let selectedKeyUsages: CertKeyUsage[] = keyUsages ?? [];
+    if (keyUsages === undefined && !certificateTemplate) {
+      if (csrKeyUsageExtension) {
+        selectedKeyUsages = csrKeyUsages;
+      } else {
+        selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+      }
+    }
+
+    if (keyUsages === undefined && certificateTemplate) {
+      if (csrKeyUsageExtension) {
+        const validKeyUsages = certificateTemplate.keyUsages || [];
+        if (csrKeyUsages.some((keyUsage) => !validKeyUsages.includes(keyUsage))) {
+          throw new BadRequestError({
+            message: "Invalid key usage value for certificate"
+          });
+        }
+        selectedKeyUsages = csrKeyUsages;
+      } else {
+        selectedKeyUsages = (certificateTemplate.keyUsages ?? []) as CertKeyUsage[];
+      }
+    }
+
+    if (keyUsages?.length && certificateTemplate) {
+      const validKeyUsages = certificateTemplate.keyUsages || [];
+      if (keyUsages.some((keyUsage) => !validKeyUsages.includes(keyUsage))) {
+        throw new BadRequestError({
+          message: "Invalid key usage value for certificate"
+        });
+      }
+      selectedKeyUsages = keyUsages;
+    }
+
+    const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
+    if (keyUsagesBitValue) {
+      extensions.push(new x509.KeyUsagesExtension(keyUsagesBitValue, true));
+    }
 
     let altNamesFromCsr: string = "";
     let altNamesArray: {
@@ -1567,7 +1613,8 @@ export const certificateAuthorityServiceFactory = ({
           altNames: altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
-          notAfter: notAfterDate
+          notAfter: notAfterDate,
+          keyUsages: selectedKeyUsages
         },
         tx
       );
