@@ -20,26 +20,24 @@ export const UserGroupsRow = ({ group, handlePopUpOpen }: Props) => {
       >
         <Td>{group.name}</Td>
         <Td>
-          {true && (
-            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content="Remove user from group">
-                <IconButton
-                  colorSchema="danger"
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePopUpOpen("removeUserFromGroup", {
-                      groupSlug: group.slug
-                    });
-                  }}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </Tooltip>
-            </div>
-          )}
+          <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <Tooltip content="Unassign user from group">
+              <IconButton
+                colorSchema="danger"
+                ariaLabel="copy icon"
+                variant="plain"
+                className="group relative"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePopUpOpen("removeUserFromGroup", {
+                    groupSlug: group.slug
+                  });
+                }}
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </IconButton>
+            </Tooltip>
+          </div>
         </Td>
       </Tr>
     </>

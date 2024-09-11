@@ -52,7 +52,7 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
 
       <DeleteActionModal
         isOpen={popUp.removeUserFromGroup.isOpen}
-        title="Are you sure want to remove user from group?"
+        title="Are you sure want to unassign user from group?"
         onChange={(isOpen) => handlePopUpToggle("removeUserFromGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => {

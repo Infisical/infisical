@@ -121,8 +121,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         endDate: req.query.endDate,
         startDate: req.query.startDate || getLastMidnightDateISO(),
         auditLogActor: req.query.actor,
-        actor: req.permission.type,
-        projectId: null
+        actor: req.permission.type
       });
       return { auditLogs };
     }

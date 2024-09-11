@@ -6,7 +6,7 @@ import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 
 export type TListProjectAuditLogDTO = {
   auditLogActor?: string;
-  projectId: string | null;
+  projectId?: string;
   eventType?: string;
   startDate?: string;
   endDate?: string;

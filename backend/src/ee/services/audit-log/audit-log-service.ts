@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
+import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAuditLogDALFactory } from "./audit-log-dal";
@@ -11,7 +12,7 @@ import { EventType, TCreateAuditLogDTO, TListProjectAuditLogDTO } from "./audit-
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
 };
 
@@ -45,6 +46,16 @@ export const auditLogServiceFactory = ({
         actorOrgId
       );
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
     }
 
     // If project ID is not provided, then we need to return all the audit logs for the organization itself.

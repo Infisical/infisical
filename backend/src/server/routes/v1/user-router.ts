@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -151,34 +151,20 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
             id: z.string(),
             name: z.string(),
             slug: z.string(),
-            orgId: z.string(),
-            projectMemberships: z.array(
-              z.object({
-                id: z.string(),
-                project: ProjectsSchema.pick({ id: true, name: true, slug: true }),
-                roles: z.array(
-                  z.object({
-                    id: z.string(),
-                    role: z.string(),
-                    customRoleId: z.string().nullable(),
-                    customRoleName: z.string().nullable(),
-                    customRoleSlug: z.string().nullable(),
-                    temporaryRange: z.string().nullable(),
-                    temporaryMode: z.string().nullable(),
-                    temporaryAccessEndTime: z.string().nullable(),
-                    temporaryAccessStartTime: z.string().nullable(),
-                    isTemporary: z.boolean()
-                  })
-                )
-              })
-            )
+            orgId: z.string()
           })
           .array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const groupMemberships = await server.services.user.listUserGroups(req.params.username, req.permission.orgId);
+      const groupMemberships = await server.services.user.listUserGroups({
+        username: req.params.username,
+        actorOrgId: req.permission.orgId,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
 
       return groupMemberships;
     }

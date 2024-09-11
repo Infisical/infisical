@@ -1,4 +1,8 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -11,6 +15,7 @@ import { AuthMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserDALFactory } from "./user-dal";
+import { TListUserGroupsDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -33,6 +38,7 @@ type TUserServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  permissionService: TPermissionServiceFactory;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -44,7 +50,8 @@ export const userServiceFactory = ({
   projectMembershipDAL,
   groupProjectDAL,
   tokenService,
-  smtpService
+  smtpService,
+  permissionService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (username: string) => {
     const user = await userDAL.findOne({ username });
@@ -298,13 +305,24 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
-  const listUserGroups = async (username: string, orgId: string) => {
+  const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
     const user = await userDAL.findOne({
       username
     });
 
-    const memberships = await groupProjectDAL.findByUserId(user.id, orgId);
+    // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
+    if (user.id !== actorId) {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    }
 
+    const memberships = await groupProjectDAL.findByUserId(user.id, actorOrgId);
     return memberships;
   };
 

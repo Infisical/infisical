@@ -106,100 +106,14 @@ export const groupProjectDALFactory = (db: TDbClient) => {
             db.raw("?", [orgId])
           );
         })
-        .leftJoin(
-          TableName.GroupProjectMembership,
-          `${TableName.GroupProjectMembership}.groupId`,
-          `${TableName.Groups}.id`
-        )
-        .leftJoin(
-          TableName.GroupProjectMembershipRole,
-          `${TableName.GroupProjectMembershipRole}.projectMembershipId`,
-          `${TableName.GroupProjectMembership}.id`
-        )
-        .leftJoin(
-          TableName.ProjectRoles,
-          `${TableName.GroupProjectMembershipRole}.customRoleId`,
-          `${TableName.ProjectRoles}.id`
-        )
-        .leftJoin(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
         .select(
-          db.ref("id").withSchema(TableName.Groups).as("groupId"),
-          db.ref("name").withSchema(TableName.Groups).as("groupName"),
-          db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
-          db.ref("orgId").withSchema(TableName.Groups),
-          db.ref("id").withSchema(TableName.GroupProjectMembership).as("projectMembershipId"),
-          db.ref("id").withSchema(TableName.Project).as("projectId"),
-          db.ref("name").withSchema(TableName.Project).as("projectName"),
-          db.ref("slug").withSchema(TableName.Project).as("projectSlug"),
-          db.ref("role").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("id").withSchema(TableName.GroupProjectMembershipRole).as("membershipRoleId"),
-          db.ref("customRoleId").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("name").withSchema(TableName.ProjectRoles).as("customRoleName"),
-          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
-          db.ref("temporaryMode").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("isTemporary").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryRange").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryAccessStartTime").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.GroupProjectMembershipRole)
+          db.ref("id").withSchema(TableName.Groups),
+          db.ref("name").withSchema(TableName.Groups),
+          db.ref("slug").withSchema(TableName.Groups),
+          db.ref("orgId").withSchema(TableName.Groups)
         );
 
-      const groupsWithProjects = sqlNestRelationships({
-        data: docs,
-        parentMapper: ({ groupId, groupName, groupSlug, orgId: organizationId }) => ({
-          id: groupId,
-          name: groupName,
-          slug: groupSlug,
-          orgId: organizationId,
-          projectMemberships: []
-        }),
-        key: "groupId",
-        childrenMapper: [
-          {
-            label: "projectMemberships" as const,
-            key: "projectMembershipId",
-            mapper: ({ projectId, projectName, projectSlug, projectMembershipId }) => ({
-              id: projectMembershipId,
-              project: {
-                id: projectId,
-                name: projectName,
-                slug: projectSlug
-              },
-              roles: []
-            }),
-            childrenMapper: [
-              {
-                label: "roles" as const,
-                key: "membershipRoleId",
-                mapper: ({
-                  role,
-                  customRoleId,
-                  customRoleName,
-                  customRoleSlug,
-                  membershipRoleId,
-                  temporaryRange,
-                  temporaryMode,
-                  temporaryAccessEndTime,
-                  temporaryAccessStartTime,
-                  isTemporary
-                }) => ({
-                  id: membershipRoleId,
-                  role,
-                  customRoleId,
-                  customRoleName,
-                  customRoleSlug,
-                  temporaryRange,
-                  temporaryMode,
-                  temporaryAccessEndTime,
-                  temporaryAccessStartTime,
-                  isTemporary
-                })
-              }
-            ]
-          }
-        ]
-      });
-
-      return groupsWithProjects;
+      return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByUserId" });
     }
