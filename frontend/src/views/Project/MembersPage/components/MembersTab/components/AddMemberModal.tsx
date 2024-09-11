@@ -313,7 +313,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   selectedRoleSlugs.length === 0
                 }
               >
-                Add Member
+                Add Members
               </Button>
               <Button
                 colorSchema="secondary"
