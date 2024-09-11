@@ -4,14 +4,17 @@ import {
   IntegrationsSchema,
   ProjectMembershipsSchema,
   ProjectRolesSchema,
+  ProjectSlackConfigsSchema,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
+import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
@@ -540,6 +543,113 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId
       });
       return { serviceTokenData };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/slack-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: ProjectSlackConfigsSchema.pick({
+          id: true,
+          slackIntegrationId: true,
+          isAccessRequestNotificationEnabled: true,
+          accessRequestChannels: true,
+          isSecretRequestNotificationEnabled: true,
+          secretRequestChannels: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const slackConfig = await server.services.project.getProjectSlackConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId
+      });
+
+      if (slackConfig) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.workspaceId,
+          event: {
+            type: EventType.GET_PROJECT_SLACK_CONFIG,
+            metadata: {
+              id: slackConfig.id
+            }
+          }
+        });
+      }
+
+      return slackConfig;
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:workspaceId/slack-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        slackIntegrationId: z.string(),
+        isAccessRequestNotificationEnabled: z.boolean(),
+        accessRequestChannels: validateSlackChannelsField,
+        isSecretRequestNotificationEnabled: z.boolean(),
+        secretRequestChannels: validateSlackChannelsField
+      }),
+      response: {
+        200: ProjectSlackConfigsSchema.pick({
+          id: true,
+          slackIntegrationId: true,
+          isAccessRequestNotificationEnabled: true,
+          accessRequestChannels: true,
+          isSecretRequestNotificationEnabled: true,
+          secretRequestChannels: true
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const slackConfig = await server.services.project.updateProjectSlackConfig({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT_SLACK_CONFIG,
+          metadata: {
+            id: slackConfig.id,
+            slackIntegrationId: slackConfig.slackIntegrationId,
+            isAccessRequestNotificationEnabled: slackConfig.isAccessRequestNotificationEnabled,
+            accessRequestChannels: slackConfig.accessRequestChannels,
+            isSecretRequestNotificationEnabled: slackConfig.isSecretRequestNotificationEnabled,
+            secretRequestChannels: slackConfig.secretRequestChannels
+          }
+        }
+      });
+
+      return slackConfig;
     }
   });
 };

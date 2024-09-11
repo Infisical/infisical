@@ -41,10 +41,9 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findUserGroupMembershipsInProject = async (usernames: string[], projectId: string) => {
+  const findUserGroupMembershipsInProject = async (usernames: string[], projectId: string, tx?: Knex) => {
     try {
-      const usernameDocs: string[] = await db
-        .replicaNode()(TableName.UserGroupMembership)
+      const usernameDocs: string[] = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .join(
           TableName.GroupProjectMembership,
           `${TableName.UserGroupMembership}.groupId`,

@@ -131,6 +131,8 @@
     "@peculiar/x509": "^1.12.1",
     "@serdnam/pino-cloudwatch-transport": "^1.0.4",
     "@sindresorhus/slugify": "1.1.0",
+    "@slack/oauth": "^3.0.1",
+    "@slack/web-api": "^7.3.4",
     "@team-plain/typescript-sdk": "^4.6.1",
     "@ucast/mongo2js": "^1.3.4",
     "ajv": "^8.12.0",

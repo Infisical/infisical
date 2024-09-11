@@ -129,8 +129,7 @@ export const AddOrgMemberModal = ({
         organizationId: currentOrg?.id,
         inviteeEmails: emails.split(",").map((email) => email.trim()),
         organizationRoleSlug,
-        projectIds,
-        projectRoleSlug
+        projects: projectIds.map((id) => ({ id, projectRoleSlug: [projectRoleSlug] }))
       });
 
       setCompleteInviteLinks(data?.completeInviteLinks ?? null);

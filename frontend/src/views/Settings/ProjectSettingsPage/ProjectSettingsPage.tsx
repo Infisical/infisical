@@ -8,6 +8,7 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { EncryptionTab } from "./components/EncryptionTab";
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
+import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection";
 
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ export const ProjectSettingsPage = () => {
       key: "tab-project-encryption",
       isHidden: currentWorkspace?.version !== ProjectVersion.V3
     },
+    { name: "Workflow Integrations", key: "tab-workflow-integrations" },
     { name: "Webhooks", key: "tab-project-webhooks" }
   ];
 
@@ -56,6 +58,9 @@ export const ProjectSettingsPage = () => {
                 <EncryptionTab />
               </Tab.Panel>
             )}
+            <Tab.Panel>
+              <WorkflowIntegrationTab />
+            </Tab.Panel>
             <Tab.Panel>
               <WebhooksTab />
             </Tab.Panel>

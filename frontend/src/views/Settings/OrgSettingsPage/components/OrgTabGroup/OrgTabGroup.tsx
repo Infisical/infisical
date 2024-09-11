@@ -1,20 +1,36 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { Tab } from "@headlessui/react";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab/OrgWorkflowIntegrationTab";
 
 const tabs = [
   { name: "General", key: "tab-org-general" },
   { name: "Security", key: "tab-org-security" },
   { name: "Encryption", key: "tab-org-encryption" },
+  { name: "Workflow Integrations", key: "workflow-integrations" },
   { name: "Audit Log Streams", key: "tag-audit-log-streams" }
 ];
 export const OrgTabGroup = () => {
+  const { query } = useRouter();
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const selectedTab = query.selectedTab as string;
+
+  useEffect(() => {
+    if (selectedTab) {
+      const index = tabs.findIndex((tab) => tab.key === selectedTab);
+      if (index !== -1) {
+        setSelectedTabIndex(index);
+      }
+    }
+  }, [selectedTab]);
+
   return (
-    <Tab.Group>
+    <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
       <Tab.List className="mb-6 w-full border-b-2 border-mineshaft-800">
         {tabs.map((tab) => (
           <Tab as={Fragment} key={tab.key}>
@@ -40,6 +56,9 @@ export const OrgTabGroup = () => {
         </Tab.Panel>
         <Tab.Panel>
           <OrgEncryptionTab />
+        </Tab.Panel>
+        <Tab.Panel>
+          <OrgWorkflowIntegrationTab />
         </Tab.Panel>
         <Tab.Panel>
           <AuditLogStreamsTab />

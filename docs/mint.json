@@ -178,6 +178,12 @@
             "documentation/platform/kms/aws-hsm"
           ]
         },
+        {
+          "group": "Workflow Integrations",
+          "pages": [
+            "documentation/platform/workflow-integrations/slack-integration"
+          ]
+        },
         "documentation/platform/secret-sharing"
       ]
     },

@@ -101,9 +101,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     members?.forEach((member) => {
       wsUserUsernames.set(member.user.username, true);
     });
-    return (orgUsers || []).filter(
-      ({ status, user: u }) => status === "accepted" && !wsUserUsernames.has(u.username)
-    );
+    return (orgUsers || []).filter(({ user: u }) => !wsUserUsernames.has(u.username));
   }, [orgUsers, members]);
 
   return (

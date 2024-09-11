@@ -21,7 +21,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          config: SuperAdminSchema.omit({ createdAt: true, updatedAt: true }).extend({
+          config: SuperAdminSchema.omit({
+            createdAt: true,
+            updatedAt: true,
+            encryptedSlackClientId: true,
+            encryptedSlackClientSecret: true
+          }).extend({
             isMigrationModeOn: z.boolean(),
             defaultAuthOrgSlug: z.string().nullable(),
             isSecretScanningDisabled: z.boolean()
@@ -62,7 +67,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           .optional()
           .refine((methods) => !methods || methods.length > 0, {
             message: "At least one login method should be enabled."
-          })
+          }),
+        slackClientId: z.string().optional(),
+        slackClientSecret: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -120,6 +127,32 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         users
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/integrations/slack/config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          clientId: z.string(),
+          clientSecret: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const adminSlackConfig = await server.services.superAdmin.getAdminSlackConfig();
+
+      return adminSlackConfig;
     }
   });
 

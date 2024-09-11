@@ -47,6 +47,9 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { triggerSlackNotification } from "@app/services/slack/slack-fns";
+import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -89,7 +92,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  userDAL: Pick<TUserDALFactory, "find" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
     TProjectDALFactory,
@@ -104,6 +107,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -132,7 +136,8 @@ export const secretApprovalRequestServiceFactory = ({
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  licenseService
+  licenseService,
+  projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
@@ -1069,6 +1074,25 @@ export const secretApprovalRequestServiceFactory = ({
       return { ...doc, commits: approvalCommits };
     });
 
+    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    const user = await userDAL.findById(secretApprovalRequest.committerUserId);
+    await triggerSlackNotification({
+      projectId,
+      projectDAL,
+      kmsService,
+      projectSlackConfigDAL,
+      notification: {
+        type: SlackTriggerFeature.SECRET_APPROVAL,
+        payload: {
+          userEmail: user.email as string,
+          environment: env.name,
+          secretPath,
+          projectId,
+          requestId: secretApprovalRequest.id
+        }
+      }
+    });
+
     await sendApprovalEmailsFn({
       projectDAL,
       secretApprovalPolicyDAL,
@@ -1329,6 +1353,25 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       return { ...doc, commits: approvalCommits };
+    });
+
+    const user = await userDAL.findById(secretApprovalRequest.committerUserId);
+    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    await triggerSlackNotification({
+      projectId,
+      projectDAL,
+      kmsService,
+      projectSlackConfigDAL,
+      notification: {
+        type: SlackTriggerFeature.SECRET_APPROVAL,
+        payload: {
+          userEmail: user.email as string,
+          environment: env.name,
+          secretPath,
+          projectId,
+          requestId: secretApprovalRequest.id
+        }
+      }
     });
 
     await sendApprovalEmailsFn({

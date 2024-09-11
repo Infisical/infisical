@@ -34,6 +34,8 @@ import { TProjectUserMembershipRoleDALFactory } from "../project-membership/proj
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
+import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
@@ -43,6 +45,7 @@ import {
   TDeleteProjectDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
+  TGetProjectSlackConfig,
   TListProjectAlertsDTO,
   TListProjectCasDTO,
   TListProjectCertificateTemplatesDTO,
@@ -54,6 +57,7 @@ import {
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
+  TUpdateProjectSlackConfig,
   TUpdateProjectVersionLimitDTO,
   TUpgradeProjectDTO
 } from "./project-types";
@@ -76,6 +80,8 @@ type TProjectServiceFactoryDep = {
   identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create" | "findProjectGhostUser" | "findOne">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "findOne" | "transaction" | "updateById" | "create">;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findById" | "findByIdWithWorkflowIntegrationDetails">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
@@ -126,7 +132,9 @@ export const projectServiceFactory = ({
   pkiAlertDAL,
   keyStore,
   kmsService,
-  projectBotDAL
+  projectBotDAL,
+  projectSlackConfigDAL,
+  slackIntegrationDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -909,6 +917,113 @@ export const projectServiceFactory = ({
     return { secretManagerKmsKey: kmsKey };
   };
 
+  const getProjectSlackConfig = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetProjectSlackConfig) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+
+    return projectSlackConfigDAL.findOne({
+      projectId: project.id
+    });
+  };
+
+  const updateProjectSlackConfig = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    slackIntegrationId,
+    isAccessRequestNotificationEnabled,
+    accessRequestChannels,
+    isSecretRequestNotificationEnabled,
+    secretRequestChannels
+  }: TUpdateProjectSlackConfig) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({
+        message: "Project not found"
+      });
+    }
+
+    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(slackIntegrationId);
+    if (!slackIntegration) {
+      throw new NotFoundError({
+        message: "Slack integration not found"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    if (slackIntegration.orgId !== project.orgId) {
+      throw new BadRequestError({
+        message: "Selected slack integration is not in the same organization"
+      });
+    }
+
+    return projectSlackConfigDAL.transaction(async (tx) => {
+      const slackConfig = await projectSlackConfigDAL.findOne(
+        {
+          projectId
+        },
+        tx
+      );
+
+      if (slackConfig) {
+        return projectSlackConfigDAL.updateById(
+          slackConfig.id,
+          {
+            slackIntegrationId,
+            isAccessRequestNotificationEnabled,
+            accessRequestChannels,
+            isSecretRequestNotificationEnabled,
+            secretRequestChannels
+          },
+          tx
+        );
+      }
+
+      return projectSlackConfigDAL.create(
+        {
+          projectId,
+          slackIntegrationId,
+          isAccessRequestNotificationEnabled,
+          accessRequestChannels,
+          isSecretRequestNotificationEnabled,
+          secretRequestChannels
+        },
+        tx
+      );
+    });
+  };
+
   return {
     createProject,
     deleteProject,
@@ -929,6 +1044,8 @@ export const projectServiceFactory = ({
     updateProjectKmsKey,
     getProjectKmsBackup,
     loadProjectKmsBackup,
-    getProjectKmsKeys
+    getProjectKmsKeys,
+    getProjectSlackConfig,
+    updateProjectSlackConfig
   };
 };

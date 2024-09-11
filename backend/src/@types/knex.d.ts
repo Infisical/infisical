@@ -193,6 +193,9 @@ import {
   TProjectRolesUpdate,
   TProjects,
   TProjectsInsert,
+  TProjectSlackConfigs,
+  TProjectSlackConfigsInsert,
+  TProjectSlackConfigsUpdate,
   TProjectsUpdate,
   TProjectUserAdditionalPrivilege,
   TProjectUserAdditionalPrivilegeInsert,
@@ -299,6 +302,9 @@ import {
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
+  TSlackIntegrations,
+  TSlackIntegrationsInsert,
+  TSlackIntegrationsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -322,7 +328,10 @@ import {
   TUsersUpdate,
   TWebhooks,
   TWebhooksInsert,
-  TWebhooksUpdate
+  TWebhooksUpdate,
+  TWorkflowIntegrations,
+  TWorkflowIntegrationsInsert,
+  TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
   TSecretV2TagJunction,
@@ -775,6 +784,21 @@ declare module "knex/types/tables" {
       TKmsKeyVersions,
       TKmsKeyVersionsInsert,
       TKmsKeyVersionsUpdate
+    >;
+    [TableName.SlackIntegrations]: KnexOriginal.CompositeTableType<
+      TSlackIntegrations,
+      TSlackIntegrationsInsert,
+      TSlackIntegrationsUpdate
+    >;
+    [TableName.ProjectSlackConfigs]: KnexOriginal.CompositeTableType<
+      TProjectSlackConfigs,
+      TProjectSlackConfigsInsert,
+      TProjectSlackConfigsUpdate
+    >;
+    [TableName.WorkflowIntegrations]: KnexOriginal.CompositeTableType<
+      TWorkflowIntegrations,
+      TWorkflowIntegrationsInsert,
+      TWorkflowIntegrationsUpdate
     >;
   }
 }

@@ -25,6 +25,7 @@ import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
 import { AuthPanel } from "./AuthPanel";
+import { IntegrationPanel } from "./IntegrationPanel";
 import { RateLimitPanel } from "./RateLimitPanel";
 import { UserPanel } from "./UserPanel";
 
@@ -32,6 +33,7 @@ enum TabSections {
   Settings = "settings",
   Auth = "auth",
   RateLimit = "rate-limit",
+  Integrations = "integrations",
   Users = "users"
 }
 
@@ -137,6 +139,7 @@ export const AdminDashboardPage = () => {
                 <Tab value={TabSections.Settings}>General</Tab>
                 <Tab value={TabSections.Auth}>Authentication</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
+                <Tab value={TabSections.Integrations}>Integrations</Tab>
                 <Tab value={TabSections.Users}>Users</Tab>
               </div>
             </TabList>
@@ -322,6 +325,9 @@ export const AdminDashboardPage = () => {
             </TabPanel>
             <TabPanel value={TabSections.RateLimit}>
               <RateLimitPanel />
+            </TabPanel>
+            <TabPanel value={TabSections.Integrations}>
+              <IntegrationPanel />
             </TabPanel>
             <TabPanel value={TabSections.Users}>
               <UserPanel />

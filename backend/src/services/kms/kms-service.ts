@@ -208,6 +208,23 @@ export const kmsServiceFactory = ({
     return org.kmsDefaultKeyId;
   };
 
+  const encryptWithRootKey = async () => {
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    return ({ plainText }: { plainText: Buffer }) => {
+      const encryptedPlainTextBlob = cipher.encrypt(plainText, ROOT_ENCRYPTION_KEY);
+
+      return Promise.resolve({ cipherTextBlob: encryptedPlainTextBlob });
+    };
+  };
+
+  const decryptWithRootKey = async () => {
+    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+    return ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => {
+      const decryptedBlob = cipher.decrypt(cipherTextBlob, ROOT_ENCRYPTION_KEY);
+      return Promise.resolve(decryptedBlob);
+    };
+  };
+
   const decryptWithKmsKey = async ({
     kmsId,
     depth = 0
@@ -808,6 +825,8 @@ export const kmsServiceFactory = ({
     decryptWithKmsKey,
     encryptWithInputKey,
     decryptWithInputKey,
+    encryptWithRootKey,
+    decryptWithRootKey,
     getOrgKmsKeyId,
     getProjectSecretManagerKmsKeyId,
     updateProjectSecretManagerKmsKey,
