@@ -22,11 +22,9 @@ import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
-import { addMembersToProject } from "./project-membership-fns";
 import {
   ProjectUserMembershipTemporaryMode,
   TAddUsersToWorkspaceDTO,
-  TAddUsersToWorkspaceNonE2EEDTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
   TGetProjectMembershipByUsernameDTO,
@@ -61,7 +59,6 @@ export const projectMembershipServiceFactory = ({
   projectUserMembershipRoleDAL,
   smtpService,
   projectRoleDAL,
-  projectBotDAL,
   orgDAL,
   projectUserAdditionalPrivilegeDAL,
   userDAL,
@@ -212,52 +209,6 @@ export const projectMembershipServiceFactory = ({
       });
     }
     return orgMembers;
-  };
-
-  const addUsersToProjectNonE2EE = async ({
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    emails,
-    usernames,
-    sendEmails = true
-  }: TAddUsersToWorkspaceNonE2EEDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-
-    if (project.version === ProjectVersion.V1) {
-      throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
-    }
-
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
-
-    const members = await addMembersToProject({
-      orgDAL,
-      projectDAL,
-      projectMembershipDAL,
-      projectKeyDAL,
-      userGroupMembershipDAL,
-      projectBotDAL,
-      projectUserMembershipRoleDAL,
-      smtpService
-    }).addMembersToNonE2EEProject({
-      emails,
-      usernames,
-      projectId,
-      projectMembershipRole: ProjectMembershipRole.Member,
-      sendEmails
-    });
-
-    return members;
   };
 
   const updateProjectMembership = async ({
@@ -530,7 +481,6 @@ export const projectMembershipServiceFactory = ({
     getProjectMemberships,
     getProjectMembershipByUsername,
     updateProjectMembership,
-    addUsersToProjectNonE2EE,
     deleteProjectMemberships,
     deleteProjectMembership, // TODO: Remove this
     addUsersToProject,

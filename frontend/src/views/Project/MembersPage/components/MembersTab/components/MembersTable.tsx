@@ -1,10 +1,11 @@
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faClock,
   faEdit,
   faMagnifyingGlass,
   faTrash,
-  faUsers} from "@fortawesome/free-solid-svg-icons";
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -27,12 +28,14 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useUser,
-  useWorkspace} from "@app/context";
+  useWorkspace
+} from "@app/context";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
@@ -104,7 +107,7 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
             {!isMembersLoading &&
               filterdUsers?.map((projectMember, index) => {
                 const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
-                const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                const name = u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : "-";
                 const email = u?.email || inviteEmail;
 
                 return (

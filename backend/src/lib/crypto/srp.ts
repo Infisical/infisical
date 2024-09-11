@@ -5,6 +5,7 @@ import nacl from "tweetnacl";
 import tweetnacl from "tweetnacl-util";
 
 import { TUserEncryptionKeys } from "@app/db/schemas";
+import { UserEncryption } from "@app/services/user/user-types";
 
 import { decryptSymmetric128BitHexKeyUTF8, encryptAsymmetric, encryptSymmetric } from "./encryption";
 
@@ -36,12 +37,16 @@ export const srpCheckClientProof = async (
 // Ghost user related:
 // This functionality is intended for ghost user logic. This happens on the frontend when a user is being created.
 // We replicate the same functionality on the backend when creating a ghost user.
-export const generateUserSrpKeys = async (email: string, password: string) => {
+export const generateUserSrpKeys = async (
+  email: string,
+  password: string,
+  customKeys?: { publicKey: string; privateKey: string }
+) => {
   const pair = nacl.box.keyPair();
   const secretKeyUint8Array = pair.secretKey;
   const publicKeyUint8Array = pair.publicKey;
-  const privateKey = tweetnacl.encodeBase64(secretKeyUint8Array);
-  const publicKey = tweetnacl.encodeBase64(publicKeyUint8Array);
+  const privateKey = customKeys?.privateKey || tweetnacl.encodeBase64(secretKeyUint8Array);
+  const publicKey = customKeys?.publicKey || tweetnacl.encodeBase64(publicKeyUint8Array);
 
   // eslint-disable-next-line
   const client = new jsrp.client();
@@ -111,7 +116,7 @@ export const getUserPrivateKey = async (
     | "encryptionVersion"
   >
 ) => {
-  if (user.encryptionVersion === 1) {
+  if (user.encryptionVersion === UserEncryption.V1) {
     return decryptSymmetric128BitHexKeyUTF8({
       ciphertext: user.encryptedPrivateKey,
       iv: user.iv,
@@ -119,7 +124,12 @@ export const getUserPrivateKey = async (
       key: password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
     });
   }
-  if (user.encryptionVersion === 2 && user.protectedKey && user.protectedKeyIV && user.protectedKeyTag) {
+  if (
+    user.encryptionVersion === UserEncryption.V2 &&
+    user.protectedKey &&
+    user.protectedKeyIV &&
+    user.protectedKeyTag
+  ) {
     const derivedKey = await argon2.hash(password, {
       salt: Buffer.from(user.salt),
       memoryCost: 65536,

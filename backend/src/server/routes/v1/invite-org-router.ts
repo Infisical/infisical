@@ -18,9 +18,14 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         inviteeEmails: z.array(z.string().trim().email()),
         organizationId: z.string().trim(),
-        projectIds: z.array(z.string().trim()).optional(),
-        projectRoleSlug: z.nativeEnum(ProjectMembershipRole).optional(),
-        organizationRoleSlug: z.nativeEnum(OrgMembershipRole)
+        projects: z
+          .object({
+            id: z.string(),
+            projectRoleSlug: z.string().array().default([ProjectMembershipRole.Member])
+          })
+          .array()
+          .optional(),
+        organizationRoleSlug: z.string().default(OrgMembershipRole.Member)
       }),
       response: {
         200: z.object({
@@ -40,12 +45,12 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const completeInviteLinks = await server.services.org.inviteUserToOrganization({
+      const { signupTokens: completeInviteLinks } = await server.services.org.inviteUserToOrganization({
         orgId: req.body.organizationId,
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         inviteeEmails: req.body.inviteeEmails,
-        projectIds: req.body.projectIds,
-        projectRoleSlug: req.body.projectRoleSlug,
+        projects: req.body.projects,
         organizationRoleSlug: req.body.organizationRoleSlug,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId

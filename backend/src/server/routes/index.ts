@@ -495,7 +495,8 @@ export const registerRoutes = async (
     smtpService,
     userDAL,
     groupDAL,
-    orgBotDAL
+    orgBotDAL,
+    projectRoleDAL
   });
   const signupService = authSignupServiceFactory({
     tokenService,
