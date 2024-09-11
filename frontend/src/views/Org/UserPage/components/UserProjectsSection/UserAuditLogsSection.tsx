@@ -47,7 +47,7 @@ export const UserAuditLogsSection = withPermission(
         />
       </div>
     ) : !isLoading ? (
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 opacity-50">
+      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
           <p className="text-lg font-semibold text-gray-200">Audit Logs</p>
         </div>
@@ -72,7 +72,7 @@ export const UserAuditLogsSection = withPermission(
                     upgrade your subscription
                   </a>
                 </Link>{" "}
-                to view audit logs.
+                to view audit logs for this user
               </p>
             </div>
           }

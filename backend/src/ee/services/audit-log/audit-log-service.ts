@@ -55,6 +55,10 @@ export const auditLogServiceFactory = ({
         actorOrgId
       );
 
+      /**
+       * NOTE (dangtony98): Update this to organization-level audit log permission check once audit logs are moved
+       * to the organization level
+       */
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
     }
 

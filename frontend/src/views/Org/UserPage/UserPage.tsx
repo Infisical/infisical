@@ -244,7 +244,7 @@ export const UserPage = withPermission(
                 <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
               </div>
               <div className="w-full space-y-2">
-                <div className="w-full space-y-2">
+                <div className="w-full space-y-4">
                   <UserProjectsSection membershipId={membershipId} />
                   <UserGroupsSection orgMembership={membership} />
                   <UserAuditLogsSection orgMembership={membership} />
