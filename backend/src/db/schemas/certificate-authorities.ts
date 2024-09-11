@@ -28,7 +28,8 @@ export const CertificateAuthoritiesSchema = z.object({
   keyAlgorithm: z.string(),
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
-  activeCaCertId: z.string().uuid().nullable().optional()
+  activeCaCertId: z.string().uuid().nullable().optional(),
+  requireTemplateForIssuance: z.boolean().default(false)
 });
 
 export type TCertificateAuthorities = z.infer<typeof CertificateAuthoritiesSchema>;

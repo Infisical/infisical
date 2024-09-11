@@ -118,7 +118,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {
           logger.error(error);
-          cb(null, {});
+          cb(error as Error);
         }
       },
       () => {}

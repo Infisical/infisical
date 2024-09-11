@@ -19,6 +19,7 @@ export type TCertificateAuthority = {
   notAfter?: string;
   notBefore?: string;
   keyAlgorithm: CertKeyAlgorithm;
+  requireTemplateForIssuance: boolean;
   activeCaCertId?: string;
   createdAt: string;
   updatedAt: string;
@@ -37,12 +38,14 @@ export type TCreateCaDTO = {
   notAfter?: string;
   maxPathLength: number;
   keyAlgorithm: CertKeyAlgorithm;
+  requireTemplateForIssuance: boolean;
 };
 
 export type TUpdateCaDTO = {
   projectSlug: string;
   caId: string;
   status?: CaStatus;
+  requireTemplateForIssuance?: boolean;
 };
 
 export type TDeleteCaDTO = {

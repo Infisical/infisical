@@ -58,7 +58,8 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   if (
     provider === DynamicSecretProviders.SqlDatabase ||
     provider === DynamicSecretProviders.Cassandra ||
-    provider === DynamicSecretProviders.MongoAtlas
+    provider === DynamicSecretProviders.MongoAtlas ||
+    provider === DynamicSecretProviders.MongoDB
   ) {
     const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
     return (
@@ -134,6 +135,24 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
               </p>
             </div>
           }
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.RabbitMq) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
         />
       </div>
     );

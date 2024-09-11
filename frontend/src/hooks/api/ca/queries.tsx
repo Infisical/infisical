@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TCertificateAuthority } from "./types";
 
 export const caKeys = {
@@ -11,6 +12,7 @@ export const caKeys = {
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
+  getCaCertTemplates: (caId: string) => [{ caId }, "ca-cert-templates"],
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"]
 };
 
@@ -85,6 +87,19 @@ export const useGetCaCrls = (caId: string) => {
           crl: string;
         }[]
       >(`/api/v1/pki/ca/${caId}/crls`);
+      return data;
+    },
+    enabled: Boolean(caId)
+  });
+};
+
+export const useGetCaCertTemplates = (caId: string) => {
+  return useQuery({
+    queryKey: caKeys.getCaCertTemplates(caId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateTemplates: TCertificateTemplate[];
+      }>(`/api/v1/pki/ca/${caId}/certificate-templates`);
       return data;
     },
     enabled: Boolean(caId)

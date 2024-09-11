@@ -140,6 +140,7 @@ export enum EventType {
   GET_CA_CRLS = "get-certificate-authority-crls",
   ISSUE_CERT = "issue-cert",
   SIGN_CERT = "sign-cert",
+  GET_CA_CERTIFICATE_TEMPLATES = "get-ca-certificate-templates",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
@@ -1192,6 +1193,14 @@ interface SignCert {
   };
 }
 
+interface GetCaCertificateTemplates {
+  type: EventType.GET_CA_CERTIFICATE_TEMPLATES;
+  metadata: {
+    caId: string;
+    dn: string;
+  };
+}
+
 interface GetCert {
   type: EventType.GET_CERT;
   metadata: {
@@ -1547,6 +1556,7 @@ export type Event =
   | GetCaCrls
   | IssueCert
   | SignCert
+  | GetCaCertificateTemplates
   | GetCert
   | DeleteCert
   | RevokeCert

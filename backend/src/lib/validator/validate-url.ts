@@ -1,7 +1,7 @@
 import { getConfig } from "../config/env";
 import { BadRequestError } from "../errors";
 
-export const validateLocalIps = (url: string) => {
+export const blockLocalAndPrivateIpAddresses = (url: string) => {
   const validUrl = new URL(url);
   const appCfg = getConfig();
   // on cloud local ips are not allowed

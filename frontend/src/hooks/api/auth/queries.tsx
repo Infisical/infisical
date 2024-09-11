@@ -24,6 +24,7 @@ import {
   SRP1DTO,
   SRPR1Res,
   TOauthTokenExchangeDTO,
+  UserAgentType,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
@@ -60,7 +61,10 @@ export const useLogin1 = () => {
   });
 };
 
-export const selectOrganization = async (data: { organizationId: string }) => {
+export const selectOrganization = async (data: {
+  organizationId: string;
+  userAgent?: UserAgentType;
+}) => {
   const { data: res } = await apiRequest.post<{ token: string }>(
     "/api/v3/auth/select-organization",
     data
@@ -71,11 +75,14 @@ export const selectOrganization = async (data: { organizationId: string }) => {
 export const useSelectOrganization = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (details: { organizationId: string }) => {
+    mutationFn: async (details: { organizationId: string; userAgent?: UserAgentType }) => {
       const data = await selectOrganization(details);
 
-      SecurityClient.setToken(data.token);
-      SecurityClient.setProviderAuthToken("");
+      // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
+      if (!details.userAgent) {
+        SecurityClient.setToken(data.token);
+        SecurityClient.setProviderAuthToken("");
+      }
 
       return data;
     },

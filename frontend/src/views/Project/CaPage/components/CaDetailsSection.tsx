@@ -1,4 +1,4 @@
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -33,6 +33,28 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">CA Details</h3>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Identity}>
+          {(isAllowed) => {
+            return (
+              <Tooltip content="Edit CA">
+                <IconButton
+                  isDisabled={!isAllowed}
+                  ariaLabel="copy icon"
+                  variant="plain"
+                  className="group relative"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePopUpOpen("ca", {
+                      caId: ca.id
+                    });
+                  }}
+                >
+                  <FontAwesomeIcon icon={faPencil} />
+                </IconButton>
+              </Tooltip>
+            );
+          }}
+        </ProjectPermissionCan>
       </div>
       <div className="pt-4">
         <div className="mb-4">
@@ -113,6 +135,12 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
           <p className="text-sm font-semibold text-mineshaft-300">Not After</p>
           <p className="text-sm text-mineshaft-300">
             {ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "-"}
+          </p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Template Issuance Required</p>
+          <p className="text-sm text-mineshaft-300">
+            {ca.requireTemplateForIssuance ? "True" : "False"}
           </p>
         </div>
         {ca.status === CaStatus.ACTIVE && (

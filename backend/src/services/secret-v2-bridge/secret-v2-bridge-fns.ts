@@ -444,7 +444,9 @@ export const expandSecretReferencesFactory = ({
                 depth: depth + 1
               });
             }
-            expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
+            if (referedValue) {
+              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
+            }
           } else {
             const secretReferenceEnvironment = entities[0];
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
@@ -463,7 +465,9 @@ export const expandSecretReferencesFactory = ({
               });
             }
 
-            expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
+            if (referedValue) {
+              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
+            }
           }
         }
       }

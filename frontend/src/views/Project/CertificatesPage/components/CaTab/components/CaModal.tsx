@@ -12,11 +12,12 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  Switch
   // DatePicker
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { CaType, useCreateCa, useGetCaById } from "@app/hooks/api/ca";
+import { CaType, useCreateCa, useGetCaById,useUpdateCa } from "@app/hooks/api/ca";
 import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -49,7 +50,8 @@ const schema = z
       CertKeyAlgorithm.RSA_4096,
       CertKeyAlgorithm.ECDSA_P256,
       CertKeyAlgorithm.ECDSA_P384
-    ])
+    ]),
+    requireTemplateForIssuance: z.boolean()
   })
   .required();
 
@@ -70,7 +72,9 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   // const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
 
   const { data: ca } = useGetCaById((popUp?.ca?.data as { caId: string })?.caId || "");
+  
   const { mutateAsync: createMutateAsync } = useCreateCa();
+  const { mutateAsync: updateMutateAsync } = useUpdateCa();
 
   const {
     control,
@@ -110,7 +114,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName: ca.commonName,
         notAfter: ca.notAfter ? format(new Date(ca.notAfter), "yyyy-MM-dd") : "",
         maxPathLength: ca.maxPathLength ? String(ca.maxPathLength) : "",
-        keyAlgorithm: ca.keyAlgorithm
+        keyAlgorithm: ca.keyAlgorithm,
+        requireTemplateForIssuance: ca.requireTemplateForIssuance
       });
     } else {
       reset({
@@ -124,7 +129,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName: "",
         notAfter: getDateTenYearsFromToday(),
         maxPathLength: "-1",
-        keyAlgorithm: CertKeyAlgorithm.RSA_2048
+        keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+        requireTemplateForIssuance: true
       });
     }
   }, [ca]);
@@ -140,31 +146,43 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     province,
     notAfter,
     maxPathLength,
-    keyAlgorithm
+    keyAlgorithm,
+    requireTemplateForIssuance
   }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
-
-      await createMutateAsync({
-        projectSlug: currentWorkspace.slug,
-        type,
-        friendlyName,
-        commonName,
-        organization,
-        ou,
-        country,
-        province,
-        locality,
-        notAfter,
-        maxPathLength: Number(maxPathLength),
-        keyAlgorithm
-      });
+      
+      if (ca) {
+        // update
+        await updateMutateAsync({
+          projectSlug: currentWorkspace.slug,
+          caId: ca.id,
+          requireTemplateForIssuance
+        });
+      } else {
+        // create
+        await createMutateAsync({
+          projectSlug: currentWorkspace.slug,
+          type,
+          friendlyName,
+          commonName,
+          organization,
+          ou,
+          country,
+          province,
+          locality,
+          notAfter,
+          maxPathLength: Number(maxPathLength),
+          keyAlgorithm,
+          requireTemplateForIssuance
+        });
+      }
 
       reset();
       handlePopUpToggle("ca", false);
 
       createNotification({
-        text: "Successfully created CA",
+        text: `Successfully ${ca ? "updated" : "created"} CA`,
         type: "success"
       });
     } catch (err) {
@@ -186,6 +204,11 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     >
       <ModalContent title={`${ca ? "View" : "Create"} Private CA`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
+          {ca && (
+            <FormControl label="CA ID">
+              <Input value={ca.id} isDisabled className="bg-white/[0.07]" />
+            </FormControl>
+          )}
           <Controller
             control={control}
             name="type"
@@ -406,26 +429,41 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          {!ca && (
-            <div className="flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                {popUp?.ca?.data ? "Update" : "Create"}
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("ca", false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
+          <Controller
+            control={control}
+            name="requireTemplateForIssuance"
+            render={({ field, fieldState: { error } }) => {
+              return (
+                <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
+                  <Switch
+                    id="is-active"
+                    onCheckedChange={(value) => field.onChange(value)}
+                    isChecked={field.value}
+                  >
+                    <p className="w-full">Require Template for Certificate Issuance</p>
+                  </Switch>
+                </FormControl>
+              );
+            }}
+          />
+          <div className="flex items-center">
+            <Button
+              className="mr-4"
+              size="sm"
+              type="submit"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              {popUp?.ca?.data ? "Update" : "Create"}
+            </Button>
+            <Button
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("ca", false)}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       </ModalContent>
     </Modal>

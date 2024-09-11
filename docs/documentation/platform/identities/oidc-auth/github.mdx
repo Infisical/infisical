@@ -92,8 +92,8 @@ In the following steps, we explore how to create and use identities to access th
     - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
     - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
-
     <Tip>If you are unsure about what to configure for the subject, audience, and claims fields you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to get the appropriate values. Alternatively, you can fetch the JWT from the workflow and inspect the fields manually.</Tip>
+    <Info>The `subject`, `audiences`, and `claims` fields support glob pattern matching; however, we highly recommend using hardcoded values whenever possible.</Info>
     </Step>
     <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.

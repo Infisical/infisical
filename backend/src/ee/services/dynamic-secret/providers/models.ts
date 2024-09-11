@@ -17,7 +17,6 @@ export const DynamicSecretRedisDBSchema = z.object({
   port: z.number(),
   username: z.string().trim(), // this is often "default".
   password: z.string().trim().optional(),
-
   creationStatement: z.string().trim(),
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
@@ -55,6 +54,26 @@ export const DynamicSecretElasticSearchSchema = z.object({
   ]),
 
   ca: z.string().optional()
+});
+
+export const DynamicSecretRabbitMqSchema = z.object({
+  host: z.string().trim().min(1),
+  port: z.number(),
+  tags: z.array(z.string().trim()).default([]),
+
+  username: z.string().trim().min(1),
+  password: z.string().trim().min(1),
+
+  ca: z.string().optional(),
+
+  virtualHost: z.object({
+    name: z.string().trim().min(1),
+    permissions: z.object({
+      read: z.string().trim().min(1),
+      write: z.string().trim().min(1),
+      configure: z.string().trim().min(1)
+    })
+  })
 });
 
 export const DynamicSecretSqlDBSchema = z.object({
@@ -131,6 +150,22 @@ export const DynamicSecretMongoAtlasSchema = z.object({
     .array()
 });
 
+export const DynamicSecretMongoDBSchema = z.object({
+  host: z.string().min(1).trim().toLowerCase(),
+  port: z.number().optional(),
+  username: z.string().min(1).trim(),
+  password: z.string().min(1).trim(),
+  database: z.string().min(1).trim(),
+  ca: z.string().min(1).optional(),
+  roles: z
+    .string()
+    .array()
+    .min(1)
+    .describe(
+      'Enum: "atlasAdmin" "backup" "clusterMonitor" "dbAdmin" "dbAdminAnyDatabase" "enableSharding" "read" "readAnyDatabase" "readWrite" "readWriteAnyDatabase" "<a custom role name>".Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role.'
+    )
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -138,7 +173,9 @@ export enum DynamicSecretProviders {
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
   MongoAtlas = "mongo-db-atlas",
-  ElasticSearch = "elastic-search"
+  ElasticSearch = "elastic-search",
+  MongoDB = "mongo-db",
+  RabbitMq = "rabbit-mq"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -148,7 +185,9 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), inputs: DynamicSecretAwsElastiCacheSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), inputs: DynamicSecretElasticSearchSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), inputs: DynamicSecretElasticSearchSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema })
 ]);
 
 export type TDynamicProviderFns = {

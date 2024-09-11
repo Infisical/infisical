@@ -25,7 +25,7 @@ graph TD
 
 The typical workflow for managing certificates consists of the following steps:
 
-1. Issuing a certificate under an intermediate CA with details like name and validity period.
+1. Issuing a certificate under an intermediate CA with details like name and validity period. As part of certificate issuance, you can either issue a certificate directly from a CA or do it via a certificate template.
 2. Managing certificate lifecycle events such as certificate renewal and revocation. As part of the certificate revocation flow,
    you can also query for a Certificate Revocation List [CRL](https://en.wikipedia.org/wiki/Certificate_revocation_list), a time-stamped, signed
    data structure issued by a CA containing a list of revoked certificates to check if a certificate has been revoked.
@@ -43,28 +43,51 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
   <Tab title="Infisical UI">
 
 <Steps>
+  <Step title="Creating a certificate template">
+    A certificate template is a set of policies for certificates issued under that template; each template is bound to a specific CA and can also be bound to a certificate collection for alerting such that any certificate issued under the template is automatically added to the collection.
+    
+    With certificate templates, you can specify, for example, that issued certificates must have a common name (CN) adhering to a specific format like `.*.acme.com` or perhaps that the max TTL cannot be more than 1 year.
+    
+    Head to your Project > Certificate Authorities > Your Issuing CA and create a certificate template.
+    
+    ![pki certificate template modal](/images/platform/pki/certificate/cert-template-modal.png)
+    
+    Here's some guidance on each field:
+    
+    - Template Name: A name for the certificate template.
+    - Issuing CA: The Certificate Authority (CA) that will issue certificates based on this template.
+    - Certificate Collection (Optional): The certificate collection that certificates should be added to when issued under the template.
+    - Common Name (CN): A regular expression used to validate the common name in certificate requests.
+    - Alternative Names (SANs): A regular expression used to validate subject alternative names in certificate requests.
+    - TTL: The maximum Time-to-Live (TTL) for certificates issued using this template.
+  </Step>
   <Step title="Creating a certificate">
-    To create a certificate, head to your Project > Internal PKI > Certificates and press **Create Certificate**.
+    To create a certificate, head to your Project > Internal PKI > Certificates and press **Issue** under the Certificates section.
 
-    ![pki issue certificate](/images/platform/pki/cert-issue.png)
+    ![pki issue certificate](/images/platform/pki/certificate/cert-issue.png)
 
-    Here, set the **CA** to the CA you want to issue the certificate under and fill out details for the certificate.
+    Here, set the **Certificate Template** to the template from step 1 and fill out the rest of the details for the certificate to be issued.
 
-    ![pki issue certificate modal](/images/platform/pki/cert-issue-modal.png)
+    ![pki issue certificate modal](/images/platform/pki/certificate/cert-issue-modal.png)
 
     Here's some guidance on each field:
 
-    - Issuing CA: The CA under which to issue the certificate.
     - Friendly Name: A friendly name for the certificate; this is only for display and defaults to the common name of the certificate if left empty.
     - Common Name (CN): The (common) name for the certificate like `service.acme.com`.
     - Alternative Names (SANs): A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses like `app1.acme.com, app2.acme.com`.
     - TTL: The lifetime of the certificate in seconds.
-
+    
+    <Note>
+      Note that Infisical PKI supports issuing certificates without certificate templates as well. If this is desired, then you can set the **Certificate Template** field to **None**
+      and specify the **Issuing CA** and optional **Certificate Collection** fields; the rest of the fields for the issued certificate remain the same.
+      
+      That said, we recommend using certificate templates to enforce policies and attach expiration monitoring on issued certificates.
+    </Note>
   </Step>
   <Step title="Copying the certificate details">
     Once you have created the certificate from step 1, you'll be presented with the certificate details including the **Certificate Body**, **Certificate Chain**, and **Private Key**.
     
-    ![pki certificate body](/images/platform/pki/cert-body.png)
+    ![pki certificate body](/images/platform/pki/certificate/cert-body.png)
     
     <Note>
         Make sure to download and store the **Private Key** in a secure location as it will only be displayed once at the time of certificate issuance.
@@ -74,16 +97,54 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
 </Steps>
   </Tab>
   <Tab title="API">
-    To create a certificate, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
+
+<Steps>
+  <Step title="Creating a certificate template">
+    A certificate template is a set of policies for certificates issued under that template; each template is bound to a specific CA and can also be bound to a certificate collection for alerting such that any certificate issued under the template is automatically added to the collection.
+
+    With certificate templates, you can specify, for example, that issued certificates must have a common name (CN) adhering to a specific format like .*.acme.com or perhaps that the max TTL cannot be more than 1 year.
+
+    To create a certificate template, make an API request to the [Create Certificate Template](/api-reference/endpoints/certificate-templates/create) API endpoint, specifying the issuing CA.
+    
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-templates' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "caId": "<ca-id>",
+          "name": "My Certificate Template",
+          "commonName": ".*.acme.com",
+          "subjectAlternativeName": ".*.acme.com",
+          "ttl": "1y",
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      id: "...",
+      caId: "...",
+      name: "...",
+      commonName: "...",
+      subjectAlternativeName: "...",
+      ttl: "...",
+    }
+    ```
+  </Step>
+  <Step title="Creating a certificate">
+    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
     specifying the issuing CA.
     
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/issue-certificate' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "commonName": "My Certificate",
+          "certificateTemplateId": "<certificate-template-id>",
+          "commonName": "service.acme.com",
           "ttl": "1y",
       }'
     ```
@@ -101,17 +162,25 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
     ```
 
     <Note>
+      Note that Infisical PKI supports issuing certificates without certificate templates as well. If this is desired, then you can set the **Certificate Template** field to **None**
+      and specify the **Issuing CA** and optional **Certificate Collection** fields; the rest of the fields for the issued certificate remain the same.
+      
+      That said, we recommend using certificate templates to enforce policies and attach expiration monitoring on issued certificates.
+    </Note>
+
+    <Note>
       Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
     </Note>
 
-    If you have an external private key, you can also create a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-cert) API endpoint, specifying the issuing CA.
+    If you have an external private key, you can also create a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint, specifying the issuing CA.
 
      ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/sign-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/sign-certificate' \
       --header 'Content-Type: application/json' \
       --data-raw '{
+          "certificateTemplateId": "<certificate-template-id>",
           "csr": "...",
           "ttl": "1y",
       }'
@@ -128,7 +197,8 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
       serialNumber: "..."
     }
     ```
-
+  </Step>
+</Steps>
   </Tab>
 </Tabs>
 

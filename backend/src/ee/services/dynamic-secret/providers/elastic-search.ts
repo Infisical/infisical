@@ -17,7 +17,7 @@ const generateUsername = () => {
   return alphaNumericNanoId(32);
 };
 
-export const ElasticSearchDatabaseProvider = (): TDynamicProviderFns => {
+export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const appCfg = getConfig();
     const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not

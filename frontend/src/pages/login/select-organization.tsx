@@ -16,6 +16,7 @@ import { Button, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
+import { UserAgentType } from "@app/hooks/api/auth/types";
 import { Organization } from "@app/hooks/api/types";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
@@ -68,7 +69,10 @@ export default function LoginPage() {
         return;
       }
 
-      const { token } = await selectOrg.mutateAsync({ organizationId: organization.id });
+      const { token } = await selectOrg.mutateAsync({
+        organizationId: organization.id,
+        userAgent: callbackPort ? UserAgentType.CLI : undefined
+      });
 
       if (callbackPort) {
         const privateKey = localStorage.getItem("PRIVATE_KEY");

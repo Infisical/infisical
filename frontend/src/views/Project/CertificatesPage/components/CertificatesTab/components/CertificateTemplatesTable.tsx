@@ -23,12 +23,15 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
-  useWorkspace
 } from "@app/context";
-import { useListWorkspaceCertificateTemplates } from "@app/hooks/api";
+import { 
+  // useListWorkspaceCertificateTemplates, 
+  useGetCaCertTemplates 
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
+  caId: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
       ["certificateTemplate", "deleteCertificateTemplate", "enrollmentOptions", "upgradePlan"]
@@ -40,12 +43,10 @@ type Props = {
   ) => void;
 };
 
-export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
   const { subscription } = useSubscription();
-  const { data, isLoading } = useListWorkspaceCertificateTemplates({
-    workspaceId: currentWorkspace?.id ?? ""
-  });
+  
+  const { data, isLoading } = useGetCaCertTemplates(caId);
 
   return (
     <div>
@@ -54,7 +55,6 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th>Certificate Authority</Th>
               <Th />
             </Tr>
           </THead>
@@ -65,13 +65,12 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
                 return (
                   <Tr className="h-10" key={`certificate-${certificateTemplate.id}`}>
                     <Td>{certificateTemplate.name}</Td>
-                    <Td>{certificateTemplate.caName}</Td>
                     <Td className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
                           <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
                             <Tooltip content="More options">
-                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                              <FontAwesomeIcon size="sm" icon={faEllipsis} />
                             </Tooltip>
                           </div>
                         </DropdownMenuTrigger>
@@ -143,7 +142,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen }: Props) => {
           </TBody>
         </Table>
         {!isLoading && !data?.certificateTemplates?.length && (
-          <EmptyState title="No certificate templates have been created" icon={faFileAlt} />
+          <EmptyState title="No certificate templates have been created for this CA" icon={faFileAlt} />
         )}
       </TableContainer>
     </div>
