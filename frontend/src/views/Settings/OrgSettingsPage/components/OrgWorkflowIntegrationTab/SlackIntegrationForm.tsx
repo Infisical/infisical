@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import axios from "axios";
 import { z } from "zod";
 
@@ -21,7 +22,13 @@ type Props = {
 };
 
 const slackFormSchema = z.object({
-  slug: z.string(),
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .refine((v) => slugify(v) === v, {
+      message: "Alias must be a valid slug"
+    }),
   description: z.string().optional()
 });
 

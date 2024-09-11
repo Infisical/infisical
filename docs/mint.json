@@ -169,6 +169,12 @@
             "documentation/platform/kms/aws-hsm"
           ]
         },
+        {
+          "group": "Workflow Integrations",
+          "pages": [
+            "documentation/platform/workflow-integrations/slack-integration"
+          ]
+        },
         "documentation/platform/secret-sharing"
       ]
     },
@@ -249,10 +255,6 @@
             "self-hosting/guides/mongo-to-postgres",
             "self-hosting/guides/custom-certificates"
           ]
-        },
-        {
-          "group": "Workflow Integrations",
-          "pages": ["self-hosting/guides/slack-integration"]
         },
         {
           "group": "Reference architectures",

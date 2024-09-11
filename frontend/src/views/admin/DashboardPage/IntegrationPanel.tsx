@@ -42,7 +42,7 @@ const getCustomSlackAppCreationUrl = () =>
       oauth_config: {
         redirect_urls: [`${window.origin}/api/v1/workflow-integrations/slack/oauth_redirect`],
         scopes: {
-          bot: ["chat:write.public", "chat:write"]
+          bot: ["chat:write.public", "chat:write", "channels:read", "groups:read"]
         }
       },
       settings: {

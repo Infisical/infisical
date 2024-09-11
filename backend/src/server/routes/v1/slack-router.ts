@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { SlackIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
@@ -34,7 +35,12 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        slug: z.string(),
+        slug: z
+          .string()
+          .trim()
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          }),
         description: z.string().optional()
       }),
       response: {
@@ -282,7 +288,13 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         id: z.string()
       }),
       body: z.object({
-        slug: z.string().optional(),
+        slug: z
+          .string()
+          .trim()
+          .refine((v) => slugify(v) === v, {
+            message: "Slug must be a valid slug"
+          })
+          .optional(),
         description: z.string().optional()
       }),
       response: {

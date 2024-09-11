@@ -138,8 +138,8 @@ export const slackServiceFactory = ({
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
-    let slackClientId = appCfg.SLACK_CLIENT_ID as string;
-    let slackClientSecret = appCfg.SLACK_CLIENT_SECRET as string;
+    let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
+    let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
 
     const decrypt = await kmsService.decryptWithRootKey();
 
@@ -244,7 +244,7 @@ export const slackServiceFactory = ({
 
     const installer = await getSlackInstaller();
     const url = await installer.generateInstallUrl({
-      scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"],
+      scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read"],
       metadata: JSON.stringify({
         slug,
         description,
@@ -278,7 +278,7 @@ export const slackServiceFactory = ({
 
     const installer = await getSlackInstaller();
     const url = await installer.generateInstallUrl({
-      scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"],
+      scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read"],
       metadata: JSON.stringify({
         id,
         orgId: slackIntegration.orgId
