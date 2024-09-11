@@ -16,6 +16,7 @@ import { TPkiCollection } from "../pkiCollections/types";
 import { EncryptedSecret } from "../secrets/types";
 import { userKeys } from "../users/queries";
 import { TWorkspaceUser } from "../users/types";
+import { ProjectSlackConfig } from "../workflowIntegrations/types";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
@@ -71,7 +72,9 @@ export const workspaceKeys = {
   getWorkspacePkiCollections: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-collections"] as const,
   getWorkspaceCertificateTemplates: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-certificate-templates"] as const
+    [{ workspaceId }, "workspace-certificate-templates"] as const,
+  getWorkspaceSlackConfig: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-slack-config"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -663,6 +666,20 @@ export const useListWorkspaceCertificateTemplates = ({ workspaceId }: { workspac
       );
 
       return { certificateTemplates };
+    },
+    enabled: Boolean(workspaceId)
+  });
+};
+
+export const useGetWorkspaceSlackConfig = ({ workspaceId }: { workspaceId: string }) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceSlackConfig(workspaceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<ProjectSlackConfig>(
+        `/api/v1/workspace/${workspaceId}/slack-config`
+      );
+
+      return data;
     },
     enabled: Boolean(workspaceId)
   });

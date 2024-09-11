@@ -182,6 +182,9 @@ import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
+import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -194,6 +197,8 @@ import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
+import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
+import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
@@ -321,6 +326,10 @@ export const registerRoutes = async (
   const internalKmsDAL = internalKmsDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
+
+  const slackIntegrationDAL = slackIntegrationDALFactory(db);
+  const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
+  const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -521,8 +530,10 @@ export const registerRoutes = async (
     serverCfgDAL: superAdminDAL,
     orgService,
     keyStore,
-    licenseService
+    licenseService,
+    kmsService
   });
+
   const orgAdminService = orgAdminServiceFactory({
     projectDAL,
     permissionService,
@@ -722,7 +733,9 @@ export const registerRoutes = async (
     keyStore,
     kmsService,
     projectBotDAL,
-    certificateTemplateDAL
+    certificateTemplateDAL,
+    projectSlackConfigDAL,
+    slackIntegrationDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -873,7 +886,8 @@ export const registerRoutes = async (
     smtpService,
     projectEnvDAL,
     userDAL,
-    licenseService
+    licenseService,
+    projectSlackConfigDAL
   });
 
   const secretService = secretServiceFactory({
@@ -923,7 +937,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     userDAL,
     smtpService,
-    accessApprovalPolicyApproverDAL
+    accessApprovalPolicyApproverDAL,
+    projectSlackConfigDAL,
+    kmsService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -1151,6 +1167,18 @@ export const registerRoutes = async (
     userDAL
   });
 
+  const slackService = slackServiceFactory({
+    permissionService,
+    kmsService,
+    slackIntegrationDAL,
+    workflowIntegrationDAL
+  });
+
+  const workflowIntegrationService = workflowIntegrationServiceFactory({
+    permissionService,
+    workflowIntegrationDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1232,7 +1260,9 @@ export const registerRoutes = async (
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
-    orgAdmin: orgAdminService
+    orgAdmin: orgAdminService,
+    slack: slackService,
+    workflowIntegration: workflowIntegrationService
   });
 
   const cronJobs: CronJob[] = [];

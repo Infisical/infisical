@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const SuperAdminSchema = z.object({
@@ -19,7 +21,9 @@ export const SuperAdminSchema = z.object({
   trustLdapEmails: z.boolean().default(false).nullable().optional(),
   trustOidcEmails: z.boolean().default(false).nullable().optional(),
   defaultAuthOrgId: z.string().uuid().nullable().optional(),
-  enabledLoginMethods: z.string().array().nullable().optional()
+  enabledLoginMethods: z.string().array().nullable().optional(),
+  encryptedSlackClientId: zodBuffer.nullable().optional(),
+  encryptedSlackClientSecret: zodBuffer.nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;

@@ -146,7 +146,9 @@ const envSchema = z
     PLAIN_API_KEY: zpStr(z.string().optional()),
     PLAIN_WISH_LABEL_IDS: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
-    SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert")
+    SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
+    WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string()).optional(),
+    WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string()).optional()
   })
   .transform((data) => ({
     ...data,

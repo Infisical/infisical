@@ -170,7 +170,14 @@ export enum EventType {
   GET_CERTIFICATE_TEMPLATE = "get-certificate-template",
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
-  GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config"
+  GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
+  ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
+  ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
+  GET_SLACK_INTEGRATION = "get-slack-integration",
+  UPDATE_SLACK_INTEGRATION = "update-slack-integration",
+  DELETE_SLACK_INTEGRATION = "delete-slack-integration",
+  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
+  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config"
 }
 
 interface UserActorMetadata {
@@ -1455,6 +1462,63 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
+interface AttemptCreateSlackIntegration {
+  type: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION;
+  metadata: {
+    slug: string;
+    description?: string;
+  };
+}
+
+interface AttemptReinstallSlackIntegration {
+  type: EventType.ATTEMPT_REINSTALL_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+  };
+}
+
+interface UpdateSlackIntegration {
+  type: EventType.UPDATE_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+    slug: string;
+    description?: string;
+  };
+}
+
+interface DeleteSlackIntegration {
+  type: EventType.DELETE_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+  };
+}
+
+interface GetSlackIntegration {
+  type: EventType.GET_SLACK_INTEGRATION;
+  metadata: {
+    id: string;
+  };
+}
+
+interface UpdateProjectSlackConfig {
+  type: EventType.UPDATE_PROJECT_SLACK_CONFIG;
+  metadata: {
+    id: string;
+    slackIntegrationId: string;
+    isAccessRequestNotificationEnabled: boolean;
+    accessRequestChannels: string;
+    isSecretRequestNotificationEnabled: boolean;
+    secretRequestChannels: string;
+  };
+}
+
+interface GetProjectSlackConfig {
+  type: EventType.GET_PROJECT_SLACK_CONFIG;
+  metadata: {
+    id: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1586,4 +1650,11 @@ export type Event =
   | DeleteCertificateTemplate
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
-  | GetCertificateTemplateEstConfig;
+  | GetCertificateTemplateEstConfig
+  | AttemptCreateSlackIntegration
+  | AttemptReinstallSlackIntegration
+  | UpdateSlackIntegration
+  | DeleteSlackIntegration
+  | GetSlackIntegration
+  | UpdateProjectSlackConfig
+  | GetProjectSlackConfig;

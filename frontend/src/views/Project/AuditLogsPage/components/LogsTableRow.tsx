@@ -442,6 +442,23 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             <p>{`Certificate Template ID: ${event.metadata.certificateTemplateId}`}</p>
           </Td>
         );
+      case EventType.GET_PROJECT_SLACK_CONFIG:
+        return (
+          <Td>
+            <p>{`Project Slack Config ID: ${event.metadata.id}`}</p>
+          </Td>
+        );
+      case EventType.UPDATE_PROJECT_SLACK_CONFIG:
+        return (
+          <Td>
+            <p>{`Project Slack Config ID: ${event.metadata.id}`}</p>
+            <p>{`Slack integration ID: ${event.metadata.slackIntegrationId}`}</p>
+            <p>{`Access Request Notification Status: ${event.metadata.isAccessRequestNotificationEnabled}`}</p>
+            <p>{`Access Request Channels: ${event.metadata.accessRequestChannels}`}</p>
+            <p>{`Secret Approval Request Notification Status: ${event.metadata.isSecretRequestNotificationEnabled}`}</p>
+            <p>{`Secret Request Channels: ${event.metadata.secretRequestChannels}`}</p>
+          </Td>
+        );
       default:
         return <Td />;
     }

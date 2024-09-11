@@ -70,12 +70,14 @@ import { TSecretReplicationServiceFactory } from "@app/services/secret-replicati
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
+import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -177,6 +179,8 @@ declare module "fastify" {
       userEngagement: TUserEngagementServiceFactory;
       externalKms: TExternalKmsServiceFactory;
       orgAdmin: TOrgAdminServiceFactory;
+      slack: TSlackServiceFactory;
+      workflowIntegration: TWorkflowIntegrationServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

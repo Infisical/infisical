@@ -6,10 +6,11 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
@@ -19,6 +20,7 @@ type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
+  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
@@ -39,6 +41,7 @@ export const superAdminServiceFactory = ({
   authService,
   orgService,
   keyStore,
+  kmsService,
   licenseService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
@@ -82,7 +85,12 @@ export const superAdminServiceFactory = ({
     return newCfg;
   };
 
-  const updateServerCfg = async (data: TSuperAdminUpdate, userId: string) => {
+  const updateServerCfg = async (
+    data: TSuperAdminUpdate & { slackClientId?: string; slackClientSecret?: string },
+    userId: string
+  ) => {
+    const updatedData = data;
+
     if (data.enabledLoginMethods) {
       const superAdminUser = await userDAL.findById(userId);
       const loginMethodToAuthMethod = {
@@ -113,7 +121,27 @@ export const superAdminServiceFactory = ({
         });
       }
     }
-    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, data);
+
+    const encryptWithRoot = await kmsService.encryptWithRootKey();
+    if (data.slackClientId) {
+      const { cipherTextBlob: encryptedClientId } = await encryptWithRoot({
+        plainText: Buffer.from(data.slackClientId)
+      });
+
+      updatedData.encryptedSlackClientId = encryptedClientId;
+      updatedData.slackClientId = undefined;
+    }
+
+    if (data.slackClientSecret) {
+      const { cipherTextBlob: encryptedClientSecret } = await encryptWithRoot({
+        plainText: Buffer.from(data.slackClientSecret)
+      });
+
+      updatedData.encryptedSlackClientSecret = encryptedClientSecret;
+      updatedData.slackClientSecret = undefined;
+    }
+
+    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
 
@@ -232,11 +260,38 @@ export const superAdminServiceFactory = ({
     return user;
   };
 
+  const getAdminSlackConfig = async () => {
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+
+    if (!serverCfg) {
+      throw new NotFoundError({ name: "Admin config", message: "Admin config not found" });
+    }
+
+    let clientId = "";
+    let clientSecret = "";
+
+    const decrypt = await kmsService.decryptWithRootKey();
+
+    if (serverCfg.encryptedSlackClientId) {
+      clientId = (await decrypt({ cipherTextBlob: serverCfg.encryptedSlackClientId })).toString();
+    }
+
+    if (serverCfg.encryptedSlackClientSecret) {
+      clientSecret = (await decrypt({ cipherTextBlob: serverCfg.encryptedSlackClientSecret })).toString();
+    }
+
+    return {
+      clientId,
+      clientSecret
+    };
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
     adminSignUp,
     getUsers,
-    deleteUser
+    deleteUser,
+    getAdminSlackConfig
   };
 };

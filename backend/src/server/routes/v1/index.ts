@@ -29,11 +29,13 @@ import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
+import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
+import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -60,6 +62,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
+
+  await server.register(
+    async (workflowIntegrationRouter) => {
+      await workflowIntegrationRouter.register(registerWorkflowIntegrationRouter);
+      await workflowIntegrationRouter.register(registerSlackRouter, { prefix: "/slack" });
+    },
+    { prefix: "/workflow-integrations" }
+  );
 
   await server.register(
     async (projectRouter) => {

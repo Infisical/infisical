@@ -5,9 +5,13 @@ import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { triggerSlackNotification } from "@app/services/slack/slack-fns";
+import { SlackTriggerFeature } from "@app/services/slack/slack-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -33,7 +37,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "checkProjectUpgradeStatus" | "findProjectBySlug" | "findProjectWithOrg" | "findById"
+  >;
   accessApprovalRequestDAL: Pick<
     TAccessApprovalRequestDALFactory,
     | "create"
@@ -56,6 +63,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TUserDALFactory,
     "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds" | "find" | "findById"
   >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
 };
 
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
@@ -71,7 +80,9 @@ export const accessApprovalRequestServiceFactory = ({
   accessApprovalPolicyApproverDAL,
   additionalPrivilegeDAL,
   smtpService,
-  userDAL
+  userDAL,
+  kmsService,
+  projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const createAccessApprovalRequest = async ({
     isTemporary,
@@ -166,13 +177,36 @@ export const accessApprovalRequestServiceFactory = ({
         tx
       );
 
+      const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
+      const approvalUrl = `${cfg.SITE_URL}/project/${project.id}/approval`;
+
+      await triggerSlackNotification({
+        projectId: project.id,
+        projectSlackConfigDAL,
+        projectDAL,
+        kmsService,
+        notification: {
+          type: SlackTriggerFeature.ACCESS_REQUEST,
+          payload: {
+            projectName: project.name,
+            requesterFullName,
+            isTemporary,
+            requesterEmail: requestedByUser.email as string,
+            secretPath,
+            environment: envSlug,
+            permissions: accessTypes,
+            approvalUrl
+          }
+        }
+      });
+
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
         subjectLine: "Access Approval Request",
 
         substitutions: {
           projectName: project.name,
-          requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
+          requesterFullName,
           requesterEmail: requestedByUser.email,
           isTemporary,
           ...(isTemporary && {
@@ -181,7 +215,7 @@ export const accessApprovalRequestServiceFactory = ({
           secretPath,
           environment: envSlug,
           permissions: accessTypes,
-          approvalUrl: `${cfg.SITE_URL}/project/${project.id}/approval`
+          approvalUrl
         },
         template: SmtpTemplates.AccessApprovalRequest
       });
