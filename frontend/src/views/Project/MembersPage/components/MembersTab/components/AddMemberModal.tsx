@@ -124,8 +124,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const selectedOrgMembershipIds = watch("orgMembershipIds");
   const selectedRoleSlugs = watch("projectRoleSlugs");
 
-  console.log(selectedOrgMembershipIds);
-
   return (
     <Modal
       isOpen={popUp?.addMember?.isOpen}
