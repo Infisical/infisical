@@ -131,14 +131,16 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.Identity}.id`
         )
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
-        .offset(filter.offset ?? 0)
-        .limit(filter.limit ?? 100)
         .orderBy(
           `${TableName.Identity}.${filter.orderBy ?? ProjectIdentityOrderBy.Name}`,
           filter.orderDirection ?? OrderByDirection.ASC
         )
         .select(selectAllTableCols(TableName.Identity))
         .as(TableName.Identity); // required for subqueries
+
+      if (filter.limit) {
+        void fetchIdentitySubquery.offset(filter.offset ?? 0).limit(filter.limit);
+      }
 
       const query = (tx || db.replicaNode())(TableName.IdentityProjectMembership)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
