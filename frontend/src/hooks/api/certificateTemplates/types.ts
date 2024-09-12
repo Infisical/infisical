@@ -1,4 +1,4 @@
-import { CertExtendedKeyUsage, CertKeyUsage } from "../certificates/types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "../certificates/enums";
 
 export type TCertificateTemplate = {
   id: string;

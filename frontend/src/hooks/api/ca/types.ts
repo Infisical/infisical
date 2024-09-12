@@ -1,5 +1,4 @@
-import { CertKeyAlgorithm } from "../certificates/enums";
-import { CertExtendedKeyUsage, CertKeyUsage } from "../certificates/types";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
 import { CaRenewalType, CaStatus, CaType } from "./enums";
 
 export type TCertificateAuthority = {
