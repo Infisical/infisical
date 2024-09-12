@@ -1,4 +1,10 @@
-import { CertKeyAlgorithm, CertStatus, CrlReason } from "./enums";
+import {
+  CertExtendedKeyUsage,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CertStatus,
+  CrlReason
+} from "./enums";
 
 export const certStatusToNameMap: { [K in CertStatus]: string } = {
   [CertStatus.ACTIVE]: "Active",
@@ -69,3 +75,24 @@ export const crlReasons = [
   },
   { label: crlReasonToNameMap[CrlReason.A_A_COMPROMISE], value: CrlReason.A_A_COMPROMISE }
 ];
+
+export const KEY_USAGES_OPTIONS = [
+  { value: CertKeyUsage.DIGITAL_SIGNATURE, label: "Digital Signature" },
+  { value: CertKeyUsage.KEY_ENCIPHERMENT, label: "Key Encipherment" },
+  { value: CertKeyUsage.NON_REPUDIATION, label: "Non Repudiation" },
+  { value: CertKeyUsage.DATA_ENCIPHERMENT, label: "Data Encipherment" },
+  { value: CertKeyUsage.KEY_AGREEMENT, label: "Key Agreement" },
+  { value: CertKeyUsage.KEY_CERT_SIGN, label: "Certificate Sign" },
+  { value: CertKeyUsage.CRL_SIGN, label: "CRL Sign" },
+  { value: CertKeyUsage.ENCIPHER_ONLY, label: "Encipher Only" },
+  { value: CertKeyUsage.DECIPHER_ONLY, label: "Decipher Only" }
+] as const;
+
+export const EXTENDED_KEY_USAGES_OPTIONS = [
+  { value: CertExtendedKeyUsage.CLIENT_AUTH, label: "Client Auth" },
+  { value: CertExtendedKeyUsage.SERVER_AUTH, label: "Server Auth" },
+  { value: CertExtendedKeyUsage.EMAIL_PROTECTION, label: "Email Protection" },
+  { value: CertExtendedKeyUsage.OCSP_SIGNING, label: "OCSP Signing" },
+  { value: CertExtendedKeyUsage.CODE_SIGNING, label: "Code Signing" },
+  { value: CertExtendedKeyUsage.TIMESTAMPING, label: "Timestamping" }
+] as const;

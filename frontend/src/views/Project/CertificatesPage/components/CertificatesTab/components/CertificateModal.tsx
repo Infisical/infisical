@@ -34,11 +34,10 @@ import {
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import {
-  CertExtendedKeyUsage,
-  CertKeyUsage,
   EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
-} from "@app/hooks/api/certificates/types";
+} from "@app/hooks/api/certificates/constants";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
@@ -428,7 +427,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="key-usages" className="data-[state=open]:border-none">
                 <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                  <div className="order-1 ml-3">Key Usages</div>
+                  <div className="order-1 ml-3">Key Usage</div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <Controller
@@ -437,7 +436,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     render={({ field: { onChange, value }, fieldState: { error } }) => {
                       return (
                         <FormControl
-                          label="Key Usages"
+                          label="Key Usage"
                           errorText={error?.message}
                           isError={Boolean(error)}
                         >
@@ -472,7 +471,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                     render={({ field: { onChange, value }, fieldState: { error } }) => {
                       return (
                         <FormControl
-                          label="Extended Key Usages"
+                          label="Extended Key Usage"
                           errorText={error?.message}
                           isError={Boolean(error)}
                         >

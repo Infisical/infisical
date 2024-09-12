@@ -1169,8 +1169,9 @@ export const CERTIFICATE_TEMPLATES = {
     commonName: "The regular expression string to use for validating common names",
     subjectAlternativeName: "The regular expression string to use for validating subject alternative names",
     ttl: "The max TTL for the template",
-    keyUsages: "The key usage constraint or default value",
-    extendedKeyUsages: "The extended key usage constraint or default value"
+    keyUsages: "The key usage constraint or default value for when template is used during certificate issuance",
+    extendedKeyUsages:
+      "The extended key usage constraint or default value for when template is used during certificate issuance"
   },
   GET: {
     certificateTemplateId: "The ID of the certificate template to get"
@@ -1183,8 +1184,10 @@ export const CERTIFICATE_TEMPLATES = {
     commonName: "The updated regular expression string for validating common names",
     subjectAlternativeName: "The updated regular expression string for validating subject alternative names",
     ttl: "The updated max TTL for the template",
-    keyUsages: "The updated key usage constraint or default value",
-    extendedKeyUsages: "The updated extended key usage constraint or default value"
+    keyUsages:
+      "The updated key usage constraint or default value for when template is used during certificate issuance",
+    extendedKeyUsages:
+      "The updated extended key usage constraint or default value for when template is used during certificate issuance"
   },
   DELETE: {
     certificateTemplateId: "The ID of the certificate template to delete"
