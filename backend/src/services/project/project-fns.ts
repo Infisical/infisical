@@ -16,7 +16,7 @@ export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateK
     privateKey: userPrivateKey
   });
 
-  const newWsMembers = members.map(({ orgMembershipId, userPublicKey, projectMembershipRole }) => {
+  const newWsMembers = members.map(({ orgMembershipId, userPublicKey }) => {
     const { ciphertext: inviteeCipherText, nonce: inviteeNonce } = encryptAsymmetric(
       plaintextProjectKey,
       userPublicKey,
@@ -25,7 +25,6 @@ export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateK
 
     return {
       orgMembershipId,
-      projectRole: projectMembershipRole,
       workspaceEncryptedKey: inviteeCipherText,
       workspaceEncryptedNonce: inviteeNonce
     };

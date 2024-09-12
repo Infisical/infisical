@@ -21,6 +21,7 @@ export {
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
+  useListUserGroupMemberships,
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
@@ -28,3 +29,4 @@ export {
   useUpdateOrgMembership,
   useUpdateUserAuthMethods
 } from "./queries";
+export { userKeys } from "./query-keys";

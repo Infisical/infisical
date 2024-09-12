@@ -95,6 +95,30 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByUserId = async (userId: string, orgId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.UserGroupMembership)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .join(TableName.Groups, function () {
+          this.on(`${TableName.UserGroupMembership}.groupId`, "=", `${TableName.Groups}.id`).andOn(
+            `${TableName.Groups}.orgId`,
+            "=",
+            db.raw("?", [orgId])
+          );
+        })
+        .select(
+          db.ref("id").withSchema(TableName.Groups),
+          db.ref("name").withSchema(TableName.Groups),
+          db.ref("slug").withSchema(TableName.Groups),
+          db.ref("orgId").withSchema(TableName.Groups)
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByUserId" });
+    }
+  };
+
   // The GroupProjectMembership table has a reference to the project (projectId) AND the group (groupId).
   // We need to join the GroupProjectMembership table with the Groups table to get the group name and slug.
   // We also need to join the GroupProjectMembershipRole table to get the role of the group in the project.
@@ -197,5 +221,5 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     return members;
   };
 
-  return { ...groupProjectOrm, findByProjectId, findAllProjectGroupMembers };
+  return { ...groupProjectOrm, findByProjectId, findByUserId, findAllProjectGroupMembers };
 };

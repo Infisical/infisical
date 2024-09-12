@@ -3,7 +3,7 @@ import { NextRouter, useRouter } from "next/router";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { userKeys } from "@app/hooks/api/users/queries";
+import { userKeys } from "@app/hooks/api/users";
 import { queryClient } from "@app/reactQuery";
 
 export const navigateUserToOrg = async (router: NextRouter, organizationId?: string) => {
@@ -41,6 +41,11 @@ export const useNavigateToSelectOrganization = () => {
       });
 
       await navigateUserToOrg(router, config.defaultAuthOrgId);
+    }
+
+    const localOrgId = localStorage.getItem("orgData.id")
+    if(!cliCallbackPort && localOrgId != null){
+      await navigateUserToOrg(router, localOrgId);
     }
 
     queryClient.invalidateQueries(userKeys.getUser);

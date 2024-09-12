@@ -60,7 +60,7 @@ export default function TeamInviteStep(): JSX.Element {
             placeholder="email@example.com, email2@example.com..."
           />
         </div>
-        <div className="mx-auto mt-0 mt-2 flex w-full flex-row items-end justify-end text-sm md:mt-4 md:mb-2 md:min-w-[30rem] md:max-w-md">
+        <div className="mx-auto mt-2 flex w-full flex-row items-end justify-end text-sm md:mt-4 md:mb-2 md:min-w-[30rem] md:max-w-md">
           <Button
             onClick={() => {
               if (serverDetails?.emailConfigured) {

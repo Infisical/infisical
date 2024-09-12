@@ -6,8 +6,8 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
-import { userKeys } from "./queries";
+import { workspaceKeys } from "../workspace";
+import { userKeys } from "./query-keys";
 import { AddUserToWsDTOE2EE, AddUserToWsDTONonE2EE } from "./types";
 
 export const useAddUserToWsE2EE = () => {
@@ -51,9 +51,10 @@ export const useAddUserToWsNonE2EE = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, AddUserToWsDTONonE2EE>({
-    mutationFn: async ({ projectId, usernames }) => {
+    mutationFn: async ({ projectId, usernames, roleSlugs }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
-        usernames
+        usernames,
+        roleSlugs
       });
       return data;
     },

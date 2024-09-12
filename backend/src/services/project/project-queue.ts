@@ -300,8 +300,7 @@ export const projectQueueFactory = ({
             members: [
               {
                 userPublicKey: user.publicKey,
-                orgMembershipId: orgMembership.id,
-                projectMembershipRole: ProjectMembershipRole.Admin
+                orgMembershipId: orgMembership.id
               }
             ]
           });

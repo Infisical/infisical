@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
+import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAuditLogDALFactory } from "./audit-log-dal";
@@ -11,7 +12,7 @@ import { EventType, TCreateAuditLogDTO, TListProjectAuditLogDTO } from "./audit-
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
 };
 
@@ -22,7 +23,7 @@ export const auditLogServiceFactory = ({
   auditLogQueue,
   permissionService
 }: TAuditLogServiceFactoryDep) => {
-  const listProjectAuditLogs = async ({
+  const listAuditLogs = async ({
     userAgentType,
     eventType,
     offset,
@@ -36,14 +37,33 @@ export const auditLogServiceFactory = ({
     projectId,
     auditLogActor
   }: TListProjectAuditLogDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+    if (projectId) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+
+      /**
+       * NOTE (dangtony98): Update this to organization-level audit log permission check once audit logs are moved
+       * to the organization level
+       */
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    }
+
+    // If project ID is not provided, then we need to return all the audit logs for the organization itself.
+
     const auditLogs = await auditLogDAL.find({
       startDate,
       endDate,
@@ -52,8 +72,9 @@ export const auditLogServiceFactory = ({
       eventType,
       userAgentType,
       actor: auditLogActor,
-      projectId
+      ...(projectId ? { projectId } : { orgId: actorOrgId })
     });
+
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({
       ...el,
       event: { type: logEventType, metadata: eventMetadata },
@@ -76,6 +97,6 @@ export const auditLogServiceFactory = ({
 
   return {
     createAuditLog,
-    listProjectAuditLogs
+    listAuditLogs
   };
 };

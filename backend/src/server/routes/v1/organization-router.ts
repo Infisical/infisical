@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
   OrganizationsSchema,
@@ -8,7 +9,9 @@ import {
   OrgRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { ORGANIZATIONS } from "@app/lib/api-docs";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -59,6 +62,68 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.orgId
       );
       return { organization };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/audit-logs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get all audit logs for an organization",
+      querystring: z.object({
+        eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
+        userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
+        startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
+        endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
+        offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
+        limit: z.coerce.number().default(20).describe(AUDIT_LOGS.EXPORT.limit),
+        actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
+      }),
+
+      response: {
+        200: z.object({
+          auditLogs: AuditLogsSchema.omit({
+            eventMetadata: true,
+            eventType: true,
+            actor: true,
+            actorMetadata: true
+          })
+            .merge(
+              z.object({
+                project: z.object({
+                  name: z.string(),
+                  slug: z.string()
+                }),
+                event: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                }),
+                actor: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                })
+              })
+            )
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const auditLogs = await server.services.auditLog.listAuditLogs({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        ...req.query,
+        endDate: req.query.endDate,
+        startDate: req.query.startDate || getLastMidnightDateISO(),
+        auditLogActor: req.query.actor,
+        actor: req.permission.type
+      });
+      return { auditLogs };
     }
   });
 

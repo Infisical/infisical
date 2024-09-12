@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { userKeys } from "../users/queries";
+import { userKeys } from "../users";
 import {
   APIKeyDataV2,
   CreateAPIKeyDataV2DTO,

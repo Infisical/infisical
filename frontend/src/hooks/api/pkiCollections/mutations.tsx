@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace";
 import { pkiCollectionKeys } from "./queries";
 import {
   TAddItemToPkiCollectionDTO,
@@ -11,7 +11,8 @@ import {
   TPkiCollection,
   TPkiCollectionItem,
   TRemoveItemFromPkiCollectionDTO,
-  TUpdatePkiCollectionTO} from "./types";
+  TUpdatePkiCollectionTO
+} from "./types";
 
 export const useCreatePkiCollection = () => {
   const queryClient = useQueryClient();

@@ -38,3 +38,4 @@ export {
   useUpdateWsEnvironment,
   useUpgradeProject
 } from "./queries";
+export { workspaceKeys } from "./query-keys";

@@ -50,7 +50,8 @@ export default function EnterEmailStep({
     // If everything is correct, go to the next step
     if (!emailCheckBool) {
       try {
-        await mutateAsync({ email });
+        await mutateAsync({ email: email.toLowerCase() });
+        setEmail(email.toLowerCase())
         incrementStep();
       } catch (e) {
         if (axios.isAxiosError(e)) {

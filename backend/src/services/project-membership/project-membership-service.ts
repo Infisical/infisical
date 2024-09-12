@@ -42,7 +42,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
