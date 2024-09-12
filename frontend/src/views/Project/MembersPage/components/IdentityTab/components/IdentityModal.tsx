@@ -1,19 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Link from "next/link";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Button, FormControl, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import { ComboBox } from "@app/components/v2/ComboBox";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useAddIdentityToWorkspace,
@@ -25,8 +18,14 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup
   .object({
-    identityId: yup.string().required("Identity id is required"),
-    role: yup.string()
+    identity: yup.object({
+      id: yup.string().required("Identity id is required"),
+      name: yup.string().required("Identity name is required")
+    }),
+    role: yup.object({
+      slug: yup.string().required("role slug is required"),
+      name: yup.string().required("role name is required")
+    })
   })
   .required();
 
@@ -56,7 +55,11 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
   const identityMemberships = identityMembershipsData?.identityMemberships;
 
-  const { data: roles } = useGetProjectRoles(projectSlug);
+  const {
+    data: roles,
+    isLoading: isRolesLoading,
+    isFetched: isRolesFetched
+  } = useGetProjectRoles(projectSlug);
 
   const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
 
@@ -74,17 +77,24 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: yupResolver(schema)
   });
 
-  const onFormSubmit = async ({ identityId, role }: FormData) => {
+  useEffect(() => {
+    if (!isRolesFetched || !roles) return;
+
+    setValue("role", { name: roles[0]?.name, slug: roles[0]?.slug });
+  }, [isRolesFetched, roles]);
+
+  const onFormSubmit = async ({ identity, role }: FormData) => {
     try {
       await addIdentityToWorkspaceMutateAsync({
         workspaceId,
-        identityId,
-        role: role || undefined
+        identityId: identity.id,
+        role: role.slug || undefined
       });
 
       createNotification({
@@ -92,7 +102,17 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: "success"
       });
 
-      reset();
+      const nextAvailableMembership = filteredIdentityMembershipOrgs.filter(
+        (membership) => membership.identity.id !== identity.id
+      )[0];
+
+      // prevents combobox from displaying previously added identity
+      reset({
+        identity: {
+          name: nextAvailableMembership?.identity.name,
+          id: nextAvailableMembership?.identity.id
+        }
+      });
       handlePopUpToggle("identity", false);
     } catch (err) {
       console.error(err);
@@ -114,34 +134,41 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         reset();
       }}
     >
-      <ModalContent title="Add Identity to Project">
+      <ModalContent title="Add Identity to Project" bodyClassName="overflow-visible">
         {filteredIdentityMembershipOrgs.length ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
-              name="identityId"
-              defaultValue={filteredIdentityMembershipOrgs?.[0]?.id}
+              name="identity"
+              defaultValue={{
+                id: filteredIdentityMembershipOrgs?.[0]?.identity?.id,
+                name: filteredIdentityMembershipOrgs?.[0]?.identity?.name
+              }}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl label="Identity" errorText={error?.message} isError={Boolean(error)}>
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
+                  <ComboBox
                     className="w-full"
-                  >
-                    {filteredIdentityMembershipOrgs.map(({ identity }) => (
-                      <SelectItem value={identity.id} key={`org-identity-${identity.id}`}>
-                        {identity.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
+                    by="id"
+                    value={{ id: field.value.id, name: field.value.name }}
+                    defaultValue={{ id: field.value.id, name: field.value.name }}
+                    onSelectChange={(value) => onChange({ id: value.id, name: value.name })}
+                    displayValue={(el) => el.name}
+                    onFilter={({ value }, filterQuery) =>
+                      value.name.toLowerCase().includes(filterQuery.toLowerCase())
+                    }
+                    items={filteredIdentityMembershipOrgs.map(({ identity }) => ({
+                      key: identity.id,
+                      value: { id: identity.id, name: identity.name },
+                      label: identity.name
+                    }))}
+                  />
                 </FormControl>
               )}
             />
             <Controller
               control={control}
               name="role"
-              defaultValue=""
+              defaultValue={{ name: "", slug: "" }}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
                   label="Role"
@@ -149,18 +176,22 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isError={Boolean(error)}
                   className="mt-4"
                 >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
+                  <ComboBox
                     className="w-full"
-                  >
-                    {(roles || []).map(({ name, slug }) => (
-                      <SelectItem value={slug} key={`st-role-${slug}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
+                    by="slug"
+                    value={{ slug: field.value.slug, name: field.value.name }}
+                    defaultValue={{ slug: field.value.slug, name: field.value.name }}
+                    onSelectChange={(value) => onChange({ slug: value.slug, name: value.name })}
+                    displayValue={(el) => el.name}
+                    onFilter={({ value }, filterQuery) =>
+                      value.name.toLowerCase().includes(filterQuery.toLowerCase())
+                    }
+                    items={(roles || []).map(({ slug, name }) => ({
+                      key: slug,
+                      value: { slug, name },
+                      label: name
+                    }))}
+                  />
                 </FormControl>
               )}
             />
@@ -187,7 +218,9 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               All identities in your organization have already been added to this project.
             </div>
             <Link href={`/org/${currentWorkspace?.orgId}/members`}>
-              <Button variant="outline_bg">Create a new identity</Button>
+              <Button isDisabled={isRolesLoading} isLoading={isRolesLoading} variant="outline_bg">
+                Create a new identity
+              </Button>
             </Link>
           </div>
         )}
