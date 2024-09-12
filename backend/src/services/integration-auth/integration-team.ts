@@ -11,19 +11,41 @@ const getTeamsGitLab = async ({ url, accessToken }: { url: string; accessToken: 
   const gitLabApiUrl = url ? `${url}/api` : IntegrationUrls.GITLAB_API_URL;
 
   let teams: Team[] = [];
-  const res = (
-    await request.get<{ name: string; id: string }[]>(`${gitLabApiUrl}/v4/groups`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json"
-      }
-    })
-  ).data;
 
-  teams = res.map((t) => ({
-    name: t.name,
-    id: t.id.toString()
-  }));
+  let page = 1;
+  const perPage = 10;
+  let hasMorePages = true;
+
+  while (hasMorePages) {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(perPage)
+    });
+
+    const { data } = await request.get<{ name: string; id: string }[]>(
+      `${gitLabApiUrl}/v4/groups`,
+      {
+        params,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    data.forEach((a) => {
+      teams.push({
+        name: a.name,
+        id: a.id.toString()
+      });
+    });
+
+    if (data.length < perPage) {
+      hasMorePages = false;
+    }
+
+    page += 1;
+  }
 
   return teams;
 };
