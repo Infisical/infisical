@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Link from "next/link";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -55,7 +55,11 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
   const identityMemberships = identityMembershipsData?.identityMemberships;
 
-  const { data: roles } = useGetProjectRoles(projectSlug);
+  const {
+    data: roles,
+    isLoading: isRolesLoading,
+    isFetched: isRolesFetched
+  } = useGetProjectRoles(projectSlug);
 
   const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
 
@@ -73,10 +77,17 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: yupResolver(schema)
   });
+
+  useEffect(() => {
+    if (!isRolesFetched || !roles) return;
+
+    setValue("role", { name: roles[0]?.name, slug: roles[0]?.slug });
+  }, [isRolesFetched, roles]);
 
   const onFormSubmit = async ({ identity, role }: FormData) => {
     try {
@@ -91,7 +102,17 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: "success"
       });
 
-      reset();
+      const nextAvailableMembership = filteredIdentityMembershipOrgs.filter(
+        (membership) => membership.identity.id !== identity.id
+      )[0];
+
+      // prevents combobox from displaying previously added identity
+      reset({
+        identity: {
+          name: nextAvailableMembership?.identity.name,
+          id: nextAvailableMembership?.identity.id
+        }
+      });
       handlePopUpToggle("identity", false);
     } catch (err) {
       console.error(err);
@@ -113,14 +134,14 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         reset();
       }}
     >
-      <ModalContent title="Add Identity to Project" bodyClassName="overflow-hidden">
+      <ModalContent title="Add Identity to Project" bodyClassName="overflow-visible">
         {filteredIdentityMembershipOrgs.length ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
               name="identity"
               defaultValue={{
-                id: filteredIdentityMembershipOrgs?.[0]?.id,
+                id: filteredIdentityMembershipOrgs?.[0]?.identity?.id,
                 name: filteredIdentityMembershipOrgs?.[0]?.identity?.name
               }}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
@@ -197,7 +218,9 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               All identities in your organization have already been added to this project.
             </div>
             <Link href={`/org/${currentWorkspace?.orgId}/members`}>
-              <Button variant="outline_bg">Create a new identity</Button>
+              <Button isDisabled={isRolesLoading} isLoading={isRolesLoading} variant="outline_bg">
+                Create a new identity
+              </Button>
             </Link>
           </div>
         )}

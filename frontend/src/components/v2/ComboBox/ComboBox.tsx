@@ -5,7 +5,7 @@ import { Combobox, Transition } from "@headlessui/react";
 import { ByComparator } from "@headlessui/react/dist/types";
 import { twMerge } from "tailwind-merge";
 
-type MyComboBoxProps<T extends object> = {
+type ComboBoxProps<T extends object> = {
   value?: T;
   className?: string;
   items: {
@@ -29,11 +29,11 @@ export const ComboBox = <T extends object>({
   by,
   items,
   ...props
-}: MyComboBoxProps<T>) => {
+}: ComboBoxProps<T>) => {
   const [query, setQuery] = useState("");
 
   const filteredResult =
-    query === "" ? items.slice(0, 20) : items.filter((el) => onFilter(el, query));
+    query === "" ? items.slice(0, 20) : items.filter((el) => onFilter(el, query)).slice(0, 20);
 
   return (
     <Combobox by={by} {...props} onChange={onSelectChange}>
