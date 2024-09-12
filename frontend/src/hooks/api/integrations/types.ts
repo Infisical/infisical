@@ -47,6 +47,14 @@ export type TIntegration = {
   };
 };
 
+export type TIntegrationWithEnv = TIntegration & {
+  environment: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+};
+
 export enum IntegrationSyncBehavior {
   OVERWRITE_TARGET = "overwrite-target",
   PREFER_TARGET = "prefer-target",

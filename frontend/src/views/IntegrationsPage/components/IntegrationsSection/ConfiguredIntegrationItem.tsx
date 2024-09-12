@@ -1,3 +1,6 @@
+/* eslint-disable jsx-a11y/click-events-have-key-events */
+/* eslint-disable jsx-a11y/no-static-element-interactions */
+import { useRouter } from "next/router";
 import {
   faArrowRight,
   faCalendarCheck,
@@ -28,9 +31,12 @@ export const ConfiguredIntegrationItem = ({
   onRemoveIntegration,
   onManualSyncIntegration
 }: IProps) => {
+  const router = useRouter();
+
   return (
     <div
-      className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
+      onClick={() => router.push(`/integrations/details/${integration.id}`)}
+      className="max-w-8xl flex cursor-pointer justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3 transition-all hover:bg-mineshaft-700"
       key={`integration-${integration?.id.toString()}`}
     >
       <div className="flex">
