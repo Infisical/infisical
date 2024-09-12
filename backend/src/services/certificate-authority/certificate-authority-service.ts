@@ -763,6 +763,39 @@ export const certificateAuthorityServiceFactory = ({
   };
 
   /**
+   * Return CA certificate object by ID
+   */
+  const getCaCertById = async ({ caId, caCertId }: { caId: string; caCertId: string }) => {
+    const caCert = await certificateAuthorityCertDAL.findOne({
+      caId,
+      id: caCertId
+    });
+
+    if (!caCert) {
+      throw new NotFoundError({ message: "CA certificate not found" });
+    }
+
+    const ca = await certificateAuthorityDAL.findById(caId);
+    const keyId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: keyId
+    });
+
+    const decryptedCaCert = await kmsDecryptor({
+      cipherTextBlob: caCert.encryptedCertificate
+    });
+
+    const caCertObj = new x509.X509Certificate(decryptedCaCert);
+
+    return caCertObj;
+  };
+
+  /**
    * Issue certificate to be imported back in for intermediate CA
    */
   const signIntermediate = async ({
@@ -776,6 +809,7 @@ export const certificateAuthorityServiceFactory = ({
     notAfter,
     maxPathLength
   }: TSignIntermediateDTO) => {
+    const appCfg = getConfig();
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) throw new BadRequestError({ message: "CA not found" });
 
@@ -850,7 +884,7 @@ export const certificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const { caPrivateKey } = await getCaCredentials({
+    const { caPrivateKey, caSecret } = await getCaCredentials({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
@@ -859,6 +893,11 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const serialNumber = createSerialNumber();
+
+    const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
+
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -878,7 +917,11 @@ export const certificateAuthorityServiceFactory = ({
         ),
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
-        await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
+        await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
+        new x509.CRLDistributionPointsExtension([distributionPointUrl]),
+        new x509.AuthorityInfoAccessExtension({
+          caIssuers: new x509.GeneralName("url", caIssuerUrl)
+        })
       ]
     });
 
@@ -1169,13 +1212,18 @@ export const certificateAuthorityServiceFactory = ({
     const appCfg = getConfig();
 
     const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
 
     const extensions: x509.Extension[] = [
       new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
       new x509.CRLDistributionPointsExtension([distributionPointUrl]),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
-      await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
+      await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
+      new x509.AuthorityInfoAccessExtension({
+        caIssuers: new x509.GeneralName("url", caIssuerUrl)
+      }),
+      new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 
     let altNamesArray: {
@@ -1308,6 +1356,7 @@ export const certificateAuthorityServiceFactory = ({
    * Note: CSR is generated externally and submitted to Infisical.
    */
   const signCertFromCa = async (dto: TSignCertFromCaDTO) => {
+    const appCfg = getConfig();
     let ca: TCertificateAuthorities | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
 
@@ -1432,7 +1481,7 @@ export const certificateAuthorityServiceFactory = ({
         message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
       });
 
-    const { caPrivateKey } = await getCaCredentials({
+    const { caPrivateKey, caSecret } = await getCaCredentials({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
@@ -1440,11 +1489,20 @@ export const certificateAuthorityServiceFactory = ({
       kmsService
     });
 
+    const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
+
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
     const extensions: x509.Extension[] = [
       new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
-      await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
+      await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
+      new x509.CRLDistributionPointsExtension([distributionPointUrl]),
+      new x509.AuthorityInfoAccessExtension({
+        caIssuers: new x509.GeneralName("url", caIssuerUrl)
+      }),
+      new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 
     let altNamesFromCsr: string = "";
@@ -1628,6 +1686,7 @@ export const certificateAuthorityServiceFactory = ({
     renewCaCert,
     getCaCerts,
     getCaCert,
+    getCaCertById,
     signIntermediate,
     importCertToCa,
     issueCertFromCa,
