@@ -447,7 +447,9 @@ export const PROJECT_USERS = {
   INVITE_MEMBER: {
     projectId: "The ID of the project to invite the member to.",
     emails: "A list of organization member emails to invite to the project.",
-    usernames: "A list of usernames to invite to the project."
+    usernames: "A list of usernames to invite to the project.",
+    roleSlugs:
+      "A list of role slugs to assign to the newly created project membership. If nothing is provided, it will default to the Member role."
   },
   REMOVE_MEMBER: {
     projectId: "The ID of the project to remove the member from.",

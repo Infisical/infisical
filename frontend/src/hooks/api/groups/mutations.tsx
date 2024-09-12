@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { organizationKeys } from "../organization/queries";
-import { userKeys } from "../users/queries";
+import { userKeys } from "../users/query-keys";
 import { groupKeys } from "./queries";
 import { TGroup } from "./types";
 

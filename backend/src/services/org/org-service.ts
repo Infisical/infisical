@@ -114,11 +114,11 @@ export const orgServiceFactory = ({
   tokenService,
   orgBotDAL,
   licenseService,
+  projectRoleDAL,
   samlConfigDAL,
   userGroupMembershipDAL,
   projectBotDAL,
-  projectUserMembershipRoleDAL,
-  projectRoleDAL
+  projectUserMembershipRoleDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id

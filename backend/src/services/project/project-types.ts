@@ -1,4 +1,4 @@
-import { ProjectMembershipRole, TProjectKeys } from "@app/db/schemas";
+import { TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -88,7 +88,6 @@ export type AddUserToWsDTO = {
   userPrivateKey: string;
   members: {
     orgMembershipId: string;
-    projectMembershipRole: ProjectMembershipRole;
     userPublicKey: string;
   }[];
 };

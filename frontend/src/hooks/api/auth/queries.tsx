@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
 import { organizationKeys } from "../organization/queries";
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace";
 import {
   ChangePasswordDTO,
   CompleteAccountDTO,

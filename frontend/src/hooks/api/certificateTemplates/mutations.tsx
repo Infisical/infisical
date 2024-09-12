@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { caKeys } from "../ca/queries";
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace";
 import { certTemplateKeys } from "./queries";
 import {
   TCertificateTemplate,
@@ -54,7 +54,9 @@ export const useDeleteCertTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificateTemplate, {}, TDeleteCertificateTemplateDTO>({
     mutationFn: async (data) => {
-      const { data: certificateTemplate } = await apiRequest.delete<TCertificateTemplate>(`/api/v1/pki/certificate-templates/${data.id}`);
+      const { data: certificateTemplate } = await apiRequest.delete<TCertificateTemplate>(
+        `/api/v1/pki/certificate-templates/${data.id}`
+      );
       return certificateTemplate;
     },
     onSuccess: ({ caId }, { projectId, id }) => {
