@@ -100,9 +100,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       async (req, profile, cb) => {
         try {
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
-          const email = profile?.email ?? (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved
+          const email =
+            profile?.email ??
+            // entra sends data in this format
+            (profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email"] as string) ??
+            (profile?.emailAddress as string); // emailRippling is added because in Rippling the field `email` reserved\
 
-          if (!email || !profile.firstName) {
+          const firstName = (profile.firstName ??
+            // entra sends data in this format
+            profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstName"]) as string;
+
+          const lastName =
+            profile.lastName ?? profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastName"];
+
+          if (!email || !firstName) {
             logger.info(
               {
                 err: new Error("Invalid saml request. Missing email or first name"),
@@ -110,14 +121,13 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               },
               `email: ${email} firstName: ${profile.firstName as string}`
             );
-            throw new BadRequestError({ message: "Invalid request. Missing email or first name" });
           }
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             externalId: profile.nameID,
             email,
-            firstName: profile.firstName as string,
-            lastName: profile.lastName as string,
+            firstName,
+            lastName: lastName as string,
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
