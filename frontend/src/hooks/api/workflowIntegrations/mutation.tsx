@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { workspaceKeys } from "../workspace/query-keys";
 import { workflowIntegrationKeys } from "./queries";
 import {
   TDeleteSlackIntegrationDTO,
