@@ -1,3 +1,5 @@
+import { CertExtendedKeyUsage, CertKeyUsage } from "../certificates/enums";
+
 export type TCertificateTemplate = {
   id: string;
   caId: string;
@@ -8,6 +10,8 @@ export type TCertificateTemplate = {
   commonName: string;
   subjectAlternativeName: string;
   ttl: string;
+  keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
 export type TCreateCertificateTemplateDTO = {
@@ -18,6 +22,8 @@ export type TCreateCertificateTemplateDTO = {
   subjectAlternativeName: string;
   ttl: string;
   projectId: string;
+  keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
 export type TUpdateCertificateTemplateDTO = {
@@ -29,6 +35,8 @@ export type TUpdateCertificateTemplateDTO = {
   subjectAlternativeName?: string;
   ttl?: string;
   projectId: string;
+  keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
 };
 
 export type TDeleteCertificateTemplateDTO = {

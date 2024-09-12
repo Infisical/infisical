@@ -7,6 +7,7 @@ import { CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
@@ -74,7 +75,19 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         ttl: z
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
-          .describe(CERTIFICATE_TEMPLATES.CREATE.ttl)
+          .describe(CERTIFICATE_TEMPLATES.CREATE.ttl),
+        keyUsages: z
+          .nativeEnum(CertKeyUsage)
+          .array()
+          .optional()
+          .default([CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT])
+          .describe(CERTIFICATE_TEMPLATES.CREATE.keyUsages),
+        extendedKeyUsages: z
+          .nativeEnum(CertExtendedKeyUsage)
+          .array()
+          .optional()
+          .default([])
+          .describe(CERTIFICATE_TEMPLATES.CREATE.extendedKeyUsages)
       }),
       response: {
         200: sanitizedCertificateTemplate
@@ -130,7 +143,13 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .string()
           .refine((val) => ms(val) > 0, "TTL must be a positive number")
           .optional()
-          .describe(CERTIFICATE_TEMPLATES.UPDATE.ttl)
+          .describe(CERTIFICATE_TEMPLATES.UPDATE.ttl),
+        keyUsages: z.nativeEnum(CertKeyUsage).array().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.keyUsages),
+        extendedKeyUsages: z
+          .nativeEnum(CertExtendedKeyUsage)
+          .array()
+          .optional()
+          .describe(CERTIFICATE_TEMPLATES.UPDATE.extendedKeyUsages)
       }),
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.UPDATE.certificateTemplateId)

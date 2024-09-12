@@ -22,3 +22,24 @@ export enum CrlReason {
   PRIVILEGE_WITHDRAWN = "PRIVILEGE_WITHDRAWN",
   A_A_COMPROMISE = "A_A_COMPROMISE"
 }
+
+export enum CertKeyUsage {
+  DIGITAL_SIGNATURE = "digitalSignature",
+  KEY_ENCIPHERMENT = "keyEncipherment",
+  NON_REPUDIATION = "nonRepudiation",
+  DATA_ENCIPHERMENT = "dataEncipherment",
+  KEY_AGREEMENT = "keyAgreement",
+  KEY_CERT_SIGN = "keyCertSign",
+  CRL_SIGN = "cRLSign",
+  ENCIPHER_ONLY = "encipherOnly",
+  DECIPHER_ONLY = "decipherOnly"
+}
+
+export enum CertExtendedKeyUsage {
+  CLIENT_AUTH = "clientAuth",
+  SERVER_AUTH = "serverAuth",
+  CODE_SIGNING = "codeSigning",
+  EMAIL_PROTECTION = "emailProtection",
+  TIMESTAMPING = "timeStamping",
+  OCSP_SIGNING = "ocspSigning"
+}
