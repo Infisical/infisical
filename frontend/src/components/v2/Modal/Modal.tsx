@@ -11,13 +11,24 @@ export type ModalContentProps = DialogPrimitive.DialogContentProps & {
   title?: ReactNode;
   subTitle?: ReactNode;
   footerContent?: ReactNode;
+  bodyClassName?: string;
   onClose?: () => void;
   overlayClassName?: string;
 };
 
 export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
   (
-    { children, title, subTitle, className, overlayClassName, footerContent, onClose, ...props },
+    {
+      children,
+      title,
+      subTitle,
+      className,
+      overlayClassName,
+      footerContent,
+      bodyClassName,
+      onClose,
+      ...props
+    },
     forwardedRef
   ) => (
     <DialogPrimitive.Portal>
@@ -35,7 +46,10 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
           style={{ maxHeight: "90%" }}
         >
           {title && <CardTitle subTitle={subTitle}>{title}</CardTitle>}
-          <CardBody className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: "90%" }}>
+          <CardBody
+            className={twMerge("overflow-y-auto overflow-x-hidden", bodyClassName)}
+            style={{ maxHeight: "90%" }}
+          >
             {children}
           </CardBody>
           {footerContent && <CardFooter>{footerContent}</CardFooter>}
