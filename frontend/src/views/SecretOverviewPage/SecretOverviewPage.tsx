@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -15,12 +15,15 @@ import {
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -182,6 +185,52 @@ export const SecretOverviewPage = () => {
     path: secretPath,
     environments: userAvailableEnvs.map(({ slug }) => slug)
   });
+
+  const handleSelectAllCheckboxChange = (checkedState: CheckedState) => {
+    if(checkedState === "indeterminate") {
+      return;
+    }
+    if(checkedState === false) {
+      setSelectedEntries({
+        [EntryType.FOLDER]: {},
+        [EntryType.SECRET]: {}
+      })
+      return;
+    }
+
+    const folderRecord: Record<string, boolean> = {};
+    folderNames.forEach((folder: string) => {
+      folderRecord[folder] = true;
+    })
+
+    const secretRecord: Record<string, boolean> = {};
+    secKeys.forEach((secret: string) => {
+      secretRecord[secret] = true;
+    })
+
+    setSelectedEntries({
+      [EntryType.FOLDER]: folderRecord,
+      [EntryType.SECRET]: secretRecord
+    })
+  };
+
+  const {areAllEntriesSelected, isAnyOneEntrySelected} = useMemo(() => {
+    const selectedFolders = Object.keys(selectedEntries[EntryType.FOLDER])
+      .filter((key) => selectedEntries[EntryType.FOLDER][key]);
+    const selectedSecrets = Object.keys(selectedEntries[EntryType.SECRET])
+      .filter((key) => selectedEntries[EntryType.SECRET][key]);
+    const allSelections =  [...selectedFolders, ...selectedSecrets];
+
+    const allEntriesSelected = folderNames.every((folder:string) => allSelections.includes(folder)) 
+      && secKeys.every((secret: string) => allSelections.includes(secret));
+    const anyOneEntrySelected = folderNames.some((folder:string) => allSelections.includes(folder)) 
+      || secKeys.some((secret: string) => allSelections.includes(secret));
+
+    return {
+      areAllEntriesSelected: allEntriesSelected,
+      isAnyOneEntrySelected: anyOneEntrySelected
+    }
+  }, [selectedEntries, folderNames, secKeys])
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
@@ -661,11 +710,16 @@ export const SecretOverviewPage = () => {
               <THead>
                 <Tr className="sticky top-0 z-20 border-0">
                   <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                    <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
+                    <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3 gap-x-2">
+                      <Checkbox
+                        id="select-all-checkbox"
+                        isChecked={areAllEntriesSelected}
+                        onCheckedChange={handleSelectAllCheckboxChange}
+                        className={twMerge("hidden", isAnyOneEntrySelected && "flex")}
+                      />
                       Name
                       <IconButton
                         variant="plain"
-                        className="ml-2"
                         ariaLabel="sort"
                         onClick={() => setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
                       >

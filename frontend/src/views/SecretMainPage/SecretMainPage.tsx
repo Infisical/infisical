@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { ContentLoader } from "@app/components/v2";
+import { Checkbox, ContentLoader } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -27,6 +29,7 @@ import {
   useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
+import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 
 import { SecretV2MigrationSection } from "../SecretOverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
@@ -38,7 +41,7 @@ import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
-import { StoreProvider } from "./SecretMainPage.store";
+import { useSelectedFolderActions, useSelectedFolders, useSelectedSecretActions, useSelectedSecrets } from "./SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
@@ -108,6 +111,56 @@ export const SecretMainPage = () => {
     environment,
     path: secretPath
   });
+
+  // selectAll functionality
+  const { selectAll: selectAllSecrets } = useSelectedSecretActions();
+  const { reset: resetSecretSelections } = useSelectedSecretActions();
+  const selectedSecrets = useSelectedSecrets();
+
+  const { selectAll: selectAllFolders } = useSelectedFolderActions();
+  const { reset: resetFolderSelections } = useSelectedFolderActions();
+  const selectedFolders = useSelectedFolders();
+
+  const handleSelectAllCheckboxChange = (checkedState: CheckedState) => {
+    if(checkedState === "indeterminate" || !secrets || !folders) {
+      return;
+    }
+    if(checkedState === false) {
+      resetSecretSelections();
+      resetFolderSelections();
+      return;
+    }
+    const secretIds = [...secrets.map((secret: SecretV3RawSanitized) => secret.id)];
+    selectAllSecrets(secretIds);
+
+    const folderIds = [...folders.map((folder: TSecretFolder) => folder.id)];
+    selectAllFolders(folderIds);
+  } 
+
+  const {areAllEntriesSelected, isAnyOneEntrySelected} = useMemo(() => {
+    if(!secrets || !folders) {
+      return {
+        areAllEntriesSelected: false, 
+        isAnyOneEntrySelected: false
+      };
+    }
+    
+    const selectedSecretIds = Object.keys(selectedSecrets);
+    const secretIds = [...secrets.map((secret: SecretV3RawSanitized) => secret.id)];
+
+    const selectedFolderIds = Object.keys(selectedFolders);
+    const folderIds = [...folders.map((folder: TSecretFolder) => folder.id)];
+
+    const allEntriesSelected =  secretIds.every((secret: string) => selectedSecretIds.includes(secret)) 
+      && folderIds.every((folder: string) => selectedFolderIds.includes(folder)) ;
+    const anyOneEntrySelected = secretIds.some((secret: string) => selectedSecretIds.includes(secret))
+      || folderIds.some((folder: string) => selectedFolderIds.includes(folder));
+
+    return {
+      areAllEntriesSelected: allEntriesSelected,
+      isAnyOneEntrySelected: anyOneEntrySelected
+    }
+  }, [selectedSecrets, secrets, selectedFolders, folders]);
 
   // fetch secret imports
   const {
@@ -230,8 +283,7 @@ export const SecretMainPage = () => {
   }
 
   return (
-    <StoreProvider>
-      <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <SecretV2MigrationSection />
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
@@ -250,6 +302,7 @@ export const SecretMainPage = () => {
           <>
             <ActionBar
               secrets={secrets}
+              folders={folders}
               environment={environment}
               workspaceId={workspaceId}
               projectSlug={projectSlug}
@@ -269,9 +322,8 @@ export const SecretMainPage = () => {
               <div className="flex flex-col" id="dashboard">
                 {isNotEmtpy && (
                   <div className="flex border-b border-mineshaft-600 font-medium">
-                    <div style={{ width: "2.8rem" }} className="flex-shrink-0 px-4 py-3" />
                     <div
-                      className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
+                      className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-5 gap-x-2 py-2"
                       role="button"
                       tabIndex={0}
                       onClick={handleSortToggle}
@@ -279,10 +331,16 @@ export const SecretMainPage = () => {
                         if (evt.key === "Enter") handleSortToggle();
                       }}
                     >
+                      <Checkbox
+                        id="select-all-secrets-checkbox"
+                        isChecked={areAllEntriesSelected}
+                        onClick={(e) => {e.stopPropagation()}}
+                        onCheckedChange={handleSelectAllCheckboxChange}
+                        className={twMerge("hidden", isAnyOneEntrySelected && "flex")}
+                      />
                       Key
                       <FontAwesomeIcon
                         icon={sortDir === SortDir.ASC ? faArrowDown : faArrowUp}
-                        className="ml-2"
                       />
                     </div>
                     <div className="flex-grow px-4 py-2">Value</div>
@@ -374,6 +432,5 @@ export const SecretMainPage = () => {
           />
         )}
       </div>
-    </StoreProvider>
   );
 };
