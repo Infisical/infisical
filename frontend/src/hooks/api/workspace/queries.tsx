@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
@@ -8,7 +9,7 @@ import { TCertificate } from "../certificates/types";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
 import { identitiesKeys } from "../identities/queries";
-import { IdentityMembership } from "../identities/types";
+import { TProjectIdentitiesList } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
@@ -24,8 +25,10 @@ import {
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
   NameWorkspaceSecretsDTO,
+  ProjectIdentityOrderBy,
   RenameWorkspaceDTO,
   TGetUpgradeProjectStatusDTO,
+  TListProjectIdentitiesDTO,
   ToggleAutoCapitalizationDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
@@ -484,18 +487,51 @@ export const useDeleteIdentityFromWorkspace = () => {
   });
 };
 
-export const useGetWorkspaceIdentityMemberships = (workspaceId: string) => {
+export const useGetWorkspaceIdentityMemberships = (
+  {
+    workspaceId,
+    offset = 0,
+    limit = 100,
+    orderBy = ProjectIdentityOrderBy.Name,
+    orderDirection = OrderByDirection.ASC,
+    search = ""
+  }: TListProjectIdentitiesDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TProjectIdentitiesList,
+      unknown,
+      TProjectIdentitiesList,
+      ReturnType<typeof workspaceKeys.getWorkspaceIdentityMembershipsWithParams>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId),
+    queryKey: workspaceKeys.getWorkspaceIdentityMembershipsWithParams({
+      workspaceId,
+      offset,
+      limit,
+      orderBy,
+      orderDirection,
+      search
+    }),
     queryFn: async () => {
-      const {
-        data: { identityMemberships }
-      } = await apiRequest.get<{ identityMemberships: IdentityMembership[] }>(
-        `/api/v2/workspace/${workspaceId}/identity-memberships`
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit),
+        orderBy: String(orderBy),
+        orderDirection: String(orderDirection),
+        search: String(search)
+      });
+
+      const { data } = await apiRequest.get<TProjectIdentitiesList>(
+        `/api/v2/workspace/${workspaceId}/identity-memberships`,
+        { params }
       );
-      return identityMemberships;
+      return data;
     },
-    enabled: true
+    enabled: true,
+    ...options
   });
 };
 

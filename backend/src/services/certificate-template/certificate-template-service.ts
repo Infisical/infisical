@@ -57,7 +57,9 @@ export const certificateTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    keyUsages,
+    extendedKeyUsages
   }: TCreateCertTemplateDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) {
@@ -86,7 +88,9 @@ export const certificateTemplateServiceFactory = ({
           name,
           commonName,
           subjectAlternativeName,
-          ttl
+          ttl,
+          keyUsages,
+          extendedKeyUsages
         },
         tx
       );
@@ -113,7 +117,9 @@ export const certificateTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    keyUsages,
+    extendedKeyUsages
   }: TUpdateCertTemplateDTO) => {
     const certTemplate = await certificateTemplateDAL.getById(id);
     if (!certTemplate) {
@@ -153,7 +159,9 @@ export const certificateTemplateServiceFactory = ({
           commonName,
           subjectAlternativeName,
           name,
-          ttl
+          ttl,
+          keyUsages,
+          extendedKeyUsages
         },
         tx
       );

@@ -1,3 +1,5 @@
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+
 import { TProjectRole } from "../roles/types";
 
 export enum ProjectVersion {
@@ -141,3 +143,16 @@ export type TUpdateWorkspaceGroupRoleDTO = {
       }
   )[];
 };
+
+export type TListProjectIdentitiesDTO = {
+  workspaceId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: ProjectIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
+export enum ProjectIdentityOrderBy {
+  Name = "name"
+}

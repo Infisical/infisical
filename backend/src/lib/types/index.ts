@@ -52,3 +52,8 @@ export enum SecretSharingAccessType {
   Anyone = "anyone",
   Organization = "organization"
 }
+
+export enum OrderByDirection {
+  ASC = "asc",
+  DESC = "desc"
+}

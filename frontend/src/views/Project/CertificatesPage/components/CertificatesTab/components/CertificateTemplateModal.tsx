@@ -7,7 +7,12 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
+  Checkbox,
   FormControl,
   FormLabel,
   Input,
@@ -25,8 +30,14 @@ import {
   useGetCertTemplate,
   useListWorkspaceCas,
   useListWorkspacePkiCollections,
-  useUpdateCertTemplate} from "@app/hooks/api";
+  useUpdateCertTemplate
+} from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
+import {
+  EXTENDED_KEY_USAGES_OPTIONS,
+  KEY_USAGES_OPTIONS
+} from "@app/hooks/api/certificates/constants";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const validateTemplateRegexField = z
@@ -45,7 +56,26 @@ const schema = z.object({
   name: z.string().min(1),
   commonName: validateTemplateRegexField,
   subjectAlternativeName: validateTemplateRegexField,
-  ttl: z.string().trim().min(1)
+  ttl: z.string().trim().min(1),
+  keyUsages: z.object({
+    [CertKeyUsage.DIGITAL_SIGNATURE]: z.boolean().optional(),
+    [CertKeyUsage.KEY_ENCIPHERMENT]: z.boolean().optional(),
+    [CertKeyUsage.NON_REPUDIATION]: z.boolean().optional(),
+    [CertKeyUsage.DATA_ENCIPHERMENT]: z.boolean().optional(),
+    [CertKeyUsage.KEY_AGREEMENT]: z.boolean().optional(),
+    [CertKeyUsage.KEY_CERT_SIGN]: z.boolean().optional(),
+    [CertKeyUsage.CRL_SIGN]: z.boolean().optional(),
+    [CertKeyUsage.ENCIPHER_ONLY]: z.boolean().optional(),
+    [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
+  }),
+  extendedKeyUsages: z.object({
+    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
+    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
+    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
+    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
+    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
+    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+  })
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -61,9 +91,9 @@ type Props = {
 
 export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  
+
   const { data: ca } = useGetCaById(caId);
-  
+
   const { data: certTemplate } = useGetCertTemplate(
     (popUp?.certificateTemplate?.data as { id: string })?.id || ""
   );
@@ -86,7 +116,13 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
     reset,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
+    defaultValues: {
+      keyUsages: {
+        [CertKeyUsage.DIGITAL_SIGNATURE]: true,
+        [CertKeyUsage.KEY_ENCIPHERMENT]: true
+      }
+    }
   });
 
   useEffect(() => {
@@ -97,14 +133,23 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         commonName: certTemplate.commonName,
         subjectAlternativeName: certTemplate.subjectAlternativeName,
         collectionId: certTemplate.pkiCollectionId ?? undefined,
-        ttl: certTemplate.ttl
+        ttl: certTemplate.ttl,
+        keyUsages: Object.fromEntries(certTemplate.keyUsages.map((name) => [name, true]) ?? []),
+        extendedKeyUsages: Object.fromEntries(
+          certTemplate.extendedKeyUsages.map((name) => [name, true]) ?? []
+        )
       });
     } else {
       reset({
         caId,
         name: "",
         commonName: "",
-        ttl: ""
+        ttl: "",
+        keyUsages: {
+          [CertKeyUsage.DIGITAL_SIGNATURE]: true,
+          [CertKeyUsage.KEY_ENCIPHERMENT]: true
+        },
+        extendedKeyUsages: {}
       });
     }
   }, [certTemplate, ca]);
@@ -114,7 +159,9 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
     name,
     commonName,
     subjectAlternativeName,
-    ttl
+    ttl,
+    keyUsages,
+    extendedKeyUsages
   }: FormData) => {
     if (!currentWorkspace?.id) {
       return;
@@ -130,7 +177,13 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           name,
           commonName,
           subjectAlternativeName,
-          ttl
+          ttl,
+          keyUsages: Object.entries(keyUsages)
+            .filter(([, value]) => value)
+            .map(([key]) => key as CertKeyUsage),
+          extendedKeyUsages: Object.entries(extendedKeyUsages)
+            .filter(([, value]) => value)
+            .map(([key]) => key as CertExtendedKeyUsage)
         });
 
         createNotification({
@@ -145,7 +198,13 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           name,
           commonName,
           subjectAlternativeName,
-          ttl
+          ttl,
+          keyUsages: Object.entries(keyUsages)
+            .filter(([, value]) => value)
+            .map(([key]) => key as CertKeyUsage),
+          extendedKeyUsages: Object.entries(extendedKeyUsages)
+            .filter(([, value]) => value)
+            .map(([key]) => key as CertExtendedKeyUsage)
         });
 
         createNotification({
@@ -332,7 +391,84 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
               </FormControl>
             )}
           />
-          <div className="flex items-center">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="key-usages" className="data-[state=open]:border-none">
+              <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                <div className="order-1 ml-3">Key Usage</div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <Controller
+                  control={control}
+                  name="keyUsages"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => {
+                    return (
+                      <FormControl
+                        label="Key Usage"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                          {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                            return (
+                              <Checkbox
+                                id={optionValue}
+                                key={optionValue}
+                                className="data-[state=checked]:bg-primary"
+                                isChecked={value[optionValue]}
+                                onCheckedChange={(state) => {
+                                  onChange({
+                                    ...value,
+                                    [optionValue]: state
+                                  });
+                                }}
+                              >
+                                {label}
+                              </Checkbox>
+                            );
+                          })}
+                        </div>
+                      </FormControl>
+                    );
+                  }}
+                />
+                <Controller
+                  control={control}
+                  name="extendedKeyUsages"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => {
+                    return (
+                      <FormControl
+                        label="Extended Key Usage"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                          {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                            return (
+                              <Checkbox
+                                id={optionValue}
+                                key={optionValue}
+                                className="data-[state=checked]:bg-primary"
+                                isChecked={value[optionValue]}
+                                onCheckedChange={(state) => {
+                                  onChange({
+                                    ...value,
+                                    [optionValue]: state
+                                  });
+                                }}
+                              >
+                                {label}
+                              </Checkbox>
+                            );
+                          })}
+                        </div>
+                      </FormControl>
+                    );
+                  }}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+          <div className="mt-4 flex items-center">
             <Button
               className="mr-4"
               size="sm"

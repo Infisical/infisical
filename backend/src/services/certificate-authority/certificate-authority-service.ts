@@ -19,7 +19,13 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CertStatus
+} from "../certificate/certificate-types";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../certificate-template/certificate-template-fns";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
@@ -1095,7 +1101,9 @@ export const certificateAuthorityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    keyUsages,
+    extendedKeyUsages
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorities | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -1215,7 +1223,6 @@ export const certificateAuthorityServiceFactory = ({
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
 
     const extensions: x509.Extension[] = [
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
       new x509.CRLDistributionPointsExtension([distributionPointUrl]),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
@@ -1225,6 +1232,56 @@ export const certificateAuthorityServiceFactory = ({
       }),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
+
+    // handle key usages
+    let selectedKeyUsages: CertKeyUsage[] = keyUsages ?? [];
+    if (keyUsages === undefined && !certificateTemplate) {
+      selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+    }
+
+    if (keyUsages === undefined && certificateTemplate) {
+      selectedKeyUsages = (certificateTemplate.keyUsages ?? []) as CertKeyUsage[];
+    }
+
+    if (keyUsages?.length && certificateTemplate) {
+      const validKeyUsages = certificateTemplate.keyUsages || [];
+      if (keyUsages.some((keyUsage) => !validKeyUsages.includes(keyUsage))) {
+        throw new BadRequestError({
+          message: "Invalid key usage value based on template policy"
+        });
+      }
+      selectedKeyUsages = keyUsages;
+    }
+
+    const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
+    if (keyUsagesBitValue) {
+      extensions.push(new x509.KeyUsagesExtension(keyUsagesBitValue, true));
+    }
+
+    // handle extended key usages
+    let selectedExtendedKeyUsages: CertExtendedKeyUsage[] = extendedKeyUsages ?? [];
+    if (extendedKeyUsages === undefined && certificateTemplate) {
+      selectedExtendedKeyUsages = (certificateTemplate.extendedKeyUsages ?? []) as CertExtendedKeyUsage[];
+    }
+
+    if (extendedKeyUsages?.length && certificateTemplate) {
+      const validExtendedKeyUsages = certificateTemplate.extendedKeyUsages || [];
+      if (extendedKeyUsages.some((eku) => !validExtendedKeyUsages.includes(eku))) {
+        throw new BadRequestError({
+          message: "Invalid extended key usage value based on template policy"
+        });
+      }
+      selectedExtendedKeyUsages = extendedKeyUsages;
+    }
+
+    if (selectedExtendedKeyUsages.length) {
+      extensions.push(
+        new x509.ExtendedKeyUsageExtension(
+          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          true
+        )
+      );
+    }
 
     let altNamesArray: {
       type: "email" | "dns";
@@ -1307,7 +1364,9 @@ export const certificateAuthorityServiceFactory = ({
           altNames,
           serialNumber,
           notBefore: notBeforeDate,
-          notAfter: notAfterDate
+          notAfter: notAfterDate,
+          keyUsages: selectedKeyUsages,
+          extendedKeyUsages: selectedExtendedKeyUsages
         },
         tx
       );
@@ -1370,7 +1429,9 @@ export const certificateAuthorityServiceFactory = ({
       altNames,
       ttl,
       notBefore,
-      notAfter
+      notAfter,
+      keyUsages,
+      extendedKeyUsages
     } = dto;
 
     let collectionId = pkiCollectionId;
@@ -1494,7 +1555,6 @@ export const certificateAuthorityServiceFactory = ({
 
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
     const extensions: x509.Extension[] = [
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
@@ -1504,6 +1564,100 @@ export const certificateAuthorityServiceFactory = ({
       }),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
+
+    // handle key usages
+    const csrKeyUsageExtension = csrObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
+    let csrKeyUsages: CertKeyUsage[] = [];
+    if (csrKeyUsageExtension) {
+      csrKeyUsages = Object.values(CertKeyUsage).filter(
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & csrKeyUsageExtension.usages) !== 0
+      );
+    }
+
+    let selectedKeyUsages: CertKeyUsage[] = keyUsages ?? [];
+    if (keyUsages === undefined && !certificateTemplate) {
+      if (csrKeyUsageExtension) {
+        selectedKeyUsages = csrKeyUsages;
+      } else {
+        selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+      }
+    }
+
+    if (keyUsages === undefined && certificateTemplate) {
+      if (csrKeyUsageExtension) {
+        const validKeyUsages = certificateTemplate.keyUsages || [];
+        if (csrKeyUsages.some((keyUsage) => !validKeyUsages.includes(keyUsage))) {
+          throw new BadRequestError({
+            message: "Invalid key usage value based on template policy"
+          });
+        }
+        selectedKeyUsages = csrKeyUsages;
+      } else {
+        selectedKeyUsages = (certificateTemplate.keyUsages ?? []) as CertKeyUsage[];
+      }
+    }
+
+    if (keyUsages?.length && certificateTemplate) {
+      const validKeyUsages = certificateTemplate.keyUsages || [];
+      if (keyUsages.some((keyUsage) => !validKeyUsages.includes(keyUsage))) {
+        throw new BadRequestError({
+          message: "Invalid key usage value based on template policy"
+        });
+      }
+      selectedKeyUsages = keyUsages;
+    }
+
+    const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
+    if (keyUsagesBitValue) {
+      extensions.push(new x509.KeyUsagesExtension(keyUsagesBitValue, true));
+    }
+
+    // handle extended key usages
+    const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
+    let csrExtendedKeyUsages: CertExtendedKeyUsage[] = [];
+    if (csrExtendedKeyUsageExtension) {
+      csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages.map(
+        (ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]
+      );
+    }
+
+    let selectedExtendedKeyUsages: CertExtendedKeyUsage[] = extendedKeyUsages ?? [];
+    if (extendedKeyUsages === undefined && !certificateTemplate && csrExtendedKeyUsageExtension) {
+      selectedExtendedKeyUsages = csrExtendedKeyUsages;
+    }
+
+    if (extendedKeyUsages === undefined && certificateTemplate) {
+      if (csrExtendedKeyUsageExtension) {
+        const validExtendedKeyUsages = certificateTemplate.extendedKeyUsages || [];
+        if (csrExtendedKeyUsages.some((eku) => !validExtendedKeyUsages.includes(eku))) {
+          throw new BadRequestError({
+            message: "Invalid extended key usage value based on template policy"
+          });
+        }
+        selectedExtendedKeyUsages = csrExtendedKeyUsages;
+      } else {
+        selectedExtendedKeyUsages = (certificateTemplate.extendedKeyUsages ?? []) as CertExtendedKeyUsage[];
+      }
+    }
+
+    if (extendedKeyUsages?.length && certificateTemplate) {
+      const validExtendedKeyUsages = certificateTemplate.extendedKeyUsages || [];
+      if (extendedKeyUsages.some((keyUsage) => !validExtendedKeyUsages.includes(keyUsage))) {
+        throw new BadRequestError({
+          message: "Invalid extended key usage value based on template policy"
+        });
+      }
+      selectedExtendedKeyUsages = extendedKeyUsages;
+    }
+
+    if (selectedExtendedKeyUsages.length) {
+      extensions.push(
+        new x509.ExtendedKeyUsageExtension(
+          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          true
+        )
+      );
+    }
 
     let altNamesFromCsr: string = "";
     let altNamesArray: {
@@ -1600,7 +1754,9 @@ export const certificateAuthorityServiceFactory = ({
           altNames: altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
-          notAfter: notAfterDate
+          notAfter: notAfterDate,
+          keyUsages: selectedKeyUsages,
+          extendedKeyUsages: selectedExtendedKeyUsages
         },
         tx
       );

@@ -1,3 +1,6 @@
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
+
 export type Organization = {
   id: string;
   name: string;
@@ -102,3 +105,22 @@ export type ProductsTable = {
   head: ProductsTableHead[];
   rows: ProductsTableRow[];
 };
+
+export type TListOrgIdentitiesDTO = {
+  organizationId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
+export type TOrgIdentitiesList = {
+  identityMemberships: IdentityMembershipOrg[];
+  totalCount: number;
+};
+
+export enum OrgIdentityOrderBy {
+  Name = "name",
+  Role = "role"
+}

@@ -246,12 +246,13 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               description: true
             }).optional(),
             identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
-          }).array()
+          }).array(),
+          totalCount: z.number()
         })
       }
     },
     handler: async (req) => {
-      const identities = await server.services.identity.listOrgIdentities({
+      const { identityMemberships, totalCount } = await server.services.identity.listOrgIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -259,7 +260,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         orgId: req.query.orgId
       });
 
-      return { identities };
+      return { identities: identityMemberships, totalCount };
     }
   });
 

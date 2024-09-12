@@ -363,7 +363,12 @@ export const ORGANIZATIONS = {
     membershipId: "The ID of the membership to delete."
   },
   LIST_IDENTITY_MEMBERSHIPS: {
-    orgId: "The ID of the organization to get identity memberships from."
+    orgId: "The ID of the organization to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in.",
+    search: "The text string that identity membership names will be filtered by."
   },
   GET_PROJECTS: {
     organizationId: "The ID of the organization to get projects from."
@@ -472,7 +477,12 @@ export const PROJECT_USERS = {
 
 export const PROJECT_IDENTITIES = {
   LIST_IDENTITY_MEMBERSHIPS: {
-    projectId: "The ID of the project to get identity memberships from."
+    projectId: "The ID of the project to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in.",
+    search: "The text string that identity membership names will be filtered by."
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     identityId: "The ID of the identity to get the membership for.",
@@ -1116,11 +1126,15 @@ export const CERTIFICATE_AUTHORITIES = {
     issuingCaCertificate: "The certificate of the issuing CA",
     certificateChain: "The certificate chain of the issued certificate",
     privateKey: "The private key of the issued certificate",
-    serialNumber: "The serial number of the issued certificate"
+    serialNumber: "The serial number of the issued certificate",
+    keyUsages: "The key usage extension of the certificate",
+    extendedKeyUsages: "The extended key usage extension of the certificate"
   },
   SIGN_CERT: {
     caId: "The ID of the CA to issue the certificate from",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to",
+    keyUsages: "The key usage extension of the certificate",
+    extendedKeyUsages: "The extended key usage extension of the certificate",
     csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
     friendlyName: "A friendly name for the certificate",
     commonName: "The common name (CN) for the certificate",
@@ -1170,7 +1184,10 @@ export const CERTIFICATE_TEMPLATES = {
     name: "The name of the template",
     commonName: "The regular expression string to use for validating common names",
     subjectAlternativeName: "The regular expression string to use for validating subject alternative names",
-    ttl: "The max TTL for the template"
+    ttl: "The max TTL for the template",
+    keyUsages: "The key usage constraint or default value for when template is used during certificate issuance",
+    extendedKeyUsages:
+      "The extended key usage constraint or default value for when template is used during certificate issuance"
   },
   GET: {
     certificateTemplateId: "The ID of the certificate template to get"
@@ -1182,7 +1199,11 @@ export const CERTIFICATE_TEMPLATES = {
     name: "The updated name of the template",
     commonName: "The updated regular expression string for validating common names",
     subjectAlternativeName: "The updated regular expression string for validating subject alternative names",
-    ttl: "The updated max TTL for the template"
+    ttl: "The updated max TTL for the template",
+    keyUsages:
+      "The updated key usage constraint or default value for when template is used during certificate issuance",
+    extendedKeyUsages:
+      "The updated extended key usage constraint or default value for when template is used during certificate issuance"
   },
   DELETE: {
     certificateTemplateId: "The ID of the certificate template to delete"

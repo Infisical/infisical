@@ -1,4 +1,4 @@
-import { CertStatus } from "./enums";
+import { CertExtendedKeyUsage, CertKeyUsage, CertStatus } from "./enums";
 
 export type TCertificate = {
   id: string;
@@ -11,6 +11,8 @@ export type TCertificate = {
   serialNumber: string;
   notBefore: string;
   notAfter: string;
+  keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
 export type TDeleteCertDTO = {

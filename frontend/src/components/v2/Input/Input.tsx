@@ -11,6 +11,7 @@ type Props = {
   isDisabled?: boolean;
   isReadOnly?: boolean;
   autoCapitalization?: boolean;
+  containerClassName?: string;
 };
 
 const inputVariants = cva(
@@ -71,6 +72,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
       className,
+      containerClassName,
       isRounded = true,
       isFullWidth = true,
       isDisabled,
@@ -94,7 +96,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     };
 
     return (
-      <div className={inputParentContainerVariants({ isRounded, isError, isFullWidth, variant })}>
+      <div
+        className={inputParentContainerVariants({
+          isRounded,
+          isError,
+          isFullWidth,
+          variant,
+          className: containerClassName
+        })}
+      >
         {leftIcon && <span className="absolute left-0 ml-3 text-sm">{leftIcon}</span>}
         <input
           {...props}

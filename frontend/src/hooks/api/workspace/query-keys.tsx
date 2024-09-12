@@ -1,3 +1,5 @@
+import { TListProjectIdentitiesDTO } from "@app/hooks/api/workspace/types";
+
 import type { CaStatus } from "../ca";
 
 export const workspaceKeys = {
@@ -15,6 +17,12 @@ export const workspaceKeys = {
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-identity-memberships"] as const,
+  // allows invalidation using above key without knowing params
+  getWorkspaceIdentityMembershipsWithParams: ({
+    workspaceId,
+    ...params
+  }: TListProjectIdentitiesDTO) =>
+    [...workspaceKeys.getWorkspaceIdentityMemberships(workspaceId), params] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-groups"] as const,
   getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>

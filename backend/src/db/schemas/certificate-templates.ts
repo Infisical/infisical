@@ -16,7 +16,9 @@ export const CertificateTemplatesSchema = z.object({
   subjectAlternativeName: z.string(),
   ttl: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  keyUsages: z.string().array().nullable().optional(),
+  extendedKeyUsages: z.string().array().nullable().optional()
 });
 
 export type TCertificateTemplates = z.infer<typeof CertificateTemplatesSchema>;
