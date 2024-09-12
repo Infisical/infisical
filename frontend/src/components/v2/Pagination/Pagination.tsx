@@ -50,7 +50,7 @@ export const Pagination = ({
     >
       <div className="mr-6 flex items-center space-x-2">
         <div className="text-xs">
-          {(page - 1) * perPage} - {Math.min((page - 1) * perPage + perPage, count)} of {count}
+          {(page - 1) * perPage + 1} - {Math.min((page - 1) * perPage + perPage, count)} of {count}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

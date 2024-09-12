@@ -469,3 +469,8 @@ export type RevokeTokenDTO = {
 export type RevokeTokenRes = {
   message: string;
 };
+
+export type TProjectIdentitiesList = {
+  identityMemberships: IdentityMembership[];
+  totalCount: number;
+};

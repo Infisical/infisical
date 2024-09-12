@@ -43,7 +43,7 @@ export const useNavigateToSelectOrganization = () => {
       await navigateUserToOrg(router, config.defaultAuthOrgId);
     }
 
-    let localOrgId = localStorage.getItem("orgData.id")
+    const localOrgId = localStorage.getItem("orgData.id")
     if(!cliCallbackPort && localOrgId != null){
       await navigateUserToOrg(router, localOrgId);
     }

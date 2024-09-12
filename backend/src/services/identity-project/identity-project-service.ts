@@ -268,7 +268,12 @@ export const identityProjectServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    search
   }: TListProjectIdentityDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -279,8 +284,17 @@ export const identityProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
-    const identityMemberships = await identityProjectDAL.findByProjectId(projectId);
-    return identityMemberships;
+    const identityMemberships = await identityProjectDAL.findByProjectId(projectId, {
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      search
+    });
+
+    const totalCount = await identityProjectDAL.getCountByProjectId(projectId, { search });
+
+    return { identityMemberships, totalCount };
   };
 
   const getProjectIdentityByIdentityId = async ({
