@@ -209,7 +209,7 @@ const syncSecretsGCPSecretManager = async ({
 
       if (!secrets[key].value) {
         logger.warn(
-          `[GCP_SECRET_SYNC_1]: Empty secret value for key: ${key} and integration appId: ${integration.appId}`
+          `syncSecretsGcpsecretManager: create secret value in gcp where [key=${key}] and integration appId [appId=${integration.appId}]`
         );
       }
 
@@ -245,7 +245,7 @@ const syncSecretsGCPSecretManager = async ({
     } else if (secrets[key].value !== res[key]) {
       if (!secrets[key].value) {
         logger.warn(
-          `[GCP_SECRET_SYNC_2]: Empty secret value for key: ${key} and integration appId: ${integration.appId}`
+          `syncSecretsGcpsecretManager: update secret value in gcp where [key=${key}] and integration appId [appId=${integration.appId}]`
         );
       }
 
