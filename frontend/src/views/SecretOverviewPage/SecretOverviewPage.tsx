@@ -885,6 +885,7 @@ export const SecretOverviewPage = () => {
             </Table>
             {!isTableLoading && rows.length > INIT_PER_PAGE && (
               <Pagination
+                className="border-t border-solid border-t-mineshaft-600"
                 count={rows.length}
                 page={page}
                 perPage={perPage}

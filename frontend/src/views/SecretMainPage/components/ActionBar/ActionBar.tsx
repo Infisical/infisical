@@ -62,7 +62,7 @@ import {
   useSelectedSecretActions,
   useSelectedSecrets
 } from "../../SecretMainPage.store";
-import { Filter, GroupBy } from "../../SecretMainPage.types";
+import { Filter } from "../../SecretMainPage.types";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
@@ -81,7 +81,6 @@ type Props = {
   isVisible?: boolean;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
-  onGroupByChange: (opt?: GroupBy) => void;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
   onVisiblilityToggle: () => void;
@@ -101,7 +100,6 @@ export const ActionBar = ({
   isSnapshotCountLoading,
   onSearchChange,
   onToggleTagFilter,
-  onGroupByChange,
   onVisiblilityToggle,
   onClickRollbackMode
 }: Props) => {
@@ -307,16 +305,6 @@ export const ActionBar = ({
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="p-0">
-              <DropdownMenuGroup>Group By</DropdownMenuGroup>
-              <DropdownMenuItem
-                iconPos="right"
-                icon={
-                  filter?.groupBy === GroupBy.PREFIX && <FontAwesomeIcon icon={faCheckCircle} />
-                }
-                onClick={() => onGroupByChange(!filter.groupBy ? GroupBy.PREFIX : undefined)}
-              >
-                Prefix
-              </DropdownMenuItem>
               <DropdownMenuGroup>Filter By</DropdownMenuGroup>
               <DropdownSubMenu>
                 <DropdownSubMenuTrigger
