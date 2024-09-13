@@ -149,7 +149,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "Public endpoint for fetching DER-encoded Certificate of CA",
+      description: "Get DER-encoded certificate of CA",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caId),
         caCertId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caCertId)
