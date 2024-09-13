@@ -160,30 +160,32 @@ export const useGetImportedSecretsAllEnvs = ({
         projectId,
         path
       }),
-      queryFn: async () => {
-        const data = await fetchImportedSecrets(projectId, env, path).catch(() => []);
-
-        return data.map((el) => ({
-          environment: el.environment,
-          secretPath: el.secretPath,
-          environmentInfo: el.environmentInfo,
-          folderId: el.folderId,
-          secrets: el.secrets.map((encSecret) => {
-            return {
-              id: encSecret.id,
-              env: encSecret.environment,
-              key: encSecret.secretKey,
-              value: encSecret.secretValue,
-              tags: encSecret.tags,
-              comment: encSecret.secretComment,
-              createdAt: encSecret.createdAt,
-              updatedAt: encSecret.updatedAt,
-              version: encSecret.version
-            };
-          })
-        }));
-      },
-      enabled: Boolean(projectId) && Boolean(env)
+      queryFn: () => fetchImportedSecrets(projectId, env, path).catch(() => []),
+      enabled: Boolean(projectId) && Boolean(env),
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      select: useCallback(
+        (data: Awaited<ReturnType<typeof fetchImportedSecrets>>) =>
+          data.map((el) => ({
+            environment: el.environment,
+            secretPath: el.secretPath,
+            environmentInfo: el.environmentInfo,
+            folderId: el.folderId,
+            secrets: el.secrets.map((encSecret) => {
+              return {
+                id: encSecret.id,
+                env: encSecret.environment,
+                key: encSecret.secretKey,
+                value: encSecret.secretValue,
+                tags: encSecret.tags,
+                comment: encSecret.secretComment,
+                createdAt: encSecret.createdAt,
+                updatedAt: encSecret.updatedAt,
+                version: encSecret.version
+              };
+            })
+          })),
+        []
+      )
     }))
   });
 

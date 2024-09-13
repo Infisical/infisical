@@ -24,12 +24,6 @@ export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
     [{ workspaceId, environment, secretPath }, "secrets"] as const,
-  getProjectSecretAllEnvironments: ({
-    workspaceId,
-    environment,
-    secretPath
-  }: TGetProjectSecretsKey) =>
-    [...secretKeys.getProjectSecret({ workspaceId, environment, secretPath }), "all"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const
 };
 
@@ -101,7 +95,7 @@ export const useGetProjectSecrets = ({
 }: TGetProjectSecretsDTO & {
   options?: Omit<
     UseQueryOptions<
-      SecretV3RawSanitized[],
+      SecretV3RawResponse,
       unknown,
       SecretV3RawSanitized[],
       ReturnType<typeof secretKeys.getProjectSecret>
@@ -114,10 +108,7 @@ export const useGetProjectSecrets = ({
     // wait for all values to be available
     enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
-    queryFn: async () => {
-      const resp = await fetchProjectSecrets({ workspaceId, environment, secretPath });
-      return mergePersonalSecrets(resp.secrets);
-    },
+    queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
     onError: (error) => {
       if (axios.isAxiosError(error)) {
         const serverResponse = error.response?.data as { message: string };
@@ -127,7 +118,11 @@ export const useGetProjectSecrets = ({
           text: serverResponse.message
         });
       }
-    }
+    },
+    select: useCallback(
+      (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
+      []
+    )
   });
 
 export const useGetProjectSecretsAllEnv = ({
@@ -139,7 +134,7 @@ export const useGetProjectSecretsAllEnv = ({
 
   const secrets = useQueries({
     queries: envs.map((environment) => ({
-      queryKey: secretKeys.getProjectSecretAllEnvironments({
+      queryKey: secretKeys.getProjectSecret({
         workspaceId,
         environment,
         secretPath
@@ -159,15 +154,17 @@ export const useGetProjectSecretsAllEnv = ({
           setIsErrorHandled.on();
         }
       },
-      queryFn: async () => {
-        const resp = await fetchProjectSecrets({ workspaceId, environment, secretPath });
-
-        return mergePersonalSecrets(resp.secrets).reduce<Record<string, SecretV3RawSanitized>>(
-          (prev, curr) => ({ ...prev, [curr.key]: curr }),
-          {}
-        );
-      },
-      staleTime: 5 * 60 * 1000
+      queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
+      staleTime: 60 * 1000,
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      select: useCallback(
+        (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) =>
+          mergePersonalSecrets(data.secrets).reduce<Record<string, SecretV3RawSanitized>>(
+            (prev, curr) => ({ ...prev, [curr.key]: curr }),
+            {}
+          ),
+        []
+      )
     }))
   });
 
