@@ -123,7 +123,7 @@ export const SecretImportListView = ({
     if (!isFetching) {
       setItems(secretImports);
     }
-  }, [isFetching]);
+  }, [isFetching, secretImports]);
 
   const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
   const { mutate: updateSecretImport } = useUpdateSecretImport();

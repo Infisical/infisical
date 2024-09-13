@@ -227,7 +227,14 @@ export const SecretMainPage = () => {
   const rows = useMemo(() => {
     const filteredSecrets =
       secrets
-        ?.filter(({ key }) => key.toUpperCase().includes(debouncedSearchFilter.toUpperCase()))
+        ?.filter(({ key, tags: secretTags, value }) => {
+          const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
+          return (
+            (!isTagFilterActive || secretTags?.some(({ id }) => filter.tags?.[id])) &&
+            (key.toUpperCase().includes(debouncedSearchFilter.toUpperCase()) ||
+              value?.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
+          );
+        })
         .sort((a, b) =>
           sortDir === SortDir.ASC ? a.key.localeCompare(b.key) : b.key.localeCompare(a.key)
         ) ?? [];
@@ -243,13 +250,36 @@ export const SecretMainPage = () => {
         .sort((a, b) =>
           sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
         ) ?? [];
+    const filteredSecretImports =
+      secretImports
+        ?.filter(({ importPath }) =>
+          importPath.toLowerCase().includes(debouncedSearchFilter.toLowerCase())
+        )
+        .sort((a, b) =>
+          sortDir === "asc"
+            ? a.importPath.localeCompare(b.importPath)
+            : b.importPath.localeCompare(a.importPath)
+        ) ?? [];
 
     const totalRows =
-      filteredFolders.length + filteredDynamicSecrets.length + filteredSecrets.length;
+      filteredSecretImports.length +
+      filteredFolders.length +
+      filteredDynamicSecrets.length +
+      filteredSecrets.length;
 
-    const paginatedFolders = filteredFolders.slice(paginationOffset, paginationOffset + perPage);
+    const paginatedImports = filteredSecretImports.slice(
+      paginationOffset,
+      paginationOffset + perPage
+    );
 
-    let remainingRows = perPage - paginatedFolders.length;
+    let remainingRows = perPage - paginatedImports.length;
+    const foldersStartIndex = Math.max(0, paginationOffset - filteredSecretImports.length);
+    const paginatedFolders =
+      remainingRows > 0
+        ? filteredFolders.slice(foldersStartIndex, foldersStartIndex + remainingRows)
+        : [];
+
+    remainingRows -= paginatedFolders.length;
     const dynamicSecretStartIndex = Math.max(0, paginationOffset - filteredFolders.length);
     const paginatiedDynamicSecrets =
       remainingRows > 0
@@ -271,12 +301,23 @@ export const SecretMainPage = () => {
         : [];
 
     return {
+      imports: paginatedImports,
       folders: paginatedFolders,
       secrets: paginatiedSecrets,
       dynamicSecrets: paginatiedDynamicSecrets,
       totalRows
     };
-  }, [sortDir, debouncedSearchFilter, folders, secrets, dynamicSecrets, paginationOffset, perPage]);
+  }, [
+    sortDir,
+    debouncedSearchFilter,
+    folders,
+    secrets,
+    dynamicSecrets,
+    paginationOffset,
+    perPage,
+    filter.tags,
+    importedSecrets
+  ]);
 
   useEffect(() => {
     // reset page if no longer valid
@@ -350,7 +391,7 @@ export const SecretMainPage = () => {
                 {canReadSecret && (
                   <SecretImportListView
                     searchTerm={filter.searchFilter}
-                    secretImports={secretImports}
+                    secretImports={rows.imports}
                     isFetching={isSecretImportsLoading || isSecretImportsFetching}
                     environment={environment}
                     workspaceId={workspaceId}
