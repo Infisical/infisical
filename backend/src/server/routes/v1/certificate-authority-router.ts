@@ -144,7 +144,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
   // against the Authority Information Access CA Issuer URL
   server.route({
     method: "GET",
-    url: "/:caId/certificates/:caCertId",
+    url: "/:caId/certificates/:caCertId/der",
     config: {
       rateLimit: readLimit
     },

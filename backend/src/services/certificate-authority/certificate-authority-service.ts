@@ -901,9 +901,9 @@ export const certificateAuthorityServiceFactory = ({
     const serialNumber = createSerialNumber();
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -1219,8 +1219,8 @@ export const certificateAuthorityServiceFactory = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const appCfg = getConfig();
 
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -1551,9 +1551,9 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
