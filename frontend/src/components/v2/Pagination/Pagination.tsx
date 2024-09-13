@@ -40,6 +40,8 @@ export const Pagination = ({
   const upperLimit = Math.ceil(count / perPage);
   const nextPageNumber = Math.min(upperLimit, page + 1);
   const canGoNext = page + 1 <= upperLimit;
+  const canGoFirst = page > 1;
+  const canGoLast = page < upperLimit;
 
   return (
     <div
@@ -75,6 +77,16 @@ export const Pagination = ({
       <div className="flex items-center space-x-4">
         <IconButton
           variant="plain"
+          ariaLabel="pagination-first"
+          className="relative"
+          onClick={() => onChangePage(1)}
+          isDisabled={!canGoFirst}
+        >
+          <FontAwesomeIcon className="absolute left-2.5 top-1 text-xs" icon={faChevronLeft} />
+          <FontAwesomeIcon className="text-xs" icon={faChevronLeft} />
+        </IconButton>
+        <IconButton
+          variant="plain"
           ariaLabel="pagination-prev"
           onClick={() => onChangePage(prevPageNumber)}
           isDisabled={!canGoPrev}
@@ -87,6 +99,16 @@ export const Pagination = ({
           onClick={() => onChangePage(nextPageNumber)}
           isDisabled={!canGoNext}
         >
+          <FontAwesomeIcon className="text-xs" icon={faChevronRight} />
+        </IconButton>
+        <IconButton
+          variant="plain"
+          ariaLabel="pagination-last"
+          className="relative"
+          onClick={() => onChangePage(upperLimit)}
+          isDisabled={!canGoLast}
+        >
+          <FontAwesomeIcon className="absolute left-2.5 top-1 text-xs" icon={faChevronRight} />
           <FontAwesomeIcon className="text-xs" icon={faChevronRight} />
         </IconButton>
       </div>

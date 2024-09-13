@@ -108,7 +108,7 @@ export const useGetProjectSecrets = ({
     // wait for all values to be available
     enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
-    queryFn: async () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
+    queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
     onError: (error) => {
       if (axios.isAxiosError(error)) {
         const serverResponse = error.response?.data as { message: string };
@@ -119,7 +119,10 @@ export const useGetProjectSecrets = ({
         });
       }
     },
-    select: ({ secrets }) => mergePersonalSecrets(secrets)
+    select: useCallback(
+      (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
+      []
+    )
   });
 
 export const useGetProjectSecretsAllEnv = ({
@@ -131,7 +134,11 @@ export const useGetProjectSecretsAllEnv = ({
 
   const secrets = useQueries({
     queries: envs.map((environment) => ({
-      queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
+      queryKey: secretKeys.getProjectSecret({
+        workspaceId,
+        environment,
+        secretPath
+      }),
       enabled: Boolean(workspaceId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
@@ -147,12 +154,17 @@ export const useGetProjectSecretsAllEnv = ({
           setIsErrorHandled.on();
         }
       },
-      queryFn: async () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
-      select: (el: SecretV3RawResponse) =>
-        mergePersonalSecrets(el.secrets).reduce<Record<string, SecretV3RawSanitized>>(
-          (prev, curr) => ({ ...prev, [curr.key]: curr }),
-          {}
-        )
+      queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
+      staleTime: 60 * 1000,
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      select: useCallback(
+        (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) =>
+          mergePersonalSecrets(data.secrets).reduce<Record<string, SecretV3RawSanitized>>(
+            (prev, curr) => ({ ...prev, [curr.key]: curr }),
+            {}
+          ),
+        []
+      )
     }))
   });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
@@ -8,14 +8,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { ContentLoader } from "@app/components/v2";
+import { ContentLoader, Pagination } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { useDebounce, usePopUp } from "@app/hooks";
 import {
   useGetDynamicSecrets,
   useGetImportedSecretsSingleEnv,
@@ -39,7 +39,7 @@ import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
 import { StoreProvider } from "./SecretMainPage.store";
-import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
+import { Filter, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
@@ -47,6 +47,7 @@ const LOADER_TEXT = [
   "Getting secret import links..."
 ];
 
+const INIT_PER_PAGE = 10;
 export const SecretMainPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
@@ -59,6 +60,10 @@ export const SecretMainPage = () => {
     tags: {},
     searchFilter: (router.query.searchFilter as string) || ""
   });
+  const debouncedSearchFilter = useDebounce(filter.searchFilter);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(INIT_PER_PAGE);
+  const paginationOffset = (page - 1) * perPage;
 
   const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const isRollbackMode = Boolean(snapshotId);
@@ -185,11 +190,6 @@ export const SecretMainPage = () => {
     });
   };
 
-  const handleGroupByChange = useCallback(
-    (groupBy?: GroupBy) => setFilter((state) => ({ ...state, groupBy })),
-    []
-  );
-
   const handleTagToggle = useCallback(
     (tagId: string) =>
       setFilter((state) => {
@@ -223,6 +223,107 @@ export const SecretMainPage = () => {
   const loadingOnAccess =
     canReadSecret &&
     (isSecretsLoading || isSecretImportsLoading || isFoldersLoading || isDynamicSecretLoading);
+
+  const rows = useMemo(() => {
+    const filteredSecrets =
+      secrets
+        ?.filter(({ key, tags: secretTags, value }) => {
+          const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
+          return (
+            (!isTagFilterActive || secretTags?.some(({ id }) => filter.tags?.[id])) &&
+            (key.toUpperCase().includes(debouncedSearchFilter.toUpperCase()) ||
+              value?.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
+          );
+        })
+        .sort((a, b) =>
+          sortDir === SortDir.ASC ? a.key.localeCompare(b.key) : b.key.localeCompare(a.key)
+        ) ?? [];
+    const filteredFolders =
+      folders
+        ?.filter(({ name }) => name.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
+        .sort((a, b) =>
+          sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+        ) ?? [];
+    const filteredDynamicSecrets =
+      dynamicSecrets
+        ?.filter(({ name }) => name.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
+        .sort((a, b) =>
+          sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+        ) ?? [];
+    const filteredSecretImports =
+      secretImports
+        ?.filter(({ importPath }) =>
+          importPath.toLowerCase().includes(debouncedSearchFilter.toLowerCase())
+        )
+        .sort((a, b) =>
+          sortDir === "asc"
+            ? a.importPath.localeCompare(b.importPath)
+            : b.importPath.localeCompare(a.importPath)
+        ) ?? [];
+
+    const totalRows =
+      filteredSecretImports.length +
+      filteredFolders.length +
+      filteredDynamicSecrets.length +
+      filteredSecrets.length;
+
+    const paginatedImports = filteredSecretImports.slice(
+      paginationOffset,
+      paginationOffset + perPage
+    );
+
+    let remainingRows = perPage - paginatedImports.length;
+    const foldersStartIndex = Math.max(0, paginationOffset - filteredSecretImports.length);
+    const paginatedFolders =
+      remainingRows > 0
+        ? filteredFolders.slice(foldersStartIndex, foldersStartIndex + remainingRows)
+        : [];
+
+    remainingRows -= paginatedFolders.length;
+    const dynamicSecretStartIndex = Math.max(0, paginationOffset - filteredFolders.length);
+    const paginatiedDynamicSecrets =
+      remainingRows > 0
+        ? filteredDynamicSecrets.slice(
+            dynamicSecretStartIndex,
+            dynamicSecretStartIndex + remainingRows
+          )
+        : [];
+
+    remainingRows -= paginatiedDynamicSecrets.length;
+    const secretStartIndex = Math.max(
+      0,
+      paginationOffset - filteredFolders.length - filteredDynamicSecrets.length
+    );
+
+    const paginatiedSecrets =
+      remainingRows > 0
+        ? filteredSecrets.slice(secretStartIndex, secretStartIndex + remainingRows)
+        : [];
+
+    return {
+      imports: paginatedImports,
+      folders: paginatedFolders,
+      secrets: paginatiedSecrets,
+      dynamicSecrets: paginatiedDynamicSecrets,
+      totalRows
+    };
+  }, [
+    sortDir,
+    debouncedSearchFilter,
+    folders,
+    secrets,
+    dynamicSecrets,
+    paginationOffset,
+    perPage,
+    filter.tags,
+    importedSecrets
+  ]);
+
+  useEffect(() => {
+    // reset page if no longer valid
+    if (rows.totalRows < paginationOffset) setPage(1);
+  }, [rows.totalRows]);
+
   // loading screen when you don't have permission but as folder's is viewable need to wait for that
   const loadingOnDenied = !canReadSecret && isFoldersLoading;
   if (loadingOnAccess || loadingOnDenied) {
@@ -258,7 +359,6 @@ export const SecretMainPage = () => {
               filter={filter}
               tags={tags}
               onVisiblilityToggle={handleToggleVisibility}
-              onGroupByChange={handleGroupByChange}
               onSearchChange={handleSearchChange}
               onToggleTagFilter={handleTagToggle}
               snapshotCount={snapshotCount || 0}
@@ -291,7 +391,7 @@ export const SecretMainPage = () => {
                 {canReadSecret && (
                   <SecretImportListView
                     searchTerm={filter.searchFilter}
-                    secretImports={secretImports}
+                    secretImports={rows.imports}
                     isFetching={isSecretImportsLoading || isSecretImportsFetching}
                     environment={environment}
                     workspaceId={workspaceId}
@@ -301,7 +401,7 @@ export const SecretMainPage = () => {
                   />
                 )}
                 <FolderListView
-                  folders={folders}
+                  folders={rows.folders}
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}
@@ -314,15 +414,13 @@ export const SecretMainPage = () => {
                     environment={environment}
                     projectSlug={projectSlug}
                     secretPath={secretPath}
-                    dynamicSecrets={dynamicSecrets || []}
+                    dynamicSecrets={rows.dynamicSecrets || []}
                   />
                 )}
                 {canReadSecret && (
                   <SecretListView
-                    secrets={secrets}
+                    secrets={rows.secrets}
                     tags={tags}
-                    filter={filter}
-                    sortDir={sortDir}
                     isVisible={isVisible}
                     environment={environment}
                     workspaceId={workspaceId}
@@ -331,6 +429,16 @@ export const SecretMainPage = () => {
                   />
                 )}
                 {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
+                {!loadingOnAccess && rows.totalRows > INIT_PER_PAGE && (
+                  <Pagination
+                    className="border-t border-solid border-t-mineshaft-600"
+                    count={rows.totalRows}
+                    page={page}
+                    perPage={perPage}
+                    onChangePage={(newPage) => setPage(newPage)}
+                    onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+                  />
+                )}
               </div>
             </div>
             <CreateSecretForm

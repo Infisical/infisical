@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
@@ -16,7 +15,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
-import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
+import { Filter } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
@@ -26,51 +25,9 @@ type Props = {
   environment: string;
   workspaceId: string;
   secretPath?: string;
-  filter: Filter;
-  sortDir?: SortDir;
   tags?: WsTag[];
   isVisible?: boolean;
   isProtectedBranch?: boolean;
-};
-
-const reorderSecretGroupByUnderscore = (secrets: SecretV3RawSanitized[], sortDir: SortDir) => {
-  const groupedSecrets: Record<string, SecretV3RawSanitized[]> = {};
-  secrets.forEach((secret) => {
-    const lastSeperatorIndex = secret.key.lastIndexOf("_");
-    const namespace =
-      lastSeperatorIndex !== -1 ? secret.key.substring(0, lastSeperatorIndex) : "misc";
-    if (!groupedSecrets?.[namespace]) groupedSecrets[namespace] = [];
-    groupedSecrets[namespace].push(secret);
-  });
-
-  return Object.keys(groupedSecrets)
-    .sort((a, b) =>
-      sortDir === SortDir.ASC
-        ? a.toLowerCase().localeCompare(b.toLowerCase())
-        : b.toLowerCase().localeCompare(a.toLowerCase())
-    )
-    .map((namespace) => ({ namespace, secrets: groupedSecrets[namespace] }));
-};
-
-const reorderSecret = (
-  secrets: SecretV3RawSanitized[],
-  sortDir: SortDir,
-  filter?: GroupBy | null
-) => {
-  if (filter === GroupBy.PREFIX) {
-    return reorderSecretGroupByUnderscore(secrets, sortDir);
-  }
-
-  return [
-    {
-      namespace: "",
-      secrets: secrets?.sort((a, b) =>
-        sortDir === SortDir.ASC
-          ? a.key.toLowerCase().localeCompare(b.key.toLowerCase())
-          : b.key.toLowerCase().localeCompare(a.key.toLowerCase())
-      )
-    }
-  ];
 };
 
 export const filterSecrets = (secrets: SecretV3RawSanitized[], filter: Filter) =>
@@ -88,8 +45,6 @@ export const SecretListView = ({
   environment,
   workspaceId,
   secretPath = "/",
-  filter,
-  sortDir = SortDir.ASC,
   tags: wsTags = [],
   isVisible,
   isProtectedBranch = false
@@ -331,52 +286,30 @@ export const SecretListView = ({
 
   return (
     <>
-      {reorderSecret(secrets, sortDir, filter.groupBy).map(
-        ({ namespace, secrets: groupedSecrets }) => {
-          const filteredSecrets = filterSecrets(groupedSecrets, filter);
-          return (
-            <div className="flex flex-col" key={`${namespace}-${groupedSecrets.length}`}>
-              <div
-                className={twMerge(
-                  "text-md h-0 bg-bunker-600 capitalize transition-all",
-                  Boolean(namespace) && Boolean(filteredSecrets.length) && "h-11 py-3 pl-4 "
-                )}
-                key={namespace}
-              >
-                {namespace}
-              </div>
-              {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
-                <FontAwesomeIcon
-                  icon={icon}
-                  symbol={symbol}
-                  key={`font-awesome-svg-spritie-${symbol}`}
-                />
-              ))}
-              {filteredSecrets.map((secret) => (
-                <SecretItem
-                  environment={environment}
-                  secretPath={secretPath}
-                  tags={wsTags}
-                  isSelected={selectedSecrets?.[secret.id]}
-                  onToggleSecretSelect={toggleSelectedSecret}
-                  isVisible={isVisible}
-                  secret={secret}
-                  key={secret.id}
-                  onSaveSecret={handleSaveSecret}
-                  onDeleteSecret={onDeleteSecret}
-                  onDetailViewSecret={onDetailViewSecret}
-                  onCreateTag={onCreateTag}
-                  handleSecretShare={() =>
-                    handlePopUpOpen("createSharedSecret", {
-                      value: secret.valueOverride ?? secret.value
-                    })
-                  }
-                />
-              ))}
-            </div>
-          );
-        }
-      )}
+      {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
+        <FontAwesomeIcon icon={icon} symbol={symbol} key={`font-awesome-svg-spritie-${symbol}`} />
+      ))}
+      {secrets.map((secret) => (
+        <SecretItem
+          environment={environment}
+          secretPath={secretPath}
+          tags={wsTags}
+          isSelected={selectedSecrets?.[secret.id]}
+          onToggleSecretSelect={toggleSelectedSecret}
+          isVisible={isVisible}
+          secret={secret}
+          key={secret.id}
+          onSaveSecret={handleSaveSecret}
+          onDeleteSecret={onDeleteSecret}
+          onDetailViewSecret={onDetailViewSecret}
+          onCreateTag={onCreateTag}
+          handleSecretShare={() =>
+            handlePopUpOpen("createSharedSecret", {
+              value: secret.valueOverride ?? secret.value
+            })
+          }
+        />
+      ))}
       <DeleteActionModal
         isOpen={popUp.deleteSecret.isOpen}
         deleteKey={(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}

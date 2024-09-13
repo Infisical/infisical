@@ -1,7 +1,6 @@
 export type Filter = {
   tags: Record<string, boolean>;
   searchFilter: string;
-  groupBy?: GroupBy | null;
 };
 
 export enum SortDir {
@@ -9,6 +8,8 @@ export enum SortDir {
   DESC = "desc"
 }
 
-export enum GroupBy {
-  PREFIX = "prefix"
+export enum RowType {
+  Folder = "folder",
+  DynamicSecret = "dynamic",
+  Secret = "Secret"
 }
