@@ -124,6 +124,11 @@ export const projectRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
+
+    if (data.permissions) {
+      validateProjectPermissions(data.permissions);
+    }
+
     const [updatedRole] = await projectRoleDAL.update(
       { id: roleId, projectId },
       {
