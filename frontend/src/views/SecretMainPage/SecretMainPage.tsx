@@ -280,7 +280,10 @@ export const SecretMainPage = () => {
         : [];
 
     remainingRows -= paginatedFolders.length;
-    const dynamicSecretStartIndex = Math.max(0, paginationOffset - filteredFolders.length);
+    const dynamicSecretStartIndex = Math.max(
+      0,
+      paginationOffset - filteredSecretImports.length - filteredFolders.length
+    );
     const paginatiedDynamicSecrets =
       remainingRows > 0
         ? filteredDynamicSecrets.slice(
@@ -292,7 +295,10 @@ export const SecretMainPage = () => {
     remainingRows -= paginatiedDynamicSecrets.length;
     const secretStartIndex = Math.max(
       0,
-      paginationOffset - filteredFolders.length - filteredDynamicSecrets.length
+      paginationOffset -
+        filteredSecretImports.length -
+        filteredFolders.length -
+        filteredDynamicSecrets.length
     );
 
     const paginatiedSecrets =
