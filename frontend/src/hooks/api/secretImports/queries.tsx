@@ -160,10 +160,9 @@ export const useGetImportedSecretsAllEnvs = ({
         projectId,
         path
       }),
-      queryFn: () => fetchImportedSecrets(projectId, env, path).catch(() => []),
-      enabled: Boolean(projectId) && Boolean(env),
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      select: (data: TImportedSecrets[]) => {
+      queryFn: async () => {
+        const data = await fetchImportedSecrets(projectId, env, path).catch(() => []);
+
         return data.map((el) => ({
           environment: el.environment,
           secretPath: el.secretPath,
@@ -183,7 +182,8 @@ export const useGetImportedSecretsAllEnvs = ({
             };
           })
         }));
-      }
+      },
+      enabled: Boolean(projectId) && Boolean(env)
     }))
   });
 

@@ -24,6 +24,12 @@ export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
     [{ workspaceId, environment, secretPath }, "secrets"] as const,
+  getProjectSecretAllEnvironments: ({
+    workspaceId,
+    environment,
+    secretPath
+  }: TGetProjectSecretsKey) =>
+    [...secretKeys.getProjectSecret({ workspaceId, environment, secretPath }), "all"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const
 };
 
@@ -95,7 +101,7 @@ export const useGetProjectSecrets = ({
 }: TGetProjectSecretsDTO & {
   options?: Omit<
     UseQueryOptions<
-      SecretV3RawResponse,
+      SecretV3RawSanitized[],
       unknown,
       SecretV3RawSanitized[],
       ReturnType<typeof secretKeys.getProjectSecret>
@@ -108,7 +114,10 @@ export const useGetProjectSecrets = ({
     // wait for all values to be available
     enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
-    queryFn: async () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
+    queryFn: async () => {
+      const resp = await fetchProjectSecrets({ workspaceId, environment, secretPath });
+      return mergePersonalSecrets(resp.secrets);
+    },
     onError: (error) => {
       if (axios.isAxiosError(error)) {
         const serverResponse = error.response?.data as { message: string };
@@ -118,8 +127,7 @@ export const useGetProjectSecrets = ({
           text: serverResponse.message
         });
       }
-    },
-    select: ({ secrets }) => mergePersonalSecrets(secrets)
+    }
   });
 
 export const useGetProjectSecretsAllEnv = ({
@@ -131,7 +139,11 @@ export const useGetProjectSecretsAllEnv = ({
 
   const secrets = useQueries({
     queries: envs.map((environment) => ({
-      queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
+      queryKey: secretKeys.getProjectSecretAllEnvironments({
+        workspaceId,
+        environment,
+        secretPath
+      }),
       enabled: Boolean(workspaceId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
@@ -147,12 +159,15 @@ export const useGetProjectSecretsAllEnv = ({
           setIsErrorHandled.on();
         }
       },
-      queryFn: async () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
-      select: (el: SecretV3RawResponse) =>
-        mergePersonalSecrets(el.secrets).reduce<Record<string, SecretV3RawSanitized>>(
+      queryFn: async () => {
+        const resp = await fetchProjectSecrets({ workspaceId, environment, secretPath });
+
+        return mergePersonalSecrets(resp.secrets).reduce<Record<string, SecretV3RawSanitized>>(
           (prev, curr) => ({ ...prev, [curr.key]: curr }),
           {}
-        )
+        );
+      },
+      staleTime: 5 * 60 * 1000
     }))
   });
 
