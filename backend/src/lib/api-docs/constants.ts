@@ -1083,6 +1083,10 @@ export const CERTIFICATE_AUTHORITIES = {
     certificateChain: "The certificate chain of the CA",
     serialNumber: "The serial number of the CA certificate"
   },
+  GET_CERT_BY_ID: {
+    caId: "The ID of the CA to get the CA certificate from",
+    caCertId: "The ID of the CA certificate to get"
+  },
   GET_CA_CERTS: {
     caId: "The ID of the CA to get the CA certificates for",
     certificate: "The certificate body of the CA certificate",

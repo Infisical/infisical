@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import ms from "ms";
 import { z } from "zod";
 
@@ -136,6 +137,33 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       return {
         ca
       };
+    }
+  });
+
+  // this endpoint will be used to serve the CA certificate when a client makes a request
+  // against the Authority Information Access CA Issuer URL
+  server.route({
+    method: "GET",
+    url: "/:caId/certificates/:caCertId/der",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get DER-encoded certificate of CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caId),
+        caCertId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caCertId)
+      }),
+      response: {
+        200: z.instanceof(Buffer)
+      }
+    },
+    handler: async (req, res) => {
+      const caCert = await server.services.certificateAuthority.getCaCertById(req.params);
+
+      res.header("Content-Type", "application/pkix-cert");
+
+      return Buffer.from(caCert.rawData);
     }
   });
 
