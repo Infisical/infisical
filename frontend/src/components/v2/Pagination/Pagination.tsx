@@ -1,4 +1,3 @@
-import {} from "@fortawesome/fontawesome-svg-core";
 import {
   faCaretDown,
   faCheck,
