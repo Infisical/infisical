@@ -696,7 +696,12 @@
         {
           "group": "Audit Logs",
           "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
-        },
+        }
+      ]
+    },
+    {
+      "group": "Infisical PKI",
+      "pages": [
         {
           "group": "Certificate Authorities",
           "pages": [
