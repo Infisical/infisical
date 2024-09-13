@@ -1,0 +1,83 @@
+---
+title: "Permissions"
+description: "Infisical's permissions system provides granular access control."
+---
+
+## Summary
+
+The Infisical permissions system is based on a role-based access control (RBAC) model. The system allows you to define roles and assign them to users and machines. Each role has a set of permissions that define what actions a user can perform.
+
+Permissions are built on a subject-action-object model. The subject is the resource permission is being applied to, the action is what the permission allows.
+An example of a subject/action combination would be `secrets/read`. This permission allows the subject to read secrets.
+
+Currently Infisical supports 4 actions:
+1. `read`, allows the subject to read the object.
+2. `create`, allows the subject to create the object.
+3. `edit`, allows the subject to edit the object.
+4. `delete`, allows the subject to delete the object.
+
+Most subjects support all 4 actions, but some subjects only support a subset of actions. Please view the table below for a list of subjects and the actions they support.
+
+
+## Subjects and Actions
+<Tabs>
+<Tab title="Project Permissions">
+
+<Note>
+  Not all actions are applicable to all subjects. As an example, the `secrets-rollback` subject only supports `read`, and `create` as actions. While `secrets` support `read`, `create`, `edit`, `delete`.
+</Note>
+
+  | Subject | Actions |
+  |-----------------------------|---------|
+  | `secrets`                     | `read`, `create`, `edit`, `delete` |
+  | `secret-approval`             | `read`, `create`, `edit`, `delete` |
+  | `secret-rotation`             | `read`, `create`, `edit`, `delete` |
+  | `secret-rollback`             | `read`, `create`                   |
+  | `member`                      | `read`, `create`, `edit`, `delete` |
+  | `groups`                      | `read`, `create`, `edit`, `delete` |
+  | `role`                        | `read`, `create`, `edit`, `delete` |
+  | `integrations`                | `read`, `create`, `edit`, `delete` |
+  | `webhooks`                    | `read`, `create`, `edit`, `delete` | 
+  | `identity`                    | `read`, `create`, `edit`, `delete` |
+  | `service-tokens`              | `read`, `create`, `edit`, `delete` |
+  | `settings`                    | `read`, `create`, `edit`, `delete` |
+  | `environments`                | `read`, `create`, `edit`, `delete` |
+  | `tags`                        | `read`, `create`, `edit`, `delete` |
+  | `audit-logs`                  | `read`, `create`, `edit`, `delete` |
+  | `ip-allowlist`                | `read`, `create`, `edit`, `delete` |
+  | `certificate-authorities`     | `read`, `create`, `edit`, `delete` |
+  | `certificates`                | `read`, `create`, `edit`, `delete` |
+  | `certificate-templates`       | `read`, `create`, `edit`, `delete` |
+  | `pki-alerts`                  | `read`, `create`, `edit`, `delete` |
+  | `pki-collections`             | `read`, `create`, `edit`, `delete` |
+  | `workspace`                   | `edit`, `delete`                   |
+  | `kms`                         | `edit`                             | 
+
+  These details are especially useful if you're using the API to [create new project roles](../api-reference/endpoints/project-roles/create).
+  The rules outlined on this page, also apply when using our Terraform Provider to manage your Infisical project roles, or any other of our clients that manage project roles.
+</Tab>
+
+
+<Tab title="Organization Permissions">
+
+  <Note>
+    Not all actions are applicable to all subjects. As an example, the `workspace` subject only supports `read`, and `create` as actions. While `member` support `read`, `create`, `edit`, `delete`.
+  </Note>
+
+  | Subject | Actions |
+  |-----------------------------|------------------------------------|
+  | `workspace`                 | `read`, `create`                   |
+  | `role`                      | `read`, `create`, `edit`, `delete` |
+  | `member`                    | `read`, `create`, `edit`, `delete` |
+  | `secret-scanning`           | `read`, `create`, `edit`, `delete` |
+  | `settings`                  | `read`, `create`, `edit`, `delete` |
+  | `incident-account`          | `read`, `create`, `edit`, `delete` |
+  | `sso`                       | `read`, `create`, `edit`, `delete` |
+  | `scim`                      | `read`, `create`, `edit`, `delete` |
+  | `ldap`                      | `read`, `create`, `edit`, `delete` |
+  | `groups`                    | `read`, `create`, `edit`, `delete` |
+  | `billing`                   | `read`, `create`, `edit`, `delete` |
+  | `identity`                  | `read`, `create`, `edit`, `delete` |
+  | `kms`                       | `read`                             |
+</Tab>
+</Tabs>

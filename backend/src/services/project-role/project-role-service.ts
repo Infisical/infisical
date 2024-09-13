@@ -7,7 +7,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  validateProjectPermissions
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -56,6 +57,9 @@ export const projectRoleServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
     const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
+
+    validateProjectPermissions(data.permissions);
+
     const role = await projectRoleDAL.create({
       ...data,
       projectId
@@ -120,6 +124,11 @@ export const projectRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
+
+    if (data.permissions) {
+      validateProjectPermissions(data.permissions);
+    }
+
     const [updatedRole] = await projectRoleDAL.update(
       { id: roleId, projectId },
       {

@@ -1,6 +1,7 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 
 import { conditionsMatcher } from "@app/lib/casl";
+import { BadRequestError } from "@app/lib/errors";
 
 export enum ProjectPermissionActions {
   Read = "read",
@@ -75,117 +76,125 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
 
+export const fullProjectPermissionSet: [ProjectPermissionActions, ProjectPermissionSub][] = [
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Secrets],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Secrets],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.SecretApproval],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRotation],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.SecretRotation],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Member],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Member],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Member],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Member],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Groups],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Groups],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Groups],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Groups],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Role],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Role],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Role],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Role],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Integrations],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Integrations],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Identity],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Identity],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Identity],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Identity],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Settings],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Settings],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Settings],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Settings],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Environments],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Environments],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Environments],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Environments],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Tags],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Tags],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Tags],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Tags],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.AuditLogs],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.AuditLogs],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.AuditLogs],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.IpAllowList],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList],
+
+  // double check if all CRUD are needed for CA and Certificates
+  [ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.CertificateAuthorities],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateAuthorities],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateAuthorities],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.Certificates],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.Certificates],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.CertificateTemplates],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.CertificateTemplates],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateTemplates],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateTemplates],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts],
+
+  [ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections],
+  [ProjectPermissionActions.Create, ProjectPermissionSub.PkiCollections],
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.PkiCollections],
+
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Project],
+  [ProjectPermissionActions.Delete, ProjectPermissionSub.Project],
+
+  [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
+];
+
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretApproval);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRotation);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretRotation);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Groups);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.AuditLogs);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.AuditLogs);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.AuditLogs);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.IpAllowList);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
-
-  // double check if all CRUD are needed for CA and Certificates
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.CertificateAuthorities);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateAuthorities);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateAuthorities);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateTemplates);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.CertificateTemplates);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateTemplates);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateTemplates);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.PkiCollections);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiCollections);
-
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
-
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+  // Admins get full access to everything
+  fullProjectPermissionSet.forEach((permission) => {
+    const [action, subject] = permission;
+    can(action, subject);
+  });
 
   return rules;
 };
@@ -370,6 +379,33 @@ export const isAtLeastAsPrivilegedWorkspace = (
   }
 
   return set1.size >= set2.size;
+};
+
+/*
+ * Case: The user requests to create a role with permissions that are not valid and not supposed to be used ever.
+ * If we don't check for this, we can run into issues where functions like the `isAtLeastAsPrivileged` will not work as expected, because we compare the size of each permission set.
+ * If the permission set contains invalid permissions, the size will be different, and result in incorrect results.
+ */
+export const validateProjectPermissions = (permissions: unknown) => {
+  const parsedPermissions =
+    typeof permissions === "string" ? (JSON.parse(permissions) as string[]) : (permissions as string[]);
+
+  const flattenedPermissions = [...parsedPermissions];
+
+  for (const perm of flattenedPermissions) {
+    const [action, subject] = perm;
+
+    if (
+      !fullProjectPermissionSet.find(
+        (currentPermission) => currentPermission[0] === action && currentPermission[1] === subject
+      )
+    ) {
+      throw new BadRequestError({
+        message: `Permission action ${action} on subject ${subject} is not valid`,
+        name: "Create Role"
+      });
+    }
+  }
 };
 
 /* eslint-enable */
