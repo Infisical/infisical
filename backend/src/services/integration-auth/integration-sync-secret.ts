@@ -207,6 +207,12 @@ const syncSecretsGCPSecretManager = async ({
         }
       );
 
+      if (!secrets[key].value) {
+        logger.warn(
+          `syncSecretsGcpsecretManager: create secret value in gcp where [key=${key}] and integration appId [appId=${integration.appId}]`
+        );
+      }
+
       await request.post(
         `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}:addVersion`,
         {
@@ -237,6 +243,12 @@ const syncSecretsGCPSecretManager = async ({
         }
       );
     } else if (secrets[key].value !== res[key]) {
+      if (!secrets[key].value) {
+        logger.warn(
+          `syncSecretsGcpsecretManager: update secret value in gcp where [key=${key}] and integration appId [appId=${integration.appId}]`
+        );
+      }
+
       await request.post(
         `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}:addVersion`,
         {
