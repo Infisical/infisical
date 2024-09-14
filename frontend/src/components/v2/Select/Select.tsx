@@ -50,8 +50,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Trigger
             ref={ref}
             className={twMerge(
-              `inline-flex items-center justify-between rounded-md
-            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none focus:bg-mineshaft-700/80 data-[placeholder]:text-mineshaft-200`,
+              `inline-flex items-center justify-between rounded-md border border-mineshaft-600
+            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none focus:bg-mineshaft-700/80 data-[placeholder]:text-mineshaft-400`,
               className,
               isDisabled && "cursor-not-allowed opacity-50"
             )}

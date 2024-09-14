@@ -104,10 +104,11 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                     defaultValue={field.value}
                     {...field}
                     onValueChange={(e) => onChange(e)}
-                    className="w-full"
+                    className="w-full border border-mineshaft-600"
+                    placeholder="Select group..."
                   >
                     {filteredGroupMembershipOrgs.map(({ name, slug, id }) => (
-                      <SelectItem value={slug} key={`org-group-${id}`}>
+                      <SelectItem value={slug} key={`org-group-${id}`} >
                         {name}
                       </SelectItem>
                     ))}
@@ -131,6 +132,7 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                     {...field}
                     onValueChange={(e) => onChange(e)}
                     className="w-full"
+                    placeholder="Select role..."
                   >
                     {(roles || []).map(({ name, slug }) => (
                       <SelectItem value={slug} key={`st-role-${slug}`}>
@@ -141,7 +143,7 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            <div className="flex items-center">
+            <div className="flex items-center mt-6">
               <Button
                 className="mr-4"
                 size="sm"
@@ -151,9 +153,13 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
               >
                 {popUp?.group?.data ? "Update" : "Create"}
               </Button>
-              <Button colorSchema="secondary" variant="plain">
-                Cancel
-              </Button>
+            <Button
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("group", false)}
+            >
+              Cancel
+            </Button>
             </div>
           </form>
         ) : (
