@@ -51,6 +51,8 @@ export const OrgMembersSection = () => {
     ? subscription.identitiesUsed < subscription.identityLimit
     : true;
 
+  const isEnterprise = subscription?.slug === "enterprise";
+
   const handleAddMemberModal = () => {
     if (currentOrg?.authEnforced) {
       createNotification({
@@ -60,7 +62,7 @@ export const OrgMembersSection = () => {
       return;
     }
 
-    if (!isMoreUsersAllowed || !isMoreIdentitiesAllowed) {
+    if ((!isMoreUsersAllowed || !isMoreIdentitiesAllowed) && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
         description: "You can add more members if you upgrade your Infisical plan."
       });

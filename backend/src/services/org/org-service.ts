@@ -476,19 +476,20 @@ export const orgServiceFactory = ({
       });
     }
     const plan = await licenseService.getPlan(orgId);
-    if (plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
+    if (plan?.slug !== "enterprise" && plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
       // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
       throw new BadRequestError({
         message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
       });
     }
 
-    if (plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+    if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
       // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
       throw new BadRequestError({
         message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
       });
     }
+
     const isCustomOrgRole = !Object.values(OrgMembershipRole).includes(organizationRoleSlug as OrgMembershipRole);
     if (isCustomOrgRole) {
       if (!plan?.rbac)

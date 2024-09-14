@@ -42,6 +42,8 @@ export const IdentitySection = withPermission(
       ? subscription.identitiesUsed < subscription.identityLimit
       : true;
 
+    const isEnterprise = subscription?.slug === "enterprise"
+
     const onDeleteIdentitySubmit = async (identityId: string) => {
       try {
         await deleteMutateAsync({
@@ -93,7 +95,7 @@ export const IdentitySection = withPermission(
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
-                  if (!isMoreIdentitiesAllowed) {
+                  if (!isMoreIdentitiesAllowed && !isEnterprise) {
                     handlePopUpOpen("upgradePlan", {
                       description: "You can add more identities if you upgrade your Infisical plan."
                     });
