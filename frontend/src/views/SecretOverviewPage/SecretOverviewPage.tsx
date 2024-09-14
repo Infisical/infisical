@@ -85,7 +85,7 @@ enum RowType {
   Secret = "Secret"
 }
 
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 50;
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
@@ -173,10 +173,30 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
-  const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
+  const [visibleEnvs, setVisibleEnvs] = useState(
+    userAvailableEnvs?.filter(({ slug }) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: slug,
+          secretPath
+        })
+      )
+    )
+  );
 
   useEffect(() => {
-    setVisibleEnvs(userAvailableEnvs);
+    setVisibleEnvs(
+      userAvailableEnvs?.filter(({ slug }) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: slug,
+            secretPath
+          })
+        )
+      )
+    );
   }, [userAvailableEnvs]);
 
   const {

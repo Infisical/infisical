@@ -47,7 +47,7 @@ const LOADER_TEXT = [
   "Getting secret import links..."
 ];
 
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 50;
 export const SecretMainPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
