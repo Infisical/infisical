@@ -197,7 +197,7 @@ export const SecretOverviewPage = () => {
         )
       )
     );
-  }, [userAvailableEnvs]);
+  }, [userAvailableEnvs, secretPath]);
 
   const {
     data: secrets,
