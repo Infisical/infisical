@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
@@ -70,7 +70,10 @@ export default function TeamCityCreateIntegrationPage() {
                 height={28}
                 width={28}
                 alt="TeamCity logo"
-              />
+                style={{
+                  maxWidth: "100%",
+                  height: "auto"
+                }} />
             </div>
             <span className="ml-2">TeamCity Integration</span>
             <Link href="https://infisical.com/docs/integrations/cloud/teamcity" passHref>

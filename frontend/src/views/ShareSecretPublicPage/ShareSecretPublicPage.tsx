@@ -1,4 +1,4 @@
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,7 +19,10 @@ export const ShareSecretPublicPage = () => {
                 width={120}
                 alt="Infisical logo"
                 className="cursor-pointer"
-              />
+                style={{
+                  maxWidth: "100%",
+                  height: "auto"
+                }} />
             </Link>
           </div>
           <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">

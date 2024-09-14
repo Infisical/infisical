@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
@@ -207,7 +207,10 @@ export default function GitLabCreateIntegrationPage() {
                 height={28}
                 width={28}
                 alt="Gitlab logo"
-              />
+                style={{
+                  maxWidth: "100%",
+                  height: "auto"
+                }} />
             </div>
             <span className="ml-2.5">GitLab Integration </span>
             <Link href="https://infisical.com/docs/integrations/cicd/gitlab" passHref>

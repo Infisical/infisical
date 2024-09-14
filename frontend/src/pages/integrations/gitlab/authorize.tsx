@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -69,7 +69,10 @@ export default function GitLabAuthorizeIntegrationPage() {
                 height={28}
                 width={28}
                 alt="Gitlab logo"
-              />
+                style={{
+                  maxWidth: "100%",
+                  height: "auto"
+                }} />
             </div>
             <span className="ml-2.5">GitLab Integration </span>
             <Link href="https://infisical.com/docs/integrations/cicd/gitlab" passHref>

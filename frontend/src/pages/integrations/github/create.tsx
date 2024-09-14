@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -296,7 +296,10 @@ export default function GitHubCreateIntegrationPage() {
                   height={30}
                   width={30}
                   alt="GitHub logo"
-                />
+                  style={{
+                    maxWidth: "100%",
+                    height: "auto"
+                  }} />
               </div>
               <span className="ml-2.5">GitHub Integration </span>
               <Link href="https://infisical.com/docs/integrations/cicd/githubactions" passHref>

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 
 import { LoginLDAP } from "@app/views/Login";
@@ -18,7 +18,15 @@ export default function LoginLDAPPage() {
       </Head>
       <Link href="/">
         <div className="mb-4 mt-20 flex justify-center">
-          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+          <Image
+            src="/images/gradientLogo.svg"
+            height={90}
+            width={120}
+            alt="Infisical logo"
+            style={{
+              maxWidth: "100%",
+              height: "auto"
+            }} />
         </div>
       </Link>
       <LoginLDAP />

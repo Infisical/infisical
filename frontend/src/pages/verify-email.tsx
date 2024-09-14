@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 
 import Button from "@app/components/basic/buttons/Button";
@@ -55,7 +55,15 @@ export default function VerifyEmail() {
       </Head>
       <Link href="/">
         <div className="mb-8 mt-20 flex cursor-pointer justify-center">
-          <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
+          <Image
+            src="/images/biglogo.png"
+            height={90}
+            width={120}
+            alt="long logo"
+            style={{
+              maxWidth: "100%",
+              height: "auto"
+            }} />
         </div>
       </Link>
       {step === 1 && (

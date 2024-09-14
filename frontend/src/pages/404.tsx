@@ -1,5 +1,5 @@
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Custom404() {
@@ -28,7 +28,10 @@ export default function Custom404() {
           height={554}
           width={942}
           alt="infisical dragon - page not found"
-        />
+          style={{
+            maxWidth: "100%",
+            height: "auto"
+          }} />
       </div>
     </div>
   );

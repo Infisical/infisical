@@ -1,5 +1,5 @@
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 
 /**
  * This is the page that shows up when a user's invitation
@@ -25,7 +25,10 @@ export default function RequestNewInvite() {
             height={500}
             width={800}
             alt="invitation expired illustration"
-          />
+            style={{
+              maxWidth: "100%",
+              height: "auto"
+            }} />
         </div>
       </div>
     </div>

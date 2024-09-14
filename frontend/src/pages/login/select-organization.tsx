@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
@@ -173,7 +173,15 @@ export default function LoginPage() {
       <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
         <Link href="/">
           <div className="mb-4 flex justify-center">
-            <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+            <Image
+              src="/images/gradientLogo.svg"
+              height={90}
+              width={120}
+              alt="Infisical logo"
+              style={{
+                maxWidth: "100%",
+                height: "auto"
+              }} />
           </div>
         </Link>
         <form

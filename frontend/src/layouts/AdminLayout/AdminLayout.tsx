@@ -8,7 +8,7 @@
 // @ts-nocheck
 
 import { useTranslation } from "react-i18next";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
@@ -195,6 +195,10 @@ export const AdminLayout = ({ children }: LayoutProps) => {
                       width={539}
                       alt="kubernetes image"
                       className="rounded-sm"
+                      style={{
+                        maxWidth: "100%",
+                        height: "auto"
+                      }}
                     />
                   </div>
                   <div className="mt-3 flex w-full items-center justify-between px-0.5">

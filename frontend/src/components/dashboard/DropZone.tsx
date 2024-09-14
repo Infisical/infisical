@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { type ChangeEvent, type DragEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { parseDocument, Scalar, YAMLMap } from "yaml";
@@ -182,7 +182,15 @@ const DropZone = ({
 
   return loading ? (
     <div className="mb-16 flex items-center justify-center pt-16">
-      <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
+      <Image
+        src="/images/loading/loading.gif"
+        height={70}
+        width={120}
+        alt="loading animation"
+        style={{
+          maxWidth: "100%",
+          height: "auto"
+        }} />
     </div>
   ) : keysExist ? (
     <div

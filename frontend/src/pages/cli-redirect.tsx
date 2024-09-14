@@ -1,5 +1,5 @@
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -43,7 +43,15 @@ export default function CliRedirect() {
       </Head>
       <div className="flex h-screen w-screen flex-col items-center justify-center space-y-4 text-gray-200">
         <div className="mb-4 flex justify-center">
-          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+          <Image
+            src="/images/gradientLogo.svg"
+            height={90}
+            width={120}
+            alt="Infisical Logo"
+            style={{
+              maxWidth: "100%",
+              height: "auto"
+            }} />
         </div>
         {cliToken ? (
           <>

@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
@@ -88,7 +88,10 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
                 height={30}
                 width={30}
                 alt="GCP logo"
-              />
+                style={{
+                  maxWidth: "100%",
+                  height: "auto"
+                }} />
             </div>
             <span className="ml-1.5">GCP Secret Manager Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager" passHref>

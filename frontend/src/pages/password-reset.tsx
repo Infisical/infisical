@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import { FormEvent, useState } from "react";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -152,7 +152,15 @@ export default function PasswordReset() {
       <p className="mb-8 flex justify-center bg-gradient-to-br from-sky-400 to-primary bg-clip-text text-center text-4xl font-semibold text-transparent">
         Confirm your email
       </p>
-      <Image src="/images/envelope.svg" height={262} width={410} alt="verify email" />
+      <Image
+        src="/images/envelope.svg"
+        height={262}
+        width={410}
+        alt="verify email"
+        style={{
+          maxWidth: "100%",
+          height: "auto"
+        }} />
       <div className="mx-auto mt-4 mb-2 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
         <Button
           text="Confirm Email"

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import { useRouter } from "next/router";
 
 import CodeInputStep from "@app/components/signup/CodeInputStep";
@@ -162,7 +162,15 @@ export default function SignUp() {
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Head>
       <div className="mb-4 mt-20 flex justify-center">
-        <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+        <Image
+          src="/images/gradientLogo.svg"
+          height={90}
+          width={120}
+          alt="Infisical Logo"
+          style={{
+            maxWidth: "100%",
+            height: "auto"
+          }} />
       </div>
       <form onSubmit={(e) => e.preventDefault()}>{renderView(step)}</form>
     </div>

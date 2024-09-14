@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
-import Image from "next/legacy/image";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
@@ -130,7 +130,10 @@ export default function TerraformCloudCreateIntegrationPage() {
                 height={35}
                 width={35}
                 alt="Terraform logo"
-              />
+                style={{
+                  maxWidth: "100%",
+                  height: "auto"
+                }} />
             </div>
             <span className="ml-1.5">Terraform Cloud Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/terraform-cloud" passHref>
