@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import Head from "next/head";
-import Image from "next/image";
+import Image from "next/legacy/image";
 import Link from "next/link";
 
 import Button from "@app/components/basic/buttons/Button";

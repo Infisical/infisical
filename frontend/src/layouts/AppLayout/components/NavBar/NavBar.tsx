@@ -2,7 +2,7 @@
 /* eslint-disable react/jsx-key */
 import { Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
+import Image from "next/legacy/image";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";

@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
-import Image from "next/image";
+import Image from "next/legacy/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";

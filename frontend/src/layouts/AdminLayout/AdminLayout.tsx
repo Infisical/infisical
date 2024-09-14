@@ -8,7 +8,7 @@
 // @ts-nocheck
 
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
+import Image from "next/legacy/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";

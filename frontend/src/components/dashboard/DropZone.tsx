@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { type ChangeEvent, type DragEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
+import Image from "next/legacy/image";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { parseDocument, Scalar, YAMLMap } from "yaml";

@@ -1,6 +1,6 @@
 /* eslint-disable react/button-has-type */
 import React, { ButtonHTMLAttributes } from "react";
-import Image from "next/image";
+import Image from "next/legacy/image";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
