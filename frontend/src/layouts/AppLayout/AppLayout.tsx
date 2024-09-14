@@ -340,7 +340,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
                     {(router.asPath.includes("project") ||
                       router.asPath.includes("integrations")) && (
-                      <Link href={`/org/${currentOrg?.id}/overview`}>
+                      <Link href={`/org/${currentOrg?.id}/overview`} legacyBehavior>
                         <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
                           <FontAwesomeIcon icon={faArrowLeft} />
                         </div>
@@ -408,21 +408,21 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           );
                         })}
                         {/* <DropdownMenuItem key="add-org">
-                          <Button
-                            onClick={() => handlePopUpOpen("createOrg")}
-                            variant="plain"
-                            colorSchema="secondary"
-                            size="xs"
-                            className="flex w-full items-center justify-start p-0 font-normal"
-                            leftIcon={
-                              <FontAwesomeIcon icon={faPlus} className="mr-3 text-primary" />
-                            }
-                          >
-                            <div className="flex w-full items-center justify-between">
-                              Create New Organization
-                            </div>
-                          </Button>
-                        </DropdownMenuItem> */}
+                        <Button
+                          onClick={() => handlePopUpOpen("createOrg")}
+                          variant="plain"
+                          colorSchema="secondary"
+                          size="xs"
+                          className="flex w-full items-center justify-start p-0 font-normal"
+                          leftIcon={
+                            <FontAwesomeIcon icon={faPlus} className="mr-3 text-primary" />
+                          }
+                        >
+                          <div className="flex w-full items-center justify-between">
+                            Create New Organization
+                          </div>
+                        </Button>
+                      </DropdownMenuItem> */}
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
@@ -444,7 +444,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.username}</div>
-                        <Link href="/personal-settings">
+                        <Link href="/personal-settings" legacyBehavior>
                           <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                         </Link>
                         <a
@@ -586,7 +586,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </Select>
                     </div>
                   ) : (
-                    <Link href={`/org/${currentOrg?.id}/overview`}>
+                    <Link href={`/org/${currentOrg?.id}/overview`} legacyBehavior>
                       <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                         <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
                         Back to organization
@@ -598,172 +598,145 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   currentWorkspace ? (
                     <Menu>
                       <Link href={`/project/${currentWorkspace?.id}/secrets/overview`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath.includes(
-                              `/project/${currentWorkspace?.id}/secrets`
-                            )}
-                            icon="system-outline-90-lock-closed"
-                          >
-                            {t("nav.menu.secrets")}
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath.includes(
+                            `/project/${currentWorkspace?.id}/secrets`
+                          )}
+                          icon="system-outline-90-lock-closed"
+                        >
+                          {t("nav.menu.secrets")}
+                        </MenuItem>
                       </Link>
                       <Link href={`/project/${currentWorkspace?.id}/certificates`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/certificates`
-                            }
-                            icon="system-outline-90-lock-closed"
-                          >
-                            Internal PKI
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={
+                            router.asPath === `/project/${currentWorkspace?.id}/certificates`
+                          }
+                          icon="system-outline-90-lock-closed"
+                        >
+                          Internal PKI
+                        </MenuItem>
                       </Link>
                       <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/members`
-                            }
-                            icon="system-outline-96-groups"
-                          >
-                            Access Control
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath === `/project/${currentWorkspace?.id}/members`}
+                          icon="system-outline-96-groups"
+                        >
+                          Access Control
+                        </MenuItem>
                       </Link>
                       <Link href={`/integrations/${currentWorkspace?.id}`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath.includes("/integrations")}
-                            icon="system-outline-82-extension"
-                          >
-                            {t("nav.menu.integrations")}
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath.includes("/integrations")}
+                          icon="system-outline-82-extension"
+                        >
+                          {t("nav.menu.integrations")}
+                        </MenuItem>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/secret-rotation`} passHref>
-                        <a className="relative">
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/secret-rotation`
-                            }
-                            icon="rotation"
-                          >
-                            Secret Rotation
-                          </MenuItem>
-                        </a>
+                      <Link
+                        href={`/project/${currentWorkspace?.id}/secret-rotation`}
+                        passHref
+                        className="relative"
+                      >
+                        <MenuItem
+                          isSelected={
+                            router.asPath === `/project/${currentWorkspace?.id}/secret-rotation`
+                          }
+                          icon="rotation"
+                        >
+                          Secret Rotation
+                        </MenuItem>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?.id}/approval`} passHref>
-                        <a className="relative">
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/approval`
-                            }
-                            icon="system-outline-189-domain-verification"
-                          >
-                            Approvals
-                            {Boolean(
-                              secretApprovalReqCount?.open ||
-                                accessApprovalRequestCount?.pendingCount
-                            ) && (
-                              <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
-                                {pendingRequestsCount}
-                              </span>
-                            )}
-                          </MenuItem>
-                        </a>
+                      <Link
+                        href={`/project/${currentWorkspace?.id}/approval`}
+                        passHref
+                        className="relative"
+                      >
+                        <MenuItem
+                          isSelected={router.asPath === `/project/${currentWorkspace?.id}/approval`}
+                          icon="system-outline-189-domain-verification"
+                        >
+                          Approvals
+                          {Boolean(
+                            secretApprovalReqCount?.open || accessApprovalRequestCount?.pendingCount
+                          ) && (
+                            <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
+                              {pendingRequestsCount}
+                            </span>
+                          )}
+                        </MenuItem>
                       </Link>
                       <Link href={`/project/${currentWorkspace?.id}/audit-logs`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/audit-logs`
-                            }
-                            icon="system-outline-168-view-headline"
-                          >
-                            Audit Logs
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={
+                            router.asPath === `/project/${currentWorkspace?.id}/audit-logs`
+                          }
+                          icon="system-outline-168-view-headline"
+                        >
+                          Audit Logs
+                        </MenuItem>
                       </Link>
                       <Link href={`/project/${currentWorkspace?.id}/settings`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?.id}/settings`
-                            }
-                            icon="system-outline-109-slider-toggle-settings"
-                          >
-                            {t("nav.menu.project-settings")}
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath === `/project/${currentWorkspace?.id}/settings`}
+                          icon="system-outline-109-slider-toggle-settings"
+                        >
+                          {t("nav.menu.project-settings")}
+                        </MenuItem>
                       </Link>
                     </Menu>
                   ) : (
                     <Menu className="mt-4">
                       <Link href={`/org/${currentOrg?.id}/overview`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath.includes("/overview")}
-                            icon="system-outline-165-view-carousel"
-                          >
-                            Overview
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath.includes("/overview")}
+                          icon="system-outline-165-view-carousel"
+                        >
+                          Overview
+                        </MenuItem>
                       </Link>
                       <Link href={`/org/${currentOrg?.id}/members`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/members`}
-                            icon="system-outline-96-groups"
-                          >
-                            Access Control
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath === `/org/${currentOrg?.id}/members`}
+                          icon="system-outline-96-groups"
+                        >
+                          Access Control
+                        </MenuItem>
                       </Link>
                       <Link href={`/org/${currentOrg?.id}/secret-scanning`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/secret-scanning`}
-                            icon="system-outline-69-document-scan"
-                          >
-                            Secret Scanning
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath === `/org/${currentOrg?.id}/secret-scanning`}
+                          icon="system-outline-69-document-scan"
+                        >
+                          Secret Scanning
+                        </MenuItem>
                       </Link>
                       <Link href={`/org/${currentOrg?.id}/secret-sharing`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/secret-sharing`}
-                            icon="system-outline-90-lock-closed"
-                          >
-                            Secret Sharing
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath === `/org/${currentOrg?.id}/secret-sharing`}
+                          icon="system-outline-90-lock-closed"
+                        >
+                          Secret Sharing
+                        </MenuItem>
                       </Link>
                       {(window.location.origin.includes("https://app.infisical.com") ||
                         window.location.origin.includes("https://gamma.infisical.com")) && (
                         <Link href={`/org/${currentOrg?.id}/billing`} passHref>
-                          <a>
-                            <MenuItem
-                              isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
-                              icon="system-outline-103-coin-cash-monetization"
-                            >
-                              Usage & Billing
-                            </MenuItem>
-                          </a>
+                          <MenuItem
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
+                            icon="system-outline-103-coin-cash-monetization"
+                          >
+                            Usage & Billing
+                          </MenuItem>
                         </Link>
                       )}
                       <Link href={`/org/${currentOrg?.id}/settings`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?.id}/settings`}
-                            icon="system-outline-109-slider-toggle-settings"
-                          >
-                            Organization Settings
-                          </MenuItem>
-                        </a>
+                        <MenuItem
+                          isSelected={router.asPath === `/org/${currentOrg?.id}/settings`}
+                          icon="system-outline-109-slider-toggle-settings"
+                        >
+                          Organization Settings
+                        </MenuItem>
                       </Link>
                     </Menu>
                   )}

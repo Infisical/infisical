@@ -76,17 +76,21 @@ export default function TerraformCloudCreateIntegrationPage() {
                 }} />
             </div>
             <span className="ml-1.5">Terraform Cloud Integration </span>
-            <Link href="https://infisical.com/docs/integrations/cloud/terraform-cloud" passHref>
-              <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="ml-1.5 mb-[0.07rem] text-xxs"
-                  />
-                </div>
-              </a>
+            <Link
+              href="https://infisical.com/docs/integrations/cloud/terraform-cloud"
+              passHref
+              target="_blank"
+              rel="noopener noreferrer">
+
+              <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                Docs
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="ml-1.5 mb-[0.07rem] text-xxs"
+                />
+              </div>
+
             </Link>
           </div>
         </CardTitle>

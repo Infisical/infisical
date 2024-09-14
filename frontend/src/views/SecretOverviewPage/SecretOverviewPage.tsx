@@ -602,17 +602,17 @@ export const SecretOverviewPage = () => {
                       );
                     })}
                     {/* <DropdownMenuItem className="px-1.5" asChild>
-                    <Button
-                      size="xs"
-                      className="w-full"
-                      colorSchema="primary"
-                      variant="outline_bg"
-                      leftIcon={<FontAwesomeIcon icon={faHockeyPuck} />}
-                      // onClick={onCreateTag}
-                    >
-                      Create an environment
-                    </Button>
-                  </DropdownMenuItem> */}
+                  <Button
+                    size="xs"
+                    className="w-full"
+                    colorSchema="primary"
+                    variant="outline_bg"
+                    leftIcon={<FontAwesomeIcon icon={faHockeyPuck} />}
+                    // onClick={onCreateTag}
+                  >
+                    Create an environment
+                  </Button>
+                </DropdownMenuItem> */}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

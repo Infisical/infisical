@@ -72,18 +72,17 @@ export const IdentitySection = withPermission(
         <div className="mb-4 flex justify-between">
           <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
           <div className="flex w-full justify-end pr-4">
-            <Link href="https://infisical.com/docs/documentation/platform/identities/overview">
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white"
-              >
-                Documentation{" "}
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.06rem] ml-1 text-xs"
-                />
-              </a>
+            <Link
+              href="https://infisical.com/docs/documentation/platform/identities/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+              Documentation{" "}
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                className="mb-[0.06rem] ml-1 text-xs"
+              />
+
             </Link>
           </div>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Identity}>

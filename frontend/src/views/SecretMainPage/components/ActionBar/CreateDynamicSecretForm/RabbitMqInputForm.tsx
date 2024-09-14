@@ -318,12 +318,16 @@ export const RabbitMqInputForm = ({
                       <p>
                         There is a wide range of in-built roles in RabbitMQ. Some include,
                         management, policymaker, monitoring, administrator. <br />
-                        <Link passHref href="https://www.rabbitmq.com/docs/management#permissions">
-                          <a target="_blank" rel="noopener noreferrer">
-                            <span className="cursor-pointer text-primary-400">
-                              Read more about management tags here
-                            </span>
-                          </a>
+                        <Link
+                          passHref
+                          href="https://www.rabbitmq.com/docs/management#permissions"
+                          target="_blank"
+                          rel="noopener noreferrer">
+
+                          <span className="cursor-pointer text-primary-400">
+                            Read more about management tags here
+                          </span>
+
                         </Link>
                         .
                       </p>

@@ -64,13 +64,11 @@ export const UserAuditLogsSection = withPermission(
                       : "https://infisical.com/scheduledemo"
                   }
                   passHref
-                >
-                  <a
-                    className="cursor-pointer font-medium text-primary-500 transition-all hover:text-primary-600"
-                    target="_blank"
-                  >
+                  className="cursor-pointer font-medium text-primary-500 transition-all hover:text-primary-600"
+                  target="_blank">
+                  
                     upgrade your subscription
-                  </a>
+                  
                 </Link>{" "}
                 to view audit logs for this user
               </p>

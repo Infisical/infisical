@@ -16,7 +16,7 @@ export default function LoginPage() {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
-      <Link href="/">
+      <Link href="/" legacyBehavior>
         <div className="mb-4 mt-20 flex justify-center">
           <Image
             src="/images/gradientLogo.svg"

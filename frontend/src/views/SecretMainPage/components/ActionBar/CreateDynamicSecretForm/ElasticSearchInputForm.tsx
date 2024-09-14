@@ -322,12 +322,13 @@ export const ElasticSearchInputForm = ({
                         <Link
                           passHref
                           href="https://www.elastic.co/guide/en/elasticsearch/reference/current/built-in-roles.html"
-                        >
-                          <a target="_blank" rel="noopener noreferrer">
-                            <span className="cursor-pointer text-primary-400">
-                              read more about roles here
-                            </span>
-                          </a>
+                          target="_blank"
+                          rel="noopener noreferrer">
+
+                          <span className="cursor-pointer text-primary-400">
+                            read more about roles here
+                          </span>
+
                         </Link>
                         .
                       </p>
