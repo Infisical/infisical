@@ -15,6 +15,7 @@ export type TListProjectAuditLogDTO = {
     projectId?: string;
     auditLogActorId?: string;
     actorType?: ActorType;
+    eventMetadata?: Record<string, string>;
   };
 } & Omit<TProjectPermission, "projectId">;
 
