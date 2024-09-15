@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
-import { IntegrationDetails } from "@app/views/IntegrationsPage/DetailsPage/DetailsPage";
+import { IntegrationDetailsPage } from "@app/views/IntegrationsPage/IntegrationDetailsPage";
 
 export default function IntegrationsDetailsPage() {
   const { t } = useTranslation();
@@ -15,7 +15,7 @@ export default function IntegrationsDetailsPage() {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Head>
-      <IntegrationDetails />
+      <IntegrationDetailsPage />
     </>
   );
 }

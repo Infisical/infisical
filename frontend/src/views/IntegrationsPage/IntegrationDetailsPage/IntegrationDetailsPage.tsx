@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -15,32 +14,32 @@ import {
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useUser, useWorkspace } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useUser,
+  useWorkspace
+} from "@app/context";
 import { useGetIntegration } from "@app/hooks/api";
 import { useSyncIntegration } from "@app/hooks/api/integrations/queries";
-import { usePopUp } from "@app/hooks/usePopUp";
 
+import { IntegrationAuditLogsSection } from "./components/IntegrationAuditLogsSection";
+import { IntegrationConnectionSection } from "./components/IntegrationConnectionSection";
 import { IntegrationDetailsSection } from "./components/IntegrationDetailsSection";
+import { IntegrationSettingsSection } from "./components/IntegrationSettingsSection";
 
-// import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
-
-export const IntegrationDetails = () => {
+export const IntegrationDetailsPage = () => {
   const router = useRouter();
   const integrationId = router.query.integrationId as string;
 
-  const { data: integration } = useGetIntegration(integrationId);
+  const { data: integration } = useGetIntegration(integrationId, {
+    refetchInterval: 4000
+  });
 
   const projectId = useWorkspace().currentWorkspace?.id;
   const { mutateAsync: syncIntegration } = useSyncIntegration();
-
-  const { user } = useUser();
-
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "removeMember",
-    "orgMembership",
-    "deactivateMember",
-    "upgradePlan"
-  ] as const);
+  const { currentOrg } = useOrganization();
 
   return integration ? (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -104,9 +103,15 @@ export const IntegrationDetails = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div className="flex">
+
+        <div className="flex justify-center">
           <div className="mr-4 w-96">
             <IntegrationDetailsSection integration={integration} />
+            <IntegrationConnectionSection integration={integration} />
+          </div>
+          <div className="space-y-4">
+            <IntegrationSettingsSection integration={integration} />
+            <IntegrationAuditLogsSection orgId={currentOrg?.id || ""} integration={integration} />
           </div>
         </div>
       </div>

@@ -1,7 +1,4 @@
-import { faCheckCircle, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
-import { twMerge } from "tailwind-merge";
 
 import { FormLabel } from "@app/components/v2";
 import { IntegrationMappingBehavior, TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
@@ -10,7 +7,7 @@ type Props = {
   integration: TIntegrationWithEnv;
 };
 
-export const IntegrationDetailsSection = ({ integration }: Props) => {
+export const IntegrationConnectionSection = ({ integration }: Props) => {
   const specifcQoveryDetails = () => {
     if (integration.integration !== "qovery") return null;
 
@@ -79,7 +76,7 @@ export const IntegrationDetailsSection = ({ integration }: Props) => {
 
         case "aws-parameter-store":
         case "rundeck":
-          return `${integration.path}aaaaa`;
+          return `${integration.path}`;
 
         default:
           return `${integration.app}`;
@@ -160,80 +157,36 @@ export const IntegrationDetailsSection = ({ integration }: Props) => {
   };
 
   return (
-    <div>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-          <h3 className="text-lg font-semibold text-mineshaft-100">Integration Details</h3>
-        </div>
-        <div className="mt-4">
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-mineshaft-300">Name</p>
-              <p className="text-sm text-mineshaft-300">
-                {integrationSlugNameMapping[integration.integration]}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-mineshaft-300">Sync Status</p>
-              <div className="flex items-center">
-                <p
-                  className={twMerge(
-                    "mr-2 text-sm font-medium",
-                    integration.isSynced ? "text-green-500" : "text-red-500"
-                  )}
-                >
-                  {integration.isSynced ? "Synced" : "Not Synced"}
-                </p>
-                <FontAwesomeIcon
-                  size="sm"
-                  className={twMerge(integration.isSynced ? "text-green-500" : "text-red-500")}
-                  icon={integration.isSynced ? faCheckCircle : faCircleXmark}
-                />
-              </div>
-            </div>
-            <div>
-              {!integration.isSynced && integration.syncMessage && (
-                <>
-                  <p className="text-sm font-semibold text-mineshaft-300">Latest sync error</p>
-                  <p className="text-sm text-mineshaft-300">{integration.syncMessage}</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+    <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-semibold text-mineshaft-100">Connection</h3>
       </div>
 
-      <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-          <h3 className="text-lg font-semibold text-mineshaft-100">Connection</h3>
+      <div className="mt-4">
+        <FormLabel className="my-2" label="Source" />
+
+        <div className="space-y-2 rounded-lg border border-mineshaft-700 bg-mineshaft-800 p-2">
+          <div className="flex flex-col">
+            <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Environment" />
+            <div className="text-sm text-mineshaft-300">{integration.environment.name}</div>
+          </div>
+          <div className="flex flex-col">
+            <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Secret Path" />
+            <div className="text-sm text-mineshaft-300">{integration.secretPath}</div>
+          </div>
         </div>
 
-        <div className="mt-4">
-          <FormLabel className="my-2" label="Source" />
-
-          <div className="space-y-2 rounded-lg border border-mineshaft-700 bg-mineshaft-800 p-2">
-            <div className="flex flex-col">
-              <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Environment" />
-              <div className="text-sm text-mineshaft-300">{integration.environment.name}</div>
-            </div>
-            <div className="flex flex-col">
-              <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Secret Path" />
-              <div className="text-sm text-mineshaft-300">{integration.secretPath}</div>
-            </div>
+        <FormLabel className="my-2" label="Destination" />
+        <div className="space-y-2 rounded-lg border border-mineshaft-700 bg-mineshaft-800 p-2">
+          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Platform" />
+          <div className="text-sm text-mineshaft-300">
+            {integrationSlugNameMapping[integration.integration]}
           </div>
 
-          <FormLabel className="my-2" label="Destination" />
-          <div className="space-y-2 rounded-lg border border-mineshaft-700 bg-mineshaft-800 p-2">
-            <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Platform" />
-            <div className="text-sm text-mineshaft-300">
-              {integrationSlugNameMapping[integration.integration]}
-            </div>
-
-            {specifcQoveryDetails()}
-            {isNotAwsManagerOneToOneDetails()}
-            {targetEnvironmentDetails()}
-            {generalIntegrationSpecificDetails()}
-          </div>
+          {specifcQoveryDetails()}
+          {isNotAwsManagerOneToOneDetails()}
+          {targetEnvironmentDetails()}
+          {generalIntegrationSpecificDetails()}
         </div>
       </div>
     </div>
