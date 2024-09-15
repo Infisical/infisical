@@ -50,7 +50,7 @@ type Props = {
   ) => void;
 };
 
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 20;
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const router = useRouter();

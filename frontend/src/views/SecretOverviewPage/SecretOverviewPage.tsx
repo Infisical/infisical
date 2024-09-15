@@ -85,7 +85,7 @@ enum RowType {
   Secret = "Secret"
 }
 
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 20;
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
@@ -173,11 +173,31 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
-  const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
+  const [visibleEnvs, setVisibleEnvs] = useState(
+    userAvailableEnvs?.filter(({ slug }) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: slug,
+          secretPath
+        })
+      )
+    )
+  );
 
   useEffect(() => {
-    setVisibleEnvs(userAvailableEnvs);
-  }, [userAvailableEnvs]);
+    setVisibleEnvs(
+      userAvailableEnvs?.filter(({ slug }) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: slug,
+            secretPath
+          })
+        )
+      )
+    );
+  }, [userAvailableEnvs, secretPath]);
 
   const {
     data: secrets,
@@ -580,27 +600,37 @@ export const SecretOverviewPage = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {userAvailableEnvs.map((availableEnv) => {
-                      const { id: envId, name } = availableEnv;
+                    {userAvailableEnvs
+                      .filter(({ slug }) =>
+                        permission.can(
+                          ProjectPermissionActions.Read,
+                          subject(ProjectPermissionSub.Secrets, {
+                            environment: slug,
+                            secretPath
+                          })
+                        )
+                      )
+                      .map((availableEnv) => {
+                        const { id: envId, name } = availableEnv;
 
-                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
-                      return (
-                        <DropdownMenuItem
-                          onClick={() => handleEnvSelect(envId)}
-                          key={envId}
-                          icon={
-                            isEnvSelected ? (
-                              <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                            ) : (
-                              <FontAwesomeIcon className="text-mineshaft-400" icon={faCircle} />
-                            )
-                          }
-                          iconPos="left"
-                        >
-                          <div className="flex items-center">{name}</div>
-                        </DropdownMenuItem>
-                      );
-                    })}
+                        const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                        return (
+                          <DropdownMenuItem
+                            onClick={() => handleEnvSelect(envId)}
+                            key={envId}
+                            icon={
+                              isEnvSelected ? (
+                                <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                              ) : (
+                                <FontAwesomeIcon className="text-mineshaft-400" icon={faCircle} />
+                              )
+                            }
+                            iconPos="left"
+                          >
+                            <div className="flex items-center">{name}</div>
+                          </DropdownMenuItem>
+                        );
+                      })}
                     {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"

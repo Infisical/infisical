@@ -47,7 +47,7 @@ const LOADER_TEXT = [
   "Getting secret import links..."
 ];
 
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 20;
 export const SecretMainPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
@@ -344,7 +344,15 @@ export const SecretMainPage = () => {
           <NavHeader
             pageName={t("dashboard.title")}
             currentEnv={environment}
-            userAvailableEnvs={currentWorkspace?.environments}
+            userAvailableEnvs={currentWorkspace?.environments.filter(({ slug }) =>
+              permission.can(
+                ProjectPermissionActions.Read,
+                subject(ProjectPermissionSub.Secrets, {
+                  environment: slug,
+                  secretPath
+                })
+              )
+            )}
             isFolderMode
             secretPath={secretPath}
             isProjectRelated
