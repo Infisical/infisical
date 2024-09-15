@@ -184,7 +184,7 @@ export const ConfiguredIntegrationItem = ({
                 <div className="flex max-h-[10rem] flex-col overflow-auto ">
                   <div className="flex self-start">
                     <FontAwesomeIcon icon={faCalendarCheck} className="pt-0.5 pr-2 text-sm" />
-                    <div className="text-sm">Last sync</div>
+                    <div className="text-sm">Last successful sync</div>
                   </div>
                   <div className="pl-5 text-left text-xs">
                     {format(new Date(integration.lastUsed), "yyyy-MM-dd, hh:mm aaa")}
