@@ -1,10 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace";
-import { TCloudIntegration } from "./types";
 import { TCloudIntegration, TIntegrationWithEnv } from "./types";
 
 export const integrationQueryKeys = {
@@ -138,9 +137,21 @@ export const useDeleteIntegration = () => {
   });
 };
 
-export const useGetIntegration = (integrationId: string) => {
+export const useGetIntegration = (
+  integrationId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TIntegrationWithEnv,
+      unknown,
+      TIntegrationWithEnv,
+      ReturnType<typeof integrationQueryKeys.getIntegration>
+    >,
+    "queryFn" | "queryKey"
+  >
+) => {
   return useQuery({
-    enabled: Boolean(integrationId),
+    ...options,
+    enabled: Boolean(integrationId && options?.enabled === undefined ? true : options?.enabled),
     queryKey: integrationQueryKeys.getIntegration(integrationId),
     queryFn: () => fetchIntegration(integrationId)
   });
