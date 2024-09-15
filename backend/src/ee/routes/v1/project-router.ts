@@ -146,12 +146,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.params.workspaceId,
-        ...req.query,
-        endDate: req.query.endDate,
-        startDate: req.query.startDate || getLastMidnightDateISO(),
-        auditLogActor: req.query.actor,
-        actor: req.permission.type
+        actor: req.permission.type,
+
+        filter: {
+          ...req.query,
+          projectId: req.params.workspaceId,
+          endDate: req.query.endDate,
+          startDate: req.query.startDate || getLastMidnightDateISO(),
+          auditLogActorId: req.query.actor,
+          eventType: req.query.eventType ? [req.query.eventType] : undefined
+        }
       });
       return { auditLogs };
     }
