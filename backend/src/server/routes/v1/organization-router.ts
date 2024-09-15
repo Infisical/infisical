@@ -14,7 +14,7 @@ import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -74,8 +74,35 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get all audit logs for an organization",
       querystring: z.object({
-        eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
+        projectId: z.string().optional(),
+        actorType: z.nativeEnum(ActorType).optional(),
+        // eventType is split with , for multiple values, we need to transform it to array
+        eventType: z
+          .string()
+          .optional()
+          .transform((val) => (val ? val.split(",") : undefined)),
         userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
+        eventMetadata: z
+          .string()
+          .optional()
+          .transform((val) => {
+            if (!val) {
+              return undefined;
+            }
+
+            const pairs = val.split(",");
+
+            return pairs.reduce(
+              (acc, pair) => {
+                const [key, value] = pair.split("=");
+                if (key && value) {
+                  acc[key] = value;
+                }
+                return acc;
+              },
+              {} as Record<string, string>
+            );
+          }),
         startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
         endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
         offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
@@ -114,13 +141,19 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
+        filter: {
+          ...req.query,
+          endDate: req.query.endDate,
+          projectId: req.query.projectId,
+          startDate: req.query.startDate || getLastMidnightDateISO(),
+          auditLogActorId: req.query.actor,
+          actorType: req.query.actorType,
+          eventType: req.query.eventType as EventType[] | undefined
+        },
+
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        ...req.query,
-        endDate: req.query.endDate,
-        startDate: req.query.startDate || getLastMidnightDateISO(),
-        auditLogActor: req.query.actor,
         actor: req.permission.type
       });
       return { auditLogs };
