@@ -298,6 +298,8 @@ export const integrationServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     await secretQueueService.syncIntegrations({
+      isManual: true,
+      actorId,
       environment: integration.environment.slug,
       secretPath: integration.secretPath,
       projectId: integration.projectId
