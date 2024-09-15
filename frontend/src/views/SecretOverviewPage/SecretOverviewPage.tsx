@@ -85,7 +85,7 @@ enum RowType {
   Secret = "Secret"
 }
 
-const INIT_PER_PAGE = 50;
+const INIT_PER_PAGE = 20;
 
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
