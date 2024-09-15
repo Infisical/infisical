@@ -7,7 +7,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
@@ -22,12 +22,16 @@ import { TGroupProjectMembershipRoleDALFactory } from "./group-project-membershi
 import {
   TCreateProjectGroupDTO,
   TDeleteProjectGroupDTO,
+  TGetGroupInProjectDTO,
   TListProjectGroupDTO,
   TUpdateProjectGroupDTO
 } from "./group-project-types";
 
 type TGroupProjectServiceFactoryDep = {
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "findOne" | "transaction" | "create" | "delete" | "findByProjectId">;
+  groupProjectDAL: Pick<
+    TGroupProjectDALFactory,
+    "findOne" | "transaction" | "create" | "delete" | "findByProjectId" | "findByGroupSlugAndProject"
+  >;
   groupProjectMembershipRoleDAL: Pick<
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
@@ -61,7 +65,7 @@ export const groupProjectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     projectSlug,
-    role
+    roles
   }: TCreateProjectGroupDTO) => {
     const project = await projectDAL.findOne({
       slug: projectSlug
@@ -88,16 +92,35 @@ export const groupProjectServiceFactory = ({
         message: `Group with slug ${groupSlug} already exists in project with id ${project.id}`
       });
 
-    const { permission: rolePermission, role: customRole } = await permissionService.getProjectPermissionByRole(
-      role,
-      project.id
+    for await (const { role: requestedRoleChange } of roles) {
+      const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+        requestedRoleChange,
+        project.id
+      );
+
+      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+
+      if (!hasRequiredPriviledges) {
+        throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
+      }
+    }
+
+    // validate custom roles input
+    const customInputRoles = roles.filter(
+      ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
     );
-    const hasPrivilege = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPrivilege)
-      throw new ForbiddenRequestError({
-        message: "Failed to add group to project with more privileged role"
-      });
-    const isCustomRole = Boolean(customRole);
+    const hasCustomRole = Boolean(customInputRoles.length);
+    const customRoles = hasCustomRole
+      ? await projectRoleDAL.find({
+          projectId: project.id,
+          $in: { slug: customInputRoles.map(({ role }) => role) }
+        })
+      : [];
+    if (customRoles.length !== customInputRoles.length) {
+      throw new NotFoundError({ message: "Custom role not found" });
+    }
+
+    const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const projectGroup = await groupProjectDAL.transaction(async (tx) => {
       const groupProjectMembership = await groupProjectDAL.create(
@@ -108,14 +131,31 @@ export const groupProjectServiceFactory = ({
         tx
       );
 
-      await groupProjectMembershipRoleDAL.create(
-        {
+      const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
+        const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
+        if (!inputRole.isTemporary) {
+          return {
+            projectMembershipId: groupProjectMembership.id,
+            role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,
+            customRoleId: customRolesGroupBySlug[inputRole.role] ? customRolesGroupBySlug[inputRole.role][0].id : null
+          };
+        }
+
+        // check cron or relative here later for now its just relative
+        const relativeTimeInMs = ms(inputRole.temporaryRange);
+        return {
           projectMembershipId: groupProjectMembership.id,
-          role: isCustomRole ? ProjectMembershipRole.Custom : role,
-          customRoleId: customRole?.id
-        },
-        tx
-      );
+          role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,
+          customRoleId: customRolesGroupBySlug[inputRole.role] ? customRolesGroupBySlug[inputRole.role][0].id : null,
+          isTemporary: true,
+          temporaryMode: ProjectUserMembershipTemporaryMode.Relative,
+          temporaryRange: inputRole.temporaryRange,
+          temporaryAccessStartTime: new Date(inputRole.temporaryAccessStartTime),
+          temporaryAccessEndTime: new Date(new Date(inputRole.temporaryAccessStartTime).getTime() + relativeTimeInMs)
+        };
+      });
+
+      await groupProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
 
       // share project key with users in group that have not
       // individually been added to the project and that are not part of
@@ -336,10 +376,44 @@ export const groupProjectServiceFactory = ({
     return groupMemberships;
   };
 
+  const getGroupInProject = async ({
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    groupSlug
+  }: TGetGroupInProjectDTO) => {
+    const project = await projectDAL.findOne({
+      slug: projectSlug
+    });
+
+    if (!project) {
+      throw new NotFoundError({ message: `Failed to find project with slug ${projectSlug}` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      project.id,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+
+    const groupMembership = await groupProjectDAL.findByGroupSlugAndProject({
+      groupSlug,
+      projectId: project.id
+    });
+
+    return groupMembership;
+  };
+
   return {
     addGroupToProject,
     updateGroupInProject,
     removeGroupFromProject,
-    listGroupsInProject
+    listGroupsInProject,
+    getGroupInProject
   };
 };

@@ -28,14 +28,36 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         projectSlug: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.projectSlug),
         groupSlug: z.string().trim().describe(PROJECTS.ADD_GROUP_TO_PROJECT.groupSlug)
       }),
-      body: z.object({
-        role: z
-          .string()
-          .trim()
-          .min(1)
-          .default(ProjectMembershipRole.NoAccess)
-          .describe(PROJECTS.ADD_GROUP_TO_PROJECT.role)
-      }),
+      body: z
+        .object({
+          role: z
+            .string()
+            .trim()
+            .min(1)
+            .default(ProjectMembershipRole.NoAccess)
+            .describe(PROJECTS.ADD_GROUP_TO_PROJECT.role),
+          roles: z
+            .array(
+              z.union([
+                z.object({
+                  role: z.string(),
+                  isTemporary: z.literal(false).default(false)
+                }),
+                z.object({
+                  role: z.string(),
+                  isTemporary: z.literal(true),
+                  temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
+                  temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
+                  temporaryAccessStartTime: z.string().datetime()
+                })
+              ])
+            )
+            .optional()
+        })
+        .refine((data) => data.role || data.roles, {
+          message: "Either role or roles must be present",
+          path: ["role", "roles"]
+        }),
       response: {
         200: z.object({
           groupMembership: GroupProjectMembershipsSchema
@@ -50,8 +72,9 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         groupSlug: req.params.groupSlug,
         projectSlug: req.params.projectSlug,
-        role: req.body.role
+        roles: req.body.roles || [{ role: req.body.role }]
       });
+
       return { groupMembership };
     }
   });
@@ -196,6 +219,60 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         projectSlug: req.params.projectSlug
       });
       return { groupMemberships };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectSlug/groups/:groupSlug",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Return project group",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectSlug: z.string().trim(),
+        groupSlug: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          groupMembership: z.object({
+            id: z.string(),
+            groupId: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            roles: z.array(
+              z.object({
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
+              })
+            ),
+            group: GroupsSchema.pick({ name: true, id: true, slug: true })
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const groupMembership = await server.services.groupProject.getGroupInProject({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.params
+      });
+
+      return { groupMembership };
     }
   });
 };
