@@ -69,8 +69,6 @@ export const LogsSection = ({
   const startDate = watch("startDate");
   const endDate = watch("endDate");
 
-  console.log("presets", presets);
-
   return (
     <div>
       {showFilters && (

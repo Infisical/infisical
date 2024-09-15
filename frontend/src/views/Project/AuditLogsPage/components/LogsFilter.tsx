@@ -268,7 +268,7 @@ export const LogsFilter = ({ presets, className, control, reset, watch }: Props)
         leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
         onClick={() =>
           reset({
-            eventType: presets?.eventType,
+            eventType: presets?.eventType || [],
             actor: presets?.actorId,
             userAgentType: undefined,
             startDate: undefined,
