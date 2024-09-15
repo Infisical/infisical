@@ -1,16 +1,11 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import frameworkIntegrationOptions from "public/json/frameworkIntegrations.json";
-import infrastructureIntegrationOptions from "public/json/infrastructureIntegrations.json";
+import frameworkIntegrations from "public/json/frameworkIntegrations.json";
+import infrastructureIntegrations from "public/json/infrastructureIntegrations.json";
 
 import { IntegrationsPage } from "@app/views/IntegrationsPage";
 
-type Props = {
-  frameworkIntegrations: typeof frameworkIntegrationOptions;
-  infrastructureIntegrations: typeof infrastructureIntegrationOptions; 
-};
-
-const Integration = ({ frameworkIntegrations, infrastructureIntegrations }: Props) => {
+const Integration = () => {
   const { t } = useTranslation();
 
   return (
@@ -22,25 +17,12 @@ const Integration = ({ frameworkIntegrations, infrastructureIntegrations }: Prop
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Head>
-      <IntegrationsPage frameworkIntegrations={frameworkIntegrations} infrastructureIntegrations={infrastructureIntegrations} />
+      <IntegrationsPage
+        frameworkIntegrations={frameworkIntegrations}
+        infrastructureIntegrations={infrastructureIntegrations}
+      />
     </>
   );
-};
-
-export const getStaticProps = () => {
-  return {
-    props: {
-      frameworkIntegrations: frameworkIntegrationOptions,
-      infrastructureIntegrations: infrastructureIntegrationOptions
-    }
-  };
-};
-
-export const getStaticPaths = async () => {
-  return {
-    paths: [], // indicates that no page needs be created at build time
-    fallback: "blocking" // indicates the type of fallback
-  };
 };
 
 Integration.requireAuth = true;

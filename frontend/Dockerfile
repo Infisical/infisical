@@ -4,7 +4,7 @@ ARG INTERCOM_ID=intercom-id
 ARG NEXT_INFISICAL_PLATFORM_VERSION=next-infisical-platform-version
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:16-alpine AS deps
+FROM node:20-alpine AS deps
 # Install dependencies only when needed. Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 # RUN apk add --no-cache libc6-compat
 WORKDIR /app
