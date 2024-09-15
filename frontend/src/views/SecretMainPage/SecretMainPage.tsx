@@ -344,7 +344,15 @@ export const SecretMainPage = () => {
           <NavHeader
             pageName={t("dashboard.title")}
             currentEnv={environment}
-            userAvailableEnvs={currentWorkspace?.environments}
+            userAvailableEnvs={currentWorkspace?.environments.filter(({ slug }) =>
+              permission.can(
+                ProjectPermissionActions.Read,
+                subject(ProjectPermissionSub.Secrets, {
+                  environment: slug,
+                  secretPath
+                })
+              )
+            )}
             isFolderMode
             secretPath={secretPath}
             isProjectRelated
