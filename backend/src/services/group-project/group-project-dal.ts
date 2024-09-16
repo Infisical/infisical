@@ -152,7 +152,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         `${TableName.ProjectRoles}.id`
       )
       .select(
-        db.ref("id").withSchema(TableName.GroupProjectMembership),
+        db.ref("id").withSchema(TableName.UserGroupMembership),
         db.ref("isGhost").withSchema(TableName.Users),
         db.ref("username").withSchema(TableName.Users),
         db.ref("email").withSchema(TableName.Users),
