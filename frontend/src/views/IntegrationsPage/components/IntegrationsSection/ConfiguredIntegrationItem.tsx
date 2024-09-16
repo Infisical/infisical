@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import {
   faArrowRight,
   faCalendarCheck,
+  faEllipsis,
   faRefresh,
   faWarning,
   faXmark
@@ -13,7 +14,7 @@ import { format } from "date-fns";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormLabel, IconButton, Tag, Tooltip } from "@app/components/v2";
+import { Badge, FormLabel, IconButton, Tooltip } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
@@ -174,9 +175,9 @@ export const ConfiguredIntegrationItem = ({
           </div>
         )}
       </div>
-      <div className="mt-[1.5rem] flex cursor-default">
+      <div className="mt-[1.5rem] flex cursor-default space-x-3">
         {integration.isSynced != null && integration.lastUsed != null && (
-          <Tag key={integration.id} className={integration.isSynced ? "bg-green-800" : "bg-red/80"}>
+          <Badge variant={integration.isSynced ? "success" : "danger"} key={integration.id}>
             <Tooltip
               center
               className="max-w-xs whitespace-normal break-words"
@@ -201,32 +202,33 @@ export const ConfiguredIntegrationItem = ({
                 </div>
               }
             >
-              <div className="flex items-center space-x-2 text-white">
+              <div className="flex h-full items-center space-x-2">
                 <div>{integration.isSynced ? "Synced" : "Not synced"}</div>
                 {!integration.isSynced && <FontAwesomeIcon icon={faWarning} />}
               </div>
             </Tooltip>
-          </Tag>
+          </Badge>
         )}
-        <div className="mr-1 flex items-end opacity-80 duration-200 hover:opacity-100">
+        <div className="space-x-1.5">
           <Tooltip className="text-center" content="Manually sync integration secrets">
-            <Button
+            <IconButton
               onClick={(e) => {
                 e.stopPropagation();
                 onManualSyncIntegration();
               }}
+              ariaLabel="sync"
+              colorSchema="primary"
+              variant="star"
               className="max-w-[2.5rem] border-none bg-mineshaft-500"
             >
-              <FontAwesomeIcon icon={faRefresh} className="px-1 text-bunker-200" />
-            </Button>
+              <FontAwesomeIcon icon={faRefresh} className="px-1" />
+            </IconButton>
           </Tooltip>
-        </div>
-        <ProjectPermissionCan
-          I={ProjectPermissionActions.Delete}
-          a={ProjectPermissionSub.Integrations}
-        >
-          {(isAllowed: boolean) => (
-            <div className="flex items-end opacity-80 duration-200 hover:opacity-100">
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Delete}
+            a={ProjectPermissionSub.Integrations}
+          >
+            {(isAllowed: boolean) => (
               <Tooltip content="Remove Integration">
                 <IconButton
                   onClick={(e) => {
@@ -237,13 +239,25 @@ export const ConfiguredIntegrationItem = ({
                   isDisabled={!isAllowed}
                   colorSchema="danger"
                   variant="star"
+                  className="max-w-[2.5rem] border-none bg-mineshaft-500"
                 >
-                  <FontAwesomeIcon icon={faXmark} className="px-0.5" />
+                  <FontAwesomeIcon icon={faXmark} className="px-1" />
                 </IconButton>
               </Tooltip>
-            </div>
-          )}
-        </ProjectPermissionCan>
+            )}
+          </ProjectPermissionCan>
+
+          <Tooltip content="View details">
+            <IconButton
+              ariaLabel="delete"
+              colorSchema="primary"
+              variant="star"
+              className="max-w-[2.5rem] border-none bg-mineshaft-500"
+            >
+              <FontAwesomeIcon icon={faEllipsis} className="px-1" />
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
     </div>
   );
