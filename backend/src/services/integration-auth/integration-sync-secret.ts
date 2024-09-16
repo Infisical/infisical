@@ -1006,28 +1006,12 @@ const syncSecretsAWSSecretManager = async ({
     }
   };
 
-  let secretsToProcess: Record<string, { value: string; comment?: string }> = {};
-  if (metadata && metadata.secretPrefix) {
-    const { secretPrefix } = metadata;
-
-    // Update each secret to have the secret prefix
-    Object.keys(secrets).forEach((key) => {
-      if (key.startsWith(secretPrefix)) {
-        secretsToProcess[key] = secrets[key];
-      } else {
-        secretsToProcess[`${secretPrefix}${key}`] = secrets[key];
-      }
-    });
-  } else {
-    secretsToProcess = secrets;
-  }
-
   if (metadata.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE) {
-    for await (const [key, value] of Object.entries(secretsToProcess)) {
+    for await (const [key, value] of Object.entries(secrets)) {
       await processAwsSecret(key, value.value);
     }
   } else {
-    await processAwsSecret(integration.app as string, getSecretKeyValuePair(secretsToProcess));
+    await processAwsSecret(integration.app as string, getSecretKeyValuePair(secrets));
   }
 };
 
