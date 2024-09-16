@@ -90,15 +90,20 @@ export const projectMembershipServiceFactory = ({
     // projectMembers[0].project
     if (includeGroupMembers) {
       const groupMembers = await groupProjectDAL.findAllProjectGroupMembers(projectId);
-
       const allMembers = [
         ...projectMembers.map((m) => ({ ...m, isGroupMember: false })),
         ...groupMembers.map((m) => ({ ...m, isGroupMember: true }))
       ];
 
       // Ensure the userId is unique
-      const membersIds = new Set(allMembers.map((entity) => entity.user.id));
-      const uniqueMembers = allMembers.filter((entity) => membersIds.has(entity.user.id));
+      const uniqueMembers: typeof allMembers = [];
+      const addedUserIds = new Set<string>();
+      allMembers.forEach((member) => {
+        if (!addedUserIds.has(member.user.id)) {
+          uniqueMembers.push(member);
+          addedUserIds.add(member.user.id);
+        }
+      });
 
       return uniqueMembers;
     }
