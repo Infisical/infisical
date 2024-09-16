@@ -35,8 +35,8 @@ export const ConfiguredIntegrationItem = ({
 
   return (
     <div
-      onClick={() => router.push(`/integrations/details/${integration.id}`)}
       className="max-w-8xl flex cursor-pointer justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3 transition-all hover:bg-mineshaft-700"
+      onClick={() => router.push(`/integrations/details/${integration.id}`)}
       key={`integration-${integration?.id.toString()}`}
     >
       <div className="flex">
@@ -211,7 +211,10 @@ export const ConfiguredIntegrationItem = ({
         <div className="mr-1 flex items-end opacity-80 duration-200 hover:opacity-100">
           <Tooltip className="text-center" content="Manually sync integration secrets">
             <Button
-              onClick={() => onManualSyncIntegration()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onManualSyncIntegration();
+              }}
               className="max-w-[2.5rem] border-none bg-mineshaft-500"
             >
               <FontAwesomeIcon icon={faRefresh} className="px-1 text-bunker-200" />
@@ -226,7 +229,10 @@ export const ConfiguredIntegrationItem = ({
             <div className="flex items-end opacity-80 duration-200 hover:opacity-100">
               <Tooltip content="Remove Integration">
                 <IconButton
-                  onClick={() => onRemoveIntegration()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveIntegration();
+                  }}
                   ariaLabel="delete"
                   isDisabled={!isAllowed}
                   colorSchema="danger"
