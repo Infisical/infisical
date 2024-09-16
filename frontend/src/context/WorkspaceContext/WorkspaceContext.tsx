@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
 import { useRouter } from "next/router";
 
+import { createNotification } from "@app/components/notifications";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { Workspace } from "@app/hooks/api/workspace/types";
 
@@ -30,6 +31,29 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
       isLoading
     };
   }, [ws, workspaceId, isLoading]);
+
+  // handle redirects to project-specific routes
+  if (
+    !value.isLoading &&
+    !value.currentWorkspace &&
+    router.pathname.startsWith("/project") &&
+    workspaceId
+  ) {
+    createNotification({
+      text: "You are not a member of this project.",
+      type: "info"
+    });
+
+    setTimeout(() => {
+      router.push("/");
+    }, 5000);
+
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800 text-primary-50">
+        You do not have sufficient access to this project.
+      </div>
+    );
+  }
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 };
