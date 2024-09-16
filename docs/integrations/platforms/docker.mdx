@@ -93,13 +93,13 @@ The drawback of the previous method is that you would have to generate the `INFI
   <Step title="Create the Shell Script">
     Create a shell script to obtain an access token for the machine identity:
 
-    ```bash
+    ```bash script.sh
     #!/bin/sh
     export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_MACHINE_CLIENT_ID --client-secret=$INFISICAL_MACHINE_CLIENT_SECRET --plain --silent)
     exec infisical run --token $INFISICAL_TOKEN --projectId $PROJECT_ID --env $INFISICAL_SECRET_ENV --domain $INFISICAL_API_URL -- <starting script>
     ```
 
-    > **Note:** The access token has a limited lifespan. Use the `infisical token renew` command to renew it when necessary.
+    > **Note:** The access token has a limited lifespan. Use the [infisical token renew](/cli/commands/token) CLI command to renew it when necessary.
 		<Warning>
 		Caution: Implementing this directly in your Dockerfile presents two key issues:
 
@@ -109,7 +109,7 @@ The drawback of the previous method is that you would have to generate the `INFI
   </Step>
 
   <Step title="Update Your Dockerfile">
-    Grant the Infisical CLI in your Docker container access to the access token. This allows the CLI to fetch and inject secrets into your application.
+    Grant the Infisical CLI access to the access token, inside your Docker container. This allows the CLI to fetch and inject secrets into your application.
 
     Add the following line to your Dockerfile:
 
