@@ -17,13 +17,7 @@ Follow this [guide](./docker) to configure the Infisical CLI for each service th
     Generate a machine identity for each service you want to inject secrets into. You can do this by following the steps in the [Machine Identity](/documentation/platform/identities/machine-identities) guide.
 
     ### Set the machine identity client ID and client secret as environment variables
-    For each service you want to inject secrets into, set two environment variable called `INFISICAL_MACHINE_IDENTITY_CLIENT_ID`, and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET` equal to the client ID and client secret of the machine identity(s) you created in the previous step.
-
-    In the example below, we set two sets of client ID and client secret for the services.
-
-    For the web service we set `INFISICAL_MACHINE_IDENTITY_CLIENT_ID_FOR_WEB` and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET_FOR_WEB` as the client ID and client secret respectively.
-
-    For the API service we set `INFISICAL_MACHINE_IDENTITY_CLIENT_ID_FOR_API` and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET_FOR_API` as the client ID and client secret respectively.
+    For each service you want to inject secrets into, generate the required `INFISICAL_TOKEN_SERVICE_A` and `INFISICAL_TOKEN_SERVICE_B`.
 
     ```yaml
     # Example Docker Compose file
@@ -32,31 +26,25 @@ Follow this [guide](./docker) to configure the Infisical CLI for each service th
         build: .
         image: example-service-1
         environment:
-          - INFISICAL_MACHINE_IDENTITY_CLIENT_ID=${INFISICAL_MACHINE_IDENTITY_CLIENT_ID_FOR_WEB}
-          - INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET=${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET_FOR_WEB}
+          - INFISICAL_TOKEN=${INFISICAL_TOKEN_SERVICE_A}
 
       api:
         build: .
         image: example-service-2
         environment:
-          - INFISICAL_MACHINE_IDENTITY_CLIENT_ID=${INFISICAL_MACHINE_IDENTITY_CLIENT_ID_FOR_API}
-          - INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET=${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET_FOR_API}
+          - INFISICAL_TOKEN=${INFISICAL_TOKEN_SERVICE_B}
 
     ```
 
     ### Export shell variables
-    Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once done, it will be used to populate the corresponding `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` and `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET` in your Docker Compose file.
+    Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once done, it will be used to populate the corresponding `INFISICAL_TOKEN_SERVICE_A` and `INFISICAL_TOKEN_SERVICE_B` in your Docker Compose file.
 
     ```bash
     #Example
 
     # Token refers to the token we generated in step 2 for this service
-    export INFISICAL_MACHINE_IDENTITY_CLIENT_ID_FOR_WEB=<client_id>
-    export INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET_FOR_WEB=<client_secret>
-
-    # Token refers to the token we generated in step 2 for this service
-    export INFISICAL_MACHINE_IDENTITY_CLIENT_ID_FOR_API=<client_id>
-    export INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET_FOR_API=<client_secret>
+    export INFISICAL_TOKEN_SERVICE_A=$(infisical login --method=universal-auth --client-id=<your-client-id> --client-secret=<your-client-secret> --silent --plain)
+    export INFISICAL_TOKEN_SERVICE_B=$(infisical login --method=universal-auth --client-id=<your-client-id> --client-secret=<your-client-secret> --silent --plain)
 
     # Then run your compose file in the same terminal.
     docker-compose ...

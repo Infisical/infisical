@@ -81,6 +81,44 @@ CMD ["infisical", "run", "--projectId", "<your-project-id>", "--command", "npm r
   </Step>
 </Steps>
 
+### Using a Starting Script
+
+The drawback of the previous method is that you would have to generate the `INFISICAL_TOKEN` manually. To automate this process, you can use a shell script as your starting command.
+
+<Steps>
+  <Step title="Generate a Machine Identity">
+    Create a machine identity for your project by following the steps in the [Machine Identity](/documentation/platform/identities/machine-identities) guide. This identity will enable authentication and secret retrieval from Infisical.
+  </Step>
+
+  <Step title="Create the Shell Script">
+    Create a shell script to obtain an access token for the machine identity:
+
+    ```bash
+    #!/bin/sh
+    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_MACHINE_CLIENT_ID --client-secret=$INFISICAL_MACHINE_CLIENT_SECRET --plain --silent)
+    exec infisical run --token $INFISICAL_TOKEN --projectId $PROJECT_ID --env $INFISICAL_SECRET_ENV --domain $INFISICAL_API_URL -- <starting script>
+    ```
+
+    > **Note:** The access token has a limited lifespan. Use the `infisical token renew` command to renew it when necessary.
+		<Warning>
+		Caution: Implementing this directly in your Dockerfile presents two key issues:
+
+		1. Lack of persistence: Variables set in one build step are not automatically carried over to subsequent steps, complicating the process.
+		2. Security risk: It exposes sensitive credentials inside your container, potentially allowing anyone with container access to retrieve them.
+		</Warning>
+  </Step>
+
+  <Step title="Update Your Dockerfile">
+    Grant the Infisical CLI in your Docker container access to the access token. This allows the CLI to fetch and inject secrets into your application.
+
+    Add the following line to your Dockerfile:
+
+    ```dockerfile
+    CMD ["./script.sh"]
+    ```
+  </Step>
+</Steps>
+
 </Tab>
 <Tab title="Service Token (Deprecated)">
   <Warning>
