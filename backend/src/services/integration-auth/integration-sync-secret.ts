@@ -2352,8 +2352,16 @@ const syncSecretsGitLab = async ({
       return isValid;
     });
 
+  // From https://gitlab.com/gitlab-org/gitlab/-/blob/master/app/models/concerns/ci/maskable.rb#L14
+  // \A and \z replaced with the solution on https://stackoverflow.com/a/73843315
+  const maskRegex = /(?<![\r\n])^[a-zA-Z0-9_+=\/@:.~-]{8,}$(?![\r\n])/;
+
   for await (const key of Object.keys(secrets)) {
     const existingSecret = getSecretsRes.find((s) => s.key === key);
+    let shouldMaskSecret = Boolean(metadata.shouldMaskSecrets);
+    if (shouldMaskSecret && ! secrets[key].value.match(maskRegex)) {
+        shouldMaskSecret = false;
+    }
     if (!existingSecret) {
       await request.post(
         `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables`,
@@ -2361,7 +2369,7 @@ const syncSecretsGitLab = async ({
           key,
           value: secrets[key].value,
           protected: Boolean(metadata.shouldProtectSecrets),
-          masked: Boolean(metadata.shouldMaskSecrets),
+          masked: shouldMaskSecret,
           raw: false,
           environment_scope: integration.targetEnvironment
         },
@@ -2380,7 +2388,7 @@ const syncSecretsGitLab = async ({
           ...existingSecret,
           value: secrets[existingSecret.key].value,
           protected: Boolean(metadata.shouldProtectSecrets),
-          masked: Boolean(metadata.shouldMaskSecrets)
+          masked: shouldMaskSecret
         },
         {
           headers: {
