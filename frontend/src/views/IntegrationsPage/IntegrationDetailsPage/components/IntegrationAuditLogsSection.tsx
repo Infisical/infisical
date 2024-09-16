@@ -25,13 +25,13 @@ export const IntegrationAuditLogsSection = ({ integration, orgId }: Props) => {
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <p className="text-lg font-semibold text-gray-200">Integration Logs</p>
         <p className="text-xs text-gray-400">
-          View integration logs from the past {auditLogsRetentionDays} days
+          Displaying audit logs from the last {auditLogsRetentionDays} days
         </p>
       </div>
       <LogsSection
         refetchInterval={4000}
         remappedHeaders={{
-          Metadata: "Status"
+          Metadata: "Sync Status"
         }}
         showFilters={false}
         presets={{

@@ -471,7 +471,7 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
               isDisabled={!event.metadata.syncMessage}
             >
               <Badge variant={event.metadata.isSynced ? "success" : "danger"}>
-                <p className="text-center">{event.metadata.isSynced ? "Synced" : "Not synced"}</p>
+                <p className="text-center">{event.metadata.isSynced ? "Successful" : "Failed"}</p>
               </Badge>
             </Tooltip>
           </Td>

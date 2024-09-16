@@ -40,9 +40,6 @@ export const UserAuditLogsSection = withPermission(
           </Tooltip>
         </div>
         <LogsSection
-          remappedHeaders={{
-            Metadata: "Status"
-          }}
           showFilters={showFilter}
           filterClassName="bg-mineshaft-900 static"
           presets={{
