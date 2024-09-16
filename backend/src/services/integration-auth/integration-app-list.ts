@@ -242,37 +242,12 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
     };
   }
 
-  const octokit = new Octokit({
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  const repos = (await new Octokit({
     auth: accessToken
-  });
-
-  const getAllRepos = async () => {
-    let repos: GitHubApp[] = [];
-    let page = 1;
-    const perPage = 100;
-    let hasMore = true;
-
-    while (hasMore) {
-      const response = await octokit.request(
-        "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
-        {
-          per_page: perPage,
-          page
-        }
-      );
-
-      if ((response.data as GitHubApp[]).length > 0) {
-        repos = repos.concat(response.data as GitHubApp[]);
-        page += 1;
-      } else {
-        hasMore = false;
-      }
-    }
-
-    return repos;
-  };
-
-  const repos = await getAllRepos();
+  }).paginate("GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}", {
+    per_page: 100
+  })) as GitHubApp[];
 
   const apps = repos
     .filter((a: GitHubApp) => a.permissions.admin === true)
