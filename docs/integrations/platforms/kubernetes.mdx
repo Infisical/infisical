@@ -587,12 +587,6 @@ spec:
 </Accordion>
 
 <Accordion title="authentication.serviceToken">
-  <Warning>
-  Service tokens are being deprecated in favor of [machine identities](/documentation/platform/identities/machine-identities).
-
-They will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
-
-  </Warning>
 
 The service token required to authenticate with Infisical needs to be stored in a Kubernetes secret. This block defines the reference to the name and namespace of secret that stores this service token.
 Follow the instructions below to create and store the service token in a Kubernetes secrets and reference it in your CRD.
