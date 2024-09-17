@@ -3,7 +3,6 @@ import fastifyPlugin from "fastify-plugin";
 import { JsonWebTokenError } from "jsonwebtoken";
 import { ZodError } from "zod";
 
-import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   BadRequestError,
   DatabaseError,
@@ -46,24 +45,15 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       });
       // Handle JWT errors and make them more human-readable for the end-user.
     } else if (error instanceof JsonWebTokenError) {
-      // We wan't to return a slightly different message if the request is coming from the CLI. This is because we're able to provide more specific information to the user in that case.
-      const isCliRequest = req.headers["user-agent"] === UserAgentType.CLI;
-
       const message = (() => {
         if (error.message === JWTErrors.JwtExpired) {
           return "Your token has expired. Please re-authenticate.";
         }
         if (error.message === JWTErrors.JwtMalformed) {
-          if (isCliRequest) {
-            return "The access token is malformed. Are you sure the token you are using is correct? Check the INFISICAL_TOKEN environment variable, or the --token flag. If you are using user-login, please run [infisical login] to re-authenticate. Please ensure that the INFISICAL_TOKEN variable is not set, if you are not intentionally using it.";
-          }
-          return "The access token is malformed. Please ensure that the token is in the correct format and try again.";
+          return "The provided access token is malformed. Please use a valid token or generate a new one and try again.";
         }
         if (error.message === JWTErrors.InvalidAlgorithm) {
-          if (isCliRequest) {
-            return "Invalid algorithm. Are you sure you are using the correct authentication method? Make sure to check that you don't have the INFISICAL_TOKEN variable set in your environment variables. If you are intentionally using the INFISICAL_TOKEN variable, make sure you are using the correct token.";
-          }
-          return "The access token is signed with an invalid algorithm. Please ensure that the token is in the correct format and try again. We recommend obtaining a new token.";
+          return "The access token is signed with an invalid algorithm. Please provide a valid token and try again.";
         }
 
         return error.message;
