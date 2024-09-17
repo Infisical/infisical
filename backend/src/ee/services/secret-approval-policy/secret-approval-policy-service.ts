@@ -3,10 +3,11 @@ import picomatch from "picomatch";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
@@ -15,6 +16,7 @@ import {
   TCreateSapDTO,
   TDeleteSapDTO,
   TGetBoardSapDTO,
+  TGetSapByIdDTO,
   TListSapDTO,
   TUpdateSapDTO
 } from "./secret-approval-policy-types";
@@ -28,6 +30,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -37,6 +40,7 @@ export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprov
 export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyDAL,
   permissionService,
+  userDAL,
   secretApprovalPolicyApproverDAL,
   projectEnvDAL,
   licenseService
@@ -49,14 +53,12 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     approvers,
+    approverUsernames,
     projectId,
     secretPath,
     environment,
     enforcementLevel
   }: TCreateSapDTO) => {
-    if (approvals > approvers.length)
-      throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -81,6 +83,26 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
+      let approverIds = approvers;
+      if (!approverIds) {
+        approverIds = (
+          await userDAL.find(
+            {
+              $in: {
+                username: approverUsernames
+              }
+            },
+            { tx }
+          )
+        ).map((user) => user.id);
+
+        if (approverIds.length !== approverUsernames?.length) {
+          throw new BadRequestError({
+            message: "At least one approver username is invalid"
+          });
+        }
+      }
+
       const doc = await secretApprovalPolicyDAL.create(
         {
           envId: env.id,
@@ -91,8 +113,9 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
+
       await secretApprovalPolicyApproverDAL.insertMany(
-        approvers.map((approverUserId) => ({
+        approverIds.map((approverUserId) => ({
           approverUserId,
           policyId: doc.id
         })),
@@ -105,6 +128,7 @@ export const secretApprovalPolicyServiceFactory = ({
 
   const updateSecretApprovalPolicy = async ({
     approvers,
+    approverUsernames,
     secretPath,
     name,
     actorId,
@@ -146,16 +170,37 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
-      if (approvers) {
+      if (approvers || approverUsernames) {
+        let approverIds = approvers;
+        if (!approverIds) {
+          approverIds = (
+            await userDAL.find(
+              {
+                $in: {
+                  username: approverUsernames
+                }
+              },
+              { tx }
+            )
+          ).map((user) => user.id);
+
+          if (approverIds.length !== approverUsernames?.length) {
+            throw new BadRequestError({
+              message: "At least one approver username is invalid"
+            });
+          }
+        }
+
         await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await secretApprovalPolicyApproverDAL.insertMany(
-          approvers.map((approverUserId) => ({
+          approverIds.map((approverUserId) => ({
             approverUserId,
             policyId: doc.id
           })),
           tx
         );
       }
+
       return doc;
     });
     return {
@@ -219,6 +264,34 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
+  const getSecretApprovalPolicyById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    sapId
+  }: TGetSapByIdDTO) => {
+    const [sapPolicy] = await secretApprovalPolicyDAL.find({}, { sapId });
+
+    if (!sapPolicy) {
+      throw new NotFoundError({
+        message: "Cannot find secret approval policy"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      sapPolicy.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+
+    return sapPolicy;
+  };
+
   const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
     const secretPath = removeTrailingSlash(path);
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
@@ -262,6 +335,7 @@ export const secretApprovalPolicyServiceFactory = ({
 
   return {
     createSecretApprovalPolicy,
+    getSecretApprovalPolicyById,
     updateSecretApprovalPolicy,
     deleteSecretApprovalPolicy,
     getSecretApprovalPolicy,

@@ -27,11 +27,16 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .nullable()
             .default("/")
             .transform((val) => (val ? removeTrailingSlash(val) : val)),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().min(1).optional(),
+          approverUsernames: z.string().array().min(1).optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvers || data.approverUsernames, {
+          path: ["approvers", "approverUsernames"],
+          message: "Either approvers or approverUsernames must be defined"
+        })
+        .refine((data) => data.approvals <= Number(data.approvers?.length ?? data.approverUsernames?.length), {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -41,7 +46,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
@@ -53,6 +58,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
+
       return { approval };
     }
   });
@@ -70,7 +76,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z
         .object({
           name: z.string().optional(),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().min(1).optional(),
+          approverUsernames: z.string().array().min(1).optional(),
           approvals: z.number().min(1).default(1),
           secretPath: z
             .string()
@@ -80,7 +87,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .transform((val) => (val === "" ? "/" : val)),
           enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvers || data.approverUsernames, {
+          path: ["approvers", "approverUsernames"],
+          message: "Either approvers or approverUsernames must be defined"
+        })
+        .refine((data) => data.approvals <= Number(data.approvers?.length ?? data.approverUsernames?.length), {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -90,7 +101,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
@@ -120,7 +131,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,
@@ -149,7 +160,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .extend({
               userApprovers: z
                 .object({
-                  userId: z.string()
+                  userId: z.string(),
+                  username: z.string()
                 })
                 .array()
             })
@@ -157,7 +169,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
@@ -167,6 +179,42 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         projectId: req.query.workspaceId
       });
       return { approvals };
+    }
+  });
+
+  server.route({
+    url: "/:sapId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        sapId: z.string()
+      }),
+      response: {
+        200: z.object({
+          approval: sapPubSchema.extend({
+            userApprovers: z
+              .object({
+                userId: z.string(),
+                username: z.string()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.params
+      });
+      return { approval };
     }
   });
 

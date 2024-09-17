@@ -380,6 +380,7 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
     secretApprovalPolicyDAL,
+    userDAL,
     licenseService
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
