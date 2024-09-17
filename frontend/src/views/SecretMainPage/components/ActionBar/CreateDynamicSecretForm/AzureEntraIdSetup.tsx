@@ -16,6 +16,9 @@ export const AzureEntraIdSetup = ({
         <div>
             <div>
                 <div>
+                    <div className="mb-4 mt-4 pb-2 pl-1 font-medium text-mineshaft-200">
+                        Azure Entra ID Integration Guide
+                    </div>
                     <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
                         App Installation
                     </div>
@@ -26,6 +29,8 @@ export const AzureEntraIdSetup = ({
                             Step 2: Choose an account with admin access to Entra Id.
                             <br />
                             Step 3: Allow Infisical persmissions to read and write all users full profiles.
+                            <br />
+                            Step 4: Copy Tenant ID after installation and paste it in the next step.
                         </div>
                     </div>
                 </div>
@@ -47,10 +52,13 @@ export const AzureEntraIdSetup = ({
                 </div>
             </div>
             <div className="mt-4 flex items-center space-x-4">
+                <a href={`https://login.microsoftonline.com/common/adminconsent?client_id=9805c35f-88d4-4625-9daf-66f741e4129c&redirect_uri=${window.location.origin}/integrations/azure-entra-id/callback`} target="_blank" rel="noreferrer">
+                    <Button type="submit">
+                        Install App
+                    </Button>
+                </a>
                 <Button type="submit" onClick={onCompleted}>
-                    {/* <Link target="_blank" href="https://login.microsoftonline.com/common/adminconsent?client_id=9805c35f-88d4-4625-9daf-66f741e4129c&redirect_uri=https://meet-dev.in.ngrok.io" content="Link" > */}
-                    Install App
-                    {/* </Link> */}
+                    Next
                 </Button>
                 <Button variant="outline_bg" onClick={onCancel}>
                     Cancel

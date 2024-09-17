@@ -3,10 +3,15 @@ import { faAngleDown, faCheck, faPlus } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Listbox, Transition } from "@headlessui/react";
 
-interface ListBoxProps {
-  isSelected: {name:string}[];
-  onChange: (arg: unknown) => void;
-  data: {name:string}[] | null;
+interface TextProps {
+  primaryText: string;
+  secondaryText: string;
+}
+
+interface ListBoxProps<T extends TextProps> {
+  isSelected: T[];
+  onChange: (value: T[]) => void;
+  data: T[] | null;
   text?: string;
   buttonAction?: () => void;
   isFull?: boolean;
@@ -22,27 +27,26 @@ interface ListBoxProps {
  * @param {function} obj.buttonAction - if there is a button at the bottom of the list, this is the action that happens when you click the button
  * @returns
  */
-const ListBoxMultiple = ({
+const ListBoxMultiple = <T extends TextProps>({
   isSelected,
   onChange,
   data,
   text,
   buttonAction,
   isFull
-}: ListBoxProps): JSX.Element => {
+}: ListBoxProps<T>): JSX.Element => {
   return (
     <Listbox value={isSelected} onChange={onChange} multiple>
       <div className="relative w-full">
         <Listbox.Button
-          className={`relative text-gray-400 ${
-            isFull ? "w-full" : "w-52"
-          } focus-visible:ring-offset-orange-300 cursor-default rounded-md bg-white/[0.07] py-2.5 pl-3 pr-10 text-left shadow-md duration-200 hover:bg-white/[0.11] focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 sm:text-sm`}
+          className={`relative text-gray-400 ${isFull ? "w-full" : "w-52"
+            } focus-visible:ring-offset-orange-300 cursor-default rounded-md bg-white/[0.07] py-2.5 pl-3 pr-10 text-left shadow-md duration-200 hover:bg-white/[0.11] focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 sm:text-sm`}
         >
           <div className="flex flex-row">
             {text}
             <span className="ml-1 block cursor-pointer truncate font-semibold text-gray-300">
-              {!isSelected || isSelected.length === 0 && "None"}
-              {isSelected && isSelected.length > 0 && isSelected[0].name} {isSelected.length>1 && `(+${isSelected.length-1})`}
+              {!isSelected || isSelected.length === 0 && "Select"}
+              {isSelected && isSelected.length > 0 && isSelected[0].primaryText} {isSelected.length > 1 && `(+${isSelected.length - 1})`}
             </span>
           </div>
           {data && (
@@ -59,28 +63,25 @@ const ListBoxMultiple = ({
             leaveTo="opacity-0"
           >
             <Listbox.Options className="no-scrollbar::-webkit-scrollbar absolute z-[70] mt-1 max-h-60 w-full overflow-auto rounded-md border border-mineshaft-700 bg-bunker p-2 text-base shadow-lg ring-1 ring-black ring-opacity-5 no-scrollbar focus:outline-none sm:text-sm">
-              {data.map((person, personIdx) => (
+              {data.map((user, personIdx) => (
                 <Listbox.Option
-                  key={`${person}.${personIdx + 1}`}
+                  key={`${user}.${personIdx + 1}`}
                   className={({ active, selected }) =>
-                    `relative my-0.5 cursor-default select-none rounded-md py-2 pl-10 pr-4 ${
-                      selected ? "bg-white/10 font-bold text-gray-400" : ""
-                    } ${
-                      active && !selected
-                        ? "cursor-pointer bg-white/5 text-mineshaft-200"
-                        : "text-gray-400"
+                    `relative my-0.5 cursor-default select-none rounded-md py-2 pl-10 pr-4 ${selected ? "bg-white/10 font-bold text-gray-400" : ""
+                    } ${active && !selected
+                      ? "cursor-pointer bg-white/5 text-mineshaft-200"
+                      : "text-gray-400"
                     } `
                   }
-                  value={person}
+                  value={user}
                 >
                   {({ selected }) => (
                     <>
                       <span
-                        className={`block truncate text-primary${
-                          selected ? "font-medium" : "font-normal"
-                        }`}
+                        className={`block truncate text-primary${selected ? "font-medium" : "font-normal"
+                          }`}
                       >
-                        {person.name}
+                        {user.primaryText} {user.secondaryText && ` (${user.secondaryText})`}
                       </span>
                       {selected ? (
                         <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 text-primary">

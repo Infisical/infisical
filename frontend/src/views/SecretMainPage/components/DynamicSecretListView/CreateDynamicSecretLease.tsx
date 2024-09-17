@@ -177,14 +177,14 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
   }
 
   if (provider === DynamicSecretProviders.AzureEntraId) {
-    const { userId, password } = data as {
-      userId: string;
+    const { email, password } = data as {
+      email: string;
       password: string;
     };
 
     return (
       <div>
-        <OutputDisplay label="UserId" value={userId} />
+        <OutputDisplay label="Email" value={email} />
         <OutputDisplay
           label="Password"
           value={password}

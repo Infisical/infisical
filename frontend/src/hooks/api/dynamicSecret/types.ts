@@ -184,6 +184,7 @@ export type TDynamicSecretProvider =
       inputs: {
         tenantId: string;
         userId: string;
+        email: string;
       };
   };
 

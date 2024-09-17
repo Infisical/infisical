@@ -22,6 +22,12 @@ export const dynamicSecretKeys = {
     [{ projectSlug, path, environmentSlug, name }, "dynamic-secret-details"] as const
 };
 
+type EntraIDUser = {
+  name: string;
+  id: string;
+  email: string;
+};
+
 export const useGetDynamicSecrets = ({
   projectSlug,
   environmentSlug,
@@ -74,15 +80,17 @@ export const useGetDynamicSecretDetails = ({
 
 export const useGetDynamicSecretProviderData = ({
   provider,
-  dataFetchType
+  dataFetchType,
+  enabled
 }: {
   provider: TDynamicSecretProvider,
-  dataFetchType: "Users"
+  dataFetchType: "Users",
+  enabled: boolean
 }) => {
   return useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const { data } = await apiRequest.post<{ data: { users: [{ name: string, id: string }] } }>(
+      const { data } = await apiRequest.post<{ data: { users: [EntraIDUser] } }>(
         "/api/v1/dynamic-secrets/fetch-provider-data",
         {
           provider,
@@ -90,7 +98,8 @@ export const useGetDynamicSecretProviderData = ({
         }
       );
       return data.data.users;
-    }
+    },
+    enabled
   });
 };
 
