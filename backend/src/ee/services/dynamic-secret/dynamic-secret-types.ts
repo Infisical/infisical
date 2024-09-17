@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { TProjectPermission } from "@app/lib/types";
 
-import { DynamicSecretProviderSchema } from "./providers/models";
+import { DynamicSecretDataFetchTypes, DynamicSecretProviderSchema } from "./providers/models";
 
 // various status for dynamic secret that happens in background
 export enum DynamicSecretStatus {
@@ -52,3 +52,8 @@ export type TListDynamicSecretsDTO = {
   environmentSlug: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TDynamicSecretsFetchDataDTO = {
+  provider: TProvider;
+  dataFetchType: DynamicSecretDataFetchTypes;
+};

@@ -6,6 +6,7 @@ import { apiRequest } from "@app/config/request";
 import {
   TDetailsDynamicSecretDTO,
   TDynamicSecret,
+  TDynamicSecretProvider,
   TGetDynamicSecretsByEnvsDTO,
   TListDynamicSecretDTO
 } from "./types";
@@ -67,6 +68,28 @@ export const useGetDynamicSecretDetails = ({
       });
 
       return data.dynamicSecret;
+    }
+  });
+};
+
+export const useGetDynamicSecretProviderData = ({
+  provider,
+  dataFetchType
+}: {
+  provider: TDynamicSecretProvider,
+  dataFetchType: "Users"
+}) => {
+  return useQuery({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ data: { users: [{ name: string, id: string }] } }>(
+        "/api/v1/dynamic-secrets/fetch-provider-data",
+        {
+          provider,
+          dataFetchType
+        }
+      );
+      return data.data.users;
     }
   });
 };

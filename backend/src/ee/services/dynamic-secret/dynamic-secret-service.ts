@@ -17,6 +17,7 @@ import {
   TCreateDynamicSecretDTO,
   TDeleteDynamicSecretDTO,
   TDetailsDynamicSecretDTO,
+  TDynamicSecretsFetchDataDTO,
   TListDynamicSecretsDTO,
   TUpdateDynamicSecretDTO
 } from "./dynamic-secret-types";
@@ -332,11 +333,20 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
+  const fetchData = async ({ provider, dataFetchType }: TDynamicSecretsFetchDataDTO) => {
+    const selectedProvider = dynamicSecretProviders[provider.type];
+    if (selectedProvider.fetchData) {
+      const data = selectedProvider.fetchData(provider.inputs, dataFetchType);
+      return data;
+    }
+  };
+
   return {
     create,
     updateByName,
     deleteByName,
     getDetails,
-    list
+    list,
+    fetchData
   };
 };

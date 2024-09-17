@@ -3,7 +3,10 @@ import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
-import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
+import {
+  DynamicSecretDataFetchTypes,
+  DynamicSecretProviderSchema
+} from "@app/ee/services/dynamic-secret/providers/models";
 import { DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -74,6 +77,32 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         ...req.body
       });
       return { dynamicSecret: dynamicSecretCfg };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/fetch-provider-data",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        dataFetchType: z.string().min(1).describe("Type of data to fetch"),
+        provider: DynamicSecretProviderSchema.describe(DYNAMIC_SECRETS.CREATE.provider)
+      }),
+      response: {
+        200: z.object({
+          data: z.unknown()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const dataFetchType =
+        DynamicSecretDataFetchTypes[req.body.dataFetchType as keyof typeof DynamicSecretDataFetchTypes];
+      const data = await server.services.dynamicSecret.fetchData({ provider: req.body.provider, dataFetchType });
+      return data;
     }
   });
 
