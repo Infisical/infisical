@@ -6,6 +6,9 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, stripUndefinedInWhere } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
+
+import { EventType } from "./audit-log-types";
 
 export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
 
@@ -25,7 +28,24 @@ export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
 
   const find = async (
-    { orgId, projectId, userAgentType, startDate, endDate, limit = 20, offset = 0, actor, eventType }: TFindQuery,
+    {
+      orgId,
+      projectId,
+      userAgentType,
+      startDate,
+      endDate,
+      limit = 20,
+      offset = 0,
+      actorId,
+      actorType,
+      eventType,
+      eventMetadata
+    }: Omit<TFindQuery, "actor" | "eventType"> & {
+      actorId?: string;
+      actorType?: ActorType;
+      eventType?: EventType[];
+      eventMetadata?: Record<string, string>;
+    },
     tx?: Knex
   ) => {
     try {
@@ -34,7 +54,6 @@ export const auditLogDALFactory = (db: TDbClient) => {
           stripUndefinedInWhere({
             projectId,
             [`${TableName.AuditLog}.orgId`]: orgId,
-            eventType,
             userAgentType
           })
         )
@@ -52,8 +71,22 @@ export const auditLogDALFactory = (db: TDbClient) => {
         .offset(offset)
         .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
 
-      if (actor) {
-        void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actor]);
+      if (actorId) {
+        void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actorId]);
+      }
+
+      if (eventMetadata && Object.keys(eventMetadata).length) {
+        Object.entries(eventMetadata).forEach(([key, value]) => {
+          void sqlQuery.whereRaw(`"eventMetadata"->>'${key}' = ?`, [value]);
+        });
+      }
+
+      if (actorType) {
+        void sqlQuery.where("actor", actorType);
+      }
+
+      if (eventType?.length) {
+        void sqlQuery.whereIn("eventType", eventType);
       }
 
       if (startDate) {

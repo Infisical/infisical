@@ -42,7 +42,9 @@ export const UserAuditLogsSection = withPermission(
         <LogsSection
           showFilters={showFilter}
           filterClassName="bg-mineshaft-900 static"
-          presetActor={orgMembership.user.id}
+          presets={{
+            actorId: orgMembership.user.id
+          }}
           isOrgAuditLogs
         />
       </div>

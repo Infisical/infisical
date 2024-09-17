@@ -15,43 +15,41 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetAuditLogs } from "@app/hooks/api";
-import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
 import { LogsTableRow } from "./LogsTableRow";
 
 type Props = {
-  eventType?: EventType;
-  userAgentType?: UserAgentType;
-  actor?: string;
-  startDate?: Date;
-  endDate?: Date;
   isOrgAuditLogs?: boolean;
   showActorColumn: boolean;
+  filter?: TGetAuditLogsFilter;
+  remappedHeaders?: Partial<Record<TAuditLogTableHeader, string>>;
+  refetchInterval?: number;
 };
 
 const AUDIT_LOG_LIMIT = 15;
 
+const TABLE_HEADERS = ["Timestamp", "Event", "Project", "Actor", "Source", "Metadata"] as const;
+export type TAuditLogTableHeader = (typeof TABLE_HEADERS)[number];
+
 export const LogsTable = ({
-  eventType,
-  userAgentType,
   showActorColumn,
-  actor,
-  startDate,
-  endDate,
-  isOrgAuditLogs
+  isOrgAuditLogs,
+  filter,
+  remappedHeaders,
+  refetchInterval
 }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
     {
-      eventType,
-      userAgentType,
-      actor,
-      startDate,
-      endDate,
+      ...filter,
       limit: AUDIT_LOG_LIMIT
     },
-    !isOrgAuditLogs ? currentWorkspace?.id ?? "" : null
+    !isOrgAuditLogs ? currentWorkspace?.id ?? "" : null,
+    {
+      refetchInterval
+    }
   );
 
   const isEmpty = !isLoading && !data?.pages?.[0].length;
@@ -62,18 +60,24 @@ export const LogsTable = ({
         <Table>
           <THead>
             <Tr>
-              <Th>Timestamp</Th>
-              <Th>Event</Th>
-              {isOrgAuditLogs && <Th>Project</Th>}
-              {showActorColumn && <Th>Actor</Th>}
-              <Th>Source</Th>
-              <Th>Metadata</Th>
+              {TABLE_HEADERS.map((header, idx) => {
+                if (
+                  (header === "Project" && !isOrgAuditLogs) ||
+                  (header === "Actor" && !showActorColumn)
+                ) {
+                  return null;
+                }
+
+                return (
+                  <Th key={`table-header-${idx + 1}`}>{remappedHeaders?.[header] || header}</Th>
+                );
+              })}
             </Tr>
           </THead>
           <TBody>
             {!isLoading &&
               data?.pages?.map((group, i) => (
-                <Fragment key={`auditlog-item-${i + 1}`}>
+                <Fragment key={`audit-log-fragment-${i + 1}`}>
                   {group.map((auditLog) => (
                     <LogsTableRow
                       showActorColumn={showActorColumn}

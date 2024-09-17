@@ -23,25 +23,12 @@ export const auditLogServiceFactory = ({
   auditLogQueue,
   permissionService
 }: TAuditLogServiceFactoryDep) => {
-  const listAuditLogs = async ({
-    userAgentType,
-    eventType,
-    offset,
-    limit,
-    endDate,
-    startDate,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    auditLogActor
-  }: TListProjectAuditLogDTO) => {
-    if (projectId) {
+  const listAuditLogs = async ({ actorAuthMethod, actorId, actorOrgId, actor, filter }: TListProjectAuditLogDTO) => {
+    if (filter.projectId) {
       const { permission } = await permissionService.getProjectPermission(
         actor,
         actorId,
-        projectId,
+        filter.projectId,
         actorAuthMethod,
         actorOrgId
       );
@@ -65,14 +52,16 @@ export const auditLogServiceFactory = ({
     // If project ID is not provided, then we need to return all the audit logs for the organization itself.
 
     const auditLogs = await auditLogDAL.find({
-      startDate,
-      endDate,
-      limit,
-      offset,
-      eventType,
-      userAgentType,
-      actor: auditLogActor,
-      ...(projectId ? { projectId } : { orgId: actorOrgId })
+      startDate: filter.startDate,
+      endDate: filter.endDate,
+      limit: filter.limit,
+      offset: filter.offset,
+      eventType: filter.eventType,
+      userAgentType: filter.userAgentType,
+      actorId: filter.auditLogActorId,
+      actorType: filter.actorType,
+      eventMetadata: filter.eventMetadata,
+      ...(filter.projectId ? { projectId: filter.projectId } : { orgId: actorOrgId })
     });
 
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({

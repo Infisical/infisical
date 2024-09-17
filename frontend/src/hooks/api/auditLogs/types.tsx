@@ -3,6 +3,17 @@ import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
+export type TGetAuditLogsFilter = {
+  eventType?: EventType[];
+  userAgentType?: UserAgentType;
+  eventMetadata?: Record<string, string>;
+  actorType?: ActorType;
+  actorId?: string; // user ID format
+  startDate?: Date;
+  endDate?: Date;
+  limit: number;
+};
+
 interface UserActorMetadata {
   userId: string;
   email: string;
@@ -33,7 +44,13 @@ export interface IdentityActor {
   metadata: IdentityActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor;
+export interface PlatformActorMetadata {}
+export interface PlatformActor {
+  type: ActorType.PLATFORM;
+  metadata: PlatformActorMetadata;
+}
+
+export type Actor = UserActor | ServiceActor | IdentityActor | PlatformActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -761,6 +778,22 @@ interface GetProjectSlackConfig {
   };
 }
 
+export enum IntegrationSyncedEventTrigger {
+  MANUAL = "manual",
+  AUTO = "auto"
+}
+
+interface IntegrationSyncedEvent {
+  type: EventType.INTEGRATION_SYNCED;
+  metadata: {
+    integrationId: string;
+    lastSyncJobId: string;
+    lastUsed: Date;
+    syncMessage: string;
+    isSynced: boolean;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -838,7 +871,8 @@ export type Event =
   | CreateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
   | UpdateProjectSlackConfig
-  | GetProjectSlackConfig;
+  | GetProjectSlackConfig
+  | IntegrationSyncedEvent;
 
 export type AuditLog = {
   id: string;
@@ -855,13 +889,4 @@ export type AuditLog = {
     name: string;
     slug: string;
   };
-};
-
-export type AuditLogFilters = {
-  eventType?: EventType;
-  userAgentType?: UserAgentType;
-  actor?: string;
-  limit: number;
-  startDate?: Date;
-  endDate?: Date;
 };

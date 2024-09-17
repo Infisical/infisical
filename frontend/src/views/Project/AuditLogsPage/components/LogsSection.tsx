@@ -5,24 +5,38 @@ import { yupResolver } from "@hookform/resolvers/yup";
 
 import { UpgradePlanModal } from "@app/components/v2";
 import { useSubscription } from "@app/context";
-import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LogsFilter } from "./LogsFilter";
-import { LogsTable } from "./LogsTable";
+import { LogsTable, TAuditLogTableHeader } from "./LogsTable";
 import { AuditLogFilterFormData, auditLogFilterFormSchema } from "./types";
 
 type Props = {
-  presetActor?: string;
+  presets?: {
+    actorId?: string;
+    eventType?: EventType[];
+    actorType?: ActorType;
+    startDate?: Date;
+    endDate?: Date;
+    eventMetadata?: Record<string, string>;
+  };
+
   showFilters?: boolean;
   filterClassName?: string;
   isOrgAuditLogs?: boolean;
+  showActorColumn?: boolean;
+  remappedHeaders?: Partial<Record<TAuditLogTableHeader, string>>;
+  refetchInterval?: number;
 };
 
 export const LogsSection = ({
-  presetActor,
+  presets,
   filterClassName,
+  remappedHeaders,
   isOrgAuditLogs,
+  showActorColumn,
+  refetchInterval,
   showFilters
 }: Props) => {
   const { subscription } = useSubscription();
@@ -33,11 +47,12 @@ export const LogsSection = ({
   const { control, reset, watch } = useForm<AuditLogFilterFormData>({
     resolver: yupResolver(auditLogFilterFormSchema),
     defaultValues: {
-      actor: presetActor,
+      actor: presets?.actorId,
+      eventType: presets?.eventType || [],
       page: 1,
       perPage: 10,
-      startDate: new Date(new Date().setDate(new Date().getDate() - 1)), // day before today
-      endDate: new Date(new Date(Date.now()).setHours(23, 59, 59, 999)) // end of today
+      startDate: presets?.startDate ?? new Date(new Date().setDate(new Date().getDate() - 1)), // day before today
+      endDate: presets?.endDate ?? new Date(new Date(Date.now()).setHours(23, 59, 59, 999)) // end of today
     }
   });
 
@@ -47,7 +62,7 @@ export const LogsSection = ({
     }
   }, [subscription]);
 
-  const eventType = watch("eventType") as EventType | undefined;
+  const eventType = watch("eventType") as EventType[] | undefined;
   const userAgentType = watch("userAgentType") as UserAgentType | undefined;
   const actor = watch("actor");
 
@@ -59,19 +74,27 @@ export const LogsSection = ({
       {showFilters && (
         <LogsFilter
           className={filterClassName}
-          presetActor={presetActor}
+          presets={presets}
           control={control}
+          watch={watch}
           reset={reset}
         />
       )}
       <LogsTable
+        refetchInterval={refetchInterval}
+        remappedHeaders={remappedHeaders}
         isOrgAuditLogs={isOrgAuditLogs}
-        eventType={eventType}
-        userAgentType={userAgentType}
-        showActorColumn={!presetActor}
-        actor={actor}
-        startDate={startDate}
-        endDate={endDate}
+        showActorColumn={!!showActorColumn && !isOrgAuditLogs}
+        filter={{
+          eventMetadata: presets?.eventMetadata,
+          actorType: presets?.actorType,
+          limit: 15,
+          eventType,
+          userAgentType,
+          startDate,
+          endDate,
+          actorId: actor
+        }}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

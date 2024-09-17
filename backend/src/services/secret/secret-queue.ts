@@ -2,6 +2,8 @@
 import { AxiosError } from "axios";
 
 import { ProjectUpgradeStatus, ProjectVersion, TSecretSnapshotSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { Actor, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -21,6 +23,7 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { ActorType } from "../auth/auth-type";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
@@ -40,6 +43,7 @@ import { expandSecretReferencesFactory, getAllNestedSecretReferences } from "../
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TUserDALFactory } from "../user/user-dal";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDALFactory } from "./secret-dal";
@@ -71,6 +75,7 @@ type TSecretQueueFactoryDep = {
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   secretTagDAL: TSecretTagDALFactory;
+  userDAL: Pick<TUserDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
@@ -81,6 +86,7 @@ type TSecretQueueFactoryDep = {
   snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
   snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany" | "batchInsert">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TGetSecrets = {
@@ -106,6 +112,7 @@ export const secretQueueFactory = ({
   secretDAL,
   secretImportDAL,
   folderDAL,
+  userDAL,
   webhookDAL,
   projectEnvDAL,
   orgDAL,
@@ -125,7 +132,8 @@ export const secretQueueFactory = ({
   snapshotDAL,
   snapshotSecretV2BridgeDAL,
   secretApprovalRequestDAL,
-  keyStore
+  keyStore,
+  auditLogService
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -430,7 +438,9 @@ export const secretQueueFactory = ({
     return content;
   };
 
-  const syncIntegrations = async (dto: TGetSecrets & { deDupeQueue?: Record<string, boolean> }) => {
+  const syncIntegrations = async (
+    dto: TGetSecrets & { isManual?: boolean; actorId?: string; deDupeQueue?: Record<string, boolean> }
+  ) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
       attempts: 3,
       delay: 1000,
@@ -528,7 +538,7 @@ export const secretQueueFactory = ({
         }
       }
     );
-    await syncIntegrations({ secretPath, projectId, environment, deDupeQueue });
+    await syncIntegrations({ secretPath, projectId, environment, deDupeQueue, isManual: false });
     if (!excludeReplication) {
       await replicateSecrets({
         _deDupeReplicationQueue: deDupeReplicationQueue,
@@ -544,7 +554,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.IntegrationSync, async (job) => {
-    const { environment, projectId, secretPath, depth = 1, deDupeQueue = {} } = job.data;
+    const { environment, actorId, isManual, projectId, secretPath, depth = 1, deDupeQueue = {} } = job.data;
     if (depth > MAX_SYNC_SECRET_DEPTH) return;
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -693,6 +703,30 @@ export const secretQueueFactory = ({
         });
     }
 
+    const generateActor = async (): Promise<Actor> => {
+      if (isManual && actorId) {
+        const user = await userDAL.findById(actorId);
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        return {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            username: user.username,
+            userId: user.id
+          }
+        };
+      }
+
+      return {
+        type: ActorType.PLATFORM,
+        metadata: {}
+      };
+    };
+
     // akhilmhdh: this try catch is for lock release
     try {
       const secrets = shouldUseSecretV2Bridge
@@ -778,6 +812,21 @@ export const secretQueueFactory = ({
             }
           });
 
+          await auditLogService.createAuditLog({
+            projectId,
+            actor: await generateActor(),
+            event: {
+              type: EventType.INTEGRATION_SYNCED,
+              metadata: {
+                integrationId: integration.id,
+                isSynced: response?.isSynced ?? true,
+                lastSyncJobId: job?.id ?? "",
+                lastUsed: new Date(),
+                syncMessage: response?.syncMessage ?? ""
+              }
+            }
+          });
+
           await integrationDAL.updateById(integration.id, {
             lastSyncJobId: job.id,
             lastUsed: new Date(),
@@ -794,9 +843,23 @@ export const secretQueueFactory = ({
             (err instanceof AxiosError ? JSON.stringify(err?.response?.data) : (err as Error)?.message) ||
             "Unknown error occurred.";
 
+          await auditLogService.createAuditLog({
+            projectId,
+            actor: await generateActor(),
+            event: {
+              type: EventType.INTEGRATION_SYNCED,
+              metadata: {
+                integrationId: integration.id,
+                isSynced: false,
+                lastSyncJobId: job?.id ?? "",
+                lastUsed: new Date(),
+                syncMessage: message
+              }
+            }
+          });
+
           await integrationDAL.updateById(integration.id, {
             lastSyncJobId: job.id,
-            lastUsed: new Date(),
             syncMessage: message,
             isSynced: false
           });

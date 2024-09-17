@@ -39,6 +39,10 @@ export type TCreateIntegrationDTO = {
   };
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetIntegrationDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateIntegrationDTO = {
   id: string;
   app?: string;

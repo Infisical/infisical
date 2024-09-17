@@ -5,19 +5,23 @@ import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 
 export type TListProjectAuditLogDTO = {
-  auditLogActor?: string;
-  projectId?: string;
-  eventType?: string;
-  startDate?: string;
-  endDate?: string;
-  userAgentType?: string;
-  limit?: number;
-  offset?: number;
+  filter: {
+    userAgentType?: UserAgentType;
+    eventType?: EventType[];
+    offset?: number;
+    limit: number;
+    endDate?: string;
+    startDate?: string;
+    projectId?: string;
+    auditLogActorId?: string;
+    actorType?: ActorType;
+    eventMetadata?: Record<string, string>;
+  };
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateAuditLogDTO = {
   event: Event;
-  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor;
+  actor: UserActor | IdentityActor | ServiceActor | ScimClientActor | PlatformActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -177,7 +181,8 @@ export enum EventType {
   UPDATE_SLACK_INTEGRATION = "update-slack-integration",
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
-  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config"
+  UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
+  INTEGRATION_SYNCED = "integration-synced"
 }
 
 interface UserActorMetadata {
@@ -198,6 +203,8 @@ interface IdentityActorMetadata {
 
 interface ScimClientActorMetadata {}
 
+interface PlatformActorMetadata {}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -206,6 +213,11 @@ export interface UserActor {
 export interface ServiceActor {
   type: ActorType.SERVICE;
   metadata: ServiceActorMetadata;
+}
+
+export interface PlatformActor {
+  type: ActorType.PLATFORM;
+  metadata: PlatformActorMetadata;
 }
 
 export interface IdentityActor {
@@ -218,7 +230,7 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor;
+export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -1518,6 +1530,16 @@ interface GetProjectSlackConfig {
     id: string;
   };
 }
+interface IntegrationSyncedEvent {
+  type: EventType.INTEGRATION_SYNCED;
+  metadata: {
+    integrationId: string;
+    lastSyncJobId: string;
+    lastUsed: Date;
+    syncMessage: string;
+    isSynced: boolean;
+  };
+}
 
 export type Event =
   | GetSecretsEvent
@@ -1657,4 +1679,5 @@ export type Event =
   | DeleteSlackIntegration
   | GetSlackIntegration
   | UpdateProjectSlackConfig
-  | GetProjectSlackConfig;
+  | GetProjectSlackConfig
+  | IntegrationSyncedEvent;

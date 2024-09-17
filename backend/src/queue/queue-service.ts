@@ -91,6 +91,8 @@ export type TQueueJobTypes = {
   [QueueName.IntegrationSync]: {
     name: QueueJobs.IntegrationSync;
     payload: {
+      isManual?: boolean;
+      actorId?: string;
       projectId: string;
       environment: string;
       secretPath: string;
