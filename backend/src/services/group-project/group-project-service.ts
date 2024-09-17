@@ -402,6 +402,12 @@ export const groupProjectServiceFactory = ({
       groupSlug
     });
 
+    if (!groupMembership) {
+      throw new NotFoundError({
+        message: "Cannot find group membership"
+      });
+    }
+
     return groupMembership;
   };
 
