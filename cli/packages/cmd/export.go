@@ -94,9 +94,9 @@ var exportCmd = &cobra.Command{
 			IncludeImport: includeImports,
 		}
 
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+		if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 			request.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 			request.UniversalAuthAccessToken = token.Token
 		}
 
@@ -141,9 +141,9 @@ var exportCmd = &cobra.Command{
 
 			authParams := models.ExpandSecretsAuthentication{}
 
-			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+			if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 				authParams.UniversalAuthAccessToken = token.Token
 			}
 

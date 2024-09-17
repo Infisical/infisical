@@ -87,9 +87,9 @@ var secretsCmd = &cobra.Command{
 			Recursive:     recursive,
 		}
 
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+		if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 			request.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 			request.UniversalAuthAccessToken = token.Token
 		}
 
@@ -106,9 +106,10 @@ var secretsCmd = &cobra.Command{
 
 		if shouldExpandSecrets {
 			authParams := models.ExpandSecretsAuthentication{}
-			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+
+			if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+			} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 				authParams.UniversalAuthAccessToken = token.Token
 			}
 
@@ -160,19 +161,19 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if (token == nil) {
+		if token == nil {
 			util.RequireLocalWorkspaceFile()
 		}
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()	
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
 		}
 
-				projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
@@ -188,7 +189,7 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		var secretOperations []models.SecretSetOperation
-		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		if util.ShouldUseInfisicalToken(token, nil) {
 			if projectId == "" {
 				util.PrintErrorMessageAndExit("When using service tokens or machine identities, you must set the --projectId flag")
 			}
@@ -282,7 +283,7 @@ var secretsDeleteCmd = &cobra.Command{
 			projectId = workspaceFile.WorkspaceId
 		}
 
-		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
+		if util.ShouldUseInfisicalToken(token, nil) {
 			httpClient.SetAuthToken(token.Token)
 		} else {
 			util.RequireLogin()
@@ -390,9 +391,9 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		Recursive:     recursive,
 	}
 
-	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+	if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 		request.InfisicalToken = token.Token
-	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+	} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 		request.UniversalAuthAccessToken = token.Token
 	}
 
@@ -409,9 +410,10 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 
 	if shouldExpand {
 		authParams := models.ExpandSecretsAuthentication{}
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+
+		if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 			authParams.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 			authParams.UniversalAuthAccessToken = token.Token
 		}
 
@@ -485,9 +487,9 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		IncludeImport: true,
 	}
 
-	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+	if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 		request.InfisicalToken = token.Token
-	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+	} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 		request.UniversalAuthAccessToken = token.Token
 	}
 

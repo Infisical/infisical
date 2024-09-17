@@ -63,8 +63,9 @@ type DynamicSecretLease struct {
 }
 
 type TokenDetails struct {
-	Type  string
-	Token string
+	Type         string
+	Token        string
+	PassedAsFlag bool
 }
 
 type SingleFolder struct {

@@ -1,5 +1,12 @@
 package util
 
+import (
+	"fmt"
+
+	"github.com/Infisical/infisical-merge/packages/config"
+	"github.com/Infisical/infisical-merge/packages/models"
+)
+
 type AuthStrategyType string
 
 var AuthStrategy = struct {
@@ -42,4 +49,40 @@ func IsAuthMethodValid(authMethod string, allowUserAuth bool) (isValid bool, str
 		}
 	}
 	return false, ""
+}
+
+func ShouldUseInfisicalToken(token *models.TokenDetails, validTokenTypes []string) bool {
+
+	if token == nil {
+		return false
+	}
+
+	// If nil is passed, we assume both service and universal tokens are acceptable.
+	if validTokenTypes == nil {
+		validTokenTypes = []string{SERVICE_TOKEN_IDENTIFIER, UNIVERSAL_AUTH_TOKEN_IDENTIFIER}
+	}
+
+	for _, tokenType := range validTokenTypes {
+		if token.Type != tokenType {
+			continue
+		}
+
+		details, err := GetCurrentLoggedInUserDetails()
+		if err == nil && details.IsUserLoggedIn && !details.LoginExpired && !config.INFISICAL_SILENT_MODE {
+
+			var usingFrom string
+			if token.PassedAsFlag {
+				usingFrom = "--token flag"
+			} else {
+				usingFrom = "INFISICAL_TOKEN environment variable"
+			}
+			PrintWarning(fmt.Sprintf("You are currently logged in, but the command will be using the token provided from the %s.", usingFrom))
+
+		}
+
+		return true
+	}
+
+	return false
+
 }

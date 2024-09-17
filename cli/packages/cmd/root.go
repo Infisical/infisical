@@ -44,6 +44,7 @@ func init() {
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
 		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
+
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -51,6 +52,8 @@ func init() {
 		if !util.IsRunningInDocker() && !silent {
 			util.CheckForUpdate()
 		}
+
+		config.INFISICAL_SILENT_MODE = silent
 	}
 
 	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment

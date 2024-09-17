@@ -439,9 +439,9 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 
 func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
 
-	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+	if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 		request.InfisicalToken = token.Token
-	} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+	} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 		request.UniversalAuthAccessToken = token.Token
 	}
 
@@ -461,9 +461,9 @@ func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, proje
 
 		authParams := models.ExpandSecretsAuthentication{}
 
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
+		if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
 			authParams.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
+		} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
 			authParams.UniversalAuthAccessToken = token.Token
 		}
 
