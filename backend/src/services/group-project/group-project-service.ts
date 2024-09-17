@@ -28,10 +28,7 @@ import {
 } from "./group-project-types";
 
 type TGroupProjectServiceFactoryDep = {
-  groupProjectDAL: Pick<
-    TGroupProjectDALFactory,
-    "findOne" | "transaction" | "create" | "delete" | "findByProjectId" | "findByGroupSlugAndProject"
-  >;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findOne" | "transaction" | "create" | "delete" | "findByProjectId">;
   groupProjectMembershipRoleDAL: Pick<
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
@@ -401,9 +398,8 @@ export const groupProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
 
-    const groupMembership = await groupProjectDAL.findByGroupSlugAndProject({
-      groupSlug,
-      projectId: project.id
+    const [groupMembership] = await groupProjectDAL.findByProjectId(project.id, {
+      groupSlug
     });
 
     return groupMembership;

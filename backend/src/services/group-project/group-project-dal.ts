@@ -10,113 +10,15 @@ export type TGroupProjectDALFactory = ReturnType<typeof groupProjectDALFactory>;
 export const groupProjectDALFactory = (db: TDbClient) => {
   const groupProjectOrm = ormify(db, TableName.GroupProjectMembership);
 
-  const findByGroupSlugAndProject = async (
-    { groupSlug, projectId }: { groupSlug: string; projectId: string },
-    tx?: Knex
-  ) => {
-    try {
-      // this is a workaround so that the order of group roles is preserved as a necessary
-      // requirement for our terraform provider
-
-      /* Approach:
-        1. First we query the group project membership along with the attached roles
-        2. Then we have a separate query to fetch the custom role details which we manually augment below
-       */
-      const rawGroupResult = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
-        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
-        .where(`${TableName.Groups}.slug`, "=", groupSlug)
-        .join(TableName.Groups, `${TableName.GroupProjectMembership}.groupId`, `${TableName.Groups}.id`)
-        .join(
-          TableName.GroupProjectMembershipRole,
-          `${TableName.GroupProjectMembershipRole}.projectMembershipId`,
-          `${TableName.GroupProjectMembership}.id`
-        )
-        .select(
-          db.ref("id").withSchema(TableName.GroupProjectMembership),
-          db.ref("createdAt").withSchema(TableName.GroupProjectMembership),
-          db.ref("updatedAt").withSchema(TableName.GroupProjectMembership),
-          db.ref("id").as("groupId").withSchema(TableName.Groups),
-          db.ref("name").as("groupName").withSchema(TableName.Groups),
-          db.ref("slug").as("groupSlug").withSchema(TableName.Groups),
-          db.ref("id").withSchema(TableName.GroupProjectMembership),
-          db.ref("role").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("id").withSchema(TableName.GroupProjectMembershipRole).as("membershipRoleId"),
-          db.ref("customRoleId").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryMode").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("isTemporary").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryRange").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryAccessStartTime").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.GroupProjectMembershipRole)
-        );
-
-      // IMPORTANT NOTE: we do this separately because this breaks the order of the group project roles
-      const customRoleDetails = await (tx || db.replicaNode())(TableName.ProjectRoles)
-        .whereIn("id", rawGroupResult.map((entry) => entry.customRoleId) as string[])
-        .select("id", "slug", "name");
-
-      const groupProjectMembershipRoleToCustomRole: Record<string, { name: string; slug: string }> = {};
-      customRoleDetails.forEach(
-        // eslint-disable-next-line no-return-assign
-        (entry) =>
-          (groupProjectMembershipRoleToCustomRole[entry.id] = {
-            name: entry.name,
-            slug: entry.slug
-          })
-      );
-
-      const members = sqlNestRelationships({
-        data: rawGroupResult,
-        parentMapper: ({ groupId, groupName, id, createdAt, updatedAt }) => ({
-          id,
-          groupId,
-          createdAt,
-          updatedAt,
-          group: {
-            id: groupId,
-            name: groupName,
-            slug: groupSlug
-          }
-        }),
-        key: "id",
-        childrenMapper: [
-          {
-            label: "roles" as const,
-            key: "membershipRoleId",
-            mapper: ({
-              role,
-              customRoleId,
-              membershipRoleId,
-              temporaryRange,
-              temporaryMode,
-              temporaryAccessEndTime,
-              temporaryAccessStartTime,
-              isTemporary
-            }) => ({
-              id: membershipRoleId,
-              role,
-              customRoleId,
-              customRoleName: customRoleId && groupProjectMembershipRoleToCustomRole[customRoleId]?.name,
-              customRoleSlug: customRoleId && groupProjectMembershipRoleToCustomRole[customRoleId]?.slug,
-              temporaryRange,
-              temporaryMode,
-              temporaryAccessEndTime,
-              temporaryAccessStartTime,
-              isTemporary
-            })
-          }
-        ]
-      });
-
-      return members[0];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByGroupSlugAndProject" });
-    }
-  };
-
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
+  const findByProjectId = async (projectId: string, filter?: { groupSlug?: string }, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .where((qb) => {
+          if (filter?.groupSlug) {
+            void qb.where(`${TableName.Groups}.slug`, "=", filter.groupSlug);
+          }
+        })
         .join(TableName.Groups, `${TableName.GroupProjectMembership}.groupId`, `${TableName.Groups}.id`)
         .join(
           TableName.GroupProjectMembershipRole,
@@ -324,5 +226,5 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     return members;
   };
 
-  return { ...groupProjectOrm, findByProjectId, findByUserId, findAllProjectGroupMembers, findByGroupSlugAndProject };
+  return { ...groupProjectOrm, findByProjectId, findByUserId, findAllProjectGroupMembers };
 };
