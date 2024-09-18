@@ -256,6 +256,19 @@ export const groupProjectServiceFactory = ({
     const projectGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
     if (!projectGroup) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
 
+    for await (const { role: requestedRoleChange } of roles) {
+      const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+        requestedRoleChange,
+        project.id
+      );
+
+      const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, rolePermission);
+
+      if (!hasRequiredPrivileges) {
+        throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
+      }
+    }
+
     // validate custom roles input
     const customInputRoles = roles.filter(
       ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
