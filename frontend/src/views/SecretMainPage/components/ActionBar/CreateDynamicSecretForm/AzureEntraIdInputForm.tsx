@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
-import ListBoxMultiple from "@app/components/basic/ListboxMultiple";
 import { TtlFormLabel } from "@app/components/features";
+import { FormLabelToolTip } from "@app/components/features/FormLabelToolTip";
 import { createNotification } from "@app/components/notifications";
 import {
     Button,
@@ -15,11 +15,19 @@ import {
     Input,
     Spinner,
 } from "@app/components/v2";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@app/components/v2/Dropdown/Dropdown";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { AzureEntraIdSetup } from "./AzureEntraIdSetup";
+
 const formSchema = z.object({
+    selectedUsers: z.array(z.object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        email: z.string().min(1),
+    })),
     provider: z.object({
         tenantId: z.string().min(1),
     }),
@@ -55,12 +63,6 @@ type Props = {
     environment: string;
 };
 
-type EntraIDUser = {
-    name: string;
-    id: string;
-    email: string;
-};
-
 export const AzureEntraIdInputForm = ({
     onCompleted,
     onCancel,
@@ -77,25 +79,11 @@ export const AzureEntraIdInputForm = ({
         resolver: zodResolver(formSchema)
     });
     const tenantId = watch("provider.tenantId");
-    const [selectedUsers, setSelectedUsers] = useState<EntraIDUser[]>([]);
-    const { data, isLoading, isFetched, isError, isFetching } = useGetDynamicSecretProviderData({ dataFetchType: "Users", provider: {type: DynamicSecretProviders.AzureEntraId, inputs: { userId : "unused", email: "unused", tenantId }}, enabled: !!tenantId });
-    const mappedUserList = data?.map((user) => ({
-        primaryText: user.name,
-        secondaryText: user.email,
-        id: user.id,
-      }));
-    const handleChange = (selected: { primaryText: string; secondaryText: string; id: string }[]) => {
-        // Map back to EntraIDUser based on the id or other attributes
-        const selectedMappedUsers = data?.filter(user =>
-          selected.some(selectedItem => selectedItem.id === user.id)
-        );
-        if(selectedMappedUsers){
-            setSelectedUsers(selectedMappedUsers);
-        }
-      };
+    const [onSetup, setOnSetup] = useState(true);
+    const { data, isLoading, isFetched, isError, isFetching } = useGetDynamicSecretProviderData({ dataFetchType: "Users", provider: { type: DynamicSecretProviders.AzureEntraId, inputs: { userId: "unused", email: "unused", tenantId } }, enabled: !!tenantId });
     const createDynamicSecret = useCreateDynamicSecret();
 
-    const handleCreateDynamicSecret = async ({ name, provider, maxTTL, defaultTTL }: TForm) => {
+    const handleCreateDynamicSecret = async ({ name, selectedUsers, provider, maxTTL, defaultTTL }: TForm) => {
         // wait till previous request is finished
         if (createDynamicSecret.isLoading) return;
         try {
@@ -121,7 +109,12 @@ export const AzureEntraIdInputForm = ({
 
     return (
         <div>
-            <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
+            {onSetup && <AzureEntraIdSetup
+                onCompleted={() => { setOnSetup(false); }}
+                onCancel={onCancel}
+            />
+            }
+            {!onSetup && <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
                 <div>
                     <div className="flex items-center space-x-2">
                         <div className="flex-grow">
@@ -192,7 +185,7 @@ export const AzureEntraIdInputForm = ({
                                             <Input {...field} placeholder="Tenant Id from Azure Entra ID App installation" />
                                         </FormControl>
                                     )}
-                                
+
                                 />
                             </div>
                         </div>
@@ -202,15 +195,55 @@ export const AzureEntraIdInputForm = ({
                             Select Users
                         </div>
                         <div className="flex flex-col">
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-4">
                                 {
-                                    tenantId && !isError && !isFetching && isFetched && data && mappedUserList &&
-                                    <ListBoxMultiple
-                                        isSelected={mappedUserList.filter(user =>
-                                        selectedUsers.some(selectedUser => selectedUser.id === user.id)
+                                    tenantId && !isError && !isFetching && isFetched && data &&
+                                    <Controller
+                                        control={control}
+                                        name="selectedUsers"
+                                        render={({ field: { value, onChange }, fieldState: { error } }) => (
+                                            <FormControl
+                                                label={<FormLabelToolTip content="We create a secret for each user" label="Select Users" linkToMore=""/>}
+                                                isRequired
+                                                isError={Boolean(error)}
+                                                errorText={error?.message}
+                                            >
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild className="w-72">
+                                                        <Input
+                                                            isReadOnly
+                                                            value={value?.length ? `${value.length} selected` : "None"}
+                                                            className="text-left"
+                                                        />
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="start"
+                                                        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                                                    >
+                                                        {data.map((user) => {
+                                                            const ids = value?.map((selectedUser) => selectedUser.id)
+                                                            const isChecked = ids?.includes(user.id);
+                                                            return (
+                                                                <DropdownMenuItem
+                                                                    onClick={(evt) => {
+                                                                        evt.preventDefault();
+                                                                        onChange(
+                                                                            isChecked
+                                                                                ? value?.filter((el) => el.id !== user.id)
+                                                                                : [...(value || []), user]
+                                                                        );
+                                                                    }}
+                                                                    key={`create-policy-members-${user.id}`}
+                                                                    iconPos="right"
+                                                                    icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                                                                >
+                                                                    {user.name} <br /> {`(${user.email})`}
+                                                                </DropdownMenuItem>
+                                                            );
+                                                        })}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </FormControl>
                                         )}
-                                        onChange={handleChange}
-                                        data={mappedUserList}
                                     />
                                 }
                                 {
@@ -230,11 +263,15 @@ export const AzureEntraIdInputForm = ({
                     <Button type="submit" isLoading={isSubmitting} isDisabled={isLoading || isError}>
                         Submit
                     </Button>
+                    <Button variant="outline_bg" onClick={() => { setOnSetup(true); }}>
+                        Back
+                    </Button>
                     <Button variant="outline_bg" onClick={onCancel}>
                         Cancel
                     </Button>
                 </div>
             </form>
+            }
         </div>
     );
 };

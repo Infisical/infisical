@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DiRedis } from "react-icons/di";
-import { SiApachecassandra, SiElasticsearch, SiMongodb, SiRabbitmq } from "react-icons/si";
+import { SiApachecassandra, SiElasticsearch, SiMicrosoftazure, SiMongodb, SiRabbitmq } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,7 +12,6 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
-import { AzureEntraIdSetup } from "./AzureEntraIdSetup";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
@@ -31,7 +30,6 @@ type Props = {
 
 enum WizardSteps {
   SelectProvider = "select-provider",
-  ProviderSetup = "provider-setup",
   ProviderInputs = "provider-inputs"
 }
 
@@ -82,10 +80,9 @@ const DYNAMIC_SECRET_LIST = [
     title: "RabbitMQ"
   },
   {
-    icon: <SiRabbitmq size="1.5rem" />,
+    icon: <SiMicrosoftazure size="1.5rem" />,
     provider: DynamicSecretProviders.AzureEntraId,
     title: "Azure Entra ID",
-    hasSetupStep: true
   }
 ];
 
@@ -123,7 +120,7 @@ export const CreateDynamicSecretForm = ({
             >
               <div className="mb-4 text-mineshaft-300">Select a service to connect to:</div>
               <div className="flex flex-wrap items-center gap-4">
-                {DYNAMIC_SECRET_LIST.map(({ icon, provider, title, hasSetupStep }) => (
+                {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
                     className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
@@ -131,20 +128,11 @@ export const CreateDynamicSecretForm = ({
                     tabIndex={0}
                     onClick={() => {
                       setSelectedProvider(provider);
-                      if(hasSetupStep){
-                        setWizardStep(WizardSteps.ProviderSetup);
-                      } else {
-                        setWizardStep(WizardSteps.ProviderInputs);
-                      }
+                      setWizardStep(WizardSteps.ProviderInputs);
                     }}
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         setSelectedProvider(provider);
-                        setWizardStep(WizardSteps.ProviderInputs);
-                      }
-                      if(hasSetupStep){
-                        setWizardStep(WizardSteps.ProviderSetup);
-                      } else {
                         setWizardStep(WizardSteps.ProviderInputs);
                       }
                     }}
@@ -156,23 +144,6 @@ export const CreateDynamicSecretForm = ({
               </div>
             </motion.div>
           )}
-          {
-            wizardStep === WizardSteps.ProviderSetup && selectedProvider === DynamicSecretProviders.AzureEntraId
-            && (
-              <motion.div
-              key="dynamic-azure-entra-id-setup"
-              transition={{ duration: 0.1 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: -30 }}
-            >
-              <AzureEntraIdSetup
-                onCompleted={() => { setWizardStep(WizardSteps.ProviderInputs) }}
-                onCancel={handleFormReset}
-              />
-              </motion.div>
-            )
-          }
           {wizardStep === WizardSteps.ProviderInputs &&
             selectedProvider === DynamicSecretProviders.SqlDatabase && (
               <motion.div
