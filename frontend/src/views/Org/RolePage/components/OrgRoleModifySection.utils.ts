@@ -32,6 +32,8 @@ export const formSchema = z.object({
           create: z.boolean().optional()
         })
         .optional(),
+
+      "audit-logs": generalPermissionSchema,
       member: generalPermissionSchema,
       groups: generalPermissionSchema,
       role: generalPermissionSchema,
