@@ -55,8 +55,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
         // eslint-disable-next-line func-names
         .where(function () {
           if (orgId) {
-            void this.where(`${TableName.Project}.orgId`, orgId);
-            // .orWhere(`${TableName.AuditLog}.orgId`, orgId);
+            void this.where(`${TableName.Project}.orgId`, orgId).orWhere(`${TableName.AuditLog}.orgId`, orgId);
           } else if (projectId) {
             void this.where(`${TableName.AuditLog}.projectId`, projectId);
           }
@@ -114,10 +113,12 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
         return {
           ...AuditLogsSchema.parse(doc),
-          project: {
-            name: projectDoc.projectName,
-            slug: projectDoc.projectSlug
-          }
+          ...(projectDoc?.projectSlug && {
+            project: {
+              name: projectDoc.projectName,
+              slug: projectDoc.projectSlug
+            }
+          })
         };
       });
     } catch (error) {

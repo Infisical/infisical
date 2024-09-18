@@ -122,10 +122,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           })
             .merge(
               z.object({
-                project: z.object({
-                  name: z.string(),
-                  slug: z.string()
-                }),
+                project: z
+                  .object({
+                    name: z.string(),
+                    slug: z.string()
+                  })
+                  .optional(),
                 event: z.object({
                   type: z.string(),
                   metadata: z.any()
