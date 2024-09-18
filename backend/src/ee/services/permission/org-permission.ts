@@ -1,7 +1,5 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 
-import { conditionsMatcher } from "@app/lib/casl";
-
 export enum OrgPermissionActions {
   Read = "read",
   Create = "create",
@@ -48,7 +46,7 @@ export type OrgPermissionSet =
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
@@ -115,13 +113,13 @@ const buildAdminPermission = () => {
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
-  return build({ conditionsMatcher });
+  return rules;
 };
 
 export const orgAdminPermissions = buildAdminPermission();
 
 const buildMemberPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
@@ -142,14 +140,14 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
-  return build({ conditionsMatcher });
+  return rules;
 };
 
 export const orgMemberPermissions = buildMemberPermission();
 
 const buildNoAccessPermission = () => {
-  const { build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
-  return build({ conditionsMatcher });
+  const { rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  return rules;
 };
 
 export const orgNoAccessPermissions = buildNoAccessPermission();
