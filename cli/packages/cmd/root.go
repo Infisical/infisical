@@ -68,7 +68,7 @@ func init() {
 				} else {
 					usingFrom = "INFISICAL_TOKEN environment variable"
 				}
-				util.PrintWarning(fmt.Sprintf("You are currently logged in, but the command will be using the token provided from the %s.", usingFrom))
+				util.PrintWarning(fmt.Sprintf("Your logged-in session is being overwritten by the token provided from the %s", usingFrom))
 
 			}
 		}
