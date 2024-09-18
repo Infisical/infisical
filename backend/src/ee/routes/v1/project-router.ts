@@ -101,7 +101,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(AUDIT_LOGS.EXPORT.workspaceId)
+        workspaceId: z.string().trim().describe(AUDIT_LOGS.EXPORT.projectId)
       }),
       querystring: z.object({
         eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
