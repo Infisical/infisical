@@ -25,6 +25,21 @@ export const UserProvider = ({ children }: Props): JSX.Element => {
     };
   }, [data, isLoading]);
 
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          decoding="async"
+          loading="lazy"
+          alt="infisical loading indicator"
+        />
+      </div>
+    );
+  }
+
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
 
