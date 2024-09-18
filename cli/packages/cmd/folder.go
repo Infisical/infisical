@@ -53,9 +53,9 @@ var getCmd = &cobra.Command{
 			FoldersPath: foldersPath,
 		}
 
-		if util.ShouldUseInfisicalToken(token, []string{util.SERVICE_TOKEN_IDENTIFIER}) {
+		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 			request.InfisicalToken = token.Token
-		} else if util.ShouldUseInfisicalToken(token, []string{util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER}) {
+		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
 			request.UniversalAuthAccessToken = token.Token
 		}
 
@@ -125,7 +125,7 @@ var createCmd = &cobra.Command{
 			WorkspaceId: projectId,
 		}
 
-		if util.ShouldUseInfisicalToken(token, nil) {
+		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
 			params.InfisicalToken = token.Token
 		}
 
@@ -193,7 +193,7 @@ var deleteCmd = &cobra.Command{
 			FolderPath:  folderPath,
 		}
 
-		if util.ShouldUseInfisicalToken(token, nil) {
+		if token != nil && (token.Type == util.SERVICE_TOKEN_IDENTIFIER || token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER) {
 			params.InfisicalToken = token.Token
 		}
 

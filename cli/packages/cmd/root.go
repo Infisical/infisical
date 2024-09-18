@@ -60,14 +60,7 @@ func init() {
 			token, err := util.GetInfisicalToken(cmd)
 
 			if err == nil && token != nil {
-				var usingFrom string
-				if token.PassedAsFlag {
-					usingFrom = "--token flag"
-				} else {
-					usingFrom = "INFISICAL_TOKEN environment variable"
-				}
-				util.PrintWarning(fmt.Sprintf("Your logged-in session is being overwritten by the token provided from the %s", usingFrom))
-
+				util.PrintWarning(fmt.Sprintf("Your logged-in session is being overwritten by the token provided from the %s.", token.Source))
 			}
 		}
 
