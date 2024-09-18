@@ -87,6 +87,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  /*
+   * Daniel: This endpoint is no longer is use.
+   * We are keeping it for now because it has been exposed in our public api docs for a while, so by removing it we are likely to break users workflows.
+   *
+   * Please refer to the new endpoint, GET /api/v1/organization/audit-logs, for the same (and more) functionality.
+   */
   server.route({
     method: "GET",
     url: "/:workspaceId/audit-logs",
