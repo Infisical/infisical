@@ -57,7 +57,7 @@ func init() {
 		loggedInDetails, err := util.GetCurrentLoggedInUserDetails()
 
 		// If the user is logged in and their session is not expired, then we check if token auth is also being used concurrently.
-		if err == nil && loggedInDetails.IsUserLoggedIn && !loggedInDetails.LoginExpired {
+		if !silent && err == nil && loggedInDetails.IsUserLoggedIn && !loggedInDetails.LoginExpired {
 			token, err := util.GetInfisicalToken(cmd)
 
 			// If token auth is being used concurrently, we warn the user that the token will be used instead of the logged in user's credentials.
