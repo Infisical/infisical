@@ -95,9 +95,9 @@ export const groupProjectServiceFactory = ({
         project.id
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+      const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, rolePermission);
 
-      if (!hasRequiredPriviledges) {
+      if (!hasRequiredPrivileges) {
         throw new ForbiddenRequestError({ message: "Failed to assign group to a more privileged role" });
       }
     }
