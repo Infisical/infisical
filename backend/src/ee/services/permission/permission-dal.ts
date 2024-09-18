@@ -17,14 +17,14 @@ export const permissionDALFactory = (db: TDbClient) => {
   const getOrgPermission = async (userId: string, orgId: string) => {
     try {
       const groupSubQuery = db(TableName.Groups)
-        .where({ orgId })
+        .where(`${TableName.Groups}.orgId`, orgId)
         .join(TableName.UserGroupMembership, (qb) => {
           qb.on(`${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`).andOn(
             `${TableName.UserGroupMembership}.userId`,
             db.raw("?", [userId])
           );
         })
-        .leftJoin(TableName.ProjectRoles, `${TableName.Groups}.roleId`, `${TableName.ProjectRoles}.id`)
+        .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
         .select(
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
           db.ref("orgId").withSchema(TableName.Groups).as("groupOrgId"),
@@ -34,7 +34,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("roleId").withSchema(TableName.Groups).as("groupRoleId"),
           db.ref("createdAt").withSchema(TableName.Groups).as("groupCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.Groups).as("groupUpdatedAt"),
-          db.ref("permissions").withSchema(TableName.ProjectRoles).as("groupCustomRolePermission")
+          db.ref("permissions").withSchema(TableName.OrgRoles).as("groupCustomRolePermission")
         );
 
       const membership = await db
