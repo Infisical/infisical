@@ -8,6 +8,7 @@ import {
   ProjectUserMembershipRolesSchema
 } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
@@ -17,6 +18,9 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     method: "POST",
     url: "/:projectSlug/groups/:groupSlug",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Add group to project",
       security: [
@@ -138,6 +142,9 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     method: "DELETE",
     url: "/:projectSlug/groups/:groupSlug",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       description: "Remove group from project",
       security: [
@@ -172,6 +179,9 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/:projectSlug/groups",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return list of groups in project",
       security: [
@@ -226,6 +236,9 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/:projectSlug/groups/:groupSlug",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       description: "Return project group",
       security: [
