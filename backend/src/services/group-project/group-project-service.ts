@@ -113,10 +113,17 @@ export const groupProjectServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) {
-      throw new NotFoundError({ message: "Custom role not found" });
-    }
 
+    if (customRoles.length !== customInputRoles.length) {
+      const customRoleSlugs = customRoles.map((customRole) => customRole.slug);
+      const missingInputRoles = customInputRoles
+        .filter((inputRole) => !customRoleSlugs.includes(inputRole.role))
+        .map((role) => role.role);
+
+      throw new NotFoundError({
+        message: `Custom role/s not found: ${missingInputRoles.join(", ")}`
+      });
+    }
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const projectGroup = await groupProjectDAL.transaction(async (tx) => {
@@ -260,7 +267,16 @@ export const groupProjectServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
+    if (customRoles.length !== customInputRoles.length) {
+      const customRoleSlugs = customRoles.map((customRole) => customRole.slug);
+      const missingInputRoles = customInputRoles
+        .filter((inputRole) => !customRoleSlugs.includes(inputRole.role))
+        .map((role) => role.role);
+
+      throw new NotFoundError({
+        message: `Custom role/s not found: ${missingInputRoles.join(", ")}`
+      });
+    }
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
