@@ -199,7 +199,7 @@ export const LogsFilter = ({
         <Controller
           control={control}
           name="userAgentType"
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+          render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
             <FormControl
               label="Source"
               errorText={error?.message}
@@ -207,7 +207,7 @@ export const LogsFilter = ({
               className="w-40"
             >
               <Select
-                {...(field.value ? { value: field.value } : { placeholder: "All sources" })}
+                value={value === undefined ? "all" : value}
                 {...field}
                 onValueChange={(e) => {
                   if (e === "all") onChange(undefined);
@@ -215,14 +215,14 @@ export const LogsFilter = ({
                 }}
                 className={twMerge(
                   "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
-                  (field.value === "all" || field.value === undefined) && "text-mineshaft-400"
+                  value === undefined && "text-mineshaft-400"
                 )}
               >
                 <SelectItem value="all" key="all">
                   All sources
                 </SelectItem>
-                {userAgentTypes.map(({ label, value }) => (
-                  <SelectItem value={String(value || "")} key={label}>
+                {userAgentTypes.map(({ label, value: userAgent }) => (
+                  <SelectItem value={userAgent} key={label}>
                     {label}
                   </SelectItem>
                 ))}
@@ -235,7 +235,7 @@ export const LogsFilter = ({
           <Controller
             control={control}
             name="projectId"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
               <FormControl
                 label="Project"
                 errorText={error?.message}
@@ -243,7 +243,7 @@ export const LogsFilter = ({
                 className="w-40"
               >
                 <Select
-                  {...(field.value ? { value: field.value } : { placeholder: "All projects" })}
+                  value={value === undefined ? "all" : value}
                   {...field}
                   onValueChange={(e) => {
                     if (e === "all") onChange(undefined);
@@ -251,7 +251,7 @@ export const LogsFilter = ({
                   }}
                   className={twMerge(
                     "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
-                    (field.value === "all" || field.value === undefined) && "text-mineshaft-400"
+                    value === undefined && "text-mineshaft-400"
                   )}
                 >
                   <SelectItem value="all" key="all">

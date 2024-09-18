@@ -1,6 +1,7 @@
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { LogsSection } from "@app/views/Project/AuditLogsPage/components";
+
+import { LogsSection } from "./components";
 
 export const AuditLogsPage = withPermission(
   () => {
@@ -16,5 +17,5 @@ export const AuditLogsPage = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Member } // TODO(Daniel): Create a permission for org audit logs
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.AuditLogs }
 );
