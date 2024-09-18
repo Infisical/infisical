@@ -114,13 +114,16 @@ export const accessApprovalPolicyServiceFactory = ({
         tx
       );
 
-      await accessApprovalPolicyApproverDAL.insertMany(
-        approverIds?.map((userId) => ({
-          approverUserId: userId,
-          policyId: doc.id
-        })),
-        tx
-      );
+      if (approverIds) {
+        await accessApprovalPolicyApproverDAL.insertMany(
+          approverIds.map((userId) => ({
+            approverUserId: userId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
       return doc;
     });
 
@@ -210,24 +213,26 @@ export const accessApprovalPolicyServiceFactory = ({
           }
         }
 
-        await verifyApprovers({
-          projectId: accessApprovalPolicy.projectId,
-          orgId: actorOrgId,
-          envSlug: accessApprovalPolicy.environment.slug,
-          secretPath: doc.secretPath!,
-          actorAuthMethod,
-          permissionService,
-          userIds: approverIds
-        });
+        if (approverIds) {
+          await verifyApprovers({
+            projectId: accessApprovalPolicy.projectId,
+            orgId: actorOrgId,
+            envSlug: accessApprovalPolicy.environment.slug,
+            secretPath: doc.secretPath!,
+            actorAuthMethod,
+            permissionService,
+            userIds: approverIds
+          });
 
-        await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
-        await accessApprovalPolicyApproverDAL.insertMany(
-          approverIds.map((userId) => ({
-            approverUserId: userId,
-            policyId: doc.id
-          })),
-          tx
-        );
+          await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+          await accessApprovalPolicyApproverDAL.insertMany(
+            approverIds.map((userId) => ({
+              approverUserId: userId,
+              policyId: doc.id
+            })),
+            tx
+          );
+        }
       }
       return doc;
     });
