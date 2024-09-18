@@ -147,6 +147,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+
   return rules;
 };
 
