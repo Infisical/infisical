@@ -17,7 +17,8 @@ export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
   environment: string;
-  approvers: string[];
+  approvers?: string[];
+  approverUsernames?: string[];
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -27,6 +28,7 @@ export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
   approvers?: string[];
+  approverUsernames?: string[];
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;
@@ -43,4 +45,8 @@ export type TGetAccessPolicyCountByEnvironmentDTO = {
 
 export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetAccessApprovalPolicyByIdDTO = {
+  policyId: string;
 } & Omit<TProjectPermission, "projectId">;

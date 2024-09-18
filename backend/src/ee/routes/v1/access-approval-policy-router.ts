@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { EnforcementLevel } from "@app/lib/types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -10,6 +11,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z
         .object({
@@ -17,11 +21,16 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           name: z.string().optional(),
           secretPath: z.string().trim().default("/"),
           environment: z.string(),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().min(1).optional(),
+          approverUsernames: z.string().array().min(1).optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvers || data.approverUsernames, {
+          path: ["approvers", "approverUsernames"],
+          message: "Either approvers or approverUsernames must be defined"
+        })
+        .refine((data) => data.approvals <= Number(data.approvers?.length ?? data.approverUsernames?.length), {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -31,7 +40,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.accessApprovalPolicy.createAccessApprovalPolicy({
         actor: req.permission.type,
@@ -50,6 +59,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         projectSlug: z.string().trim()
@@ -86,6 +98,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/count",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         projectSlug: z.string(),
@@ -115,6 +130,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:policyId",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         policyId: z.string()
@@ -127,11 +145,16 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .trim()
             .optional()
             .transform((val) => (val === "" ? "/" : val)),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().min(1).optional(),
+          approverUsernames: z.string().array().min(1).optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
+        .refine((data) => data.approvers || data.approverUsernames, {
+          path: ["approvers", "approverUsernames"],
+          message: "Either approvers or approverUsernames must be defined"
+        })
+        .refine((data) => data.approvals <= Number(data.approvers?.length ?? data.approverUsernames?.length), {
           path: ["approvals"],
           message: "The number of approvals should be lower than the number of approvers."
         }),
@@ -141,7 +164,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
@@ -167,7 +190,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.accessApprovalPolicy.deleteAccessApprovalPolicy({
         actor: req.permission.type,
@@ -175,6 +198,43 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         policyId: req.params.policyId
+      });
+
+      return { approval };
+    }
+  });
+
+  server.route({
+    url: "/:policyId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        policyId: z.string()
+      }),
+      response: {
+        200: z.object({
+          approval: sapPubSchema.extend({
+            userApprovers: z
+              .object({
+                userId: z.string(),
+                username: z.string()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const approval = await server.services.accessApprovalPolicy.getAccessApprovalPolicyById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.params
       });
       return { approval };
     }

@@ -85,20 +85,22 @@ export const secretApprovalPolicyServiceFactory = ({
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
       let approverIds = approvers;
       if (!approverIds) {
-        approverIds = (
-          await userDAL.find(
-            {
-              $in: {
-                username: approverUsernames
-              }
-            },
-            { tx }
-          )
-        ).map((user) => user.id);
+        const approverUsers = await userDAL.find(
+          {
+            $in: {
+              username: approverUsernames
+            }
+          },
+          { tx }
+        );
 
-        if (approverIds.length !== approverUsernames?.length) {
+        approverIds = approverUsers.map((user) => user.id);
+        const approverNamesFromDb = approverUsers.map((user) => user.username);
+        const invalidUsernames = approverUsernames?.filter((username) => !approverNamesFromDb.includes(username));
+
+        if (invalidUsernames?.length) {
           throw new BadRequestError({
-            message: "At least one approver username is invalid"
+            message: `Invalid approver user: ${invalidUsernames.join(", ")}`
           });
         }
       }
@@ -173,20 +175,22 @@ export const secretApprovalPolicyServiceFactory = ({
       if (approvers || approverUsernames) {
         let approverIds = approvers;
         if (!approverIds) {
-          approverIds = (
-            await userDAL.find(
-              {
-                $in: {
-                  username: approverUsernames
-                }
-              },
-              { tx }
-            )
-          ).map((user) => user.id);
+          const approverUsers = await userDAL.find(
+            {
+              $in: {
+                username: approverUsernames
+              }
+            },
+            { tx }
+          );
 
-          if (approverIds.length !== approverUsernames?.length) {
+          approverIds = approverUsers.map((user) => user.id);
+          const approverNamesFromDb = approverUsers.map((user) => user.username);
+          const invalidUsernames = approverUsernames?.filter((username) => !approverNamesFromDb.includes(username));
+
+          if (invalidUsernames?.length) {
             throw new BadRequestError({
-              message: "At least one approver username is invalid"
+              message: `Invalid approver user: ${invalidUsernames.join(", ")}`
             });
           }
         }
