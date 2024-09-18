@@ -113,8 +113,9 @@ export const accessApprovalPolicyServiceFactory = ({
         },
         tx
       );
+
       await accessApprovalPolicyApproverDAL.insertMany(
-        approverIds.map((userId) => ({
+        approverIds?.map((userId) => ({
           approverUserId: userId,
           policyId: doc.id
         })),
