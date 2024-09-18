@@ -4,6 +4,7 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -43,17 +44,35 @@ func init() {
 	rootCmd.PersistentFlags().Bool("silent", false, "Disable output of tip/info messages. Useful when running in scripts or CI/CD pipelines.")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
-		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
-
 		if err != nil {
 			util.HandleError(err)
 		}
+
+		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
 
 		if !util.IsRunningInDocker() && !silent {
 			util.CheckForUpdate()
 		}
 
-		config.INFISICAL_SILENT_MODE = silent
+		loggedInDetails, err := util.GetCurrentLoggedInUserDetails()
+
+		// If the user is logged in and their session is not expired, then we check if token auth is also being used concurrently.
+		if err == nil && loggedInDetails.IsUserLoggedIn && !loggedInDetails.LoginExpired {
+			token, err := util.GetInfisicalToken(cmd)
+
+			// If token auth is being used concurrently, we warn the user that the token will be used instead of the logged in user's credentials.
+			if err == nil && token != nil {
+				var usingFrom string
+				if token.PassedAsFlag {
+					usingFrom = "--token flag"
+				} else {
+					usingFrom = "INFISICAL_TOKEN environment variable"
+				}
+				util.PrintWarning(fmt.Sprintf("You are currently logged in, but the command will be using the token provided from the %s.", usingFrom))
+
+			}
+		}
+
 	}
 
 	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment
