@@ -47,7 +47,6 @@ export const formSchema = z.object({
       settings: generalPermissionSchema,
       environments: generalPermissionSchema,
       tags: generalPermissionSchema,
-      "audit-logs": generalPermissionSchema,
       "ip-allowlist": generalPermissionSchema,
       "certificate-authorities": generalPermissionSchema,
       certificates: generalPermissionSchema,

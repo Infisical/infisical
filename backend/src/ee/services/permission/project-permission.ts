@@ -145,6 +145,8 @@ export const fullProjectPermissionSet: [ProjectPermissionActions, ProjectPermiss
   [ProjectPermissionActions.Edit, ProjectPermissionSub.Tags],
   [ProjectPermissionActions.Delete, ProjectPermissionSub.Tags],
 
+  // TODO(Daniel): Remove the audit logs permissions from project-level permissions.
+  // TODO: We haven't done this yet because it might break existing roles, since those roles will become "invalid" since the audit log permission defined on those roles, no longer exist in the project-level defined permissions.
   [ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs],
   [ProjectPermissionActions.Create, ProjectPermissionSub.AuditLogs],
   [ProjectPermissionActions.Edit, ProjectPermissionSub.AuditLogs],
