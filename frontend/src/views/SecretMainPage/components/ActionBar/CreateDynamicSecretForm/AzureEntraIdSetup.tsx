@@ -7,6 +7,8 @@ type Props = {
     onCancel: () => void;
 };
 
+const MSFT_ENTRA_ID_APPLICATION_ID = "9805c35f-88d4-4625-9daf-66f741e4129c"
+
 export const AzureEntraIdSetup = ({
     onCompleted,
     onCancel,
@@ -52,7 +54,7 @@ export const AzureEntraIdSetup = ({
                 </div>
             </div>
             <div className="mt-4 flex items-center space-x-4">
-                <a href={`https://login.microsoftonline.com/common/adminconsent?client_id=9805c35f-88d4-4625-9daf-66f741e4129c&redirect_uri=${window.location.origin}/integrations/azure-entra-id/callback`} target="_blank" rel="noreferrer">
+                <a href={`https://login.microsoftonline.com/common/adminconsent?client_id=${MSFT_ENTRA_ID_APPLICATION_ID}&redirect_uri=${window.location.origin}/integrations/azure-entra-id/callback`} target="_blank" rel="noreferrer">
                     <Button type="submit">
                         Install App
                     </Button>
