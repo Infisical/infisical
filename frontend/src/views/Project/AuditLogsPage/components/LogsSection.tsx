@@ -65,6 +65,7 @@ export const LogsSection = ({
   const eventType = watch("eventType") as EventType[] | undefined;
   const userAgentType = watch("userAgentType") as UserAgentType | undefined;
   const actor = watch("actor");
+  const projectId = watch("projectId");
 
   const startDate = watch("startDate");
   const endDate = watch("endDate");
@@ -73,6 +74,7 @@ export const LogsSection = ({
     <div>
       {showFilters && (
         <LogsFilter
+          isOrgAuditLogs
           className={filterClassName}
           presets={presets}
           control={control}
@@ -87,6 +89,7 @@ export const LogsSection = ({
         showActorColumn={!!showActorColumn && !isOrgAuditLogs}
         filter={{
           eventMetadata: presets?.eventMetadata,
+          projectId,
           actorType: presets?.actorType,
           limit: 15,
           eventType,

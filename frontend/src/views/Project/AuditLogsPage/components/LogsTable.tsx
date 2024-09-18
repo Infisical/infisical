@@ -41,12 +41,15 @@ export const LogsTable = ({
 }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
+  const filterProjectId =
+    filter?.projectId ?? (!isOrgAuditLogs ? currentWorkspace?.id ?? "" : null);
+
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
     {
       ...filter,
       limit: AUDIT_LOG_LIMIT
     },
-    !isOrgAuditLogs ? currentWorkspace?.id ?? "" : null,
+    filterProjectId,
     {
       refetchInterval
     }
