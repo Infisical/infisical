@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import fastifyPlugin from "fastify-plugin";
-import { JsonWebTokenError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
 
 import {
@@ -44,7 +44,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         detail: error.detail
       });
       // Handle JWT errors and make them more human-readable for the end-user.
-    } else if (error instanceof JsonWebTokenError) {
+    } else if (error instanceof jwt.JsonWebTokenError) {
       const message = (() => {
         if (error.message === JWTErrors.JwtExpired) {
           return "Your token has expired. Please re-authenticate.";
