@@ -90,18 +90,18 @@ type Props = {
   secretPath?: string;
   secretImports?: TSecretImport[];
   isFetching?: boolean;
-  secrets?: SecretV3RawSanitized[];
+  // secrets?: SecretV3RawSanitized[];
   importedSecrets?: TImportedSecrets;
   searchTerm: string;
 };
 
 export const SecretImportListView = ({
-  secretImports = [],
+  secretImports,
   environment,
   workspaceId,
   secretPath,
   importedSecrets,
-  secrets = [],
+  // secrets = [],
   isFetching,
   searchTerm
 }: Props) => {
@@ -117,11 +117,11 @@ export const SecretImportListView = ({
     useSensor(KeyboardSensor, {})
   );
 
-  const [items, setItems] = useState(secretImports);
+  const [items, setItems] = useState(secretImports ?? []);
 
   useEffect(() => {
     if (!isFetching) {
-      setItems(secretImports);
+      setItems(secretImports ?? []);
     }
   }, [isFetching, secretImports]);
 
@@ -170,7 +170,7 @@ export const SecretImportListView = ({
   };
 
   const handleOpenReplicationSecrets = (replicationImportId: string) => {
-    const reservedImport = secretImports.find(
+    const reservedImport = secretImports?.find(
       ({ isReserved, importPath, importEnv }) =>
         importEnv.slug === environment &&
         isReserved &&
@@ -208,8 +208,8 @@ export const SecretImportListView = ({
                 importedSecrets={computeImportedSecretRows(
                   item.importEnv.slug,
                   item.importPath,
-                  importedSecrets,
-                  secrets
+                  importedSecrets
+                  // secrets scott - now that secrets are paginated we are not showing if they are overridden (yet?)
                 )}
                 secretPath={secretPath}
                 environment={environment}

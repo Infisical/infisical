@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { DynamicSecretProviderSchema } from "./providers/models";
 
@@ -50,5 +51,11 @@ export type TDetailsDynamicSecretDTO = {
 export type TListDynamicSecretsDTO = {
   path: string;
   environmentSlug: string;
-  projectSlug: string;
+  projectSlug?: string;
+  projectId?: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
 } & Omit<TProjectPermission, "projectId">;

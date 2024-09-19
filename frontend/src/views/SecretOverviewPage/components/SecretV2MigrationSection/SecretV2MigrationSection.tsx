@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -78,7 +78,7 @@ export const SecretV2MigrationSection = () => {
 
   const isAdmin = membership?.roles.includes(ProjectMembershipRole.Admin);
   return (
-    <div className="mt-4 rounded-lg border border-primary-600 bg-mineshaft-900 p-4">
+    <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-primary/50 bg-primary/10 px-6 py-5">
       {isUpgrading && (
         <div className="absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500 bg-opacity-80">
           <Spinner size="lg" className="text-primary" />
@@ -88,18 +88,30 @@ export const SecretV2MigrationSection = () => {
           </div>
         </div>
       )}
-      <p className="mb-2 text-lg font-semibold">Action Required</p>
-      <p className="mb-4 leading-7 text-gray-400">
-        Infisical secrets engine is now 10x faster and allows you to encrypt secrets with your own
-        KMS. Upgrade your project to receive these improvements.
+      <div className="mb-4 flex items-start gap-2">
+        <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
+        <p className="text-xl font-semibold">
+          Secrets Dashboard no longer supports your project version
+        </p>
+      </div>
+      <p className="mx-1 mb-4 leading-7 text-mineshaft-300">
+        While you can still access your project&apos;s secrets through the API, Infisical encourages
+        you to upgrade your project to continue using the Dashboard experience.
+      </p>
+      <p className="mx-1 mb-4 leading-7 text-mineshaft-300">
+        Upgrading your project uses Infisical&apos;s new secrets engine, which is 10x faster and
+        allows you to encrypt secrets with your own KMS.
+      </p>
+      <p className="mx-1 mb-6 leading-7 text-mineshaft-300">
+        This update should only take a few moments and cannot be ran in the background.
       </p>
       <Button
         onClick={() => handlePopUpOpen("migrationInfo")}
         isDisabled={!isAdmin || isUpgrading}
-        color="mineshaft"
         isLoading={migrateProjectToV3.isLoading}
+        className="w-full "
       >
-        { isAdmin ? "Upgrade Project" : "Upgrade requires admin privilege"}
+        {isAdmin ? "Upgrade Project" : "Upgrade requires admin privilege"}
       </Button>
       {didProjectUpgradeFailed && (
         <p className="mt-2 text-sm leading-7 text-red-400">

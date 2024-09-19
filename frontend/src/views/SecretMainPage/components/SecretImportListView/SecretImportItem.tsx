@@ -291,7 +291,7 @@ export const SecretImportItem = ({
                   <tr>
                     <td style={{ padding: "0.25rem 1rem" }}>Key</td>
                     <td style={{ padding: "0.25rem 1rem" }}>Value</td>
-                    <td style={{ padding: "0.25rem 1rem" }}>Override</td>
+                    {/* <td style={{ padding: "0.25rem 1rem" }}>Override</td> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -304,7 +304,7 @@ export const SecretImportItem = ({
                   )}
                   {importedSecrets
                     .filter((secret) => secret.key.toUpperCase().includes(searchTerm.toUpperCase()))
-                    .map(({ key, value, overriden }, index) => (
+                    .map(({ key, value }, index) => (
                       <tr key={`${id}-${key}-${index + 1}`}>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           {key}
@@ -312,9 +312,9 @@ export const SecretImportItem = ({
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <SecretInput value={value} isReadOnly />
                         </td>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                        {/* <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                 </tbody>

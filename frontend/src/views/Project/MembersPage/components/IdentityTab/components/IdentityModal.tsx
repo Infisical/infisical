@@ -46,12 +46,12 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: identityMembershipOrgsData } = useGetIdentityMembershipOrgs({
     organizationId,
-    limit: 20000 // TODO: this is temp to preserve functionality for bitcoindepot, will replace with combobox in separate PR
+    limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will replace with combobox in separate PR
   });
   const identityMembershipOrgs = identityMembershipOrgsData?.identityMemberships;
   const { data: identityMembershipsData } = useGetWorkspaceIdentityMemberships({
     workspaceId,
-    limit: 20000 // TODO: this is temp to preserve functionality for bitcoindepot, will optimize in PR referenced above
+    limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will optimize in PR referenced above
   });
   const identityMemberships = identityMembershipsData?.identityMemberships;
 

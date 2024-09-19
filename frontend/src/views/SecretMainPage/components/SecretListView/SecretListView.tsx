@@ -7,6 +7,7 @@ import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -214,6 +215,12 @@ export const SecretListView = ({
           if (cb) cb();
         }
         queryClient.invalidateQueries(
+          dashboardKeys.getDashboardSecrets({
+            projectId: workspaceId,
+            secretPath
+          })
+        );
+        queryClient.invalidateQueries(
           secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
         );
         queryClient.invalidateQueries(
@@ -246,6 +253,9 @@ export const SecretListView = ({
     try {
       await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );

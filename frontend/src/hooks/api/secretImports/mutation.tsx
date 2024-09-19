@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { secretImportKeys } from "./queries";
 import {
@@ -31,6 +32,9 @@ export const useCreateSecretImport = () => {
       queryClient.invalidateQueries(
         secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
       );
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
+      );
     }
   });
 };
@@ -54,6 +58,9 @@ export const useUpdateSecretImport = () => {
       );
       queryClient.invalidateQueries(
         secretImportKeys.getSecretImportSecrets({ environment, path, projectId })
+      );
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
       );
     }
   });
@@ -92,6 +99,9 @@ export const useDeleteSecretImport = () => {
       );
       queryClient.invalidateQueries(
         secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
+      );
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId, secretPath: path ?? "/" })
       );
     }
   });

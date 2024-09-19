@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
 import { SecretType, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
@@ -21,6 +22,11 @@ export type TGetSecretsDTO = {
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  offset?: number;
+  limit?: number;
+  search?: string;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {

@@ -394,14 +394,15 @@ export const secretImportServiceFactory = ({
     return { message: "replication started" };
   };
 
-  const getImports = async ({
+  const getProjectImportCount = async ({
     path: secretPath,
     environment,
     projectId,
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    search
   }: TGetSecretImportsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -418,7 +419,39 @@ export const secretImportServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
 
-    const secImports = await secretImportDAL.find({ folderId: folder.id });
+    const count = await secretImportDAL.getProjectImportCount({ folderId: folder.id, search });
+
+    return count;
+  };
+
+  const getImports = async ({
+    path: secretPath,
+    environment,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    limit,
+    offset
+  }: TGetSecretImportsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
+
+    const secImports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
     return secImports;
   };
 
@@ -531,6 +564,7 @@ export const secretImportServiceFactory = ({
     getSecretsFromImports,
     getRawSecretsFromImports,
     resyncSecretImportReplication,
+    getProjectImportCount,
     fnSecretsFromImports
   };
 };
