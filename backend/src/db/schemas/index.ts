@@ -1,5 +1,6 @@
 export * from "./access-approval-policies";
 export * from "./access-approval-policies-approvers";
+export * from "./access-approval-policies-group-approvers";
 export * from "./access-approval-requests";
 export * from "./access-approval-requests-reviewers";
 export * from "./api-keys";

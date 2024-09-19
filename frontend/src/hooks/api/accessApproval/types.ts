@@ -17,6 +17,7 @@ export type TAccessApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
   updatedAt: Date;
   userApprovers?: { userId: string }[];
+  groupApprovers?: { groupId: string }[];
 };
 
 export type TAccessApprovalRequest = {
@@ -131,6 +132,7 @@ export type TCreateAccessPolicyDTO = {
   name?: string;
   environment: string;
   approvers?: string[];
+  groupApprovers?: string[];
   approvals?: number;
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
@@ -140,6 +142,7 @@ export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
   approvers?: string[];
+  groupApprovers?: string[];
   secretPath?: string;
   environment?: string;
   approvals?: number;

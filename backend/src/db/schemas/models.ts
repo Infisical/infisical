@@ -73,6 +73,7 @@ export enum TableName {
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalPolicyGroupApprover = "access_approval_policies_group_approvers",
   AccessApprovalRequest = "access_approval_requests",
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",

@@ -6,6 +6,7 @@ import {
   TAccessApprovalPoliciesApprovers,
   TAccessApprovalPoliciesApproversInsert,
   TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesGroupApprovers,
   TAccessApprovalPoliciesInsert,
   TAccessApprovalPoliciesUpdate,
   TAccessApprovalRequests,
@@ -799,6 +800,11 @@ declare module "knex/types/tables" {
       TWorkflowIntegrations,
       TWorkflowIntegrationsInsert,
       TWorkflowIntegrationsUpdate
+    >;
+    [TableName.AccessApprovalPolicyGroupApprover]: KnexOriginal.CompositeTableType<
+      TAccessApprovalPoliciesGroupApprovers,
+      TAccessApprovalPoliciesGroupApproversInsert,
+      TAccessApprovalPoliciesGroupApproversInsert
     >;
   }
 }

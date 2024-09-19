@@ -17,13 +17,14 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           name: z.string().optional(),
           secretPath: z.string().trim().default("/"),
           environment: z.string(),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().default([]),
+          groupApprovers: z.string().array().default([]),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
-          path: ["approvals"],
-          message: "The number of approvals should be lower than the number of approvers."
+        .refine((data) => data.approvers.length > 0 || data.groupApprovers.length > 0, {
+          path: ["approvers", "groupApprovers"],
+          message: "At least one approver should be provided."
         }),
       response: {
         200: z.object({
@@ -61,6 +62,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               userApprovers: z
                 .object({
                   userId: z.string()
+                })
+                .array(),
+              groupApprovers: z
+                .object({
+                  groupId: z.string()
                 })
                 .array(),
               secretPath: z.string().optional().nullable()
@@ -127,13 +133,14 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .trim()
             .optional()
             .transform((val) => (val === "" ? "/" : val)),
-          approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1),
+          approvers: z.string().array().optional().default([]),
+          approvals: z.number().min(1).optional(),
+          groupApprovers: z.string().array().optional().default([]),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
-          path: ["approvals"],
-          message: "The number of approvals should be lower than the number of approvers."
+        .refine((data) => data.approvers || data.groupApprovers, {
+          path: ["approvers", "groupApprovers"],
+          message: "At least one approver should be provided."
         }),
       response: {
         200: z.object({

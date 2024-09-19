@@ -18,6 +18,7 @@ import { Badge } from "@app/components/v2/Badge";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { policyDetails } from "@app/helpers/policies";
 import { useUpdateAccessApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
@@ -31,6 +32,7 @@ interface IPolicy {
   approvals: number;
   approvers?: string[];
   userApprovers?: { userId: string }[];
+  groupApprovers?: { groupId: string }[];
   updatedAt: Date;
   policyType: PolicyType;
   enforcementLevel: EnforcementLevel;
@@ -39,6 +41,7 @@ interface IPolicy {
 type Props = {
   policy: IPolicy;
   members?: TWorkspaceUser[];
+  groups?: TGroupMembership[];
   projectSlug: string;
   workspaceId: string;
   onEdit: () => void;
@@ -48,12 +51,14 @@ type Props = {
 export const ApprovalPolicyRow = ({
   policy,
   members = [],
+  groups = [],
   projectSlug,
   workspaceId,
   onEdit,
   onDelete
 }: Props) => {
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>(policy.userApprovers?.map(({ userId }) => userId) || policy.approvers || []);
+  const [selectedGroupApprovers, setSelectedGroupApprovers] = useState<string[]>(policy.groupApprovers?.map(({ groupId }) => groupId) || []);
   const { mutate: updateAccessApprovalPolicy, isLoading: isAccessApprovalPolicyLoading } = useUpdateAccessApprovalPolicy();
   const { mutate: updateSecretApprovalPolicy, isLoading: isSecretApprovalPolicyLoading } = useUpdateSecretApprovalPolicy();
   const isLoading = isAccessApprovalPolicyLoading || isSecretApprovalPolicyLoading;
@@ -74,9 +79,10 @@ export const ApprovalPolicyRow = ({
                   {
                     projectSlug,
                     id: policy.id,
-                    approvers: selectedApprovers
+                    approvers: selectedApprovers,
+                    groupApprovers: selectedGroupApprovers
                   },
-                  { onSettled: () => {} }
+                  { onSettled: () => { } }
                 );
               } else {
                 updateSecretApprovalPolicy(
@@ -85,7 +91,7 @@ export const ApprovalPolicyRow = ({
                     id: policy.id,
                     approvers: selectedApprovers
                   },
-                  { onSettled: () => {} }
+                  { onSettled: () => { } }
                 );
               }
             } else {
@@ -95,7 +101,7 @@ export const ApprovalPolicyRow = ({
               );
             }
           }}
-      >
+        >
           <DropdownMenuTrigger
             asChild
             disabled={
@@ -116,8 +122,8 @@ export const ApprovalPolicyRow = ({
             <DropdownMenuLabel>
               Select members that are allowed to approve changes
             </DropdownMenuLabel>
-            {members?.map(({ id, user }) => {
-              const userId = policy.policyType === PolicyType.ChangePolicy ? user.id : id;
+            {members?.map(({ user }) => {
+              const userId = user.id;
               const isChecked = selectedApprovers.includes(userId);
               return (
                 <DropdownMenuItem
@@ -132,6 +138,76 @@ export const ApprovalPolicyRow = ({
                   icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                 >
                   {user.username}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Td>
+      <Td>
+        <DropdownMenu
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            if (policy.policyType === PolicyType.AccessPolicy) {
+              updateAccessApprovalPolicy(
+                {
+                  projectSlug,
+                  id: policy.id,
+                  approvers: selectedApprovers,
+                  groupApprovers: selectedGroupApprovers
+                },
+                { onSettled: () => { } }
+              );
+            } else {
+              updateSecretApprovalPolicy(
+                {
+                  workspaceId,
+                  id: policy.id,
+                  approvers: selectedApprovers,
+                },
+                { onSettled: () => { } }
+              );
+            }
+          } else {
+            setSelectedGroupApprovers(policy.policyType === PolicyType.ChangePolicy
+              ? policy?.groupApprovers?.map(({ groupId }) => groupId) || []
+              : policy?.groupApprovers?.map(({groupId}) => groupId) || []
+            );
+          }
+        }}
+        >
+          <DropdownMenuTrigger asChild>
+            <Input
+              isReadOnly
+              value={selectedGroupApprovers?.length ? `${selectedGroupApprovers.length} selected` : "None"}
+              className="text-left"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+            align="start"
+          >
+            <DropdownMenuLabel>
+              Select groups that are allowed to approve requests
+            </DropdownMenuLabel>
+            {groups && groups.map(({ group }) => {
+              const { id } = group;
+              const isChecked = selectedGroupApprovers?.includes(id);
+              return (
+                <DropdownMenuItem
+                  onClick={(evt) => {
+                    evt.preventDefault();
+                    setSelectedGroupApprovers(
+                      isChecked
+                        ? selectedGroupApprovers?.filter((el: string) => el !== id)
+                        : [...(selectedGroupApprovers || []), id]
+                    );
+                  }}
+                  key={`create-policy-groups-${id}`}
+                  iconPos="right"
+                  icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                >
+                  {group.name}
                 </DropdownMenuItem>
               );
             })}

@@ -20,7 +20,13 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
+      .leftJoin(
+        TableName.AccessApprovalPolicyGroupApprover,
+        `${TableName.AccessApprovalPolicy}.id`,
+        `${TableName.AccessApprovalPolicyGroupApprover}.policyId`
+      )
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
+      .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyGroupApprover))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -53,6 +59,13 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "userApprovers" as const,
             mapper: ({ approverUserId }) => ({
               userId: approverUserId
+            })
+          },
+          {
+            key: "approverGroupId",
+            label: "groupApprovers" as const,
+            mapper: ({ approverGroupId }) => ({
+              groupId: approverGroupId
             })
           }
         ]
@@ -87,6 +100,13 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "userApprovers" as const,
             mapper: ({ approverUserId }) => ({
               userId: approverUserId
+            })
+          },
+          {
+            key: "approverGroupId",
+            label: "groupApprovers" as const,
+            mapper: ({ approverGroupId }) => ({
+              groupId: approverGroupId
             })
           }
         ]

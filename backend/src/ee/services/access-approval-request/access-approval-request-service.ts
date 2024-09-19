@@ -18,6 +18,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
+import { TAccessApprovalPolicyGroupApproverDALFactory } from "../access-approval-policy/access-approval-policy-group-approver-dal";
+import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
@@ -36,6 +38,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "create" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
+  accessApprovalPolicyGroupApproverDAL: Pick<TAccessApprovalPolicyGroupApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
     TProjectDALFactory,
@@ -57,6 +60,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction"
   >;
+  groupDAL: Pick<TGroupDALFactory, "findAllGroupMembers">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<
@@ -70,6 +74,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
 
 export const accessApprovalRequestServiceFactory = ({
+  groupDAL,
   projectDAL,
   projectEnvDAL,
   permissionService,
@@ -78,6 +83,7 @@ export const accessApprovalRequestServiceFactory = ({
   projectMembershipDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
+  accessApprovalPolicyGroupApproverDAL,
   additionalPrivilegeDAL,
   smtpService,
   userDAL,
@@ -124,13 +130,35 @@ export const accessApprovalRequestServiceFactory = ({
     });
     if (!policy) throw new UnauthorizedError({ message: "No policy matching criteria was found." });
 
+    const approverIds = [];
+
     const approvers = await accessApprovalPolicyApproverDAL.find({
       policyId: policy.id
     });
 
+    approvers.forEach((approver) => {
+      approverIds.push(approver.approverUserId);
+    });
+
+    const groupApprovers = await accessApprovalPolicyGroupApproverDAL.find({
+      policyId: policy.id
+    });
+
+    const groupUsers = (
+      await Promise.all(
+        groupApprovers.map((groupApprover) =>
+          groupDAL.findAllGroupMembers({
+            orgId: actorOrgId,
+            groupId: groupApprover.id
+          })
+        )
+      )
+    ).flat();
+    approverIds.push(...groupUsers.map((user) => user.id));
+
     const approverUsers = await userDAL.find({
       $in: {
-        id: approvers.map((approver) => approver.approverUserId)
+        id: [...new Set(approverIds)]
       }
     });
 

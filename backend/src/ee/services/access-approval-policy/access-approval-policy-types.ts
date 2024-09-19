@@ -18,6 +18,7 @@ export type TCreateAccessApprovalPolicy = {
   secretPath: string;
   environment: string;
   approvers: string[];
+  groupApprovers: string[];
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -27,6 +28,7 @@ export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
   approvers?: string[];
+  groupApprovers?: string[];
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;

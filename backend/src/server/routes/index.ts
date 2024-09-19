@@ -7,6 +7,7 @@ import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { accessApprovalPolicyGroupApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-group-approver-dal";
 import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
@@ -626,6 +627,7 @@ export const registerRoutes = async (
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
+  const accessApprovalPolicyGroupApproverDAL = accessApprovalPolicyGroupApproverDALFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -923,6 +925,8 @@ export const registerRoutes = async (
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
+    accessApprovalPolicyGroupApproverDAL,
+    groupDAL,
     permissionService,
     projectEnvDAL,
     projectMembershipDAL,
@@ -942,7 +946,9 @@ export const registerRoutes = async (
     smtpService,
     accessApprovalPolicyApproverDAL,
     projectSlackConfigDAL,
-    kmsService
+    kmsService,
+    accessApprovalPolicyGroupApproverDAL,
+    groupDAL
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
