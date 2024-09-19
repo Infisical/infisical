@@ -8,13 +8,20 @@
 
   <body>
     <h2>Infisical</h2>
-    <p>An integration in your project
-      <b>{{projectName}}</b>
-      failed to sync secrets.<br />
+
+    <div>
+      <p>{{count}} integration(s) failed to sync.</p>
       <a href="{{integrationUrl}}">
-        View integration details.
+        View your project integrations.
       </a>
-    </p>
+    </div>
+
+    <br />
+    <div>
+      <p><strong>Project</strong>: {{projectName}}</p>
+      <p><strong>Environment</strong>: {{environment}}</p>
+      <p><strong>Secret Path</strong>: {{secretPath}}</p>
+    </div>
 
     {{#if syncMessage}}
       <p><b>Reason: </b>{{syncMessage}}</p>

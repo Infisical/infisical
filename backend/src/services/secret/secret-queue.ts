@@ -1,7 +1,13 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { ProjectUpgradeStatus, ProjectVersion, TSecretSnapshotSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import {
+  ProjectMembershipRole,
+  ProjectUpgradeStatus,
+  ProjectVersion,
+  TSecretSnapshotSecretsV2,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { Actor, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
@@ -562,7 +568,7 @@ export const secretQueueFactory = ({
       throw new Error("Secret path not found");
     }
 
-    const sendIntegrationSyncFailedMail = async (integrationId: string, syncMessage: string | null) => {
+    const sendIntegrationSyncFailedMail = async (integrations: { integrationId: string; syncMessage?: string }[]) => {
       const appCfg = getConfig();
 
       // If smtp is not configured, we can return early without having to fetch the project members.
@@ -571,17 +577,22 @@ export const secretQueueFactory = ({
       const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
       const project = await projectDAL.findById(projectId);
 
-      const filteredProjectMembers =
-        isManual && actorId ? projectMembers.filter((member) => member.userId === actorId) : projectMembers;
+      // Only send emails to admins, and if its a manual trigger, only send it to the person who triggered it (if actor is admin as well)
+      const filteredProjectMembers = projectMembers
+        .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
+        .filter((member) => (isManual && actorId ? member.userId === actorId : true));
 
       await smtpService.sendMail({
         recipients: filteredProjectMembers.map((member) => member.user.email!),
         template: SmtpTemplates.IntegrationSyncFailed,
         subjectLine: `Integration Sync Failed`,
         substitutions: {
-          syncMessage,
+          syncMessage: integrations[0]?.syncMessage, // We are only displaying the sync message if its a singular integration, so we can just grab the first one in the array.
+          secretPath,
+          environment: folder.environment.name,
+          count: integrations.length,
           projectName: project.name,
-          integrationUrl: `${appCfg.SITE_URL}/integrations/details/${integrationId}`
+          integrationUrl: `${appCfg.SITE_URL}/integrations/${project.id}`
         }
       });
     };
@@ -686,6 +697,8 @@ export const secretQueueFactory = ({
       // note: sync only the integrations sourced from secretPath
       ({ secretPath: integrationSecPath, isActive }) => isActive && isSamePath(secretPath, integrationSecPath)
     );
+
+    const integrationsFailedToSync: { integrationId: string }[] = [];
 
     if (!integrations.length) return;
     logger.info(
@@ -860,7 +873,9 @@ export const secretQueueFactory = ({
 
           // May be undefined, if it's undefined we assume the sync was successful, hence the strict equality type check.
           if (response?.isSynced === false) {
-            await sendIntegrationSyncFailedMail(integration.id, response?.syncMessage);
+            integrationsFailedToSync.push({
+              integrationId: integration.id
+            });
           }
         } catch (err) {
           logger.error(
@@ -893,11 +908,15 @@ export const secretQueueFactory = ({
             isSynced: false
           });
 
-          await sendIntegrationSyncFailedMail(integration.id, message);
+          integrationsFailedToSync.push({
+            integrationId: integration.id
+          });
         }
       }
     } finally {
       await lock.release();
+
+      await sendIntegrationSyncFailedMail(integrationsFailedToSync);
     }
 
     await keyStore.setItemWithExpiry(
