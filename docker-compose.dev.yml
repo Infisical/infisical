@@ -111,6 +111,17 @@ services:
       - NEXT_PUBLIC_ENV=development
       - INFISICAL_TELEMETRY_ENABLED=false
 
+  caddy:
+    image: caddy:latest
+    container_name: infisical-dev-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/tls:/etc/caddy/tls
+      - ./caddy/certs:/etc/caddy/certs
+
   pgadmin:
     image: dpage/pgadmin4
     restart: always

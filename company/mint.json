@@ -31,7 +31,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+    "baseUrl": ["https://app.infisical.com", "http://infisical-local.com"]
   },
   "topbarLinks": [
     {

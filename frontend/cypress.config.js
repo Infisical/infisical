@@ -1,6 +1,6 @@
 module.exports = {
   e2e: {
-    baseUrl: 'http://localhost:8080',
+    baseUrl: 'https://infisical-local.com',
     viewportWidth: 1480,
     viewportHeight: 920,
   },

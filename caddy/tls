@@ -1,0 +1,1 @@
+tls "/etc/caddy/certs/{args.0}.pem" "/etc/caddy/certs/{args.0}-key.pem"

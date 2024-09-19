@@ -1,0 +1,37 @@
+{
+	# debug
+	admin off
+	auto_https disable_redirects
+}
+
+
+http://infisical-local.com {
+	header {
+		Server "infisical"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Content-Security-Policy "default-src 'self'"
+	}
+	reverse_proxy /_next/webpack-hmr host.docker.internal:3001 {
+		flush_interval -1
+	}
+	@notHmr not path /_next/webpack-hmr
+	redir @notHmr https://infisical-local.com{uri} permanent
+}
+
+https://infisical-local.com {
+	import tls "infisical-local.com"
+	tls internal
+	header {
+		Server "infisical"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer-when-downgrade"
+		Strict-Transport-Security "max-age=31536000;"
+	}
+	reverse_proxy host.docker.internal:8080 {
+		flush_interval -1
+		header_up Host {http.reverse_proxy.upstream.host}
+		header_up X-Real-IP {remote}
+	}
+}
