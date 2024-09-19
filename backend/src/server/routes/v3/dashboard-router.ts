@@ -73,25 +73,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          folders: z.record(z.string(), SecretFoldersSchema.array()).optional(),
-          dynamicSecrets: z.record(z.string(), SanitizedDynamicSecretSchema.array()).optional(),
-          secrets: z
-            .record(
-              z.string(),
-              secretRawSchema
-                .extend({
-                  secretPath: z.string().optional(),
-                  tags: SecretTagsSchema.pick({
-                    id: true,
-                    slug: true,
-                    color: true
-                  })
-                    .extend({ name: z.string() })
-                    .array()
-                    .optional()
-                })
+          folders: SecretFoldersSchema.extend({ environment: z.string() }).array().optional(),
+          dynamicSecrets: SanitizedDynamicSecretSchema.extend({ environment: z.string() }).array().optional(),
+          secrets: secretRawSchema
+            .extend({
+              secretPath: z.string().optional(),
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                color: true
+              })
+                .extend({ name: z.string() })
                 .array()
-            )
+                .optional()
+            })
+            .array()
             .optional(),
           totalFolderCount: z.number().optional(),
           totalDynamicSecretCount: z.number().optional(),
@@ -166,9 +162,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           // get the count of unique folder names to properly adjust remaining limit
-          const uniqueFolderCount = new Set(
-            Object.values(folders).flatMap((folderGroup) => folderGroup.flatMap((folder) => folder.name))
-          ).size;
+          const uniqueFolderCount = new Set(folders.map((folder) => folder.name)).size;
 
           remainingLimit -= uniqueFolderCount;
           adjustedOffset = 0;
@@ -207,11 +201,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           // get the count of unique dynamic secret names to properly adjust remaining limit
-          const uniqueDynamicSecretsCount = new Set(
-            Object.values(dynamicSecrets).flatMap((dynamicSecretGroup) =>
-              dynamicSecretGroup.flatMap((dynamicSecret) => dynamicSecret.name)
-            )
-          ).size;
+          const uniqueDynamicSecretsCount = new Set(dynamicSecrets.map((dynamicSecret) => dynamicSecret.name)).size;
 
           remainingLimit -= uniqueDynamicSecretsCount;
           adjustedOffset = 0;
@@ -250,7 +240,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           for await (const environment of environments) {
-            const secretCountFromEnv = secrets[environment]?.length;
+            const secretCountFromEnv = secrets.filter((secret) => secret.environment === environment).length;
 
             if (secretCountFromEnv) {
               await server.services.auditLog.createAuditLog({

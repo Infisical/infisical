@@ -550,14 +550,8 @@ export const secretV2BridgeServiceFactory = ({
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
 
-    const data: { [key: string]: typeof decryptedSecrets } = {};
-
     if (!folders.length) {
-      environments.forEach((env) => {
-        data[env] = [];
-      });
-
-      return data;
+      return [];
     }
 
     paths = folders.map((folder) => ({ folderId: folder.id, path, environment: folder.environment.slug }));
@@ -593,11 +587,7 @@ export const secretV2BridgeServiceFactory = ({
       )
     );
 
-    decryptedSecrets.forEach((secret) => {
-      data[secret.environment] = [...(data[secret.environment] ?? []), secret];
-    });
-
-    return data;
+    return decryptedSecrets;
   };
 
   const getSecrets = async ({

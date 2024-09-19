@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
@@ -446,13 +446,12 @@ export const secretFolderServiceFactory = ({
     await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
-    const data: { [key: string]: TSecretFolders[] } = {};
 
     if (!envs.length)
       throw new BadRequestError({ message: "Environment(s) not found", name: "get project folder count" });
 
     const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
-    if (!parentFolders.length) return data;
+    if (!parentFolders.length) return [];
 
     const folders = await folderDAL.findByMultiEnv({
       environmentIds: envs.map((env) => env.id),
@@ -460,14 +459,7 @@ export const secretFolderServiceFactory = ({
       ...params
     });
 
-    // reorganize folders into respective envs
-    const envMap: Map<string, string> = new Map(envs.map((env) => [env.id, env.slug]));
-    folders.forEach((folder) => {
-      const slug = envMap.get(folder.envId);
-      data[slug!] = [...(data[slug!] ?? []), folder];
-    });
-
-    return data;
+    return folders;
   };
 
   // get the unique count of folders within a project path

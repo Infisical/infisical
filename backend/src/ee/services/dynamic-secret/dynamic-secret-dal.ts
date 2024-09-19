@@ -36,14 +36,21 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (search) {
-            void bd.whereILike("name", `%${search}%`);
+            void bd.whereILike(`${TableName.DynamicSecret}.name`, `%${search}%`);
           }
         })
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.DynamicSecret}.folderId`)
+        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .select(
           selectAllTableCols(TableName.DynamicSecret),
-          db.raw(`DENSE_RANK() OVER (ORDER BY "name" ${orderDirection ?? OrderByDirection.ASC}) as rank`)
+          db.ref("slug").withSchema(TableName.Environment).as("environment"),
+          db.raw(
+            `DENSE_RANK() OVER (ORDER BY ${TableName.DynamicSecret}."name" ${
+              orderDirection ?? OrderByDirection.ASC
+            }) as rank`
+          )
         )
-        .orderBy(orderBy, orderDirection);
+        .orderBy(`${TableName.DynamicSecret}.${orderBy}`, orderDirection);
 
       if (limit) {
         const rankOffset = offset + 1;

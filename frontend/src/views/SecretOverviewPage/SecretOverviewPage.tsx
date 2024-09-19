@@ -242,20 +242,12 @@ export const SecretOverviewPage = () => {
     totalDynamicSecretCount
   } = overview ?? {};
 
-  const { folderNames, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(
-    folders,
-    orderDirection
-  );
+  const { folderNames, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(folders);
 
-  const { dynamicSecretNames, isDynamicSecretPresentInEnv } = useDynamicSecretOverview(
-    dynamicSecrets,
-    orderDirection
-  );
+  const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
+    useDynamicSecretOverview(dynamicSecrets);
 
-  const { secKeys, getSecretByKey, getEnvSecretKeyCount } = useSecretOverview(
-    secrets,
-    orderDirection
-  );
+  const { secKeys, getSecretByKey, getEnvSecretKeyCount } = useSecretOverview(secrets);
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -961,7 +953,7 @@ export const SecretOverviewPage = () => {
                 </Tr>
               </TFoot>
             </Table>
-            {!isOverviewLoading && totalCount > INIT_PER_PAGE && (
+            {!isOverviewLoading && (
               <Pagination
                 startAdornment={
                   <SecretTableResourceCount

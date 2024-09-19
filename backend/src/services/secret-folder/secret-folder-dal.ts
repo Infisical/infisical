@@ -411,14 +411,20 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .where("isReserved", false)
         .where((bd) => {
           if (search) {
-            void bd.whereILike("name", `%${search}%`);
+            void bd.whereILike(`${TableName.SecretFolder}.name`, `%${search}%`);
           }
         })
+        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
-          db.raw(`DENSE_RANK() OVER (ORDER BY "name" ${orderDirection ?? OrderByDirection.ASC}) as rank`)
+          db.raw(
+            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" ${
+              orderDirection ?? OrderByDirection.ASC
+            }) as rank`
+          ),
+          db.ref("slug").withSchema(TableName.Environment).as("environment")
         )
-        .orderBy(orderBy, orderDirection);
+        .orderBy(`${TableName.SecretFolder}.${orderBy}`, orderDirection);
 
       if (limit) {
         const rankOffset = offset + 1; // ranks start from 1

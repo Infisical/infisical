@@ -15,7 +15,6 @@ import {
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
-import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -170,21 +169,9 @@ export const useGetProjectSecretsOverview = (
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, ...select } = data;
 
-      let sanitizedSecrets: Record<string, Record<string, SecretV3RawSanitized>> = {};
-
-      if (secrets) {
-        sanitizedSecrets = {};
-        Object.entries(secrets).forEach(([env, rawSecrets]) => {
-          sanitizedSecrets[env] = mergePersonalSecrets(rawSecrets).reduce<
-            Record<string, SecretV3RawSanitized>
-          >((prev, curr) => ({ ...prev, [curr.key]: curr }), {});
-        });
-      }
       return {
         ...select,
-        ...(secrets && {
-          secrets: sanitizedSecrets
-        })
+        secrets: secrets ? mergePersonalSecrets(secrets) : undefined
       };
     }, []),
     keepPreviousData: true

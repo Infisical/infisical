@@ -1,34 +1,32 @@
 import { useCallback, useMemo } from "react";
 
 import { DashboardProjectSecretsOverview } from "@app/hooks/api/dashboard/types";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
 
-export const useFolderOverview = (
-  folders: DashboardProjectSecretsOverview["folders"],
-  orderDirection: OrderByDirection
-) => {
+export const useFolderOverview = (folders: DashboardProjectSecretsOverview["folders"]) => {
   const folderNames = useMemo(() => {
     const names = new Set<string>();
-    Object.values(folders ?? {})?.forEach((folderGroup) => {
-      folderGroup.forEach((folder) => {
-        names.add(folder.name);
-      });
+    folders?.forEach((folder) => {
+      names.add(folder.name);
     });
-    return [...names].sort((a, b) =>
-      orderDirection === OrderByDirection.ASC ? a.localeCompare(b) : b.localeCompare(a)
-    );
+    return [...names];
   }, [folders]);
 
   const isFolderPresentInEnv = useCallback(
     (name: string, env: string) => {
-      return Boolean(folders?.[env]?.find(({ name: folderName }) => folderName === name));
+      return Boolean(
+        folders?.find(
+          ({ name: folderName, environment }) => folderName === name && environment === env
+        )
+      );
     },
     [folders]
   );
 
   const getFolderByNameAndEnv = useCallback(
     (name: string, env: string) => {
-      return folders?.[env]?.find(({ name: folderName }) => folderName === name);
+      return folders?.find(
+        ({ name: folderName, environment }) => folderName === name && environment === env
+      );
     },
     [folders]
   );
@@ -37,25 +35,23 @@ export const useFolderOverview = (
 };
 
 export const useDynamicSecretOverview = (
-  dynamicSecrets: DashboardProjectSecretsOverview["dynamicSecrets"],
-  orderDirection: OrderByDirection
+  dynamicSecrets: DashboardProjectSecretsOverview["dynamicSecrets"]
 ) => {
   const dynamicSecretNames = useMemo(() => {
     const names = new Set<string>();
-    Object.values(dynamicSecrets ?? {})?.forEach((folderGroup) => {
-      folderGroup.forEach((folder) => {
-        names.add(folder.name);
-      });
+    dynamicSecrets?.forEach((dynamicSecret) => {
+      names.add(dynamicSecret.name);
     });
-    return [...names].sort((a, b) =>
-      orderDirection === OrderByDirection.ASC ? a.localeCompare(b) : b.localeCompare(a)
-    );
+    return [...names];
   }, [dynamicSecrets]);
 
   const isDynamicSecretPresentInEnv = useCallback(
     (name: string, env: string) => {
       return Boolean(
-        dynamicSecrets?.[env]?.find(({ name: dynamicSecretName }) => dynamicSecretName === name)
+        dynamicSecrets?.find(
+          ({ name: dynamicSecretName, environment }) =>
+            dynamicSecretName === name && environment === env
+        )
       );
     },
     [dynamicSecrets]
@@ -64,32 +60,23 @@ export const useDynamicSecretOverview = (
   return { dynamicSecretNames, isDynamicSecretPresentInEnv };
 };
 
-export const useSecretOverview = (
-  secrets: DashboardProjectSecretsOverview["secrets"],
-  orderDirection: OrderByDirection
-) => {
+export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secrets"]) => {
   const secKeys = useMemo(() => {
     const keys = new Set<string>();
-    Object.values(secrets ?? {})?.forEach((secretGroup) => {
-      Object.keys(secretGroup || {}).forEach((key) => {
-        keys.add(key);
-      });
-    });
-    return [...keys].sort((a, b) =>
-      orderDirection === OrderByDirection.ASC ? a.localeCompare(b) : b.localeCompare(a)
-    );
+    secrets?.forEach((secret) => keys.add(secret.key));
+    return [...keys];
   }, [secrets]);
 
   const getEnvSecretKeyCount = useCallback(
     (env: string) => {
-      return Object.keys(secrets?.[env] || {}).length;
+      return secrets?.filter((secret) => secret.env === env).length ?? 0;
     },
     [secrets]
   );
 
   const getSecretByKey = useCallback(
     (env: string, key: string) => {
-      const sec = secrets?.[env]?.[key];
+      const sec = secrets?.find((s) => s.env === env && s.key === key);
       return sec;
     },
     [secrets]

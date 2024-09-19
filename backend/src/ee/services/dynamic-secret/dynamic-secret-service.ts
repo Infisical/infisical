@@ -486,15 +486,7 @@ export const dynamicSecretServiceFactory = ({
       ...params
     });
 
-    // map dynamic secrets to their respective env
-    const folderEnvMap: Map<string, string> = new Map(folders.map((folder) => [folder.id, folder.environment.slug]));
-    const data: { [key: string]: Array<(typeof dynamicSecretCfg)[number]> } = {};
-    dynamicSecretCfg.forEach((secret) => {
-      const slug = folderEnvMap.get(secret.folderId);
-      data[slug!] = [...(data[slug!] ?? []), secret];
-    });
-
-    return data;
+    return dynamicSecretCfg;
   };
 
   return {

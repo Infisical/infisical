@@ -5,9 +5,9 @@ import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretV3Raw, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 export type DashboardProjectSecretsOverviewResponse = {
-  folders?: { [key: string]: TSecretFolder[] };
-  dynamicSecrets?: { [key: string]: TDynamicSecret[] };
-  secrets?: { [key: string]: SecretV3Raw[] };
+  folders?: (TSecretFolder & { environment: string })[];
+  dynamicSecrets?: (TDynamicSecret & { environment: string })[];
+  secrets?: SecretV3Raw[];
   totalSecretCount?: number;
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
@@ -30,7 +30,7 @@ export type DashboardProjectSecretsOverview = Omit<
   DashboardProjectSecretsOverviewResponse,
   "secrets"
 > & {
-  secrets?: Record<string, Record<string, SecretV3RawSanitized>>;
+  secrets?: SecretV3RawSanitized[];
 };
 
 export type DashboardProjectSecretsDetails = Omit<
