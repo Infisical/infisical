@@ -169,7 +169,9 @@ export const DynamicSecretMongoDBSchema = z.object({
 export const AzureEntraIDSchema = z.object({
   tenantId: z.string().trim().min(1),
   userId: z.string().trim().min(1),
-  email: z.string().trim().min(1)
+  email: z.string().trim().min(1),
+  applicationId: z.string().trim().min(1),
+  clientSecret: z.string().trim().min(1)
 });
 
 export enum DynamicSecretProviders {

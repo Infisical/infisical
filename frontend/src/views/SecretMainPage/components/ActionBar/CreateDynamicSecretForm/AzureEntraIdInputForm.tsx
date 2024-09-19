@@ -1,13 +1,12 @@
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+import { faArrowUpRightFromSquare, faBookOpen, faCheckCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { FormLabelToolTip } from "@app/components/features/FormLabelToolTip";
 import { createNotification } from "@app/components/notifications";
 import {
     Button,
@@ -20,8 +19,6 @@ import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-import { AzureEntraIdSetup } from "./AzureEntraIdSetup";
-
 const formSchema = z.object({
     selectedUsers: z.array(z.object({
         id: z.string().min(1),
@@ -30,6 +27,8 @@ const formSchema = z.object({
     })),
     provider: z.object({
         tenantId: z.string().min(1),
+        applicationId: z.string().min(1),
+        clientSecret: z.string().min(1)
     }),
     defaultTTL: z.string().superRefine((val, ctx) => {
         const valMs = ms(val);
@@ -79,8 +78,11 @@ export const AzureEntraIdInputForm = ({
         resolver: zodResolver(formSchema)
     });
     const tenantId = watch("provider.tenantId");
-    const [onSetup, setOnSetup] = useState(true);
-    const { data, isLoading, isFetched, isError, isFetching } = useGetDynamicSecretProviderData({ dataFetchType: "Users", provider: { type: DynamicSecretProviders.AzureEntraId, inputs: { userId: "unused", email: "unused", tenantId } }, enabled: !!tenantId });
+    const applicationId = watch("provider.applicationId");
+    const clientSecret = watch("provider.clientSecret");
+
+    const configurationComplete = tenantId && applicationId && clientSecret;
+    const { data, isLoading, isFetched, isError, isFetching } = useGetDynamicSecretProviderData({ dataFetchType: "Users", provider: { type: DynamicSecretProviders.AzureEntraId, inputs: { userId: "unused", email: "unused", tenantId, applicationId, clientSecret } }, enabled: !!configurationComplete });
     const createDynamicSecret = useCreateDynamicSecret();
 
     const handleCreateDynamicSecret = async ({ name, selectedUsers, provider, maxTTL, defaultTTL }: TForm) => {
@@ -89,7 +91,7 @@ export const AzureEntraIdInputForm = ({
         try {
             selectedUsers.map(async (user: { id: string, name: string, email: string }) => {
                 await createDynamicSecret.mutateAsync({
-                    provider: { type: DynamicSecretProviders.AzureEntraId, inputs: { userId: user.id, tenantId: provider.tenantId, email: user.email } },
+                    provider: { type: DynamicSecretProviders.AzureEntraId, inputs: { userId: user.id, tenantId: provider.tenantId, email: user.email, applicationId: provider.applicationId, clientSecret: provider.clientSecret } },
                     maxTTL,
                     name: `${name}-${user.name}`,
                     path: secretPath,
@@ -109,12 +111,7 @@ export const AzureEntraIdInputForm = ({
 
     return (
         <div>
-            {onSetup && <AzureEntraIdSetup
-                onCompleted={() => { setOnSetup(false); }}
-                onCancel={onCancel}
-            />
-            }
-            {!onSetup && <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
+            <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
                 <div>
                     <div className="flex items-center space-x-2">
                         <div className="flex-grow">
@@ -168,7 +165,19 @@ export const AzureEntraIdInputForm = ({
                     </div>
                     <div>
                         <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
-                            Configuration
+                            Configuration 
+                            <Link href="https://infisical.com/docs/documentation/platform/dynamic-secrets/azure-entra-id" passHref>
+                                <a target="_blank" rel="noopener noreferrer">
+                                    <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                                        <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                                        Docs
+                                        <FontAwesomeIcon
+                                            icon={faArrowUpRightFromSquare}
+                                            className="ml-1.5 mb-[0.07rem] text-xxs"
+                                        />
+                                    </div>
+                                </a>
+                            </Link>
                         </div>
                         <div className="flex flex-col">
                             <div className="flex-grow">
@@ -189,21 +198,62 @@ export const AzureEntraIdInputForm = ({
                                 />
                             </div>
                         </div>
+                        <div className="flex flex-col">
+                            <div className="flex-grow">
+                                <Controller
+                                    control={control}
+                                    defaultValue=""
+                                    name="provider.applicationId"
+                                    render={({ field, fieldState: { error } }) => (
+                                        <FormControl
+                                            label="Application Id"
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                            <Input {...field} placeholder="Application ID from Azure Entra ID App installation" />
+                                        </FormControl>
+                                    )}
+
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-col">
+                            <div className="flex-grow">
+                                <Controller
+                                    control={control}
+                                    defaultValue=""
+                                    name="provider.clientSecret"
+                                    render={({ field, fieldState: { error } }) => (
+                                        <FormControl
+                                            label="Client Secret"
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                            <Input {...field} placeholder="Client Secret from Azure Entra ID App installation" />
+                                        </FormControl>
+                                    )}
+
+                                />
+                            </div>
+                        </div>
                     </div>
                     <div>
+
                         <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
                             Select Users
+                        </div>
+                        <div className="mb-4 flex items-center text-sm font-normal text-mineshaft-400">
+                            &nbsp; We create a unique dynamic secret for each user in Entra Id.
                         </div>
                         <div className="flex flex-col">
                             <div className="flex items-center space-x-4">
                                 {
-                                    tenantId && !isError && !isFetching && isFetched && data &&
+                                    configurationComplete && !isError && !isFetching && isFetched && data &&
                                     <Controller
                                         control={control}
                                         name="selectedUsers"
                                         render={({ field: { value, onChange }, fieldState: { error } }) => (
                                             <FormControl
-                                                label={<FormLabelToolTip content="We create a secret for each user" label="Select Users" linkToMore=""/>}
                                                 isRequired
                                                 isError={Boolean(error)}
                                                 errorText={error?.message}
@@ -247,13 +297,13 @@ export const AzureEntraIdInputForm = ({
                                     />
                                 }
                                 {
-                                    tenantId && isFetching && (<><Spinner size="xs" /><p> Loading</p></>)
+                                    configurationComplete && isFetching && (<div className="pl-3 pb-2 w-full flex items-center" ><Spinner size="xs" /><p> &nbsp; Loading </p></div>)
                                 }
                                 {
-                                    tenantId && !isFetching && isError && (<><FontAwesomeIcon icon={faWarning} /> <p> Error loading users please ensure Entra Id app is installed and tenant ID is correct</p></>)
+                                    configurationComplete && !isFetching && isError && (<div className="pl-3 pb-2 w-full flex items-center"><FontAwesomeIcon icon={faWarning} /> <p> &nbsp;  Error loading users please ensure Entra Id app is installed and configuration is correct</p></div>)
                                 }
                                 {
-                                    !tenantId && (<><FontAwesomeIcon icon={faWarning} /><p> Enter tenant ID to fetch users</p></>)
+                                    !configurationComplete && (<div className="pl-3 pb-2 w-full flex items-center" ><FontAwesomeIcon icon={faWarning} /><p> &nbsp; Complete configuration to fetch users</p></div>)
                                 }
                             </div>
                         </div>
@@ -263,15 +313,11 @@ export const AzureEntraIdInputForm = ({
                     <Button type="submit" isLoading={isSubmitting} isDisabled={isLoading || isError}>
                         Submit
                     </Button>
-                    <Button variant="outline_bg" onClick={() => { setOnSetup(true); }}>
-                        Back
-                    </Button>
                     <Button variant="outline_bg" onClick={onCancel}>
                         Cancel
                     </Button>
                 </div>
             </form>
-            }
         </div>
     );
 };

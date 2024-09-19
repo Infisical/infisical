@@ -185,6 +185,8 @@ export type TDynamicSecretProvider =
         tenantId: string;
         userId: string;
         email: string;
+        applicationId: string;
+        clientSecret: string;
       };
   };
 

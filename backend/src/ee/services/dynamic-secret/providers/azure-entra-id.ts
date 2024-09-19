@@ -1,7 +1,6 @@
 import axios from "axios";
 import { customAlphabet } from "nanoid";
 
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AzureEntraIDSchema, DynamicSecretDataFetchTypes, TDynamicProviderFns } from "./models";
@@ -20,14 +19,17 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const getToken = async (tenantId: string): Promise<{ token?: string; success: boolean }> => {
-    const appCfg = getConfig();
+  const getToken = async (
+    tenantId: string,
+    applicationId: string,
+    clientSecret: string
+  ): Promise<{ token?: string; success: boolean }> => {
     const response = await axios.post<{ access_token: string }>(
       `${MSFT_LOGIN_URL}/${tenantId}/oauth2/v2.0/token`,
       {
         grant_type: "client_credentials",
-        client_id: appCfg.MSFT_ENTRA_ID_APPLICATION_ID,
-        client_secret: appCfg.MSFT_ENTRA_ID_CLIENT_SECRET,
+        client_id: applicationId,
+        client_secret: clientSecret,
         scope: "https://graph.microsoft.com/.default"
       },
       {
@@ -45,7 +47,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const data = await getToken(providerInputs.tenantId);
+    const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
     return data.success;
   };
 
@@ -56,7 +58,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns => {
 
   const create = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const data = await getToken(providerInputs.tenantId);
+    const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
     if (!data.success) {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }
@@ -94,7 +96,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns => {
   const fetchData = async (inputs: unknown, toFetch: DynamicSecretDataFetchTypes) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const data = await getToken(providerInputs.tenantId);
+    const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
     if (!data.success) {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }

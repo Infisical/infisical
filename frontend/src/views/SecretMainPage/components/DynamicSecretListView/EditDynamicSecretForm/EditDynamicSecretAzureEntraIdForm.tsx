@@ -9,11 +9,19 @@ import {
   Button,
   FormControl,
   Input,
+  SecretInput,
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 const formSchema = z.object({
+  inputs: z.object({
+    email: z.string(),
+    userId: z.string(),
+    tenantId: z.string(),
+    applicationId: z.string(),
+    clientSecret: z.string()
+  }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
     if (valMs < 60 * 1000)
@@ -66,12 +74,15 @@ export const EditDynamicSecretAzureEntraIdForm = ({
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
+      inputs: {
+        ...(dynamicSecret.inputs as TForm["inputs"])
+      }    
     }
   });
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({ maxTTL, defaultTTL, newName, inputs }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isLoading) return;
     try {
@@ -83,7 +94,8 @@ export const EditDynamicSecretAzureEntraIdForm = ({
         data: {
           maxTTL: maxTTL || undefined,
           defaultTTL,
-          newName: newName === dynamicSecret.name ? undefined : newName
+          newName: newName === dynamicSecret.name ? undefined : newName,
+          inputs
         }
       });
       onClose();
@@ -154,6 +166,109 @@ export const EditDynamicSecretAzureEntraIdForm = ({
             </div>
           </div>
         </div>
+        <div className="flex items-center space-x-2">
+        <div className="flex-grow">
+              <Controller
+                control={control}
+                defaultValue=""
+                name="inputs.email"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Email"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <SecretInput
+                      value={field.value}
+                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    />
+                  </FormControl>
+                )}
+              />
+        </div>
+        <div className="flex-grow">
+              <Controller
+                control={control}
+                defaultValue=""
+                name="inputs.userId"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="User ID"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <SecretInput
+                      isReadOnly
+                      value={field.value}
+                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    />
+                  </FormControl>
+                )}
+              />
+        </div>
+        </div>
+        <div className="flex items-center space-x-2">
+        <div className="flex-grow">
+              <Controller
+                control={control}
+                defaultValue=""
+                name="inputs.tenantId"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Tenant ID"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <SecretInput
+                      isReadOnly
+                      value={field.value}
+                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    />
+                  </FormControl>
+                )}
+          />
+          </div>
+          <div className="flex-grow">
+              <Controller
+                control={control}
+                defaultValue=""
+                name="inputs.applicationId"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Application ID"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <SecretInput
+                      {...field}
+                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    />
+                  </FormControl>
+                )}
+              />
+            </div>
+        </div>
+        <div className="flex items-center space-x-2">
+        <div className="flex-grow">
+              <Controller
+                control={control}
+                defaultValue=""
+                name="inputs.clientSecret"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Client Secret"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <SecretInput
+                      {...field}
+                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    />
+                  </FormControl>
+                )}
+              />
+            </div>
+          </div>
       <div className="mt-4 flex items-center space-x-4">
           <Button type="submit" isLoading={isSubmitting}>
             Submit

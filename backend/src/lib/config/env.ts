@@ -134,9 +134,6 @@ const envSchema = z
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-    // MICROSOFT ENTRA ID APP
-    MSFT_ENTRA_ID_APPLICATION_ID: zpStr(z.string().optional()),
-    MSFT_ENTRA_ID_CLIENT_SECRET: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
