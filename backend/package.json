@@ -178,7 +178,7 @@
     "pino": "^8.16.2",
     "pkijs": "^3.2.4",
     "posthog-node": "^3.6.2",
-    "probot": "^13.0.0",
+    "probot": "^13.3.8",
     "safe-regex": "^2.1.1",
     "scim-patch": "^0.8.3",
     "scim2-parse-filter": "^0.2.10",
