@@ -130,8 +130,8 @@ export const permissionDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
         .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.GroupProjectMembership, (qb) => {
-          void qb
+        .leftJoin(TableName.GroupProjectMembership, (queryBuilder) => {
+          void queryBuilder
             .on(`${TableName.GroupProjectMembership}.projectId`, db.raw("?", [projectId]))
             .andOn(`${TableName.GroupProjectMembership}.groupId`, `${TableName.UserGroupMembership}.groupId`);
         })
@@ -145,8 +145,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.GroupProjectMembershipRole}.customRoleId`,
           `groupCustomRoles.id`
         )
-        .leftJoin(TableName.ProjectMembership, (qb) => {
-          void qb
+        .leftJoin(TableName.ProjectMembership, (queryBuilder) => {
+          void queryBuilder
             .on(`${TableName.ProjectMembership}.projectId`, db.raw("?", [projectId]))
             .andOn(`${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`);
         })
@@ -160,8 +160,8 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.ProjectUserMembershipRole}.customRoleId`,
           `${TableName.ProjectRoles}.id`
         )
-        .leftJoin(TableName.ProjectUserAdditionalPrivilege, (qb) => {
-          void qb
+        .leftJoin(TableName.ProjectUserAdditionalPrivilege, (queryBuilder) => {
+          void queryBuilder
             .on(`${TableName.ProjectUserAdditionalPrivilege}.projectId`, db.raw("?", [projectId]))
             .andOn(`${TableName.ProjectUserAdditionalPrivilege}.userId`, `${TableName.Users}.id`);
         })
