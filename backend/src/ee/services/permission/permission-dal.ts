@@ -18,11 +18,10 @@ export const permissionDALFactory = (db: TDbClient) => {
     try {
       const groupSubQuery = db(TableName.Groups)
         .where(`${TableName.Groups}.orgId`, orgId)
-        .join(TableName.UserGroupMembership, (qb) => {
-          qb.on(`${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`).andOn(
-            `${TableName.UserGroupMembership}.userId`,
-            db.raw("?", [userId])
-          );
+        .join(TableName.UserGroupMembership, (queryBuilder) => {
+          queryBuilder
+            .on(`${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+            .andOn(`${TableName.UserGroupMembership}.userId`, db.raw("?", [userId]));
         })
         .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
         .select(
