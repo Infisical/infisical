@@ -512,7 +512,11 @@ export const secretImportServiceFactory = ({
       return importedSecrets;
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     const importedSecrets = await fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
     return importedSecrets.map((el) => ({

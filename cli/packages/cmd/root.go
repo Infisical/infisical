@@ -4,6 +4,7 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -43,14 +44,26 @@ func init() {
 	rootCmd.PersistentFlags().Bool("silent", false, "Disable output of tip/info messages. Useful when running in scripts or CI/CD pipelines.")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
-		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
 		if err != nil {
 			util.HandleError(err)
 		}
 
+		config.INFISICAL_URL = util.AppendAPIEndpoint(config.INFISICAL_URL)
+
 		if !util.IsRunningInDocker() && !silent {
 			util.CheckForUpdate()
 		}
+
+		loggedInDetails, err := util.GetCurrentLoggedInUserDetails()
+
+		if !silent && err == nil && loggedInDetails.IsUserLoggedIn && !loggedInDetails.LoginExpired {
+			token, err := util.GetInfisicalToken(cmd)
+
+			if err == nil && token != nil {
+				util.PrintWarning(fmt.Sprintf("Your logged-in session is being overwritten by the token provided from the %s.", token.Source))
+			}
+		}
+
 	}
 
 	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment

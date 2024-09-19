@@ -26,7 +26,10 @@ export const getBotKeyFnFactory = (
 ) => {
   const getBotKeyFn = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
-    if (!project) throw new BadRequestError({ message: "Project not found during bot lookup." });
+    if (!project)
+      throw new BadRequestError({
+        message: "Project not found during bot lookup. Are you sure you are using the correct project ID?"
+      });
 
     if (project.version === 3) {
       return { project, shouldUseSecretV2Bridge: true };

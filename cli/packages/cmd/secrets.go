@@ -160,19 +160,19 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if (token == nil) {
+		if token == nil {
 			util.RequireLocalWorkspaceFile()
 		}
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()	
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
 		}
 
-				projectId, err := cmd.Flags().GetString("projectId")
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
