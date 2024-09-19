@@ -80,10 +80,6 @@ Click on Add assignments. Search for the application name you created and select
 </Step>
 </Steps>
 
-<Note>
-  For testing purposes, you can also use a highly privileged role like `superuser`, that will have full control over the cluster. This is not recommended in production environments following the principle of least privilege.
-</Note>
-
 ## Set up Dynamic Secrets with Azure Entra ID
 
 <Steps>
@@ -93,12 +89,12 @@ Click on Add assignments. Search for the application name you created and select
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select 'Elasticsearch'">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-elastic-search.png)
+  <Step title="Select 'Azure Entra ID'">
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-ad-modal.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
-	<ParamField path="Secret Name" type="string" required>
-		Name by which you want the secret to be referenced
+	<ParamField path="Secret Prefix" type="string" required>
+		Prefix for the secrets to be created
 	</ParamField>
 
 	<ParamField path="Default TTL" type="string" required>
@@ -109,54 +105,27 @@ Click on Add assignments. Search for the application name you created and select
 		Maximum time-to-live for a generated secret.
 	</ParamField>
 
-	<ParamField path="Host" type="string" required>
-    Your Elasticsearch host. This is the endpoint that your instance runs on. _(Example: https://your-cluster-ip)_
+	<ParamField path="Tenant ID" type="string" required>
+		The Tenant ID of your Azure Entra ID account.
 	</ParamField>
 
-	<ParamField path="Port" type="string" required>
-  The port that your Elasticsearch instance is running on. _(Example: 9200)_
+	<ParamField path="Application ID" type="string" required>
+		The Application ID of the application you created in Azure Entra ID.
 	</ParamField>
 
-  <ParamField path="Roles" type="string[]" required>
-    The roles that the new user that is created when a lease is provisioned will be assigned to. This is a required field. This defaults to `superuser`, which is highly privileged. It is recommended to create a new role with the least privileges required for the lease.
-  </ParamField>
-
-	<ParamField path="Authentication Method" type="API Key | Username/Password" required>
-    Select the authentication method you want to use to connect to your Elasticsearch instance.
+	<ParamField path="Client Secret" type="string" required>
+		The Client Secret of the application you created in Azure Entra ID.
 	</ParamField>
 
-  <ParamField path="Username" type="string" required>
-    The username of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
+	<ParamField path="Users" type="selection" required>
+		Multi select list of users to generate secrets for.
 	</ParamField>
-
-  <ParamField path="Password" type="string" required>
-    The password of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
-  </ParamField>
-
-  <ParamField path="API Key ID" required>
-    The ID of the API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
-  </ParamField>
-
-  <ParamField path="API Key" required>
-    The API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
-  </ParamField>
-
-	<ParamField path="CA(SSL)" type="string">
-		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
-	</ParamField>
-
-  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
-
 
   </Step>
   <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret created in the dashboard. 
-
-	<Note>
-		If this step fails, you may have to add the CA certificate. 
-	</Note>
-
+  	After submitting the form, you will see a dynamic secrets for each user created in the dashboard. 
   </Step>
+
   <Step title="Generate dynamic secrets">
 	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials. 
 	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item. 
@@ -176,7 +145,7 @@ Click on Add assignments. Search for the application name you created and select
 
 	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you. 
 
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+	![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-ad-lease.png)
   </Step>
 </Steps>
 
