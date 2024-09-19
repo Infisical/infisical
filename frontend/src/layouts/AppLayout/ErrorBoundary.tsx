@@ -79,7 +79,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-const ErrorBoundaryWrapper: React.FC<ErrorBoundaryProps> = ({ children }) => {
+const ErrorBoundaryWrapper = ({ children }: ErrorBoundaryProps) => {
   return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
