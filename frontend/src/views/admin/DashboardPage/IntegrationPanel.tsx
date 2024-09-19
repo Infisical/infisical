@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { useGetAdminSlackConfig, useUpdateServerConfig } from "@app/hooks/api";
 
 const slackFormSchema = z.object({
@@ -65,6 +66,8 @@ export const IntegrationPanel = () => {
 
   const { data: adminSlackConfig } = useGetAdminSlackConfig();
   const { mutateAsync: updateAdminServerConfig } = useUpdateServerConfig();
+  const [isSlackClientIdFocused, setIsSlackClientIdFocused] = useToggle();
+  const [isSlackClientSecretFocused, setIsSlackClientSecretFocused] = useToggle();
 
   useEffect(() => {
     if (adminSlackConfig) {
@@ -120,6 +123,9 @@ export const IntegrationPanel = () => {
               <Input
                 {...field}
                 value={field.value || ""}
+                type={isSlackClientIdFocused ? "text" : "password"}
+                onFocus={() => setIsSlackClientIdFocused.on()}
+                onBlur={() => setIsSlackClientIdFocused.off()}
                 onChange={(e) => field.onChange(e.target.value)}
               />
             </FormControl>
@@ -138,6 +144,9 @@ export const IntegrationPanel = () => {
               <Input
                 {...field}
                 value={field.value || ""}
+                type={isSlackClientSecretFocused ? "text" : "password"}
+                onFocus={() => setIsSlackClientSecretFocused.on()}
+                onBlur={() => setIsSlackClientSecretFocused.off()}
                 onChange={(e) => field.onChange(e.target.value)}
               />
             </FormControl>
