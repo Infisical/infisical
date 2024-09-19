@@ -7,7 +7,7 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import { TSyncSecretsDTO } from "@app/services/secret/secret-types";
+import { TIntegrationSyncPayload, TSyncSecretsDTO } from "@app/services/secret/secret-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -42,6 +42,7 @@ export enum QueueJobs {
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
+  SendFailedIntegrationSyncEmails = "send-failed-integration-sync-emails",
   SecretScan = "secret-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
@@ -88,18 +89,30 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecWebhook;
     payload: { projectId: string; environment: string; secretPath: string; depth?: number };
   };
-  [QueueName.IntegrationSync]: {
-    name: QueueJobs.IntegrationSync;
-    payload: {
-      isManual?: boolean;
-      actorId?: string;
-      projectId: string;
-      environment: string;
-      secretPath: string;
-      depth?: number;
-      deDupeQueue?: Record<string, boolean>;
-    };
-  };
+
+  [QueueName.AccessTokenStatusUpdate]:
+    | {
+        name: QueueJobs.IdentityAccessTokenStatusUpdate;
+        payload: { identityAccessTokenId: string; numberOfUses: number };
+      }
+    | {
+        name: QueueJobs.ServiceTokenStatusUpdate;
+        payload: { serviceTokenId: string };
+      };
+
+  [QueueName.IntegrationSync]:
+    | {
+        name: QueueJobs.IntegrationSync;
+        payload: TIntegrationSyncPayload;
+      }
+    | {
+        name: QueueJobs.SendFailedIntegrationSyncEmails;
+        payload: {
+          projectId: string;
+          environmentSlug: string;
+          secretPath: string;
+        };
+      };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;
     payload: TScanFullRepoEventPayload;
@@ -153,15 +166,6 @@ export type TQueueJobTypes = {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
   };
-  [QueueName.AccessTokenStatusUpdate]:
-    | {
-        name: QueueJobs.IdentityAccessTokenStatusUpdate;
-        payload: { identityAccessTokenId: string; numberOfUses: number };
-      }
-    | {
-        name: QueueJobs.ServiceTokenStatusUpdate;
-        payload: { serviceTokenId: string };
-      };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
