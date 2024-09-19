@@ -1,0 +1,24 @@
+<html>
+
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Integration Sync Failed</title>
+  </head>
+
+  <body>
+    <h2>Infisical</h2>
+    <p>An integration in your project
+      <b>{{projectName}}</b>
+      failed to sync secrets.<br />
+      <a href="{{integrationUrl}}">
+        View integration details.
+      </a>
+    </p>
+
+    {{#if syncMessage}}
+      <p><b>Reason: </b>{{syncMessage}}</p>
+    {{/if}}
+  </body>
+
+</html>

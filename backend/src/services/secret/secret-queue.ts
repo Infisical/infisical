@@ -562,6 +562,30 @@ export const secretQueueFactory = ({
       throw new Error("Secret path not found");
     }
 
+    const sendIntegrationSyncFailedMail = async (integrationId: string, syncMessage: string | null) => {
+      const appCfg = getConfig();
+
+      // If smtp is not configured, we can return early without having to fetch the project members.
+      if (!appCfg.isSmtpConfigured) return;
+
+      const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+      const project = await projectDAL.findById(projectId);
+
+      const filteredProjectMembers =
+        isManual && actorId ? projectMembers.filter((member) => member.userId === actorId) : projectMembers;
+
+      await smtpService.sendMail({
+        recipients: filteredProjectMembers.map((member) => member.user.email!),
+        template: SmtpTemplates.IntegrationSyncFailed,
+        subjectLine: `Integration Sync Failed`,
+        substitutions: {
+          syncMessage,
+          projectName: project.name,
+          integrationUrl: `${appCfg.SITE_URL}/integrations/details/${integrationId}`
+        }
+      });
+    };
+
     // find all imports made with the given environment and secret path
     const linkSourceDto = {
       projectId,
@@ -833,6 +857,11 @@ export const secretQueueFactory = ({
             syncMessage: response?.syncMessage ?? "",
             isSynced: response?.isSynced ?? true
           });
+
+          // May be undefined, if it's undefined we assume the sync was successful, hence the strict equality type check.
+          if (response?.isSynced === false) {
+            await sendIntegrationSyncFailedMail(integration.id, response?.syncMessage);
+          }
         } catch (err) {
           logger.error(
             err,
@@ -863,6 +892,8 @@ export const secretQueueFactory = ({
             syncMessage: message,
             isSynced: false
           });
+
+          await sendIntegrationSyncFailedMail(integration.id, message);
         }
       }
     } finally {
