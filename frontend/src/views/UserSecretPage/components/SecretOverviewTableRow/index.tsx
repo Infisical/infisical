@@ -1,0 +1,1 @@
+export { SecretOverviewTableRow } from "./SecretOverviewTableRow";

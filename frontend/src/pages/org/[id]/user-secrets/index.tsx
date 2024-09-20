@@ -2,7 +2,7 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
-import { OrgSettingsPage } from "@app/views/Settings/OrgSettingsPage";
+import { UserSecretPage } from "@app/views/UserSecretPage/UserSecretPage";
 
 export default function SettingsOrg() {
   const { t } = useTranslation();
@@ -10,10 +10,10 @@ export default function SettingsOrg() {
   return (
     <>
       <Head>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+        <title>{t("common.head-title", { title: "User Secrets" })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <OrgSettingsPage />
+      <UserSecretPage />
     </>
   );
 }

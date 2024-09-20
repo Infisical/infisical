@@ -17,14 +17,20 @@ import {
   SecretVersions,
   TGetProjectSecretsAllEnvDTO,
   TGetProjectSecretsDTO,
-  TGetProjectSecretsKey
-} from "./types";
+  TGetProjectSecretsKey,
+  TGetUserSecretsAllDTO,
+  TGetUserSecretsKey} from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
     [{ workspaceId, environment, secretPath }, "secrets"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const
+};
+
+export const userSecretKeys = {
+  // this is also used in secretSnapshot part
+  getProjectSecret: ({ secretPath }: TGetUserSecretsKey) => [{ secretPath }, "secrets"] as const
 };
 
 export const fetchProjectSecrets = async ({
@@ -38,6 +44,22 @@ export const fetchProjectSecrets = async ({
     params: {
       environment,
       workspaceId,
+      secretPath,
+      expandSecretReferences,
+      include_imports: includeImports
+    }
+  });
+
+  return data;
+};
+
+export const fetchUserSecrets = async ({
+  secretPath,
+  includeImports,
+  expandSecretReferences
+}: TGetUserSecretsKey) => {
+  const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v3/secrets/raw", {
+    params: {
       secretPath,
       expandSecretReferences,
       include_imports: includeImports
@@ -201,6 +223,62 @@ export const useGetProjectSecretsAllEnv = ({
   );
 
   return { data: secrets, secKeys, getSecretByKey, getEnvSecretKeyCount };
+};
+
+export const useGetUserSecrets = ({ secretPath = "/" }: TGetUserSecretsAllDTO) => {
+  const [isErrorHandled, setIsErrorHandled] = useToggle(false);
+  const secrets = useQueries({
+    queries: [
+      {
+        queryKey: userSecretKeys.getProjectSecret({
+          secretPath
+        }),
+        enabled: true,
+        onError: (error: unknown) => {
+          if (axios.isAxiosError(error) && !isErrorHandled) {
+            const serverResponse = error.response?.data as { message: string };
+            if (serverResponse.message !== ERROR_NOT_ALLOWED_READ_SECRETS) {
+              createNotification({
+                title: "Error fetching secrets",
+                type: "error",
+                text: serverResponse.message
+              });
+            }
+
+            setIsErrorHandled.on();
+          }
+        },
+        queryFn: () => fetchUserSecrets({ secretPath }),
+        staleTime: 60 * 1000,
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        select: useCallback(
+          (data: Awaited<ReturnType<typeof fetchUserSecrets>>) =>
+            mergePersonalSecrets(data.secrets).reduce<Record<string, SecretV3RawSanitized>>(
+              (prev, curr) => ({ ...prev, [curr.key]: curr }),
+              {}
+            ),
+          []
+        )
+      }
+    ]
+  });
+
+  const secKeys = useMemo(() => {
+    const keys = new Set<string>();
+    secrets?.forEach(({ data }) => {
+      Object.keys(data || {}).forEach((key) => keys.add(key));
+    });
+    return [...keys];
+  }, [secrets]);
+
+  const getSecretByKey = useCallback(
+    (key: string) => {
+      return secrets?.find((sec) => sec.data?.[key])?.data?.[key];
+    },
+    [secrets]
+  );
+
+  return { data: secrets, secKeys, getSecretByKey };
 };
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
