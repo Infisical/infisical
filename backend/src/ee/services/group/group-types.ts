@@ -29,6 +29,10 @@ export type TDeleteGroupDTO = {
   id: string;
 } & TGenericPermission;
 
+export type TGetGroupByIdDTO = {
+  id: string;
+} & TGenericPermission;
+
 export type TListGroupUsersDTO = {
   id: string;
   offset: number;

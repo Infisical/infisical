@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -21,6 +21,7 @@ import {
   TAddUserToGroupDTO,
   TCreateGroupDTO,
   TDeleteGroupDTO,
+  TGetGroupByIdDTO,
   TListGroupUsersDTO,
   TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
@@ -29,7 +30,7 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "findById">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
   userGroupMembershipDAL: Pick<
@@ -186,6 +187,30 @@ export const groupServiceFactory = ({
     return group;
   };
 
+  const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
+    if (!actorOrgId) {
+      throw new BadRequestError({ message: "Failed to read group without organization" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findById(id);
+    if (!group) {
+      throw new NotFoundError({
+        message: `Cannot find group with ID ${id}`
+      });
+    }
+
+    return group;
+  };
+
   const listGroupUsers = async ({
     id,
     offset,
@@ -336,6 +361,7 @@ export const groupServiceFactory = ({
     deleteGroup,
     listGroupUsers,
     addUserToGroup,
-    removeUserFromGroup
+    removeUserFromGroup,
+    getGroupById
   };
 };
