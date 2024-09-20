@@ -17,10 +17,10 @@ import {
   TCreateDynamicSecretDTO,
   TDeleteDynamicSecretDTO,
   TDetailsDynamicSecretDTO,
-  TDynamicSecretsFetchDataDTO,
   TListDynamicSecretsDTO,
   TUpdateDynamicSecretDTO
 } from "./dynamic-secret-types";
+import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./providers/models";
 
 type TDynamicSecretServiceFactoryDep = {
@@ -333,12 +333,21 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
-  const fetchData = async ({ provider, dataFetchType }: TDynamicSecretsFetchDataDTO) => {
-    const selectedProvider = dynamicSecretProviders[provider.type];
-    if (selectedProvider.fetchData) {
-      const data = selectedProvider.fetchData(provider.inputs, dataFetchType);
-      return data;
-    }
+  const fetchAzureEntraIdUsers = async ({
+    tenantId,
+    applicationId,
+    clientSecret
+  }: {
+    tenantId: string;
+    applicationId: string;
+    clientSecret: string;
+  }) => {
+    const azureEntraIdUsers = await AzureEntraIDProvider().fetchAzureEntraIdUsers(
+      tenantId,
+      applicationId,
+      clientSecret
+    );
+    return azureEntraIdUsers;
   };
 
   return {
@@ -347,6 +356,6 @@ export const dynamicSecretServiceFactory = ({
     deleteByName,
     getDetails,
     list,
-    fetchData
+    fetchAzureEntraIdUsers
   };
 };

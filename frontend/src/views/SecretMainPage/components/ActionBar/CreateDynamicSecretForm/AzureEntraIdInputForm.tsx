@@ -11,10 +11,10 @@ import { createNotification } from "@app/components/notifications";
 import {
     Button,
     FormControl,
-    Input,
-    Spinner,
+    Input
 } from "@app/components/v2";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@app/components/v2/Dropdown/Dropdown";
+import { Tooltip } from "@app/components/v2/Tooltip";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -81,8 +81,10 @@ export const AzureEntraIdInputForm = ({
     const applicationId = watch("provider.applicationId");
     const clientSecret = watch("provider.clientSecret");
 
-    const configurationComplete = tenantId && applicationId && clientSecret;
-    const { data, isLoading, isFetched, isError, isFetching } = useGetDynamicSecretProviderData({ dataFetchType: "Users", provider: { type: DynamicSecretProviders.AzureEntraId, inputs: { userId: "unused", email: "unused", tenantId, applicationId, clientSecret } }, enabled: !!configurationComplete });
+    const configurationComplete = !!(tenantId && applicationId && clientSecret);
+    const { data, isLoading, isError, isFetching } = useGetDynamicSecretProviderData({ tenantId, applicationId, clientSecret, enabled: !!configurationComplete });
+    const loading = configurationComplete && isFetching;
+    const errored = configurationComplete && !isFetching && isError;
     const createDynamicSecret = useCreateDynamicSecret();
 
     const handleCreateDynamicSecret = async ({ name, selectedUsers, provider, maxTTL, defaultTTL }: TForm) => {
@@ -165,7 +167,7 @@ export const AzureEntraIdInputForm = ({
                     </div>
                     <div>
                         <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
-                            Configuration 
+                            Configuration
                             <Link href="https://infisical.com/docs/documentation/platform/dynamic-secrets/azure-entra-id" passHref>
                                 <a target="_blank" rel="noopener noreferrer">
                                     <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
@@ -247,64 +249,94 @@ export const AzureEntraIdInputForm = ({
                         </div>
                         <div className="flex flex-col">
                             <div className="flex items-center space-x-4">
-                                {
-                                    configurationComplete && !isError && !isFetching && isFetched && data &&
-                                    <Controller
-                                        control={control}
-                                        name="selectedUsers"
-                                        render={({ field: { value, onChange }, fieldState: { error } }) => (
-                                            <FormControl
-                                                isRequired
-                                                isError={Boolean(error)}
-                                                errorText={error?.message}
-                                            >
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild className="w-72">
-                                                        <Input
-                                                            isReadOnly
-                                                            value={value?.length ? `${value.length} selected` : "None"}
-                                                            className="text-left"
-                                                        />
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="start"
-                                                        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                                <Controller
+                                    control={control}
+                                    name="selectedUsers"
+                                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                                        <FormControl
+                                            isRequired
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                            <DropdownMenu >
+                                                <DropdownMenuTrigger
+                                                    className="w-72"
+                                                    disabled={loading || errored || !configurationComplete}
+                                                >
+                                                    <Tooltip
+                                                        hidden={!loading && !errored && configurationComplete}
+                                                        content=
+                                                        {
+                                                            <div>
+                                                                {(() => {
+                                                                    let icon;
+                                                                    if (errored) {
+                                                                        icon = <FontAwesomeIcon icon={faWarning} color="red" />;
+                                                                    } else if (loading || !configurationComplete) {
+                                                                        icon = <FontAwesomeIcon icon={faWarning} color="yellow" />;
+                                                                    } else {
+                                                                        icon = null;
+                                                                    }
+                                                                    return icon;
+                                                                })()}
+                                                                <span className="ml-4 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
+                                                                    {(() => {
+                                                                        let message;
+                                                                        if (loading) {
+                                                                            message = "Loading, please wait...";
+                                                                        } else if (errored) {
+                                                                            message = "Check the configuration";
+                                                                        } else if (!configurationComplete) {
+                                                                            message = "Configuration incomplete";
+                                                                        } else {
+                                                                            message = ""; // or you can leave it undefined
+                                                                        }
+                                                                        return message;
+                                                                    })()}
+                                                                </span>
+                                                            </div>
+                                                        }
                                                     >
-                                                        {data.map((user) => {
-                                                            const ids = value?.map((selectedUser) => selectedUser.id)
-                                                            const isChecked = ids?.includes(user.id);
-                                                            return (
-                                                                <DropdownMenuItem
-                                                                    onClick={(evt) => {
-                                                                        evt.preventDefault();
-                                                                        onChange(
-                                                                            isChecked
-                                                                                ? value?.filter((el) => el.id !== user.id)
-                                                                                : [...(value || []), user]
-                                                                        );
-                                                                    }}
-                                                                    key={`create-policy-members-${user.id}`}
-                                                                    iconPos="right"
-                                                                    icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                                                                >
-                                                                    {user.name} <br /> {`(${user.email})`}
-                                                                </DropdownMenuItem>
-                                                            );
-                                                        })}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </FormControl>
-                                        )}
-                                    />
-                                }
-                                {
-                                    configurationComplete && isFetching && (<div className="pl-3 pb-2 w-full flex items-center" ><Spinner size="xs" /><p> &nbsp; Loading </p></div>)
-                                }
-                                {
-                                    configurationComplete && !isFetching && isError && (<div className="pl-3 pb-2 w-full flex items-center"><FontAwesomeIcon icon={faWarning} /> <p> &nbsp;  Error loading users please ensure Entra Id app is installed and configuration is correct</p></div>)
-                                }
-                                {
-                                    !configurationComplete && (<div className="pl-3 pb-2 w-full flex items-center" ><FontAwesomeIcon icon={faWarning} /><p> &nbsp; Complete configuration to fetch users</p></div>)
-                                }
+                                                        <div>
+
+                                                            <Input
+                                                                isReadOnly
+                                                                value={value?.length ? `${value.length} selected` : ""}
+                                                                className={`text-left ${loading || errored || !configurationComplete ? "cursor-not-allowed" : ""}`}
+                                                                placeholder="Select users"
+                                                            />
+                                                        </div>
+                                                    </Tooltip>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="start"
+                                                    style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                                                >
+                                                    {data && data.map((user) => {
+                                                        const ids = value?.map((selectedUser) => selectedUser.id)
+                                                        const isChecked = ids?.includes(user.id);
+                                                        return (
+                                                            <DropdownMenuItem
+                                                                onClick={(evt) => {
+                                                                    evt.preventDefault();
+                                                                    onChange(
+                                                                        isChecked
+                                                                            ? value?.filter((el) => el.id !== user.id)
+                                                                            : [...(value || []), user]
+                                                                    );
+                                                                }}
+                                                                key={`create-policy-members-${user.id}`}
+                                                                iconPos="right"
+                                                                icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                                                            >
+                                                                {user.name} <br /> {`(${user.email})`}
+                                                            </DropdownMenuItem>
+                                                        );
+                                                    })}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </FormControl>
+                                    )}
+                                />
                             </div>
                         </div>
                     </div>

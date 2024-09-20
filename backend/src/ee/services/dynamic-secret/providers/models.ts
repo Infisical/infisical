@@ -187,10 +187,6 @@ export enum DynamicSecretProviders {
   AzureEntraID = "azure-entra-id"
 }
 
-export enum DynamicSecretDataFetchTypes {
-  Users = "users"
-}
-
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema }),
@@ -210,5 +206,4 @@ export type TDynamicProviderFns = {
   validateProviderInputs: (inputs: object) => Promise<unknown>;
   revoke: (inputs: unknown, entityId: string) => Promise<{ entityId: string }>;
   renew: (inputs: unknown, entityId: string, expireAt: number) => Promise<{ entityId: string }>;
-  fetchData?: (inputs: unknown, toFetch: DynamicSecretDataFetchTypes) => Promise<{ data: unknown }>;
 };

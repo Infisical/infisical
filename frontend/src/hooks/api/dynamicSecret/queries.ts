@@ -6,7 +6,6 @@ import { apiRequest } from "@app/config/request";
 import {
   TDetailsDynamicSecretDTO,
   TDynamicSecret,
-  TDynamicSecretProvider,
   TGetDynamicSecretsByEnvsDTO,
   TListDynamicSecretDTO
 } from "./types";
@@ -20,12 +19,6 @@ export const dynamicSecretKeys = {
     [{ projectSlug, environmentSlug, path }, "dynamic-secrets"] as const,
   details: ({ path, environmentSlug, projectSlug, name }: TDetailsDynamicSecretDTO) =>
     [{ projectSlug, path, environmentSlug, name }, "dynamic-secret-details"] as const
-};
-
-type EntraIDUser = {
-  name: string;
-  id: string;
-  email: string;
 };
 
 export const useGetDynamicSecrets = ({
@@ -79,25 +72,28 @@ export const useGetDynamicSecretDetails = ({
 };
 
 export const useGetDynamicSecretProviderData = ({
-  provider,
-  dataFetchType,
+  tenantId,
+  applicationId,
+  clientSecret,
   enabled
 }: {
-  provider: TDynamicSecretProvider,
-  dataFetchType: "Users",
+  tenantId: string;
+  applicationId: string;
+  clientSecret: string;
   enabled: boolean
 }) => {
   return useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const { data } = await apiRequest.post<{ data: { users: [EntraIDUser] } }>(
-        "/api/v1/dynamic-secrets/fetch-provider-data",
+      const { data } = await apiRequest.post<{id:string, email: string, name:string}[]>(
+        "/api/v1/dynamic-secrets/entra-id/users",
         {
-          provider,
-          dataFetchType
+          tenantId,
+          applicationId,
+          clientSecret
         }
       );
-      return data.data.users;
+      return data;
     },
     enabled
   });

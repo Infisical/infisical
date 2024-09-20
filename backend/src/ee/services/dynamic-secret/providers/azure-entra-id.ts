@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { AzureEntraIDSchema, DynamicSecretDataFetchTypes, TDynamicProviderFns } from "./models";
+import { AzureEntraIDSchema, TDynamicProviderFns } from "./models";
 
 const MSFT_GRAPH_API_URL = "https://graph.microsoft.com/v1.0/";
 const MSFT_LOGIN_URL = "https://login.microsoftonline.com";
@@ -13,7 +13,11 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-export const AzureEntraIDProvider = (): TDynamicProviderFns => {
+type User = { name: string; id: string; email: string };
+
+export const AzureEntraIDProvider = (): TDynamicProviderFns & {
+  fetchAzureEntraIdUsers: (tenantId: string, applicationId: string, clientSecret: string) => Promise<User[]>;
+} => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await AzureEntraIDSchema.parseAsync(inputs);
     return providerInputs;
@@ -93,51 +97,42 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const fetchData = async (inputs: unknown, toFetch: DynamicSecretDataFetchTypes) => {
-    const providerInputs = await validateProviderInputs(inputs);
-
-    const data = await getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
+  const fetchAzureEntraIdUsers = async (tenantId: string, applicationId: string, clientSecret: string) => {
+    const data = await getToken(tenantId, applicationId, clientSecret);
     if (!data.success) {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }
 
-    switch (toFetch) {
-      case DynamicSecretDataFetchTypes.Users: {
-        const response = await axios.get<{ value: [{ displayName: string; id: string; userPrincipalName: string }] }>(
-          `${MSFT_GRAPH_API_URL}/users`,
-          {
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              Authorization: `Bearer ${data.token}`
-            }
-          }
-        );
-        const users = response.data.value.map(
-          (user: { displayName: string; id: string; userPrincipalName: string }) => {
-            return {
-              name: user.displayName,
-              id: user.id,
-              email: user.userPrincipalName
-            };
-          }
-        );
-        return {
-          data: {
-            users
-          }
-        };
+    const response = await axios.get<{ value: [{ id: string; displayName: string; userPrincipalName: string }] }>(
+      `${MSFT_GRAPH_API_URL}/users`,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${data.token}`
+        }
       }
+    );
 
-      default:
-        throw new BadRequestError({ message: "Unknown data to fetch" });
+    if (response.status !== 200) {
+      throw new BadRequestError({ message: "Failed to fetch users" });
     }
+
+    const users = response.data.value.map((user) => {
+      return {
+        name: user.displayName,
+        id: user.id,
+        email: user.userPrincipalName
+      };
+    });
+    return users;
   };
+
   return {
     validateProviderInputs,
     validateConnection,
     create,
     revoke,
     renew,
-    fetchData
+    fetchAzureEntraIdUsers
   };
 };

@@ -3,10 +3,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
-import {
-  DynamicSecretDataFetchTypes,
-  DynamicSecretProviderSchema
-} from "@app/ee/services/dynamic-secret/providers/models";
+import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -82,26 +79,33 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
-    url: "/fetch-provider-data",
+    url: "/entra-id/users",
     config: {
       rateLimit: readLimit
     },
     schema: {
       body: z.object({
-        dataFetchType: z.string().min(1).describe("Type of data to fetch"),
-        provider: DynamicSecretProviderSchema.describe(DYNAMIC_SECRETS.CREATE.provider)
+        tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
+        applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),
+        clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration")
       }),
       response: {
-        200: z.object({
-          data: z.unknown()
-        })
+        200: z
+          .object({
+            name: z.string().min(1).describe("The name of the user"),
+            id: z.string().min(1).describe("The ID of the user"),
+            email: z.string().min(1).describe("The email of the user")
+          })
+          .array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const dataFetchType =
-        DynamicSecretDataFetchTypes[req.body.dataFetchType as keyof typeof DynamicSecretDataFetchTypes];
-      const data = await server.services.dynamicSecret.fetchData({ provider: req.body.provider, dataFetchType });
+      const data = await server.services.dynamicSecret.fetchAzureEntraIdUsers({
+        tenantId: req.body.tenantId,
+        applicationId: req.body.applicationId,
+        clientSecret: req.body.clientSecret
+      });
       return data;
     }
   });
