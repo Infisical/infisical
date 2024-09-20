@@ -103,7 +103,8 @@ export const SecretV2MigrationSection = () => {
         allows you to encrypt secrets with your own KMS.
       </p>
       <p className="mx-1 mb-6 leading-7 text-mineshaft-300">
-        This update should only take a few moments and cannot be ran in the background.
+        This update should only take a few moments and cannot be ran in the background. Upgrading
+        will not cause any downtime in your service.
       </p>
       <Button
         onClick={() => handlePopUpOpen("migrationInfo")}
