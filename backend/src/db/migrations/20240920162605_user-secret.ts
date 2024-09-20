@@ -15,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("hashedHex").notNullable();
       t.uuid("userId").notNullable();
       t.uuid("orgId").notNullable();
-      t.string("accessType").notNullable().defaultTo(UserSecretType.Login);
+      t.string("secretType").notNullable().defaultTo(UserSecretType.Login);
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);

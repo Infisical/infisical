@@ -15,7 +15,7 @@ export const UserSecretSchema = z.object({
   hashedHex: z.string(),
   userId: z.string().uuid(),
   orgId: z.string().uuid(),
-  accessType: z.string().default("login"),
+  secretType: z.string().default("login"),
   createdAt: z.date(),
   updatedAt: z.date()
 });
