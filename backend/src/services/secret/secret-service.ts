@@ -954,6 +954,120 @@ export const secretServiceFactory = ({
     return secretsDeleted;
   };
 
+  const getSecretsCount = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environment,
+    tagSlugs = [],
+    ...v2Params
+  }: Pick<
+    TGetSecretsRawDTO,
+    | "projectId"
+    | "path"
+    | "actor"
+    | "actorId"
+    | "actorOrgId"
+    | "actorAuthMethod"
+    | "environment"
+    | "tagSlugs"
+    | "search"
+  >) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "pagination_not_supported"
+      });
+
+    const count = await secretV2BridgeService.getSecretsCount({
+      projectId,
+      actorId,
+      actor,
+      actorOrgId,
+      environment,
+      path,
+      actorAuthMethod,
+      tagSlugs,
+      ...v2Params
+    });
+
+    return count;
+  };
+
+  const getSecretsCountMultiEnv = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environments,
+    ...v2Params
+  }: Pick<
+    TGetSecretsRawDTO,
+    "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search"
+  > & { environments: string[] }) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "pagination_not_supported"
+      });
+
+    const count = await secretV2BridgeService.getSecretsCountMultiEnv({
+      projectId,
+      actorId,
+      actor,
+      actorOrgId,
+      environments,
+      path,
+      actorAuthMethod,
+      ...v2Params
+    });
+
+    return count;
+  };
+
+  const getSecretsRawMultiEnv = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environments,
+    ...params
+  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "tagSlugs"> & {
+    environments: string[];
+  }) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "pagination_not_supported"
+      });
+
+    const secrets = await secretV2BridgeService.getSecretsMultiEnv({
+      projectId,
+      actorId,
+      actor,
+      actorOrgId,
+      environments,
+      path,
+      actorAuthMethod,
+      ...params
+    });
+
+    return secrets;
+  };
+
   const getSecretsRaw = async ({
     projectId,
     path,
@@ -965,7 +1079,8 @@ export const secretServiceFactory = ({
     includeImports,
     expandSecretReferences,
     recursive,
-    tagSlugs = []
+    tagSlugs = [],
+    ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -980,7 +1095,8 @@ export const secretServiceFactory = ({
         recursive,
         actorAuthMethod,
         includeImports,
-        tagSlugs
+        tagSlugs,
+        ...paramsV2
       });
       return { secrets, imports };
     }
@@ -2693,6 +2809,9 @@ export const secretServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
-    startSecretV2Migration
+    startSecretV2Migration,
+    getSecretsCount,
+    getSecretsCountMultiEnv,
+    getSecretsRawMultiEnv
   };
 };

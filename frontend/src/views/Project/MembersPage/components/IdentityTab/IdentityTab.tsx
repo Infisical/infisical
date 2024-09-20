@@ -369,7 +369,7 @@ export const IdentityTab = withProjectPermission(
                   })}
               </TBody>
             </Table>
-            {!isLoading && data && data.totalCount > INIT_PER_PAGE && (
+            {!isLoading && data && data.totalCount > 0 && (
               <Pagination
                 count={data.totalCount}
                 page={page}

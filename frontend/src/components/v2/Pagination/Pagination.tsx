@@ -1,3 +1,4 @@
+import { ReactElement } from "react";
 import {
   faCaretDown,
   faCheck,
@@ -23,6 +24,7 @@ export type PaginationProps = {
   onChangePerPage: (newRows: number) => void;
   className?: string;
   perPageList?: number[];
+  startAdornment?: ReactElement;
 };
 
 export const Pagination = ({
@@ -32,7 +34,8 @@ export const Pagination = ({
   onChangePage,
   onChangePerPage,
   perPageList = [10, 20, 50, 100],
-  className
+  className,
+  startAdornment
 }: PaginationProps) => {
   const prevPageNumber = Math.max(1, page - 1);
   const canGoPrev = page > 1;
@@ -46,11 +49,12 @@ export const Pagination = ({
   return (
     <div
       className={twMerge(
-        "flex w-full items-center justify-end bg-mineshaft-800 py-3 px-4 text-white",
+        "flex w-full items-center justify-end  bg-mineshaft-800 py-3 px-4 text-white",
         className
       )}
     >
-      <div className="mr-6 flex items-center space-x-2">
+      {startAdornment}
+      <div className="ml-auto mr-6 flex items-center space-x-2">
         <div className="text-xs">
           {(page - 1) * perPage + 1} - {Math.min((page - 1) * perPage + perPage, count)} of {count}
         </div>

@@ -220,7 +220,7 @@ export const fnSecretsV2FromImports = async ({
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
 
   const processedImports = allowedImports.map(({ importPath, importEnv, id, folderId }, i) => {
-    const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`][0];
+    const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
     const folderDeeperImportSecrets =
       secretsFromdeeperImportGroupedByFolderId?.[sourceImportFolder?.id || ""]?.[0]?.secrets || [];
     const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])

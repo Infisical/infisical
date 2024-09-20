@@ -5,6 +5,8 @@ import { TDbClient } from "@app/db";
 import { SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
 
@@ -181,7 +183,16 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByFolderIds = async (folderIds: string[], userId?: string, tx?: Knex) => {
+  // get unique secret count by folder IDs
+  const countByFolderIds = async (
+    folderIds: string[],
+    userId?: string,
+    tx?: Knex,
+    filters?: {
+      search?: string;
+      tagSlugs?: string[];
+    }
+  ) => {
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
       if (userId && !uuidValidate(userId)) {
@@ -189,8 +200,70 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         userId = undefined;
       }
 
-      const secs = await (tx || db.replicaNode())(TableName.SecretV2)
+      const query = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn("folderId", folderIds)
+        .where((bd) => {
+          if (filters?.search) {
+            void bd.whereILike("key", `%${filters?.search}%`);
+          }
+        })
+        .where((bd) => {
+          void bd.whereNull("userId").orWhere({ userId: userId || null });
+        })
+        .countDistinct("key");
+
+      // only need to join tags if filtering by tag slugs
+      const slugs = filters?.tagSlugs?.filter(Boolean);
+      if (slugs && slugs.length > 0) {
+        void query
+          .leftJoin(
+            TableName.SecretV2JnTag,
+            `${TableName.SecretV2}.id`,
+            `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+          )
+          .leftJoin(
+            TableName.SecretTag,
+            `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+            `${TableName.SecretTag}.id`
+          )
+          .whereIn("slug", slugs);
+      }
+
+      const secrets = await query;
+
+      return Number(secrets[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get folder secret count" });
+    }
+  };
+
+  const findByFolderIds = async (
+    folderIds: string[],
+    userId?: string,
+    tx?: Knex,
+    filters?: {
+      limit?: number;
+      offset?: number;
+      orderBy?: SecretsOrderBy;
+      orderDirection?: OrderByDirection;
+      search?: string;
+      tagSlugs?: string[];
+    }
+  ) => {
+    try {
+      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
+      if (userId && !uuidValidate(userId)) {
+        // eslint-disable-next-line no-param-reassign
+        userId = undefined;
+      }
+
+      const query = (tx || db.replicaNode())(TableName.SecretV2)
+        .whereIn("folderId", folderIds)
+        .where((bd) => {
+          if (filters?.search) {
+            void bd.whereILike("key", `%${filters?.search}%`);
+          }
+        })
         .where((bd) => {
           void bd.whereNull("userId").orWhere({ userId: userId || null });
         })
@@ -204,11 +277,37 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
-        .select(selectAllTableCols(TableName.SecretV2))
+        .select(
+          selectAllTableCols(TableName.SecretV2),
+          db.raw(`DENSE_RANK() OVER (ORDER BY "key" ${filters?.orderDirection ?? OrderByDirection.ASC}) as rank`)
+        )
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
-        .orderBy("id", "asc");
+        .where((bd) => {
+          const slugs = filters?.tagSlugs?.filter(Boolean);
+          if (slugs && slugs.length > 0) {
+            void bd.whereIn("slug", slugs);
+          }
+        })
+        .orderBy(
+          filters?.orderBy === SecretsOrderBy.Name ? "key" : "id",
+          filters?.orderDirection ?? OrderByDirection.ASC
+        );
+
+      let secs: Awaited<typeof query>;
+
+      if (filters?.limit) {
+        const rankOffset = (filters?.offset ?? 0) + 1; // ranks start at 1
+        secs = await (tx || db)
+          .with("w", query)
+          .select("*")
+          .from<Awaited<typeof query>[number]>("w")
+          .where("w.rank", ">=", rankOffset)
+          .andWhere("w.rank", "<", rankOffset + filters.limit);
+      } else {
+        secs = await query;
+      }
 
       const data = sqlNestRelationships({
         data: secs,
@@ -384,6 +483,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     findBySecretKeys,
     upsertSecretReferences,
     findReferencedSecretReferences,
-    findAllProjectSecretValues
+    findAllProjectSecretValues,
+    countByFolderIds
   };
 };

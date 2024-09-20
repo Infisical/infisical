@@ -51,11 +51,17 @@ export type TFindReturn<TQuery extends Knex.QueryBuilder, TCount extends boolean
       : unknown)
 >;
 
-export type TFindOpt<R extends object = object, TCount extends boolean = boolean> = {
+export type TFindOpt<
+  R extends object = object,
+  TCount extends boolean = boolean,
+  TCountDistinct extends keyof R | undefined = undefined
+> = {
   limit?: number;
   offset?: number;
   sort?: Array<[keyof R, "asc" | "desc"] | [keyof R, "asc" | "desc", "first" | "last"]>;
+  groupBy?: keyof R;
   count?: TCount;
+  countDistinct?: TCountDistinct;
   tx?: Knex;
 };
 
@@ -86,13 +92,18 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
-  find: async <TCount extends boolean = false>(
+  find: async <
+    TCount extends boolean = false,
+    TCountDistinct extends keyof Tables[Tname]["base"] | undefined = undefined
+  >(
     filter: TFindFilter<Tables[Tname]["base"]>,
-    { offset, limit, sort, count, tx }: TFindOpt<Tables[Tname]["base"], TCount> = {}
+    { offset, limit, sort, count, tx, countDistinct }: TFindOpt<Tables[Tname]["base"], TCount, TCountDistinct> = {}
   ) => {
     try {
       const query = (tx || db.replicaNode())(tableName).where(buildFindFilter(filter));
-      if (count) {
+      if (countDistinct) {
+        void query.countDistinct(countDistinct);
+      } else if (count) {
         void query.select(db.raw("COUNT(*) OVER() AS count"));
         void query.select("*");
       }
@@ -101,7 +112,8 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       if (sort) {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
-      const res = (await query) as TFindReturn<typeof query, TCount>;
+
+      const res = (await query) as TFindReturn<typeof query, TCountDistinct extends undefined ? TCount : true>;
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });

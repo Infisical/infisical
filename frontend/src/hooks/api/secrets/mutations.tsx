@@ -1,6 +1,7 @@
 import { MutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
@@ -44,6 +45,9 @@ export const useCreateSecretV3 = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
@@ -97,6 +101,9 @@ export const useUpdateSecretV3 = ({
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
       queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
+      queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
       queryClient.invalidateQueries(
@@ -140,6 +147,9 @@ export const useDeleteSecretV3 = ({
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
       queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
+      queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
       queryClient.invalidateQueries(
@@ -173,6 +183,9 @@ export const useCreateSecretBatch = ({
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
       queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
+      queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
       queryClient.invalidateQueries(
@@ -205,6 +218,9 @@ export const useUpdateSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
@@ -240,6 +256,9 @@ export const useDeleteSecretBatch = ({
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      );
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
@@ -295,6 +314,12 @@ export const useMoveSecrets = ({
       return data;
     },
     onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({
+          projectId,
+          secretPath: sourceSecretPath
+        })
+      );
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({
           workspaceId: projectId,

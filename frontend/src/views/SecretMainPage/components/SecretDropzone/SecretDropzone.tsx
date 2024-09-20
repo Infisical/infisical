@@ -14,9 +14,10 @@ import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/types";
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 
 import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
@@ -189,6 +190,9 @@ export const SecretDropzone = ({
       }
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      );
+      queryClient.invalidateQueries(
+        dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
       );
       queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
       handlePopUpClose("overlapKeyWarning");

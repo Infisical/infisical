@@ -13,7 +13,9 @@ import {
   faFileImport,
   faFilter,
   faFingerprint,
+  faFolder,
   faFolderPlus,
+  faKey,
   faMagnifyingGlass,
   faMinusSquare,
   faPlus,
@@ -62,7 +64,7 @@ import {
   useSelectedSecretActions,
   useSelectedSecrets
 } from "../../SecretMainPage.store";
-import { Filter } from "../../SecretMainPage.types";
+import { Filter, RowType } from "../../SecretMainPage.types";
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
@@ -83,7 +85,8 @@ type Props = {
   isSnapshotCountLoading?: boolean;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
-  onVisiblilityToggle: () => void;
+  onVisibilityToggle: () => void;
+  onToggleRowType: (rowType: RowType) => void;
   onClickRollbackMode: () => void;
 };
 
@@ -100,8 +103,9 @@ export const ActionBar = ({
   isSnapshotCountLoading,
   onSearchChange,
   onToggleTagFilter,
-  onVisiblilityToggle,
-  onClickRollbackMode
+  onVisibilityToggle,
+  onClickRollbackMode,
+  onToggleRowType
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -298,7 +302,9 @@ export const ActionBar = ({
                 ariaLabel="Download"
                 className={twMerge(
                   "transition-all",
-                  Object.keys(filter.tags).length && "border-primary/50 text-primary"
+                  (Object.keys(filter.tags).length ||
+                    Object.values(filter.include).filter((include) => !include).length) &&
+                    "border-primary/50 text-primary"
                 )}
               >
                 <FontAwesomeIcon icon={faFilter} />
@@ -306,6 +312,60 @@ export const ActionBar = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="p-0">
               <DropdownMenuGroup>Filter By</DropdownMenuGroup>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.Import);
+                }}
+                icon={filter?.include[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFileImport} className=" text-green-700" />
+                  <span>Imports</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.Folder);
+                }}
+                icon={filter?.include[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
+                  <span>Folders</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.DynamicSecret);
+                }}
+                icon={
+                  filter?.include[RowType.DynamicSecret] && <FontAwesomeIcon icon={faCheckCircle} />
+                }
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFingerprint} className=" text-yellow-700" />
+                  <span>Dynamic Secrets</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleRowType(RowType.Secret);
+                }}
+                icon={filter?.include[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faKey} className=" text-bunker-300" />
+                  <span>Secrets</span>
+                </div>
+              </DropdownMenuItem>
               <DropdownSubMenu>
                 <DropdownSubMenuTrigger
                   iconPos="right"
@@ -319,10 +379,10 @@ export const ActionBar = ({
                     <DropdownMenuItem
                       onClick={(evt) => {
                         evt.preventDefault();
-                        onToggleTagFilter(id);
+                        onToggleTagFilter(slug);
                       }}
                       key={id}
-                      icon={filter?.tags[id] && <FontAwesomeIcon icon={faCheckCircle} />}
+                      icon={filter?.tags[slug] && <FontAwesomeIcon icon={faCheckCircle} />}
                       iconPos="right"
                     >
                       <div className="flex items-center">
@@ -346,7 +406,7 @@ export const ActionBar = ({
           </IconButton>
         </div>
         <div>
-          <IconButton variant="outline_bg" ariaLabel="Reveal" onClick={onVisiblilityToggle}>
+          <IconButton variant="outline_bg" ariaLabel="Reveal" onClick={onVisibilityToggle}>
             <FontAwesomeIcon icon={isVisible ? faEyeSlash : faEye} />
           </IconButton>
         </div>

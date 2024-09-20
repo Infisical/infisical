@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
@@ -17,29 +18,28 @@ import {
 } from "@app/context";
 import { useDebounce, usePopUp } from "@app/hooks";
 import {
-  useGetDynamicSecrets,
   useGetImportedSecretsSingleEnv,
-  useGetProjectFolders,
-  useGetProjectSecrets,
   useGetSecretApprovalPolicyOfABoard,
-  useGetSecretImports,
   useGetWorkspaceSnapshotList,
   useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
+import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { DynamicSecretListView } from "@app/views/SecretMainPage/components/DynamicSecretListView";
+import { FolderListView } from "@app/views/SecretMainPage/components/FolderListView";
+import { SecretImportListView } from "@app/views/SecretMainPage/components/SecretImportListView";
+import { SecretTableResourceCount } from "@app/views/SecretOverviewPage/components/SecretTableResourceCount/SecretTableResourceCount";
 
 import { SecretV2MigrationSection } from "../SecretOverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
-import { DynamicSecretListView } from "./components/DynamicSecretListView";
-import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
-import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
 import { StoreProvider } from "./SecretMainPage.store";
-import { Filter, SortDir } from "./SecretMainPage.types";
+import { Filter, RowType } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
@@ -55,12 +55,8 @@ export const SecretMainPage = () => {
   const { permission } = useProjectPermission();
 
   const [isVisible, setIsVisible] = useState(false);
-  const [sortDir, setSortDir] = useState<SortDir>(SortDir.ASC);
-  const [filter, setFilter] = useState<Filter>({
-    tags: {},
-    searchFilter: (router.query.searchFilter as string) || ""
-  });
-  const debouncedSearchFilter = useDebounce(filter.searchFilter);
+  const [orderDirection, setOrderDirection] = useState<OrderByDirection>(OrderByDirection.ASC);
+
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(INIT_PER_PAGE);
   const paginationOffset = (page - 1) * perPage;
@@ -83,6 +79,18 @@ export const SecretMainPage = () => {
     ProjectPermissionSub.SecretRollback
   );
 
+  const [filter, setFilter] = useState<Filter>({
+    tags: {},
+    searchFilter: (router.query.searchFilter as string) || "",
+    include: {
+      [RowType.Folder]: true,
+      [RowType.Import]: canReadSecret,
+      [RowType.DynamicSecret]: canReadSecret,
+      [RowType.Secret]: canReadSecret
+    }
+  });
+  const debouncedSearchFilter = useDebounce(filter.searchFilter);
+
   useEffect(() => {
     if (
       !isWorkspaceLoading &&
@@ -91,42 +99,42 @@ export const SecretMainPage = () => {
     ) {
       router.push(`/project/${workspaceId}/secrets/overview`);
       createNotification({
-        text: "No envronment found with given slug",
+        text: "No environment found with given slug",
         type: "error"
       });
     }
   }, [isWorkspaceLoading, currentWorkspace, environment, router.isReady]);
 
-  // fetch secrets
-  const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
-    environment,
-    workspaceId,
-    secretPath,
-    options: {
-      enabled: canReadSecret
-    }
-  });
-
-  // fetch folders
-  const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
-    projectId: workspaceId,
-    environment,
-    path: secretPath
-  });
-
-  // fetch secret imports
   const {
-    data: secretImports,
-    isLoading: isSecretImportsLoading,
-    isFetching: isSecretImportsFetching
-  } = useGetSecretImports({
-    projectId: workspaceId,
+    data,
+    isLoading: isDetailsLoading,
+    isFetching: isDetailsFetching
+  } = useGetProjectSecretsDetails({
     environment,
-    path: secretPath,
-    options: {
-      enabled: canReadSecret
-    }
+    projectId: workspaceId,
+    secretPath,
+    offset: paginationOffset,
+    limit: perPage,
+    search: debouncedSearchFilter,
+    orderDirection,
+    includeImports: canReadSecret && filter.include.import,
+    includeFolders: filter.include.folder,
+    includeDynamicSecrets: canReadSecret && filter.include.dynamic,
+    includeSecrets: canReadSecret && filter.include.secret,
+    tags: filter.tags
   });
+
+  const {
+    imports,
+    folders,
+    dynamicSecrets,
+    secrets,
+    totalImportCount = 0,
+    totalFolderCount = 0,
+    totalDynamicSecretCount = 0,
+    totalSecretCount = 0,
+    totalCount = 0
+  } = data ?? {};
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
@@ -138,13 +146,7 @@ export const SecretMainPage = () => {
     }
   });
 
-  const { data: dynamicSecrets, isLoading: isDynamicSecretLoading } = useGetDynamicSecrets({
-    projectSlug,
-    environmentSlug: environment,
-    path: secretPath
-  });
-
-  // fech tags
+  // fetch tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
@@ -174,12 +176,14 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isNotEmtpy = Boolean(
-    secrets?.length || folders?.length || secretImports?.length || dynamicSecrets?.length
+  const isNotEmpty = Boolean(
+    secrets?.length || folders?.length || imports?.length || dynamicSecrets?.length
   );
 
   const handleSortToggle = () =>
-    setSortDir((state) => (state === SortDir.ASC ? SortDir.DESC : SortDir.ASC));
+    setOrderDirection((state) =>
+      state === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
+    );
 
   const handleEnvChange = (slug: string) => {
     const query: Record<string, string> = { ...router.query, env: slug };
@@ -191,13 +195,27 @@ export const SecretMainPage = () => {
   };
 
   const handleTagToggle = useCallback(
-    (tagId: string) =>
+    (tagSlug: string) =>
       setFilter((state) => {
-        const isTagPresent = Boolean(state.tags?.[tagId]);
+        const isTagPresent = Boolean(state.tags?.[tagSlug]);
         const newTagFilter = { ...state.tags };
-        if (isTagPresent) delete newTagFilter[tagId];
-        else newTagFilter[tagId] = true;
+        if (isTagPresent) delete newTagFilter[tagSlug];
+        else newTagFilter[tagSlug] = true;
         return { ...state, tags: newTagFilter };
+      }),
+    []
+  );
+
+  const handleToggleRowType = useCallback(
+    (rowType: RowType) =>
+      setFilter((state) => {
+        return {
+          ...state,
+          include: {
+            ...state.include,
+            [rowType]: !state.include[rowType]
+          }
+        };
       }),
     []
   );
@@ -219,126 +237,18 @@ export const SecretMainPage = () => {
     handlePopUpClose("snapshots");
   }, []);
 
-  // loading screen when u have permission
-  const loadingOnAccess =
-    canReadSecret &&
-    (isSecretsLoading || isSecretImportsLoading || isFoldersLoading || isDynamicSecretLoading);
-
-  const rows = useMemo(() => {
-    const filteredSecrets =
-      secrets
-        ?.filter(({ key, tags: secretTags, value }) => {
-          const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
-          return (
-            (!isTagFilterActive || secretTags?.some(({ id }) => filter.tags?.[id])) &&
-            (key.toUpperCase().includes(debouncedSearchFilter.toUpperCase()) ||
-              value?.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
-          );
-        })
-        .sort((a, b) =>
-          sortDir === SortDir.ASC ? a.key.localeCompare(b.key) : b.key.localeCompare(a.key)
-        ) ?? [];
-    const filteredFolders =
-      folders
-        ?.filter(({ name }) => name.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
-        .sort((a, b) =>
-          sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-        ) ?? [];
-    const filteredDynamicSecrets =
-      dynamicSecrets
-        ?.filter(({ name }) => name.toLowerCase().includes(debouncedSearchFilter.toLowerCase()))
-        .sort((a, b) =>
-          sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-        ) ?? [];
-    const filteredSecretImports =
-      secretImports
-        ?.filter(({ importPath }) =>
-          importPath.toLowerCase().includes(debouncedSearchFilter.toLowerCase())
-        )
-        .sort((a, b) =>
-          sortDir === "asc"
-            ? a.importPath.localeCompare(b.importPath)
-            : b.importPath.localeCompare(a.importPath)
-        ) ?? [];
-
-    const totalRows =
-      filteredSecretImports.length +
-      filteredFolders.length +
-      filteredDynamicSecrets.length +
-      filteredSecrets.length;
-
-    const paginatedImports = filteredSecretImports.slice(
-      paginationOffset,
-      paginationOffset + perPage
-    );
-
-    let remainingRows = perPage - paginatedImports.length;
-    const foldersStartIndex = Math.max(0, paginationOffset - filteredSecretImports.length);
-    const paginatedFolders =
-      remainingRows > 0
-        ? filteredFolders.slice(foldersStartIndex, foldersStartIndex + remainingRows)
-        : [];
-
-    remainingRows -= paginatedFolders.length;
-    const dynamicSecretStartIndex = Math.max(
-      0,
-      paginationOffset - filteredSecretImports.length - filteredFolders.length
-    );
-    const paginatiedDynamicSecrets =
-      remainingRows > 0
-        ? filteredDynamicSecrets.slice(
-            dynamicSecretStartIndex,
-            dynamicSecretStartIndex + remainingRows
-          )
-        : [];
-
-    remainingRows -= paginatiedDynamicSecrets.length;
-    const secretStartIndex = Math.max(
-      0,
-      paginationOffset -
-        filteredSecretImports.length -
-        filteredFolders.length -
-        filteredDynamicSecrets.length
-    );
-
-    const paginatiedSecrets =
-      remainingRows > 0
-        ? filteredSecrets.slice(secretStartIndex, secretStartIndex + remainingRows)
-        : [];
-
-    return {
-      imports: paginatedImports,
-      folders: paginatedFolders,
-      secrets: paginatiedSecrets,
-      dynamicSecrets: paginatiedDynamicSecrets,
-      totalRows
-    };
-  }, [
-    sortDir,
-    debouncedSearchFilter,
-    folders,
-    secrets,
-    dynamicSecrets,
-    paginationOffset,
-    perPage,
-    filter.tags,
-    importedSecrets
-  ]);
-
   useEffect(() => {
     // reset page if no longer valid
-    if (rows.totalRows < paginationOffset) setPage(1);
-  }, [rows.totalRows]);
+    if (totalCount < paginationOffset) setPage(1);
+  }, [totalCount]);
 
-  // loading screen when you don't have permission but as folder's is viewable need to wait for that
-  const loadingOnDenied = !canReadSecret && isFoldersLoading;
-  if (loadingOnAccess || loadingOnDenied) {
+  if (isDetailsLoading) {
     return <ContentLoader text={LOADER_TEXT} />;
   }
 
   return (
     <StoreProvider>
-      <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="container mx-auto flex flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <SecretV2MigrationSection />
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
@@ -372,17 +282,22 @@ export const SecretMainPage = () => {
               isVisible={isVisible}
               filter={filter}
               tags={tags}
-              onVisiblilityToggle={handleToggleVisibility}
+              onVisibilityToggle={handleToggleVisibility}
               onSearchChange={handleSearchChange}
               onToggleTagFilter={handleTagToggle}
               snapshotCount={snapshotCount || 0}
               isSnapshotCountLoading={isSnapshotCountLoading}
+              onToggleRowType={handleToggleRowType}
               onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             />
-            <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
+            <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
               <div className="flex flex-col" id="dashboard">
-                {isNotEmtpy && (
-                  <div className="flex border-b border-mineshaft-600 font-medium">
+                {isNotEmpty && (
+                  <div
+                    className={twMerge(
+                      "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
+                    )}
+                  >
                     <div style={{ width: "2.8rem" }} className="flex-shrink-0 px-4 py-3" />
                     <div
                       className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
@@ -395,45 +310,43 @@ export const SecretMainPage = () => {
                     >
                       Key
                       <FontAwesomeIcon
-                        icon={sortDir === SortDir.ASC ? faArrowDown : faArrowUp}
+                        icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
                         className="ml-2"
                       />
                     </div>
                     <div className="flex-grow px-4 py-2">Value</div>
                   </div>
                 )}
-                {canReadSecret && (
+                {canReadSecret && imports?.length && (
                   <SecretImportListView
-                    searchTerm={filter.searchFilter}
-                    secretImports={rows.imports}
-                    isFetching={isSecretImportsLoading || isSecretImportsFetching}
+                    searchTerm={debouncedSearchFilter}
+                    secretImports={imports}
+                    isFetching={isDetailsFetching}
                     environment={environment}
                     workspaceId={workspaceId}
                     secretPath={secretPath}
-                    secrets={secrets}
                     importedSecrets={importedSecrets}
                   />
                 )}
-                <FolderListView
-                  folders={rows.folders}
-                  environment={environment}
-                  workspaceId={workspaceId}
-                  secretPath={secretPath}
-                  sortDir={sortDir}
-                  searchTerm={filter.searchFilter}
-                />
-                {canReadSecret && (
+                {folders?.length && (
+                  <FolderListView
+                    folders={folders}
+                    environment={environment}
+                    workspaceId={workspaceId}
+                    secretPath={secretPath}
+                  />
+                )}
+                {canReadSecret && dynamicSecrets?.length && (
                   <DynamicSecretListView
-                    sortDir={sortDir}
                     environment={environment}
                     projectSlug={projectSlug}
                     secretPath={secretPath}
-                    dynamicSecrets={rows.dynamicSecrets || []}
+                    dynamicSecrets={dynamicSecrets}
                   />
                 )}
-                {canReadSecret && (
+                {canReadSecret && secrets?.length && (
                   <SecretListView
-                    secrets={rows.secrets}
+                    secrets={secrets}
                     tags={tags}
                     isVisible={isVisible}
                     environment={environment}
@@ -443,18 +356,26 @@ export const SecretMainPage = () => {
                   />
                 )}
                 {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
-                {!loadingOnAccess && rows.totalRows > INIT_PER_PAGE && (
-                  <Pagination
-                    className="border-t border-solid border-t-mineshaft-600"
-                    count={rows.totalRows}
-                    page={page}
-                    perPage={perPage}
-                    onChangePage={(newPage) => setPage(newPage)}
-                    onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-                  />
-                )}
               </div>
             </div>
+            {!isDetailsLoading && totalCount > 0 && (
+              <Pagination
+                startAdornment={
+                  <SecretTableResourceCount
+                    dynamicSecretCount={totalDynamicSecretCount}
+                    importCount={totalImportCount}
+                    secretCount={totalSecretCount}
+                    folderCount={totalFolderCount}
+                  />
+                }
+                className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+                count={totalCount}
+                page={page}
+                perPage={perPage}
+                onChangePage={(newPage) => setPage(newPage)}
+                onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+              />
+            )}
             <CreateSecretForm
               environment={environment}
               workspaceId={workspaceId}
@@ -467,7 +388,7 @@ export const SecretMainPage = () => {
               environment={environment}
               workspaceId={workspaceId}
               secretPath={secretPath}
-              isSmaller={isNotEmtpy}
+              isSmaller={isNotEmpty}
               environments={currentWorkspace?.environments}
               isProtectedBranch={isProtectedBranch}
             />
