@@ -358,7 +358,7 @@ export const SecretMainPage = () => {
                 {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
               </div>
             </div>
-            {!isDetailsLoading && (
+            {!isDetailsLoading && totalCount > 0 && (
               <Pagination
                 startAdornment={
                   <SecretTableResourceCount

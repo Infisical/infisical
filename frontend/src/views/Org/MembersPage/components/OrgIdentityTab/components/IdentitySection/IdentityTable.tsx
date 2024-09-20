@@ -277,7 +277,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isLoading && data && (
+        {!isLoading && data && data.totalCount > 0 && (
           <Pagination
             count={data.totalCount}
             page={page}

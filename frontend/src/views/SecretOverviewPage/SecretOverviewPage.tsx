@@ -953,7 +953,7 @@ export const SecretOverviewPage = () => {
                 </Tr>
               </TFoot>
             </Table>
-            {!isOverviewLoading && (
+            {!isOverviewLoading && totalCount > 0 && (
               <Pagination
                 startAdornment={
                   <SecretTableResourceCount
