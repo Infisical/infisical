@@ -33,7 +33,8 @@ export enum SmtpTemplates {
   SecretLeakIncident = "secretLeakIncident.handlebars",
   WorkspaceInvite = "workspaceInvitation.handlebars",
   ScimUserProvisioned = "scimUserProvisioned.handlebars",
-  PkiExpirationAlert = "pkiExpirationAlert.handlebars"
+  PkiExpirationAlert = "pkiExpirationAlert.handlebars",
+  IntegrationSyncFailed = "integrationSyncFailed.handlebars"
 }
 
 export enum SmtpHost {

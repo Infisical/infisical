@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
@@ -20,6 +21,29 @@ import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-versio
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
+
+export const FailedIntegrationSyncEmailsPayloadSchema = z.object({
+  projectId: z.string(),
+  secretPath: z.string(),
+  environmentName: z.string(),
+  environmentSlug: z.string(),
+
+  count: z.number(),
+  syncMessage: z.string().optional(),
+  manuallyTriggeredByUserId: z.string().optional()
+});
+
+export type TFailedIntegrationSyncEmailsPayload = z.infer<typeof FailedIntegrationSyncEmailsPayloadSchema>;
+
+export type TIntegrationSyncPayload = {
+  isManual?: boolean;
+  actorId?: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  depth?: number;
+  deDupeQueue?: Record<string, boolean>;
+};
 
 export type TCreateSecretDTO = {
   secretName: string;
