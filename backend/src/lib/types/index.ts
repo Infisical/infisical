@@ -57,3 +57,9 @@ export enum OrderByDirection {
   ASC = "asc",
   DESC = "desc"
 }
+
+export enum UserSecretType {
+  Login = "login",
+  CreditCard = "cc",
+  SecureNote = "secure-note"
+}

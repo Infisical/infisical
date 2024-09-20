@@ -7,16 +7,14 @@ export type TUserSecret = {
   name: string | null;
   encryptedValue: string;
   iv: string;
-  tag: string;
+  secretType?: UserSecretType;
 };
 
 export type TCreateUserSecretRequest = {
   name?: string;
-  password?: string;
   encryptedValue: string;
   hashedHex: string;
   iv: string;
-  tag: string;
   secretType?: UserSecretType;
 };
 
@@ -24,9 +22,7 @@ export type TViewUserSecretResponse = {
   secret: {
     encryptedValue: string;
     iv: string;
-    tag: string;
     secretType: UserSecretType;
-    orgName?: string;
   };
 };
 
