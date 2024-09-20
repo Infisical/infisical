@@ -41,8 +41,16 @@ export const LogsTable = ({
 }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
+  // Determine the project ID for filtering
   const filterProjectId =
-    filter?.projectId ?? (!isOrgAuditLogs ? currentWorkspace?.id ?? "" : null);
+    // Use the projectId from the filter if it exists
+    filter?.projectId ??
+    // Otherwise, if we're not looking at org-wide audit logs
+    (!isOrgAuditLogs
+      ? // Use the current workspace ID (or an empty string if that's null)
+        currentWorkspace?.id ?? ""
+      : // For org-wide audit logs, use null (no specific project filter)
+        null);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
     {

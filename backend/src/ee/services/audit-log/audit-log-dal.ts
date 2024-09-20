@@ -48,6 +48,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
     },
     tx?: Knex
   ) => {
+    if (!orgId && !projectId) {
+      throw new Error("Either orgId or projectId must be provided");
+    }
+
     try {
       // Find statements
       const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
@@ -59,10 +63,11 @@ export const auditLogDALFactory = (db: TDbClient) => {
           } else if (projectId) {
             void this.where(`${TableName.AuditLog}.projectId`, projectId);
           }
-          if (userAgentType) {
-            void this.where(`${TableName.AuditLog}.userAgentType`, userAgentType);
-          }
         });
+
+      if (userAgentType) {
+        void sqlQuery.where("userAgentType", userAgentType);
+      }
 
       // Select statements
       void sqlQuery

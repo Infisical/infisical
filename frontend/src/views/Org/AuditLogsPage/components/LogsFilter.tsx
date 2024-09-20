@@ -231,7 +231,7 @@ export const LogsFilter = ({
           )}
         />
 
-        {isOrgAuditLogs && workspaces.length && (
+        {isOrgAuditLogs && workspaces.length > 0 && (
           <Controller
             control={control}
             name="projectId"
