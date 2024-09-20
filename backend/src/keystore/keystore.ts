@@ -22,15 +22,12 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
-  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  SendFailedIntegrationSyncEmails: (projectId: string, secretPath: string, environmentSlug: string) =>
-    `send-failed-integration-sync-emails-${projectId}-${secretPath}-${environmentSlug}` as const
+  ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`
 };
 
 export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 10,
-  AccessTokenStatusUpdateInSeconds: 120,
-  SendFailedIntegrationSyncEmailsInSeconds: 60
+  AccessTokenStatusUpdateInSeconds: 120
 };
 
 type TWaitTillReady = {
