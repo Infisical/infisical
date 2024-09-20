@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { AuditLogsSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, stripUndefinedInWhere } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -48,47 +48,61 @@ export const auditLogDALFactory = (db: TDbClient) => {
     },
     tx?: Knex
   ) => {
+    if (!orgId && !projectId) {
+      throw new Error("Either orgId or projectId must be provided");
+    }
+
     try {
+      // Find statements
       const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
-        .where(
-          stripUndefinedInWhere({
-            projectId,
-            [`${TableName.AuditLog}.orgId`]: orgId,
-            userAgentType
-          })
-        )
-
         .leftJoin(TableName.Project, `${TableName.AuditLog}.projectId`, `${TableName.Project}.id`)
+        // eslint-disable-next-line func-names
+        .where(function () {
+          if (orgId) {
+            void this.where(`${TableName.Project}.orgId`, orgId).orWhere(`${TableName.AuditLog}.orgId`, orgId);
+          } else if (projectId) {
+            void this.where(`${TableName.AuditLog}.projectId`, projectId);
+          }
+        });
 
+      if (userAgentType) {
+        void sqlQuery.where("userAgentType", userAgentType);
+      }
+
+      // Select statements
+      void sqlQuery
         .select(selectAllTableCols(TableName.AuditLog))
-
         .select(
           db.ref("name").withSchema(TableName.Project).as("projectName"),
           db.ref("slug").withSchema(TableName.Project).as("projectSlug")
         )
-
         .limit(limit)
         .offset(offset)
         .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
 
+      // Special case: Filter by actor ID
       if (actorId) {
         void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actorId]);
       }
 
+      // Special case: Filter by key/value pairs in eventMetadata field
       if (eventMetadata && Object.keys(eventMetadata).length) {
         Object.entries(eventMetadata).forEach(([key, value]) => {
           void sqlQuery.whereRaw(`"eventMetadata"->>'${key}' = ?`, [value]);
         });
       }
 
+      // Filter by actor type
       if (actorType) {
         void sqlQuery.where("actor", actorType);
       }
 
+      // Filter by event types
       if (eventType?.length) {
         void sqlQuery.whereIn("eventType", eventType);
       }
 
+      // Filter by date range
       if (startDate) {
         void sqlQuery.where(`${TableName.AuditLog}.createdAt`, ">=", startDate);
       }
@@ -97,13 +111,21 @@ export const auditLogDALFactory = (db: TDbClient) => {
       }
       const docs = await sqlQuery;
 
-      return docs.map((doc) => ({
-        ...AuditLogsSchema.parse(doc),
-        project: {
-          name: doc.projectName,
-          slug: doc.projectSlug
-        }
-      }));
+      return docs.map((doc) => {
+        // Our type system refuses to acknowledge that the project name and slug are present in the doc, due to the disjointed query structure above.
+        // This is a quick and dirty way to get around the types.
+        const projectDoc = doc as unknown as { projectName: string; projectSlug: string };
+
+        return {
+          ...AuditLogsSchema.parse(doc),
+          ...(projectDoc?.projectSlug && {
+            project: {
+              name: projectDoc.projectName,
+              slug: projectDoc.projectSlug
+            }
+          })
+        };
+      });
     } catch (error) {
       throw new DatabaseError({ error });
     }

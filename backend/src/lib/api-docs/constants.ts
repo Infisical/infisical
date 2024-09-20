@@ -731,9 +731,12 @@ export const DASHBOARD = {
 
 export const AUDIT_LOGS = {
   EXPORT: {
-    workspaceId: "The ID of the project to export audit logs from.",
+    projectId:
+      "Optionally filter logs by project ID. If not provided, logs from the entire organization will be returned.",
     eventType: "The type of the event to export.",
     userAgentType: "Choose which consuming application to export audit logs for.",
+    eventMetadata:
+      "Filter by event metadata key-value pairs. Formatted as `key1=value1,key2=value2`, with comma-separation.",
     startDate: "The date to start the export from.",
     endDate: "The date to end the export at.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th audit log.",

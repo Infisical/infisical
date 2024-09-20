@@ -24,6 +24,7 @@ export const auditLogServiceFactory = ({
   permissionService
 }: TAuditLogServiceFactoryDep) => {
   const listAuditLogs = async ({ actorAuthMethod, actorId, actorOrgId, actor, filter }: TListProjectAuditLogDTO) => {
+    // Filter logs for specific project
     if (filter.projectId) {
       const { permission } = await permissionService.getProjectPermission(
         actor,
@@ -34,6 +35,7 @@ export const auditLogServiceFactory = ({
       );
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     } else {
+      // Organization-wide logs
       const { permission } = await permissionService.getOrgPermission(
         actor,
         actorId,
@@ -44,13 +46,12 @@ export const auditLogServiceFactory = ({
 
       /**
        * NOTE (dangtony98): Update this to organization-level audit log permission check once audit logs are moved
-       * to the organization level
+       * to the organization level ✅
        */
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
     }
 
     // If project ID is not provided, then we need to return all the audit logs for the organization itself.
-
     const auditLogs = await auditLogDAL.find({
       startDate: filter.startDate,
       endDate: filter.endDate,

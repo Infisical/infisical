@@ -42,6 +42,10 @@ const SIMPLE_PERMISSION_OPTIONS = [
     formName: "incident-contact"
   },
   {
+    title: "Audit Logs",
+    formName: "audit-logs"
+  },
+  {
     title: "Organization Profile",
     formName: "settings"
   },

@@ -40,16 +40,24 @@ type Props = {
     eventType?: EventType[];
   };
   className?: string;
+  isOrgAuditLogs?: boolean;
   control: Control<AuditLogFilterFormData>;
   reset: UseFormReset<AuditLogFilterFormData>;
   watch: UseFormWatch<AuditLogFilterFormData>;
 };
 
-export const LogsFilter = ({ presets, className, control, reset, watch }: Props) => {
+export const LogsFilter = ({
+  presets,
+  isOrgAuditLogs,
+  className,
+  control,
+  reset,
+  watch
+}: Props) => {
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, workspaces } = useWorkspace();
   const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?.id ?? "");
 
   const renderActorSelectItem = (actor: Actor) => {
@@ -112,7 +120,7 @@ export const LogsFilter = ({ presets, className, control, reset, watch }: Props)
                       ? eventTypes.find((eventType) => eventType.value === selectedEventTypes[0])
                           ?.label
                       : selectedEventTypes?.length === 0
-                      ? "Select event types"
+                      ? "All events"
                       : `${selectedEventTypes?.length} events selected`}
                     <FontAwesomeIcon icon={faChevronDown} className="ml-2 text-xs" />
                   </div>
@@ -191,7 +199,7 @@ export const LogsFilter = ({ presets, className, control, reset, watch }: Props)
         <Controller
           control={control}
           name="userAgentType"
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+          render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
             <FormControl
               label="Source"
               errorText={error?.message}
@@ -199,13 +207,22 @@ export const LogsFilter = ({ presets, className, control, reset, watch }: Props)
               className="w-40"
             >
               <Select
-                {...(field.value ? { value: field.value } : { placeholder: "Select" })}
+                value={value === undefined ? "all" : value}
                 {...field}
-                onValueChange={(e) => onChange(e)}
-                className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
+                onValueChange={(e) => {
+                  if (e === "all") onChange(undefined);
+                  else onChange(e);
+                }}
+                className={twMerge(
+                  "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
+                  value === undefined && "text-mineshaft-400"
+                )}
               >
-                {userAgentTypes.map(({ label, value }) => (
-                  <SelectItem value={String(value || "")} key={label}>
+                <SelectItem value="all" key="all">
+                  All sources
+                </SelectItem>
+                {userAgentTypes.map(({ label, value: userAgent }) => (
+                  <SelectItem value={userAgent} key={label}>
                     {label}
                   </SelectItem>
                 ))}
@@ -213,6 +230,43 @@ export const LogsFilter = ({ presets, className, control, reset, watch }: Props)
             </FormControl>
           )}
         />
+
+        {isOrgAuditLogs && workspaces.length > 0 && (
+          <Controller
+            control={control}
+            name="projectId"
+            render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+              <FormControl
+                label="Project"
+                errorText={error?.message}
+                isError={Boolean(error)}
+                className="w-40"
+              >
+                <Select
+                  value={value === undefined ? "all" : value}
+                  {...field}
+                  onValueChange={(e) => {
+                    if (e === "all") onChange(undefined);
+                    else onChange(e);
+                  }}
+                  className={twMerge(
+                    "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
+                    value === undefined && "text-mineshaft-400"
+                  )}
+                >
+                  <SelectItem value="all" key="all">
+                    All projects
+                  </SelectItem>
+                  {workspaces.map((project) => (
+                    <SelectItem value={String(project.id || "")} key={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+        )}
         <Controller
           name="startDate"
           control={control}
@@ -272,7 +326,8 @@ export const LogsFilter = ({ presets, className, control, reset, watch }: Props)
             actor: presets?.actorId,
             userAgentType: undefined,
             startDate: undefined,
-            endDate: undefined
+            endDate: undefined,
+            projectId: undefined
           })
         }
       >

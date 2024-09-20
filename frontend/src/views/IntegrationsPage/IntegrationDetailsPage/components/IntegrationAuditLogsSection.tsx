@@ -4,7 +4,7 @@ import { EmptyState } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
-import { LogsSection } from "@app/views/Project/AuditLogsPage/components";
+import { LogsSection } from "@app/views/Org/AuditLogsPage/components";
 
 // Add more events if needed
 const INTEGRATION_EVENTS = [EventType.INTEGRATION_SYNCED];

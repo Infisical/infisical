@@ -66,10 +66,6 @@ const SINGLE_PERMISSION_LIST = [
     formName: "tags"
   },
   {
-    title: "Audit Logs",
-    formName: "audit-logs"
-  },
-  {
     title: "IP Allowlist",
     formName: "ip-allowlist"
   },

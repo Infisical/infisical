@@ -74,7 +74,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Get all audit logs for an organization",
       querystring: z.object({
-        projectId: z.string().optional(),
+        projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
         actorType: z.nativeEnum(ActorType).optional(),
         // eventType is split with , for multiple values, we need to transform it to array
         eventType: z
@@ -102,7 +102,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
               },
               {} as Record<string, string>
             );
-          }),
+          })
+          .describe(AUDIT_LOGS.EXPORT.eventMetadata),
         startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
         endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
         offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
@@ -120,10 +121,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           })
             .merge(
               z.object({
-                project: z.object({
-                  name: z.string(),
-                  slug: z.string()
-                }),
+                project: z
+                  .object({
+                    name: z.string(),
+                    slug: z.string()
+                  })
+                  .optional(),
                 event: z.object({
                   type: z.string(),
                   metadata: z.any()

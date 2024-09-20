@@ -25,7 +25,8 @@ export enum OrgPermissionSubjects {
   SecretScanning = "secret-scanning",
   Identity = "identity",
   Kms = "kms",
-  AdminConsole = "organization-admin-console"
+  AdminConsole = "organization-admin-console",
+  AuditLogs = "audit-logs"
 }
 
 export type OrgPermissionSet =
@@ -43,6 +44,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
+  | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
@@ -111,6 +113,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AuditLogs);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   return rules;
@@ -139,6 +146,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
 
   return rules;
 };

@@ -8,6 +8,7 @@ export type TGetAuditLogsFilter = {
   userAgentType?: UserAgentType;
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
+  projectId?: string;
   actorId?: string; // user ID format
   startDate?: Date;
   endDate?: Date;
@@ -885,7 +886,7 @@ export type AuditLog = {
   userAgentType: UserAgentType;
   createdAt: string;
   updatedAt: string;
-  project: {
+  project?: {
     name: string;
     slug: string;
   };
