@@ -13,7 +13,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useGetUserSecrets } from "@app/hooks/api/userSecrets";
+import { TUserSecret, useGetUserSecrets } from "@app/hooks/api/userSecrets";
 
 import { UserSecretsRow } from "./UserSecretsRow";
 
@@ -26,6 +26,7 @@ type TUserSecretsTable = {
       id: string;
     }
   ): void;
+  handlePopUpOpen(popUpName: "viewSecret", args: TUserSecret): void;
 };
 
 const INIT_PER_PAGE = 20;

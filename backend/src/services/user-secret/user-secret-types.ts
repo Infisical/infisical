@@ -10,6 +10,7 @@ export type TCreateUserSecretDTO = {
   encryptedValue: string;
   hashedHex: string;
   iv: string;
+  tag: string;
   orgId: string;
   secretType: UserSecretType;
 } & TGenericPermission;

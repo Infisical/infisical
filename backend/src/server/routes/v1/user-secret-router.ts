@@ -54,6 +54,7 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
         encryptedValue: z.string(),
         hashedHex: z.string(),
         iv: z.string(),
+        tag: z.string(),
         secretType: z.string().default(UserSecretType.Login)
       }),
       response: {

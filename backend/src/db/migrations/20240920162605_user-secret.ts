@@ -13,6 +13,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("encryptedValue").notNullable();
       t.text("iv").notNullable();
       t.text("hashedHex").notNullable();
+      t.text("tag").notNullable();
       t.uuid("userId").notNullable();
       t.uuid("orgId").notNullable();
       t.string("secretType").notNullable().defaultTo(UserSecretType.Login);

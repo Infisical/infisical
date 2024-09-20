@@ -13,6 +13,7 @@ export const UserSecretSchema = z.object({
   encryptedValue: z.string(),
   iv: z.string(),
   hashedHex: z.string(),
+  tag: z.string(),
   userId: z.string().uuid(),
   orgId: z.string().uuid(),
   secretType: z.string().default("login"),

@@ -48,6 +48,7 @@ export const userSecretServiceFactory = ({ permissionService, userSecretDAL }: T
     encryptedValue,
     hashedHex,
     iv,
+    tag,
     name,
     secretType
   }: TCreateUserSecretDTO) => {
@@ -69,6 +70,7 @@ export const userSecretServiceFactory = ({ permissionService, userSecretDAL }: T
       encryptedValue,
       hashedHex,
       iv,
+      tag,
       userId: actorId,
       orgId: actorOrgId,
       secretType

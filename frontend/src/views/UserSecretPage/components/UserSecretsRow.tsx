@@ -1,4 +1,4 @@
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -14,14 +14,13 @@ export const UserSecretsRow = ({
 }: {
   row: TUserSecret;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteUserSecretConfirmation"]>,
-    {
-      name,
-      id
-    }: {
-      name: string;
-      id: string;
-    }
+    popUpName: keyof UsePopUpState<["deleteUserSecretConfirmation", "viewSecret"]>,
+    args:
+      | {
+          name: string;
+          id: string;
+        }
+      | TUserSecret
   ) => void;
 }) => {
   return (
@@ -34,19 +33,31 @@ export const UserSecretsRow = ({
       </Td>
       <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
       <Td>
-        <IconButton
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePopUpOpen("deleteUserSecretConfirmation", {
-              name: row.name || "",
-              id: row.id
-            });
-          }}
-          variant="plain"
-          ariaLabel="delete"
-        >
-          <FontAwesomeIcon icon={faTrash} />
-        </IconButton>
+        <div className="flex items-center gap-2">
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopUpOpen("viewSecret", row);
+            }}
+            variant="plain"
+            ariaLabel="edit"
+          >
+            <FontAwesomeIcon icon={faPencil} />
+          </IconButton>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePopUpOpen("deleteUserSecretConfirmation", {
+                name: row.name || "",
+                id: row.id
+              });
+            }}
+            variant="plain"
+            ariaLabel="delete"
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </IconButton>
+        </div>
       </Td>
     </Tr>
   );

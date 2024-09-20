@@ -1,14 +1,15 @@
 import crypto from "crypto";
 
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
+import { decryptSymmetric, encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useCreateUserSecret } from "@app/hooks/api";
-import { UserSecretType } from "@app/hooks/api/userSecrets";
+import { TUserSecret, UserSecretType } from "@app/hooks/api/userSecrets";
 
 const schema = z.object({
   name: z.string().optional(),
@@ -18,16 +19,47 @@ const schema = z.object({
   secretType: z.string()
 });
 
+const key = crypto.randomBytes(16).toString("hex");
+
 export type FormData = z.infer<typeof schema>;
 
 export const UserSecretWebLoginForm = ({
   secretType,
+  readOnly,
+  value,
   onCreate
 }: {
   secretType: UserSecretType;
   onCreate: () => void;
+  readOnly?: boolean;
+  value?: TUserSecret;
 }) => {
   const createUserSecret = useCreateUserSecret();
+
+  const decryptedSecret = useMemo(() => {
+    if (value && value.encryptedValue && key) {
+      try {
+        const res = decryptSymmetric({
+          ciphertext: value.encryptedValue,
+          iv: value.iv,
+          tag: value.tag,
+          key
+        });
+        if (res) {
+          const decrypted = JSON.parse(res);
+          return {
+            name: value.name,
+            username: decrypted.username,
+            password: decrypted.password,
+            website: decrypted.website
+          };
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    return "";
+  }, [value, key]);
 
   const {
     control,
@@ -36,7 +68,7 @@ export const UserSecretWebLoginForm = ({
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
+    defaultValues: (decryptedSecret as any) || {
       name: "",
       username: "",
       password: "",
@@ -49,9 +81,8 @@ export const UserSecretWebLoginForm = ({
     try {
       const secret = JSON.stringify({ username, password, website });
 
-      const key = crypto.randomBytes(16).toString("hex");
       const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
-      const { ciphertext, iv } = encryptSymmetric({
+      const { ciphertext, iv, tag } = encryptSymmetric({
         plaintext: secret,
         key
       });
@@ -61,7 +92,8 @@ export const UserSecretWebLoginForm = ({
         encryptedValue: ciphertext,
         hashedHex,
         iv,
-        secretType
+        secretType,
+        tag
       });
 
       reset();
@@ -88,7 +120,7 @@ export const UserSecretWebLoginForm = ({
         name="name"
         render={({ field, fieldState: { error } }) => (
           <FormControl label="Name (Optional)" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="Name" type="text" />
+            <Input {...field} disabled={readOnly} placeholder="Name" type="text" />
           </FormControl>
         )}
       />
@@ -102,7 +134,13 @@ export const UserSecretWebLoginForm = ({
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="Enter your username" type="text" autoComplete="off" />
+            <Input
+              {...field}
+              disabled={readOnly}
+              placeholder="Enter your username"
+              type="text"
+              autoComplete="off"
+            />
           </FormControl>
         )}
       />
@@ -135,7 +173,7 @@ export const UserSecretWebLoginForm = ({
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="Enter the website URL" type="text" />
+            <Input {...field} disabled={readOnly} placeholder="Enter the website URL" type="text" />
           </FormControl>
         )}
       />
