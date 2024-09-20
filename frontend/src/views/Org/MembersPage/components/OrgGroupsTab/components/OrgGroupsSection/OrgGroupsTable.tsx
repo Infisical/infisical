@@ -135,6 +135,18 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              createNotification({
+                                text: "Copied group ID to clipboard",
+                                type: "info"
+                              });
+                              navigator.clipboard.writeText(id);
+                            }}
+                          >
+                            Copy Group ID
+                          </DropdownMenuItem>
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.Identity}
