@@ -17,10 +17,6 @@ const ErrorPage = ({ error }: { error: Error | null }) => {
   const router = useRouter();
   const currentUrl = router?.asPath?.split("?")?.[0];
 
-  error = new Error(
-    "e26eabc714f1/secrets/dev, error on line 45: Cannot read property 'split' of undefinede26eabc714f1/secrets/dev, error on line 45: Cannot read property 'split' of undefinede26eabc714f1/secrets/dev, error on line 45: Cannot read property 'split' of undefinede26eabc714f1/secrets/dev, error on line 45: Cannot read property 'split' of undefinede26eabc714f1/secrets/dev, error on line 45: Cannot read property 'split' of undefinede26eabc714f1/secrets/dev, error on line 45: Cannot read property 'split' of undefined"
-  );
-
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-mineshaft-900">
       <div className="flex max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
@@ -89,7 +85,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     const { hasError, error } = this.state;
     const { children } = this.props;
 
-    if (!hasError) {
+    if (hasError) {
       return <ErrorPage error={error} />;
     }
     return children;
