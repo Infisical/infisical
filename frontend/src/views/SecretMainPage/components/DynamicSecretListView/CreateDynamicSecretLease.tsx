@@ -176,6 +176,24 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
     );
   }
 
+  if (provider === DynamicSecretProviders.AzureEntraId) {
+    const { email, password } = data as {
+      email: string;
+      password: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Email" value={email} />
+        <OutputDisplay
+          label="Password"
+          value={password}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 
