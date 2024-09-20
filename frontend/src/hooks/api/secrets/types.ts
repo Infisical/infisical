@@ -115,20 +115,6 @@ export type TGetProjectSecretsAllEnvDTO = {
   isPaused?: boolean;
 };
 
-// dto
-export type TGetUserSecretsKey = {
-  secretPath?: string;
-  includeImports?: boolean;
-  expandSecretReferences?: boolean;
-};
-
-export type TGetUserSecretsDTO = TGetProjectSecretsKey;
-
-export type TGetUserSecretsAllDTO = {
-  secretPath?: string;
-  isPaused?: boolean;
-};
-
 export type GetSecretVersionsDTO = {
   secretId: string;
   limit: number;
@@ -223,33 +209,4 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
-};
-
-export type TCreateUserSecretsV3DTO = {
-  secretKey: string;
-  secretValue: string;
-  secretComment: string;
-  skipMultilineEncoding?: boolean;
-  secretPath?: string;
-  type: SecretType;
-};
-
-export type TUpdateUserSecretsV3DTO = {
-  secretPath?: string;
-  type: SecretType;
-  skipMultilineEncoding?: boolean;
-  newSecretName?: string;
-  secretKey: string;
-  secretValue: string;
-  secretComment?: string;
-  secretReminderRepeatDays?: number | null;
-  secretReminderNote?: string | null;
-  tagIds?: string[];
-};
-
-export type TDeleteUserSecretsV3DTO = {
-  type: SecretType;
-  secretPath?: string;
-  secretKey: string;
-  secretId?: string;
 };

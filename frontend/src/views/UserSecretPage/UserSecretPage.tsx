@@ -1,135 +1,42 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/router";
-import {
-  faArrowDown,
-  faArrowUp,
-  faFolderBlank,
-  faMagnifyingGlass,
-  faPlus
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createNotification } from "@app/components/notifications";
+import { DeleteActionModal } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
+import { useDeleteUserSecret } from "@app/hooks/api/userSecrets";
 
-import {
-  Button,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { useDebounce, usePopUp } from "@app/hooks";
-import { useGetUserSecrets } from "@app/hooks/api";
+import { AddUserSecretButton } from "./components/AddUserSecretButton";
+import { AddUserSecretModal } from "./components/AddUserSecretModal";
+import { UserSecretsTable } from "./components/UserSecretsTable";
 
-export enum EntryType {
-  FOLDER = "folder",
-  SECRET = "secret"
-}
-
-enum RowType {
-  Folder = "folder",
-  DynamicSecret = "dynamic",
-  Secret = "Secret"
-}
-
-const INIT_PER_PAGE = 20;
+type DeleteModalData = { name: string; id: string };
 
 export const UserSecretPage = () => {
-  const router = useRouter();
+  const deleteUserSecret = useDeleteUserSecret();
+  const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
+    "createUserSecret",
+    "updateUserSecret",
+    "deleteUserSecretConfirmation",
+    "misc"
+  ] as const);
 
-  const parentTableRef = useRef<HTMLTableElement>(null);
-  const [, setExpandableTableWidth] = useState(0);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const onDeleteApproved = async () => {
+    try {
+      deleteUserSecret.mutateAsync({
+        userSecretId: (popUp?.deleteUserSecretConfirmation?.data as DeleteModalData)?.id
+      });
+      createNotification({
+        text: "Successfully deleted shared secret",
+        type: "success"
+      });
 
-  useEffect(() => {
-    if (parentTableRef.current) {
-      setExpandableTableWidth(parentTableRef.current.clientWidth);
+      handlePopUpClose("deleteUserSecretConfirmation");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to delete shared secret",
+        type: "error"
+      });
     }
-  }, [parentTableRef.current]);
-
-  const [searchFilter, setSearchFilter] = useState("");
-  const debouncedSearchFilter = useDebounce(searchFilter);
-
-  const [, setSelectedEntries] = useState<{
-    [EntryType.FOLDER]: Record<string, boolean>;
-    [EntryType.SECRET]: Record<string, boolean>;
-  }>({
-    [EntryType.FOLDER]: {},
-    [EntryType.SECRET]: {}
-  });
-
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-
-  const resetSelectedEntries = useCallback(() => {
-    setSelectedEntries({
-      [EntryType.FOLDER]: {},
-      [EntryType.SECRET]: {}
-    });
-  }, []);
-
-  useEffect(() => {
-    const handleParentTableWidthResize = () => {
-      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
-    };
-
-    const onRouteChangeStart = () => {
-      resetSelectedEntries();
-    };
-
-    router.events.on("routeChangeStart", onRouteChangeStart);
-
-    window.addEventListener("resize", handleParentTableWidthResize);
-    return () => {
-      window.removeEventListener("resize", handleParentTableWidthResize);
-      router.events.off("routeChangeStart", onRouteChangeStart);
-    };
-  }, []);
-
-  const { data: secrets, secKeys } = useGetUserSecrets({});
-
-  const { handlePopUpOpen } = usePopUp(["addUserSecrets", "misc"] as const);
-
-  const rows = useMemo(() => {
-    const filteredSecretNames =
-      secKeys
-        ?.filter((name) => name.toUpperCase().includes(debouncedSearchFilter.toUpperCase()))
-        .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a))) ?? [];
-
-    return [...filteredSecretNames.map((name) => ({ name, type: RowType.Secret }))];
-  }, [sortDir, debouncedSearchFilter, secKeys]);
-
-  const paginationOffset = (page - 1) * perPage;
-
-  useEffect(() => {
-    // reset page if no longer valid
-    if (rows.length < paginationOffset) setPage(1);
-  }, [rows.length]);
-
-  const isTableLoading = secrets?.some(({ isLoading }) => isLoading);
-
-  if (isTableLoading) {
-    return (
-      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <img
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          alt="loading animation"
-          decoding="async"
-          loading="lazy"
-        />
-      </div>
-    );
-  }
-
-  const isTableEmpty = !secrets?.every(({ isLoading }) => isLoading) && rows.length === 0;
+  };
 
   return (
     <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -179,110 +86,24 @@ export const UserSecretPage = () => {
         <div className="flex items-center justify-between">
           <div />
           <div className="flex flex-row items-center justify-center space-x-2">
-            <div className="w-80">
-              <Input
-                className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-                placeholder="Search by secret/folder name..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              />
-            </div>
             <div>
-              <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("addUserSecrets")}
-                className="h-10"
-              >
-                Add Secret
-              </Button>
+              <AddUserSecretButton popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
             </div>
           </div>
         </div>
       </div>
-      <div className="thin-scrollbar mt-4" ref={parentTableRef}>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr className="sticky top-0 z-20 border-0">
-                <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                  <div className="flex h-12 items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
-                    Name
-                    <IconButton
-                      variant="plain"
-                      className="ml-2"
-                      ariaLabel="sort"
-                      onClick={() => setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
-                    >
-                      <FontAwesomeIcon icon={sortDir === "asc" ? faArrowDown : faArrowUp} />
-                    </IconButton>
-                  </div>
-                </Th>
-                <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                  <div className="flex h-12 items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
-                    Type
-                  </div>
-                </Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {isTableLoading && (
-                <TableSkeleton
-                  columns={2} // key + type
-                  innerKey="secret-overview-loading"
-                  rows={5}
-                  className="bg-mineshaft-700"
-                />
-              )}
-              {isTableEmpty && !isTableLoading && (
-                <Tr>
-                  <Td colSpan={2}>
-                    <EmptyState
-                      title={
-                        debouncedSearchFilter
-                          ? "No secret found for your search, add one now"
-                          : "Let's add some secrets"
-                      }
-                      icon={faFolderBlank}
-                      iconSize="3x"
-                    >
-                      <Button
-                        className="mt-4"
-                        variant="outline_bg"
-                        colorSchema="primary"
-                        size="md"
-                        onClick={() => handlePopUpOpen("addUserSecrets")}
-                      >
-                        Add Secrets
-                      </Button>
-                    </EmptyState>
-                  </Td>
-                </Tr>
-              )}
-              {!isTableLoading &&
-                rows.slice(paginationOffset, paginationOffset + perPage).map((row) => {
-                  switch (row.type) {
-                    case RowType.Secret:
-                      return null;
-                    default:
-                      return null;
-                  }
-                })}
-            </TBody>
-          </Table>
-          {!isTableLoading && rows.length > INIT_PER_PAGE && (
-            <Pagination
-              className="border-t border-solid border-t-mineshaft-600"
-              count={rows.length}
-              page={page}
-              perPage={perPage}
-              onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-            />
-          )}
-        </TableContainer>
-      </div>
+      <UserSecretsTable handlePopUpOpen={handlePopUpOpen} />
+      <AddUserSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <DeleteActionModal
+        isOpen={popUp.deleteUserSecretConfirmation.isOpen}
+        title={`Delete ${
+          (popUp?.deleteUserSecretConfirmation?.data as DeleteModalData)?.name || " "
+        } shared secret?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteUserSecretConfirmation", isOpen)}
+        deleteKey={(popUp?.deleteUserSecretConfirmation?.data as DeleteModalData)?.name}
+        onClose={() => handlePopUpClose("deleteUserSecretConfirmation")}
+        onDeleteApproved={onDeleteApproved}
+      />
     </div>
   );
 };

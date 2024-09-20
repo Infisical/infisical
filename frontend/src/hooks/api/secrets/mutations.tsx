@@ -4,18 +4,15 @@ import { apiRequest } from "@app/config/request";
 
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
-import { secretKeys, userSecretKeys } from "./queries";
+import { secretKeys } from "./queries";
 import {
   TCreateSecretBatchDTO,
   TCreateSecretsV3DTO,
-  TCreateUserSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
-  TDeleteUserSecretsV3DTO,
   TMoveSecretsDTO,
   TUpdateSecretBatchDTO,
-  TUpdateSecretsV3DTO,
-  TUpdateUserSecretsV3DTO
+  TUpdateSecretsV3DTO
 } from "./types";
 
 export const useCreateSecretV3 = ({
@@ -339,103 +336,3 @@ export const useBackfillSecretReference = () =>
       return data.message;
     }
   });
-
-export const useCreateUserSecretV3 = ({
-  options
-}: {
-  options?: Omit<MutationOptions<{}, {}, TCreateUserSecretsV3DTO>, "mutationFn">;
-} = {}) => {
-  const queryClient = useQueryClient();
-  return useMutation<{}, {}, TCreateUserSecretsV3DTO>({
-    mutationFn: async ({
-      secretPath = "/",
-      type,
-      workspaceId,
-      secretKey,
-      secretValue,
-      secretComment,
-      skipMultilineEncoding
-    }) => {
-      const { data } = await apiRequest.post(`/api/v3/secrets/raw/${secretKey}`, {
-        secretPath,
-        type,
-        workspaceId,
-        secretValue,
-        secretComment,
-        skipMultilineEncoding
-      });
-      return data;
-    },
-    onSuccess: (_, { workspaceId, secretPath }) => {
-      queryClient.invalidateQueries(userSecretKeys.getProjectSecret({ workspaceId, secretPath }));
-    },
-    ...options
-  });
-};
-
-export const useUpdateUserSecretV3 = ({
-  options
-}: {
-  options?: Omit<MutationOptions<{}, {}, TUpdateUserSecretsV3DTO>, "mutationFn">;
-} = {}) => {
-  const queryClient = useQueryClient();
-  return useMutation<{}, {}, TUpdateUserSecretsV3DTO>({
-    mutationFn: async ({
-      secretPath = "/",
-      type,
-      workspaceId,
-      secretKey,
-      secretValue,
-      tagIds,
-      secretComment,
-      secretReminderRepeatDays,
-      secretReminderNote,
-      newSecretName,
-      skipMultilineEncoding
-    }) => {
-      const { data } = await apiRequest.patch(`/api/v3/secrets/raw/${secretKey}`, {
-        workspaceId,
-        type,
-        secretReminderNote,
-        secretReminderRepeatDays,
-        secretPath,
-        skipMultilineEncoding,
-        newSecretName,
-        secretComment,
-        tagIds,
-        secretValue
-      });
-      return data;
-    },
-    onSuccess: (_, { workspaceId, secretPath }) => {
-      queryClient.invalidateQueries(userSecretKeys.getProjectSecret({ workspaceId, secretPath }));
-    },
-    ...options
-  });
-};
-
-export const useDeleteUserSecretV3 = ({
-  options
-}: {
-  options?: Omit<MutationOptions<{}, {}, TDeleteUserSecretsV3DTO>, "mutationFn">;
-} = {}) => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, TDeleteUserSecretsV3DTO>({
-    mutationFn: async ({ secretPath = "/", type, workspaceId, secretKey, secretId }) => {
-      const { data } = await apiRequest.delete(`/api/v3/secrets/raw/${secretKey}`, {
-        data: {
-          workspaceId,
-          type,
-          secretPath,
-          secretId
-        }
-      });
-      return data;
-    },
-    onSuccess: (_, { workspaceId, secretPath }) => {
-      queryClient.invalidateQueries(userSecretKeys.getProjectSecret({ workspaceId, secretPath }));
-    },
-    ...options
-  });
-};
