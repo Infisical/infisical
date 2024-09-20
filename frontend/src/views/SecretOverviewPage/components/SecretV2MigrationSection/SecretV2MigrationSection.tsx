@@ -3,13 +3,14 @@ import { Controller, useForm } from "react-hook-form";
 import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, Modal, ModalContent, Spinner } from "@app/components/v2";
 import { useProjectPermission, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceById, useMigrateProjectToV3 } from "@app/hooks/api";
+import { useGetWorkspaceById, useMigrateProjectToV3, workspaceKeys } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
@@ -28,6 +29,7 @@ const formSchema = z.object({
 export const SecretV2MigrationSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["migrationInfo"] as const);
   const { currentWorkspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const { data: workspaceDetails, refetch } = useGetWorkspaceById(
     // if v3 no need to fetch
     currentWorkspace?.version === ProjectVersion.V3 ? "" : currentWorkspace?.id || "",
@@ -51,6 +53,7 @@ export const SecretV2MigrationSection = () => {
     if (isProjectUpgraded && migrateProjectToV3.data) {
       createNotification({ type: "success", text: "Project upgrade completed successfully" });
       migrateProjectToV3.reset();
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
   }, [isProjectUpgraded, Boolean(migrateProjectToV3.data)]);
 
