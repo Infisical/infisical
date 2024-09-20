@@ -9,7 +9,7 @@ import { createNotification } from "@app/components/notifications";
 import { decryptSymmetric, encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useCreateUserSecret } from "@app/hooks/api";
-import { TUserSecret, UserSecretType } from "@app/hooks/api/userSecrets";
+import { TUserSecret, useDeleteUserSecret,UserSecretType } from "@app/hooks/api/userSecrets";
 
 const schema = z.object({
   name: z.string().optional(),
@@ -39,6 +39,7 @@ export const UserSecretWebLoginForm = ({
   const decryptedSecret = useMemo(() => {
     if (value && value.encryptedValue && key) {
       try {
+        let decrypted;
         const res = decryptSymmetric({
           ciphertext: value.encryptedValue,
           iv: value.iv,
@@ -46,16 +47,17 @@ export const UserSecretWebLoginForm = ({
           key
         });
         if (res) {
-          const decrypted = JSON.parse(res);
-          return {
-            name: value.name,
-            username: decrypted.username,
-            password: decrypted.password,
-            website: decrypted.website
-          };
+          decrypted = JSON.parse(res);
         }
+        return {
+          ...value,
+          username: decrypted.username,
+          password: decrypted.password,
+          website: decrypted.website
+        };
       } catch (error) {
         console.error(error);
+        return value;
       }
     }
     return "";
@@ -77,10 +79,17 @@ export const UserSecretWebLoginForm = ({
     }
   });
 
+  const deleteUserSecret = useDeleteUserSecret();
+
   const onFormSubmit = async ({ name, username, password, website }: FormData) => {
     try {
+      const existingId = (decryptedSecret as any)?.id;
+      if (existingId) {
+        deleteUserSecret.mutateAsync({
+          userSecretId: existingId
+        });
+      }
       const secret = JSON.stringify({ username, password, website });
-
       const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
       const { ciphertext, iv, tag } = encryptSymmetric({
         plaintext: secret,
@@ -101,7 +110,7 @@ export const UserSecretWebLoginForm = ({
       onCreate();
 
       createNotification({
-        text: "Successfully created a secret",
+        text: existingId ? "Successfully updated a secret" : "Successfully created a secret",
         type: "success"
       });
     } catch (error) {
@@ -184,7 +193,7 @@ export const UserSecretWebLoginForm = ({
         isLoading={isSubmitting}
         isDisabled={isSubmitting}
       >
-        Create secret
+        {decryptedSecret ? "Update" : "Create secret"}
       </Button>
     </form>
   );
