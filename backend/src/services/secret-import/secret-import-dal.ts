@@ -104,6 +104,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .where(filter)
+        .where("isReplication", false)
         .where((bd) => {
           if (search) {
             void bd.whereILike("importPath", `%${search}%`);

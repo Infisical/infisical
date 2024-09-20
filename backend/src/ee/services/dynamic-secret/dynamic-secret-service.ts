@@ -5,7 +5,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -458,7 +458,7 @@ export const dynamicSecretServiceFactory = ({
     if (!projectId) {
       if (!projectSlug) throw new BadRequestError({ message: "Project ID or slug required" });
       const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
+      if (!project) throw new NotFoundError({ message: "Project not found" });
       projectId = project.id;
     }
 

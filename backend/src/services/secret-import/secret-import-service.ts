@@ -7,7 +7,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -417,7 +417,7 @@ export const secretImportServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found", name: "Get imports" });
 
     const count = await secretImportDAL.getProjectImportCount({ folderId: folder.id, search });
 
