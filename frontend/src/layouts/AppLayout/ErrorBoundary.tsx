@@ -57,7 +57,7 @@ const ErrorPage = ({ error }: { error: Error | null }) => {
         </p>
 
         {orgId && (
-          <Button className="mt-4" size="xs" onClick={() => router.push(`/org/${orgId}`)}>
+          <Button className="mt-4" size="xs" onClick={() => router.push(`/org/${orgId}/overview`)}>
             <FontAwesomeIcon icon={faHome} className="mr-2" />
             Back To Home
           </Button>
