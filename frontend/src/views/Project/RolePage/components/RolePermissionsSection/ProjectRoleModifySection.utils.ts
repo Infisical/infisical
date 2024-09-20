@@ -217,7 +217,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
     rules.forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
-        (el) => actions?.[el as keyof typeof actions]
+        (el) => actions?.[el as keyof typeof actions] && el !== "conditions"
       );
       const caslConditions =
         "conditions" in actions
@@ -226,7 +226,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
 
       permissions.push({
         action: caslActions,
-        subject: [subject],
+        subject,
         conditions: caslConditions
       });
     });

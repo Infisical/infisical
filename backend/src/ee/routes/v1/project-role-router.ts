@@ -6,8 +6,9 @@ import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } f
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ProjectPermissionSchema, SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectPermissionSchema } from "@app/ee/services/permission/project-permission";
+import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
