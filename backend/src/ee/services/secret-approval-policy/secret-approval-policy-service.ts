@@ -11,6 +11,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
+import { TSecretApprovalPolicyGroupApproverDALFactory } from "./secret-approval-policy-group-approver-dal";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
@@ -29,6 +30,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
+  secretApprovalPolicyGroupApproverDAL: TSecretApprovalPolicyGroupApproverDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -38,6 +40,7 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyDAL,
   permissionService,
   secretApprovalPolicyApproverDAL,
+  secretApprovalPolicyGroupApproverDAL,
   projectEnvDAL,
   licenseService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
@@ -49,12 +52,16 @@ export const secretApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     approvers,
+    groupApprovers,
     projectId,
     secretPath,
     environment,
     enforcementLevel
   }: TCreateSapDTO) => {
-    if (approvals > approvers.length)
+    if (!groupApprovers && !approvers)
+      throw new BadRequestError({ message: "Either of approvers or group approvers must be provided" });
+
+    if (!groupApprovers && approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -91,9 +98,18 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
+
       await secretApprovalPolicyApproverDAL.insertMany(
         approvers.map((approverUserId) => ({
           approverUserId,
+          policyId: doc.id
+        })),
+        tx
+      );
+
+      await secretApprovalPolicyGroupApproverDAL.insertMany(
+        groupApprovers.map((approverGroupId) => ({
+          approverGroupId,
           policyId: doc.id
         })),
         tx
@@ -105,6 +121,7 @@ export const secretApprovalPolicyServiceFactory = ({
 
   const updateSecretApprovalPolicy = async ({
     approvers,
+    groupApprovers,
     secretPath,
     name,
     actorId,
@@ -151,6 +168,16 @@ export const secretApprovalPolicyServiceFactory = ({
         await secretApprovalPolicyApproverDAL.insertMany(
           approvers.map((approverUserId) => ({
             approverUserId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+      if (groupApprovers) {
+        await secretApprovalPolicyGroupApproverDAL.delete({ policyId: doc.id }, tx);
+        await secretApprovalPolicyGroupApproverDAL.insertMany(
+          groupApprovers.map((approverGroupId) => ({
+            approverGroupId,
             policyId: doc.id
           })),
           tx

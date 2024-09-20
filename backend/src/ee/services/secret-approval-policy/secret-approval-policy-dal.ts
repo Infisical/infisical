@@ -22,12 +22,28 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
       )
 
       .leftJoin(TableName.Users, `${TableName.SecretApprovalPolicyApprover}.approverUserId`, `${TableName.Users}.id`)
-
+      .leftJoin(
+        TableName.SecretApprovalPolicyGroupApprover,
+        `${TableName.SecretApprovalPolicy}.id`,
+        `${TableName.SecretApprovalPolicyGroupApprover}.policyId`
+      )
+      .leftJoin(
+        TableName.UserGroupMembership,
+        `${TableName.SecretApprovalPolicyGroupApprover}.approverGroupId`,
+        `${TableName.UserGroupMembership}.userId`
+      )
       .select(
         tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
         tx.ref("email").withSchema(TableName.Users).as("approverEmail"),
         tx.ref("firstName").withSchema(TableName.Users).as("approverFirstName"),
         tx.ref("lastName").withSchema(TableName.Users).as("approverLastName")
+      )
+      .select(
+        tx.ref("approverGroupId").withSchema(TableName.SecretApprovalPolicyGroupApprover),
+        tx.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
+        tx.ref("email").withSchema(TableName.Users).as("approverGroupEmail"),
+        tx.ref("firstName").withSchema(TableName.Users).as("approverGroupFirstName"),
+        tx.ref("lastName").withSchema(TableName.Users).as("approverGroupLastName")
       )
       .select(
         tx.ref("name").withSchema(TableName.Environment).as("envName"),
@@ -61,6 +77,16 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
               firstName: approverFirstName,
               lastName: approverLastName
             })
+          },
+          {
+            key: "approverGroupUserId",
+            label: "userApprovers" as const,
+            mapper: ({ approverGroupUserId, approverGroupEmail, approverGroupFirstName, approverGroupLastName }) => ({
+              userId: approverGroupUserId,
+              email: approverGroupEmail,
+              firstName: approverGroupFirstName,
+              lastName: approverGroupLastName
+            })
           }
         ]
       });
@@ -88,6 +114,13 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             label: "userApprovers" as const,
             mapper: ({ approverUserId }) => ({
               userId: approverUserId
+            })
+          },
+          {
+            key: "approverGroupId",
+            label: "groupApprovers" as const,
+            mapper: ({ approverGroupId }) => ({
+              groupId: approverGroupId
             })
           }
         ]

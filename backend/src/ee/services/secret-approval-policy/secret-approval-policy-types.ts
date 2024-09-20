@@ -5,6 +5,7 @@ export type TCreateSapDTO = {
   secretPath?: string | null;
   environment: string;
   approvers: string[];
+  groupApprovers: string[];
   projectId: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -14,7 +15,8 @@ export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
   secretPath?: string | null;
-  approvers: string[];
+  approvers?: string[];
+  groupApprovers?: string[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;

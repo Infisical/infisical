@@ -27,13 +27,14 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .nullable()
             .default("/")
             .transform((val) => (val ? removeTrailingSlash(val) : val)),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().optional().default([]),
+          groupApprovers: z.string().array().optional().default([]),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
-          path: ["approvals"],
-          message: "The number of approvals should be lower than the number of approvers."
+        .refine((data) => data.approvers || data.groupApprovers, {
+          path: ["approvers", "groupApprovers"],
+          message: "At least one approver should be provided."
         }),
       response: {
         200: z.object({
@@ -70,8 +71,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z
         .object({
           name: z.string().optional(),
-          approvers: z.string().array().min(1),
+          approvers: z.string().array().optional().default([]),
           approvals: z.number().min(1).default(1),
+          groupApprovers: z.string().array().optional().default([]),
           secretPath: z
             .string()
             .optional()
@@ -80,9 +82,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .transform((val) => (val === "" ? "/" : val)),
           enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
         })
-        .refine((data) => data.approvals <= data.approvers.length, {
-          path: ["approvals"],
-          message: "The number of approvals should be lower than the number of approvers."
+        .refine((data) => data.approvers.length > 0 || data.groupApprovers.length > 0, {
+          path: ["approvers", "groupApprovers"],
+          message: "At least one approver should be provided."
         }),
       response: {
         200: z.object({
@@ -150,6 +152,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
               userApprovers: z
                 .object({
                   userId: z.string()
+                })
+                .array(),
+              groupApprovers: z
+                .object({
+                  groupId: z.string()
                 })
                 .array()
             })

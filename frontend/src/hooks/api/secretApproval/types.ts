@@ -10,6 +10,7 @@ export type TSecretApprovalPolicy = {
   secretPath?: string;
   approvals: number;
   userApprovers: { userId: string }[];
+  groupApprovers: { groupId: string }[];
   updatedAt: Date;
   enforcementLevel: EnforcementLevel;
 };
@@ -30,6 +31,7 @@ export type TCreateSecretPolicyDTO = {
   environment: string;
   secretPath?: string | null;
   approvers?: string[];
+  groupApprovers?: string[];
   approvals?: number;
   enforcementLevel: EnforcementLevel;
 };
@@ -38,6 +40,7 @@ export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
   approvers?: string[];
+  groupApprovers?: string[];
   secretPath?: string | null;
   approvals?: number;
   enforcementLevel?: EnforcementLevel;

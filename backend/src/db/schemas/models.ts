@@ -78,6 +78,7 @@ export enum TableName {
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
+  SecretApprovalPolicyGroupApprover = "secret_approval_policies_group_approvers",
   SecretApprovalRequest = "secret_approval_requests",
   SecretApprovalRequestReviewer = "secret_approval_requests_reviewers",
   SecretApprovalRequestSecret = "secret_approval_requests_secrets",

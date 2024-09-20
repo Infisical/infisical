@@ -89,7 +89,8 @@ export const ApprovalPolicyRow = ({
                   {
                     workspaceId,
                     id: policy.id,
-                    approvers: selectedApprovers
+                    approvers: selectedApprovers,
+                    groupApprovers: selectedGroupApprovers
                   },
                   { onSettled: () => { } }
                 );
@@ -164,6 +165,7 @@ export const ApprovalPolicyRow = ({
                   workspaceId,
                   id: policy.id,
                   approvers: selectedApprovers,
+                  groupApprovers: selectedGroupApprovers
                 },
                 { onSettled: () => { } }
               );
