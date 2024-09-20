@@ -94,20 +94,18 @@ export const SecretV2MigrationSection = () => {
       <div className="mb-4 flex items-start gap-2">
         <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
         <p className="text-xl font-semibold">
-          Secrets Dashboard no longer supports your project version
+          Upgrade your project
         </p>
       </div>
       <p className="mx-1 mb-4 leading-7 text-mineshaft-300">
-        While you can still access your project&apos;s secrets through the API, Infisical encourages
-        you to upgrade your project to continue using the Dashboard experience.
+        Your existing workflows to fetch secrets will continue to work. However, viewing secrets on the UI requires you to upgrade your project.
       </p>
       <p className="mx-1 mb-4 leading-7 text-mineshaft-300">
-        Upgrading your project uses Infisical&apos;s new secrets engine, which is 10x faster and
-        allows you to encrypt secrets with your own KMS.
+        Upgrading your project enables the use of Infisical&apos;s new secrets engine, which is 10x faster and
+        allows you to encrypt secrets with your own KMS provider.
       </p>
       <p className="mx-1 mb-6 leading-7 text-mineshaft-300">
-        This update should only take a few moments and cannot be ran in the background. Upgrading
-        will not cause any downtime in your service.
+        The upgrade takes only 1-2 minutes and will not cause any downtime.
       </p>
       <Button
         onClick={() => handlePopUpOpen("migrationInfo")}
