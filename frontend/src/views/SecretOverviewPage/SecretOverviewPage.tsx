@@ -535,7 +535,7 @@ export const SecretOverviewPage = () => {
 
   if (!isProjectV3)
     return (
-      <div className="container flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <SecretV2MigrationSection />
       </div>
     );
