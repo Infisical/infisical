@@ -5,7 +5,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { OrderByDirection } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -18,7 +18,9 @@ import {
   TCreateDynamicSecretDTO,
   TDeleteDynamicSecretDTO,
   TDetailsDynamicSecretDTO,
+  TGetDynamicSecretsCountDTO,
   TListDynamicSecretsDTO,
+  TListDynamicSecretsMultiEnvDTO,
   TUpdateDynamicSecretDTO
 } from "./dynamic-secret-types";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./providers/models";
@@ -307,21 +309,11 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     actorId,
     actor,
-    projectSlug,
+    projectId,
     path,
     environmentSlugs,
-    search,
-    ...params
-  }: Omit<TListDynamicSecretsDTO, "environmentSlug"> & { environmentSlugs: string[] }) => {
-    let { projectId } = params;
-
-    if (!projectId) {
-      if (!projectSlug) throw new BadRequestError({ message: "Project ID or slug required" });
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
-      projectId = project.id;
-    }
-
+    search
+  }: TListDynamicSecretsMultiEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -350,26 +342,16 @@ export const dynamicSecretServiceFactory = ({
   };
 
   // get dynamic secret count for a single env
-  const getCount = async ({
+  const getDynamicSecretCount = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
     actor,
-    projectSlug,
     path,
     environmentSlug,
     search,
-    ...params
-  }: TListDynamicSecretsDTO) => {
-    let { projectId } = params;
-
-    if (!projectId) {
-      if (!projectSlug) throw new BadRequestError({ message: "Project ID or slug required" });
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
-      projectId = project.id;
-    }
-
+    projectId
+  }: TGetDynamicSecretsCountDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -392,7 +374,7 @@ export const dynamicSecretServiceFactory = ({
     return Number(dynamicSecretCfg[0]?.count ?? 0);
   };
 
-  const list = async ({
+  const listDynamicSecretsByEnv = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -443,25 +425,16 @@ export const dynamicSecretServiceFactory = ({
   };
 
   // get dynamic secrets for multiple envs
-  const listMultiEnv = async ({
+  const listDynamicSecretsByFolderIds = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
     actor,
-    projectSlug,
     path,
     environmentSlugs,
+    projectId,
     ...params
-  }: Omit<TListDynamicSecretsDTO, "environmentSlug"> & { environmentSlugs: string[] }) => {
-    let { projectId } = params;
-
-    if (!projectId) {
-      if (!projectSlug) throw new BadRequestError({ message: "Project ID or slug required" });
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new NotFoundError({ message: "Project not found" });
-      projectId = project.id;
-    }
-
+  }: TListDynamicSecretsMultiEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -481,7 +454,7 @@ export const dynamicSecretServiceFactory = ({
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, path);
     if (!folders.length) throw new BadRequestError({ message: "Folders not found" });
 
-    const dynamicSecretCfg = await dynamicSecretDAL.findMultiEnv({
+    const dynamicSecretCfg = await dynamicSecretDAL.listDynamicSecretsByFolderIds({
       folderIds: folders.map((folder) => folder.id),
       ...params
     });
@@ -494,9 +467,9 @@ export const dynamicSecretServiceFactory = ({
     updateByName,
     deleteByName,
     getDetails,
-    list,
-    listMultiEnv,
-    getCount,
+    listDynamicSecretsByEnv,
+    listDynamicSecretsByFolderIds,
+    getDynamicSecretCount,
     getCountMultiEnv
   };
 };

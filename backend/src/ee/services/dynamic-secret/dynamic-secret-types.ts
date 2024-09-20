@@ -59,3 +59,12 @@ export type TListDynamicSecretsDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TListDynamicSecretsMultiEnvDTO = Omit<
+  TListDynamicSecretsDTO,
+  "projectId" | "environmentSlug" | "projectSlug"
+> & { projectId: string; environmentSlugs: string[] };
+
+export type TGetDynamicSecretsCountDTO = Omit<TListDynamicSecretsDTO, "projectSlug" | "projectId"> & {
+  projectId: string;
+};

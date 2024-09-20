@@ -13,7 +13,7 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DynamicSecret);
 
   // find dynamic secrets for multiple environments (folder IDs are cross env, thus need to rank for pagination)
-  const findMultiEnv = async (
+  const listDynamicSecretsByFolderIds = async (
     {
       folderIds,
       search,
@@ -44,11 +44,7 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.DynamicSecret),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
-          db.raw(
-            `DENSE_RANK() OVER (ORDER BY ${TableName.DynamicSecret}."name" ${
-              orderDirection ?? OrderByDirection.ASC
-            }) as rank`
-          )
+          db.raw(`DENSE_RANK() OVER (ORDER BY ${TableName.DynamicSecret}."name" ${orderDirection}) as rank`)
         )
         .orderBy(`${TableName.DynamicSecret}.${orderBy}`, orderDirection);
 
@@ -70,5 +66,5 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findMultiEnv };
+  return { ...orm, listDynamicSecretsByFolderIds };
 };

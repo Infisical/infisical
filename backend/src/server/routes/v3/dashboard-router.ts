@@ -126,7 +126,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>> | undefined;
-      let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.listMultiEnv>> | undefined;
+      let dynamicSecrets:
+        | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByFolderIds>>
+        | undefined;
 
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
@@ -185,7 +187,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
-          dynamicSecrets = await server.services.dynamicSecret.listMultiEnv({
+          dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds({
             actor: req.permission.type,
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
@@ -408,7 +410,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let imports: Awaited<ReturnType<typeof server.services.secretImport.getImports>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFolders>> | undefined;
       let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRaw>>["secrets"] | undefined;
-      let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.list>> | undefined;
+      let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnv>> | undefined;
 
       let totalImportCount: number | undefined;
       let totalFolderCount: number | undefined;
@@ -497,7 +499,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       if (includeDynamicSecrets) {
-        totalDynamicSecretCount = await server.services.dynamicSecret.getCount({
+        totalDynamicSecretCount = await server.services.dynamicSecret.getDynamicSecretCount({
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -509,7 +511,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
-          dynamicSecrets = await server.services.dynamicSecret.list({
+          dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByEnv({
             actor: req.permission.type,
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
