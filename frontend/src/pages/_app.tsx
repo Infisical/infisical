@@ -27,6 +27,7 @@ import {
   WorkspaceProvider
 } from "@app/context";
 import { AppLayout } from "@app/layouts";
+import ErrorBoundaryWrapper from "@app/layouts/AppLayout/ErrorBoundary";
 import { queryClient } from "@app/reactQuery";
 
 import "nprogress/nprogress.css";
@@ -85,46 +86,50 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     !Component.requireAuth
   ) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <NotificationContainer />
-        <ServerConfigProvider>
-          <UserProvider>
-            <AuthProvider>
-              <Component {...pageProps} />
-            </AuthProvider>
-          </UserProvider>
-        </ServerConfigProvider>
-      </QueryClientProvider>
+      <ErrorBoundaryWrapper>
+        <QueryClientProvider client={queryClient}>
+          <NotificationContainer />
+          <ServerConfigProvider>
+            <UserProvider>
+              <AuthProvider>
+                <Component {...pageProps} />
+              </AuthProvider>
+            </UserProvider>
+          </ServerConfigProvider>
+        </QueryClientProvider>
+      </ErrorBoundaryWrapper>
     );
   }
 
   const Layout = Component?.layout || AppLayout;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NotificationContainer />
-        <ServerConfigProvider>
-          <AuthProvider>
-            <OrgProvider>
-              <OrgPermissionProvider>
-                <WorkspaceProvider>
-                  <ProjectPermissionProvider>
-                    <SubscriptionProvider>
-                      <UserProvider>
-                        <Layout>
-                          <Component {...pageProps} />
-                        </Layout>
-                      </UserProvider>
-                    </SubscriptionProvider>
-                  </ProjectPermissionProvider>
-                </WorkspaceProvider>
-              </OrgPermissionProvider>
-            </OrgProvider>
-          </AuthProvider>
-        </ServerConfigProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundaryWrapper>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <NotificationContainer />
+          <ServerConfigProvider>
+            <AuthProvider>
+              <OrgProvider>
+                <OrgPermissionProvider>
+                  <WorkspaceProvider>
+                    <ProjectPermissionProvider>
+                      <SubscriptionProvider>
+                        <UserProvider>
+                          <Layout>
+                            <Component {...pageProps} />
+                          </Layout>
+                        </UserProvider>
+                      </SubscriptionProvider>
+                    </ProjectPermissionProvider>
+                  </WorkspaceProvider>
+                </OrgPermissionProvider>
+              </OrgProvider>
+            </AuthProvider>
+          </ServerConfigProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundaryWrapper>
   );
 };
 
