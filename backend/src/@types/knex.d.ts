@@ -804,12 +804,12 @@ declare module "knex/types/tables" {
     [TableName.AccessApprovalPolicyGroupApprover]: KnexOriginal.CompositeTableType<
       TAccessApprovalPoliciesGroupApprovers,
       TAccessApprovalPoliciesGroupApproversInsert,
-      TAccessApprovalPoliciesGroupApproversInsert
+      TAccessApprovalPoliciesGroupApproversUpdate
     >;
     [TableName.SecretApprovalPolicyGroupApprover]: KnexOriginal.CompositeTableType<
       TSecretApprovalPoliciesGroupApprovers,
       TSecretApprovalPoliciesGroupApproversInsert,
-      TSecretApprovalPoliciesGroupApproversInsert
+      TSecretApprovalPoliciesGroupApproversUpdate
     >;
   }
 }

@@ -77,7 +77,7 @@ export const AccessPolicyForm = ({
           ...editValues,
           environment: editValues.environment.slug,
           approvers: editValues?.userApprovers?.map((user) => user.userId) || editValues?.approvers,
-          groupApprovers: editValues?.groupApprovers?.map((group) => group.groupId) || editValues?.groupApprovers,
+          groupApprovers: editValues?.groupApprovers?.map((group) => group.groupId),
           approvals: editValues?.approvals
         }
       : undefined
