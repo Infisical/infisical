@@ -35,7 +35,7 @@ export type TDeleteUserSecretRequest = {
 };
 
 export enum UserSecretType {
-  login = "login",
-  cc = "cc",
-  note = "note"
+  Login = "login",
+  CreditCard = "cc",
+  SecureNote = "secure-note"
 }

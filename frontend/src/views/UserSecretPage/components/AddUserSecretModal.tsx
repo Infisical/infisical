@@ -1,7 +1,8 @@
 import { Modal, ModalContent } from "@app/components/v2";
+import { UserSecretType } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { UserSecretForm } from "./UserSecretForm";
+import { UserSecretWebLoginForm } from "./UserSecretWebLoginForm";
 
 export const AddUserSecretModal = ({
   popUp,
@@ -20,11 +21,12 @@ export const AddUserSecretModal = ({
         handlePopUpToggle("createUserSecret", isOpen);
       }}
     >
-      <ModalContent title="Create a Secret" subTitle="This secret is only accessible by you.">
-        <UserSecretForm
-          isPublic={false}
-          value={(popUp.createUserSecret.data as { value?: string })?.value}
-        />
+      {/* One day we can use different forms according to the different types, or handle the field types dynamically in a dynamic form component... but let's set a fixed value/component for MVP reasons :) */}
+      <ModalContent
+        title="Create a Web Login Secret"
+        subTitle="This secret is only accessible by you."
+      >
+        <UserSecretWebLoginForm secretType={UserSecretType.Login} />
       </ModalContent>
     </Modal>
   );
