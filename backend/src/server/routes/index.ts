@@ -195,6 +195,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+import { userSecretDALFactory } from "@app/services/user-secret/user-secret-dal";
+import { userSecretServiceFactory } from "@app/services/user-secret/user-secret-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -318,6 +320,7 @@ export const registerRoutes = async (
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
+  const userSecretDAL = userSecretDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -920,6 +923,11 @@ export const registerRoutes = async (
     orgDAL
   });
 
+  const userSecretService = userSecretServiceFactory({
+    permissionService,
+    userSecretDAL
+  });
+
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
@@ -1262,6 +1270,7 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
+    userSecret: userSecretService,
     externalKms: externalKmsService,
     orgAdmin: orgAdminService,
     slack: slackService,

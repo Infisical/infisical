@@ -94,7 +94,7 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { userSecretId } = req.params;
-      const deletedSharedSecret = await req.server.services.userSecret.deleteUserSecretById({
+      const deletedUserSecret = await req.server.services.userSecret.deleteUserSecretById({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -102,7 +102,7 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
         userSecretId
       });
 
-      return { ...deletedSharedSecret };
+      return { ...deletedUserSecret };
     }
   });
 };

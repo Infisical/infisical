@@ -14,7 +14,12 @@ export type TUserSecretServiceFactory = ReturnType<typeof userSecretServiceFacto
 export const userSecretServiceFactory = ({ permissionService, userSecretDAL }: TUserSecretServiceFactoryDep) => {
   const getUserSecrets = async ({ actorId, actorAuthMethod, actorOrgId, offset, limit }: TGetUserSecretsDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
-    const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+    const { permission } = await permissionService.getUserOrgPermission(
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
 
     const secrets = await userSecretDAL.find(
@@ -47,7 +52,12 @@ export const userSecretServiceFactory = ({ permissionService, userSecretDAL }: T
     secretType
   }: TCreateUserSecretDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
-    const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+    const { permission } = await permissionService.getUserOrgPermission(
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
     // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)
     if (encryptedValue.length > 13000) {
@@ -72,7 +82,12 @@ export const userSecretServiceFactory = ({ permissionService, userSecretDAL }: T
 
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
-    const { permission } = await permissionService.getUserOrgPermission(actorId, actorOrgId, actorAuthMethod);
+    const { permission } = await permissionService.getUserOrgPermission(
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     if (!permission) throw new UnauthorizedError({ name: "User not in org" });
 
     const deletedUserSecret = await userSecretDAL.deleteById(userSecretId);

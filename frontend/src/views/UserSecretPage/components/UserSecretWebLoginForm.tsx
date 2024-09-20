@@ -20,7 +20,13 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
-export const UserSecretWebLoginForm = ({ secretType }: { secretType: UserSecretType }) => {
+export const UserSecretWebLoginForm = ({
+  secretType,
+  onCreate
+}: {
+  secretType: UserSecretType;
+  onCreate: () => void;
+}) => {
   const createUserSecret = useCreateUserSecret();
 
   const {
@@ -45,7 +51,7 @@ export const UserSecretWebLoginForm = ({ secretType }: { secretType: UserSecretT
 
       const key = crypto.randomBytes(16).toString("hex");
       const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
-      const { ciphertext, iv, tag } = encryptSymmetric({
+      const { ciphertext, iv } = encryptSymmetric({
         plaintext: secret,
         key
       });
@@ -55,11 +61,12 @@ export const UserSecretWebLoginForm = ({ secretType }: { secretType: UserSecretT
         encryptedValue: ciphertext,
         hashedHex,
         iv,
-        tag,
         secretType
       });
 
       reset();
+
+      onCreate();
 
       createNotification({
         text: "Successfully created a secret",

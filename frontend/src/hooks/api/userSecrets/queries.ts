@@ -9,7 +9,7 @@ export const userSecretKeys = {
   specificUserSecrets: ({ offset, limit }: { offset: number; limit: number }) =>
     [...userSecretKeys.allUserSecrets(), { offset, limit }] as const,
   getSecretById: (arg: { id: string; hashedHex: string; password?: string }) => [
-    "shared-secret",
+    "user-secrets",
     arg
   ]
 };
@@ -30,7 +30,7 @@ export const useGetUserSecrets = ({
       });
 
       const { data } = await apiRequest.get<{ secrets: TUserSecret[]; totalCount: number }>(
-        "/api/v1/secret-sharing/",
+        "/api/v1/user-secrets/",
         {
           params
         }
@@ -53,7 +53,7 @@ export const useGetActiveUserSecretById = ({
     userSecretKeys.getSecretById({ id: sharedSecretId, hashedHex, password }),
     async () => {
       const { data } = await apiRequest.post<TViewUserSecretResponse>(
-        `/api/v1/secret-sharing/public/${sharedSecretId}`,
+        `/api/v1/user-secrets/public/${sharedSecretId}`,
         {
           hashedHex,
           password

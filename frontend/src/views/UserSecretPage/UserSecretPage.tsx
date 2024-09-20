@@ -24,7 +24,7 @@ export const UserSecretPage = () => {
         userSecretId: (popUp?.deleteUserSecretConfirmation?.data as DeleteModalData)?.id
       });
       createNotification({
-        text: "Successfully deleted shared secret",
+        text: "Successfully deleted secret",
         type: "success"
       });
 
@@ -32,7 +32,7 @@ export const UserSecretPage = () => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to delete shared secret",
+        text: "Failed to delete secret",
         type: "error"
       });
     }
@@ -96,9 +96,9 @@ export const UserSecretPage = () => {
       <AddUserSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteUserSecretConfirmation.isOpen}
-        title={`Delete ${
+        title={`Delete secret "${
           (popUp?.deleteUserSecretConfirmation?.data as DeleteModalData)?.name || " "
-        } shared secret?`}
+        }"?`}
         onChange={(isOpen) => handlePopUpToggle("deleteUserSecretConfirmation", isOpen)}
         deleteKey={(popUp?.deleteUserSecretConfirmation?.data as DeleteModalData)?.name}
         onClose={() => handlePopUpClose("deleteUserSecretConfirmation")}

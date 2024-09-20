@@ -13,7 +13,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useGetSharedSecrets } from "@app/hooks/api/secretSharing";
+import { useGetUserSecrets } from "@app/hooks/api/userSecrets";
 
 import { UserSecretsRow } from "./UserSecretsRow";
 
@@ -33,7 +33,7 @@ const INIT_PER_PAGE = 20;
 export const UserSecretsTable = ({ handlePopUpOpen }: TUserSecretsTable) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-  const { isLoading, data } = useGetSharedSecrets({
+  const { isLoading, data } = useGetUserSecrets({
     offset: (page - 1) * perPage,
     limit: perPage
   });

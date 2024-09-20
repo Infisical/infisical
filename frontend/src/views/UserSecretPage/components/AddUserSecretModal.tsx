@@ -26,7 +26,12 @@ export const AddUserSecretModal = ({
         title="Create a Web Login Secret"
         subTitle="This secret is only accessible by you."
       >
-        <UserSecretWebLoginForm secretType={UserSecretType.Login} />
+        <UserSecretWebLoginForm
+          secretType={UserSecretType.Login}
+          onCreate={() => {
+            handlePopUpToggle("createUserSecret", false);
+          }}
+        />
       </ModalContent>
     </Modal>
   );
