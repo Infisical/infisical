@@ -1,8 +1,10 @@
-import React, { ErrorInfo, ReactNode } from "react";
+import React, { ErrorInfo, ReactNode, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faBugs, faHome } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { Button } from "@app/components/v2";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -14,12 +16,22 @@ interface ErrorBoundaryState {
 }
 
 const ErrorPage = ({ error }: { error: Error | null }) => {
+  const [orgId, setOrgId] = React.useState<string | null>(null);
   const router = useRouter();
   const currentUrl = router?.asPath?.split("?")?.[0];
 
+  // Workaround: Fixes localStorage not being available in the error boundary until the next render.
+  useEffect(() => {
+    const savedOrgId = localStorage.getItem("orgData.id");
+
+    if (savedOrgId) {
+      setOrgId(savedOrgId);
+    }
+  }, []);
+
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-mineshaft-900">
-      <div className="flex max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+      <div className="flex max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-8 text-center text-mineshaft-200">
         <FontAwesomeIcon icon={faBugs} className="my-2 inline text-6xl" />
         <p>
           Something went wrong. Please contact{" "}
@@ -44,23 +56,22 @@ const ErrorPage = ({ error }: { error: Error | null }) => {
           if the issue persists.
         </p>
 
-        <div className="my-4 h-px w-full bg-mineshaft-600" />
+        {orgId && (
+          <Button className="mt-4" size="xs" onClick={() => router.push(`/org/${orgId}`)}>
+            <FontAwesomeIcon icon={faHome} className="mr-2" />
+            Back To Home
+          </Button>
+        )}
 
         {error?.message && (
-          <div className="space-y-2">
-            <div>
-              <p>Error details:</p>
-              <p className="text-xs italic opacity-70">
-                Please provide this error message when contacting support, as it will help us
-                diagnose the issue at hand.
-              </p>
-            </div>
-            <p className="max-h-44 w-full overflow-auto text-ellipsis rounded-md bg-mineshaft-700">
-              <code className="p-2 text-xs">
+          <>
+            <div className="my-4 h-px w-full bg-mineshaft-600" />
+            <p className="thin-scrollbar max-h-44 w-full overflow-auto text-ellipsis rounded-md bg-mineshaft-700 p-2">
+              <code className="text-xs">
                 {currentUrl}, {error.message}
               </code>
             </p>
-          </div>
+          </>
         )}
       </div>
     </div>
