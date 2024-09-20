@@ -68,6 +68,28 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    url: "/",
+    method: "GET",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      response: {
+        200: GroupsSchema.array()
+      }
+    },
+    handler: async (req) => {
+      const groups = await server.services.org.getOrgGroups({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return groups;
+    }
+  });
+
+  server.route({
     url: "/:id",
     method: "PATCH",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
