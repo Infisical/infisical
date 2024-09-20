@@ -7,7 +7,11 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import { TIntegrationSyncPayload, TSyncSecretsDTO } from "@app/services/secret/secret-types";
+import {
+  TFailedIntegrationSyncEmailsPayload,
+  TIntegrationSyncPayload,
+  TSyncSecretsDTO
+} from "@app/services/secret/secret-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -107,11 +111,7 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.SendFailedIntegrationSyncEmails;
-        payload: {
-          projectId: string;
-          environmentSlug: string;
-          secretPath: string;
-        };
+        payload: TFailedIntegrationSyncEmailsPayload;
       };
   [QueueName.SecretFullRepoScan]: {
     name: QueueJobs.SecretScan;

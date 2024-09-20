@@ -17,7 +17,7 @@ import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/sn
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { applyJitter, daysToMillisecond, secondsToMillis } from "@app/lib/dates";
+import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -55,7 +55,6 @@ import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import {
-  FailedIntegrationSyncEmailsPayloadSchema,
   TCreateSecretReminderDTO,
   TFailedIntegrationSyncEmailsPayload,
   THandleReminderDTO,
@@ -519,35 +518,16 @@ export const secretQueueFactory = ({
   };
 
   const sendFailedIntegrationSyncEmails = async (payload: TFailedIntegrationSyncEmailsPayload) => {
-    const key = KeyStorePrefixes.SendFailedIntegrationSyncEmails(
-      payload.projectId,
-      payload.secretPath,
-      payload.environmentSlug
-    );
+    const appCfg = getConfig();
+    if (!appCfg.isSmtpConfigured) return;
 
-    await keyStore.setItemWithExpiry(
-      key,
-      KeyStoreTtls.SendFailedIntegrationSyncEmailsInSeconds,
-      JSON.stringify(payload)
-    );
-    await queueService.queue(
-      QueueName.IntegrationSync,
-      QueueJobs.SendFailedIntegrationSyncEmails,
-      {
-        secretPath: payload.secretPath,
-        projectId: payload.projectId,
-        environmentSlug: payload.environmentSlug
-      },
-      {
-        delay: applyJitter(
-          secondsToMillis(KeyStoreTtls.SendFailedIntegrationSyncEmailsInSeconds / 2),
-          secondsToMillis(10)
-        ),
-        jobId: key,
-        removeOnFail: true,
-        removeOnComplete: true
-      }
-    );
+    await queueService.queue(QueueName.IntegrationSync, QueueJobs.SendFailedIntegrationSyncEmails, payload, {
+      jobId: `send-failed-integration-sync-emails-${payload.projectId}-${payload.secretPath}-${payload.environmentSlug}`,
+      delay: 1_000 * 60, // 1 minute
+
+      removeOnFail: true,
+      removeOnComplete: true
+    });
   };
 
   queueService.start(QueueName.SecretSync, async (job) => {
@@ -598,36 +578,16 @@ export const secretQueueFactory = ({
     if (job.name === QueueJobs.SendFailedIntegrationSyncEmails) {
       const appCfg = getConfig();
 
-      // If smtp is not configured, we can return early
-      if (!appCfg.isSmtpConfigured) return;
+      const jobPayload = job.data as TFailedIntegrationSyncEmailsPayload;
 
-      const jobPayload = job.data as Pick<
-        TFailedIntegrationSyncEmailsPayload,
-        "projectId" | "secretPath" | "environmentSlug"
-      >;
-
-      const failedIntegrationsDetails = await keyStore.getItem(
-        KeyStorePrefixes.SendFailedIntegrationSyncEmails(
-          jobPayload.projectId,
-          jobPayload.secretPath,
-          jobPayload.environmentSlug
-        )
-      );
-
-      if (!failedIntegrationsDetails) return;
-
-      const failedSyncKeyStore = FailedIntegrationSyncEmailsPayloadSchema.parse(JSON.parse(failedIntegrationsDetails));
-
-      const projectMembers = await projectMembershipDAL.findAllProjectMembers(failedSyncKeyStore.projectId);
-      const project = await projectDAL.findById(failedSyncKeyStore.projectId);
+      const projectMembers = await projectMembershipDAL.findAllProjectMembers(jobPayload.projectId);
+      const project = await projectDAL.findById(jobPayload.projectId);
 
       // Only send emails to admins, and if its a manual trigger, only send it to the person who triggered it (if actor is admin as well)
       const filteredProjectMembers = projectMembers
         .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
         .filter((member) =>
-          failedSyncKeyStore.manuallyTriggeredByUserId
-            ? member.userId === failedSyncKeyStore.manuallyTriggeredByUserId
-            : true
+          jobPayload.manuallyTriggeredByUserId ? member.userId === jobPayload.manuallyTriggeredByUserId : true
         );
 
       await smtpService.sendMail({
@@ -635,10 +595,10 @@ export const secretQueueFactory = ({
         template: SmtpTemplates.IntegrationSyncFailed,
         subjectLine: `Integration Sync Failed`,
         substitutions: {
-          syncMessage: failedSyncKeyStore.count === 1 ? failedSyncKeyStore.syncMessage : undefined, // We are only displaying the sync message if its a singular integration, so we can just grab the first one in the array.
-          secretPath: failedSyncKeyStore.secretPath,
-          environment: failedSyncKeyStore.environmentName,
-          count: failedSyncKeyStore.count,
+          syncMessage: jobPayload.count === 1 ? jobPayload.syncMessage : undefined, // We are only displaying the sync message if its a singular integration, so we can just grab the first one in the array.
+          secretPath: jobPayload.secretPath,
+          environment: jobPayload.environmentName,
+          count: jobPayload.count,
           projectName: project.name,
           integrationUrl: `${appCfg.SITE_URL}/integrations/${project.id}`
         }
