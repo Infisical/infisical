@@ -57,7 +57,14 @@ const ErrorPage = ({ error }: { error: Error | null }) => {
         </p>
 
         {orgId && (
-          <Button className="mt-4" size="xs" onClick={() => router.push(`/org/${orgId}/overview`)}>
+          <Button
+            className="mt-4"
+            size="xs"
+            onClick={() =>
+              // we need to go to /org/${orgId}/overview, but we need to do a full page reload to ensure that the error the user is facing is properly reset.
+              window.location.assign(`/org/${orgId}/overview`)
+            }
+          >
             <FontAwesomeIcon icon={faHome} className="mr-2" />
             Back To Home
           </Button>
