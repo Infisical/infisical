@@ -1101,7 +1101,11 @@ export const secretServiceFactory = ({
       return { secrets, imports };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     const { secrets, imports } = await getSecrets({
       actorId,
@@ -1262,7 +1266,10 @@ export const secretServiceFactory = ({
     });
 
     if (!botKey)
-      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
 
     if (expandSecretReferences) {
@@ -1354,7 +1361,11 @@ export const secretServiceFactory = ({
       return { secret, type: SecretProtectionType.Direct as const };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretName, botKey);
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
     const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
@@ -1492,7 +1503,11 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secret };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
     const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
@@ -1614,7 +1629,11 @@ export const secretServiceFactory = ({
       });
       return { type: SecretProtectionType.Direct as const, secret };
     }
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
@@ -1714,7 +1733,11 @@ export const secretServiceFactory = ({
       return { secrets, type: SecretProtectionType.Direct as const };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const sanitizedSecrets = inputSecrets.map(
       ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
         const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
@@ -1836,7 +1859,11 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secrets };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const sanitizedSecrets = inputSecrets.map(
       ({
         secretComment,
@@ -1964,7 +1991,11 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secrets };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
@@ -2298,7 +2329,10 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     await secretDAL.transaction(async (tx) => {
       const secrets = await secretDAL.findAllProjectSecretValues(projectId, tx);
@@ -2381,7 +2415,10 @@ export const secretServiceFactory = ({
 
     const { botKey } = await projectBotService.getBotKey(project.id);
     if (!botKey) {
-      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     }
 
     const sourceFolder = await folderDAL.findBySecretPath(project.id, sourceEnvironment, sourceSecretPath);

@@ -23,6 +23,7 @@ import {
   TListDynamicSecretsMultiEnvDTO,
   TUpdateDynamicSecretDTO
 } from "./dynamic-secret-types";
+import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./providers/models";
 
 type TDynamicSecretServiceFactoryDep = {
@@ -462,6 +463,23 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
+  const fetchAzureEntraIdUsers = async ({
+    tenantId,
+    applicationId,
+    clientSecret
+  }: {
+    tenantId: string;
+    applicationId: string;
+    clientSecret: string;
+  }) => {
+    const azureEntraIdUsers = await AzureEntraIDProvider().fetchAzureEntraIdUsers(
+      tenantId,
+      applicationId,
+      clientSecret
+    );
+    return azureEntraIdUsers;
+  };
+
   return {
     create,
     updateByName,
@@ -470,6 +488,7 @@ export const dynamicSecretServiceFactory = ({
     listDynamicSecretsByEnv,
     listDynamicSecretsByFolderIds,
     getDynamicSecretCount,
-    getCountMultiEnv
+    getCountMultiEnv,
+    fetchAzureEntraIdUsers
   };
 };

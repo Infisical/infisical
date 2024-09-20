@@ -71,6 +71,34 @@ export const useGetDynamicSecretDetails = ({
   });
 };
 
+export const useGetDynamicSecretProviderData = ({
+  tenantId,
+  applicationId,
+  clientSecret,
+  enabled
+}: {
+  tenantId: string;
+  applicationId: string;
+  clientSecret: string;
+  enabled: boolean
+}) => {
+  return useQuery({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{id:string, email: string, name:string}[]>(
+        "/api/v1/dynamic-secrets/entra-id/users",
+        {
+          tenantId,
+          applicationId,
+          clientSecret
+        }
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
 export const useGetDynamicSecretsOfAllEnv = ({
   path,
   projectSlug,

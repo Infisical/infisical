@@ -20,7 +20,7 @@ import { TServiceTokenDALFactory } from "@app/services/service-token/service-tok
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { validateOrgSAML } from "./permission-fns";
-import { TBuildProjectPermissionDTO } from "./permission-types";
+import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-types";
 import {
   buildServiceTokenProjectPermission,
   projectAdminPermissions,
@@ -47,26 +47,29 @@ export const permissionServiceFactory = ({
   serviceTokenDAL,
   projectDAL
 }: TPermissionServiceFactoryDep) => {
-  const buildOrgPermission = (role: string, permission?: unknown) => {
-    switch (role) {
-      case OrgMembershipRole.Admin:
-        return orgAdminPermissions;
-      case OrgMembershipRole.Member:
-        return orgMemberPermissions;
-      case OrgMembershipRole.NoAccess:
-        return orgNoAccessPermissions;
-      case OrgMembershipRole.Custom:
-        return createMongoAbility<OrgPermissionSet>(
-          unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
-            permission as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
-          ),
-          {
-            conditionsMatcher
-          }
-        );
-      default:
-        throw new BadRequestError({ name: "OrgRoleInvalid", message: "Org role not found" });
-    }
+  const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
+    const rules = orgUserRoles
+      .map(({ role, permissions }) => {
+        switch (role) {
+          case OrgMembershipRole.Admin:
+            return orgAdminPermissions;
+          case OrgMembershipRole.Member:
+            return orgMemberPermissions;
+          case OrgMembershipRole.NoAccess:
+            return orgNoAccessPermissions;
+          case OrgMembershipRole.Custom:
+            return unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
+              permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
+            );
+          default:
+            throw new BadRequestError({ name: "OrgRoleInvalid", message: "Org role not found" });
+        }
+      })
+      .reduce((curr, prev) => prev.concat(curr), []);
+
+    return createMongoAbility<OrgPermissionSet>(rules, {
+      conditionsMatcher
+    });
   };
 
   const buildProjectPermission = (projectUserRoles: TBuildProjectPermissionDTO) => {
@@ -129,7 +132,13 @@ export const permissionServiceFactory = ({
 
     validateOrgSAML(authMethod, membership.orgAuthEnforced);
 
-    return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
+    const finalPolicyRoles = [{ role: membership.role, permissions: membership.permissions }].concat(
+      membership?.groups?.map(({ role, customRolePermission }) => ({
+        role,
+        permissions: customRolePermission
+      })) || []
+    );
+    return { permission: buildOrgPermission(finalPolicyRoles), membership };
   };
 
   const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
@@ -138,7 +147,10 @@ export const permissionServiceFactory = ({
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
-    return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
+    return {
+      permission: buildOrgPermission([{ role: membership.role, permissions: membership.permissions }]),
+      membership
+    };
   };
 
   const getOrgPermission = async (
@@ -169,11 +181,11 @@ export const permissionServiceFactory = ({
       const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!orgRole) throw new BadRequestError({ message: "Role not found" });
       return {
-        permission: buildOrgPermission(OrgMembershipRole.Custom, orgRole.permissions),
+        permission: buildOrgPermission([{ role: OrgMembershipRole.Custom, permissions: orgRole.permissions }]),
         role: orgRole
       };
     }
-    return { permission: buildOrgPermission(role, []) };
+    return { permission: buildOrgPermission([{ role, permissions: [] }]) };
   };
 
   // user permission for a project in an organization

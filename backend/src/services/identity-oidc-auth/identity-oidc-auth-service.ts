@@ -18,7 +18,7 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -68,12 +68,12 @@ export const identityOidcAuthServiceFactory = ({
       identityId: identityOidcAuth.identityId
     });
     if (!identityMembershipOrg) {
-      throw new BadRequestError({ message: "Failed to find identity" });
+      throw new NotFoundError({ message: "Failed to find identity in organization" });
     }
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({ message: "Org bot not found", name: "OrgBotNotFound" });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -106,7 +106,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const decodedToken = jwt.decode(oidcJwt, { complete: true });
     if (!decodedToken) {
-      throw new BadRequestError({
+      throw new UnauthorizedError({
         message: "Invalid JWT"
       });
     }
@@ -119,13 +119,24 @@ export const identityOidcAuthServiceFactory = ({
     const { kid } = decodedToken.header;
     const oidcSigningKey = await client.getSigningKey(kid);
 
-    const tokenData = jwt.verify(oidcJwt, oidcSigningKey.getPublicKey(), {
-      issuer: identityOidcAuth.boundIssuer
-    }) as Record<string, string>;
+    let tokenData: Record<string, string>;
+    try {
+      tokenData = jwt.verify(oidcJwt, oidcSigningKey.getPublicKey(), {
+        issuer: identityOidcAuth.boundIssuer
+      }) as Record<string, string>;
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new UnauthorizedError({
+          message: `Access denied: ${error.message}`
+        });
+      }
+
+      throw error;
+    }
 
     if (identityOidcAuth.boundSubject) {
       if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: OIDC subject not allowed."
         });
       }
@@ -137,7 +148,7 @@ export const identityOidcAuthServiceFactory = ({
           .split(", ")
           .some((policyValue) => doesFieldValueMatchOidcPolicy(tokenData.aud, policyValue))
       ) {
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: OIDC audience not allowed."
         });
       }
@@ -150,7 +161,7 @@ export const identityOidcAuthServiceFactory = ({
         if (
           !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(tokenData[claimKey], claimEntry))
         ) {
-          throw new ForbiddenRequestError({
+          throw new UnauthorizedError({
             message: "Access denied: OIDC claim not allowed."
           });
         }

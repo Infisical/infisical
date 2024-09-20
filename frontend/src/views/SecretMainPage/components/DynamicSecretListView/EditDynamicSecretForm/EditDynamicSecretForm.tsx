@@ -6,6 +6,7 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { EditDynamicSecretAwsElastiCacheProviderForm } from "./EditDynamicSecretAwsElastiCacheProviderForm";
 import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
+import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
 import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasForm";
@@ -194,6 +195,24 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretRabbitMqForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+
+      {dynamicSecretDetails?.type === DynamicSecretProviders.AzureEntraId && (
+        <motion.div
+          key="azure-entra-id-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretAzureEntraIdForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

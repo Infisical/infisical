@@ -24,7 +24,8 @@ export enum DynamicSecretProviders {
   MongoAtlas = "mongo-db-atlas",
   ElasticSearch = "elastic-search",
   MongoDB = "mongo-db",
-  RabbitMq = "rabbit-mq"
+  RabbitMq = "rabbit-mq",
+  AzureEntraId = "azure-entra-id"
 }
 
 export enum SqlProviders {
@@ -177,7 +178,17 @@ export type TDynamicSecretProvider =
         };
         ca?: string;
       };
-    };
+    }
+  | {
+      type: DynamicSecretProviders.AzureEntraId;
+      inputs: {
+        tenantId: string;
+        userId: string;
+        email: string;
+        applicationId: string;
+        clientSecret: string;
+      };
+  };
 
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;

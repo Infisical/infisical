@@ -87,11 +87,15 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 		return nil, err
 	}
 
+	var source = "--token flag"
+
 	if infisicalToken == "" { // If no flag is passed, we first check for the universal auth access token env variable.
 		infisicalToken = os.Getenv(INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME)
+		source = fmt.Sprintf("%s environment variable", INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME)
 
 		if infisicalToken == "" { // If it's still empty after the first env check, we check for the service token env variable.
 			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+			source = fmt.Sprintf("%s environment variable", INFISICAL_TOKEN_NAME)
 		}
 	}
 
@@ -101,14 +105,16 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 
 	if strings.HasPrefix(infisicalToken, "st.") {
 		return &models.TokenDetails{
-			Type:  SERVICE_TOKEN_IDENTIFIER,
-			Token: infisicalToken,
+			Type:   SERVICE_TOKEN_IDENTIFIER,
+			Token:  infisicalToken,
+			Source: source,
 		}, nil
 	}
 
 	return &models.TokenDetails{
-		Type:  UNIVERSAL_AUTH_TOKEN_IDENTIFIER,
-		Token: infisicalToken,
+		Type:   UNIVERSAL_AUTH_TOKEN_IDENTIFIER,
+		Token:  infisicalToken,
+		Source: source,
 	}, nil
 
 }
