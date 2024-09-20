@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faEllipsis,faMagnifyingGlass, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faMagnifyingGlass, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -52,10 +52,10 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
 
   const { data: roles } = useGetOrgRoles(orgId);
 
-  const handleChangeRole = async ({ currentSlug, role }: { currentSlug: string; role: string }) => {
+  const handleChangeRole = async ({ id, role }: { id: string; role: string }) => {
     try {
       await updateMutateAsync({
-        currentSlug,
+        id,
         role
       });
 
@@ -112,7 +112,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                               onValueChange={(selectedRole) =>
                                 handleChangeRole({
-                                  currentSlug: slug,
+                                  id,
                                   role: selectedRole
                                 })
                               }
@@ -147,6 +147,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("groupMembers", {
+                                    groupId: id,
                                     slug
                                   });
                                 }}
@@ -195,7 +196,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteGroup", {
-                                    slug,
+                                    groupId: id,
                                     name
                                   });
                                 }}

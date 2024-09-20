@@ -4,7 +4,8 @@ import { apiRequest } from "@app/config/request";
 
 export const groupKeys = {
   allGroupUserMemberships: () => ["group-user-memberships"] as const,
-  forGroupUserMemberships: (slug: string) => [...groupKeys.allGroupUserMemberships(), slug] as const,
+  forGroupUserMemberships: (slug: string) =>
+    [...groupKeys.allGroupUserMemberships(), slug] as const,
   specificGroupUserMemberships: ({
     slug,
     offset,
@@ -28,11 +29,13 @@ type TUser = {
 };
 
 export const useListGroupUsers = ({
+  id,
   groupSlug,
   offset = 0,
   limit = 10,
   username
 }: {
+  id: string;
   groupSlug: string;
   offset: number;
   limit: number;
@@ -52,14 +55,15 @@ export const useListGroupUsers = ({
         limit: String(limit),
         username
       });
-      
-      const { data } = await apiRequest.get<{ users: TUser[]; totalCount: number; }>(
-        `/api/v1/groups/${groupSlug}/users`, {
+
+      const { data } = await apiRequest.get<{ users: TUser[]; totalCount: number }>(
+        `/api/v1/groups/${id}/users`,
+        {
           params
         }
       );
-      
+
       return data;
-    },
+    }
   });
 };

@@ -35,10 +35,12 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const popUpData = popUp?.groupMembers?.data as {
+    groupId: string;
     slug: string;
   };
 
   const { data, isLoading } = useListGroupUsers({
+    id: popUpData?.groupId,
     groupSlug: popUpData?.slug,
     offset: (page - 1) * perPage,
     limit: perPage,
@@ -54,11 +56,13 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (assign) {
         await assignMutateAsync({
+          groupId: popUpData.groupId,
           username,
           slug: popUpData.slug
         });
       } else {
         await unassignMutateAsync({
+          groupId: popUpData.groupId,
           username,
           slug: popUpData.slug
         });

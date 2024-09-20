@@ -38,17 +38,17 @@ export const useUpdateGroup = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      currentSlug,
+      id,
       name,
       slug,
       role
     }: {
-      currentSlug: string;
+      id: string;
       name?: string;
       slug?: string;
       role?: string;
     }) => {
-      const { data: group } = await apiRequest.patch<TGroup>(`/api/v1/groups/${currentSlug}`, {
+      const { data: group } = await apiRequest.patch<TGroup>(`/api/v1/groups/${id}`, {
         name,
         slug,
         role
@@ -65,8 +65,8 @@ export const useUpdateGroup = () => {
 export const useDeleteGroup = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slug }: { slug: string }) => {
-      const { data: group } = await apiRequest.delete<TGroup>(`/api/v1/groups/${slug}`);
+    mutationFn: async ({ id }: { id: string }) => {
+      const { data: group } = await apiRequest.delete<TGroup>(`/api/v1/groups/${id}`);
 
       return group;
     },
@@ -79,8 +79,15 @@ export const useDeleteGroup = () => {
 export const useAddUserToGroup = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slug, username }: { slug: string; username: string }) => {
-      const { data } = await apiRequest.post<TGroup>(`/api/v1/groups/${slug}/users/${username}`);
+    mutationFn: async ({
+      groupId,
+      username
+    }: {
+      groupId: string;
+      username: string;
+      slug: string;
+    }) => {
+      const { data } = await apiRequest.post<TGroup>(`/api/v1/groups/${groupId}/users/${username}`);
 
       return data;
     },
@@ -93,8 +100,17 @@ export const useAddUserToGroup = () => {
 export const useRemoveUserFromGroup = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slug, username }: { slug: string; username: string }) => {
-      const { data } = await apiRequest.delete<TGroup>(`/api/v1/groups/${slug}/users/${username}`);
+    mutationFn: async ({
+      username,
+      groupId
+    }: {
+      slug: string;
+      username: string;
+      groupId: string;
+    }) => {
+      const { data } = await apiRequest.delete<TGroup>(
+        `/api/v1/groups/${groupId}/users/${username}`
+      );
 
       return data;
     },

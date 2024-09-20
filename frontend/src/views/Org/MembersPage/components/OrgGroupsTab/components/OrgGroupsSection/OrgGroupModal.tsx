@@ -85,7 +85,7 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
 
       if (group) {
         await updateMutateAsync({
-          currentSlug: group.slug,
+          id: group.groupId,
           name,
           slug,
           role: role || undefined

@@ -95,7 +95,7 @@ export const groupServiceFactory = ({
   };
 
   const updateGroup = async ({
-    currentSlug,
+    id,
     name,
     slug,
     role,
@@ -121,8 +121,10 @@ export const groupServiceFactory = ({
         message: "Failed to update group due to plan restrictio Upgrade plan to update group."
       });
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, slug: currentSlug });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with slug ${currentSlug}` });
+    const group = await groupDAL.findOne({ orgId: actorOrgId, id });
+    if (!group) {
+      throw new BadRequestError({ message: `Failed to find group with ID ${id}` });
+    }
 
     let customRole: TOrgRoles | undefined;
     if (role) {
@@ -140,8 +142,7 @@ export const groupServiceFactory = ({
 
     const [updatedGroup] = await groupDAL.update(
       {
-        orgId: actorOrgId,
-        slug: currentSlug
+        id: group.id
       },
       {
         name,
@@ -158,7 +159,7 @@ export const groupServiceFactory = ({
     return updatedGroup;
   };
 
-  const deleteGroup = async ({ groupSlug, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
+  const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -178,15 +179,15 @@ export const groupServiceFactory = ({
       });
 
     const [group] = await groupDAL.delete({
-      orgId: actorOrgId,
-      slug: groupSlug
+      id,
+      orgId: actorOrgId
     });
 
     return group;
   };
 
   const listGroupUsers = async ({
-    groupSlug,
+    id,
     offset,
     limit,
     username,
@@ -208,12 +209,12 @@ export const groupServiceFactory = ({
 
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
-      slug: groupSlug
+      id
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${groupSlug}`
+        message: `Failed to find group with ID ${id}`
       });
 
     const users = await groupDAL.findAllGroupMembers({
@@ -229,14 +230,7 @@ export const groupServiceFactory = ({
     return { users, totalCount: count };
   };
 
-  const addUserToGroup = async ({
-    groupSlug,
-    username,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TAddUserToGroupDTO) => {
+  const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -251,12 +245,12 @@ export const groupServiceFactory = ({
     // check if group with slug exists
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
-      slug: groupSlug
+      id
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${groupSlug}`
+        message: `Failed to find group with ID ${id}`
       });
 
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
@@ -285,7 +279,7 @@ export const groupServiceFactory = ({
   };
 
   const removeUserFromGroup = async ({
-    groupSlug,
+    id,
     username,
     actor,
     actorId,
@@ -306,12 +300,12 @@ export const groupServiceFactory = ({
     // check if group with slug exists
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
-      slug: groupSlug
+      id
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${groupSlug}`
+        message: `Failed to find group with ID ${id}`
       });
 
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);

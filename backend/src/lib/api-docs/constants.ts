@@ -5,26 +5,27 @@ export const GROUPS = {
     role: "The role of the group to create."
   },
   UPDATE: {
-    currentSlug: "The current slug of the group to update.",
+    id: "The id of the group to update",
     name: "The new name of the group to update to.",
     slug: "The new slug of the group to update to.",
     role: "The new role of the group to update to."
   },
   DELETE: {
+    id: "The id of the group to delete",
     slug: "The slug of the group to delete"
   },
   LIST_USERS: {
-    slug: "The slug of the group to list users for",
+    id: "The id of the group to list users for",
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for."
   },
   ADD_USER: {
-    slug: "The slug of the group to add the user to.",
+    id: "The id of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
   DELETE_USER: {
-    slug: "The slug of the group to remove the user from.",
+    id: "The id of the group to remove the user from.",
     username: "The username of the user to remove from the group."
   }
 } as const;
