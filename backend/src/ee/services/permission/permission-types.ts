@@ -6,6 +6,11 @@ export type TBuildProjectPermissionDTO = {
   role: string;
 }[];
 
+export type TBuildOrgPermissionDTO = {
+  permissions?: unknown;
+  role: string;
+}[];
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
