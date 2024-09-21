@@ -30,7 +30,7 @@ enum AuthProvider {
 
 const ssoAuthProviders = [
   { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
-  { label: "Azure SAML", value: AuthProvider.AZURE_SAML },
+  { label: "Azure / Entra SAML", value: AuthProvider.AZURE_SAML },
   { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML },
   { label: "Keycloak SAML", value: AuthProvider.KEYCLOAK_SAML },
   { label: "Google SAML", value: AuthProvider.GOOGLE_SAML }
@@ -161,7 +161,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
           entityId: "Identifier (Entity ID)",
           entryPoint: "Login URL",
           entryPointPlaceholder: "https://login.microsoftonline.com/xxx/saml2",
-          issuer: "Azure Application ID",
+          issuer: "Azure / Entra Application ID",
           issuerPlaceholder: "abc-def-ghi-jkl-mno"
         };
       case AuthProvider.JUMPCLOUD_SAML:
