@@ -34,7 +34,7 @@ type TGroupProjectServiceFactoryDep = {
     "create" | "transaction" | "insertMany" | "delete"
   >;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembersNotInProject">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findProjectGhostUser" | "findById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany" | "transaction">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   projectBotDAL: TProjectBotDALFactory;
@@ -403,19 +403,17 @@ export const groupProjectServiceFactory = ({
   };
 
   const getGroupInProject = async ({
-    projectSlug,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
-    groupSlug
+    groupId,
+    projectId
   }: TGetGroupInProjectDTO) => {
-    const project = await projectDAL.findOne({
-      slug: projectSlug
-    });
+    const project = await projectDAL.findById(projectId);
 
     if (!project) {
-      throw new NotFoundError({ message: `Failed to find project with slug ${projectSlug}` });
+      throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     }
 
     const { permission } = await permissionService.getProjectPermission(
@@ -428,7 +426,7 @@ export const groupProjectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
 
     const [groupMembership] = await groupProjectDAL.findByProjectId(project.id, {
-      groupSlug
+      groupId
     });
 
     if (!groupMembership) {
