@@ -550,7 +550,7 @@ export const orgServiceFactory = ({
           );
         }
 
-        const [inviteeMembership] = await orgDAL.findMembership(
+        const [inviteeOrgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
             [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUserId
@@ -559,7 +559,7 @@ export const orgServiceFactory = ({
         );
 
         // if there exist no org membership we set is as given by the request
-        if (!inviteeMembership) {
+        if (!inviteeOrgMembership) {
           if (plan?.slug !== "enterprise" && plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
             // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
             throw new BadRequestError({
