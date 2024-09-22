@@ -70,12 +70,6 @@ export default function SignupInvite() {
 
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 
-  useEffect(() => {
-    if (!config.allowSignUp) {
-      router.push("/login");
-    }
-  }, [config.allowSignUp]);
-
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
