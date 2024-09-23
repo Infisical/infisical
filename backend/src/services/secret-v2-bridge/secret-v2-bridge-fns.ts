@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
+import { UnauthorizedError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
@@ -375,6 +376,7 @@ type TInterpolateSecretArg = {
   decryptSecretValue: (encryptedValue?: Buffer | null) => string | undefined;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  canExpandValue: (environment: string, secretPath: string) => boolean;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
@@ -382,7 +384,8 @@ export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
   secretDAL,
-  folderDAL
+  folderDAL,
+  canExpandValue
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
@@ -432,6 +435,11 @@ export const expandSecretReferencesFactory = ({
           if (entities.length === 1) {
             const [secretKey] = entities;
 
+            if (!canExpandValue(environment, secretPath))
+              throw new UnauthorizedError({
+                message: `You don't have access to secret ${secretKey} in environment ${environment} of secret path ${secretPath} `
+              });
+
             // eslint-disable-next-line no-continue,no-await-in-loop
             const referedValue = await fetchSecret(environment, secretPath, secretKey);
             const cacheKey = getCacheUniqueKey(environment, secretPath);
@@ -451,6 +459,11 @@ export const expandSecretReferencesFactory = ({
             const secretReferenceEnvironment = entities[0];
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
             const secretReferenceKey = entities[entities.length - 1];
+
+            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath))
+              throw new UnauthorizedError({
+                message: `You don't have access to secret ${secretReferenceKey} in environment ${secretReferenceEnvironment} of secret path ${secretReferencePath} `
+              });
 
             // eslint-disable-next-line no-await-in-loop
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);

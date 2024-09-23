@@ -290,7 +290,9 @@ export const secretQueueFactory = ({
       decryptSecretValue: dto.decryptor,
       secretDAL: secretV2BridgeDAL,
       folderDAL,
-      projectId: dto.projectId
+      projectId: dto.projectId,
+      // on integration expand all secrets
+      canExpandValue: () => true
     });
     // process secrets in current folder
     const secrets = await secretV2BridgeDAL.findByFolderId(dto.folderId);
