@@ -17,3 +17,40 @@ Check the box in Personal Settings > Two-factor Authentication to enable email-b
   building support for other forms of identification via SMS and Authenticator
   App.
 </Note>
+
+## Entra ID / Azure AD MFA
+
+<Note>
+    Before proceeding make sure you've enabled [SAML SSO for Entra ID / Azure AD](./sso/azure).
+
+    We also encourage you to have your team download and setup the
+    [Microsoft Authenticator App](https://www.microsoft.com/en-us/security/mobile-authenticator-app) prior to enabling MFA.
+</Note>
+
+<Steps>
+    <Step title="Open your Infisical Application in the Microsoft Entra Admin Center">
+        ![Entra Infisical app](../../images/platform/mfa/entra/mfa_entra_infisical_app.png)
+    </Step>
+    <Step title="Tap on Conditional Access under the Security Tab">
+        ![conditional access](../../images/platform/mfa/entra/mfa_entra_conditional_access.png)
+    </Step>
+    <Step title="Tap on Create New Policy from Templates">
+        ![create policy](../../images/platform/mfa/entra/mfa_entra_create_policy.png)
+    </Step>
+    <Step title="Select Require MFA for All Users and Tap on Review + Create">
+        ![require MFA and review policy](../../images/platform/mfa/entra/mfa_entra_review_policy.png)
+        <Note>
+            By default all users except the configuring admin will be setup to require MFA.
+            Microsoft encourages keeping at least one admin excluded from MFA to prevent accidental lockout.
+        </Note>
+    </Step>
+    <Step title="Set Policy State to Enabled and Tap on Create">
+        ![enable policy and confirm](../../images/platform/mfa/entra/mfa_entra_confirm_policy.png)
+    </Step>
+    <Step title="MFA is now Required When Accessing Infisical">
+        ![mfa login](../../images/platform/mfa/entra/mfa_entra_login.png)
+        <Note>
+            If users have not setup MFA for Entra / Azure they will be prompted to do so at this time.
+        </Note>
+    </Step>
+</Steps>
