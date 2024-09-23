@@ -35,6 +35,7 @@ type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   members?: TWorkspaceUser[];
+  projectId: string;
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
 };
@@ -60,6 +61,7 @@ export const AccessPolicyForm = ({
   isOpen,
   onToggle,
   members = [],
+  projectId,
   projectSlug,
   editValues
 }: Props) => {
@@ -81,7 +83,7 @@ export const AccessPolicyForm = ({
       : undefined
   });
   const { currentWorkspace } = useWorkspace();
-  const { data: groups } = useListWorkspaceGroups(projectSlug);
+  const { data: groups } = useListWorkspaceGroups(projectId);
 
   const environments = currentWorkspace?.environments || [];
   const isEditMode = Boolean(editValues);
@@ -99,7 +101,7 @@ export const AccessPolicyForm = ({
   const policyName = policyDetails[watch("policyType")]?.name || "Policy";
 
   const handleCreatePolicy = async (data: TFormSchema) => {
-    if (!projectSlug) return;
+    if (!projectId) return;
 
     try {
       if (data.policyType === PolicyType.ChangePolicy) {
@@ -128,7 +130,7 @@ export const AccessPolicyForm = ({
   };
 
   const handleUpdatePolicy = async (data: TFormSchema) => {
-    if (!projectSlug) return;
+    if (!projectId || !projectSlug) return;
     if (!editValues?.id) return;
 
     try {
