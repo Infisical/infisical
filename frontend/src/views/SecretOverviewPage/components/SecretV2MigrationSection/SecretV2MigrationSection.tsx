@@ -87,24 +87,23 @@ export const SecretV2MigrationSection = () => {
           <Spinner size="lg" className="text-primary" />
           <div className="ml-4 flex flex-col space-y-1">
             <div className="text-3xl font-medium">Please wait</div>
-            <span className="inline-block">Upgrading your project...</span>
+            <span className="inline-block">Upgrading secrets engine...</span>
           </div>
         </div>
       )}
       <div className="mb-4 flex items-start gap-2">
         <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
-        <p className="text-xl font-semibold">
-          Upgrade your project
-        </p>
+        <p className="text-xl font-semibold">Upgrade secrets engine version</p>
       </div>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-300">
-        Your existing workflows to fetch secrets will continue to work. However, viewing secrets on the UI requires you to upgrade your project.
+      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+        Your existing workflows to fetch secrets will continue to work. However, viewing secrets on
+        the UI requires you to upgrade your project&apos;s secrets engine version.
       </p>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-300">
-        Upgrading your project enables the use of Infisical&apos;s new secrets engine, which is 10x faster and
-        allows you to encrypt secrets with your own KMS provider.
+      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+        Upgrading is free and enables the use of Infisical&apos;s new secrets engine, which is 10x
+        faster and allows you to encrypt secrets with your own KMS provider.
       </p>
-      <p className="mx-1 mb-6 leading-7 text-mineshaft-300">
+      <p className="mx-1 mb-6 leading-7 text-mineshaft-100">
         The upgrade takes only 1-2 minutes and will not cause any downtime.
       </p>
       <Button
@@ -113,12 +112,13 @@ export const SecretV2MigrationSection = () => {
         isLoading={migrateProjectToV3.isLoading}
         className="w-full "
       >
-        {isAdmin ? "Upgrade Project" : "Upgrade requires admin privilege"}
+        {isAdmin ? "Upgrade Secrets Engine" : "Upgrade requires admin privilege"}
       </Button>
       {didProjectUpgradeFailed && (
         <p className="mt-2 text-sm leading-7 text-red-400">
           <FontAwesomeIcon icon={faTriangleExclamation} className="mr-2" />
-          Project upgrade unsuccessful. For assistance, please contact the Infisical support team.
+          Secrets engine upgrade unsuccessful. For assistance, please contact the Infisical support
+          team.
         </p>
       )}
       <Modal
