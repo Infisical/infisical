@@ -5,6 +5,8 @@ import { AccessApprovalPoliciesSchema, TableName, TAccessApprovalPolicies } from
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
+import { ApproverType } from "./access-approval-policy-types";
+
 export type TAccessApprovalPolicyDALFactory = ReturnType<typeof accessApprovalPolicyDALFactory>;
 
 export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
@@ -21,6 +23,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
+      .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -30,10 +33,10 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
     return result;
   };
 
-  const findById = async (id: string, tx?: Knex) => {
+  const findById = async (policyId: string, tx?: Knex) => {
     try {
       const doc = await accessApprovalPolicyFindQuery(tx || db.replicaNode(), {
-        [`${TableName.AccessApprovalPolicy}.id` as "id"]: id
+        [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyId
       });
       const formattedDoc = sqlNestRelationships({
         data: doc,
@@ -50,9 +53,18 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "approverUserId",
-            label: "userApprovers" as const,
-            mapper: ({ approverUserId }) => ({
-              userId: approverUserId
+            label: "approvers" as const,
+            mapper: ({ approverUserId: id }) => ({
+              id,
+              type: "user"
+            })
+          },
+          {
+            key: "approverGroupId",
+            label: "approvers" as const,
+            mapper: ({ approverGroupId: id }) => ({
+              id,
+              type: "group"
             })
           }
         ]
@@ -84,9 +96,18 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "approverUserId",
-            label: "userApprovers" as const,
-            mapper: ({ approverUserId }) => ({
-              userId: approverUserId
+            label: "approvers" as const,
+            mapper: ({ approverUserId: id }) => ({
+              id,
+              type: ApproverType.User
+            })
+          },
+          {
+            key: "approverGroupId",
+            label: "approvers" as const,
+            mapper: ({ approverGroupId: id }) => ({
+              id,
+              type: ApproverType.Group
             })
           }
         ]

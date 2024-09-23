@@ -18,6 +18,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
+import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
@@ -57,6 +58,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction"
   >;
+  groupDAL: Pick<TGroupDALFactory, "findAllGroupMembers">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<
@@ -70,6 +72,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
 export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
 
 export const accessApprovalRequestServiceFactory = ({
+  groupDAL,
   projectDAL,
   projectEnvDAL,
   permissionService,
@@ -124,13 +127,36 @@ export const accessApprovalRequestServiceFactory = ({
     });
     if (!policy) throw new UnauthorizedError({ message: "No policy matching criteria was found." });
 
+    const approverIds: string[] = [];
+    const approverGroupIds: string[] = [];
+
     const approvers = await accessApprovalPolicyApproverDAL.find({
       policyId: policy.id
     });
 
+    approvers.forEach((approver) => {
+      if (approver.approverUserId) {
+        approverIds.push(approver.approverUserId);
+      } else if (approver.approverGroupId) {
+        approverGroupIds.push(approver.approverGroupId);
+      }
+    });
+
+    const groupUsers = (
+      await Promise.all(
+        approverGroupIds.map((groupApproverId) =>
+          groupDAL.findAllGroupMembers({
+            orgId: actorOrgId,
+            groupId: groupApproverId
+          })
+        )
+      )
+    ).flat();
+    approverIds.push(...groupUsers.map((user) => user.id));
+
     const approverUsers = await userDAL.find({
       $in: {
-        id: approvers.map((approver) => approver.approverUserId)
+        id: [...new Set(approverIds)]
       }
     });
 

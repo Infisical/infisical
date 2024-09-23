@@ -1,10 +1,12 @@
 import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 
+import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
+
 export type TCreateSapDTO = {
   approvals: number;
   secretPath?: string | null;
   environment: string;
-  approvers: string[];
+  approvers: { type: ApproverType; id: string }[];
   projectId: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -14,7 +16,7 @@ export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
   secretPath?: string | null;
-  approvers: string[];
+  approvers: { type: ApproverType; id: string }[];
   name?: string;
   enforcementLevel?: EnforcementLevel;
 } & Omit<TProjectPermission, "projectId">;

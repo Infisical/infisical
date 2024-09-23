@@ -12,7 +12,8 @@ export const SecretApprovalPoliciesApproversSchema = z.object({
   policyId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  approverUserId: z.string().uuid()
+  approverUserId: z.string().uuid().nullable().optional(),
+  approverGroupId: z.string().uuid().nullable().optional()
 });
 
 export type TSecretApprovalPoliciesApprovers = z.infer<typeof SecretApprovalPoliciesApproversSchema>;

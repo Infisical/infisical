@@ -11,13 +11,22 @@ export type TAccessApprovalPolicy = {
   workspace: string;
   environment: WorkspaceEnv;
   projectId: string;
-  approvers: string[];
   policyType: PolicyType;
   approversRequired: boolean;
   enforcementLevel: EnforcementLevel;
   updatedAt: Date;
-  userApprovers?: { userId: string }[];
+  approvers?: Approver[];
 };
+
+export enum ApproverType{
+  User = "user",
+  Group = "group"
+}
+
+export type Approver ={
+  id: string;
+  type: ApproverType;
+}
 
 export type TAccessApprovalRequest = {
   id: string;
@@ -130,7 +139,7 @@ export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
   environment: string;
-  approvers?: string[];
+  approvers?: Approver[];
   approvals?: number;
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
@@ -139,7 +148,7 @@ export type TCreateAccessPolicyDTO = {
 export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: string[];
+  approvers?: Approver[];
   secretPath?: string;
   environment?: string;
   approvals?: number;

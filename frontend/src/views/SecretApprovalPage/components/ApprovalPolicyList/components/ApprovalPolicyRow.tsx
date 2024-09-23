@@ -18,6 +18,8 @@ import { Badge } from "@app/components/v2/Badge";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { policyDetails } from "@app/helpers/policies";
 import { useUpdateAccessApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
+import { Approver, ApproverType } from "@app/hooks/api/accessApproval/types";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
@@ -29,8 +31,7 @@ interface IPolicy {
   projectId?: string;
   secretPath?: string;
   approvals: number;
-  approvers?: string[];
-  userApprovers?: { userId: string }[];
+  approvers?: Approver[];
   updatedAt: Date;
   policyType: PolicyType;
   enforcementLevel: EnforcementLevel;
@@ -39,6 +40,7 @@ interface IPolicy {
 type Props = {
   policy: IPolicy;
   members?: TWorkspaceUser[];
+  groups?: TGroupMembership[];
   projectSlug: string;
   workspaceId: string;
   onEdit: () => void;
@@ -48,12 +50,14 @@ type Props = {
 export const ApprovalPolicyRow = ({
   policy,
   members = [],
+  groups = [],
   projectSlug,
   workspaceId,
   onEdit,
   onDelete
 }: Props) => {
-  const [selectedApprovers, setSelectedApprovers] = useState<string[]>(policy.userApprovers?.map(({ userId }) => userId) || policy.approvers || []);
+  const [selectedApprovers, setSelectedApprovers] = useState<Approver[]>(policy.approvers?.filter((approver) => approver.type === ApproverType.User) || []);
+  const [selectedGroupApprovers, setSelectedGroupApprovers] = useState<Approver[]>(policy.approvers?.filter((approver) => approver.type === ApproverType.Group) || []);
   const { mutate: updateAccessApprovalPolicy, isLoading: isAccessApprovalPolicyLoading } = useUpdateAccessApprovalPolicy();
   const { mutate: updateSecretApprovalPolicy, isLoading: isSecretApprovalPolicyLoading } = useUpdateSecretApprovalPolicy();
   const isLoading = isAccessApprovalPolicyLoading || isSecretApprovalPolicyLoading;
@@ -74,28 +78,33 @@ export const ApprovalPolicyRow = ({
                   {
                     projectSlug,
                     id: policy.id,
-                    approvers: selectedApprovers
+                    approvers: selectedApprovers.concat(selectedGroupApprovers),
                   },
-                  { onSettled: () => {} }
+                  {
+                    onError: () => {
+                      setSelectedApprovers(policy?.approvers?.filter((approver) => approver.type === ApproverType.User) || []);
+                    }
+                  }
                 );
               } else {
                 updateSecretApprovalPolicy(
                   {
                     workspaceId,
                     id: policy.id,
-                    approvers: selectedApprovers
+                    approvers: selectedApprovers.concat(selectedGroupApprovers),
                   },
-                  { onSettled: () => {} }
+                  {
+                    onError: () => {
+                      setSelectedApprovers(policy?.approvers?.filter((approver) => approver.type === ApproverType.User) || []);
+                    }
+                  }
                 );
               }
             } else {
-              setSelectedApprovers(policy.policyType === PolicyType.ChangePolicy
-                ? policy?.userApprovers?.map(({ userId }) => userId) || []
-                : policy?.approvers || []
-              );
+              setSelectedApprovers(policy?.approvers?.filter((approver) => approver.type === ApproverType.User) || []);
             }
           }}
-      >
+        >
           <DropdownMenuTrigger
             asChild
             disabled={
@@ -116,15 +125,15 @@ export const ApprovalPolicyRow = ({
             <DropdownMenuLabel>
               Select members that are allowed to approve changes
             </DropdownMenuLabel>
-            {members?.map(({ id, user }) => {
-              const userId = policy.policyType === PolicyType.ChangePolicy ? user.id : id;
-              const isChecked = selectedApprovers.includes(userId);
+            {members?.map(({ user }) => {
+              const userId = user.id;
+              const isChecked = selectedApprovers?.filter((el: { id: string, type: ApproverType }) => el.id === userId && el.type === ApproverType.User).length > 0;
               return (
                 <DropdownMenuItem
                   onClick={(evt) => {
                     evt.preventDefault();
                     setSelectedApprovers((state) =>
-                      isChecked ? state.filter((el) => el !== userId) : [...state, userId]
+                      isChecked ? state.filter((el) => el.id !== userId || el.type !== ApproverType.User) : [...state, { id: userId, type: ApproverType.User }]
                     );
                   }}
                   key={`create-policy-members-${userId}`}
@@ -132,6 +141,80 @@ export const ApprovalPolicyRow = ({
                   icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                 >
                   {user.username}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Td>
+      <Td>
+        <DropdownMenu
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              if (policy.policyType === PolicyType.AccessPolicy) {
+                updateAccessApprovalPolicy(
+                  {
+                    projectSlug,
+                    id: policy.id,
+                    approvers: selectedApprovers.concat(selectedGroupApprovers),
+                  },
+                  {
+                    onError: () => {
+                      setSelectedGroupApprovers(policy?.approvers?.filter((approver) => approver.type === ApproverType.Group) || []);
+                    }
+                  },
+                );
+              } else {
+                updateSecretApprovalPolicy(
+                  {
+                    workspaceId,
+                    id: policy.id,
+                    approvers: selectedApprovers.concat(selectedGroupApprovers),
+                  },
+                  {
+                    onError: () => {
+                      setSelectedGroupApprovers(policy?.approvers?.filter((approver) => approver.type === ApproverType.Group) || []);
+                    }
+                  }
+                );
+              }
+            } else {
+              setSelectedGroupApprovers(policy?.approvers?.filter((approver) => approver.type === ApproverType.Group) || []);
+            }
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <Input
+              isReadOnly
+              value={selectedGroupApprovers?.length ? `${selectedGroupApprovers.length} selected` : "None"}
+              className="text-left"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+            align="start"
+          >
+            <DropdownMenuLabel>
+              Select groups that are allowed to approve requests
+            </DropdownMenuLabel>
+            {groups && groups.map(({ group }) => {
+              const { id } = group;
+              const isChecked = selectedGroupApprovers?.filter((el: { id: string, type: ApproverType }) => el.id === id && el.type === ApproverType.Group).length > 0;
+              return (
+                <DropdownMenuItem
+                  onClick={(evt) => {
+                    evt.preventDefault();
+                    setSelectedGroupApprovers(
+                      isChecked
+                        ? selectedGroupApprovers?.filter((el) => el.id !== id || el.type !== ApproverType.Group)
+                        : [...(selectedGroupApprovers || []), { id, type: ApproverType.Group }]
+                    );
+                  }}
+                  key={`create-policy-groups-${id}`}
+                  iconPos="right"
+                  icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                >
+                  {group.name}
                 </DropdownMenuItem>
               );
             })}

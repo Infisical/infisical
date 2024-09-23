@@ -39,6 +39,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.AccessApprovalPolicy}.id`,
           `${TableName.AccessApprovalPolicyApprover}.policyId`
         )
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
+        .leftJoin(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
 
         .join<TUsers>(
           db(TableName.Users).as("requestedByUser"),
@@ -59,6 +65,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         )
 
         .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
+        .select(db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"))
 
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
@@ -142,7 +149,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             label: "reviewers" as const,
             mapper: ({ reviewerUserId: userId, reviewerStatus: status }) => (userId ? { userId, status } : undefined)
           },
-          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId }
+          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId },
+          {
+            key: "approverGroupUserId",
+            label: "approvers" as const,
+            mapper: ({ approverGroupUserId }) => approverGroupUserId
+          }
         ]
       });
 
@@ -172,16 +184,27 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         `requestedByUser.id`
       )
 
-      .join(
+      .leftJoin(
         TableName.AccessApprovalPolicyApprover,
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
 
-      .join<TUsers>(
+      .leftJoin<TUsers>(
         db(TableName.Users).as("accessApprovalPolicyApproverUser"),
         `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
         "accessApprovalPolicyApproverUser.id"
+      )
+      .leftJoin(
+        TableName.UserGroupMembership,
+        `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
+        `${TableName.UserGroupMembership}.groupId`
+      )
+
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("accessApprovalPolicyGroupApproverUser"),
+        `${TableName.UserGroupMembership}.userId`,
+        "accessApprovalPolicyGroupApproverUser.id"
       )
 
       .leftJoin(
@@ -200,10 +223,15 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
+        tx.ref("userId").withSchema(TableName.UserGroupMembership),
         tx.ref("email").withSchema("accessApprovalPolicyApproverUser").as("approverEmail"),
+        tx.ref("email").withSchema("accessApprovalPolicyGroupApproverUser").as("approverGroupEmail"),
         tx.ref("username").withSchema("accessApprovalPolicyApproverUser").as("approverUsername"),
+        tx.ref("username").withSchema("accessApprovalPolicyGroupApproverUser").as("approverGroupUsername"),
         tx.ref("firstName").withSchema("accessApprovalPolicyApproverUser").as("approverFirstName"),
+        tx.ref("firstName").withSchema("accessApprovalPolicyGroupApproverUser").as("approverGroupFirstName"),
         tx.ref("lastName").withSchema("accessApprovalPolicyApproverUser").as("approverLastName"),
+        tx.ref("lastName").withSchema("accessApprovalPolicyGroupApproverUser").as("approverGroupLastName"),
         tx.ref("email").withSchema("requestedByUser").as("requestedByUserEmail"),
         tx.ref("username").withSchema("requestedByUser").as("requestedByUserUsername"),
         tx.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
@@ -277,6 +305,23 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
               approverFirstName: firstName
             }) => ({
               userId: approverUserId,
+              email,
+              firstName,
+              lastName,
+              username
+            })
+          },
+          {
+            key: "userId",
+            label: "approvers" as const,
+            mapper: ({
+              userId,
+              approverGroupEmail: email,
+              approverGroupUsername: username,
+              approverGroupLastName: lastName,
+              approverFirstName: firstName
+            }) => ({
+              userId,
               email,
               firstName,
               lastName,

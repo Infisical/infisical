@@ -41,7 +41,8 @@ import {
   useDeleteAccessApprovalPolicy,
   useDeleteSecretApprovalPolicy,
   useGetSecretApprovalPolicies,
-  useGetWorkspaceUsers
+  useGetWorkspaceUsers,
+  useListWorkspaceGroups
 } from "@app/hooks/api";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/queries";
 import { PolicyType } from "@app/hooks/api/policies/enums";
@@ -102,6 +103,8 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   const { currentWorkspace } = useWorkspace();
 
   const { data: members } = useGetWorkspaceUsers(workspaceId, true);
+  const { data: groups } = useListWorkspaceGroups(currentWorkspace?.slug || "");
+
   const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(
     permission,
     currentWorkspace
@@ -186,6 +189,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
               <Th>Environment</Th>
               <Th>Secret Path</Th>
               <Th>Eligible Approvers</Th>
+              <Th>Eligible Group Approvers</Th>
               <Th>Approval Required</Th>
               <Th>
                 <DropdownMenu>
@@ -257,6 +261,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                   workspaceId={workspaceId}
                   key={policy.id}
                   members={members}
+                  groups={groups}
                   onEdit={() => handlePopUpOpen("policyForm", policy)}
                   onDelete={() => handlePopUpOpen("deletePolicy", policy)}
                 />

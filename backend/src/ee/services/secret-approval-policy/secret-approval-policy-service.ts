@@ -8,6 +8,7 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
+import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
@@ -54,7 +55,14 @@ export const secretApprovalPolicyServiceFactory = ({
     environment,
     enforcementLevel
   }: TCreateSapDTO) => {
-    if (approvals > approvers.length)
+    const groupApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.Group)
+      .map((approver) => approver.id);
+    const userApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.User)
+      .map((approver) => approver.id);
+
+    if (!groupApprovers && approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -91,9 +99,18 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
+
       await secretApprovalPolicyApproverDAL.insertMany(
-        approvers.map((approverUserId) => ({
+        userApprovers.map((approverUserId) => ({
           approverUserId,
+          policyId: doc.id
+        })),
+        tx
+      );
+
+      await secretApprovalPolicyApproverDAL.insertMany(
+        groupApprovers.map((approverGroupId) => ({
+          approverGroupId,
           policyId: doc.id
         })),
         tx
@@ -115,6 +132,13 @@ export const secretApprovalPolicyServiceFactory = ({
     secretPolicyId,
     enforcementLevel
   }: TUpdateSapDTO) => {
+    const groupApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.Group)
+      .map((approver) => approver.id);
+    const userApprovers = approvers
+      ?.filter((approver) => approver.type === ApproverType.User)
+      .map((approver) => approver.id);
+
     const secretApprovalPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!secretApprovalPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
 
@@ -146,11 +170,23 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
+
+      await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+
       if (approvers) {
-        await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
         await secretApprovalPolicyApproverDAL.insertMany(
-          approvers.map((approverUserId) => ({
+          userApprovers.map((approverUserId) => ({
             approverUserId,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
+      if (groupApprovers) {
+        await secretApprovalPolicyApproverDAL.insertMany(
+          groupApprovers.map((approverGroupId) => ({
+            approverGroupId,
             policyId: doc.id
           })),
           tx

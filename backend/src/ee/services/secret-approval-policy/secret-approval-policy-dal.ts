@@ -1,9 +1,11 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretApprovalPoliciesSchema, TableName, TSecretApprovalPolicies } from "@app/db/schemas";
+import { SecretApprovalPoliciesSchema, TableName, TSecretApprovalPolicies, TUsers } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
+
+import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
 
 export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPolicyDALFactory>;
 
@@ -20,14 +22,29 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicy}.id`,
         `${TableName.SecretApprovalPolicyApprover}.policyId`
       )
-
-      .leftJoin(TableName.Users, `${TableName.SecretApprovalPolicyApprover}.approverUserId`, `${TableName.Users}.id`)
-
+      .leftJoin(
+        TableName.UserGroupMembership,
+        `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
+        `${TableName.UserGroupMembership}.groupId`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("secretApprovalPolicyApproverUser"),
+        `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
+        "secretApprovalPolicyApproverUser.id"
+      )
+      .leftJoin<TUsers>(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
       .select(
-        tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
-        tx.ref("email").withSchema(TableName.Users).as("approverEmail"),
-        tx.ref("firstName").withSchema(TableName.Users).as("approverFirstName"),
-        tx.ref("lastName").withSchema(TableName.Users).as("approverLastName")
+        tx.ref("id").withSchema("secretApprovalPolicyApproverUser").as("approverUserId"),
+        tx.ref("email").withSchema("secretApprovalPolicyApproverUser").as("approverEmail"),
+        tx.ref("firstName").withSchema("secretApprovalPolicyApproverUser").as("approverFirstName"),
+        tx.ref("lastName").withSchema("secretApprovalPolicyApproverUser").as("approverLastName")
+      )
+      .select(
+        tx.ref("approverGroupId").withSchema(TableName.SecretApprovalPolicyApprover),
+        tx.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"),
+        tx.ref("email").withSchema(TableName.Users).as("approverGroupEmail"),
+        tx.ref("firstName").withSchema(TableName.Users).as("approverGroupFirstName"),
+        tx.ref("lastName").withSchema(TableName.Users).as("approverGroupLastName")
       )
       .select(
         tx.ref("name").withSchema(TableName.Environment).as("envName"),
@@ -55,11 +72,31 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "userApprovers" as const,
-            mapper: ({ approverUserId, approverEmail, approverFirstName, approverLastName }) => ({
-              userId: approverUserId,
-              email: approverEmail,
-              firstName: approverFirstName,
-              lastName: approverLastName
+            mapper: ({
+              approverUserId: userId,
+              approverEmail: email,
+              approverFirstName: firstName,
+              approverLastName: lastName
+            }) => ({
+              userId,
+              email,
+              firstName,
+              lastName
+            })
+          },
+          {
+            key: "approverGroupUserId",
+            label: "userApprovers" as const,
+            mapper: ({
+              approverGroupUserId: userId,
+              approverGroupEmail: email,
+              approverGroupFirstName: firstName,
+              approverGroupLastName: lastName
+            }) => ({
+              userId,
+              email,
+              firstName,
+              lastName
             })
           }
         ]
@@ -85,9 +122,32 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "approverUserId",
+            label: "approvers" as const,
+            mapper: ({ approverUserId: id }) => ({
+              type: ApproverType.User,
+              id
+            })
+          },
+          {
+            key: "approverGroupId",
+            label: "approvers" as const,
+            mapper: ({ approverGroupId: id }) => ({
+              type: ApproverType.Group,
+              id
+            })
+          },
+          {
+            key: "approverUserId",
             label: "userApprovers" as const,
-            mapper: ({ approverUserId }) => ({
-              userId: approverUserId
+            mapper: ({ approverUserId: userId }) => ({
+              userId
+            })
+          },
+          {
+            key: "approverGroupUserId",
+            label: "userApprovers" as const,
+            mapper: ({ approverGroupUserId: userId }) => ({
+              userId
             })
           }
         ]

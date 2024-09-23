@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { EnforcementLevel } from "@app/lib/types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
@@ -11,20 +12,18 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     url: "/",
     method: "POST",
     schema: {
-      body: z
-        .object({
-          projectSlug: z.string().trim(),
-          name: z.string().optional(),
-          secretPath: z.string().trim().default("/"),
-          environment: z.string(),
-          approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1),
-          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
-        })
-        .refine((data) => data.approvals <= data.approvers.length, {
-          path: ["approvals"],
-          message: "The number of approvals should be lower than the number of approvers."
-        }),
+      body: z.object({
+        projectSlug: z.string().trim(),
+        name: z.string().optional(),
+        secretPath: z.string().trim().default("/"),
+        environment: z.string(),
+        approvers: z
+          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .array()
+          .min(1, { message: "At least one approver should be provided" }),
+        approvals: z.number().min(1).default(1),
+        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
+      }),
       response: {
         200: z.object({
           approval: sapPubSchema
@@ -58,14 +57,15 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         200: z.object({
           approvals: sapPubSchema
             .extend({
-              userApprovers: z
-                .object({
-                  userId: z.string()
-                })
-                .array(),
-              secretPath: z.string().optional().nullable()
+              approvers: z
+                .object({ type: z.nativeEnum(ApproverType), id: z.string().nullable().optional() })
+                .array()
+                .nullable()
+                .optional()
             })
             .array()
+            .nullable()
+            .optional()
         })
       }
     },
@@ -119,22 +119,20 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       params: z.object({
         policyId: z.string()
       }),
-      body: z
-        .object({
-          name: z.string().optional(),
-          secretPath: z
-            .string()
-            .trim()
-            .optional()
-            .transform((val) => (val === "" ? "/" : val)),
-          approvers: z.string().array().min(1),
-          approvals: z.number().min(1).default(1),
-          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
-        })
-        .refine((data) => data.approvals <= data.approvers.length, {
-          path: ["approvals"],
-          message: "The number of approvals should be lower than the number of approvers."
-        }),
+      body: z.object({
+        name: z.string().optional(),
+        secretPath: z
+          .string()
+          .trim()
+          .optional()
+          .transform((val) => (val === "" ? "/" : val)),
+        approvers: z
+          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .array()
+          .min(1, { message: "At least one approver should be provided" }),
+        approvals: z.number().min(1).optional(),
+        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
+      }),
       response: {
         200: z.object({
           approval: sapPubSchema

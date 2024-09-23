@@ -447,8 +447,8 @@ export const secretApprovalRequestServiceFactory = ({
     );
     const hasMinApproval =
       secretApprovalRequest.policy.approvals <=
-      secretApprovalRequest.policy.approvers.filter(
-        ({ userId: approverId }) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
+      secretApprovalRequest.policy.approvers.filter(({ userId: approverId }) =>
+        approverId ? reviewers[approverId] === ApprovalStatus.APPROVED : false
       ).length;
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
 
@@ -805,7 +805,7 @@ export const secretApprovalRequestServiceFactory = ({
       const requestedByUser = await userDAL.findOne({ id: actorId });
       const approverUsers = await userDAL.find({
         $in: {
-          id: policy.approvers.map((approver: { userId: string }) => approver.userId)
+          id: policy.approvers.map((approver: { userId: string | null | undefined }) => approver.userId!)
         }
       });
 
