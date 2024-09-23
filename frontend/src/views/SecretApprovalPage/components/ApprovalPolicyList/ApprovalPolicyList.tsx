@@ -103,7 +103,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   const { currentWorkspace } = useWorkspace();
 
   const { data: members } = useGetWorkspaceUsers(workspaceId, true);
-  const { data: groups } = useListWorkspaceGroups(currentWorkspace?.slug || "");
+  const { data: groups } = useListWorkspaceGroups(currentWorkspace?.id || "");
 
   const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(
     permission,
@@ -270,6 +270,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         </Table>
       </TableContainer>
       <AccessPolicyForm
+        projectId={currentWorkspace?.id!}
         projectSlug={currentWorkspace?.slug!}
         isOpen={popUp.policyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
