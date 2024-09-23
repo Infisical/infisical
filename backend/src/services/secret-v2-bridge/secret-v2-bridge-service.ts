@@ -152,6 +152,15 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    references.forEach((referredSecret) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: referredSecret.environment,
+          secretPath: referredSecret.secretPath
+        })
+      );
+    });
 
     const secret = await secretDAL.transaction((tx) =>
       fnSecretBulkInsert({
@@ -292,6 +301,17 @@ export const secretV2BridgeServiceFactory = ({
             references: getAllNestedSecretReferences(secretValue)
           }
         : {};
+    if (encryptedValue.references) {
+      encryptedValue.references.forEach((referredSecret) => {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: referredSecret.environment,
+            secretPath: referredSecret.secretPath
+          })
+        );
+      });
+    }
 
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
@@ -675,7 +695,12 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+      canExpandValue: (expandEnvironment, expandSecretPath) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: expandEnvironment, secretPath: expandSecretPath })
+        )
     });
 
     if (shouldExpandSecretReferences) {
@@ -799,7 +824,12 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined)
+      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+      canExpandValue: (expandEnvironment, expandSecretPath) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: expandEnvironment, secretPath: expandSecretPath })
+        )
     });
 
     // now if secret is not found
@@ -916,21 +946,34 @@ export const secretV2BridgeServiceFactory = ({
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map((el) => ({
-          version: 1,
-          encryptedComment: setKnexStringValue(
-            el.secretComment,
-            (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
-          ),
-          encryptedValue: el.secretValue
-            ? secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
-            : undefined,
-          skipMultilineEncoding: el.skipMultilineEncoding,
-          key: el.secretKey,
-          tagIds: el.tagIds,
-          references: getAllNestedSecretReferences(el.secretValue),
-          type: SecretType.Shared
-        })),
+        inputSecrets: inputSecrets.map((el) => {
+          const references = getAllNestedSecretReferences(el.secretValue);
+          references.forEach((referredSecret) => {
+            ForbiddenError.from(permission).throwUnlessCan(
+              ProjectPermissionActions.Read,
+              subject(ProjectPermissionSub.Secrets, {
+                environment: referredSecret.environment,
+                secretPath: referredSecret.secretPath
+              })
+            );
+          });
+
+          return {
+            version: 1,
+            encryptedComment: setKnexStringValue(
+              el.secretComment,
+              (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+            ),
+            encryptedValue: el.secretValue
+              ? secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
+              : undefined,
+            skipMultilineEncoding: el.skipMultilineEncoding,
+            key: el.secretKey,
+            tagIds: el.tagIds,
+            references,
+            type: SecretType.Shared
+          };
+        }),
         folderId,
         secretDAL,
         secretVersionDAL,
@@ -1037,6 +1080,19 @@ export const secretV2BridgeServiceFactory = ({
                   references: getAllNestedSecretReferences(el.secretValue)
                 }
               : {};
+
+          if (encryptedValue.references) {
+            encryptedValue.references.forEach((referredSecret) => {
+              ForbiddenError.from(permission).throwUnlessCan(
+                ProjectPermissionActions.Read,
+                subject(ProjectPermissionSub.Secrets, {
+                  environment: referredSecret.environment,
+                  secretPath: referredSecret.secretPath
+                })
+              );
+            });
+          }
+
           return {
             filter: { id: originalSecret.id, type: SecretType.Shared },
             data: {
