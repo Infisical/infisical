@@ -39,11 +39,11 @@ export const GroupsSection = () => {
     }
   };
 
-  const onRemoveGroupSubmit = async (groupSlug: string) => {
+  const onRemoveGroupSubmit = async (groupId: string) => {
     try {
       await deleteMutateAsync({
-        groupSlug,
-        projectSlug: currentWorkspace?.slug || ""
+        groupId,
+        projectId: currentWorkspace?.id || ""
       });
 
       createNotification({
@@ -92,7 +92,7 @@ export const GroupsSection = () => {
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onRemoveGroupSubmit((popUp?.deleteGroup?.data as { slug: string })?.slug)
+          onRemoveGroupSubmit((popUp?.deleteGroup?.data as { id: string })?.id)
         }
       />
       <UpgradePlanModal

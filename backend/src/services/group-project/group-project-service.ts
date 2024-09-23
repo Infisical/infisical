@@ -56,19 +56,17 @@ export const groupProjectServiceFactory = ({
   permissionService
 }: TGroupProjectServiceFactoryDep) => {
   const addGroupToProject = async ({
-    groupSlug,
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod,
-    projectSlug,
-    roles
+    roles,
+    projectId,
+    groupId
   }: TCreateProjectGroupDTO) => {
-    const project = await projectDAL.findOne({
-      slug: projectSlug
-    });
+    const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with slug ${projectSlug}` });
+    if (!project) throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
     if (project.version < 2) throw new BadRequestError({ message: `Failed to add group to E2EE project` });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -80,13 +78,13 @@ export const groupProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, slug: groupSlug });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
+    const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
+    if (!group) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
 
     const existingGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
     if (existingGroup)
       throw new BadRequestError({
-        message: `Group with slug ${groupSlug} already exists in project with id ${project.id}`
+        message: `Group with ID ${groupId} already exists in project with id ${project.id}`
       });
 
     for await (const { role: requestedRoleChange } of roles) {
@@ -227,19 +225,17 @@ export const groupProjectServiceFactory = ({
   };
 
   const updateGroupInProject = async ({
-    projectSlug,
-    groupSlug,
+    projectId,
+    groupId,
     roles,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TUpdateProjectGroupDTO) => {
-    const project = await projectDAL.findOne({
-      slug: projectSlug
-    });
+    const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with slug ${projectSlug}` });
+    if (!project) throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -250,11 +246,11 @@ export const groupProjectServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Groups);
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, slug: groupSlug });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
+    const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
+    if (!group) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
 
     const projectGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
-    if (!projectGroup) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
+    if (!projectGroup) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
 
     for await (const { role: requestedRoleChange } of roles) {
       const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
@@ -326,24 +322,22 @@ export const groupProjectServiceFactory = ({
   };
 
   const removeGroupFromProject = async ({
-    projectSlug,
-    groupSlug,
+    projectId,
+    groupId,
     actorId,
     actor,
     actorOrgId,
     actorAuthMethod
   }: TDeleteProjectGroupDTO) => {
-    const project = await projectDAL.findOne({
-      slug: projectSlug
-    });
+    const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with slug ${projectSlug}` });
+    if (!project) throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, slug: groupSlug });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
+    const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
+    if (!group) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
 
     const groupProjectMembership = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
-    if (!groupProjectMembership) throw new BadRequestError({ message: `Failed to find group with slug ${groupSlug}` });
+    if (!groupProjectMembership) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -377,17 +371,17 @@ export const groupProjectServiceFactory = ({
   };
 
   const listGroupsInProject = async ({
-    projectSlug,
+    projectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectGroupDTO) => {
-    const project = await projectDAL.findOne({
-      slug: projectSlug
-    });
+    const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with slug ${projectSlug}` });
+    if (!project) {
+      throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

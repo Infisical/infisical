@@ -26,7 +26,7 @@ type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["deleteGroup", "group"]>,
     data?: {
-      slug?: string;
+      id?: string;
       name?: string;
     }
   ) => void;
@@ -34,7 +34,7 @@ type Props = {
 
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useListWorkspaceGroups(currentWorkspace?.slug || "");
+  const { data, isLoading } = useListWorkspaceGroups(currentWorkspace?.id || "");
   return (
     <TableContainer>
       <Table>
@@ -51,7 +51,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           {!isLoading &&
             data &&
             data.length > 0 &&
-            data.map(({ group: { id, name, slug }, roles, createdAt }) => {
+            data.map(({ group: { id, name }, roles, createdAt }) => {
               return (
                 <Tr className="group h-10" key={`st-v3-${id}`}>
                   <Td>{name}</Td>
@@ -61,7 +61,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       a={ProjectPermissionSub.Groups}
                     >
                       {(isAllowed) => (
-                        <GroupRoles roles={roles} disableEdit={!isAllowed} groupSlug={slug} />
+                        <GroupRoles roles={roles} disableEdit={!isAllowed} groupId={id} />
                       )}
                     </ProjectPermissionCan>
                   </Td>
@@ -77,7 +77,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                             <IconButton
                               onClick={() => {
                                 handlePopUpOpen("deleteGroup", {
-                                  slug,
+                                  id,
                                   name
                                 });
                               }}

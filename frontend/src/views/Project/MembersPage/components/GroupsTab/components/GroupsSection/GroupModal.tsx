@@ -16,7 +16,7 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
-  slug: z.string(),
+  id: z.string(),
   role: z.string()
 });
 
@@ -35,7 +35,7 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const projectSlug = currentWorkspace?.slug || "";
 
   const { data: groups } = useGetOrganizationGroups(orgId);
-  const { data: groupMemberships } = useListWorkspaceGroups(currentWorkspace?.slug || "");
+  const { data: groupMemberships } = useListWorkspaceGroups(currentWorkspace?.id || "");
 
   const { data: roles } = useGetProjectRoles(projectSlug);
 
@@ -60,11 +60,11 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema)
   });
 
-  const onFormSubmit = async ({ slug, role }: FormData) => {
+  const onFormSubmit = async ({ id, role }: FormData) => {
     try {
       await addGroupToWorkspaceMutateAsync({
-        projectSlug: currentWorkspace?.slug || "",
-        groupSlug: slug,
+        projectId: currentWorkspace?.id || "",
+        groupId: id,
         role: role || undefined
       });
 
@@ -96,7 +96,7 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
-              name="slug"
+              name="id"
               defaultValue={filteredGroupMembershipOrgs?.[0]?.id}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl label="Group" errorText={error?.message} isError={Boolean(error)}>
@@ -107,8 +107,8 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                     className="w-full border border-mineshaft-600"
                     placeholder="Select group..."
                   >
-                    {filteredGroupMembershipOrgs.map(({ name, slug, id }) => (
-                      <SelectItem value={slug} key={`org-group-${id}`} >
+                    {filteredGroupMembershipOrgs.map(({ name, id }) => (
+                      <SelectItem value={id} key={`org-group-${id}`}>
                         {name}
                       </SelectItem>
                     ))}
@@ -143,7 +143,7 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            <div className="flex items-center mt-6">
+            <div className="mt-6 flex items-center">
               <Button
                 className="mr-4"
                 size="sm"
@@ -153,13 +153,13 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
               >
                 {popUp?.group?.data ? "Update" : "Create"}
               </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("group", false)}
-            >
-              Cancel
-            </Button>
+              <Button
+                colorSchema="secondary"
+                variant="plain"
+                onClick={() => handlePopUpToggle("group", false)}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         ) : (

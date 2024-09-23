@@ -410,21 +410,21 @@ export const PROJECTS = {
     secretSnapshotId: "The ID of the snapshot to rollback to."
   },
   ADD_GROUP_TO_PROJECT: {
-    projectSlug: "The slug of the project to add the group to.",
-    groupSlug: "The slug of the group to add to the project.",
+    projectId: "The ID of the project to add the group to.",
+    groupId: "The ID of the group to add to the project.",
     role: "The role for the group to assume in the project."
   },
   UPDATE_GROUP_IN_PROJECT: {
-    projectSlug: "The slug of the project to update the group in.",
-    groupSlug: "The slug of the group to update in the project.",
+    projectId: "The ID of the project to update the group in.",
+    groupId: "The ID of the group to update in the project.",
     roles: "A list of roles to update the group to."
   },
   REMOVE_GROUP_FROM_PROJECT: {
-    projectSlug: "The slug of the project to delete the group from.",
-    groupSlug: "The slug of the group to delete from the project."
+    projectId: "The ID of the project to delete the group from.",
+    groupId: "The ID of the group to delete from the project."
   },
   LIST_GROUPS_IN_PROJECT: {
-    projectSlug: "The slug of the project to list groups for."
+    projectId: "The ID of the project to list groups for."
   },
   LIST_INTEGRATION: {
     workspaceId: "The ID of the project to list integrations for."
