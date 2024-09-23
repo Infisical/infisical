@@ -66,12 +66,11 @@ export const ManagePlansTable = ({ billingCycle }: Props) => {
           {subscription &&
             !isTableDataLoading &&
             tableData &&
-            tableData.rows.map(({ name, starter, team, pro, enterprise }) => {
+            tableData.rows.map(({ name, starter, pro, enterprise }) => {
               return (
                 <Tr className="h-12" key={`plans-feature-row-${billingCycle}-${name}`}>
                   <Td>{displayCell(name)}</Td>
                   <Td className="text-center">{displayCell(starter)}</Td>
-                  <Td className="text-center">{displayCell(team)}</Td>
                   <Td className="text-center">{displayCell(pro)}</Td>
                   <Td className="text-center">{displayCell(enterprise)}</Td>
                 </Tr>

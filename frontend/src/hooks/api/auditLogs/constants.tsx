@@ -79,7 +79,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG]:
     "Update certificate template EST configuration",
   [EventType.UPDATE_PROJECT_SLACK_CONFIG]: "Update project slack configuration",
-  [EventType.GET_PROJECT_SLACK_CONFIG]: "Get project slack configuration"
+  [EventType.GET_PROJECT_SLACK_CONFIG]: "Get project slack configuration",
+  [EventType.INTEGRATION_SYNCED]: "Integration sync"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

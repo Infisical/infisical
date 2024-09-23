@@ -7,6 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { OrderByDirection } from "@app/lib/types";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -26,7 +27,7 @@ type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderVersionDAL: TSecretFolderVersionDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
 };
@@ -396,7 +397,12 @@ export const secretFolderServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     environment,
-    path: secretPath
+    path: secretPath,
+    search,
+    orderBy,
+    orderDirection,
+    limit,
+    offset
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
@@ -408,9 +414,90 @@ export const secretFolderServiceFactory = ({
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
 
-    const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id, isReserved: false });
+    const folders = await folderDAL.find(
+      {
+        envId: env.id,
+        parentId: parentFolder.id,
+        isReserved: false,
+        $search: search ? { name: `%${search}%` } : undefined
+      },
+      {
+        sort: orderBy ? [[orderBy, orderDirection ?? OrderByDirection.ASC]] : undefined,
+        limit,
+        offset
+      }
+    );
+    return folders;
+  };
+
+  // get folders for multiple envs
+  const getFoldersMultiEnv = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environments,
+    path: secretPath,
+    ...params
+  }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
+    // folder list is allowed to be read by anyone
+    // permission to check does user has access
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+
+    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+
+    if (!envs.length)
+      throw new BadRequestError({ message: "Environment(s) not found", name: "get project folder count" });
+
+    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!parentFolders.length) return [];
+
+    const folders = await folderDAL.findByMultiEnv({
+      environmentIds: envs.map((env) => env.id),
+      parentIds: parentFolders.map((folder) => folder.id),
+      ...params
+    });
 
     return folders;
+  };
+
+  // get the unique count of folders within a project path
+  const getProjectFolderCount = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environments,
+    path: secretPath,
+    search
+  }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
+    // folder list is allowed to be read by anyone
+    // permission to check does user has access
+    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
+
+    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+
+    if (!envs.length)
+      throw new BadRequestError({ message: "Environment(s) not found", name: "get project folder count" });
+
+    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!parentFolders.length) return 0;
+
+    const folders = await folderDAL.find(
+      {
+        $in: {
+          envId: envs.map((env) => env.id),
+          parentId: parentFolders.map((folder) => folder.id)
+        },
+        isReserved: false,
+        $search: search ? { name: `%${search}%` } : undefined
+      },
+      { countDistinct: "name" }
+    );
+
+    return Number(folders[0]?.count ?? 0);
   };
 
   const getFolderById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetFolderByIdDTO) => {
@@ -429,6 +516,8 @@ export const secretFolderServiceFactory = ({
     updateManyFolders,
     deleteFolder,
     getFolders,
-    getFolderById
+    getFolderById,
+    getProjectFolderCount,
+    getFoldersMultiEnv
   };
 };

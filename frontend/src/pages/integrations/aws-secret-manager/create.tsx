@@ -104,6 +104,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
   const [tagKey, setTagKey] = useState("");
   const [tagValue, setTagValue] = useState("");
   const [kmsKeyId, setKmsKeyId] = useState("");
+  const [secretPrefix, setSecretPrefix] = useState("");
 
   // const [path, setPath] = useState('');
   // const [pathErrorText, setPathErrorText] = useState('');
@@ -165,6 +166,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 ]
               }
             : {}),
+          ...(secretPrefix && { secretPrefix }),
           ...(kmsKeyId && { kmsKeyId }),
           mappingBehavior: selectedMappingBehavior
         }
@@ -325,7 +327,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 </Switch>
               </div>
               {shouldTag && (
-                <div className="mt-4">
+                <div className="mt-4 flex justify-between">
                   <FormControl label="Tag Key">
                     <Input
                       placeholder="managed-by"
@@ -342,10 +344,20 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                   </FormControl>
                 </div>
               )}
+
+              <FormControl label="Secret Prefix" className="mt-4">
+                <Input
+                  value={secretPrefix}
+                  onChange={(e) => setSecretPrefix(e.target.value)}
+                  placeholder="INFISICAL_"
+                />
+              </FormControl>
+
               <FormControl label="Encryption Key" className="mt-4">
                 <Select
                   value={kmsKeyId}
                   onValueChange={(e) => {
+                    if (e === "no-keys") return;
                     setKmsKeyId(e);
                   }}
                   className="w-full border border-mineshaft-500"
@@ -363,7 +375,9 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                       );
                     })
                   ) : (
-                    <div />
+                    <SelectItem isDisabled value="no-keys" key="no-keys">
+                      No KMS keys available
+                    </SelectItem>
                   )}
                 </Select>
               </FormControl>

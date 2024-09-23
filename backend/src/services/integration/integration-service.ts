@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
@@ -19,6 +19,7 @@ import { TIntegrationDALFactory } from "./integration-dal";
 import {
   TCreateIntegrationDTO,
   TDeleteIntegrationDTO,
+  TGetIntegrationDTO,
   TSyncIntegrationDTO,
   TUpdateIntegrationDTO
 } from "./integration-types";
@@ -180,6 +181,27 @@ export const integrationServiceFactory = ({
     return updatedIntegration;
   };
 
+  const getIntegration = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
+    const integration = await integrationDAL.findById(id);
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integration?.projectId || "",
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+
+    if (!integration) {
+      throw new NotFoundError({
+        message: "Integration not found"
+      });
+    }
+
+    return { ...integration, envId: integration.environment.id };
+  };
+
   const deleteIntegration = async ({
     actorId,
     id,
@@ -276,6 +298,8 @@ export const integrationServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
     await secretQueueService.syncIntegrations({
+      isManual: true,
+      actorId,
       environment: integration.environment.slug,
       secretPath: integration.secretPath,
       projectId: integration.projectId
@@ -289,6 +313,7 @@ export const integrationServiceFactory = ({
     updateIntegration,
     deleteIntegration,
     listIntegrationByProject,
+    getIntegration,
     syncIntegration
   };
 };

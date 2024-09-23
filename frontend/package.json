@@ -73,7 +73,7 @@
     "i18next-http-backend": "^2.2.0",
     "infisical-node": "^1.0.37",
     "ip": "^2.0.1",
-    "jspdf": "^2.5.1",
+    "jspdf": "^2.5.2",
     "jsrp": "^0.2.4",
     "jwt-decode": "^3.1.2",
     "lottie-react": "^2.4.0",

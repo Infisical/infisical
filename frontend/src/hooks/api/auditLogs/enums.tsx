@@ -1,4 +1,5 @@
 export enum ActorType {
+  PLATFORM = "platform",
   USER = "user",
   SERVICE = "service",
   IDENTITY = "identity"
@@ -91,5 +92,6 @@ export enum EventType {
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
   UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
-  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config"
+  GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
+  INTEGRATION_SYNCED = "integration-synced"
 }

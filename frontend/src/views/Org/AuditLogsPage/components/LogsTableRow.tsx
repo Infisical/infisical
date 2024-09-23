@@ -1,4 +1,4 @@
-import { Td, Tr } from "@app/components/v2";
+import { Badge, Td, Tooltip, Tr } from "@app/components/v2";
 import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
 import { Actor, AuditLog, Event } from "@app/hooks/api/auditLogs/types";
@@ -39,6 +39,8 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
   };
 
   const renderMetadata = (event: Event) => {
+    const metadataKeys = Object.keys(event.metadata);
+
     switch (event.type) {
       case EventType.GET_SECRETS:
         return (
@@ -461,7 +463,62 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
             <p>{`Secret Request Channels: ${event.metadata.secretRequestChannels}`}</p>
           </Td>
         );
+
+      case EventType.INTEGRATION_SYNCED:
+        return (
+          <Td>
+            <Tooltip
+              className="max-w-xs whitespace-normal break-words"
+              content={event.metadata.syncMessage!}
+              isDisabled={!event.metadata.syncMessage}
+            >
+              <Badge variant={event.metadata.isSynced ? "success" : "danger"}>
+                <p className="text-center">{event.metadata.isSynced ? "Successful" : "Failed"}</p>
+              </Badge>
+            </Tooltip>
+          </Td>
+        );
+
+      case EventType.GET_WORKSPACE_KEY:
+        return (
+          <Td>
+            <p>{`Key ID: ${event.metadata.keyId}`}</p>
+          </Td>
+        );
+
+      case EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH:
+      case EventType.ADD_IDENTITY_UNIVERSAL_AUTH:
+      case EventType.UPDATE_IDENTITY_UNIVERSAL_AUTH:
+      case EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS:
+        return (
+          <Td>
+            <p>{`Identity ID: ${event.metadata.identityId}`}</p>
+          </Td>
+        );
+
+      case EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET:
+      case EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET:
+        return (
+          <Td>
+            <p>{`Identity ID: ${event.metadata.identityId}`}</p>
+            <p>{`Client Secret ID: ${event.metadata.clientSecretId}`}</p>
+          </Td>
+        );
+
+      // ? If for some reason non the above events are matched, we will display the first 3 metadata items in the metadata object.
       default:
+        if (metadataKeys.length) {
+          const maxMetadataLength = metadataKeys.length > 3 ? 3 : metadataKeys.length;
+          return (
+            <Td>
+              {Object.entries(event.metadata)
+                .slice(0, maxMetadataLength)
+                .map(([key, value]) => {
+                  return <p key={`audit-log-metadata-${key}`}>{`${key}: ${value}`}</p>;
+                })}
+            </Td>
+          );
+        }
         return <Td />;
     }
   };
@@ -484,16 +541,41 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
     return formattedDate;
   };
 
-  return (
-    <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
-      <Td>{formatDate(auditLog.createdAt)}</Td>
-      <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
-      {isOrgAuditLogs && <Td>{auditLog.project.name}</Td>}
-      {showActorColumn && renderActor(auditLog.actor)}
+  const renderSource = () => {
+    const { event, actor } = auditLog;
+
+    if (event.type === EventType.INTEGRATION_SYNCED) {
+      if (actor.type === ActorType.USER) {
+        return (
+          <Td>
+            <p>Manually triggered by {actor.metadata.email}</p>
+          </Td>
+        );
+      }
+
+      // Platform / automatic syncs
+      return (
+        <Td>
+          <p>Automatically synced by Infisical</p>
+        </Td>
+      );
+    }
+
+    return (
       <Td>
         <p>{userAgentTTypeoNameMap[auditLog.userAgentType]}</p>
         <p>{auditLog.ipAddress}</p>
       </Td>
+    );
+  };
+
+  return (
+    <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
+      <Td>{formatDate(auditLog.createdAt)}</Td>
+      <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
+      {isOrgAuditLogs && <Td>{auditLog?.project?.name ?? "N/A"}</Td>}
+      {showActorColumn && renderActor(auditLog.actor)}
+      {renderSource()}
       {renderMetadata(auditLog.event)}
     </Tr>
   );

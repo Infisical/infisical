@@ -27,7 +27,6 @@ import {
   TDynamicSecret
 } from "@app/hooks/api/dynamicSecret/types";
 
-import { SortDir } from "../../SecretMainPage.types";
 import { CreateDynamicSecretLease } from "./CreateDynamicSecretLease";
 import { DynamicSecretLease } from "./DynamicSecretLease";
 import { EditDynamicSecretForm } from "./EditDynamicSecretForm";
@@ -38,19 +37,17 @@ const formatProviderName = (type: DynamicSecretProviders) => {
 };
 
 type Props = {
-  dynamicSecrets: TDynamicSecret[];
+  dynamicSecrets?: TDynamicSecret[];
   environment: string;
   projectSlug: string;
   secretPath?: string;
-  sortDir: SortDir;
 };
 
 export const DynamicSecretListView = ({
   dynamicSecrets = [],
   environment,
   projectSlug,
-  secretPath = "/",
-  sortDir = SortDir.ASC
+  secretPath = "/"
 }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "dynamicSecretLeases",
@@ -59,7 +56,6 @@ export const DynamicSecretListView = ({
     "deleteDynamicSecret"
   ] as const);
 
-  
   const deleteDynamicSecret = useDeleteDynamicSecret();
 
   const handleDynamicSecretDelete = async () => {
@@ -90,158 +86,148 @@ export const DynamicSecretListView = ({
 
   return (
     <>
-      {dynamicSecrets
-        .sort((a, b) =>
-          sortDir === SortDir.ASC
-            ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
-        )
-        .map((secret) => {
-          const isRevocking = secret.status === DynamicSecretStatus.Deleting;
-          return (
-            <Modal
-              key={secret.id}
-              isOpen={
-                popUp.dynamicSecretLeases.isOpen && popUp.dynamicSecretLeases.data === secret.id
-              }
-              onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
+      {dynamicSecrets.map((secret) => {
+        const isRevoking = secret.status === DynamicSecretStatus.Deleting;
+        return (
+          <Modal
+            key={secret.id}
+            isOpen={
+              popUp.dynamicSecretLeases.isOpen && popUp.dynamicSecretLeases.data === secret.id
+            }
+            onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
+          >
+            <div
+              className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(evt) => {
+                if (evt.key === "Enter" && !isRevoking)
+                  handlePopUpOpen("dynamicSecretLeases", secret.id);
+              }}
+              onClick={() => {
+                if (!isRevoking) {
+                  handlePopUpOpen("dynamicSecretLeases", secret.id);
+                }
+              }}
             >
-              <div
-                className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(evt) => {
-                  if (evt.key === "Enter" && !isRevocking)
-                    handlePopUpOpen("dynamicSecretLeases", secret.id);
-                }}
-                onClick={() => {
-                  if (!isRevocking) {
-                    handlePopUpOpen("dynamicSecretLeases", secret.id);
-                  }
-                }}
-              >
-                <div className="flex w-11 items-center px-5 py-3 text-yellow-700">
-                  <FontAwesomeIcon icon={faFingerprint} />
-                </div>
-                <div
-                  className="flex flex-grow items-center px-4 py-3"
-                  role="button"
-                  tabIndex={0}
-                >
-                  {secret.name}
-                  <Tag className="ml-4 py-0 px-2 text-xs normal-case">
-                    {formatProviderName(secret.type)}
-                  </Tag>
-                  {Boolean(secret.status) && (
-                    <Tooltip content={secret?.statusDetails || secret.status || ""}>
-                      <FontAwesomeIcon
-                        className={
-                          secret.status === DynamicSecretStatus.Deleting
-                            ? "text-yellow-600"
-                            : "text-red-600"
-                        }
-                        icon={faWarning}
-                      />
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2 px-4 py-2">
-                  <Button
-                    size="xs"
-                    className="m-0 py-0.5 px-2 opacity-0 group-hover:opacity-100"
-                    isDisabled={isRevocking}
-                    onClick={(evt) => {
-                      evt.stopPropagation();
-                      handlePopUpOpen("createDynamicSecretLease", secret);
-                    }}
-                  >
-                    Generate
-                  </Button>
-                  {secret.status === DynamicSecretStatus.FailedDeletion && (
-                    <Tooltip content="This action will remove the secret from internal storage, but it will remain in external systems. Use this option only after you've confirmed that your external leases are handled.">
-                      <Button
-                        size="xs"
-                        className="m-0 py-0.5 px-2"
-                        colorSchema="danger"
-                        isDisabled={isRevocking}
-                        onClick={(evt) => {
-                          evt.stopPropagation();
-                          handlePopUpOpen("deleteDynamicSecret", {
-                            ...secret,
-                            isForced: true
-                          });
-                        }}
-                      >
-                        Force Delete
-                      </Button>
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
-                    renderTooltip
-                    allowedLabel="Edit"
-                  >
-                    {(isAllowed) => (
-                      <IconButton
-                        ariaLabel="edit-dynamic-secret"
-                        variant="plain"
-                        size="sm"
-                        className="p-0 opacity-0 group-hover:opacity-100"
-                        onClick={(evt) => {
-                          evt.stopPropagation();
-                          handlePopUpOpen("updateDynamicSecret", secret);
-                        }}
-                        isDisabled={!isAllowed || isRevocking}
-                      >
-                        <FontAwesomeIcon icon={faPencilSquare} size="lg" />
-                      </IconButton>
-                    )}
-                  </ProjectPermissionCan>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
-                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
-                    renderTooltip
-                    allowedLabel="Delete"
-                  >
-                    {(isAllowed) => (
-                      <IconButton
-                        ariaLabel="delete-dynamic-secret"
-                        variant="plain"
-                        size="md"
-                        className="p-0 opacity-0 group-hover:opacity-100"
-                        onClick={(evt) => {
-                          evt.stopPropagation();
-                          handlePopUpOpen("deleteDynamicSecret", secret);
-                        }}
-                        isDisabled={!isAllowed || isRevocking}
-                      >
-                        <FontAwesomeIcon icon={faClose} size="lg" />
-                      </IconButton>
-                    )}
-                  </ProjectPermissionCan>
-                </div>
+              <div className="flex w-11 items-center px-5 py-3 text-yellow-700">
+                <FontAwesomeIcon icon={faFingerprint} />
               </div>
-              <ModalContent
-                title="Dynamic secret leases"
-                subTitle="Revoke or renew your secret leases"
-                className="max-w-3xl"
-              >
-                <DynamicSecretLease
-                  onClickNewLease={() => handlePopUpOpen("createDynamicSecretLease", secret)}
-                  onClose={() => handlePopUpClose("dynamicSecretLeases")}
-                  projectSlug={projectSlug}
-                  key={secret.id}
-                  dynamicSecretName={secret.name}
-                  secretPath={secretPath}
-                  environment={environment}
-                />
-              </ModalContent>
-            </Modal>
-          );
-        })}
+              <div className="flex flex-grow items-center px-4 py-3" role="button" tabIndex={0}>
+                {secret.name}
+                <Tag className="ml-4 py-0 px-2 text-xs normal-case">
+                  {formatProviderName(secret.type)}
+                </Tag>
+                {Boolean(secret.status) && (
+                  <Tooltip content={secret?.statusDetails || secret.status || ""}>
+                    <FontAwesomeIcon
+                      className={
+                        secret.status === DynamicSecretStatus.Deleting
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }
+                      icon={faWarning}
+                    />
+                  </Tooltip>
+                )}
+              </div>
+              <div className="flex items-center space-x-2 px-4 py-2">
+                <Button
+                  size="xs"
+                  className="m-0 py-0.5 px-2 opacity-0 group-hover:opacity-100"
+                  isDisabled={isRevoking}
+                  onClick={(evt) => {
+                    evt.stopPropagation();
+                    handlePopUpOpen("createDynamicSecretLease", secret);
+                  }}
+                >
+                  Generate
+                </Button>
+                {secret.status === DynamicSecretStatus.FailedDeletion && (
+                  <Tooltip content="This action will remove the secret from internal storage, but it will remain in external systems. Use this option only after you've confirmed that your external leases are handled.">
+                    <Button
+                      size="xs"
+                      className="m-0 py-0.5 px-2"
+                      colorSchema="danger"
+                      isDisabled={isRevoking}
+                      onClick={(evt) => {
+                        evt.stopPropagation();
+                        handlePopUpOpen("deleteDynamicSecret", {
+                          ...secret,
+                          isForced: true
+                        });
+                      }}
+                    >
+                      Force Delete
+                    </Button>
+                  </Tooltip>
+                )}
+              </div>
+              <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Edit}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  renderTooltip
+                  allowedLabel="Edit"
+                >
+                  {(isAllowed) => (
+                    <IconButton
+                      ariaLabel="edit-dynamic-secret"
+                      variant="plain"
+                      size="sm"
+                      className="p-0 opacity-0 group-hover:opacity-100"
+                      onClick={(evt) => {
+                        evt.stopPropagation();
+                        handlePopUpOpen("updateDynamicSecret", secret);
+                      }}
+                      isDisabled={!isAllowed || isRevoking}
+                    >
+                      <FontAwesomeIcon icon={faPencilSquare} size="lg" />
+                    </IconButton>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  renderTooltip
+                  allowedLabel="Delete"
+                >
+                  {(isAllowed) => (
+                    <IconButton
+                      ariaLabel="delete-dynamic-secret"
+                      variant="plain"
+                      size="md"
+                      className="p-0 opacity-0 group-hover:opacity-100"
+                      onClick={(evt) => {
+                        evt.stopPropagation();
+                        handlePopUpOpen("deleteDynamicSecret", secret);
+                      }}
+                      isDisabled={!isAllowed || isRevoking}
+                    >
+                      <FontAwesomeIcon icon={faClose} size="lg" />
+                    </IconButton>
+                  )}
+                </ProjectPermissionCan>
+              </div>
+            </div>
+            <ModalContent
+              title="Dynamic secret leases"
+              subTitle="Revoke or renew your secret leases"
+              className="max-w-3xl"
+            >
+              <DynamicSecretLease
+                onClickNewLease={() => handlePopUpOpen("createDynamicSecretLease", secret)}
+                onClose={() => handlePopUpClose("dynamicSecretLeases")}
+                projectSlug={projectSlug}
+                key={secret.id}
+                dynamicSecretName={secret.name}
+                secretPath={secretPath}
+                environment={environment}
+              />
+            </ModalContent>
+          </Modal>
+        );
+      })}
       <Modal
         isOpen={popUp.createDynamicSecretLease.isOpen}
         onOpenChange={(state) => handlePopUpToggle("createDynamicSecretLease", state)}

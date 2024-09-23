@@ -87,6 +87,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  /*
+   * Daniel: This endpoint is no longer is use.
+   * We are keeping it for now because it has been exposed in our public api docs for a while, so by removing it we are likely to break users workflows.
+   *
+   * Please refer to the new endpoint, GET /api/v1/organization/audit-logs, for the same (and more) functionality.
+   */
   server.route({
     method: "GET",
     url: "/:workspaceId/audit-logs",
@@ -101,7 +107,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(AUDIT_LOGS.EXPORT.workspaceId)
+        workspaceId: z.string().trim().describe(AUDIT_LOGS.EXPORT.projectId)
       }),
       querystring: z.object({
         eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
@@ -122,10 +128,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           })
             .merge(
               z.object({
-                project: z.object({
-                  name: z.string(),
-                  slug: z.string()
-                }),
+                project: z
+                  .object({
+                    name: z.string(),
+                    slug: z.string()
+                  })
+                  .optional(),
                 event: z.object({
                   type: z.string(),
                   metadata: z.any()
@@ -146,12 +154,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.params.workspaceId,
-        ...req.query,
-        endDate: req.query.endDate,
-        startDate: req.query.startDate || getLastMidnightDateISO(),
-        auditLogActor: req.query.actor,
-        actor: req.permission.type
+        actor: req.permission.type,
+
+        filter: {
+          ...req.query,
+          projectId: req.params.workspaceId,
+          endDate: req.query.endDate,
+          startDate: req.query.startDate || getLastMidnightDateISO(),
+          auditLogActorId: req.query.actor,
+          eventType: req.query.eventType ? [req.query.eventType] : undefined
+        }
       });
       return { auditLogs };
     }

@@ -60,7 +60,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
           name: "Admin",
           slug: "admin",
           description: "Complete administration access over the organization",
-          permissions: packRules(orgAdminPermissions.rules),
+          permissions: packRules(orgAdminPermissions),
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -72,7 +72,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
           name: "Member",
           slug: "member",
           description: "Non-administrative role in an organization",
-          permissions: packRules(orgMemberPermissions.rules),
+          permissions: packRules(orgMemberPermissions),
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -84,7 +84,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
           name: "No Access",
           slug: "no-access",
           description: "No access to any resources in the organization",
-          permissions: packRules(orgNoAccessPermissions.rules),
+          permissions: packRules(orgNoAccessPermissions),
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -151,7 +151,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
         name: "Admin",
         slug: "admin",
         description: "Complete administration access over the organization",
-        permissions: packRules(orgAdminPermissions.rules),
+        permissions: packRules(orgAdminPermissions),
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -161,7 +161,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
         name: "Member",
         slug: "member",
         description: "Non-administrative role in an organization",
-        permissions: packRules(orgMemberPermissions.rules),
+        permissions: packRules(orgMemberPermissions),
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -171,7 +171,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
         name: "No Access",
         slug: "no-access",
         description: "No access to any resources in the organization",
-        permissions: packRules(orgNoAccessPermissions.rules),
+        permissions: packRules(orgNoAccessPermissions),
         createdAt: new Date(),
         updatedAt: new Date()
       },

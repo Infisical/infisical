@@ -56,7 +56,7 @@ import { IdentityModal } from "./components/IdentityModal";
 import { IdentityRoleForm } from "./components/IdentityRoleForm";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 20;
 const formatRoleName = (role: string, customRoleName?: string) => {
   if (role === ProjectMembershipRole.Custom) return customRoleName;
   if (role === ProjectMembershipRole.Member) return "Developer";
@@ -369,7 +369,7 @@ export const IdentityTab = withProjectPermission(
                   })}
               </TBody>
             </Table>
-            {!isLoading && data && data.totalCount > INIT_PER_PAGE && (
+            {!isLoading && data && data.totalCount > 0 && (
               <Pagination
                 count={data.totalCount}
                 page={page}

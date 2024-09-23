@@ -698,11 +698,46 @@ export const SECRET_IMPORTS = {
   }
 } as const;
 
+export const DASHBOARD = {
+  SECRET_OVERVIEW_LIST: {
+    projectId: "The ID of the project to list secrets/folders from.",
+    environments:
+      "The slugs of the environments to list secrets/folders from (comma separated, ie 'environments=dev,staging,prod').",
+    secretPath: "The secret path to list secrets/folders from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th secret/folder.",
+    limit: "The number of secrets/folders to return.",
+    orderBy: "The column to order secrets/folders by.",
+    orderDirection: "The direction to order secrets/folders in.",
+    search: "The text string to filter secret keys and folder names by.",
+    includeSecrets: "Whether to include project secrets in the response.",
+    includeFolders: "Whether to include project folders in the response.",
+    includeDynamicSecrets: "Whether to include dynamic project secrets in the response."
+  },
+  SECRET_DETAILS_LIST: {
+    projectId: "The ID of the project to list secrets/folders from.",
+    environment: "The slug of the environment to list secrets/folders from.",
+    secretPath: "The secret path to list secrets/folders from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th secret/folder.",
+    limit: "The number of secrets/folders to return.",
+    orderBy: "The column to order secrets/folders by.",
+    orderDirection: "The direction to order secrets/folders in.",
+    search: "The text string to filter secret keys and folder names by.",
+    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    includeSecrets: "Whether to include project secrets in the response.",
+    includeFolders: "Whether to include project folders in the response.",
+    includeImports: "Whether to include project secret imports in the response.",
+    includeDynamicSecrets: "Whether to include dynamic project secrets in the response."
+  }
+} as const;
+
 export const AUDIT_LOGS = {
   EXPORT: {
-    workspaceId: "The ID of the project to export audit logs from.",
+    projectId:
+      "Optionally filter logs by project ID. If not provided, logs from the entire organization will be returned.",
     eventType: "The type of the event to export.",
     userAgentType: "Choose which consuming application to export audit logs for.",
+    eventMetadata:
+      "Filter by event metadata key-value pairs. Formatted as `key1=value1,key2=value2`, with comma-separation.",
     startDate: "The date to start the export from.",
     endDate: "The date to end the export at.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th audit log.",

@@ -1,7 +1,5 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 
-import { conditionsMatcher } from "@app/lib/casl";
-
 export enum OrgPermissionActions {
   Read = "read",
   Create = "create",
@@ -27,7 +25,8 @@ export enum OrgPermissionSubjects {
   SecretScanning = "secret-scanning",
   Identity = "identity",
   Kms = "kms",
-  AdminConsole = "organization-admin-console"
+  AdminConsole = "organization-admin-console",
+  AuditLogs = "audit-logs"
 }
 
 export type OrgPermissionSet =
@@ -45,10 +44,11 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
+  | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
@@ -113,15 +113,20 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AuditLogs);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
-  return build({ conditionsMatcher });
+  return rules;
 };
 
 export const orgAdminPermissions = buildAdminPermission();
 
 const buildMemberPermission = () => {
-  const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
@@ -142,14 +147,16 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
-  return build({ conditionsMatcher });
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+
+  return rules;
 };
 
 export const orgMemberPermissions = buildMemberPermission();
 
 const buildNoAccessPermission = () => {
-  const { build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
-  return build({ conditionsMatcher });
+  const { rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  return rules;
 };
 
 export const orgNoAccessPermissions = buildNoAccessPermission();

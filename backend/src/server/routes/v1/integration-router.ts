@@ -4,7 +4,7 @@ import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { INTEGRATION } from "@app/lib/api-docs";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -150,6 +150,48 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         id: req.params.integrationId,
         ...req.body
       });
+      return { integration };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:integrationId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get an integration by integration id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        integrationId: z.string().trim().describe(INTEGRATION.UPDATE.integrationId)
+      }),
+      response: {
+        200: z.object({
+          integration: IntegrationsSchema.extend({
+            environment: z.object({
+              slug: z.string().trim(),
+              name: z.string().trim(),
+              id: z.string().trim()
+            })
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const integration = await server.services.integration.getIntegration({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationId
+      });
+
       return { integration };
     }
   });

@@ -167,7 +167,8 @@
             "documentation/platform/dynamic-secrets/rabbit-mq",
             "documentation/platform/dynamic-secrets/aws-iam",
             "documentation/platform/dynamic-secrets/mongo-atlas",
-            "documentation/platform/dynamic-secrets/mongo-db"
+            "documentation/platform/dynamic-secrets/mongo-db",
+            "documentation/platform/dynamic-secrets/azure-entra-id"
           ]
         },
         {

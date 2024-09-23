@@ -100,7 +100,7 @@ export default function NavHeader({
                 onValueChange={(value) => {
                   if (value && onEnvChange) onEnvChange(value);
                 }}
-                className="bg-transparent pl-0 text-sm font-medium text-primary/80 hover:text-primary"
+                className="border-none bg-transparent pl-0 text-sm font-medium text-primary/80 hover:text-primary"
                 dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
               >
                 {userAvailableEnvs?.map(({ name, slug }) => (

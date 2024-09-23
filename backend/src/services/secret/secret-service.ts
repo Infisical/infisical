@@ -954,6 +954,120 @@ export const secretServiceFactory = ({
     return secretsDeleted;
   };
 
+  const getSecretsCount = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environment,
+    tagSlugs = [],
+    ...v2Params
+  }: Pick<
+    TGetSecretsRawDTO,
+    | "projectId"
+    | "path"
+    | "actor"
+    | "actorId"
+    | "actorOrgId"
+    | "actorAuthMethod"
+    | "environment"
+    | "tagSlugs"
+    | "search"
+  >) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "pagination_not_supported"
+      });
+
+    const count = await secretV2BridgeService.getSecretsCount({
+      projectId,
+      actorId,
+      actor,
+      actorOrgId,
+      environment,
+      path,
+      actorAuthMethod,
+      tagSlugs,
+      ...v2Params
+    });
+
+    return count;
+  };
+
+  const getSecretsCountMultiEnv = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environments,
+    ...v2Params
+  }: Pick<
+    TGetSecretsRawDTO,
+    "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search"
+  > & { environments: string[] }) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "pagination_not_supported"
+      });
+
+    const count = await secretV2BridgeService.getSecretsCountMultiEnv({
+      projectId,
+      actorId,
+      actor,
+      actorOrgId,
+      environments,
+      path,
+      actorAuthMethod,
+      ...v2Params
+    });
+
+    return count;
+  };
+
+  const getSecretsRawMultiEnv = async ({
+    projectId,
+    path,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    environments,
+    ...params
+  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "tagSlugs"> & {
+    environments: string[];
+  }) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "pagination_not_supported"
+      });
+
+    const secrets = await secretV2BridgeService.getSecretsMultiEnv({
+      projectId,
+      actorId,
+      actor,
+      actorOrgId,
+      environments,
+      path,
+      actorAuthMethod,
+      ...params
+    });
+
+    return secrets;
+  };
+
   const getSecretsRaw = async ({
     projectId,
     path,
@@ -965,7 +1079,8 @@ export const secretServiceFactory = ({
     includeImports,
     expandSecretReferences,
     recursive,
-    tagSlugs = []
+    tagSlugs = [],
+    ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -980,12 +1095,17 @@ export const secretServiceFactory = ({
         recursive,
         actorAuthMethod,
         includeImports,
-        tagSlugs
+        tagSlugs,
+        ...paramsV2
       });
       return { secrets, imports };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     const { secrets, imports } = await getSecrets({
       actorId,
@@ -1146,7 +1266,10 @@ export const secretServiceFactory = ({
     });
 
     if (!botKey)
-      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
 
     if (expandSecretReferences) {
@@ -1238,7 +1361,11 @@ export const secretServiceFactory = ({
       return { secret, type: SecretProtectionType.Direct as const };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretName, botKey);
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
     const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
@@ -1376,7 +1503,11 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secret };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
     const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secretComment || "", botKey);
@@ -1498,7 +1629,11 @@ export const secretServiceFactory = ({
       });
       return { type: SecretProtectionType.Direct as const, secret };
     }
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
@@ -1598,7 +1733,11 @@ export const secretServiceFactory = ({
       return { secrets, type: SecretProtectionType.Direct as const };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const sanitizedSecrets = inputSecrets.map(
       ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
         const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretKey, botKey);
@@ -1720,7 +1859,11 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secrets };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     const sanitizedSecrets = inputSecrets.map(
       ({
         secretComment,
@@ -1848,7 +1991,11 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secrets };
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+    if (!botKey)
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
@@ -2182,7 +2329,10 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({ message: "Please upgrade your project first", name: "bot_not_found_error" });
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
 
     await secretDAL.transaction(async (tx) => {
       const secrets = await secretDAL.findAllProjectSecretValues(projectId, tx);
@@ -2265,7 +2415,10 @@ export const secretServiceFactory = ({
 
     const { botKey } = await projectBotService.getBotKey(project.id);
     if (!botKey) {
-      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
+      throw new BadRequestError({
+        message: "Project bot not found. Please upgrade your project.",
+        name: "bot_not_found_error"
+      });
     }
 
     const sourceFolder = await folderDAL.findBySecretPath(project.id, sourceEnvironment, sourceSecretPath);
@@ -2656,6 +2809,9 @@ export const secretServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
-    startSecretV2Migration
+    startSecretV2Migration,
+    getSecretsCount,
+    getSecretsCountMultiEnv,
+    getSecretsRawMultiEnv
   };
 };

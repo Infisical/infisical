@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import fastifyPlugin from "fastify-plugin";
+import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
 
 import {
@@ -10,6 +11,12 @@ import {
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
+
+enum JWTErrors {
+  JwtExpired = "jwt expired",
+  JwtMalformed = "jwt malformed",
+  InvalidAlgorithm = "invalid algorithm"
+}
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   server.setErrorHandler((error, req, res) => {
@@ -35,6 +42,27 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         schemas: error.schemas,
         status: error.status,
         detail: error.detail
+      });
+      // Handle JWT errors and make them more human-readable for the end-user.
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      const message = (() => {
+        if (error.message === JWTErrors.JwtExpired) {
+          return "Your token has expired. Please re-authenticate.";
+        }
+        if (error.message === JWTErrors.JwtMalformed) {
+          return "The provided access token is malformed. Please use a valid token or generate a new one and try again.";
+        }
+        if (error.message === JWTErrors.InvalidAlgorithm) {
+          return "The access token is signed with an invalid algorithm. Please provide a valid token and try again.";
+        }
+
+        return error.message;
+      })();
+
+      void res.status(401).send({
+        statusCode: 401,
+        error: "TokenError",
+        message
       });
     } else {
       void res.send(error);

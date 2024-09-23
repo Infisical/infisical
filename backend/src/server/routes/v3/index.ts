@@ -1,3 +1,4 @@
+import { registerDashboardRouter } from "./dashboard-router";
 import { registerGroupProjectRouter } from "./group-project-router";
 import { registerLoginRouter } from "./login-router";
 import { registerSecretBlindIndexRouter } from "./secret-blind-index-router";
@@ -17,4 +18,5 @@ export const registerV3Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/workspaces" }
   );
+  await server.register(registerDashboardRouter, { prefix: "/dashboard" });
 };

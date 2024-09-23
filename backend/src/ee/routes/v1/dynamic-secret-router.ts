@@ -78,6 +78,39 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
   });
 
   server.route({
+    method: "POST",
+    url: "/entra-id/users",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
+        applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),
+        clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration")
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string().min(1).describe("The name of the user"),
+            id: z.string().min(1).describe("The ID of the user"),
+            email: z.string().min(1).describe("The email of the user")
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const data = await server.services.dynamicSecret.fetchAzureEntraIdUsers({
+        tenantId: req.body.tenantId,
+        applicationId: req.body.applicationId,
+        clientSecret: req.body.clientSecret
+      });
+      return data;
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:name",
     config: {
@@ -237,7 +270,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const dynamicSecretCfgs = await server.services.dynamicSecret.list({
+      const dynamicSecretCfgs = await server.services.dynamicSecret.listDynamicSecretsByEnv({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

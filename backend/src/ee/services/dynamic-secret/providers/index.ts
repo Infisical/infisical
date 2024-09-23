@@ -1,5 +1,6 @@
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
+import { AzureEntraIDProvider } from "./azure-entra-id";
 import { CassandraProvider } from "./cassandra";
 import { ElasticSearchProvider } from "./elastic-search";
 import { DynamicSecretProviders } from "./models";
@@ -18,5 +19,6 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.MongoAtlas]: MongoAtlasProvider(),
   [DynamicSecretProviders.MongoDB]: MongoDBProvider(),
   [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
-  [DynamicSecretProviders.RabbitMq]: RabbitMqProvider()
+  [DynamicSecretProviders.RabbitMq]: RabbitMqProvider(),
+  [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider()
 });

@@ -17,7 +17,6 @@ import {
 } from "@app/db/schemas";
 import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -90,7 +89,6 @@ type TOrgServiceFactoryDep = {
   >;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findUserGroupMembershipsInProject">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
 };
@@ -116,7 +114,6 @@ export const orgServiceFactory = ({
   licenseService,
   projectRoleDAL,
   samlConfigDAL,
-  userGroupMembershipDAL,
   projectBotDAL,
   projectUserMembershipRoleDAL
 }: TOrgServiceFactoryDep) => {
@@ -461,12 +458,6 @@ export const orgServiceFactory = ({
 
     const org = await orgDAL.findOrgById(orgId);
 
-    if (org?.authEnforced) {
-      throw new BadRequestError({
-        message: "Failed to invite user due to org-level auth enforced for organization"
-      });
-    }
-
     const isEmailInvalid = await isDisposableEmail(inviteeEmails);
     if (isEmailInvalid) {
       throw new BadRequestError({
@@ -475,19 +466,6 @@ export const orgServiceFactory = ({
       });
     }
     const plan = await licenseService.getPlan(orgId);
-    if (plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
-      // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
-      throw new BadRequestError({
-        message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-      });
-    }
-
-    if (plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-      throw new BadRequestError({
-        message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-      });
-    }
     const isCustomOrgRole = !Object.values(OrgMembershipRole).includes(organizationRoleSlug as OrgMembershipRole);
     if (isCustomOrgRole) {
       if (!plan?.rbac)
@@ -572,7 +550,7 @@ export const orgServiceFactory = ({
           );
         }
 
-        const [inviteeMembership] = await orgDAL.findMembership(
+        const [inviteeOrgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
             [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUserId
@@ -581,7 +559,27 @@ export const orgServiceFactory = ({
         );
 
         // if there exist no org membership we set is as given by the request
-        if (!inviteeMembership) {
+        if (!inviteeOrgMembership) {
+          if (plan?.slug !== "enterprise" && plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
+            // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
+            throw new BadRequestError({
+              message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+            });
+          }
+
+          if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+            // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+            throw new BadRequestError({
+              message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+            });
+          }
+
+          if (org?.authEnforced) {
+            throw new BadRequestError({
+              message: "Failed to invite user due to org-level auth enforced for organization"
+            });
+          }
+
           // as its used by project invite also
           ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
           let roleId;
@@ -617,7 +615,6 @@ export const orgServiceFactory = ({
       }
 
       const userIds = users.map(({ id }) => id);
-      const usernames = users.map((el) => el.username);
       const userEncryptionKeys = await userDAL.findUserEncKeyByUserIdsBatch({ userIds }, tx);
       // we don't need to spam with email. Thus org invitation doesn't need project invitation again
       const userIdsWithOrgInvitation = new Set(mailsForOrgInvitation.map((el) => el.userId));
@@ -644,12 +641,10 @@ export const orgServiceFactory = ({
           { tx }
         );
         const existingMembersGroupByUserId = groupBy(existingMembers, (i) => i.userId);
-        const userIdsToExcludeAsPartOfGroup = new Set(
-          await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernames, projectId, tx)
-        );
         const userWithEncryptionKeyInvitedToProject = userEncryptionKeys.filter(
-          (user) => !existingMembersGroupByUserId?.[user.userId] && !userIdsToExcludeAsPartOfGroup.has(user.userId)
+          (user) => !existingMembersGroupByUserId?.[user.userId]
         );
+
         // eslint-disable-next-line no-continue
         if (!userWithEncryptionKeyInvitedToProject.length) continue;
 

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { dynamicSecretKeys } from "./queries";
 import {
@@ -22,6 +23,8 @@ export const useCreateDynamicSecret = () => {
       return data.dynamicSecret;
     },
     onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+      // TODO: optimize but we currently don't pass projectId
+      queryClient.invalidateQueries(dashboardKeys.all());
       queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
     }
   });
@@ -39,6 +42,8 @@ export const useUpdateDynamicSecret = () => {
       return data.dynamicSecret;
     },
     onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+      // TODO: optimize but currently don't pass projectId
+      queryClient.invalidateQueries(dashboardKeys.all());
       queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
     }
   });
@@ -56,6 +61,8 @@ export const useDeleteDynamicSecret = () => {
       return data.dynamicSecret;
     },
     onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+      // TODO: optimize but currently don't pass projectId
+      queryClient.invalidateQueries(dashboardKeys.all());
       queryClient.invalidateQueries(dynamicSecretKeys.list({ path, projectSlug, environmentSlug }));
     }
   });

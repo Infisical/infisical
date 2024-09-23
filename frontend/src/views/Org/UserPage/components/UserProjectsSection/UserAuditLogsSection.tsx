@@ -7,7 +7,7 @@ import { EmptyState, IconButton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
-import { LogsSection } from "@app/views/Project/AuditLogsPage/components";
+import { LogsSection } from "@app/views/Org/AuditLogsPage/components";
 
 type Props = {
   orgMembership: OrgUser;
@@ -42,7 +42,9 @@ export const UserAuditLogsSection = withPermission(
         <LogsSection
           showFilters={showFilter}
           filterClassName="bg-mineshaft-900 static"
-          presetActor={orgMembership.user.id}
+          presets={{
+            actorId: orgMembership.user.id
+          }}
           isOrgAuditLogs
         />
       </div>

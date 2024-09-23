@@ -50,7 +50,7 @@ type Props = {
   ) => void;
 };
 
-const INIT_PER_PAGE = 10;
+const INIT_PER_PAGE = 20;
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const router = useRouter();
@@ -277,7 +277,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isLoading && data && data.totalCount > INIT_PER_PAGE && (
+        {!isLoading && data && data.totalCount > 0 && (
           <Pagination
             count={data.totalCount}
             page={page}

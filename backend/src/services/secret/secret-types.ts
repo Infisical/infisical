@@ -1,7 +1,8 @@
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -20,6 +21,29 @@ import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-versio
 type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secretReminderNote">;
 
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id">;
+
+export const FailedIntegrationSyncEmailsPayloadSchema = z.object({
+  projectId: z.string(),
+  secretPath: z.string(),
+  environmentName: z.string(),
+  environmentSlug: z.string(),
+
+  count: z.number(),
+  syncMessage: z.string().optional(),
+  manuallyTriggeredByUserId: z.string().optional()
+});
+
+export type TFailedIntegrationSyncEmailsPayload = z.infer<typeof FailedIntegrationSyncEmailsPayloadSchema>;
+
+export type TIntegrationSyncPayload = {
+  isManual?: boolean;
+  actorId?: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  depth?: number;
+  deDupeQueue?: Record<string, boolean>;
+};
 
 export type TCreateSecretDTO = {
   secretName: string;
@@ -81,6 +105,8 @@ export type TGetSecretsDTO = {
   environment: string;
   includeImports?: boolean;
   recursive?: boolean;
+  limit?: number;
+  offset?: number;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -143,6 +169,10 @@ export type TDeleteBulkSecretDTO = {
   }>;
 } & TProjectPermission;
 
+export enum SecretsOrderBy {
+  Name = "name" // "key" for secrets but using name for use across resources
+}
+
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
   path: string;
@@ -150,6 +180,11 @@ export type TGetSecretsRawDTO = {
   includeImports?: boolean;
   recursive?: boolean;
   tagSlugs?: string[];
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  offset?: number;
+  limit?: number;
+  search?: string;
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {
