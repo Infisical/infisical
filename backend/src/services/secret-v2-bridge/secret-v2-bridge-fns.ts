@@ -437,7 +437,7 @@ export const expandSecretReferencesFactory = ({
 
             if (!canExpandValue(environment, secretPath))
               throw new UnauthorizedError({
-                message: `You don't have access to secret ${secretKey} in environment ${environment} of secret path ${secretPath} `
+                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
               });
 
             // eslint-disable-next-line no-continue,no-await-in-loop
@@ -462,7 +462,7 @@ export const expandSecretReferencesFactory = ({
 
             if (!canExpandValue(secretReferenceEnvironment, secretReferencePath))
               throw new UnauthorizedError({
-                message: `You don't have access to secret ${secretReferenceKey} in environment ${secretReferenceEnvironment} of secret path ${secretReferencePath} `
+                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to.`
               });
 
             // eslint-disable-next-line no-await-in-loop
