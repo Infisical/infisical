@@ -255,115 +255,14 @@ export const AccessPolicyForm = ({
               name="secretPath"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Secret Path"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
+                label="Secret Path"
+                isError={Boolean(error)}
+                errorText={error?.message}
                 >
                   <Input {...field} value={field.value || ""} />
                 </FormControl>
               )}
-            />
-            <Controller
-              control={control}
-              name="approvers"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Required User Approvers"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Input
-                        isReadOnly
-                        value={value?.length ? `${value.length} selected` : "None"}
-                        className="text-left"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
-                      align="start"
-                    >
-                      <DropdownMenuLabel>
-                        Select members that are allowed to approve requests
-                      </DropdownMenuLabel>
-                      {members.map(({ user }) => {
-                        const { id: userId } = user;
-                        const isChecked = value?.filter((el: {id: string, type: ApproverType}) => el.id === userId && el.type === ApproverType.User).length > 0;
-                        return (
-                          <DropdownMenuItem
-                            onClick={(evt) => {
-                              evt.preventDefault();
-                              onChange(
-                                isChecked
-                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== userId && el.type !== ApproverType.User)
-                                  : [...(value || []), {id:userId, type: ApproverType.User}]
-                              );
-                            }}
-                            key={`create-policy-members-${userId}`}
-                            iconPos="right"
-                            icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                          >
-                            {user.username}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="approvers"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Required Group Approvers"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Input
-                        isReadOnly
-                        value={value?.length ? `${value.length} selected` : "None"}
-                        className="text-left"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
-                      align="start"
-                    >
-                      <DropdownMenuLabel>
-                        Select groups that are allowed to approve requests
-                      </DropdownMenuLabel>
-                      {groups && groups.map(({ group }) => {
-                        const { id } = group;
-                        const isChecked = value?.includes({id, type: ApproverType.Group});
-
-                        return (
-                          <DropdownMenuItem
-                            onClick={(evt) => {
-                              evt.preventDefault();
-                              onChange(
-                                isChecked
-                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== id && el.type !== ApproverType.Group)
-                                  : [...(value || []), {id, type: ApproverType.Group}]
-                              );
-                            }}
-                            key={`create-policy-members-${id}`}
-                            iconPos="right"
-                            icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                          >
-                            {group.name}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </FormControl>
-              )}
-            />
+              />
             <Controller
               control={control}
               name="approvals"
@@ -416,6 +315,108 @@ export const AccessPolicyForm = ({
                       );
                     })}
                   </Select>
+                </FormControl>
+              )}
+            />
+            <p>Approvers</p>
+            <Controller
+              control={control}
+              name="approvers"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="User Approvers"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Input
+                        isReadOnly
+                        value={value?.filter((e) => e.type=== ApproverType.User).length ? `${value.filter((e) => e.type=== ApproverType.User).length} selected` : "None"}
+                        className="text-left"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                      align="start"
+                    >
+                      <DropdownMenuLabel>
+                        Select members that are allowed to approve requests
+                      </DropdownMenuLabel>
+                      {members.map(({ user }) => {
+                        const { id: userId } = user;
+                        const isChecked = value?.filter((el: {id: string, type: ApproverType}) => el.id === userId && el.type === ApproverType.User).length > 0;
+                        return (
+                          <DropdownMenuItem
+                            onClick={(evt) => {
+                              evt.preventDefault();
+                              onChange(
+                                isChecked
+                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== userId && el.type !== ApproverType.User)
+                                  : [...(value || []), {id:userId, type: ApproverType.User}]
+                              );
+                            }}
+                            key={`create-policy-members-${userId}`}
+                            iconPos="right"
+                            icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                          >
+                            {user.username}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="approvers"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Group Approvers"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Input
+                        isReadOnly
+                        value={value?.filter((e) => e.type=== ApproverType.Group).length ? `${value?.filter((e) => e.type=== ApproverType.Group).length} selected` : "None"}
+                        className="text-left"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
+                      align="start"
+                    >
+                      <DropdownMenuLabel>
+                        Select groups that are allowed to approve requests
+                      </DropdownMenuLabel>
+                      {groups && groups.map(({ group }) => {
+                        const { id } = group;
+                        const isChecked = value?.filter((el: {id: string, type: ApproverType}) => el.id === id && el.type === ApproverType.Group).length > 0;
+
+                        return (
+                          <DropdownMenuItem
+                            onClick={(evt) => {
+                              evt.preventDefault();
+                              onChange(
+                                isChecked
+                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== id && el.type !== ApproverType.Group)
+                                  : [...(value || []), {id, type: ApproverType.Group}]
+                              );
+                            }}
+                            key={`create-policy-members-${id}`}
+                            iconPos="right"
+                            icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+                          >
+                            {group.name}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </FormControl>
               )}
             />
