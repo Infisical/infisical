@@ -137,8 +137,7 @@ export const accessApprovalRequestServiceFactory = ({
     approvers.forEach((approver) => {
       if (approver.approverUserId) {
         approverIds.push(approver.approverUserId);
-      }
-      else if (approver.approverGroupId) {
+      } else if (approver.approverGroupId) {
         approverGroupIds.push(approver.approverGroupId);
       }
     });

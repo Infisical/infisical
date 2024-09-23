@@ -78,7 +78,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         projectSlug: req.query.projectSlug
       });
-      
+
       return { approvals };
     }
   });
