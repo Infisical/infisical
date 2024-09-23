@@ -13,16 +13,11 @@ export type TVerifyApprovers = {
   orgId: string;
 };
 
-export enum ApproverType {
-  Group = "group",
-  User = "user"
-}
-
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
   environment: string;
-  approvers: { type: ApproverType; id: string }[];
+  approvers: string[];
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
@@ -31,7 +26,7 @@ export type TCreateAccessApprovalPolicy = {
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers?: { type: ApproverType; id: string }[];
+  approvers?: string[];
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;

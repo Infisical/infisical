@@ -923,7 +923,6 @@ export const registerRoutes = async (
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
-    groupDAL,
     permissionService,
     projectEnvDAL,
     projectMembershipDAL,
@@ -943,8 +942,7 @@ export const registerRoutes = async (
     smtpService,
     accessApprovalPolicyApproverDAL,
     projectSlackConfigDAL,
-    kmsService,
-    groupDAL
+    kmsService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
