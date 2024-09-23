@@ -20,7 +20,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         approvers: z
           .object({ type: z.nativeEnum(ApproverType), id: z.string() })
           .array()
-          .min(1),
+          .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
       }),
@@ -129,7 +129,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         approvers: z
           .object({ type: z.nativeEnum(ApproverType), id: z.string() })
           .array()
-          .min(1),
+          .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
       }),

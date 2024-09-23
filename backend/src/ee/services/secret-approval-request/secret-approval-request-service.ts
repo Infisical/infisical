@@ -448,7 +448,7 @@ export const secretApprovalRequestServiceFactory = ({
     const hasMinApproval =
       secretApprovalRequest.policy.approvals <=
       secretApprovalRequest.policy.approvers.filter(({ userId: approverId }) =>
-        approverId ? reviewers[approverId.toString()] === ApprovalStatus.APPROVED : null
+        approverId ? reviewers[approverId] === ApprovalStatus.APPROVED : false
       ).length;
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
 
