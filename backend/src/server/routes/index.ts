@@ -7,7 +7,6 @@ import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
-import { accessApprovalPolicyGroupApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-group-approver-dal";
 import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
@@ -52,7 +51,6 @@ import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import { secretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
-import { secretApprovalPolicyGroupApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-group-approver-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
@@ -301,7 +299,6 @@ export const registerRoutes = async (
   const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
 
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
-  const sapGroupApproverDAL = secretApprovalPolicyGroupApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
   const secretApprovalRequestReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
@@ -381,7 +378,6 @@ export const registerRoutes = async (
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
-    secretApprovalPolicyGroupApproverDAL: sapGroupApproverDAL,
     permissionService,
     secretApprovalPolicyDAL,
     licenseService
@@ -630,7 +626,6 @@ export const registerRoutes = async (
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
-  const accessApprovalPolicyGroupApproverDAL = accessApprovalPolicyGroupApproverDALFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -928,7 +923,6 @@ export const registerRoutes = async (
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
-    accessApprovalPolicyGroupApproverDAL,
     groupDAL,
     permissionService,
     projectEnvDAL,
@@ -950,7 +944,6 @@ export const registerRoutes = async (
     accessApprovalPolicyApproverDAL,
     projectSlackConfigDAL,
     kmsService,
-    accessApprovalPolicyGroupApproverDAL,
     groupDAL
   });
 

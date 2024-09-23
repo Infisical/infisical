@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -16,26 +17,23 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
-      body: z
-        .object({
-          workspaceId: z.string(),
-          name: z.string().optional(),
-          environment: z.string(),
-          secretPath: z
-            .string()
-            .optional()
-            .nullable()
-            .default("/")
-            .transform((val) => (val ? removeTrailingSlash(val) : val)),
-          approvers: z.string().array().optional().default([]),
-          groupApprovers: z.string().array().optional().default([]),
-          approvals: z.number().min(1).default(1),
-          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
-        })
-        .refine((data) => data.approvers || data.groupApprovers, {
-          path: ["approvers", "groupApprovers"],
-          message: "At least one approver should be provided."
-        }),
+      body: z.object({
+        workspaceId: z.string(),
+        name: z.string().optional(),
+        environment: z.string(),
+        secretPath: z
+          .string()
+          .optional()
+          .nullable()
+          .default("/")
+          .transform((val) => (val ? removeTrailingSlash(val) : val)),
+        approvers: z
+          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .array()
+          .min(1),
+        approvals: z.number().min(1).default(1),
+        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard)
+      }),
       response: {
         200: z.object({
           approval: sapPubSchema
@@ -68,24 +66,21 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       params: z.object({
         sapId: z.string()
       }),
-      body: z
-        .object({
-          name: z.string().optional(),
-          approvers: z.string().array().optional().default([]),
-          approvals: z.number().min(1).default(1),
-          groupApprovers: z.string().array().optional().default([]),
-          secretPath: z
-            .string()
-            .optional()
-            .nullable()
-            .transform((val) => (val ? removeTrailingSlash(val) : val))
-            .transform((val) => (val === "" ? "/" : val)),
-          enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
-        })
-        .refine((data) => data.approvers.length > 0 || data.groupApprovers.length > 0, {
-          path: ["approvers", "groupApprovers"],
-          message: "At least one approver should be provided."
-        }),
+      body: z.object({
+        name: z.string().optional(),
+        approvers: z
+          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .array()
+          .min(1),
+        approvals: z.number().min(1).default(1),
+        secretPath: z
+          .string()
+          .optional()
+          .nullable()
+          .transform((val) => (val ? removeTrailingSlash(val) : val))
+          .transform((val) => (val === "" ? "/" : val)),
+        enforcementLevel: z.nativeEnum(EnforcementLevel).optional()
+      }),
       response: {
         200: z.object({
           approval: sapPubSchema
@@ -149,14 +144,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         200: z.object({
           approvals: sapPubSchema
             .extend({
-              userApprovers: z
+              approvers: z
                 .object({
-                  userId: z.string()
-                })
-                .array(),
-              groupApprovers: z
-                .object({
-                  groupId: z.string()
+                  id: z.string().nullable().optional(),
+                  type: z.nativeEnum(ApproverType)
                 })
                 .array()
             })
@@ -193,7 +184,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         200: z.object({
           policy: sapPubSchema
             .extend({
-              userApprovers: z.object({ userId: z.string() }).array()
+              userApprovers: z.object({ userId: z.string().nullable().optional() }).array()
             })
             .optional()
         })

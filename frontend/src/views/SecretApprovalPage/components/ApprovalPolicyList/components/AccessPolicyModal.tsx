@@ -27,7 +27,7 @@ import {
   useCreateAccessApprovalPolicy,
   useUpdateAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval";
-import { TAccessApprovalPolicy } from "@app/hooks/api/accessApproval/types";
+import { ApproverType, TAccessApprovalPolicy } from "@app/hooks/api/accessApproval/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -45,13 +45,12 @@ const formSchema = z
     name: z.string().optional(),
     secretPath: z.string().optional(),
     approvals: z.number().min(1),
-    approvers: z.string().array().optional(),
-    groupApprovers: z.string().array().optional(),
+    approvers: z.object({type: z.nativeEnum(ApproverType), id: z.string()}).array().min(1).default([]),
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel)
   })
-  .refine((data) => data.approvers || data.groupApprovers, {
-    path: ["approvers", "groupApprovers"],
+  .refine((data) => data.approvers, {
+    path: ["approvers"],
     message: "At least one approver should be provided."
   });
 
@@ -76,8 +75,7 @@ export const AccessPolicyForm = ({
       ? {
           ...editValues,
           environment: editValues.environment.slug,
-          approvers: editValues?.userApprovers?.map((user) => user.userId) || editValues?.approvers,
-          groupApprovers: editValues?.groupApprovers?.map((group) => group.groupId),
+          approvers: editValues?.approvers || [],
           approvals: editValues?.approvals
         }
       : undefined
@@ -291,15 +289,15 @@ export const AccessPolicyForm = ({
                       </DropdownMenuLabel>
                       {members.map(({ user }) => {
                         const { id: userId } = user;
-                        const isChecked = value?.includes(userId);
+                        const isChecked = value?.filter((el: {id: string, type: ApproverType}) => el.id === userId && el.type === ApproverType.User).length > 0;
                         return (
                           <DropdownMenuItem
                             onClick={(evt) => {
                               evt.preventDefault();
                               onChange(
                                 isChecked
-                                  ? value?.filter((el: string) => el !== userId)
-                                  : [...(value || []), userId]
+                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== userId && el.type !== ApproverType.User)
+                                  : [...(value || []), {id:userId, type: ApproverType.User}]
                               );
                             }}
                             key={`create-policy-members-${userId}`}
@@ -317,7 +315,7 @@ export const AccessPolicyForm = ({
             />
             <Controller
               control={control}
-              name="groupApprovers"
+              name="approvers"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
                   label="Required Group Approvers"
@@ -341,15 +339,16 @@ export const AccessPolicyForm = ({
                       </DropdownMenuLabel>
                       {groups && groups.map(({ group }) => {
                         const { id } = group;
-                        const isChecked = value?.includes(id);
+                        const isChecked = value?.includes({id, type: ApproverType.Group});
+
                         return (
                           <DropdownMenuItem
                             onClick={(evt) => {
                               evt.preventDefault();
                               onChange(
                                 isChecked
-                                  ? value?.filter((el: string) => el !== id)
-                                  : [...(value || []), id]
+                                  ? value?.filter((el: {id: string, type: ApproverType}) => el.id !== id && el.type !== ApproverType.Group)
+                                  : [...(value || []), {id, type: ApproverType.Group}]
                               );
                             }}
                             key={`create-policy-members-${id}`}

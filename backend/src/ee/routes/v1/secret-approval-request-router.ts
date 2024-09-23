@@ -13,7 +13,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const approvalRequestUser = z.object({ userId: z.string() }).merge(
+const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
   UsersSchema.pick({
     email: true,
     firstName: true,
@@ -48,7 +48,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               approvals: z.number(),
               approvers: z
                 .object({
-                  userId: z.string()
+                  userId: z.string().nullable().optional()
                 })
                 .array(),
               secretPath: z.string().optional().nullable(),
@@ -60,7 +60,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
             reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
             approvers: z
               .object({
-                userId: z.string()
+                userId: z.string().nullable().optional()
               })
               .array()
           }).array()

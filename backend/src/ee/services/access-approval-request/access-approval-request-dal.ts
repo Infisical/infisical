@@ -40,13 +40,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.AccessApprovalPolicyApprover}.policyId`
         )
         .leftJoin(
-          TableName.AccessApprovalPolicyGroupApprover,
-          `${TableName.AccessApprovalPolicy}.id`,
-          `${TableName.AccessApprovalPolicyGroupApprover}.policyId`
-        )
-        .leftJoin(
           TableName.UserGroupMembership,
-          `${TableName.AccessApprovalPolicyGroupApprover}.approverGroupId`,
+          `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
           `${TableName.UserGroupMembership}.groupId`
         )
         .leftJoin(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
@@ -200,16 +195,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
         "accessApprovalPolicyApproverUser.id"
       )
-
-      .leftJoin(
-        TableName.AccessApprovalPolicyGroupApprover,
-        `${TableName.AccessApprovalPolicy}.id`,
-        `${TableName.AccessApprovalPolicyGroupApprover}.policyId`
-      )
-
       .leftJoin(
         TableName.UserGroupMembership,
-        `${TableName.AccessApprovalPolicyGroupApprover}.approverGroupId`,
+        `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
         `${TableName.UserGroupMembership}.groupId`
       )
 

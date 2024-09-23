@@ -21,7 +21,6 @@ export const useCreateAccessApprovalPolicy = () => {
       projectSlug,
       approvals,
       approvers,
-      groupApprovers,
       name,
       secretPath,
       enforcementLevel
@@ -31,7 +30,6 @@ export const useCreateAccessApprovalPolicy = () => {
         projectSlug,
         approvals,
         approvers,
-        groupApprovers,
         secretPath,
         name,
         enforcementLevel
@@ -48,11 +46,10 @@ export const useUpdateAccessApprovalPolicy = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateAccessPolicyDTO>({
-    mutationFn: async ({ id, approvers, groupApprovers, approvals, name, secretPath, enforcementLevel }) => {
+    mutationFn: async ({ id, approvers, approvals, name, secretPath, enforcementLevel }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
         approvers,
-        groupApprovers,
         secretPath,
         name,
         enforcementLevel

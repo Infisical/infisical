@@ -9,11 +9,20 @@ export type TSecretApprovalPolicy = {
   environment: WorkspaceEnv;
   secretPath?: string;
   approvals: number;
-  userApprovers: { userId: string }[];
-  groupApprovers: { groupId: string }[];
+  approvers: Approver[];
   updatedAt: Date;
   enforcementLevel: EnforcementLevel;
 };
+
+export enum ApproverType{
+  User = "user",
+  Group = "group"
+}
+
+export type Approver ={
+  id: string;
+  type: ApproverType;
+}
 
 export type TGetSecretApprovalPoliciesDTO = {
   workspaceId: string;
@@ -30,8 +39,7 @@ export type TCreateSecretPolicyDTO = {
   name?: string;
   environment: string;
   secretPath?: string | null;
-  approvers?: string[];
-  groupApprovers?: string[];
+  approvers?: Approver[];
   approvals?: number;
   enforcementLevel: EnforcementLevel;
 };
@@ -39,8 +47,7 @@ export type TCreateSecretPolicyDTO = {
 export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: string[];
-  groupApprovers?: string[];
+  approvers?: Approver[];
   secretPath?: string | null;
   approvals?: number;
   enforcementLevel?: EnforcementLevel;

@@ -59,13 +59,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         "secretApprovalPolicyApproverUser.id"
       )
       .leftJoin(
-        TableName.SecretApprovalPolicyGroupApprover,
-        `${TableName.SecretApprovalPolicy}.id`,
-        `${TableName.SecretApprovalPolicyGroupApprover}.policyId`
-      )
-      .leftJoin(
         TableName.UserGroupMembership,
-        `${TableName.SecretApprovalPolicyGroupApprover}.approverGroupId`,
+        `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
         `${TableName.UserGroupMembership}.groupId`
       )
       .leftJoin<TUsers>(
@@ -172,13 +167,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "approverUserId",
             label: "approvers" as const,
             mapper: ({
-              approverUserId,
+              approverUserId: userId,
               approverEmail: email,
               approverUsername: username,
               approverLastName: lastName,
               approverFirstName: firstName
             }) => ({
-              userId: approverUserId,
+              userId,
               email,
               firstName,
               lastName,
@@ -189,13 +184,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "approverGroupUserId",
             label: "approvers" as const,
             mapper: ({
-              approverGroupUserId,
+              approverGroupUserId: userId,
               approverGroupEmail: email,
               approverGroupUsername: username,
               approverGroupLastName: lastName,
               approverGroupFirstName: firstName
             }) => ({
-              userId: approverGroupUserId,
+              userId,
               email,
               firstName,
               lastName,
@@ -279,13 +274,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicyApprover}.policyId`
         )
         .leftJoin(
-          TableName.SecretApprovalPolicyGroupApprover,
-          `${TableName.SecretApprovalPolicy}.id`,
-          `${TableName.SecretApprovalPolicyGroupApprover}.policyId`
-        )
-        .leftJoin(
           TableName.UserGroupMembership,
-          `${TableName.SecretApprovalPolicyGroupApprover}.approverGroupId`,
+          `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
           `${TableName.UserGroupMembership}.groupId`
         )
         .join<TUsers>(
@@ -383,7 +373,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverUserI: userId }) => ({ userId })
+            mapper: ({ approverUserId }) => ({ userId: approverUserId })
           },
           {
             key: "commitId",
@@ -397,7 +387,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "approverGroupUserId",
             label: "approvers" as const,
-            mapper: ({ approverGroupUserId: userId }) => ({ userId })
+            mapper: ({ approverGroupUserId }) => ({ userId: approverGroupUserId })
           }
         ]
       });
@@ -431,13 +421,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicyApprover}.policyId`
         )
         .leftJoin(
-          TableName.SecretApprovalPolicyGroupApprover,
-          `${TableName.SecretApprovalPolicy}.id`,
-          `${TableName.SecretApprovalPolicyGroupApprover}.policyId`
-        )
-        .leftJoin(
           TableName.UserGroupMembership,
-          `${TableName.SecretApprovalPolicyGroupApprover}.approverGroupId`,
+          `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
           `${TableName.UserGroupMembership}.groupId`
         )
         .join<TUsers>(
@@ -535,7 +520,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: userId }) => ({ userId })
+            mapper: ({ approverUserId }) => ({ userId: approverUserId })
           },
           {
             key: "commitId",
@@ -549,8 +534,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "approverGroupUserId",
             label: "approvers" as const,
-            mapper: ({ approverGroupUserId: userId }) => ({
-              userId
+            mapper: ({ approverGroupUserId }) => ({
+              userId: approverGroupUserId
             })
           }
         ]
