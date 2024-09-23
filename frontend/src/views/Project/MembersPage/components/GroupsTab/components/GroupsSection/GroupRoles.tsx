@@ -195,13 +195,13 @@ type TForm = z.infer<typeof formSchema>;
 
 export type TMemberRolesProp = {
   disableEdit?: boolean;
-  groupSlug: string;
+  groupId: string;
   roles: TGroupMembership["roles"];
 };
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-export const GroupRoles = ({ roles = [], disableEdit = false, groupSlug }: TMemberRolesProp) => {
+export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMemberRolesProp) => {
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
   const [searchRoles, setSearchRoles] = useState("");
@@ -248,8 +248,8 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupSlug }: TMemb
 
     try {
       await updateGroupWorkspaceRole.mutateAsync({
-        projectSlug: currentWorkspace?.slug || "",
-        groupSlug,
+        projectId: currentWorkspace?.id || "",
+        groupId,
         roles: selectedRoles
       });
       createNotification({ text: "Successfully updated group role", type: "success" });

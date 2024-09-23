@@ -10,10 +10,15 @@ export type TGroupProjectDALFactory = ReturnType<typeof groupProjectDALFactory>;
 export const groupProjectDALFactory = (db: TDbClient) => {
   const groupProjectOrm = ormify(db, TableName.GroupProjectMembership);
 
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
+  const findByProjectId = async (projectId: string, filter?: { groupId?: string }, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
         .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .where((qb) => {
+          if (filter?.groupId) {
+            void qb.where(`${TableName.Groups}.id`, "=", filter.groupId);
+          }
+        })
         .join(TableName.Groups, `${TableName.GroupProjectMembership}.groupId`, `${TableName.Groups}.id`)
         .join(
           TableName.GroupProjectMembershipRole,

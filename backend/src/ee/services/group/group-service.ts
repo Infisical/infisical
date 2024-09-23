@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -21,6 +21,7 @@ import {
   TAddUserToGroupDTO,
   TCreateGroupDTO,
   TDeleteGroupDTO,
+  TGetGroupByIdDTO,
   TListGroupUsersDTO,
   TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
@@ -29,7 +30,7 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "findById">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
   userGroupMembershipDAL: Pick<
@@ -95,7 +96,7 @@ export const groupServiceFactory = ({
   };
 
   const updateGroup = async ({
-    currentSlug,
+    id,
     name,
     slug,
     role,
@@ -121,8 +122,10 @@ export const groupServiceFactory = ({
         message: "Failed to update group due to plan restrictio Upgrade plan to update group."
       });
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, slug: currentSlug });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with slug ${currentSlug}` });
+    const group = await groupDAL.findOne({ orgId: actorOrgId, id });
+    if (!group) {
+      throw new BadRequestError({ message: `Failed to find group with ID ${id}` });
+    }
 
     let customRole: TOrgRoles | undefined;
     if (role) {
@@ -140,8 +143,7 @@ export const groupServiceFactory = ({
 
     const [updatedGroup] = await groupDAL.update(
       {
-        orgId: actorOrgId,
-        slug: currentSlug
+        id: group.id
       },
       {
         name,
@@ -158,7 +160,7 @@ export const groupServiceFactory = ({
     return updatedGroup;
   };
 
-  const deleteGroup = async ({ groupSlug, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
+  const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -178,15 +180,39 @@ export const groupServiceFactory = ({
       });
 
     const [group] = await groupDAL.delete({
-      orgId: actorOrgId,
-      slug: groupSlug
+      id,
+      orgId: actorOrgId
     });
 
     return group;
   };
 
+  const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
+    if (!actorOrgId) {
+      throw new BadRequestError({ message: "Failed to read group without organization" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findById(id);
+    if (!group) {
+      throw new NotFoundError({
+        message: `Cannot find group with ID ${id}`
+      });
+    }
+
+    return group;
+  };
+
   const listGroupUsers = async ({
-    groupSlug,
+    id,
     offset,
     limit,
     username,
@@ -208,12 +234,12 @@ export const groupServiceFactory = ({
 
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
-      slug: groupSlug
+      id
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${groupSlug}`
+        message: `Failed to find group with ID ${id}`
       });
 
     const users = await groupDAL.findAllGroupMembers({
@@ -229,14 +255,7 @@ export const groupServiceFactory = ({
     return { users, totalCount: count };
   };
 
-  const addUserToGroup = async ({
-    groupSlug,
-    username,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TAddUserToGroupDTO) => {
+  const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -251,12 +270,12 @@ export const groupServiceFactory = ({
     // check if group with slug exists
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
-      slug: groupSlug
+      id
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${groupSlug}`
+        message: `Failed to find group with ID ${id}`
       });
 
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
@@ -285,7 +304,7 @@ export const groupServiceFactory = ({
   };
 
   const removeUserFromGroup = async ({
-    groupSlug,
+    id,
     username,
     actor,
     actorId,
@@ -306,12 +325,12 @@ export const groupServiceFactory = ({
     // check if group with slug exists
     const group = await groupDAL.findOne({
       orgId: actorOrgId,
-      slug: groupSlug
+      id
     });
 
     if (!group)
       throw new BadRequestError({
-        message: `Failed to find group with slug ${groupSlug}`
+        message: `Failed to find group with ID ${id}`
       });
 
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
@@ -342,6 +361,7 @@ export const groupServiceFactory = ({
     deleteGroup,
     listGroupUsers,
     addUserToGroup,
-    removeUserFromGroup
+    removeUserFromGroup,
+    getGroupById
   };
 };

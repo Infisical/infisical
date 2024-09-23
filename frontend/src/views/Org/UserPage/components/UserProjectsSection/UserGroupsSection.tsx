@@ -19,9 +19,10 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
 
   const { mutateAsync: removeUserFromGroup } = useRemoveUserFromGroup();
 
-  const handleRemoveUserFromGroup = useCallback(async (groupSlug: string) => {
+  const handleRemoveUserFromGroup = useCallback(async (groupId: string, groupSlug: string) => {
     try {
       await removeUserFromGroup({
+        groupId,
         slug: groupSlug,
         username: orgMembership.user.username
       });
@@ -57,10 +58,11 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
         deleteKey="confirm"
         onDeleteApproved={() => {
           const popupData = popUp?.removeUserFromGroup?.data as {
+            groupId: string;
             groupSlug: string;
           };
 
-          return handleRemoveUserFromGroup(popupData.groupSlug);
+          return handleRemoveUserFromGroup(popupData.groupId, popupData.groupSlug);
         }}
       />
     </>

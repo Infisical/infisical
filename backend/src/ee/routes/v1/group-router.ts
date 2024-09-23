@@ -10,7 +10,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       body: z.object({
         name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
@@ -43,12 +43,59 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:currentSlug",
-    method: "PATCH",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    url: "/:id",
+    method: "GET",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       params: z.object({
-        currentSlug: z.string().trim().describe(GROUPS.UPDATE.currentSlug)
+        id: z.string()
+      }),
+      response: {
+        200: GroupsSchema
+      }
+    },
+    handler: async (req) => {
+      const group = await server.services.group.getGroupById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.id
+      });
+
+      return group;
+    }
+  });
+
+  server.route({
+    url: "/",
+    method: "GET",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      response: {
+        200: GroupsSchema.array()
+      }
+    },
+    handler: async (req) => {
+      const groups = await server.services.org.getOrgGroups({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return groups;
+    }
+  });
+
+  server.route({
+    url: "/:id",
+    method: "PATCH",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      params: z.object({
+        id: z.string().trim().describe(GROUPS.UPDATE.id)
       }),
       body: z
         .object({
@@ -70,7 +117,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const group = await server.services.group.updateGroup({
-        currentSlug: req.params.currentSlug,
+        id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -83,12 +130,12 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:slug",
+    url: "/:id",
     method: "DELETE",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       params: z.object({
-        slug: z.string().trim().describe(GROUPS.DELETE.slug)
+        id: z.string().trim().describe(GROUPS.DELETE.id)
       }),
       response: {
         200: GroupsSchema
@@ -96,7 +143,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const group = await server.services.group.deleteGroup({
-        groupSlug: req.params.slug,
+        id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -109,11 +156,11 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:slug/users",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    url: "/:id/users",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       params: z.object({
-        slug: z.string().trim().describe(GROUPS.LIST_USERS.slug)
+        id: z.string().trim().describe(GROUPS.LIST_USERS.id)
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0).describe(GROUPS.LIST_USERS.offset),
@@ -141,24 +188,25 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { users, totalCount } = await server.services.group.listGroupUsers({
-        groupSlug: req.params.slug,
+        id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query
       });
+
       return { users, totalCount };
     }
   });
 
   server.route({
     method: "POST",
-    url: "/:slug/users/:username",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    url: "/:id/users/:username",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       params: z.object({
-        slug: z.string().trim().describe(GROUPS.ADD_USER.slug),
+        id: z.string().trim().describe(GROUPS.ADD_USER.id),
         username: z.string().trim().describe(GROUPS.ADD_USER.username)
       }),
       response: {
@@ -173,7 +221,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const user = await server.services.group.addUserToGroup({
-        groupSlug: req.params.slug,
+        id: req.params.id,
         username: req.params.username,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -187,11 +235,11 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:slug/users/:username",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    url: "/:id/users/:username",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       params: z.object({
-        slug: z.string().trim().describe(GROUPS.DELETE_USER.slug),
+        id: z.string().trim().describe(GROUPS.DELETE_USER.id),
         username: z.string().trim().describe(GROUPS.DELETE_USER.username)
       }),
       response: {
@@ -206,7 +254,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const user = await server.services.group.removeUserFromGroup({
-        groupSlug: req.params.slug,
+        id: req.params.id,
         username: req.params.username,
         actor: req.permission.type,
         actorId: req.permission.id,

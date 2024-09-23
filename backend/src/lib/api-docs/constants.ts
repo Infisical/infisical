@@ -5,26 +5,27 @@ export const GROUPS = {
     role: "The role of the group to create."
   },
   UPDATE: {
-    currentSlug: "The current slug of the group to update.",
+    id: "The id of the group to update",
     name: "The new name of the group to update to.",
     slug: "The new slug of the group to update to.",
     role: "The new role of the group to update to."
   },
   DELETE: {
+    id: "The id of the group to delete",
     slug: "The slug of the group to delete"
   },
   LIST_USERS: {
-    slug: "The slug of the group to list users for",
+    id: "The id of the group to list users for",
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for."
   },
   ADD_USER: {
-    slug: "The slug of the group to add the user to.",
+    id: "The id of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
   DELETE_USER: {
-    slug: "The slug of the group to remove the user from.",
+    id: "The id of the group to remove the user from.",
     username: "The username of the user to remove from the group."
   }
 } as const;
@@ -409,21 +410,21 @@ export const PROJECTS = {
     secretSnapshotId: "The ID of the snapshot to rollback to."
   },
   ADD_GROUP_TO_PROJECT: {
-    projectSlug: "The slug of the project to add the group to.",
-    groupSlug: "The slug of the group to add to the project.",
+    projectId: "The ID of the project to add the group to.",
+    groupId: "The ID of the group to add to the project.",
     role: "The role for the group to assume in the project."
   },
   UPDATE_GROUP_IN_PROJECT: {
-    projectSlug: "The slug of the project to update the group in.",
-    groupSlug: "The slug of the group to update in the project.",
+    projectId: "The ID of the project to update the group in.",
+    groupId: "The ID of the group to update in the project.",
     roles: "A list of roles to update the group to."
   },
   REMOVE_GROUP_FROM_PROJECT: {
-    projectSlug: "The slug of the project to delete the group from.",
-    groupSlug: "The slug of the group to delete from the project."
+    projectId: "The ID of the project to delete the group from.",
+    groupId: "The ID of the group to delete from the project."
   },
   LIST_GROUPS_IN_PROJECT: {
-    projectSlug: "The slug of the project to list groups for."
+    projectId: "The ID of the project to list groups for."
   },
   LIST_INTEGRATION: {
     workspaceId: "The ID of the project to list integrations for."

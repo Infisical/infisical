@@ -535,14 +535,14 @@ export const useGetWorkspaceIdentityMemberships = (
   });
 };
 
-export const useListWorkspaceGroups = (projectSlug: string) => {
+export const useListWorkspaceGroups = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectSlug),
+    queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId),
     queryFn: async () => {
       const {
         data: { groupMemberships }
       } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
-        `/api/v2/workspace/${projectSlug}/groups`
+        `/api/v2/workspace/${projectId}/groups`
       );
       return groupMemberships;
     },

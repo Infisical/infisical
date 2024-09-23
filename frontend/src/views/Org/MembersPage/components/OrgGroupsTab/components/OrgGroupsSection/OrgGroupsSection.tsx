@@ -34,10 +34,10 @@ export const OrgGroupsSection = () => {
     }
   };
 
-  const onDeleteGroupSubmit = async ({ name, slug }: { name: string; slug: string }) => {
+  const onDeleteGroupSubmit = async ({ name, groupId }: { name: string; groupId: string }) => {
     try {
       await deleteMutateAsync({
-        slug
+        id: groupId
       });
       createNotification({
         text: `Successfully deleted the group named ${name}`,
@@ -87,7 +87,7 @@ export const OrgGroupsSection = () => {
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; slug: string })
+          onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; groupId: string })
         }
       />
       <UpgradePlanModal

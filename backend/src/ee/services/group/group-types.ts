@@ -17,7 +17,7 @@ export type TCreateGroupDTO = {
 } & TGenericPermission;
 
 export type TUpdateGroupDTO = {
-  currentSlug: string;
+  id: string;
 } & Partial<{
   name: string;
   slug: string;
@@ -26,23 +26,27 @@ export type TUpdateGroupDTO = {
   TGenericPermission;
 
 export type TDeleteGroupDTO = {
-  groupSlug: string;
+  id: string;
+} & TGenericPermission;
+
+export type TGetGroupByIdDTO = {
+  id: string;
 } & TGenericPermission;
 
 export type TListGroupUsersDTO = {
-  groupSlug: string;
+  id: string;
   offset: number;
   limit: number;
   username?: string;
 } & TGenericPermission;
 
 export type TAddUserToGroupDTO = {
-  groupSlug: string;
+  id: string;
   username: string;
 } & TGenericPermission;
 
 export type TRemoveUserFromGroupDTO = {
-  groupSlug: string;
+  id: string;
   username: string;
 } & TGenericPermission;
 

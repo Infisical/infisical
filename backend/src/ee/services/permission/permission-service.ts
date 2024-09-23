@@ -346,7 +346,7 @@ export const permissionServiceFactory = ({
     const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
-      if (!projectRole) throw new BadRequestError({ message: "Role not found" });
+      if (!projectRole) throw new BadRequestError({ message: `Role not found: ${role}` });
       return {
         permission: buildProjectPermission([
           { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }

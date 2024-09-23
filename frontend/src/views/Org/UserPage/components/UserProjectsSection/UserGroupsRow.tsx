@@ -30,6 +30,7 @@ export const UserGroupsRow = ({ group, handlePopUpOpen }: Props) => {
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePopUpOpen("removeUserFromGroup", {
+                    groupId: group.id,
                     groupSlug: group.slug
                   });
                 }}
