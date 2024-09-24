@@ -170,6 +170,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
         .select(
           db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("username").withSchema(TableName.Users).as("username"),
           // groups specific
           db.ref("id").withSchema(TableName.GroupProjectMembership).as("groupMembershipId"),
           db.ref("createdAt").withSchema(TableName.GroupProjectMembership).as("groupMembershipCreatedAt"),
@@ -267,6 +268,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         key: "projectId",
         parentMapper: ({
           orgId,
+          username,
           orgAuthEnforced,
           membershipId,
           groupMembershipId,
@@ -279,6 +281,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           orgAuthEnforced,
           userId,
           projectId,
+          username,
           id: membershipId || groupMembershipId,
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
           updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt
@@ -399,6 +402,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembershipRole}.projectMembershipId`,
           `${TableName.IdentityProjectMembership}.id`
         )
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityProjectMembership}.identityId`)
         .leftJoin(
           TableName.ProjectRoles,
           `${TableName.IdentityProjectMembershipRole}.customRoleId`,
@@ -420,6 +424,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.IdentityProjectMembershipRole))
         .select(
           db.ref("id").withSchema(TableName.IdentityProjectMembership).as("membershipId"),
+          db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("orgId").withSchema(TableName.Project).as("orgId"), // Now you can select orgId from Project
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership).as("membershipUpdatedAt"),
@@ -449,9 +454,10 @@ export const permissionDALFactory = (db: TDbClient) => {
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",
-        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, orgId }) => ({
+        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, orgId, identityName }) => ({
           id: membershipId,
           identityId,
+          username: identityName,
           projectId,
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,

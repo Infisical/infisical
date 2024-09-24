@@ -1,7 +1,10 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
-
-import { conditionsMatcher } from "@app/lib/casl";
 import { z } from "zod";
+
+import { TableName } from "@app/db/schemas";
+import { conditionsMatcher } from "@app/lib/casl";
+import { BadRequestError } from "@app/lib/errors";
+
 import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
 
 export enum ProjectPermissionActions {
@@ -38,7 +41,25 @@ export enum ProjectPermissionSub {
   Kms = "kms"
 }
 
-type SubjectFields = {
+export type SecretSubjectFields = {
+  environment: string;
+  secretPath: string;
+  // secretName: string;
+  // secretTags: string[];
+};
+
+export const CaslSecretsV2SubjectKnexMapper = (field: string) => {
+  switch (field) {
+    case "secretName":
+      return `${TableName.SecretV2}.key`;
+    case "secretTags":
+      return `${TableName.SecretTag}.slug`;
+    default:
+      break;
+  }
+};
+
+export type SecretFolderSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -46,11 +67,14 @@ type SubjectFields = {
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
-      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
+      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
     ]
   | [
       ProjectPermissionActions,
-      ProjectPermissionSub.SecretFolders | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
@@ -595,3 +619,18 @@ export const isAtLeastAsPrivilegedWorkspace = (
   return set1.size >= set2.size;
 };
 /* eslint-enable */
+
+export const SecretV2SubjectFieldMapper = (arg: string) => {
+  switch (arg) {
+    case "environment":
+      return null;
+    case "secretPath":
+      return null;
+    case "secretName":
+      return `${TableName.SecretV2}.key`;
+    case "secretTags":
+      return `${TableName.SecretTag}.slug`;
+    default:
+      throw new BadRequestError({ message: `Invalid dynamic knex operator field: ${arg}` });
+  }
+};

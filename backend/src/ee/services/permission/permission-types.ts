@@ -1,22 +1,12 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
-export type TBuildProjectPermissionDTO = {
-  permissions?: unknown;
-  role: string;
-}[];
-
-export type TBuildOrgPermissionDTO = {
-  permissions?: unknown;
-  role: string;
-}[];
-
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
   $REGEX = "$regex",
   $EQ = "$eq",
-  $NEQ = "$neq",
+  $NEQ = "$ne",
   $GLOB = "$glob"
 }
 
