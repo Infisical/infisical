@@ -207,11 +207,12 @@ export const SecretOverviewPage = () => {
     setVisibleEnvs(readableEnvs);
   }, [userAvailableEnvs, secretPath]);
 
-  const { isImportedSecretPresentInEnv, getImportedSecretByKey } = useGetImportedSecretsAllEnvs({
-    projectId: workspaceId,
-    path: secretPath,
-    environments: userAvailableEnvs.map(({ slug }) => slug)
-  });
+  const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
+    useGetImportedSecretsAllEnvs({
+      projectId: workspaceId,
+      path: secretPath,
+      environments: userAvailableEnvs.map(({ slug }) => slug)
+    });
 
   const paginationOffset = (page - 1) * perPage;
 
@@ -784,7 +785,9 @@ export const SecretOverviewPage = () => {
                   </Th>
                   {visibleEnvs?.map(({ name, slug }, index) => {
                     const envSecKeyCount = getEnvSecretKeyCount(slug);
-                    const missingKeyCount = secKeys.length - envSecKeyCount;
+                    const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
+                    const missingKeyCount = secKeys.length - envSecKeyCount - importedSecKeyCount;
+
                     return (
                       <Th
                         className="min-table-row min-w-[11rem] border-b-0 p-0 text-center"
