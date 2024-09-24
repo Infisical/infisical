@@ -54,7 +54,7 @@ const identityAuthMethods = [
 
 const schema = yup
   .object({
-    authMethod: yup.string().required("Auth method is required")
+    authMethod: yup.mixed<IdentityAuthMethod>().oneOf(Object.values(IdentityAuthMethod)).required("Auth method is required")
   })
   .required();
 
@@ -71,21 +71,27 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
-
-  const { control, watch, setValue } = useForm<FormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
-    }
-  });
-
-  const identityAuthMethodData = popUp?.identityAuthMethod?.data as {
-    identityId: string;
-    name: string;
-    authMethod?: IdentityAuthMethod;
+  
+  const initialAuthMethod = popUp?.identityAuthMethod?.data?.authMethod;
+    
+    const { control, watch, setValue } = useForm<FormData>({
+      resolver: yupResolver(schema),
+      defaultValues: {
+        authMethod: initialAuthMethod
+      }
+    });
+    
+    const identityAuthMethodData = {
+      identityId: popUp?.identityAuthMethod.data?.identityId,
+      name: popUp?.identityAuthMethod?.data?.name,
+      authMethod: watch("authMethod")
+    } as {
+      identityId: string;
+      name: string;
+      authMethod?: IdentityAuthMethod;
   };
 
-  useEffect(() => {
+    useEffect(() => {
     if (identityAuthMethodData?.authMethod) {
       setValue("authMethod", identityAuthMethodData.authMethod);
       return;
@@ -94,85 +100,11 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
     setValue("authMethod", IdentityAuthMethod.UNIVERSAL_AUTH);
   }, [identityAuthMethodData?.authMethod]);
 
-  const authMethod = watch("authMethod");
-
-  const renderIdentityAuthForm = () => {
-    switch (identityAuthMethodData?.authMethod ?? authMethod) {
-      case IdentityAuthMethod.AWS_AUTH: {
-        return (
-          <IdentityAwsAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      case IdentityAuthMethod.KUBERNETES_AUTH: {
-        return (
-          <IdentityKubernetesAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      case IdentityAuthMethod.GCP_AUTH: {
-        return (
-          <IdentityGcpAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      case IdentityAuthMethod.AZURE_AUTH: {
-        return (
-          <IdentityAzureAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      case IdentityAuthMethod.UNIVERSAL_AUTH: {
-        return (
-          <IdentityUniversalAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      case IdentityAuthMethod.OIDC_AUTH: {
-        return (
-          <IdentityOidcAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      case IdentityAuthMethod.TOKEN_AUTH: {
-        return (
-          <IdentityTokenAuthForm
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-            identityAuthMethodData={identityAuthMethodData}
-          />
-        );
-      }
-      default: {
-        return <div />;
-      }
-    }
-  };
-
-  const onRevokeAuthMethodSubmit = async () => {
-    if (!identityAuthMethodData.authMethod) return;
-    if (!orgId) return;
+  const onRevokeAuthMethodSubmit = async (authMethod: IdentityAuthMethod) => {
+    if (!orgId || !authMethod) return;
     try {
       console.log("onRevokeAuthMethodSubmit identityId: ", identityAuthMethodData);
-      switch (identityAuthMethodData.authMethod) {
+      switch (authMethod) {
         case IdentityAuthMethod.UNIVERSAL_AUTH: {
           await revokeUniversalAuth({
             identityId: identityAuthMethodData.identityId,
@@ -228,7 +160,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
 
       createNotification({
         text: `Successfully removed ${
-          identityAuthToNameMap[identityAuthMethodData.authMethod]
+          identityAuthToNameMap[authMethod]
         } on ${identityAuthMethodData.name}`,
         type: "success"
       });
@@ -238,11 +170,95 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to remove ${identityAuthToNameMap[identityAuthMethodData.authMethod]} on ${
+        text: `Failed to remove ${identityAuthToNameMap[authMethod]} on ${
           identityAuthMethodData.name
         }`,
         type: "error"
       });
+    }
+  };
+  const renderIdentityAuthForm = () => {
+    switch (identityAuthMethodData.authMethod) {
+      case IdentityAuthMethod.AWS_AUTH: {
+        return (
+          <IdentityAwsAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      case IdentityAuthMethod.KUBERNETES_AUTH: {
+        return (
+          <IdentityKubernetesAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      case IdentityAuthMethod.GCP_AUTH: {
+        return (
+          <IdentityGcpAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      case IdentityAuthMethod.AZURE_AUTH: {
+        return (
+          <IdentityAzureAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      case IdentityAuthMethod.UNIVERSAL_AUTH: {
+        return (
+          <IdentityUniversalAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      case IdentityAuthMethod.OIDC_AUTH: {
+        return (
+          <IdentityOidcAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      case IdentityAuthMethod.TOKEN_AUTH: {
+        return (
+          <IdentityTokenAuthForm
+            handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+            identityAuthMethodData={identityAuthMethodData}
+            initialAuthMethod={initialAuthMethod!}
+            revokeAuth={onRevokeAuthMethodSubmit}
+          />
+        );
+      }
+      default: {
+        return <div />;
+      }
     }
   };
 
@@ -255,8 +271,8 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
     >
       <ModalContent
         title={`${
-          identityAuthMethodData?.authMethod ? "Update" : "Configure"
-        } Identity Auth Method for ${identityAuthMethodData?.name ?? ""}`}
+          identityAuthMethodData.authMethod === initialAuthMethod ? "Update" : "Configure"
+        } Identity Auth Method for ${identityAuthToNameMap[identityAuthMethodData.authMethod!] ?? ""}`}
       >
         <Controller
           control={control}
@@ -267,9 +283,8 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
               <Select
                 defaultValue={field.value}
                 {...field}
-                onValueChange={(e) => onChange(e)}
+                onValueChange={(e) => {onChange(e)}}
                 className="w-full"
-                isDisabled={!!identityAuthMethodData?.authMethod}
               >
                 {identityAuthMethods.map(({ label, value }) => (
                   <SelectItem value={String(value || "")} key={label}>
@@ -295,7 +310,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
           } on ${identityAuthMethodData?.name ?? ""}?`}
           onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
           deleteKey="confirm"
-          onDeleteApproved={onRevokeAuthMethodSubmit}
+          onDeleteApproved={() => onRevokeAuthMethodSubmit(identityAuthMethodData.authMethod!)}
         />
       </ModalContent>
     </Modal>

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import { Button, DeleteActionModal, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
   useAddIdentityGcpAuth,
@@ -15,7 +15,7 @@ import {
 } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
@@ -53,12 +53,16 @@ type Props = {
     name: string;
     authMethod?: IdentityAuthMethod;
   };
+  initialAuthMethod: IdentityAuthMethod;
+  revokeAuth: (authMethod: IdentityAuthMethod) => Promise<void>;
 };
 
 export const IdentityGcpAuthForm = ({
   handlePopUpOpen,
   handlePopUpToggle,
-  identityAuthMethodData
+  identityAuthMethodData,
+  revokeAuth,
+  initialAuthMethod
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -68,13 +72,16 @@ export const IdentityGcpAuthForm = ({
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityGcpAuth();
 
   const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "");
+  const popup = usePopUp([
+    "overwriteAuthMethod",
+  ] as const);
 
   const {
     control,
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    watch
+    watch,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -100,7 +107,7 @@ export const IdentityGcpAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
-        type: data.type,
+        type: data.type || "gce",
         allowedServiceAccounts: data.allowedServiceAccounts,
         allowedProjects: data.allowedProjects,
         allowedZones: data.allowedZones,
@@ -117,7 +124,7 @@ export const IdentityGcpAuthForm = ({
       });
     } else {
       reset({
-        type: "iam",
+        type: "gce",
         allowedServiceAccounts: "",
         allowedProjects: "",
         allowedZones: "",
@@ -173,11 +180,11 @@ export const IdentityGcpAuthForm = ({
       handlePopUpToggle("identityAuthMethod", false);
 
       createNotification({
-        text: `Successfully ${
-          identityAuthMethodData?.authMethod ? "updated" : "configured"
-        } auth method`,
+        text: `Successfully ${identityAuthMethodData?.authMethod === initialAuthMethod ? "updated" : "configured"
+          } auth method`,
         type: "success"
       });
+
 
       reset();
     } catch (err) {
@@ -201,10 +208,10 @@ export const IdentityGcpAuthForm = ({
               onValueChange={(e) => onChange(e)}
               className="w-full"
             >
-              <SelectItem value="gce" key="gcp-type-gce">
+              <SelectItem value="gce" key="gce">
                 GCP ID Token Auth (Recommended)
               </SelectItem>
-              <SelectItem value="iam" key="gcpiam">
+              <SelectItem value="iam" key="iam">
                 GCP IAM Auth
               </SelectItem>
             </Select>
@@ -367,15 +374,24 @@ export const IdentityGcpAuthForm = ({
       </div>
       <div className="flex justify-between">
         <div className="flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-          >
-            {identityAuthMethodData?.authMethod ? "Update" : "Configure"}
-          </Button>
+        {(initialAuthMethod && identityAuthMethodData?.authMethod !== initialAuthMethod) ?
+            <Button
+              className="mr-4"
+              size="sm"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+              onClick={() => popup.handlePopUpToggle("overwriteAuthMethod", true)}
+            >
+              Overwrite
+            </Button>
+            : <Button
+              className="mr-4"
+              size="sm"
+              type="submit"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+            >Submit</Button>
+          }
           <Button
             colorSchema="secondary"
             variant="plain"
@@ -384,7 +400,7 @@ export const IdentityGcpAuthForm = ({
             Cancel
           </Button>
         </div>
-        {identityAuthMethodData?.authMethod && (
+        {identityAuthMethodData?.authMethod === initialAuthMethod && (
           <Button
             size="sm"
             colorSchema="danger"
@@ -396,6 +412,15 @@ export const IdentityGcpAuthForm = ({
           </Button>
         )}
       </div>
+      <DeleteActionModal
+          isOpen={popup.popUp.overwriteAuthMethod?.isOpen}
+          title={`Are you sure want to overwrite ${
+            initialAuthMethod || "the auth method"
+          } on ${identityAuthMethodData?.name ?? ""}?`}
+          onChange={(isOpen) => popup.handlePopUpToggle("overwriteAuthMethod", isOpen)}
+          deleteKey="confirm"
+          onDeleteApproved={async () => { await revokeAuth(initialAuthMethod); handleSubmit(onFormSubmit)(); }}
+        />
     </form>
   );
 };
