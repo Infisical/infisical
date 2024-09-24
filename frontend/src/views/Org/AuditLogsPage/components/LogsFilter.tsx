@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
-import { useState } from "react";
-import { Control, Controller, UseFormReset, UseFormWatch } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Control, Controller, UseFormReset, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import {
   faCheckCircle,
   faChevronDown,
@@ -41,6 +41,7 @@ type Props = {
   };
   className?: string;
   isOrgAuditLogs?: boolean;
+  setValue: UseFormSetValue<AuditLogFilterFormData>;
   control: Control<AuditLogFilterFormData>;
   reset: UseFormReset<AuditLogFilterFormData>;
   watch: UseFormWatch<AuditLogFilterFormData>;
@@ -51,6 +52,7 @@ export const LogsFilter = ({
   isOrgAuditLogs,
   className,
   control,
+  setValue,
   reset,
   watch
 }: Props) => {
@@ -59,6 +61,12 @@ export const LogsFilter = ({
 
   const { currentWorkspace, workspaces } = useWorkspace();
   const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?.id ?? "");
+
+  useEffect(() => {
+    if (workspaces.length) {
+      setValue("projectId", workspaces[0].id);
+    }
+  }, [workspaces]);
 
   const renderActorSelectItem = (actor: Actor) => {
     switch (actor.type) {
@@ -243,20 +251,14 @@ export const LogsFilter = ({
                 className="w-40"
               >
                 <Select
-                  value={value === undefined ? "all" : value}
+                  value={value}
                   {...field}
-                  onValueChange={(e) => {
-                    if (e === "all") onChange(undefined);
-                    else onChange(e);
-                  }}
+                  onValueChange={(e) => onChange(e)}
                   className={twMerge(
                     "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
                     value === undefined && "text-mineshaft-400"
                   )}
                 >
-                  <SelectItem value="all" key="all">
-                    All projects
-                  </SelectItem>
                   {workspaces.map((project) => (
                     <SelectItem value={String(project.id || "")} key={project.id}>
                       {project.name}
