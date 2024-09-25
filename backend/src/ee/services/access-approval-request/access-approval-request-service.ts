@@ -58,7 +58,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction"
   >;
-  groupDAL: Pick<TGroupDALFactory, "findAllGroupMembers">;
+  groupDAL: Pick<TGroupDALFactory, "findAllGroupPossibleMembers">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<
@@ -145,14 +145,14 @@ export const accessApprovalRequestServiceFactory = ({
     const groupUsers = (
       await Promise.all(
         approverGroupIds.map((groupApproverId) =>
-          groupDAL.findAllGroupMembers({
+          groupDAL.findAllGroupPossibleMembers({
             orgId: actorOrgId,
             groupId: groupApproverId
           })
         )
       )
     ).flat();
-    approverIds.push(...groupUsers.map((user) => user.id));
+    approverIds.push(...groupUsers.filter((user) => user.isPartOfGroup).map((user) => user.id));
 
     const approverUsers = await userDAL.find({
       $in: {

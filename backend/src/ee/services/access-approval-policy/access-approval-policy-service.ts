@@ -94,9 +94,12 @@ export const accessApprovalPolicyServiceFactory = ({
     >[] = [];
 
     for (const groupId of groupApprovers) {
-      usersPromises.push(groupDAL.findAllGroupMembers({ orgId: actorOrgId, groupId, offset: 0 }));
+      usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
     }
-    const verifyGroupApprovers = (await Promise.all(usersPromises)).flat().map((user) => user.id);
+    const verifyGroupApprovers = (await Promise.all(usersPromises))
+      .flat()
+      .filter((user) => user.isPartOfGroup)
+      .map((user) => user.id);
     verifyAllApprovers.push(...verifyGroupApprovers);
 
     await verifyApprovers({
@@ -251,7 +254,7 @@ export const accessApprovalPolicyServiceFactory = ({
         >[] = [];
 
         for (const groupId of groupApprovers) {
-          usersPromises.push(groupDAL.findAllGroupMembers({ orgId: actorOrgId, groupId, offset: 0 }));
+          usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
         }
         const verifyGroupApprovers = (await Promise.all(usersPromises)).flat().map((user) => user.id);
 
