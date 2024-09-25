@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { EnforcementLevel } from "@app/lib/types";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -12,6 +12,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         projectSlug: z.string().trim(),
@@ -53,6 +56,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         projectSlug: z.string().trim()
@@ -119,6 +125,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:policyId",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         policyId: z.string()
@@ -162,6 +171,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:policyId",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         policyId: z.string()
