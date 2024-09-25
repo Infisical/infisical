@@ -117,10 +117,7 @@ const SecretConditionSchema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$ALL]: PermissionConditionSchema[PermissionConditionOperators.$ALL],
-          [PermissionConditionOperators.$REGEX]: PermissionConditionSchema[PermissionConditionOperators.$REGEX],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
         })
         .partial()
     ]),
@@ -131,21 +128,6 @@ const SecretConditionSchema = z
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
           [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$ALL]: PermissionConditionSchema[PermissionConditionOperators.$ALL],
-          [PermissionConditionOperators.$REGEX]: PermissionConditionSchema[PermissionConditionOperators.$REGEX],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    secretName: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$ALL]: PermissionConditionSchema[PermissionConditionOperators.$ALL],
-          [PermissionConditionOperators.$REGEX]: PermissionConditionSchema[PermissionConditionOperators.$REGEX],
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()

@@ -56,11 +56,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           queryBuilder.on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`);
         })
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
-        .leftJoin(
-          TableName.IdentityMetadata,
-          `${TableName.IdentityMetadata}.identityOrgMembershipId`,
-          `${TableName.IdentityOrgMembership}.id`
-        )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.IdentityMetadata}.identityId`)
+            .andOn(`${TableName.IdentityOrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))

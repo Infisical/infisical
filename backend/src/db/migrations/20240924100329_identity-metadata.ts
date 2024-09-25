@@ -8,13 +8,12 @@ export async function up(knex: Knex): Promise<void> {
       tb.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       tb.string("key").notNullable();
       tb.string("value").notNullable();
-      tb.uuid("userOrgMembershipId");
-      tb.foreign("userOrgMembershipId").references("id").inTable(TableName.OrgMembership).onDelete("CASCADE");
-      tb.uuid("identityOrgMembershipId");
-      tb.foreign("identityOrgMembershipId")
-        .references("id")
-        .inTable(TableName.IdentityOrgMembership)
-        .onDelete("CASCADE");
+      tb.uuid("orgId").notNullable();
+      tb.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      tb.uuid("userId");
+      tb.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      tb.uuid("identityId");
+      tb.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
       tb.timestamps(true, true, true);
     });
   }

@@ -19,11 +19,11 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
         )
-        .leftJoin(
-          TableName.IdentityMetadata,
-          `${TableName.IdentityMetadata}.userOrgMembershipId`,
-          `${TableName.OrgMembership}.id`
-        )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.OrgMembership}.userId`, `${TableName.IdentityMetadata}.userId`)
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .select(
           db.ref("id").withSchema(TableName.OrgMembership),
           db.ref("inviteEmail").withSchema(TableName.OrgMembership),

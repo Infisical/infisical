@@ -73,7 +73,7 @@ export const identityServiceFactory = ({
 
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create({ name }, tx);
-      const identityOrgMembership = await identityOrgMembershipDAL.create(
+      await identityOrgMembershipDAL.create(
         {
           identityId: newIdentity.id,
           orgId,
@@ -85,7 +85,8 @@ export const identityServiceFactory = ({
       if (metadata && metadata.length) {
         await identityMetadataDAL.insertMany(
           metadata.map(({ key, value }) => ({
-            identityOrgMembershipId: identityOrgMembership.id,
+            identityId: newIdentity.id,
+            orgId,
             key,
             value
           })),
@@ -159,11 +160,12 @@ export const identityServiceFactory = ({
         );
       }
       if (metadata) {
-        await identityMetadataDAL.delete({ identityOrgMembershipId: identityOrgMembership.id }, tx);
+        await identityMetadataDAL.delete({ orgId: identityOrgMembership.orgId, identityId: id }, tx);
         if (metadata.length) {
           await identityMetadataDAL.insertMany(
             metadata.map(({ key, value }) => ({
-              identityOrgMembershipId: identityOrgMembership.id,
+              identityId: newIdentity.id,
+              orgId: identityOrgMembership.orgId,
               key,
               value
             })),

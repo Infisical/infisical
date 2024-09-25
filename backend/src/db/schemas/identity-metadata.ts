@@ -11,8 +11,9 @@ export const IdentityMetadataSchema = z.object({
   id: z.string().uuid(),
   key: z.string(),
   value: z.string(),
-  userOrgMembershipId: z.string().uuid().nullable().optional(),
-  identityOrgMembershipId: z.string().uuid().nullable().optional(),
+  orgId: z.string().uuid(),
+  userId: z.string().uuid().nullable().optional(),
+  identityId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

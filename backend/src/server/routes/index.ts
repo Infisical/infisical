@@ -388,6 +388,7 @@ export const registerRoutes = async (
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
 
   const samlService = samlConfigServiceFactory({
+    identityMetadataDAL,
     permissionService,
     orgBotDAL,
     orgDAL,

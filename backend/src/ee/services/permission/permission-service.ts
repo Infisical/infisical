@@ -12,6 +12,7 @@ import {
 } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { objectify } from "@app/lib/fn";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -223,9 +224,20 @@ export const permissionServiceFactory = ({
       })) || [];
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false, strict: true });
+    const metadataKeyValuePair = objectify(
+      userProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+    );
     const interpolateRules = templatedRules(
-      { identity: { id: userProjectPermission.userId, username: userProjectPermission.username } },
+      {
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
       { data: false }
     );
     const permission = createMongoAbility<ProjectPermissionSet>(
@@ -275,9 +287,20 @@ export const permissionServiceFactory = ({
       })) || [];
 
     const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false, strict: true });
+    const metadataKeyValuePair = objectify(
+      identityProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+    );
     const interpolateRules = templatedRules(
-      { identity: { id: identityProjectPermission.identityId, username: identityProjectPermission.username } },
+      {
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
       { data: false }
     );
     const permission = createMongoAbility<ProjectPermissionSet>(

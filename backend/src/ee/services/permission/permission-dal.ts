@@ -168,6 +168,11 @@ export const permissionDALFactory = (db: TDbClient) => {
         })
         .join<TProjects>(TableName.Project, `${TableName.Project}.id`, db.raw("?", [projectId]))
         .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.Users}.id`, `${TableName.IdentityMetadata}.userId`)
+            .andOn(`${TableName.Organization}.id`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .select(
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("username").withSchema(TableName.Users).as("username"),
@@ -258,6 +263,9 @@ export const permissionDALFactory = (db: TDbClient) => {
             .withSchema(TableName.ProjectUserAdditionalPrivilege)
             .as("userAdditionalPrivilegesTemporaryAccessEndTime"),
           // general
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("orgId").withSchema(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("projectId")
@@ -357,6 +365,15 @@ export const permissionDALFactory = (db: TDbClient) => {
               temporaryAccessEndTime: userAdditionalPrivilegesTemporaryAccessEndTime,
               isTemporary: userAdditionalPrivilegesIsTemporary
             })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
           }
         ]
       });
@@ -419,6 +436,11 @@ export const permissionDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembership}.projectId`,
           `${TableName.Project}.id`
         )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`)
+            .andOn(`${TableName.Project}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .where("identityId", identityId)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.IdentityProjectMembershipRole))
@@ -448,7 +470,10 @@ export const permissionDALFactory = (db: TDbClient) => {
           db
             .ref("temporaryAccessEndTime")
             .withSchema(TableName.IdentityProjectAdditionalPrivilege)
-            .as("identityApTemporaryAccessEndTime")
+            .as("identityApTemporaryAccessEndTime"),
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
         );
 
       const permission = sqlNestRelationships({
@@ -494,6 +519,15 @@ export const permissionDALFactory = (db: TDbClient) => {
               temporaryAccessEndTime: identityApTemporaryAccessEndTime,
               temporaryAccessStartTime: identityApTemporaryAccessStartTime,
               isTemporary: identityApIsTemporary
+            })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]

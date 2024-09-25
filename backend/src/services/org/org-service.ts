@@ -79,7 +79,7 @@ type TOrgServiceFactoryDep = {
     "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne" | "findById">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   smtpService: TSmtpService;
@@ -413,11 +413,10 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
-    const foundMembership = await orgMembershipDAL.findOne({
-      id: membershipId,
-      orgId
-    });
+    const foundMembership = await orgMembershipDAL.findById(membershipId);
     if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (foundMembership.orgId !== orgId)
+      throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
     if (foundMembership.userId === userId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
@@ -444,11 +443,12 @@ export const orgServiceFactory = ({
       );
 
       if (metadata) {
-        await identityMetadataDAL.delete({ userOrgMembershipId: updatedOrgMembership.id }, tx);
+        await identityMetadataDAL.delete({ userId: updatedOrgMembership.userId, orgId }, tx);
         if (metadata.length) {
           await identityMetadataDAL.insertMany(
             metadata.map(({ key, value }) => ({
-              userOrgMembershipId: updatedOrgMembership.id,
+              userId: updatedOrgMembership.userId,
+              orgId,
               key,
               value
             })),
