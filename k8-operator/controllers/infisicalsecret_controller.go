@@ -187,12 +187,18 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&secretsv1alpha1.InfisicalSecret{}).
+		// For the Infisical Secret CRD we specifically watch for the update event, because we need to delete the entry in the resourceVariablesMap, so it will refresh the variables used to fetch secrets.
+		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				delete(resourceVariablesMap, string(e.ObjectNew.GetUID()))
+				return true
+			},
+		})).
+		// We only monitor the delete events for the Secret resource, so we can handle them in a finalizer.
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			handler.EnqueueRequestsFromMapFunc(r.handleManagedSecretDeletion),
 			builder.WithPredicates(predicate.Funcs{
-				// Always return true to ensure we process all delete events
 				DeleteFunc: func(e event.DeleteEvent) bool {
 					return true
 				},
