@@ -24,6 +24,9 @@ export const GROUPS = {
     id: "The id of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
+  GET_BY_ID: {
+    id: "The id of the group to fetch"
+  },
   DELETE_USER: {
     id: "The id of the group to remove the user from.",
     username: "The username of the user to remove from the group."

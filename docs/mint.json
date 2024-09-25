@@ -547,6 +547,19 @@
           ]
         },
         {
+          "group": "Groups",
+          "pages": [
+            "api-reference/endpoints/groups/create",
+            "api-reference/endpoints/groups/update",
+            "api-reference/endpoints/groups/delete",
+            "api-reference/endpoints/groups/get",
+            "api-reference/endpoints/groups/get-by-id",
+            "api-reference/endpoints/groups/add-group-user",
+            "api-reference/endpoints/groups/remove-group-user",
+            "api-reference/endpoints/groups/list-group-users"
+          ]
+        },
+        {
           "group": "Organizations",
           "pages": [
             "api-reference/endpoints/organizations/memberships",
@@ -575,6 +588,16 @@
             "api-reference/endpoints/project-users/memberships",
             "api-reference/endpoints/project-users/get-by-username",
             "api-reference/endpoints/project-users/update-membership"
+          ]
+        },
+        {
+          "group": "Project Groups",
+          "pages": [
+            "api-reference/endpoints/project-groups/create",
+            "api-reference/endpoints/project-groups/delete",
+            "api-reference/endpoints/project-groups/get-by-id",
+            "api-reference/endpoints/project-groups/list",
+            "api-reference/endpoints/project-groups/update"
           ]
         },
         {
