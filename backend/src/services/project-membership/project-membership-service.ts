@@ -8,7 +8,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
@@ -129,7 +129,7 @@ export const projectMembershipServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
-    if (!membership) throw new BadRequestError({ message: `Project membership not found for user ${username}` });
+    if (!membership) throw new NotFoundError({ message: `Project membership not found for user ${username}` });
     return membership;
   };
 

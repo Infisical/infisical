@@ -75,7 +75,14 @@ type TScimServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "findAllGroupMembers" | "delete" | "findGroups" | "transaction" | "updateById" | "update"
+    | "create"
+    | "findOne"
+    | "findAllGroupPossibleMembers"
+    | "delete"
+    | "findGroups"
+    | "transaction"
+    | "updateById"
+    | "update"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   userGroupMembershipDAL: Pick<
@@ -775,7 +782,7 @@ export const scimServiceFactory = ({
       });
     }
 
-    const users = await groupDAL.findAllGroupMembers({
+    const users = await groupDAL.findAllGroupPossibleMembers({
       orgId: group.orgId,
       groupId: group.id
     });

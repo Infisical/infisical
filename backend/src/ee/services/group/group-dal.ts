@@ -60,7 +60,7 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findAllGroupMembers = async ({
+  const findAllGroupPossibleMembers = async ({
     orgId,
     groupId,
     offset = 0,
@@ -125,7 +125,7 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     findGroups,
     findByOrgId,
-    findAllGroupMembers,
+    findAllGroupPossibleMembers,
     ...groupOrm
   };
 };

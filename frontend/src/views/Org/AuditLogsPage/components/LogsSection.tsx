@@ -44,7 +44,7 @@ export const LogsSection = ({
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
-  const { control, reset, watch } = useForm<AuditLogFilterFormData>({
+  const { control, reset, watch, setValue } = useForm<AuditLogFilterFormData>({
     resolver: yupResolver(auditLogFilterFormSchema),
     defaultValues: {
       projectId: undefined,
@@ -79,6 +79,7 @@ export const LogsSection = ({
           className={filterClassName}
           presets={presets}
           control={control}
+          setValue={setValue}
           watch={watch}
           reset={reset}
         />

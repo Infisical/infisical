@@ -189,6 +189,22 @@ export const useGetImportedSecretsAllEnvs = ({
     }))
   });
 
+  const getEnvImportedSecretKeyCount = useCallback(
+    (env: string) => {
+      const selectedEnvIndex = environments.indexOf(env);
+      let totalSecrets = 0;
+
+      if (selectedEnvIndex !== -1) {
+        secretImports?.[selectedEnvIndex]?.data?.forEach((secret) => {
+          totalSecrets += secret.secrets.length;
+        });
+      }
+
+      return totalSecrets;
+    },
+    [(secretImports || []).map((response) => response.data)]
+  );
+
   const isImportedSecretPresentInEnv = useCallback(
     (envSlug: string, secretName: string) => {
       const selectedEnvIndex = environments.indexOf(envSlug);
@@ -226,7 +242,12 @@ export const useGetImportedSecretsAllEnvs = ({
     [(secretImports || []).map((response) => response.data)]
   );
 
-  return { secretImports, isImportedSecretPresentInEnv, getImportedSecretByKey };
+  return {
+    secretImports,
+    isImportedSecretPresentInEnv,
+    getImportedSecretByKey,
+    getEnvImportedSecretKeyCount
+  };
 };
 
 export const useGetImportedFoldersByEnv = ({
