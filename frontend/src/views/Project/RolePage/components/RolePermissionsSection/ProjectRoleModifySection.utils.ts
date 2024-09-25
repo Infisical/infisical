@@ -259,16 +259,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretFolders]: {
     title: "Secret Folders",
-    actions: [{ label: "Read", value: "read" }]
+    actions: [{ label: "Read Only", value: "read" }]
   },
   [ProjectPermissionSub.Kms]: {
     title: "KMS",
-    actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
-    ]
+    actions: [{ label: "Modify", value: "edit" }]
   },
   [ProjectPermissionSub.Integrations]: {
     title: "Integrations",

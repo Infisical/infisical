@@ -190,7 +190,6 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
-
   const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
 
   useEffect(() => {
@@ -523,6 +522,7 @@ export const SecretOverviewPage = () => {
     []
   );
 
+  console.log(isWorkspaceLoading, isProjectV3, isOverviewLoading);
   if (isWorkspaceLoading || (isProjectV3 && isOverviewLoading)) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">

@@ -44,7 +44,6 @@ export const SecretPermissionConditions = ({ position = 0 }: Props) => {
                     >
                       <SelectItem value="environment">Environment</SelectItem>
                       <SelectItem value="secretPath">Secret Path</SelectItem>
-                      <SelectItem value="secretName">Secret Name</SelectItem>
                     </Select>
                   </FormControl>
                 )}
@@ -69,11 +68,7 @@ export const SecretPermissionConditions = ({ position = 0 }: Props) => {
                       <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
                       <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
                       <SelectItem value={PermissionConditionOperators.$GLOB}>Glob Match</SelectItem>
-                      <SelectItem value={PermissionConditionOperators.$REGEX}>
-                        Regex Match
-                      </SelectItem>
                       <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
-                      <SelectItem value={PermissionConditionOperators.$ALL}>All</SelectItem>
                     </Select>
                   </FormControl>
                 )}
@@ -107,21 +102,23 @@ export const SecretPermissionConditions = ({ position = 0 }: Props) => {
           </div>
         ))}
       </div>
-      <Button
-        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-        variant="star"
-        size="xs"
-        className="mt-3"
-        onClick={() =>
-          items.append({
-            lhs: "environment",
-            operator: PermissionConditionOperators.$EQ,
-            rhs: ""
-          })
-        }
-      >
-        New Condition
-      </Button>
+      <div>
+        <Button
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          variant="star"
+          size="xs"
+          className="mt-3"
+          onClick={() =>
+            items.append({
+              lhs: "environment",
+              operator: PermissionConditionOperators.$EQ,
+              rhs: ""
+            })
+          }
+        >
+          New Condition
+        </Button>
+      </div>
     </div>
   );
 };
