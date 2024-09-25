@@ -122,20 +122,16 @@ export const superAdminServiceFactory = ({
       }
     }
 
-    const encryptWithRoot = await kmsService.encryptWithRootKey();
+    const encryptWithRoot = kmsService.encryptWithRootKey();
     if (data.slackClientId) {
-      const { cipherTextBlob: encryptedClientId } = await encryptWithRoot({
-        plainText: Buffer.from(data.slackClientId)
-      });
+      const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
 
       updatedData.encryptedSlackClientId = encryptedClientId;
       updatedData.slackClientId = undefined;
     }
 
     if (data.slackClientSecret) {
-      const { cipherTextBlob: encryptedClientSecret } = await encryptWithRoot({
-        plainText: Buffer.from(data.slackClientSecret)
-      });
+      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.slackClientSecret));
 
       updatedData.encryptedSlackClientSecret = encryptedClientSecret;
       updatedData.slackClientSecret = undefined;
@@ -270,14 +266,14 @@ export const superAdminServiceFactory = ({
     let clientId = "";
     let clientSecret = "";
 
-    const decrypt = await kmsService.decryptWithRootKey();
+    const decrypt = kmsService.decryptWithRootKey();
 
     if (serverCfg.encryptedSlackClientId) {
-      clientId = (await decrypt({ cipherTextBlob: serverCfg.encryptedSlackClientId })).toString();
+      clientId = decrypt(serverCfg.encryptedSlackClientId).toString();
     }
 
     if (serverCfg.encryptedSlackClientSecret) {
-      clientSecret = (await decrypt({ cipherTextBlob: serverCfg.encryptedSlackClientSecret })).toString();
+      clientSecret = decrypt(serverCfg.encryptedSlackClientSecret).toString();
     }
 
     return {

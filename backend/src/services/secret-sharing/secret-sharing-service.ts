@@ -65,11 +65,9 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
-    const encryptWithRoot = await kmsService.encryptWithRootKey();
+    const encryptWithRoot = kmsService.encryptWithRootKey();
 
-    const encryptedSecret = await encryptWithRoot({
-      plainText: Buffer.from(secretValue)
-    });
+    const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
     const hashedHex = crypto.createHash("sha256").update(secretValue).digest("hex").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
@@ -77,10 +75,8 @@ export const secretSharingServiceFactory = ({
       iv: null,
       tag: null,
       encryptedValue: null,
-
-      encryptedSecret: encryptedSecret.cipherTextBlob,
+      encryptedSecret,
       hashedHex,
-
       name,
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
@@ -117,10 +113,8 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
-    const encryptWithRoot = await kmsService.encryptWithRootKey();
-    const encrypted = await encryptWithRoot({
-      plainText: Buffer.from(secretValue)
-    });
+    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const hashedHex = crypto.createHash("sha256").update(secretValue).digest("hex").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
@@ -130,7 +124,7 @@ export const secretSharingServiceFactory = ({
       iv: null,
       tag: null,
       hashedHex,
-      encryptedSecret: encrypted.cipherTextBlob,
+      encryptedSecret,
 
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
@@ -242,11 +236,8 @@ export const secretSharingServiceFactory = ({
     // If encryptedSecret is set, we know that this secret has been encrypted using KMS, and we can therefore do server-side decryption.
     let decryptedSecretValue: Buffer | undefined;
     if (sharedSecret.encryptedSecret) {
-      const decrypt = await kmsService.decryptWithRootKey();
-
-      decryptedSecretValue = await decrypt({
-        cipherTextBlob: sharedSecret.encryptedSecret
-      });
+      const decryptWithRoot = kmsService.decryptWithRootKey();
+      decryptedSecretValue = decryptWithRoot(sharedSecret.encryptedSecret);
     }
 
     // decrement when we are sure the user will view secret.

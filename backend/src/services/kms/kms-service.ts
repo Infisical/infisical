@@ -208,20 +208,20 @@ export const kmsServiceFactory = ({
     return org.kmsDefaultKeyId;
   };
 
-  const encryptWithRootKey = async () => {
+  const encryptWithRootKey = () => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    return ({ plainText }: { plainText: Buffer }) => {
-      const encryptedPlainTextBlob = cipher.encrypt(plainText, ROOT_ENCRYPTION_KEY);
 
-      return Promise.resolve({ cipherTextBlob: encryptedPlainTextBlob });
+    return (plainTextBuffer: Buffer) => {
+      const encryptedBuffer = cipher.encrypt(plainTextBuffer, ROOT_ENCRYPTION_KEY);
+      return encryptedBuffer;
     };
   };
 
-  const decryptWithRootKey = async () => {
+  const decryptWithRootKey = () => {
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-    return ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => {
-      const decryptedBlob = cipher.decrypt(cipherTextBlob, ROOT_ENCRYPTION_KEY);
-      return Promise.resolve(decryptedBlob);
+
+    return (cipherTextBuffer: Buffer) => {
+      return cipher.decrypt(cipherTextBuffer, ROOT_ENCRYPTION_KEY);
     };
   };
 
