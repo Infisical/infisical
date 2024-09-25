@@ -46,6 +46,7 @@ export type UserEnc = {
 
 export type OrgUser = {
   id: string;
+  metadata: { key: string; value: string; id: string }[];
   user: {
     username: string;
     email?: string;
@@ -142,6 +143,7 @@ export type UpdateOrgMembershipDTO = {
   membershipId: string;
   role?: string;
   isActive?: boolean;
+  metadata?: { key: string; value: string }[];
 };
 
 export type DeletOrgMembershipDTO = {

@@ -29,7 +29,11 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().describe(IDENTITIES.CREATE.name),
         organizationId: z.string().trim().describe(IDENTITIES.CREATE.organizationId),
-        role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role)
+        role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role),
+        metadata: z
+          .object({ key: z.string().trim().min(1), value: z.string().trim().min(1) })
+          .array()
+          .optional()
       }),
       response: {
         200: z.object({
@@ -93,7 +97,11 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         name: z.string().trim().optional().describe(IDENTITIES.UPDATE.name),
-        role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role)
+        role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role),
+        metadata: z
+          .object({ key: z.string().trim().min(1), value: z.string().trim().min(1) })
+          .array()
+          .optional()
       }),
       response: {
         200: z.object({
@@ -193,6 +201,14 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           identity: IdentityOrgMembershipsSchema.extend({
+            metadata: z
+              .object({
+                key: z.string().trim().min(1),
+                id: z.string().trim().min(1),
+                value: z.string().trim().min(1)
+              })
+              .array()
+              .optional(),
             customRole: OrgRolesSchema.pick({
               id: true,
               name: true,

@@ -67,12 +67,13 @@ export const useCreateIdentity = () => {
 export const useUpdateIdentity = () => {
   const queryClient = useQueryClient();
   return useMutation<Identity, {}, UpdateIdentityDTO>({
-    mutationFn: async ({ identityId, name, role }) => {
+    mutationFn: async ({ identityId, name, role, metadata }) => {
       const {
         data: { identity }
       } = await apiRequest.patch(`/api/v1/identities/${identityId}`, {
         name,
-        role
+        role,
+        metadata
       });
 
       return identity;

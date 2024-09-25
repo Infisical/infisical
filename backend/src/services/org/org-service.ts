@@ -37,6 +37,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -72,6 +73,7 @@ type TOrgServiceFactoryDep = {
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
   projectDAL: TProjectDALFactory;
+  identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
     "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
@@ -115,7 +117,8 @@ export const orgServiceFactory = ({
   projectRoleDAL,
   samlConfigDAL,
   projectBotDAL,
-  projectUserMembershipRoleDAL
+  projectUserMembershipRoleDAL,
+  identityMetadataDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -404,7 +407,8 @@ export const orgServiceFactory = ({
     userId,
     membershipId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    metadata
   }: TUpdateOrgMembershipDTO) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
@@ -418,6 +422,8 @@ export const orgServiceFactory = ({
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
+    let userRole = role;
+    let userRoleId: string | null = null;
     if (role && isCustomRole) {
       const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
@@ -428,17 +434,30 @@ export const orgServiceFactory = ({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });
 
-      const [membership] = await orgDAL.updateMembership(
-        { id: membershipId, orgId },
-        {
-          role: OrgMembershipRole.Custom,
-          roleId: customRole.id
-        }
-      );
-      return membership;
+      userRole = OrgMembershipRole.Custom;
+      userRoleId = customRole.id;
     }
+    const membership = await orgDAL.transaction(async (tx) => {
+      const [updatedOrgMembership] = await orgDAL.updateMembership(
+        { id: membershipId, orgId },
+        { role: userRole, roleId: userRoleId, isActive }
+      );
 
-    const [membership] = await orgDAL.updateMembership({ id: membershipId, orgId }, { role, roleId: null, isActive });
+      if (metadata) {
+        await identityMetadataDAL.delete({ userOrgMembershipId: updatedOrgMembership.id }, tx);
+        if (metadata.length) {
+          await identityMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              userOrgMembershipId: updatedOrgMembership.id,
+              key,
+              value
+            })),
+            tx
+          );
+        }
+      }
+      return updatedOrgMembership;
+    });
     return membership;
   };
   /*

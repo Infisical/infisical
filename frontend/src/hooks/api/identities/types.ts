@@ -37,6 +37,7 @@ export type IdentityMembershipOrg = {
   id: string;
   identity: Identity;
   organization: string;
+  metadata: { key: string; value: string; id: string }[];
   role: "admin" | "member" | "viewer" | "no-access" | "custom";
   customRole?: TOrgRole;
   createdAt: string;
@@ -79,6 +80,7 @@ export type CreateIdentityDTO = {
   name: string;
   organizationId: string;
   role?: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export type UpdateIdentityDTO = {
@@ -86,6 +88,7 @@ export type UpdateIdentityDTO = {
   name?: string;
   role?: string;
   organizationId: string;
+  metadata?: { key: string; value: string }[];
 };
 
 export type DeleteIdentityDTO = {
