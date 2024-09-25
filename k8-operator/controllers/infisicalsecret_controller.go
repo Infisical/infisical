@@ -68,8 +68,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// Remove finalizers if they exist. This is to support previous InfisicalSecret CRD's that have finalizers on them.
 	// In order to delete secrets with finalizers, we first remove the finalizers so we can use the simplified and improved deletion process
 	if !infisicalSecretCR.ObjectMeta.DeletionTimestamp.IsZero() && len(infisicalSecretCR.ObjectMeta.Finalizers) > 0 {
-		fmt.Printf("Infisical Secret %s is being deleted\n", infisicalSecretCR.Name)
-		fmt.Printf("Removing finalizers from Infisical Secret %s\n", infisicalSecretCR.Name)
 		infisicalSecretCR.ObjectMeta.Finalizers = []string{}
 		if err := r.Update(ctx, &infisicalSecretCR); err != nil {
 			fmt.Printf("Error removing finalizers from Infisical Secret %s: %v\n", infisicalSecretCR.Name, err)
