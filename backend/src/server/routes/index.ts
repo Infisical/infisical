@@ -928,7 +928,8 @@ export const registerRoutes = async (
     permissionService,
     projectEnvDAL,
     projectMembershipDAL,
-    projectDAL
+    projectDAL,
+    userDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
