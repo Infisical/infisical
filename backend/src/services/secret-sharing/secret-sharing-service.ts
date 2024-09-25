@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import bcrypt from "bcrypt";
 
 import { TSecretSharing } from "@app/db/schemas";
@@ -5,6 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
@@ -19,6 +22,7 @@ type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
   orgDAL: TOrgDALFactory;
+  kmsService: TKmsServiceFactory;
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
@@ -26,7 +30,8 @@ export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServic
 export const secretSharingServiceFactory = ({
   permissionService,
   secretSharingDAL,
-  orgDAL
+  orgDAL,
+  kmsService
 }: TSecretSharingServiceFactoryDep) => {
   const createSharedSecret = async ({
     actor,
@@ -34,10 +39,7 @@ export const secretSharingServiceFactory = ({
     orgId,
     actorAuthMethod,
     actorOrgId,
-    encryptedValue,
-    hashedHex,
-    iv,
-    tag,
+    secretValue,
     name,
     password,
     accessType,
@@ -59,19 +61,28 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Expiration date cannot be more than 30 days" });
     }
 
-    // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)
-    if (encryptedValue.length > 13000) {
+    if (secretValue.length > 10_000) {
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    const encryptWithRoot = await kmsService.encryptWithRootKey();
+
+    const encryptedSecret = await encryptWithRoot({
+      plainText: Buffer.from(secretValue)
+    });
+    const hashedHex = crypto.createHash("sha256").update(secretValue).digest("hex").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     const newSharedSecret = await secretSharingDAL.create({
+      iv: null,
+      tag: null,
+      encryptedValue: null,
+
+      encryptedSecret: encryptedSecret.cipherTextBlob,
+      hashedHex,
+
       name,
       password: hashedPassword,
-      encryptedValue,
-      hashedHex,
-      iv,
-      tag,
       expiresAt: new Date(expiresAt),
       expiresAfterViews,
       userId: actorId,
@@ -79,15 +90,12 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: newSharedSecret.id };
+    return { id: newSharedSecret.id, hashedHex: newSharedSecret.hashedHex };
   };
 
   const createPublicSharedSecret = async ({
     password,
-    encryptedValue,
-    hashedHex,
-    iv,
-    tag,
+    secretValue,
     expiresAt,
     expiresAfterViews,
     accessType
@@ -104,24 +112,33 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Expiration date cannot exceed more than 30 days" });
     }
 
-    // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)
-    if (encryptedValue.length > 13000) {
+    // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)n
+    if (secretValue.length > 10_000) {
       throw new BadRequestError({ message: "Shared secret value too long" });
     }
 
+    const encryptWithRoot = await kmsService.encryptWithRootKey();
+    const encrypted = await encryptWithRoot({
+      plainText: Buffer.from(secretValue)
+    });
+
+    const hashedHex = crypto.createHash("sha256").update(secretValue).digest("hex").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     const newSharedSecret = await secretSharingDAL.create({
-      password: hashedPassword,
-      encryptedValue,
+      encryptedValue: null,
+      iv: null,
+      tag: null,
       hashedHex,
-      iv,
-      tag,
+      encryptedSecret: encrypted.cipherTextBlob,
+
+      password: hashedPassword,
       expiresAt: new Date(expiresAt),
       expiresAfterViews,
       accessType
     });
 
-    return { id: newSharedSecret.id };
+    return { id: newSharedSecret.id, hashedHex: newSharedSecret.hashedHex };
   };
 
   const getSharedSecrets = async ({
@@ -222,6 +239,16 @@ export const secretSharingServiceFactory = ({
       }
     }
 
+    // If encryptedSecret is set, we know that this secret has been encrypted using KMS, and we can therefore do server-side decryption.
+    let decryptedSecretValue: Buffer | undefined;
+    if (sharedSecret.encryptedSecret) {
+      const decrypt = await kmsService.decryptWithRootKey();
+
+      decryptedSecretValue = await decrypt({
+        cipherTextBlob: sharedSecret.encryptedSecret
+      });
+    }
+
     // decrement when we are sure the user will view secret.
     await $decrementSecretViewCount(sharedSecret, sharedSecretId);
 
@@ -229,6 +256,9 @@ export const secretSharingServiceFactory = ({
       isPasswordProtected,
       secret: {
         ...sharedSecret,
+        ...(decryptedSecretValue && {
+          secretValue: Buffer.from(decryptedSecretValue).toString()
+        }),
         orgName:
           sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
             ? orgName

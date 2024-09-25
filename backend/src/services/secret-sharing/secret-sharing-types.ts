@@ -19,10 +19,7 @@ export type TSharedSecretPermission = {
 };
 
 export type TCreatePublicSharedSecretDTO = {
-  encryptedValue: string;
-  hashedHex: string;
-  iv: string;
-  tag: string;
+  secretValue: string;
   expiresAt: string;
   expiresAfterViews?: number;
   password?: string;

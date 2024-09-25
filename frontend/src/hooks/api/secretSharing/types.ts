@@ -13,13 +13,15 @@ export type TSharedSecret = {
   tag: string;
 };
 
+export type TCreatedSharedSecret = {
+  id: string;
+  hashedHex: string;
+};
+
 export type TCreateSharedSecretRequest = {
   name?: string;
   password?: string;
-  encryptedValue: string;
-  hashedHex: string;
-  iv: string;
-  tag: string;
+  secretValue: string;
   expiresAt: Date;
   expiresAfterViews?: number;
   accessType?: SecretSharingAccessType;
@@ -28,6 +30,7 @@ export type TCreateSharedSecretRequest = {
 export type TViewSharedSecretResponse = {
   isPasswordProtected: boolean;
   secret: {
+    secretValue?: string;
     encryptedValue: string;
     iv: string;
     tag: string;
@@ -44,4 +47,3 @@ export enum SecretSharingAccessType {
   Anyone = "anyone",
   Organization = "organization"
 }
-
