@@ -48,7 +48,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       params: z.object({
-        id: z.string()
+        id: z.string().trim().describe(GROUPS.GET_BY_ID.id)
       }),
       response: {
         200: GroupsSchema
