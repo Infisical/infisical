@@ -317,7 +317,10 @@ export const accessApprovalPolicyServiceFactory = ({
         for (const groupId of groupApprovers) {
           usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
         }
-        const verifyGroupApprovers = (await Promise.all(usersPromises)).flat().map((user) => user.id);
+        const verifyGroupApprovers = (await Promise.all(usersPromises))
+          .flat()
+          .filter((user) => user.isPartOfGroup)
+          .map((user) => user.id);
 
         await verifyApprovers({
           projectId: accessApprovalPolicy.projectId,
