@@ -30,7 +30,10 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findOne">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "update" | "delete" | "findAllGroupMembers" | "findById">;
+  groupDAL: Pick<
+    TGroupDALFactory,
+    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById"
+  >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
   userGroupMembershipDAL: Pick<
@@ -242,7 +245,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const users = await groupDAL.findAllGroupMembers({
+    const users = await groupDAL.findAllGroupPossibleMembers({
       orgId: group.orgId,
       groupId: group.id,
       offset,
