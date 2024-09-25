@@ -71,7 +71,7 @@ export const secretApprovalPolicyServiceFactory = ({
       .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
       .filter(Boolean) as string[];
 
-    if (!groupApprovers && approvals > approvers.length)
+    if (!groupApprovers.length && approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
