@@ -13,6 +13,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -31,6 +33,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_USER_MEMBERSHIPS.organizationId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           users: OrgMembershipsSchema.merge(
             z.object({
@@ -79,6 +82,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim().describe(ORGANIZATIONS.GET_PROJECTS.organizationId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspaces: z
             .object({
@@ -181,6 +185,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         isActive: z.boolean().optional().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.isActive)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           membership: OrgMembershipsSchema
         })
@@ -220,6 +225,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipId: z.string().trim().describe(ORGANIZATIONS.DELETE_USER_MEMBERSHIP.membershipId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           membership: OrgMembershipsSchema
         })

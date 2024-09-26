@@ -6,7 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { DefaultResponseErrorsSchema, integrationAuthPubSchema } from "../sanitizedSchemas";
 
 export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -64,6 +64,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.GET.integrationAuthId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           integrationAuth: integrationAuthPubSchema
         })
@@ -100,6 +101,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         projectId: z.string().trim().describe(INTEGRATION_AUTH.DELETE.projectId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           integrationAuth: integrationAuthPubSchema.array()
         })
@@ -148,6 +150,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         integrationAuthId: z.string().trim().describe(INTEGRATION_AUTH.DELETE_BY_ID.integrationAuthId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           integrationAuth: integrationAuthPubSchema
         })
@@ -251,6 +254,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         refreshToken: z.string().trim().optional().describe(INTEGRATION_AUTH.CREATE_ACCESS_TOKEN.refreshToken)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           integrationAuth: integrationAuthPubSchema
         })

@@ -8,6 +8,8 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -85,6 +87,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
           .describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           workspace: z.string(),
@@ -152,6 +155,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           workspace: z.string(),
@@ -213,6 +217,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           workspace: z.string(),

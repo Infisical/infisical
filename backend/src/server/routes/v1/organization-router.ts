@@ -18,6 +18,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -114,6 +116,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
 
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           auditLogs: AuditLogsSchema.omit({
             eventMetadata: true,

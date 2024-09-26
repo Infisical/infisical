@@ -7,6 +7,8 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -30,6 +32,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         roleSlugs: z.string().array().optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           memberships: ProjectMembershipsSchema.array()
         })
@@ -92,6 +95,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         usernames: z.string().array().default([]).describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           memberships: ProjectMembershipsSchema.array()
         })

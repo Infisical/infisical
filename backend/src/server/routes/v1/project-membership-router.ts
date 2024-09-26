@@ -15,6 +15,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -33,6 +35,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         workspaceId: z.string().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIPS.workspaceId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           memberships: ProjectMembershipsSchema.extend({
             user: UsersSchema.pick({
@@ -94,6 +97,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         username: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.username)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           membership: ProjectMembershipsSchema.extend({
             user: UsersSchema.pick({
@@ -227,6 +231,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           .describe(PROJECT_USERS.UPDATE_USER_MEMBERSHIP.roles)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           roles: ProjectUserMembershipRolesSchema.array()
         })

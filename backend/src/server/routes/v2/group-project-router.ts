@@ -13,6 +13,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerGroupProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -63,6 +65,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           path: ["role", "roles"]
         }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           groupMembership: GroupProjectMembershipsSchema
         })
@@ -119,6 +122,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           .describe(PROJECTS.UPDATE_GROUP_IN_PROJECT.roles)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           roles: ProjectUserMembershipRolesSchema.array()
         })
@@ -158,6 +162,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         groupId: z.string().trim().describe(PROJECTS.REMOVE_GROUP_FROM_PROJECT.groupId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           groupMembership: GroupProjectMembershipsSchema
         })
@@ -195,6 +200,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         projectId: z.string().trim().describe(PROJECTS.LIST_GROUPS_IN_PROJECT.projectId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           groupMemberships: z
             .object({
@@ -254,6 +260,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         groupId: z.string().trim()
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           groupMembership: z.object({
             id: z.string(),

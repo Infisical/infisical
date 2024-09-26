@@ -9,6 +9,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateGcpAuthField } from "@app/services/identity-gcp-auth/identity-gcp-auth-validators";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -23,6 +25,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         jwt: z.string()
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -109,6 +112,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(GCP_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityGcpAuth: IdentityGcpAuthsSchema
         })
@@ -190,6 +194,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
           .describe(GCP_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityGcpAuth: IdentityGcpAuthsSchema
         })
@@ -246,6 +251,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().describe(GCP_AUTH.RETRIEVE.identityId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityGcpAuth: IdentityGcpAuthsSchema
         })
@@ -293,6 +299,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().describe(GCP_AUTH.REVOKE.identityId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityGcpAuth: IdentityGcpAuthsSchema
         })

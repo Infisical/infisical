@@ -8,6 +8,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 
+import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+
 export const sanitizedClientSecretSchema = IdentityUaClientSecretsSchema.pick({
   id: true,
   createdAt: true,
@@ -35,6 +37,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -130,6 +133,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityUniversalAuth: IdentityUniversalAuthsSchema
         })
@@ -222,6 +226,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           .describe(UNIVERSAL_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityUniversalAuth: IdentityUniversalAuthsSchema
         })
@@ -275,6 +280,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(UNIVERSAL_AUTH.RETRIEVE.identityId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityUniversalAuth: IdentityUniversalAuthsSchema
         })
@@ -322,6 +328,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(UNIVERSAL_AUTH.REVOKE.identityId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityUniversalAuth: IdentityUniversalAuthsSchema
         })
@@ -374,6 +381,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         ttl: z.number().min(0).max(315360000).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.ttl)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           clientSecret: z.string(),
           clientSecretData: sanitizedClientSecretSchema
@@ -425,6 +433,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(UNIVERSAL_AUTH.LIST_CLIENT_SECRETS.identityId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           clientSecretData: sanitizedClientSecretSchema.array()
         })
@@ -474,6 +483,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         clientSecretId: z.string().describe(UNIVERSAL_AUTH.GET_CLIENT_SECRET.clientSecretId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           clientSecretData: sanitizedClientSecretSchema
         })
@@ -524,6 +534,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         clientSecretId: z.string().describe(UNIVERSAL_AUTH.REVOKE_CLIENT_SECRET.clientSecretId)
       }),
       response: {
+        ...DefaultResponseErrorsSchema,
         200: z.object({
           clientSecretData: sanitizedClientSecretSchema
         })
