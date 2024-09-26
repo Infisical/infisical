@@ -13,7 +13,7 @@ export const decryptEnvKeyData = async (decryptionKey: string, encryptedJson: { 
   const decrypted = secretbox.open(encryptedData, nonce, key);
 
   if (!decrypted) {
-    throw new Error("Decryption failed");
+    throw new Error("Decryption failed, please check the entered encryption key");
   }
 
   const decryptedJson = encodeUTF8(decrypted);
