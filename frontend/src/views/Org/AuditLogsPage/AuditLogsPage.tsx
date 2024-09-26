@@ -19,7 +19,7 @@ export const AuditLogsPage = withPermission(
             )}
             <div />
           </div>
-          <LogsSection filterClassName="static p-2" showFilters={!window.location.origin.includes("https://app.infisical.com")} isOrgAuditLogs />
+          {!window.location.origin.includes("https://app.infisical.com") && <LogsSection filterClassName="static p-2" showFilters isOrgAuditLogs />}
         </div>
       </div>
     );
