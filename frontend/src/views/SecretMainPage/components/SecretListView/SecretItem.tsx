@@ -549,7 +549,15 @@ export const SecretItem = memo(
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: -10, opacity: 0 }}
                   >
-                    <Tooltip content={errors.key ? errors.key?.message : "Save"}>
+                    <Tooltip
+                      content={
+                        Object.keys(errors || {}).length
+                          ? Object.entries(errors)
+                              .map(([key, { message }]) => `Field ${key}: ${message}`)
+                              .join("\n")
+                          : "Save"
+                      }
+                    >
                       <IconButton
                         ariaLabel="more"
                         variant="plain"
@@ -568,7 +576,7 @@ export const SecretItem = memo(
                             symbolName={FontAwesomeSpriteName.Check}
                             className={twMerge(
                               "h-4 w-4 text-primary",
-                              errors.key && "text-mineshaft-300"
+                              Boolean(Object.keys(errors || {}).length) && "text-red"
                             )}
                           />
                         )}
