@@ -91,6 +91,19 @@ export const SecretMainPage = () => {
   });
   const debouncedSearchFilter = useDebounce(filter.searchFilter);
 
+  // change filters if permissions change at different paths/env
+  useEffect(() => {
+    setFilter((prev) => ({
+      ...prev,
+      include: {
+        [RowType.Folder]: true,
+        [RowType.Import]: canReadSecret,
+        [RowType.DynamicSecret]: canReadSecret,
+        [RowType.Secret]: canReadSecret
+      }
+    }));
+  }, [canReadSecret]);
+
   useEffect(() => {
     if (
       !isWorkspaceLoading &&

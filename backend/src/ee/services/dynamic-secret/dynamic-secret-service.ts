@@ -313,23 +313,26 @@ export const dynamicSecretServiceFactory = ({
     projectId,
     path,
     environmentSlugs,
-    search
+    search,
+    isInternal
   }: TListDynamicSecretsMultiEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
 
-    // verify user has access to each env in request
-    environmentSlugs.forEach((environmentSlug) =>
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
-      )
-    );
+      // verify user has access to each env in request
+      environmentSlugs.forEach((environmentSlug) =>
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+        )
+      );
+    }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, path);
     if (!folders.length) throw new BadRequestError({ message: "Folders not found" });
@@ -434,23 +437,26 @@ export const dynamicSecretServiceFactory = ({
     path,
     environmentSlugs,
     projectId,
+    isInternal,
     ...params
   }: TListDynamicSecretsMultiEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
 
-    // verify user has access to each env in request
-    environmentSlugs.forEach((environmentSlug) =>
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
-      )
-    );
+      // verify user has access to each env in request
+      environmentSlugs.forEach((environmentSlug) =>
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+        )
+      );
+    }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, path);
     if (!folders.length) throw new BadRequestError({ message: "Folders not found" });
