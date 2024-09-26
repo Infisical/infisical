@@ -14,14 +14,12 @@ export const AuditLogsPage = withPermission(
             {(window.location.origin.includes("https://app.infisical.com") ||
               window.location.origin.includes("https://gamma.infisical.com")) && (
               <NoticeBanner title="The audit logs page is in maintenance" className="mt-4">
-                We are currently working on improving the performance of querying audit logs.
-                However, please note that audit logs are still being published as usual, so there’s
-                no disruption to log generation.
+                We are currently working on improving the performance of audit log queries. During this time, querying logs is temporarily disabled. However, audit logs are still being generated as usual, so there is no disruption to log collection.
               </NoticeBanner>
             )}
             <div />
           </div>
-          <LogsSection filterClassName="static p-2" showFilters isOrgAuditLogs />
+          <LogsSection filterClassName="static p-2" showFilters={!window.location.origin.includes("https://app.infisical.com")} isOrgAuditLogs />
         </div>
       </div>
     );
