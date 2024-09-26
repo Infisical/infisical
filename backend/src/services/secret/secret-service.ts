@@ -1011,7 +1011,7 @@ export const secretServiceFactory = ({
   }: Pick<
     TGetSecretsRawDTO,
     "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search"
-  > & { environments: string[] }) => {
+  > & { environments: string[]; isInternal?: boolean }) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     if (!shouldUseSecretV2Bridge)
@@ -1045,6 +1045,7 @@ export const secretServiceFactory = ({
     ...params
   }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "tagSlugs"> & {
     environments: string[];
+    isInternal?: boolean;
   }) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 

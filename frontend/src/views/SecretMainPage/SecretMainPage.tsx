@@ -91,6 +91,19 @@ export const SecretMainPage = () => {
   });
   const debouncedSearchFilter = useDebounce(filter.searchFilter);
 
+  // change filters if permissions change at different paths/env
+  useEffect(() => {
+    setFilter((prev) => ({
+      ...prev,
+      include: {
+        [RowType.Folder]: true,
+        [RowType.Import]: canReadSecret,
+        [RowType.DynamicSecret]: canReadSecret,
+        [RowType.Secret]: canReadSecret
+      }
+    }));
+  }, [canReadSecret]);
+
   useEffect(() => {
     if (
       !isWorkspaceLoading &&
@@ -254,15 +267,7 @@ export const SecretMainPage = () => {
           <NavHeader
             pageName={t("dashboard.title")}
             currentEnv={environment}
-            userAvailableEnvs={currentWorkspace?.environments.filter(({ slug }) =>
-              permission.can(
-                ProjectPermissionActions.Read,
-                subject(ProjectPermissionSub.Secrets, {
-                  environment: slug,
-                  secretPath
-                })
-              )
-            )}
+            userAvailableEnvs={currentWorkspace?.environments}
             isFolderMode
             secretPath={secretPath}
             isProjectRelated

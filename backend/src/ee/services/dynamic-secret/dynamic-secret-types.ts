@@ -63,7 +63,7 @@ export type TListDynamicSecretsDTO = {
 export type TListDynamicSecretsMultiEnvDTO = Omit<
   TListDynamicSecretsDTO,
   "projectId" | "environmentSlug" | "projectSlug"
-> & { projectId: string; environmentSlugs: string[] };
+> & { projectId: string; environmentSlugs: string[]; isInternal?: boolean };
 
 export type TGetDynamicSecretsCountDTO = Omit<TListDynamicSecretsDTO, "projectSlug" | "projectId"> & {
   projectId: string;

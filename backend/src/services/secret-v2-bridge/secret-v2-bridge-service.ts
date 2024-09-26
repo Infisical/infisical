@@ -455,31 +455,34 @@ export const secretV2BridgeServiceFactory = ({
   const getSecretsCountMultiEnv = async ({
     actorId,
     path,
-
     projectId,
     actor,
     actorOrgId,
     actorAuthMethod,
     environments,
+    isInternal,
     ...params
   }: Pick<TGetSecretsDTO, "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search"> & {
     environments: string[];
+    isInternal?: boolean;
   }) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
 
-    // verify user has access to all environments
-    environments.forEach((environment) =>
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      )
-    );
+      // verify user has access to all environments
+      environments.forEach((environment) =>
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+        )
+      );
+    }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
     if (!folders.length) return 0;
@@ -546,27 +549,31 @@ export const secretV2BridgeServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
+    isInternal,
     ...params
   }: Pick<TGetSecretsDTO, "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search"> & {
     environments: string[];
+    isInternal?: boolean;
   }) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (!isInternal) {
+      const { permission } = await permissionService.getProjectPermission(
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      );
+
+      // verify user has access to all environments
+      environments.forEach((environment) =>
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+        )
+      );
+    }
 
     let paths: { folderId: string; path: string; environment: string }[] = [];
-
-    // verify user has access to all environments
-    environments.forEach((environment) =>
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
-      )
-    );
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
 
