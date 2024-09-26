@@ -13,7 +13,7 @@ import {
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -332,7 +332,7 @@ export const secretRotationQueueFactory = ({
           );
         });
       } else {
-        if (!botKey) throw new BadRequestError({ message: "Bot not found" });
+        if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
         const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
           secretId,
           value: encryptSymmetric128BitHexKeyUTF8(
@@ -372,7 +372,7 @@ export const secretRotationQueueFactory = ({
           );
           await secretVersionDAL.insertMany(
             updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => {
-              if (!el.secretBlindIndex) throw new BadRequestError({ message: "Missing blind index" });
+              if (!el.secretBlindIndex) throw new NotFoundError({ message: "Secret blind index not found" });
               return {
                 ...el,
                 secretId: id,

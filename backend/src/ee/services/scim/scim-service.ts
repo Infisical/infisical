@@ -9,7 +9,7 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -176,7 +176,7 @@ export const scimServiceFactory = ({
 
   const deleteScimToken = async ({ scimTokenId, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteScimTokenDTO) => {
     let scimToken = await scimDAL.findById(scimTokenId);
-    if (!scimToken) throw new BadRequestError({ message: "Failed to find SCIM token to delete" });
+    if (!scimToken) throw new NotFoundError({ message: "Failed to find SCIM token to delete" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,

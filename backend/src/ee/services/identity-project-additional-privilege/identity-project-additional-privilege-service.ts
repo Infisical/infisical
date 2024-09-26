@@ -4,7 +4,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -71,12 +71,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     ...dto
   }: TCreateIdentityPrivilegeDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: "Project not found" });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -143,12 +143,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TUpdateIdentityPrivilegeDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: "Project not found" });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -173,7 +173,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       slug,
       projectMembershipId: identityProjectMembership.id
     });
-    if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
+    if (!identityPrivilege) throw new NotFoundError({ message: "Identity additional privilege not found" });
     if (data?.slug) {
       const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
         slug: data.slug,
@@ -224,12 +224,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TDeleteIdentityPrivilegeDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: "Project not found" });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -254,7 +254,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       slug,
       projectMembershipId: identityProjectMembership.id
     });
-    if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
+    if (!identityPrivilege) throw new NotFoundError({ message: "Identity additional privilege not found" });
 
     const deletedPrivilege = await identityProjectAdditionalPrivilegeDAL.deleteById(identityPrivilege.id);
     return {
@@ -274,12 +274,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TGetIdentityPrivilegeDetailsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: "Project not found" });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -293,7 +293,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       slug,
       projectMembershipId: identityProjectMembership.id
     });
-    if (!identityPrivilege) throw new BadRequestError({ message: "Identity additional privilege not found" });
+    if (!identityPrivilege) throw new NotFoundError({ message: "Identity additional privilege not found" });
 
     return {
       ...identityPrivilege,
@@ -310,12 +310,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     projectSlug
   }: TListIdentityPrivilegesDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: "Project not found" });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,

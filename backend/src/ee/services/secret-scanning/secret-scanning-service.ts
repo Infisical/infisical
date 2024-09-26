@@ -7,7 +7,7 @@ import { ProbotOctokit } from "probot";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 
 import { TGitAppDALFactory } from "./git-app-dal";
 import { TGitAppInstallSessionDALFactory } from "./git-app-install-session-dal";
@@ -63,7 +63,7 @@ export const secretScanningServiceFactory = ({
     actorOrgId
   }: TLinkInstallSessionDTO) => {
     const session = await gitAppInstallSessionDAL.findOne({ sessionId });
-    if (!session) throw new UnauthorizedError({ message: "Session not found" });
+    if (!session) throw new NotFoundError({ message: "Session was not found" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,

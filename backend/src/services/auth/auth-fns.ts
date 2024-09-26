@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeProviderJwtTokenPayload, AuthModeProviderSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
@@ -25,15 +25,15 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
   const appCfg = getConfig();
   const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>token?.split(" ", 2) ?? [null, null];
   if (AUTH_TOKEN_TYPE === null) {
-    throw new BadRequestError({ message: "Missing Authorization Header in the request header." });
+    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
   }
   if (AUTH_TOKEN_TYPE.toLowerCase() !== "bearer") {
-    throw new BadRequestError({
+    throw new UnauthorizedError({
       message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`
     });
   }
   if (AUTH_TOKEN_VALUE === null) {
-    throw new BadRequestError({
+    throw new UnauthorizedError({
       message: "Missing Authorization Body in the request header"
     });
   }
@@ -47,8 +47,8 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
 
 export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: Date | null) => {
   if (isLocked) {
-    throw new UnauthorizedError({
-      name: "User Locked",
+    throw new ForbiddenRequestError({
+      name: "UserLocked",
       message:
         "User is locked due to multiple failed login attempts. An email has been sent to you in order to unlock your account. You can also reset your password to unlock your account."
     });
@@ -61,8 +61,8 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
       const timeDisplay =
         secondsDiff > 60 ? `${Math.ceil(secondsDiff / 60)} minutes` : `${Math.ceil(secondsDiff)} seconds`;
 
-      throw new UnauthorizedError({
-        name: "User Locked",
+      throw new ForbiddenRequestError({
+        name: "UserLocked",
         message: `User is temporary locked due to multiple failed login attempts. Try again after ${timeDisplay}. You can also reset your password now to proceed.`
       });
     }

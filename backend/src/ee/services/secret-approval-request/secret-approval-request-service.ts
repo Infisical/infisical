@@ -10,7 +10,7 @@ import {
 } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -204,7 +204,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
-    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new NotFoundError({ message: "Secret approval request not found" });
 
     const { projectId } = secretApprovalRequest;
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -222,7 +222,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
-      throw new UnauthorizedError({ message: "User has no access" });
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
     let secrets;
@@ -271,7 +271,7 @@ export const secretApprovalRequestServiceFactory = ({
           : undefined
       }));
     } else {
-      if (!botKey) throw new BadRequestError({ message: "Bot key not found" });
+      if (!botKey) throw new NotFoundError({ message: "Project bot key not found" });
       const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encrypedSecrets.map((el) => ({
         ...el,
@@ -307,7 +307,7 @@ export const secretApprovalRequestServiceFactory = ({
     actorOrgId
   }: TReviewRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new NotFoundError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -331,7 +331,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
-      throw new UnauthorizedError({ message: "User has no access" });
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
     const reviewStatus = await secretApprovalRequestReviewerDAL.transaction(async (tx) => {
       const review = await secretApprovalRequestReviewerDAL.findOne(
@@ -365,7 +365,7 @@ export const secretApprovalRequestServiceFactory = ({
     actorAuthMethod
   }: TStatusChangeDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new NotFoundError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -389,7 +389,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
-      throw new UnauthorizedError({ message: "User has no access" });
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
     if (secretApprovalRequest.hasMerged) throw new BadRequestError({ message: "Approval request has been merged" });
@@ -414,7 +414,7 @@ export const secretApprovalRequestServiceFactory = ({
     bypassReason
   }: TMergeSecretApprovalRequestDTO) => {
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
+    if (!secretApprovalRequest) throw new NotFoundError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -439,7 +439,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
-      throw new UnauthorizedError({ message: "User has no access" });
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
     const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>(
       (prev, curr) => ({ ...prev, [curr.userId.toString()]: curr.status as ApprovalStatus }),
@@ -462,7 +462,7 @@ export const secretApprovalRequestServiceFactory = ({
       const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
-      if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
+      if (!secretApprovalSecrets) throw new NotFoundError({ message: "No secrets found" });
 
       const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
@@ -602,7 +602,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     } else {
       const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
-      if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
+      if (!secretApprovalSecrets) throw new NotFoundError({ message: "No secrets found" });
 
       const conflicts: Array<{ secretId: string; op: SecretOperations }> = [];
       let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Create);
@@ -612,8 +612,8 @@ export const secretApprovalRequestServiceFactory = ({
           secretDAL,
           inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => {
             if (!secretBlindIndex) {
-              throw new BadRequestError({
-                message: "Missing secret blind index"
+              throw new NotFoundError({
+                message: "Secret blind index not found"
               });
             }
             return { secretBlindIndex };
@@ -639,8 +639,8 @@ export const secretApprovalRequestServiceFactory = ({
             .filter(({ secretBlindIndex, secret }) => secret && secret.secretBlindIndex !== secretBlindIndex)
             .map(({ secretBlindIndex }) => {
               if (!secretBlindIndex) {
-                throw new BadRequestError({
-                  message: "Missing secret blind index"
+                throw new NotFoundError({
+                  message: "Secret blind index not found"
                 });
               }
               return { secretBlindIndex };
@@ -762,8 +762,8 @@ export const secretApprovalRequestServiceFactory = ({
               secretQueueService,
               inputSecrets: secretDeletionCommits.map(({ secretBlindIndex }) => {
                 if (!secretBlindIndex) {
-                  throw new BadRequestError({
-                    message: "Missing secret blind index"
+                  throw new NotFoundError({
+                    message: "Secret blind index not found"
                   });
                 }
                 return { secretBlindIndex, type: SecretType.Shared };
@@ -789,7 +789,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
-    if (!folder) throw new BadRequestError({ message: "Folder not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
     await secretQueueService.syncSecrets({
       projectId,
       secretPath: folder.path,
@@ -860,14 +860,14 @@ export const secretApprovalRequestServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "GenSecretApproval"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Update secret" });
 
     const commits: Omit<TSecretApprovalRequestsSecretsInsert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
@@ -961,7 +961,7 @@ export const secretApprovalRequestServiceFactory = ({
         secretDAL
       });
       const secretsGroupedByBlindIndex = groupBy(secrets, (i) => {
-        if (!i.secretBlindIndex) throw new BadRequestError({ message: "Missing secret blind index" });
+        if (!i.secretBlindIndex) throw new NotFoundError({ message: "Secret blind index not found" });
         return i.secretBlindIndex;
       });
       const deletedSecretIds = deletedSecrets.map(
@@ -972,7 +972,7 @@ export const secretApprovalRequestServiceFactory = ({
         ...deletedSecrets.map((el) => {
           const secretId = secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id;
           if (!latestSecretVersions[secretId].secretBlindIndex)
-            throw new BadRequestError({ message: "Failed to find secret blind index" });
+            throw new NotFoundError({ message: "Secret blind index not found" });
           return {
             op: SecretOperations.Delete as const,
             ...latestSecretVersions[secretId],
@@ -988,7 +988,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const tagIds = unique(Object.values(commitTagIds).flat());
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
       const doc = await secretApprovalRequestDAL.create(
@@ -1054,7 +1054,7 @@ export const secretApprovalRequestServiceFactory = ({
 
       const commitsGroupByBlindIndex = groupBy(approvalCommits, (i) => {
         if (!i.secretBlindIndex) {
-          throw new BadRequestError({ message: "Missing secret blind index" });
+          throw new NotFoundError({ message: "Secret blind index not found" });
         }
         return i.secretBlindIndex;
       });
@@ -1132,7 +1132,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "GenSecretApproval"
       });
@@ -1191,8 +1191,8 @@ export const secretApprovalRequestServiceFactory = ({
         }))
       );
       if (secretsToUpdateStoredInDB.length !== secretsToUpdate.length)
-        throw new BadRequestError({
-          message: `Secret not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
+        throw new NotFoundError({
+          message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
         });
 
       // now find any secret that needs to update its name
@@ -1207,8 +1207,8 @@ export const secretApprovalRequestServiceFactory = ({
           }))
         );
         if (secrets.length)
-          throw new BadRequestError({
-            message: `Secret not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
+          throw new NotFoundError({
+            message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
           });
       }
 
@@ -1267,8 +1267,8 @@ export const secretApprovalRequestServiceFactory = ({
         }))
       );
       if (secretsToDeleteInDB.length !== deletedSecrets.length)
-        throw new BadRequestError({
-          message: `Secret not exist: ${secretsToDeleteInDB.map((el) => el.key).join(",")}`
+        throw new NotFoundError({
+          message: `Secret does not exist: ${secretsToDeleteInDB.map((el) => el.key).join(",")}`
         });
       const secretsGroupedByKey = groupBy(secretsToDeleteInDB, (i) => i.key);
       const deletedSecretIds = deletedSecrets.map((el) => secretsGroupedByKey[el.secretKey][0].id);
@@ -1291,7 +1291,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const tagIds = unique(Object.values(commitTagIds).flat());
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
       const doc = await secretApprovalRequestDAL.create(

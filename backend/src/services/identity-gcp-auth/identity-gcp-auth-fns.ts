@@ -65,6 +65,6 @@ export const validateIamIdentity = async ({
     algorithms: ["RS256"]
   });
 
-  if (aud !== identityId) throw new UnauthorizedError();
+  if (aud !== identityId) throw new UnauthorizedError({ message: "Invalid audience in GCP IAM Token" });
   return { email: sub };
 };

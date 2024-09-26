@@ -2,10 +2,9 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-// import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -19,7 +18,6 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  // licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateAuthorityCrlServiceFactory = ReturnType<typeof certificateAuthorityCrlServiceFactory>;
@@ -66,7 +64,7 @@ export const certificateAuthorityCrlServiceFactory = ({
    */
   const getCaCrls = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCrlsDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: "CA not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -80,13 +78,6 @@ export const certificateAuthorityCrlServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.CertificateAuthorities
     );
-
-    // const plan = await licenseService.getPlan(actorOrgId);
-    // if (!plan.caCrl)
-    //   throw new BadRequestError({
-    //     message:
-    //       "Failed to get CA certificate revocation lists (CRLs) due to plan restriction. Upgrade plan to get the CA CRL."
-    //   });
 
     const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 

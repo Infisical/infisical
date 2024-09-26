@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 interface TAuthOptions {
@@ -11,11 +11,11 @@ export const verifyAuth =
   <T extends FastifyRequest>(authStrategies: AuthMode[], options: TAuthOptions = { requireOrg: true }) =>
   (req: T, _res: FastifyReply, done: HookHandlerDoneFunction) => {
     if (!Array.isArray(authStrategies)) throw new Error("Auth strategy must be array");
-    if (!req.auth) throw new UnauthorizedError({ name: "Unauthorized access", message: "Token missing" });
+    if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
 
     const isAccessAllowed = authStrategies.some((strategy) => strategy === req.auth.authMode);
     if (!isAccessAllowed) {
-      throw new UnauthorizedError({ name: `${req.url} Unauthorized Access` });
+      throw new ForbiddenRequestError({ name: `Forbidden access to ${req.url}` });
     }
 
     // New optional option. There are some routes which do not require an organization ID to be present on the request.

@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { decryptAsymmetric, encryptAsymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError, ScimRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 
 import {
   TAddUsersToGroup,
@@ -73,24 +73,24 @@ const addAcceptedUsersToGroup = async ({
       const ghostUser = await projectDAL.findProjectGhostUser(projectId, tx);
 
       if (!ghostUser) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user"
+        throw new NotFoundError({
+          message: "Failed to find project owner"
         });
       }
 
       const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId, tx);
 
       if (!ghostUserLatestKey) {
-        throw new BadRequestError({
-          message: "Failed to find sudo user latest key"
+        throw new NotFoundError({
+          message: "Failed to find project owner's latest key"
         });
       }
 
       const bot = await projectBotDAL.findOne({ projectId }, tx);
 
       if (!bot) {
-        throw new BadRequestError({
-          message: "Failed to find bot"
+        throw new NotFoundError({
+          message: "Failed to find project bot"
         });
       }
 
@@ -200,7 +200,7 @@ export const addUsersToGroupByUserIds = async ({
 
     userIds.forEach((userId) => {
       if (!existingUserOrgMembershipsUserIdsSet.has(userId))
-        throw new BadRequestError({
+        throw new ForbiddenRequestError({
           message: `User with id ${userId} is not part of the organization`
         });
     });
@@ -303,7 +303,7 @@ export const removeUsersFromGroupByUserIds = async ({
 
     userIds.forEach((userId) => {
       if (!existingUserGroupMembershipsUserIdsSet.has(userId))
-        throw new BadRequestError({
+        throw new ForbiddenRequestError({
           message: `User(s) are not part of the group ${group.slug}`
         });
     });
@@ -415,7 +415,7 @@ export const convertPendingGroupAdditionsToGroupMemberships = async ({
     const usersUserIdsSet = new Set(users.map((u) => u.id));
     userIds.forEach((userId) => {
       if (!usersUserIdsSet.has(userId)) {
-        throw new BadRequestError({
+        throw new NotFoundError({
           message: `Failed to find user with id ${userId}`
         });
       }

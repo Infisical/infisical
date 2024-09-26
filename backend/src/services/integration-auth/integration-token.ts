@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
 
@@ -396,7 +396,7 @@ export const exchangeCode = async ({
         code
       });
     default:
-      throw new BadRequestError({ message: "Unknown integration" });
+      throw new NotFoundError({ message: "Unknown integration" });
   }
 };
 

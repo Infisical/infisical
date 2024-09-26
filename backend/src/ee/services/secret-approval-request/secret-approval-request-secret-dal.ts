@@ -8,7 +8,7 @@ import {
   TSecretApprovalRequestsSecrets,
   TSecretTags
 } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApprovalRequestSecretDALFactory>;
@@ -31,7 +31,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
       );
 
       if (existingApprovalSecrets.length !== data.length) {
-        throw new BadRequestError({ message: "Some of the secret approvals do not exist" });
+        throw new NotFoundError({ message: "Some of the secret approvals do not exist" });
       }
 
       if (data.length === 0) return [];

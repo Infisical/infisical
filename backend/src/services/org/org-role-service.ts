@@ -10,7 +10,7 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod } from "../auth/auth-type";
 import { TOrgRoleDALFactory } from "./org-role-dal";
@@ -91,7 +91,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
       }
       default: {
         const role = await orgRoleDAL.findOne({ id: roleId, orgId });
-        if (!role) throw new BadRequestError({ message: "Role not found", name: "Get role" });
+        if (!role) throw new NotFoundError({ message: "Organization role not found" });
         return role;
       }
     }
@@ -116,7 +116,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
       { id: roleId, orgId },
       { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
     );
-    if (!updatedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
+    if (!updatedRole) throw new NotFoundError({ message: "Organization role not found" });
     return updatedRole;
   };
 
@@ -130,7 +130,7 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
-    if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
+    if (!deletedRole) throw new NotFoundError({ message: "Organization role not found", name: "Update role" });
 
     return deletedRole;
   };

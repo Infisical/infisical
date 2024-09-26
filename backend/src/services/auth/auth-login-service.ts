@@ -8,7 +8,7 @@ import { request } from "@app/lib/config/request";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
-import { BadRequestError, DatabaseError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -350,7 +350,7 @@ export const authLoginServiceFactory = ({
     const cfg = getConfig();
 
     if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
-    if (!userAgent) throw new UnauthorizedError({ name: "user agent header is required" });
+    if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
 
     // eslint-disable-next-line no-param-reassign
     authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
@@ -368,7 +368,7 @@ export const authLoginServiceFactory = ({
     const selectedOrg = await orgDAL.findById(organizationId);
 
     if (!hasOrganizationMembership) {
-      throw new UnauthorizedError({
+      throw new ForbiddenRequestError({
         message: `User does not have access to the organization named ${selectedOrg?.name}`
       });
     }

@@ -7,7 +7,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -117,7 +117,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
@@ -144,7 +144,7 @@ export const secretV2BridgeServiceFactory = ({
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
-    if ((inputSecret.tagIds || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if ((inputSecret.tagIds || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const { secretName, type, ...el } = inputSecret;
     const references = getAllNestedSecretReferences(inputSecret.secretValue);
@@ -237,7 +237,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "UpdateSecret"
       });
@@ -260,7 +260,7 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         userId: actorId
       });
-      if (!personalSecretToModify) throw new BadRequestError({ message: "Secret not found" });
+      if (!personalSecretToModify) throw new NotFoundError({ message: "Secret not found" });
       secretId = personalSecretToModify.id;
       secret = personalSecretToModify;
     } else {
@@ -269,7 +269,7 @@ export const secretV2BridgeServiceFactory = ({
         type: SecretType.Shared,
         folderId
       });
-      if (!sharedSecretToModify) throw new BadRequestError({ message: "Secret not found" });
+      if (!sharedSecretToModify) throw new NotFoundError({ message: "Secret not found" });
       secretId = sharedSecretToModify.id;
       secret = sharedSecretToModify;
     }
@@ -286,7 +286,7 @@ export const secretV2BridgeServiceFactory = ({
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
-    if ((inputSecret.tagIds || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if ((inputSecret.tagIds || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const { secretName, secretValue } = inputSecret;
 
@@ -388,7 +388,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Delete secret"
       });
@@ -792,7 +792,7 @@ export const secretV2BridgeServiceFactory = ({
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
@@ -878,7 +878,7 @@ export const secretV2BridgeServiceFactory = ({
         }
       }
     }
-    if (!secret) throw new BadRequestError({ message: "Secret not found" });
+    if (!secret) throw new NotFoundError({ message: "Secret not found" });
 
     let secretValue = secret.encryptedValue
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
@@ -927,7 +927,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
@@ -946,7 +946,7 @@ export const secretV2BridgeServiceFactory = ({
     // get all tags
     const sanitizedTagIds = inputSecrets.flatMap(({ tagIds = [] }) => tagIds);
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
-    if (tags.length !== sanitizedTagIds.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -1032,7 +1032,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Update secret"
       });
@@ -1046,7 +1046,7 @@ export const secretV2BridgeServiceFactory = ({
       }))
     );
     if (secretsToUpdate.length !== inputSecrets.length)
-      throw new BadRequestError({ message: `Secret not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+      throw new NotFoundError({ message: `Secret does not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
     const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
     // now find any secret that needs to update its name
@@ -1062,14 +1062,14 @@ export const secretV2BridgeServiceFactory = ({
       );
       if (secrets.length)
         throw new BadRequestError({
-          message: `Secret with new name exist: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
+          message: `Secret with new name already exists: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
         });
     }
 
     // get all tags
     const sanitizedTagIds = inputSecrets.flatMap(({ tagIds = [] }) => tagIds);
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
-    if (tags.length !== sanitizedTagIds.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -1164,7 +1164,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
@@ -1178,7 +1178,9 @@ export const secretV2BridgeServiceFactory = ({
       }))
     );
     if (secretsToDelete.length !== inputSecrets.length)
-      throw new BadRequestError({ message: `Secret not exist: ${secretsToDelete.map((el) => el.key).join(",")}` });
+      throw new NotFoundError({
+        message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(",")}`
+      });
 
     const secretsDeleted = await secretDAL.transaction(async (tx) =>
       fnSecretBulkDelete({
@@ -1227,10 +1229,10 @@ export const secretV2BridgeServiceFactory = ({
     secretId
   }: TGetSecretVersionsDTO) => {
     const secret = await secretDAL.findById(secretId);
-    if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
+    if (!secret) throw new NotFoundError({ message: "Failed to find secret" });
 
     const folder = await folderDAL.findById(secret.folderId);
-    if (!folder) throw new BadRequestError({ message: "Failed to find secret" });
+    if (!folder) throw new NotFoundError({ message: "Failed to find secret" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1273,7 +1275,7 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     if (!hasRole(ProjectMembershipRole.Admin))
-      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+      throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,

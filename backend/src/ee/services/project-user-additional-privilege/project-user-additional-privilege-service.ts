@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import ms from "ms";
 
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -42,7 +42,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     ...dto
   }: TCreateUserPrivilegeDTO) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
-    if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
+    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -94,14 +94,14 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     ...dto
   }: TUpdateUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
-    if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
+    if (!userPrivilege) throw new NotFoundError({ message: "User additional privilege not found" });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
       projectId: userPrivilege.projectId
     });
 
-    if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
+    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -147,13 +147,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
 
   const deleteById = async ({ actorId, actor, actorOrgId, actorAuthMethod, privilegeId }: TDeleteUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
-    if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
+    if (!userPrivilege) throw new NotFoundError({ message: "User additional privilege not found" });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
       projectId: userPrivilege.projectId
     });
-    if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
+    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -176,13 +176,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TGetUserPrivilegeDetailsDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
-    if (!userPrivilege) throw new BadRequestError({ message: "User additional privilege not found" });
+    if (!userPrivilege) throw new NotFoundError({ message: "User additional privilege not found" });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
       projectId: userPrivilege.projectId
     });
-    if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
+    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -204,7 +204,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TListUserPrivilegesDTO) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
-    if (!projectMembership) throw new BadRequestError({ message: "Project membership not found" });
+    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

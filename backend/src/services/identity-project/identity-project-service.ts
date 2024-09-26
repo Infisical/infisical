@@ -5,7 +5,7 @@ import { ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { ActorType } from "../auth/auth-type";
@@ -75,7 +75,7 @@ export const identityProjectServiceFactory = ({
       orgId: project.orgId
     });
     if (!identityOrgMembership)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: `Failed to find identity with id ${identityId}`
       });
 
@@ -103,7 +103,8 @@ export const identityProjectServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
+    if (customRoles.length !== customInputRoles.length)
+      throw new NotFoundError({ message: "Custom project roles not found" });
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
     const projectIdentity = await identityProjectDAL.transaction(async (tx) => {
@@ -164,7 +165,7 @@ export const identityProjectServiceFactory = ({
 
     const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (!projectIdentity)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: `Identity with id ${identityId} doesn't exists in project with id ${projectId}`
       });
 
@@ -174,9 +175,7 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-
-      if (!hasRequiredPriviledges) {
+      if (!isAtLeastAsPrivileged(permission, rolePermission)) {
         throw new ForbiddenRequestError({ message: "Failed to change to a more privileged role" });
       }
     }
@@ -192,7 +191,8 @@ export const identityProjectServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
+    if (customRoles.length !== customInputRoles.length)
+      throw new NotFoundError({ message: "Custom project roles not found" });
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
@@ -238,7 +238,7 @@ export const identityProjectServiceFactory = ({
   }: TDeleteProjectIdentityDTO) => {
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
-      throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -255,8 +255,7 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
-    if (!hasRequiredPriviledges)
+    if (!isAtLeastAsPrivileged(permission, identityRolePermission))
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
@@ -315,7 +314,7 @@ export const identityProjectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
-    if (!identityMembership) throw new BadRequestError({ message: `Membership not found for identity ${identityId}` });
+    if (!identityMembership) throw new NotFoundError({ message: `Membership not found for identity ${identityId}` });
     return identityMembership;
   };
 

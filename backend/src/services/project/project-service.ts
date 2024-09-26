@@ -175,7 +175,7 @@ export const projectServiceFactory = ({
         const kms = await kmsService.getKmsById(kmsKeyId, tx);
 
         if (kms.orgId !== organization.id) {
-          throw new BadRequestError({
+          throw new ForbiddenRequestError({
             message: "KMS does not belong in the organization"
           });
         }
@@ -321,7 +321,7 @@ export const projectServiceFactory = ({
 
         // If identity org membership not found, throw error
         if (!identityOrgMembership) {
-          throw new BadRequestError({
+          throw new NotFoundError({
             message: `Failed to find identity with id ${actorId}`
           });
         }
@@ -490,7 +490,7 @@ export const projectServiceFactory = ({
   }: TUpdateProjectVersionLimitDTO) => {
     const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
     if (!project) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project not found"
       });
     }
@@ -504,7 +504,9 @@ export const projectServiceFactory = ({
     );
 
     if (!hasRole(ProjectMembershipRole.Admin))
-      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+      throw new ForbiddenRequestError({
+        message: "Insufficient privileges, only admins are allowed to take this action"
+      });
 
     return projectDAL.updateById(project.id, { pitVersionLimit });
   };
@@ -533,7 +535,9 @@ export const projectServiceFactory = ({
     );
 
     if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+      throw new ForbiddenRequestError({
+        message: "Insufficient privileges, only admins are allowed to take this action"
+      });
     }
 
     const plan = await licenseService.getPlan(project.orgId);
@@ -624,7 +628,7 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findProjectById(projectId);
 
     if (!project) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: `Project with id ${projectId} not found`
       });
     }
@@ -982,7 +986,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     if (slackIntegration.orgId !== project.orgId) {
-      throw new BadRequestError({
+      throw new ForbiddenRequestError({
         message: "Selected slack integration is not in the same organization"
       });
     }

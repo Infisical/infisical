@@ -3,7 +3,7 @@ import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
@@ -55,7 +55,7 @@ export const secretDALFactory = (db: TDbClient) => {
       );
 
       if (existingSecrets.length !== data.length) {
-        throw new BadRequestError({ message: "Some of the secrets do not exist" });
+        throw new NotFoundError({ message: "Some of the secrets do not exist" });
       }
 
       if (data.length === 0) return [];

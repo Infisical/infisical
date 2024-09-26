@@ -14,7 +14,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { fetchGithubEmails } from "@app/lib/requests/github";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -42,9 +42,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           try {
             const email = profile?.emails?.[0]?.value;
             if (!email)
-              throw new BadRequestError({
+              throw new NotFoundError({
                 message: "Email not found",
-                name: "Oauth Google Register"
+                name: "OauthGoogleRegister"
               });
 
             const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({

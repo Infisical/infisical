@@ -5,7 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "./project-bot-dal";
@@ -91,7 +91,7 @@ export const projectBotServiceFactory = ({
       const bot = await projectBotDAL.findProjectByBotId(botId);
       return bot;
     } catch (e) {
-      throw new BadRequestError({ message: "Failed to find bot by ID" });
+      throw new NotFoundError({ message: "Failed to find bot by ID" });
     }
   };
 
@@ -105,7 +105,7 @@ export const projectBotServiceFactory = ({
     isActive
   }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
-    if (!bot) throw new BadRequestError({ message: "Bot not found" });
+    if (!bot) throw new NotFoundError({ message: "Bot not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -119,7 +119,7 @@ export const projectBotServiceFactory = ({
     const project = await projectBotDAL.findProjectByBotId(botId);
 
     if (!project) {
-      throw new BadRequestError({ message: "Failed to find project by bot ID" });
+      throw new NotFoundError({ message: "Failed to find project by bot ID" });
     }
 
     if (project.version === ProjectVersion.V2) {
@@ -128,7 +128,7 @@ export const projectBotServiceFactory = ({
 
     if (isActive) {
       if (!botKey?.nonce || !botKey?.encryptedKey) {
-        throw new BadRequestError({ message: "Failed to set bot active - missing bot key" });
+        throw new NotFoundError({ message: "Bot key not found, failed to set bot active" });
       }
       const doc = await projectBotDAL.updateById(botId, {
         isActive: true,
