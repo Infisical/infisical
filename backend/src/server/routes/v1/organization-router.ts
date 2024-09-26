@@ -11,6 +11,8 @@ import {
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -143,6 +145,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const appCfg = getConfig();
+      if (appCfg.isCloud) {
+        throw new BadRequestError({ message: "Infisical cloud audit log is in maintenance mode." });
+      }
+
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
           ...req.query,
