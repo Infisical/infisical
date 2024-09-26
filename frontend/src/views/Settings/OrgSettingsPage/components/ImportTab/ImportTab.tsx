@@ -189,8 +189,17 @@ export const ImportTab = () => {
                       onClick={() => {
                         fileUploadRef?.current?.click();
                       }}
-                    >
+                      >
+                      {fileUploadRef?.current?.value ? (
+                        <span className="text-green text-sm">
+                          {fileUploadRef?.current?.value.split("\\").pop()}
+                        </span>
+                      ) : (
+                        <>
+                      Upload export file&nbsp;
                       <FontAwesomeIcon icon={faUpload} size="xs" />
+                      </>
+                      )}
                     </IconButton>
                   </>
                 </FormControl>

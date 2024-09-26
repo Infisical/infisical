@@ -1,14 +1,17 @@
 import { randomUUID } from "crypto";
-import { codec, hash } from "sjcl";
-import { secretbox } from "tweetnacl";
-import { decodeBase64, encodeUTF8 } from "tweetnacl-util";
+import sjcl from "sjcl";
+import tweetnacl from "tweetnacl";
+import tweetnaclUtil from "tweetnacl-util";
 
 import { InfisicalImportData, TEnvKeyExportJSON } from "./external-migration-types";
 
+const { codec, hash } = sjcl;
+const { secretbox } = tweetnacl;
+
 export const decryptEnvKeyData = async (decryptionKey: string, encryptedJson: { nonce: string; data: string }) => {
-  const key = decodeBase64(codec.base64.fromBits(hash.sha256.hash(decryptionKey)));
-  const nonce = decodeBase64(encryptedJson.nonce);
-  const encryptedData = decodeBase64(encryptedJson.data);
+  const key = tweetnaclUtil.decodeBase64(codec.base64.fromBits(hash.sha256.hash(decryptionKey)));
+  const nonce = tweetnaclUtil.decodeBase64(encryptedJson.nonce);
+  const encryptedData = tweetnaclUtil.decodeBase64(encryptedJson.data);
 
   const decrypted = secretbox.open(encryptedData, nonce, key);
 
@@ -16,7 +19,7 @@ export const decryptEnvKeyData = async (decryptionKey: string, encryptedJson: { 
     throw new Error("Decryption failed, please check the entered encryption key");
   }
 
-  const decryptedJson = encodeUTF8(decrypted);
+  const decryptedJson = tweetnaclUtil.encodeUTF8(decrypted);
   return decryptedJson;
 };
 
