@@ -59,6 +59,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription,
   useUser,
   useWorkspace
@@ -153,7 +154,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
-  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
+  const { permission } = useOrgPermission();
+  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!, {
+    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
+  });
 
   const pendingRequestsCount = useMemo(() => {
     return (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);

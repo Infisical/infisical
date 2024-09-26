@@ -10,9 +10,10 @@ export const kmsKeys = {
   getActiveProjectKms: (projectId: string) => ["get-active-project-kms", { projectId }]
 };
 
-export const useGetExternalKmsList = (orgId: string) => {
+export const useGetExternalKmsList = (orgId: string, { enabled }: { enabled?: boolean } = {}) => {
   return useQuery({
     queryKey: kmsKeys.getExternalKmsList(orgId),
+    enabled,
     queryFn: async () => {
       const {
         data: { externalKmsList }

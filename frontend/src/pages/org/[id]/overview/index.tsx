@@ -56,6 +56,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription,
   useUser,
   useWorkspace
@@ -494,6 +495,7 @@ const OrganizationPage = () => {
 
   const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
   const routerOrgId = String(router.query.id);
   const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === routerOrgId) || [];
   const { data: projectFavorites, isLoading: isProjectFavoritesLoading } =
@@ -531,7 +533,9 @@ const OrganizationPage = () => {
     (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
   );
 
-  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!);
+  const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!, {
+    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
+  });
 
   const onCreateProject = async ({ name, addMembers, kmsKeyId }: TAddProjectFormData) => {
     // type check
