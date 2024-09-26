@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+import { faArrowUpRightFromSquare, faBookOpen, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,8 +24,8 @@ type TForm = z.infer<typeof formSchema>;
 export const ImportTab = () => {
   const fileUploadRef = useRef<HTMLInputElement>(null);
 
-const { mutateAsync: importEnvKey
-} = useImportEnvKey();
+  const { mutateAsync: importEnvKey
+  } = useImportEnvKey();
 
   const {
     handleSubmit,
@@ -46,7 +47,7 @@ const { mutateAsync: importEnvKey
       file: undefined
     }
   });
-  
+
   const parseJson = (src: ArrayBuffer) => {
     console.log("here")
     const file = src.toString();
@@ -99,7 +100,7 @@ const { mutateAsync: importEnvKey
       });
       return;
     }
-    
+
     const res = await importEnvKey({ encryptedJson: data.encryptedJson, decryptionKey: data.decryptionKey });
     if (res.success) {
       createNotification({
@@ -132,7 +133,21 @@ const { mutateAsync: importEnvKey
         Import data from another secret manager to Infisical.
       </p>
       <div className="border-b border-mineshaft-800 my-6" />
-      <h3 className="text-lg font-medium text-white mb-4">Import from EnvKey</h3>
+      <div className="flex justify-left">
+        <h3 className="text-lg font-medium text-white mb-4">Import from EnvKey</h3>
+        <Link href="https://infisical.com/docs/documentation/guides/migrating-from-envkey" passHref>
+          <a target="_blank" rel="noopener noreferrer">
+            <div className="ml-2 mb-1 inline-block rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+              Docs
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                className="ml-1.5 mb-[0.07rem] text-xxs"
+              />
+            </div>
+          </a>
+        </Link>
+      </div>
       <div className="mb-4">
         <form onSubmit={handleSubmit(submitExport)}>
           <Controller
