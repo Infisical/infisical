@@ -50,6 +50,7 @@ export const permissionDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.OrgMembership),
           db.ref("slug").withSchema(TableName.OrgRoles).withSchema(TableName.OrgRoles).as("customRoleSlug"),
+          db.ref("permissions").withSchema(TableName.OrgRoles),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("groupId").withSchema("userGroups"),
           db.ref("groupOrgId").withSchema("userGroups"),
