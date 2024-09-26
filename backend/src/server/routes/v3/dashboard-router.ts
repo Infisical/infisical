@@ -1,3 +1,4 @@
+import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
@@ -173,60 +174,49 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (includeDynamicSecrets) {
-        // this is the unique count, ie duplicate secrets across envs only count as 1
-        totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          projectId,
-          search,
-          environmentSlugs: environments,
-          path: secretPath
-        });
-
-        if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
-          dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds({
+      try {
+        if (includeDynamicSecrets) {
+          // this is the unique count, ie duplicate secrets across envs only count as 1
+          totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
             actor: req.permission.type,
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             projectId,
             search,
-            orderBy,
-            orderDirection,
             environmentSlugs: environments,
-            path: secretPath,
-            limit: remainingLimit,
-            offset: adjustedOffset
+            path: secretPath
           });
 
-          // get the count of unique dynamic secret names to properly adjust remaining limit
-          const uniqueDynamicSecretsCount = new Set(dynamicSecrets.map((dynamicSecret) => dynamicSecret.name)).size;
+          if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
+            dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds({
+              actor: req.permission.type,
+              actorId: req.permission.id,
+              actorAuthMethod: req.permission.authMethod,
+              actorOrgId: req.permission.orgId,
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environmentSlugs: environments,
+              path: secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            });
 
-          remainingLimit -= uniqueDynamicSecretsCount;
-          adjustedOffset = 0;
-        } else {
-          adjustedOffset = Math.max(0, adjustedOffset - totalDynamicSecretCount);
+            // get the count of unique dynamic secret names to properly adjust remaining limit
+            const uniqueDynamicSecretsCount = new Set(dynamicSecrets.map((dynamicSecret) => dynamicSecret.name)).size;
+
+            remainingLimit -= uniqueDynamicSecretsCount;
+            adjustedOffset = 0;
+          } else {
+            adjustedOffset = Math.max(0, adjustedOffset - totalDynamicSecretCount);
+          }
         }
-      }
 
-      if (includeSecrets) {
-        // this is the unique count, ie duplicate secrets across envs only count as 1
-        totalSecretCount = await server.services.secret.getSecretsCountMultiEnv({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          environments,
-          actorAuthMethod: req.permission.authMethod,
-          projectId,
-          path: secretPath,
-          search
-        });
-
-        if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-          secrets = await server.services.secret.getSecretsRawMultiEnv({
+        if (includeSecrets) {
+          // this is the unique count, ie duplicate secrets across envs only count as 1
+          totalSecretCount = await server.services.secret.getSecretsCountMultiEnv({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorOrgId: req.permission.orgId,
@@ -234,46 +224,63 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             actorAuthMethod: req.permission.authMethod,
             projectId,
             path: secretPath,
-            orderBy,
-            orderDirection,
-            search,
-            limit: remainingLimit,
-            offset: adjustedOffset
+            search
           });
 
-          for await (const environment of environments) {
-            const secretCountFromEnv = secrets.filter((secret) => secret.environment === environment).length;
+          if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
+            secrets = await server.services.secret.getSecretsRawMultiEnv({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              actorOrgId: req.permission.orgId,
+              environments,
+              actorAuthMethod: req.permission.authMethod,
+              projectId,
+              path: secretPath,
+              orderBy,
+              orderDirection,
+              search,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            });
 
-            if (secretCountFromEnv) {
-              await server.services.auditLog.createAuditLog({
-                projectId,
-                ...req.auditLogInfo,
-                event: {
-                  type: EventType.GET_SECRETS,
-                  metadata: {
-                    environment,
-                    secretPath,
-                    numberOfSecrets: secretCountFromEnv
-                  }
-                }
-              });
+            for await (const environment of environments) {
+              const secretCountFromEnv = secrets.filter((secret) => secret.environment === environment).length;
 
-              if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
-                await server.services.telemetry.sendPostHogEvents({
-                  event: PostHogEventTypes.SecretPulled,
-                  distinctId: getTelemetryDistinctId(req),
-                  properties: {
-                    numberOfSecrets: secretCountFromEnv,
-                    workspaceId: projectId,
-                    environment,
-                    secretPath,
-                    channel: getUserAgentType(req.headers["user-agent"]),
-                    ...req.auditLogInfo
+              if (secretCountFromEnv) {
+                await server.services.auditLog.createAuditLog({
+                  projectId,
+                  ...req.auditLogInfo,
+                  event: {
+                    type: EventType.GET_SECRETS,
+                    metadata: {
+                      environment,
+                      secretPath,
+                      numberOfSecrets: secretCountFromEnv
+                    }
                   }
                 });
+
+                if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+                  await server.services.telemetry.sendPostHogEvents({
+                    event: PostHogEventTypes.SecretPulled,
+                    distinctId: getTelemetryDistinctId(req),
+                    properties: {
+                      numberOfSecrets: secretCountFromEnv,
+                      workspaceId: projectId,
+                      environment,
+                      secretPath,
+                      channel: getUserAgentType(req.headers["user-agent"]),
+                      ...req.auditLogInfo
+                    }
+                  });
+                }
               }
             }
           }
+        }
+      } catch (error) {
+        if (!(error instanceof ForbiddenError)) {
+          throw error;
         }
       }
 
@@ -498,56 +505,44 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (includeDynamicSecrets) {
-        totalDynamicSecretCount = await server.services.dynamicSecret.getDynamicSecretCount({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          projectId,
-          search,
-          environmentSlug: environment,
-          path: secretPath
-        });
-
-        if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
-          dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByEnv({
+      try {
+        if (includeDynamicSecrets) {
+          totalDynamicSecretCount = await server.services.dynamicSecret.getDynamicSecretCount({
             actor: req.permission.type,
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
             projectId,
             search,
-            orderBy,
-            orderDirection,
             environmentSlug: environment,
-            path: secretPath,
-            limit: remainingLimit,
-            offset: adjustedOffset
+            path: secretPath
           });
 
-          remainingLimit -= dynamicSecrets.length;
-          adjustedOffset = 0;
-        } else {
-          adjustedOffset = Math.max(0, adjustedOffset - totalDynamicSecretCount);
+          if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
+            dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByEnv({
+              actor: req.permission.type,
+              actorId: req.permission.id,
+              actorAuthMethod: req.permission.authMethod,
+              actorOrgId: req.permission.orgId,
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environmentSlug: environment,
+              path: secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            });
+
+            remainingLimit -= dynamicSecrets.length;
+            adjustedOffset = 0;
+          } else {
+            adjustedOffset = Math.max(0, adjustedOffset - totalDynamicSecretCount);
+          }
         }
-      }
 
-      if (includeSecrets) {
-        totalSecretCount = await server.services.secret.getSecretsCount({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          environment,
-          actorAuthMethod: req.permission.authMethod,
-          projectId,
-          path: secretPath,
-          search,
-          tagSlugs: tags
-        });
-
-        if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-          const secretsRaw = await server.services.secret.getSecretsRaw({
+        if (includeSecrets) {
+          totalSecretCount = await server.services.secret.getSecretsCount({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorOrgId: req.permission.orgId,
@@ -555,43 +550,61 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             actorAuthMethod: req.permission.authMethod,
             projectId,
             path: secretPath,
-            orderBy,
-            orderDirection,
             search,
-            limit: remainingLimit,
-            offset: adjustedOffset,
             tagSlugs: tags
           });
 
-          secrets = secretsRaw.secrets;
+          if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
+            const secretsRaw = await server.services.secret.getSecretsRaw({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              actorOrgId: req.permission.orgId,
+              environment,
+              actorAuthMethod: req.permission.authMethod,
+              projectId,
+              path: secretPath,
+              orderBy,
+              orderDirection,
+              search,
+              limit: remainingLimit,
+              offset: adjustedOffset,
+              tagSlugs: tags
+            });
 
-          await server.services.auditLog.createAuditLog({
-            projectId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.GET_SECRETS,
-              metadata: {
-                environment,
-                secretPath,
-                numberOfSecrets: secrets.length
-              }
-            }
-          });
+            secrets = secretsRaw.secrets;
 
-          if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
-            await server.services.telemetry.sendPostHogEvents({
-              event: PostHogEventTypes.SecretPulled,
-              distinctId: getTelemetryDistinctId(req),
-              properties: {
-                numberOfSecrets: secrets.length,
-                workspaceId: projectId,
-                environment,
-                secretPath,
-                channel: getUserAgentType(req.headers["user-agent"]),
-                ...req.auditLogInfo
+            await server.services.auditLog.createAuditLog({
+              projectId,
+              ...req.auditLogInfo,
+              event: {
+                type: EventType.GET_SECRETS,
+                metadata: {
+                  environment,
+                  secretPath,
+                  numberOfSecrets: secrets.length
+                }
               }
             });
+
+            if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+              await server.services.telemetry.sendPostHogEvents({
+                event: PostHogEventTypes.SecretPulled,
+                distinctId: getTelemetryDistinctId(req),
+                properties: {
+                  numberOfSecrets: secrets.length,
+                  workspaceId: projectId,
+                  environment,
+                  secretPath,
+                  channel: getUserAgentType(req.headers["user-agent"]),
+                  ...req.auditLogInfo
+                }
+              });
+            }
           }
+        }
+      } catch (error) {
+        if (!(error instanceof ForbiddenError)) {
+          throw error;
         }
       }
 
