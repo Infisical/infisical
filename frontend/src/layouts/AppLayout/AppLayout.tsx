@@ -155,7 +155,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
   const { permission } = useOrgPermission();
-  console.log(permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms));
   const { data: externalKmsList } = useGetExternalKmsList(currentOrg?.id!, {
     enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
   });
