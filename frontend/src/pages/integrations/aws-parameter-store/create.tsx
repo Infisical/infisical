@@ -245,8 +245,8 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                   className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
-                    <SelectItem value={awsRegion.slug} key={`flyio-environment-${awsRegion.slug}`}>
-                      {awsRegion.name}
+                    <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
+                      {awsRegion.name} <span className="text-mineshaft-400">{awsRegion.slug}</span>
                     </SelectItem>
                   ))}
                 </Select>

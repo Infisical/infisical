@@ -244,7 +244,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
             >
               {AWS_REGIONS.map((awsRegion) => (
                 <SelectItem value={awsRegion.slug} key={`kms-aws-region-${awsRegion.slug}`}>
-                  {awsRegion.name} ({awsRegion.slug})
+                  {awsRegion.name} <span className="text-mineshaft-400">{awsRegion.slug}</span>
                 </SelectItem>
               ))}
             </Select>
