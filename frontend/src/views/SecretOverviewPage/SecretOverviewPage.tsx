@@ -191,20 +191,10 @@ export const SecretOverviewPage = () => {
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
 
-  const readableEnvs = userAvailableEnvs?.filter(({ slug }) =>
-    permission.can(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: slug,
-        secretPath
-      })
-    )
-  );
-
-  const [visibleEnvs, setVisibleEnvs] = useState(readableEnvs);
+  const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
 
   useEffect(() => {
-    setVisibleEnvs(readableEnvs);
+    setVisibleEnvs(userAvailableEnvs);
   }, [userAvailableEnvs, secretPath]);
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
@@ -530,9 +520,7 @@ export const SecretOverviewPage = () => {
 
   const isTableEmpty = totalCount === 0;
 
-  const isTableFiltered =
-    Boolean(Object.values(filter).filter((enabled) => !enabled).length) ||
-    visibleEnvs.length !== readableEnvs?.length;
+  const isTableFiltered = Boolean(Object.values(filter).filter((enabled) => !enabled).length);
 
   if (!isProjectV3)
     return (
@@ -612,7 +600,7 @@ export const SecretOverviewPage = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {readableEnvs.map((availableEnv) => {
+                    {userAvailableEnvs.map((availableEnv) => {
                       const { id: envId, name } = availableEnv;
 
                       const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
