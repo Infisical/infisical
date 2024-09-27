@@ -514,7 +514,11 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 >
                   Create
                 </Button>
-                <Button colorSchema="secondary" variant="plain">
+                <Button
+                  colorSchema="secondary"
+                  variant="plain"
+                  onClick={() => handlePopUpToggle("certificate", false)}
+                >
                   Cancel
                 </Button>
               </div>
