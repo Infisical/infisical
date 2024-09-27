@@ -280,7 +280,11 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
             >
               {alert ? "Update" : "Create"}
             </Button>
-            <Button colorSchema="secondary" variant="plain">
+            <Button
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("pkiAlert", false)}
+            >
               Cancel
             </Button>
           </div>

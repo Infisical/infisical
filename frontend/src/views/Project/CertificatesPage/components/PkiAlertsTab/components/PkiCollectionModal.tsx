@@ -149,7 +149,11 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
             >
               {pkiCollection ? "Update" : "Create"}
             </Button>
-            <Button colorSchema="secondary" variant="plain">
+            <Button
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("pkiCollection", false)}
+            >
               Cancel
             </Button>
           </div>
