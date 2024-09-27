@@ -12,10 +12,21 @@ export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPo
 export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
   const secretApprovalPolicyOrm = ormify(db, TableName.SecretApprovalPolicy);
 
-  const secretApprovalPolicyFindQuery = (tx: Knex, filter: TFindFilter<TSecretApprovalPolicies>) =>
+  const secretApprovalPolicyFindQuery = (
+    tx: Knex,
+    filter: TFindFilter<TSecretApprovalPolicies>,
+    customFilter?: {
+      sapId?: string;
+    }
+  ) =>
     tx(TableName.SecretApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
+      .where((qb) => {
+        if (customFilter?.sapId) {
+          void qb.where(`${TableName.SecretApprovalPolicy}.id`, "=", customFilter.sapId);
+        }
+      })
       .join(TableName.Environment, `${TableName.SecretApprovalPolicy}.envId`, `${TableName.Environment}.id`)
       .leftJoin(
         TableName.SecretApprovalPolicyApprover,
@@ -37,6 +48,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         tx.ref("id").withSchema("secretApprovalPolicyApproverUser").as("approverUserId"),
         tx.ref("email").withSchema("secretApprovalPolicyApproverUser").as("approverEmail"),
         tx.ref("firstName").withSchema("secretApprovalPolicyApproverUser").as("approverFirstName"),
+        tx.ref("username").withSchema("secretApprovalPolicyApproverUser").as("approverUsername"),
         tx.ref("lastName").withSchema("secretApprovalPolicyApproverUser").as("approverLastName")
       )
       .select(
@@ -108,9 +120,15 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>, tx?: Knex) => {
+  const find = async (
+    filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>,
+    customFilter?: {
+      sapId?: string;
+    },
+    tx?: Knex
+  ) => {
     try {
-      const docs = await secretApprovalPolicyFindQuery(tx || db.replicaNode(), filter);
+      const docs = await secretApprovalPolicyFindQuery(tx || db.replicaNode(), filter, customFilter);
       const formatedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
@@ -123,8 +141,9 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id }) => ({
+            mapper: ({ approverUserId: id, approverUsername }) => ({
               type: ApproverType.User,
+              name: approverUsername,
               id
             })
           },

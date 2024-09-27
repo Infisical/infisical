@@ -28,7 +28,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .default("/")
           .transform((val) => (val ? removeTrailingSlash(val) : val)),
         approvers: z
-          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
+            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).default(1),
@@ -40,7 +43,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
@@ -69,7 +72,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z.object({
         name: z.string().optional(),
         approvers: z
-          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
+            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).default(1),
@@ -87,7 +93,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
@@ -117,7 +123,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,
@@ -165,6 +171,44 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         projectId: req.query.workspaceId
       });
       return { approvals };
+    }
+  });
+
+  server.route({
+    url: "/:sapId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        sapId: z.string()
+      }),
+      response: {
+        200: z.object({
+          approval: sapPubSchema.extend({
+            approvers: z
+              .object({
+                id: z.string().nullable().optional(),
+                type: z.nativeEnum(ApproverType),
+                name: z.string().nullable().optional()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.params
+      });
+
+      return { approval };
     }
   });
 

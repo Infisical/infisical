@@ -12,16 +12,29 @@ export type TAccessApprovalPolicyDALFactory = ReturnType<typeof accessApprovalPo
 export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
   const accessApprovalPolicyOrm = ormify(db, TableName.AccessApprovalPolicy);
 
-  const accessApprovalPolicyFindQuery = async (tx: Knex, filter: TFindFilter<TAccessApprovalPolicies>) => {
+  const accessApprovalPolicyFindQuery = async (
+    tx: Knex,
+    filter: TFindFilter<TAccessApprovalPolicies>,
+    customFilter?: {
+      policyId?: string;
+    }
+  ) => {
     const result = await tx(TableName.AccessApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
+      .where((qb) => {
+        if (customFilter?.policyId) {
+          void qb.where(`${TableName.AccessApprovalPolicy}.id`, "=", customFilter.policyId);
+        }
+      })
       .join(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
       .leftJoin(
         TableName.AccessApprovalPolicyApprover,
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyApprover}.policyId`
       )
+      .leftJoin(TableName.Users, `${TableName.AccessApprovalPolicyApprover}.approverUserId`, `${TableName.Users}.id`)
+      .select(tx.ref("username").withSchema(TableName.Users).as("approverUsername"))
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
@@ -76,9 +89,15 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const find = async (filter: TFindFilter<TAccessApprovalPolicies & { projectId: string }>, tx?: Knex) => {
+  const find = async (
+    filter: TFindFilter<TAccessApprovalPolicies & { projectId: string }>,
+    customFilter?: {
+      policyId?: string;
+    },
+    tx?: Knex
+  ) => {
     try {
-      const docs = await accessApprovalPolicyFindQuery(tx || db.replicaNode(), filter);
+      const docs = await accessApprovalPolicyFindQuery(tx || db.replicaNode(), filter, customFilter);
 
       const formattedDocs = sqlNestRelationships({
         data: docs,
@@ -97,9 +116,10 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id }) => ({
+            mapper: ({ approverUserId: id, approverUsername }) => ({
               id,
-              type: ApproverType.User
+              type: ApproverType.User,
+              name: approverUsername
             })
           },
           {

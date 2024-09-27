@@ -2,10 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGroupDALFactory } from "../group/group-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "./access-approval-policy-approver-dal";
@@ -15,6 +16,7 @@ import {
   ApproverType,
   TCreateAccessApprovalPolicy,
   TDeleteAccessApprovalPolicy,
+  TGetAccessApprovalPolicyByIdDTO,
   TGetAccessPolicyCountByEnvironmentDTO,
   TListAccessApprovalPoliciesDTO,
   TUpdateAccessApprovalPolicy
@@ -28,6 +30,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   groupDAL: TGroupDALFactory;
+  userDAL: Pick<TUserDALFactory, "find">;
 };
 
 export type TAccessApprovalPolicyServiceFactory = ReturnType<typeof accessApprovalPolicyServiceFactory>;
@@ -38,7 +41,8 @@ export const accessApprovalPolicyServiceFactory = ({
   groupDAL,
   permissionService,
   projectEnvDAL,
-  projectDAL
+  projectDAL,
+  userDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createAccessApprovalPolicy = async ({
     name,
@@ -59,12 +63,18 @@ export const accessApprovalPolicyServiceFactory = ({
     // If there is a group approver people might be added to the group later to meet the approvers quota
     const groupApprovers = approvers
       .filter((approver) => approver.type === ApproverType.Group)
-      .map((approver) => approver.id);
+      .map((approver) => approver.id) as string[];
+
     const userApprovers = approvers
       .filter((approver) => approver.type === ApproverType.User)
-      .map((approver) => approver.id);
+      .map((approver) => approver.id)
+      .filter(Boolean) as string[];
 
-    if (!groupApprovers && approvals > userApprovers.length)
+    const userApproverNames = approvers
+      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .filter(Boolean) as string[];
+
+    if (!groupApprovers && approvals > userApprovers.length + userApproverNames.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -81,7 +91,26 @@ export const accessApprovalPolicyServiceFactory = ({
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
-    const verifyAllApprovers = userApprovers;
+    let approverUserIds = userApprovers;
+    if (userApproverNames.length) {
+      const approverUsers = await userDAL.find({
+        $in: {
+          username: userApproverNames
+        }
+      });
+
+      const approverNamesFromDb = approverUsers.map((user) => user.username);
+      const invalidUsernames = userApproverNames.filter((username) => !approverNamesFromDb.includes(username));
+
+      if (invalidUsernames.length) {
+        throw new BadRequestError({
+          message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+        });
+      }
+
+      approverUserIds = approverUserIds.concat(approverUsers.map((user) => user.id));
+    }
+
     const usersPromises: Promise<
       {
         id: string;
@@ -92,6 +121,7 @@ export const accessApprovalPolicyServiceFactory = ({
         isPartOfGroup: boolean;
       }[]
     >[] = [];
+    const verifyAllApprovers = [...approverUserIds];
 
     for (const groupId of groupApprovers) {
       usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
@@ -123,9 +153,9 @@ export const accessApprovalPolicyServiceFactory = ({
         },
         tx
       );
-      if (userApprovers) {
+      if (approverUserIds.length) {
         await accessApprovalPolicyApproverDAL.insertMany(
-          userApprovers.map((userId) => ({
+          approverUserIds.map((userId) => ({
             approverUserId: userId,
             policyId: doc.id
           })),
@@ -185,15 +215,25 @@ export const accessApprovalPolicyServiceFactory = ({
     enforcementLevel
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers
-      ?.filter((approver) => approver.type === ApproverType.Group)
-      .map((approver) => approver.id);
+      .filter((approver) => approver.type === ApproverType.Group)
+      .map((approver) => approver.id) as string[];
+
     const userApprovers = approvers
-      ?.filter((approver) => approver.type === ApproverType.User)
-      .map((approver) => approver.id);
+      .filter((approver) => approver.type === ApproverType.User)
+      .map((approver) => approver.id)
+      .filter(Boolean) as string[];
+
+    const userApproverNames = approvers
+      .map((approver) => (approver.type === ApproverType.User ? approver.name : undefined))
+      .filter(Boolean) as string[];
 
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
     const currentAppovals = approvals || accessApprovalPolicy.approvals;
-    if (groupApprovers?.length === 0 && userApprovers && currentAppovals > userApprovers.length) {
+    if (
+      groupApprovers?.length === 0 &&
+      userApprovers &&
+      currentAppovals > userApprovers.length + userApproverNames.length
+    ) {
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
     }
 
@@ -222,7 +262,27 @@ export const accessApprovalPolicyServiceFactory = ({
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
-      if (userApprovers) {
+      if (userApprovers.length || userApproverNames.length) {
+        let userApproverIds = userApprovers;
+        if (userApproverNames.length) {
+          const approverUsers = await userDAL.find({
+            $in: {
+              username: userApproverNames
+            }
+          });
+
+          const approverNamesFromDb = approverUsers.map((user) => user.username);
+          const invalidUsernames = userApproverNames.filter((username) => !approverNamesFromDb.includes(username));
+
+          if (invalidUsernames.length) {
+            throw new BadRequestError({
+              message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+            });
+          }
+
+          userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
+        }
+
         await verifyApprovers({
           projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
@@ -230,10 +290,11 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath: doc.secretPath!,
           actorAuthMethod,
           permissionService,
-          userIds: userApprovers
+          userIds: userApproverIds
         });
+
         await accessApprovalPolicyApproverDAL.insertMany(
-          userApprovers.map((userId) => ({
+          userApproverIds.map((userId) => ({
             approverUserId: userId,
             policyId: doc.id
           })),
@@ -256,7 +317,10 @@ export const accessApprovalPolicyServiceFactory = ({
         for (const groupId of groupApprovers) {
           usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
         }
-        const verifyGroupApprovers = (await Promise.all(usersPromises)).flat().map((user) => user.id);
+        const verifyGroupApprovers = (await Promise.all(usersPromises))
+          .flat()
+          .filter((user) => user.isPartOfGroup)
+          .map((user) => user.id);
 
         await verifyApprovers({
           projectId: accessApprovalPolicy.projectId,
@@ -341,11 +405,40 @@ export const accessApprovalPolicyServiceFactory = ({
     return { count: policies.length };
   };
 
+  const getAccessApprovalPolicyById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    policyId
+  }: TGetAccessApprovalPolicyByIdDTO) => {
+    const [policy] = await accessApprovalPolicyDAL.find({}, { policyId });
+
+    if (!policy) {
+      throw new NotFoundError({
+        message: "Cannot find access approval policy"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      policy.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+
+    return policy;
+  };
+
   return {
     getAccessPolicyCountByEnvSlug,
     createAccessApprovalPolicy,
     deleteAccessApprovalPolicy,
     updateAccessApprovalPolicy,
-    getAccessApprovalPolicyByProjectSlug
+    getAccessApprovalPolicyByProjectSlug,
+    getAccessApprovalPolicyById
   };
 };

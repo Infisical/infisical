@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { EnforcementLevel } from "@app/lib/types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -11,6 +12,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         projectSlug: z.string().trim(),
@@ -18,7 +22,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         secretPath: z.string().trim().default("/"),
         environment: z.string(),
         approvers: z
-          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
+            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).default(1),
@@ -30,7 +37,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.accessApprovalPolicy.createAccessApprovalPolicy({
         actor: req.permission.type,
@@ -49,6 +56,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       querystring: z.object({
         projectSlug: z.string().trim()
@@ -115,6 +125,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:policyId",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         policyId: z.string()
@@ -127,7 +140,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional()
           .transform((val) => (val === "" ? "/" : val)),
         approvers: z
-          .object({ type: z.nativeEnum(ApproverType), id: z.string() })
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
+            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), name: z.string().optional() })
+          ])
           .array()
           .min(1, { message: "At least one approver should be provided" }),
         approvals: z.number().min(1).optional(),
@@ -139,7 +155,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
@@ -155,6 +171,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
   server.route({
     url: "/:policyId",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         policyId: z.string()
@@ -165,7 +184,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.accessApprovalPolicy.deleteAccessApprovalPolicy({
         actor: req.permission.type,
@@ -174,6 +193,46 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         policyId: req.params.policyId
       });
+      return { approval };
+    }
+  });
+
+  server.route({
+    url: "/:policyId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        policyId: z.string()
+      }),
+      response: {
+        200: z.object({
+          approval: sapPubSchema.extend({
+            approvers: z
+              .object({
+                type: z.nativeEnum(ApproverType),
+                id: z.string().nullable().optional(),
+                name: z.string().nullable().optional()
+              })
+              .array()
+              .nullable()
+              .optional()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const approval = await server.services.accessApprovalPolicy.getAccessApprovalPolicyById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.params
+      });
+
       return { approval };
     }
   });
