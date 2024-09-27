@@ -29,7 +29,7 @@ export const isApproversValid = async ({
         subject(ProjectPermissionSub.Secrets, { environment: envSlug, secretPath })
       );
     }
-  } catch (err) {
+  } catch {
     return false;
   }
   return true;
