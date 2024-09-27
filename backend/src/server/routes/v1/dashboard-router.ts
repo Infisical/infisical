@@ -23,7 +23,7 @@ const booleanSchema = z
   .transform((value) => {
     if (typeof value === "string") {
       // ie if not empty, 0 or false, return true
-      return !!value && Number(value) !== 0 && value.toLowerCase() !== "false";
+      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
     }
 
     return value;
