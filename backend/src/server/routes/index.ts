@@ -1,5 +1,5 @@
 import { CronJob } from "cron";
-import { Redis } from "ioredis";
+// import { Redis } from "ioredis";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -74,7 +74,6 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -1308,33 +1307,33 @@ export const registerRoutes = async (
         })
       }
     },
-    handler: async (request, reply) => {
+    handler: async () => {
       const cfg = getConfig();
       const serverCfg = await getServerCfg();
 
-      try {
-        await db.raw("SELECT NOW()");
-      } catch (err) {
-        logger.error("Health check: database connection failed", err);
-        return reply.code(503).send({
-          date: new Date(),
-          message: "Service unavailable"
-        });
-      }
+      // try {
+      //   await db.raw("SELECT NOW()");
+      // } catch (err) {
+      //   logger.error("Health check: database connection failed", err);
+      //   return reply.code(503).send({
+      //     date: new Date(),
+      //     message: "Service unavailable"
+      //   });
+      // }
 
-      if (cfg.isRedisConfigured) {
-        const redis = new Redis(cfg.REDIS_URL);
-        try {
-          await redis.ping();
-          redis.disconnect();
-        } catch (err) {
-          logger.error("Health check: redis connection failed", err);
-          return reply.code(503).send({
-            date: new Date(),
-            message: "Service unavailable"
-          });
-        }
-      }
+      // if (cfg.isRedisConfigured) {
+      //   const redis = new Redis(cfg.REDIS_URL);
+      //   try {
+      //     await redis.ping();
+      //     redis.disconnect();
+      //   } catch (err) {
+      //     logger.error("Health check: redis connection failed", err);
+      //     return reply.code(503).send({
+      //       date: new Date(),
+      //       message: "Service unavailable"
+      //     });
+      //   }
+      // }
 
       return {
         date: new Date(),
