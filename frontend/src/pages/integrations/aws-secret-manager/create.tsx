@@ -18,6 +18,7 @@ import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/
 import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
 
 import {
+  Badge,
   Button,
   Card,
   CardTitle,
@@ -272,7 +273,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                       className="flex w-full justify-between"
                       key={`aws-environment-${awsRegion.slug}`}
                     >
-                      {awsRegion.name} <span className="text-mineshaft-400">{awsRegion.slug}</span>
+                      {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
                     </SelectItem>
                   ))}
                 </Select>
