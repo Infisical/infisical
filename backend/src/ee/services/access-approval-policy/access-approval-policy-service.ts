@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -11,7 +11,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
-import { verifyApprovers } from "./access-approval-policy-fns";
+import { isApproversValid } from "./access-approval-policy-fns";
 import {
   ApproverType,
   TCreateAccessApprovalPolicy,
@@ -19,8 +19,7 @@ import {
   TGetAccessApprovalPolicyByIdDTO,
   TGetAccessPolicyCountByEnvironmentDTO,
   TListAccessApprovalPoliciesDTO,
-  TUpdateAccessApprovalPolicy,
-  VerifyApproversError
+  TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
 
 type TSecretApprovalPolicyServiceFactoryDep = {
@@ -133,16 +132,21 @@ export const accessApprovalPolicyServiceFactory = ({
       .map((user) => user.id);
     verifyAllApprovers.push(...verifyGroupApprovers);
 
-    await verifyApprovers({
+    const approversValid = await isApproversValid({
       projectId: project.id,
       orgId: actorOrgId,
       envSlug: environment,
       secretPath,
       actorAuthMethod,
       permissionService,
-      userIds: verifyAllApprovers,
-      error: VerifyApproversError.BadRequestError
+      userIds: verifyAllApprovers
     });
+
+    if (!approversValid) {
+      throw new BadRequestError({
+        message: "One or more approvers doesn't have access to be specified secret path"
+      });
+    }
 
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.create(
@@ -285,16 +289,21 @@ export const accessApprovalPolicyServiceFactory = ({
           userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
         }
 
-        await verifyApprovers({
+        const approversValid = await isApproversValid({
           projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
           envSlug: accessApprovalPolicy.environment.slug,
           secretPath: doc.secretPath!,
           actorAuthMethod,
           permissionService,
-          userIds: userApproverIds,
-          error: VerifyApproversError.BadRequestError
+          userIds: userApproverIds
         });
+
+        if (!approversValid) {
+          throw new BadRequestError({
+            message: "One or more approvers doesn't have access to be specified secret path"
+          });
+        }
 
         await accessApprovalPolicyApproverDAL.insertMany(
           userApproverIds.map((userId) => ({
@@ -325,16 +334,22 @@ export const accessApprovalPolicyServiceFactory = ({
           .filter((user) => user.isPartOfGroup)
           .map((user) => user.id);
 
-        await verifyApprovers({
+        const approversValid = await isApproversValid({
           projectId: accessApprovalPolicy.projectId,
           orgId: actorOrgId,
           envSlug: accessApprovalPolicy.environment.slug,
           secretPath: doc.secretPath!,
           actorAuthMethod,
           permissionService,
-          userIds: verifyGroupApprovers,
-          error: VerifyApproversError.BadRequestError
+          userIds: verifyGroupApprovers
         });
+
+        if (!approversValid) {
+          throw new BadRequestError({
+            message: "One or more approvers doesn't have access to be specified secret path"
+          });
+        }
+
         await accessApprovalPolicyApproverDAL.insertMany(
           groupApprovers.map((groupId) => ({
             approverGroupId: groupId,
@@ -398,7 +413,9 @@ export const accessApprovalPolicyServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new NotFoundError({ message: "User not found in project" });
+    if (!membership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    }
 
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: "Environment not found" });

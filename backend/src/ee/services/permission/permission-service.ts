@@ -116,7 +116,7 @@ export const permissionServiceFactory = ({
     if (userOrgId && userOrgId !== orgId)
       throw new ForbiddenRequestError({ message: "Invalid user token. Scoped to different organization." });
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
-    if (!membership) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
+    if (!membership) throw new ForbiddenRequestError({ name: "You are not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom organization permission not found" });
     }
@@ -143,7 +143,7 @@ export const permissionServiceFactory = ({
 
   const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
     const membership = await permissionDAL.getOrgIdentityPermission(identityId, orgId);
-    if (!membership) throw new ForbiddenRequestError({ name: "Identity is not a part of the specified organization" });
+    if (!membership) throw new ForbiddenRequestError({ name: "Identity is not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new NotFoundError({ name: "Custom organization permission not found" });
     }

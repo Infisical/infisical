@@ -909,9 +909,7 @@ export const projectServiceFactory = ({
     );
 
     if (!membership) {
-      throw new ForbiddenRequestError({
-        message: "User is not a member of the project"
-      });
+      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
 
     const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);

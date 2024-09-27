@@ -3,12 +3,7 @@ import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 
-export enum VerifyApproversError {
-  ForbiddenError = "ForbiddenError",
-  BadRequestError = "BadRequestError"
-}
-
-export type TVerifyApprovers = {
+export type TIsApproversValid = {
   userIds: string[];
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   envSlug: string;
@@ -16,7 +11,6 @@ export type TVerifyApprovers = {
   secretPath: string;
   projectId: string;
   orgId: string;
-  error: VerifyApproversError;
 };
 
 export enum ApproverType {
