@@ -55,8 +55,7 @@ export const identityServiceFactory = ({
     );
     const isCustomRole = Boolean(customRole);
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+    if (!hasRequiredPriviledges) throw new BadRequestError({ message: "Failed to create a more privileged identity" });
 
     const plan = await licenseService.getPlan(orgId);
 
@@ -95,7 +94,7 @@ export const identityServiceFactory = ({
     actorOrgId
   }: TUpdateIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
-    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+    if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -127,7 +126,7 @@ export const identityServiceFactory = ({
       const isCustomRole = Boolean(customOrgRole);
       const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
       if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged identity" });
+        throw new BadRequestError({ message: "Failed to create a more privileged identity" });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -154,7 +153,7 @@ export const identityServiceFactory = ({
       [`${TableName.IdentityOrgMembership}.identityId` as "identityId"]: id
     });
     const identity = doc[0];
-    if (!identity) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+    if (!identity) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -169,7 +168,7 @@ export const identityServiceFactory = ({
 
   const deleteIdentity = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
-    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+    if (!identityOrgMembership) throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,

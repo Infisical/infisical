@@ -1075,7 +1075,7 @@ describe("Secret V3 Raw Router Without E2EE enabled", async () => {
       },
       body: createSecretReqBody
     });
-    expect(createSecRes.statusCode).toBe(404);
+    expect(createSecRes.statusCode).toBe(400);
   });
 
   test("Update secret raw", async () => {
@@ -1093,7 +1093,7 @@ describe("Secret V3 Raw Router Without E2EE enabled", async () => {
       },
       body: updateSecretReqBody
     });
-    expect(updateSecRes.statusCode).toBe(404);
+    expect(updateSecRes.statusCode).toBe(400);
   });
 
   test("Delete secret raw", async () => {
@@ -1110,6 +1110,6 @@ describe("Secret V3 Raw Router Without E2EE enabled", async () => {
       },
       body: deletedSecretReqBody
     });
-    expect(deletedSecRes.statusCode).toBe(404);
+    expect(deletedSecRes.statusCode).toBe(400);
   });
 });

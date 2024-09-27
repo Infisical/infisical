@@ -2,7 +2,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
@@ -39,7 +39,7 @@ export const identityAccessTokenServiceFactory = ({
 
     if (accessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
       await identityAccessTokenDAL.deleteById(tokenId);
-      throw new ForbiddenRequestError({
+      throw new BadRequestError({
         message: "Unable to renew because access token number of uses limit reached"
       });
     }
@@ -55,7 +55,7 @@ export const identityAccessTokenServiceFactory = ({
 
         if (currentDate > expirationDate) {
           await identityAccessTokenDAL.deleteById(tokenId);
-          throw new ForbiddenRequestError({
+          throw new UnauthorizedError({
             message: "Failed to renew MI access token due to TTL expiration"
           });
         }
@@ -67,7 +67,7 @@ export const identityAccessTokenServiceFactory = ({
 
         if (currentDate > expirationDate) {
           await identityAccessTokenDAL.deleteById(tokenId);
-          throw new ForbiddenRequestError({
+          throw new UnauthorizedError({
             message: "Failed to renew MI access token due to TTL expiration"
           });
         }
@@ -81,15 +81,13 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
-      throw new ForbiddenRequestError({ message: "Only identity access tokens can be renewed" });
-    }
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
+    if (!identityAccessToken) throw new UnauthorizedError();
 
     let { accessTokenNumUses } = identityAccessToken;
     const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
@@ -109,7 +107,7 @@ export const identityAccessTokenServiceFactory = ({
 
       if (currentDate > expirationDate) {
         await identityAccessTokenDAL.deleteById(identityAccessToken.id);
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Failed to renew MI access token due to Max TTL expiration"
         });
       }
@@ -117,7 +115,7 @@ export const identityAccessTokenServiceFactory = ({
       const extendToDate = new Date(currentDate.getTime() + Number(accessTokenTTL * 1000));
       if (extendToDate > expirationDate) {
         await identityAccessTokenDAL.deleteById(identityAccessToken.id);
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Failed to renew MI access token past its Max TTL expiration"
         });
       }
@@ -136,15 +134,13 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
-      throw new ForbiddenRequestError({ message: "Only identity access tokens can be revoked" });
-    }
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
+    if (!identityAccessToken) throw new UnauthorizedError();
 
     const revokedToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
       isAccessTokenRevoked: true
@@ -158,10 +154,10 @@ export const identityAccessTokenServiceFactory = ({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
+    if (!identityAccessToken) throw new UnauthorizedError();
     if (identityAccessToken.isAccessTokenRevoked)
-      throw new ForbiddenRequestError({
-        message: "Failed to authorize revoked access token, access token is revoked"
+      throw new UnauthorizedError({
+        message: "Failed to authorize revoked access token"
       });
 
     if (ipAddress && identityAccessToken) {
@@ -176,7 +172,7 @@ export const identityAccessTokenServiceFactory = ({
     });
 
     if (!identityOrgMembership) {
-      throw new BadRequestError({ message: "Identity does not belong to any organization" });
+      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
     }
 
     let { accessTokenNumUses } = identityAccessToken;

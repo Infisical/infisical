@@ -8,7 +8,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
@@ -143,7 +143,7 @@ export const projectMembershipServiceFactory = ({
     sendEmails = true
   }: TAddUsersToWorkspaceDTO) => {
     const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new BadRequestError({ message: "Project not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -236,7 +236,10 @@ export const projectMembershipServiceFactory = ({
 
     const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
     if (membershipUser?.isGhost || membershipUser?.projectId !== projectId) {
-      throw new ForbiddenRequestError({ message: "Forbidden member update" });
+      throw new BadRequestError({
+        message: "Unauthorized member update",
+        name: "Update project membership"
+      });
     }
 
     // validate custom roles input
@@ -258,9 +261,7 @@ export const projectMembershipServiceFactory = ({
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
       : [];
-    if (customRoles.length !== customInputRoles.length) {
-      throw new NotFoundError({ message: "Custom project roles not found" });
-    }
+    if (customRoles.length !== customInputRoles.length) throw new BadRequestError({ message: "Custom role not found" });
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
@@ -316,9 +317,9 @@ export const projectMembershipServiceFactory = ({
     const member = await userDAL.findUserByProjectMembershipId(membershipId);
 
     if (member?.isGhost) {
-      throw new ForbiddenRequestError({
-        message: "Forbidden membership deletion",
-        name: "DeleteProjectMembership"
+      throw new BadRequestError({
+        message: "Unauthorized member delete",
+        name: "Delete project membership"
       });
     }
 
@@ -351,8 +352,9 @@ export const projectMembershipServiceFactory = ({
     const project = await projectDAL.findById(projectId);
 
     if (!project) {
-      throw new NotFoundError({
-        message: "Project not found"
+      throw new BadRequestError({
+        message: "Project not found",
+        name: "Delete project membership"
       });
     }
 
@@ -426,7 +428,7 @@ export const projectMembershipServiceFactory = ({
     }
 
     const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new BadRequestError({ message: "Project not found" });
 
     if (project.version === ProjectVersion.V1) {
       throw new BadRequestError({
@@ -437,7 +439,7 @@ export const projectMembershipServiceFactory = ({
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
     if (!projectMembers?.length) {
-      throw new NotFoundError({ message: "Failed to find project members" });
+      throw new BadRequestError({ message: "Failed to find project members" });
     }
 
     if (projectMembers.length < 2) {

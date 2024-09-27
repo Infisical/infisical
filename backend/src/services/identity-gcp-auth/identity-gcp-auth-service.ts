@@ -7,7 +7,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -47,14 +47,10 @@ export const identityGcpAuthServiceFactory = ({
 }: TIdentityGcpAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
-    if (!identityGcpAuth) {
-      throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
-    }
+    if (!identityGcpAuth) throw new UnauthorizedError();
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityGcpAuth.identityId });
-    if (!identityMembershipOrg) {
-      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
-    }
+    if (!identityMembershipOrg) throw new UnauthorizedError();
 
     let gcpIdentityDetails: TGcpIdentityDetails;
     switch (identityGcpAuth.type) {
@@ -167,7 +163,7 @@ export const identityGcpAuthServiceFactory = ({
     actorOrgId
   }: TAttachGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add GCP Auth to already configured identity"
@@ -247,7 +243,7 @@ export const identityGcpAuthServiceFactory = ({
     actorOrgId
   }: TUpdateGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
         message: "Failed to update GCP Auth"
@@ -310,7 +306,7 @@ export const identityGcpAuthServiceFactory = ({
 
   const getGcpAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
         message: "The identity does not have GCP Auth attached"
@@ -338,7 +334,7 @@ export const identityGcpAuthServiceFactory = ({
     actorOrgId
   }: TRevokeGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
         message: "The identity does not have gcp auth"

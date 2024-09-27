@@ -24,7 +24,7 @@ export const validateAzureIdentity = async ({
   const signingKeys = data.keys;
 
   const signingKey = signingKeys.find((key) => key.kid === kid);
-  if (!signingKey) throw new UnauthorizedError({ message: "Invalid signing key" });
+  if (!signingKey) throw new UnauthorizedError();
 
   const publicKey = `-----BEGIN CERTIFICATE-----\n${signingKey.x5c[0]}\n-----END CERTIFICATE-----`;
 
