@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
@@ -72,7 +72,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
       );
 
       if (existingSecretVersions.length !== data.length) {
-        throw new BadRequestError({ message: "Some of the secret versions do not exist" });
+        throw new NotFoundError({ message: "Some of the secret versions do not exist" });
       }
 
       if (data.length === 0) return [];

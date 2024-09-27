@@ -4,7 +4,7 @@ import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approv
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -295,7 +295,7 @@ export const secretReplicationServiceFactory = ({
             const [destinationFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [
               destinationSecretImport.folderId
             ]);
-            if (!destinationFolder) throw new BadRequestError({ message: "Imported folder not found" });
+            if (!destinationFolder) throw new NotFoundError({ message: "Imported folder not found" });
 
             let destinationReplicationFolder = await folderDAL.findOne({
               parentId: destinationFolder.id,
@@ -506,7 +506,7 @@ export const secretReplicationServiceFactory = ({
       return;
     }
 
-    if (!botKey) throw new BadRequestError({ message: "Bot not found" });
+    if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
     // these are the secrets to be added in replicated folders
     const sourceLocalSecrets = await secretDAL.find({ folderId: folder.id, type: SecretType.Shared });
     const sourceSecretImports = await secretImportDAL.find({ folderId: folder.id });
@@ -545,7 +545,7 @@ export const secretReplicationServiceFactory = ({
           const [destinationFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [
             destinationSecretImport.folderId
           ]);
-          if (!destinationFolder) throw new BadRequestError({ message: "Imported folder not found" });
+          if (!destinationFolder) throw new NotFoundError({ message: "Imported folder not found" });
 
           let destinationReplicationFolder = await folderDAL.findOne({
             parentId: destinationFolder.id,

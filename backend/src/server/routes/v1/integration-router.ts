@@ -11,6 +11,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
+import {} from "../sanitizedSchemas";
+
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",

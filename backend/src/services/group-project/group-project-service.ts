@@ -66,7 +66,7 @@ export const groupProjectServiceFactory = ({
   }: TCreateProjectGroupDTO) => {
     const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
+    if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     if (project.version < 2) throw new BadRequestError({ message: `Failed to add group to E2EE project` });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -79,7 +79,7 @@ export const groupProjectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
+    if (!group) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
 
     const existingGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
     if (existingGroup)
@@ -168,24 +168,24 @@ export const groupProjectServiceFactory = ({
         const ghostUser = await projectDAL.findProjectGhostUser(project.id, tx);
 
         if (!ghostUser) {
-          throw new BadRequestError({
-            message: "Failed to find sudo user"
+          throw new NotFoundError({
+            message: "Failed to find project owner"
           });
         }
 
         const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, project.id, tx);
 
         if (!ghostUserLatestKey) {
-          throw new BadRequestError({
-            message: "Failed to find sudo user latest key"
+          throw new NotFoundError({
+            message: "Failed to find project owner's latest key"
           });
         }
 
         const bot = await projectBotDAL.findOne({ projectId: project.id }, tx);
 
         if (!bot) {
-          throw new BadRequestError({
-            message: "Failed to find bot"
+          throw new NotFoundError({
+            message: "Failed to find project bot"
           });
         }
 
@@ -235,7 +235,7 @@ export const groupProjectServiceFactory = ({
   }: TUpdateProjectGroupDTO) => {
     const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
+    if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -247,10 +247,10 @@ export const groupProjectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Groups);
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
+    if (!group) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
 
     const projectGroup = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
-    if (!projectGroup) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
+    if (!projectGroup) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
 
     for await (const { role: requestedRoleChange } of roles) {
       const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
@@ -331,13 +331,13 @@ export const groupProjectServiceFactory = ({
   }: TDeleteProjectGroupDTO) => {
     const project = await projectDAL.findById(projectId);
 
-    if (!project) throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
+    if (!project) throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id: groupId });
-    if (!group) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
+    if (!group) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
 
     const groupProjectMembership = await groupProjectDAL.findOne({ groupId: group.id, projectId: project.id });
-    if (!groupProjectMembership) throw new BadRequestError({ message: `Failed to find group with ID ${groupId}` });
+    if (!groupProjectMembership) throw new NotFoundError({ message: `Failed to find group with ID ${groupId}` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -380,7 +380,7 @@ export const groupProjectServiceFactory = ({
     const project = await projectDAL.findById(projectId);
 
     if (!project) {
-      throw new BadRequestError({ message: `Failed to find project with ID ${projectId}` });
+      throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
     }
 
     const { permission } = await permissionService.getProjectPermission(

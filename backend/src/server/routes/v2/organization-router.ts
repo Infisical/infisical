@@ -69,7 +69,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "Return projects in organization that user is part of",
+      description: "Return projects in organization that user is apart of",
       security: [
         {
           bearerAuth: []

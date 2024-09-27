@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { pkiItemTypeToNameMap } from "@app/services/pki-collection/pki-collection-types";
@@ -86,7 +86,7 @@ export const pkiAlertServiceFactory = ({
     const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
     if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
     if (pkiCollection.projectId !== projectId)
-      throw new UnauthorizedError({ message: "PKI collection not found in project" });
+      throw new ForbiddenRequestError({ message: "PKI collection does not belong to the specified project." });
 
     const alert = await pkiAlertDAL.create({
       projectId,
@@ -141,8 +141,9 @@ export const pkiAlertServiceFactory = ({
     if (pkiCollectionId) {
       const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
       if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
-      if (pkiCollection.projectId !== alert.projectId)
-        throw new UnauthorizedError({ message: "PKI collection not found in project" });
+      if (pkiCollection.projectId !== alert.projectId) {
+        throw new ForbiddenRequestError({ message: "PKI collection does not belong to the specified project." });
+      }
     }
 
     alert = await pkiAlertDAL.updateById(alertId, {

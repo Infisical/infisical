@@ -3,7 +3,7 @@ import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
@@ -61,7 +61,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       );
 
       if (existingSecrets.length !== data.length) {
-        throw new BadRequestError({ message: "Some of the secrets do not exist" });
+        throw new NotFoundError({ message: "One or more secrets was not found" });
       }
 
       if (data.length === 0) return [];

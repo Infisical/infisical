@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
@@ -71,23 +71,34 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       const refreshToken = req.cookies.jid;
       const appCfg = getConfig();
       if (!refreshToken)
-        throw new BadRequestError({
-          name: "Auth token route",
-          message: "Failed  to find refresh token"
+        throw new NotFoundError({
+          name: "AuthTokenNotFound",
+          message: "Failed to find refresh token"
         });
 
       const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
       if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
-        throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
+        throw new UnauthorizedError({
+          message: "The token provided is not a refresh token",
+          name: "InvalidToken"
+        });
 
       const tokenVersion = await server.services.authToken.getUserTokenSessionById(
         decodedToken.tokenVersionId,
         decodedToken.userId
       );
-      if (!tokenVersion) throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
+      if (!tokenVersion)
+        throw new UnauthorizedError({
+          message: "Valid token version not found",
+          name: "InvalidToken"
+        });
 
-      if (decodedToken.refreshVersion !== tokenVersion.refreshVersion)
-        throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
+      if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
+        throw new UnauthorizedError({
+          message: "Token version mismatch",
+          name: "InvalidToken"
+        });
+      }
 
       const token = jwt.sign(
         {

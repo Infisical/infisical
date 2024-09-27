@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -145,7 +145,7 @@ export const externalKmsServiceFactory = ({
     const kmsSlug = slug ? slugify(slug) : undefined;
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
 
     let sanitizedProviderInput = "";
     const { encryptor: orgDataKeyEncryptor, decryptor: orgDataKeyDecryptor } =
@@ -220,7 +220,7 @@ export const externalKmsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
 
     const externalKms = await externalKmsDAL.transaction(async (tx) => {
       const kms = await kmsDAL.deleteById(kmsDoc.id, tx);
@@ -258,7 +258,7 @@ export const externalKmsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -298,7 +298,7 @@ export const externalKmsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new BadRequestError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
