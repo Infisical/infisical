@@ -30,38 +30,28 @@ export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({
 export const DefaultResponseErrorsSchema = {
   400: z.object({
     statusCode: z.literal(400),
-    message: z.literal(
-      `<string>: Contains a human-readable message about what went wrong. 400 errors are bad request errors, and are will occur to happen when passing or unexpected bad data in the request`
-    ),
-    error: z.literal(`<string>: Contains a human-readable error name.`)
+    message: z.string(),
+    error: z.string()
   }),
   404: z.object({
     statusCode: z.literal(404),
-    message: z.literal(
-      `<string>: Contains a human-readable message about what went wrong. 404 errors are not found errors, and will occur when a resource is not found`
-    ),
-    error: z.literal(`<string>: Contains a human-readable error name.`)
+    message: z.string(),
+    error: z.string()
   }),
   401: z.object({
     statusCode: z.literal(401),
-    message: z.literal(
-      `<string>: Contains a human-readable message about what went wrong. 401 errors are unauthorized errors, and will occur when attempting to access a resource with invalid or missing credentials`
-    ),
-    error: z.literal(`<string>: Contains a human-readable error name.`)
+    message: z.string(),
+    error: z.string()
   }),
   403: z.object({
     statusCode: z.literal(403),
     message: z.any(),
-    error: z.literal(
-      `<string>: Contains a human-readable error name. The message can be both an object or a string. It will always be a string except if the error is happening due to a request validation error.`
-    )
+    error: z.string()
   }),
   500: z.object({
     statusCode: z.literal(500),
-    message: z.literal(
-      `<string>: Contains a human-readable message about what went wrong. 500 errors are internal server errors, and will occur when an unexpected error occurs on the server`
-    ),
-    error: z.literal(`<string>: Contains a human-readable error name.`)
+    message: z.string(),
+    error: z.string()
   })
 };
 
