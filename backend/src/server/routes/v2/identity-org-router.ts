@@ -8,8 +8,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { OrgIdentityOrderBy } from "@app/services/identity/identity-types";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -50,7 +48,6 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
         search: z.string().trim().describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.search).optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityMemberships: IdentityOrgMembershipsSchema.merge(
             z.object({

@@ -10,7 +10,6 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
-  DefaultResponseErrorsSchema,
   ProjectPermissionSchema,
   ProjectSpecificPrivilegePermissionSchema,
   SanitizedIdentityPrivilegeSchema
@@ -53,7 +52,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ).optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           privilege: SanitizedIdentityPrivilegeSchema
         })
@@ -133,7 +131,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryAccessStartTime)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           privilege: SanitizedIdentityPrivilegeSchema
         })
@@ -218,7 +215,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .partial()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           privilege: SanitizedIdentityPrivilegeSchema
         })
@@ -274,7 +270,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.DELETE.projectSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           privilege: SanitizedIdentityPrivilegeSchema
         })
@@ -316,7 +311,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.GET_BY_SLUG.projectSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           privilege: SanitizedIdentityPrivilegeSchema
         })
@@ -354,7 +348,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: z.string().min(1).describe(IDENTITY_ADDITIONAL_PRIVILEGE.LIST.projectSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           privileges: SanitizedIdentityPrivilegeSchema.array()
         })

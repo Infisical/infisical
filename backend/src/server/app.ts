@@ -20,6 +20,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
@@ -75,6 +76,8 @@ export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
       credentials: true,
       origin: appCfg.SITE_URL || true
     });
+
+    await server.register(addErrorsToResponseSchemas);
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
 

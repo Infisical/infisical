@@ -16,7 +16,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 
-import { DefaultResponseErrorsSchema, integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
@@ -177,7 +177,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspace: projectWithEnv.optional()
         })
@@ -300,7 +299,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspace: SanitizedProjectSchema
         })
@@ -458,7 +456,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.workspaceId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           integrations: IntegrationsSchema.merge(
             z.object({
@@ -502,7 +499,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.workspaceId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           authorizations: integrationAuthPubSchema.array()
         })

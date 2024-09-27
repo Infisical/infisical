@@ -6,11 +6,7 @@ import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } f
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import {
-  DefaultResponseErrorsSchema,
-  ProjectPermissionSchema,
-  SanitizedRoleSchema
-} from "@app/server/routes/sanitizedSchemas";
+import { ProjectPermissionSchema, SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
@@ -49,7 +45,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.CREATE.permissions)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           role: SanitizedRoleSchema
         })
@@ -110,7 +105,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           role: SanitizedRoleSchema
         })
@@ -152,7 +146,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: z.string().trim().describe(PROJECT_ROLE.DELETE.roleId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           role: SanitizedRoleSchema
         })
@@ -189,7 +182,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectSlug: z.string().trim().describe(PROJECT_ROLE.LIST.projectSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           roles: ProjectRolesSchema.omit({ permissions: true }).array()
         })
@@ -220,7 +212,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         slug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.roleSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           role: SanitizedRoleSchema
         })
@@ -251,7 +242,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           data: z.object({
             membership: ProjectMembershipsSchema.extend({

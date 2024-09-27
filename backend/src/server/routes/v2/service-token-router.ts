@@ -7,7 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { DefaultResponseErrorsSchema, sanitizedServiceTokenUserSchema } from "../sanitizedSchemas";
+import { sanitizedServiceTokenUserSchema } from "../sanitizedSchemas";
 
 export const sanitizedServiceTokenSchema = ServiceTokensSchema.omit({
   secretHash: true,
@@ -32,7 +32,6 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         }
       ],
       response: {
-        ...DefaultResponseErrorsSchema,
         200: ServiceTokensSchema.merge(
           z.object({
             workspace: z.string(),

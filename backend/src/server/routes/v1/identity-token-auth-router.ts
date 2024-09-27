@@ -8,8 +8,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -59,7 +57,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(TOKEN_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityTokenAuth: IdentityTokenAuthsSchema
         })
@@ -135,7 +132,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           .describe(TOKEN_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityTokenAuth: IdentityTokenAuthsSchema
         })
@@ -190,7 +186,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(TOKEN_AUTH.RETRIEVE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityTokenAuth: IdentityTokenAuthsSchema
         })
@@ -238,7 +233,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(TOKEN_AUTH.REVOKE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityTokenAuth: IdentityTokenAuthsSchema
         })
@@ -289,7 +283,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -352,7 +345,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         limit: z.coerce.number().min(1).max(100).default(20).describe(TOKEN_AUTH.GET_TOKENS.limit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           tokens: IdentityAccessTokensSchema.array()
         })
@@ -404,7 +396,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         name: z.string().optional().describe(TOKEN_AUTH.UPDATE_TOKEN.name)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           token: IdentityAccessTokensSchema
         })
@@ -455,7 +446,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         tokenId: z.string().describe(TOKEN_AUTH.REVOKE_TOKEN.tokenId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string()
         })

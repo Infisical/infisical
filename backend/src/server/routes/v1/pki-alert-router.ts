@@ -7,8 +7,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -31,7 +29,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           .describe(ALERTS.CREATE.emails)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: PkiAlertsSchema
       }
     },
@@ -76,7 +73,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         alertId: z.string().trim().describe(ALERTS.GET.alertId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: PkiAlertsSchema
       }
     },
@@ -128,7 +124,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           .describe(ALERTS.UPDATE.emails)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: PkiAlertsSchema
       }
     },
@@ -174,7 +169,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         alertId: z.string().trim().describe(ALERTS.DELETE.alertId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: PkiAlertsSchema
       }
     },

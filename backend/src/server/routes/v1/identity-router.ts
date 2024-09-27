@@ -9,7 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { DefaultResponseErrorsSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
 export const registerIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,7 +32,6 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identity: IdentitiesSchema
         })
@@ -97,7 +96,6 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identity: IdentitiesSchema
         })
@@ -147,7 +145,6 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(IDENTITIES.DELETE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identity: IdentitiesSchema
         })
@@ -194,7 +191,6 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(IDENTITIES.GET_BY_ID.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identity: IdentityOrgMembershipsSchema.extend({
             customRole: OrgRolesSchema.pick({
@@ -240,7 +236,6 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         orgId: z.string().describe(IDENTITIES.LIST.orgId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identities: IdentityOrgMembershipsSchema.extend({
             customRole: OrgRolesSchema.pick({

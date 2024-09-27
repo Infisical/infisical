@@ -8,7 +8,7 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { DefaultResponseErrorsSchema, secretRawSchema } from "../sanitizedSchemas";
+import { secretRawSchema } from "../sanitizedSchemas";
 
 export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -35,7 +35,6 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         isReplication: z.boolean().default(false).describe(SECRET_IMPORTS.CREATE.isReplication)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
@@ -109,7 +108,6 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
@@ -174,7 +172,6 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.DELETE.path)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
@@ -278,7 +275,6 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.LIST.path)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string(),
           secretImports: SecretImportsSchema.omit({ importEnv: true })

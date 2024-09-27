@@ -9,7 +9,7 @@ import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { DefaultResponseErrorsSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDynamicSecretRouter = async (server: FastifyZodProvider) => {
@@ -59,7 +59,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
           })
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema
         })
@@ -91,7 +90,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration")
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z
           .object({
             name: z.string().min(1).describe("The name of the user"),
@@ -157,7 +155,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         })
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema
         })
@@ -197,7 +194,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         isForced: z.boolean().default(false).describe(DYNAMIC_SECRETS.DELETE.isForced)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema
         })
@@ -233,7 +229,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.GET_BY_NAME.environmentSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema.extend({
             inputs: z.unknown()
@@ -268,7 +263,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST.environmentSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           dynamicSecrets: SanitizedDynamicSecretSchema.array()
         })
@@ -308,7 +302,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEAES_BY_NAME.environmentSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           leases: DynamicSecretLeasesSchema.array()
         })

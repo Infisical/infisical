@@ -15,8 +15,6 @@ import {
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerCaRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -65,7 +63,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           }
         ),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           ca: CertificateAuthoritiesSchema
         })
@@ -111,7 +108,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           ca: CertificateAuthoritiesSchema
         })
@@ -159,7 +155,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caCertId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT_BY_ID.caCertId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.instanceof(Buffer)
       }
     },
@@ -192,7 +187,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           .describe(CERTIFICATE_AUTHORITIES.CREATE.requireTemplateForIssuance)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           ca: CertificateAuthoritiesSchema
         })
@@ -240,7 +234,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.DELETE.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           ca: CertificateAuthoritiesSchema
         })
@@ -286,7 +279,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           csr: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CSR.csr)
         })
@@ -336,7 +328,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         notAfter: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.notAfter)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.certificate),
           certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.certificateChain),
@@ -388,7 +379,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.array(
           z.object({
             certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.certificate),
@@ -437,7 +427,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificate),
           certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificateChain),
@@ -493,7 +482,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         maxPathLength: z.number().min(-1).default(-1).describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.maxPathLength)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.certificate),
           certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_INTERMEDIATE.certificateChain),
@@ -555,7 +543,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.IMPORT_CERT.certificateChain)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string().trim(),
           caId: z.string().trim()
@@ -629,7 +616,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           }
         ),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificate),
           issuingCaCertificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.issuingCaCertificate),
@@ -712,7 +698,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           }
         ),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.certificate),
           issuingCaCertificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.issuingCaCertificate),
@@ -768,7 +753,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificateTemplates: CertificateTemplatesSchema.array()
         })
@@ -814,7 +798,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.caId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.array(
           z.object({
             id: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),

@@ -6,7 +6,6 @@ import { AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { DefaultResponseErrorsSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { KmsType } from "@app/services/kms/kms-types";
 
@@ -34,7 +33,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().default(20).describe(PROJECTS.GET_SNAPSHOTS.limit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secretSnapshots: SecretSnapshotsSchema.array()
         })

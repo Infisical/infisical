@@ -12,8 +12,6 @@ import {
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.omit({
   encryptedCaCert: true,
   caCertIV: true,
@@ -36,7 +34,6 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         jwt: z.string().trim()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -127,7 +124,6 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
         })
@@ -227,7 +223,6 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         })
         .partial(),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
         })
@@ -286,7 +281,6 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         identityId: z.string().describe(OIDC_AUTH.RETRIEVE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
         })
@@ -334,7 +328,6 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         identityId: z.string().describe(OIDC_AUTH.REVOKE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema.omit({
             caCert: true

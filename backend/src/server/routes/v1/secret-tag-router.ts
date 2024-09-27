@@ -7,8 +7,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -21,7 +19,6 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().describe(SECRET_TAGS.LIST.projectId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspaceTags: SecretTagsSchema.array()
         })
@@ -52,7 +49,6 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         tagId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.tagId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           // akhilmhdh: for terraform backward compatiability
           workspaceTag: SecretTagsSchema.extend({ name: z.string() })
@@ -84,7 +80,6 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         tagSlug: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.tagSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           // akhilmhdh: for terraform backward compatiability
           workspaceTag: SecretTagsSchema.extend({ name: z.string() })
@@ -127,7 +122,6 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         color: z.string().trim().describe(SECRET_TAGS.CREATE.color)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspaceTag: SecretTagsSchema
         })
@@ -170,7 +164,6 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         color: z.string().trim().describe(SECRET_TAGS.UPDATE.color)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspaceTag: SecretTagsSchema
         })
@@ -202,7 +195,6 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         tagId: z.string().trim().describe(SECRET_TAGS.DELETE.tagId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           workspaceTag: SecretTagsSchema
         })

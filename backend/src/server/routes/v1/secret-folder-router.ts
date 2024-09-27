@@ -8,8 +8,6 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerSecretFolderRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -45,7 +43,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .describe(FOLDERS.CREATE.directory)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           folder: SecretFoldersSchema
         })
@@ -118,7 +115,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .describe(FOLDERS.UPDATE.directory)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           folder: SecretFoldersSchema
         })
@@ -262,7 +258,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .describe(FOLDERS.DELETE.directory)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           folder: SecretFoldersSchema
         })
@@ -331,7 +326,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .describe(FOLDERS.LIST.directory)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           folders: SecretFoldersSchema.array()
         })
@@ -370,7 +364,6 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         id: z.string().trim().describe(FOLDERS.GET_BY_ID.folderId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           folder: SecretFoldersSchema
         })

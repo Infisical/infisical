@@ -11,8 +11,6 @@ import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/ce
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 const sanitizedEstConfig = CertificateTemplateEstConfigsSchema.pick({
   id: true,
   certificateTemplateId: true,
@@ -31,7 +29,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedCertificateTemplate
       }
     },
@@ -93,7 +90,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           .describe(CERTIFICATE_TEMPLATES.CREATE.extendedKeyUsages)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedCertificateTemplate
       }
     },
@@ -159,7 +155,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.UPDATE.certificateTemplateId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedCertificateTemplate
       }
     },
@@ -206,7 +201,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedCertificateTemplate
       }
     },
@@ -253,7 +247,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         isEnabled: z.boolean().default(true)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedEstConfig
       }
     },
@@ -301,7 +294,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         isEnabled: z.boolean().optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedEstConfig
       }
     },
@@ -344,7 +336,6 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().trim()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: sanitizedEstConfig.extend({
           caChain: z.string()
         })

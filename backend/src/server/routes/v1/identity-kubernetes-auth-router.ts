@@ -8,8 +8,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.omit({
   encryptedCaCert: true,
   caCertIV: true,
@@ -36,7 +34,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         jwt: z.string().trim()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -132,7 +129,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
         })
@@ -226,7 +222,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           .describe(KUBERNETES_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
         })
@@ -282,7 +277,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         identityId: z.string().describe(KUBERNETES_AUTH.RETRIEVE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
         })
@@ -330,7 +324,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         identityId: z.string().describe(KUBERNETES_AUTH.REVOKE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema.omit({
             caCert: true,

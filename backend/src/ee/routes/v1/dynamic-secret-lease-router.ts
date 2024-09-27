@@ -7,7 +7,7 @@ import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { DefaultResponseErrorsSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
@@ -37,7 +37,6 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.path)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           lease: DynamicSecretLeasesSchema,
           dynamicSecret: SanitizedDynamicSecretSchema,
@@ -82,7 +81,6 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         isForced: z.boolean().default(false).describe(DYNAMIC_SECRET_LEASES.DELETE.isForced)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           lease: DynamicSecretLeasesSchema
         })
@@ -136,7 +134,6 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.environmentSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           lease: DynamicSecretLeasesSchema
         })
@@ -177,7 +174,6 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.GET_BY_LEASEID.environmentSlug)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           lease: DynamicSecretLeasesSchema.extend({
             dynamicSecret: SanitizedDynamicSecretSchema

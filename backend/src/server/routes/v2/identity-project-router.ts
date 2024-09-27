@@ -16,7 +16,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-project-types";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
-import { DefaultResponseErrorsSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
 export const registerIdentityProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -71,7 +71,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
           .optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityMembership: IdentityProjectMembershipsSchema
         })
@@ -144,7 +143,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
           .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.description)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           roles: ProjectUserMembershipRolesSchema.array()
         })
@@ -183,7 +181,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim().describe(PROJECT_IDENTITIES.DELETE_IDENTITY_MEMBERSHIP.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityMembership: IdentityProjectMembershipsSchema
         })
@@ -246,7 +243,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         search: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.search).optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityMemberships: z
             .object({
@@ -312,7 +308,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim().describe(PROJECT_IDENTITIES.GET_IDENTITY_MEMBERSHIP_BY_ID.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityMembership: z.object({
             id: z.string(),

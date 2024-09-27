@@ -9,7 +9,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateAzureAuthField } from "@app/services/identity-azure-auth/identity-azure-auth-validators";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+import {} from "../sanitizedSchemas";
 
 export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -25,7 +25,6 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         jwt: z.string()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -111,7 +110,6 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AZURE_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAzureAuth: IdentityAzureAuthsSchema
         })
@@ -192,7 +190,6 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
           .describe(AZURE_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAzureAuth: IdentityAzureAuthsSchema
         })
@@ -247,7 +244,6 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(AZURE_AUTH.RETRIEVE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAzureAuth: IdentityAzureAuthsSchema
         })
@@ -295,7 +291,6 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(AZURE_AUTH.REVOKE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAzureAuth: IdentityAzureAuthsSchema
         })

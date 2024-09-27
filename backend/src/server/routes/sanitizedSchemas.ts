@@ -51,10 +51,10 @@ export const DefaultResponseErrorsSchema = {
   }),
   403: z.object({
     statusCode: z.literal(403),
-    message: z.literal(
-      `<string>: Contains a human-readable message about what went wrong. 403 errors are forbidden errors, and will occur when attempting to access a resource without the necessary permissions`
-    ),
-    error: z.literal(`<string>: Contains a human-readable error name.`)
+    message: z.any(),
+    error: z.literal(
+      `<string>: Contains a human-readable error name. The message can be both an object or a string. It will always be a string except if the error is happening due to a request validation error.`
+    )
   }),
   500: z.object({
     statusCode: z.literal(500),

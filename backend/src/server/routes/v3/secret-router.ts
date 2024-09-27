@@ -21,7 +21,7 @@ import { ProjectFilterType } from "@app/services/project/project-types";
 import { SecretOperations, SecretProtectionType } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { DefaultResponseErrorsSchema, secretRawSchema } from "../sanitizedSchemas";
+import { secretRawSchema } from "../sanitizedSchemas";
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -53,7 +53,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         tagSlugs: z.string().array().min(1).describe(SECRETS.ATTACH_TAGS.tagSlugs)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
             z.object({
@@ -117,7 +116,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         tagSlugs: z.string().array().min(1).describe(SECRETS.DETACH_TAGS.tagSlugs)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secret: SecretsSchema.omit({ secretBlindIndex: true }).extend({
             tags: SecretTagsSchema.pick({
@@ -191,7 +189,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .transform((el) => (el ? el.split(",").map((i) => i.trim()) : []))
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secrets: secretRawSchema
             .extend({
@@ -215,8 +212,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional()
-        }),
-        ...DefaultResponseErrorsSchema
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -331,7 +327,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .describe(RAW_SECRETS.GET.includeImports)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secret: secretRawSchema.extend({
             tags: SecretTagsSchema.pick({
@@ -454,7 +449,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretReminderNote: z.string().optional().nullable().describe(RAW_SECRETS.CREATE.secretReminderNote)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secret: secretRawSchema
@@ -562,7 +556,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretComment: z.string().optional().describe(RAW_SECRETS.UPDATE.secretComment)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secret: secretRawSchema
@@ -656,7 +649,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.DELETE.type)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secret: secretRawSchema
@@ -736,7 +728,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .transform((value) => value === "true")
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secrets: SecretsSchema.omit({ secretBlindIndex: true })
             .extend({
@@ -852,7 +843,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .transform((value) => value === "true")
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
             z.object({
@@ -940,7 +930,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: z.string().trim()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
@@ -1118,7 +1107,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         metadata: z.record(z.string()).optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
@@ -1290,7 +1278,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
@@ -1414,7 +1401,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         shouldOverwrite: z.boolean().default(false)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           isSourceUpdated: z.boolean(),
           isDestinationUpdated: z.boolean()
@@ -1483,7 +1469,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
@@ -1611,7 +1596,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
@@ -1727,7 +1711,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
@@ -1861,7 +1844,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secrets: secretRawSchema.array()
@@ -1968,7 +1950,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secrets: secretRawSchema.array()
@@ -2061,7 +2042,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.union([
           z.object({
             secrets: secretRawSchema.array()
@@ -2139,7 +2119,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim().min(1)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string()
         })

@@ -13,8 +13,6 @@ import {
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerCertRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -29,7 +27,6 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: CertificatesSchema
         })
@@ -121,7 +118,6 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
           }
         ),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificate),
           issuingCaCertificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.issuingCaCertificate),
@@ -223,7 +219,6 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
           }
         ),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.certificate),
           issuingCaCertificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.issuingCaCertificate),
@@ -281,7 +276,6 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           message: z.string().trim(),
           serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
@@ -333,7 +327,6 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: CertificatesSchema
         })
@@ -380,7 +373,6 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         serialNumber: z.string().trim().describe(CERTIFICATES.GET_CERT.serialNumber)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATES.GET_CERT.certificate),
           certificateChain: z.string().trim().describe(CERTIFICATES.GET_CERT.certificateChain),

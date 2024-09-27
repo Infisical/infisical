@@ -19,7 +19,7 @@ import { sanitizedCertificateTemplate } from "@app/services/certificate-template
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { DefaultResponseErrorsSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
@@ -172,7 +172,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         kmsKeyId: z.string().optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           project: projectWithEnv
         })
@@ -222,7 +221,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema.describe("The slug of the project to delete.")
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: SanitizedProjectSchema
       }
     },
@@ -378,7 +376,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           certificates: z.array(CertificatesSchema),
           totalCount: z.number()

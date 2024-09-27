@@ -4,7 +4,6 @@ import { z } from "zod";
 import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
 import { GROUPS } from "@app/lib/api-docs";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { DefaultResponseErrorsSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerGroupRouter = async (server: FastifyZodProvider) => {
@@ -27,7 +26,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(GROUPS.CREATE.role)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: GroupsSchema
       }
     },
@@ -53,7 +51,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(GROUPS.GET_BY_ID.id)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: GroupsSchema
       }
     },
@@ -76,7 +73,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       response: {
-        ...DefaultResponseErrorsSchema,
         200: GroupsSchema.array()
       }
     },
@@ -116,7 +112,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         })
         .partial(),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: GroupsSchema
       }
     },
@@ -143,7 +138,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(GROUPS.DELETE.id)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: GroupsSchema
       }
     },
@@ -174,7 +168,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: z.string().optional().describe(GROUPS.LIST_USERS.username)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           users: UsersSchema.pick({
             email: true,
@@ -217,7 +210,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: z.string().trim().describe(GROUPS.ADD_USER.username)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: UsersSchema.pick({
           email: true,
           username: true,
@@ -251,7 +243,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         username: z.string().trim().describe(GROUPS.DELETE_USER.username)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: UsersSchema.pick({
           email: true,
           username: true,

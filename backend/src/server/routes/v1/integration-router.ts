@@ -11,7 +11,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
+import {} from "../sanitizedSchemas";
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -51,7 +51,6 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         metadata: IntegrationMetadataSchema.default({})
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           integration: IntegrationsSchema
         })
@@ -138,7 +137,6 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         metadata: IntegrationMetadataSchema.optional()
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           integration: IntegrationsSchema
         })
@@ -223,7 +221,6 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
           .transform((val) => val === "true")
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           integration: IntegrationsSchema
         })

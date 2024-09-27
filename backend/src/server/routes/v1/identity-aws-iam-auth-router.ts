@@ -12,8 +12,6 @@ import {
   validatePrincipalArns
 } from "@app/services/identity-aws-auth/identity-aws-auth-validators";
 
-import { DefaultResponseErrorsSchema } from "../sanitizedSchemas";
-
 export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -30,7 +28,6 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           accessToken: z.string(),
           expiresIn: z.coerce.number(),
@@ -121,7 +118,6 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AWS_AUTH.ATTACH.accessTokenNumUsesLimit)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAwsAuth: IdentityAwsAuthsSchema
         })
@@ -201,7 +197,6 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
           .describe(AWS_AUTH.UPDATE.accessTokenMaxTTL)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAwsAuth: IdentityAwsAuthsSchema
         })
@@ -257,7 +252,6 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().describe(AWS_AUTH.RETRIEVE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAwsAuth: IdentityAwsAuthsSchema
         })
@@ -304,7 +298,6 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().describe(AWS_AUTH.REVOKE.identityId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           identityAwsAuth: IdentityAwsAuthsSchema
         })

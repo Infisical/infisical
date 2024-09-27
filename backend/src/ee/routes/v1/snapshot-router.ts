@@ -4,7 +4,7 @@ import { SecretSnapshotsSchema, SecretTagsSchema } from "@app/db/schemas";
 import { PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { DefaultResponseErrorsSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
+import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
@@ -77,7 +77,6 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         secretSnapshotId: z.string().trim().describe(PROJECTS.ROLLBACK_TO_SNAPSHOT.secretSnapshotId)
       }),
       response: {
-        ...DefaultResponseErrorsSchema,
         200: z.object({
           secretSnapshot: SecretSnapshotsSchema
         })
