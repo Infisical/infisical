@@ -10,9 +10,6 @@ export const addErrorsToResponseSchemas = fp(async (server) => {
         ...DefaultResponseErrorsSchema,
         ...routeOptions.schema.response
       };
-    } else {
-      routeOptions.schema = routeOptions.schema || {};
-      routeOptions.schema.response = { ...DefaultResponseErrorsSchema };
     }
   });
 });
