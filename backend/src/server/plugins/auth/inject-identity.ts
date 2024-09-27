@@ -5,7 +5,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 
@@ -167,7 +167,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
         break;
       }
       default:
-        throw new BadRequestError({ message: "Invalid token strategy provided" });
+        throw new UnauthorizedError({ name: "Unknown token strategy" });
     }
   });
 });

@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -62,7 +62,7 @@ export const groupServiceFactory = ({
   licenseService
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -85,8 +85,7 @@ export const groupServiceFactory = ({
     );
     const isCustomRole = Boolean(customRole);
     const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasRequiredPriviledges)
-      throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+    if (!hasRequiredPriviledges) throw new BadRequestError({ message: "Failed to create a more privileged group" });
 
     const group = await groupDAL.create({
       name,
@@ -109,7 +108,7 @@ export const groupServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TUpdateGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -128,7 +127,7 @@ export const groupServiceFactory = ({
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id });
     if (!group) {
-      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+      throw new BadRequestError({ message: `Failed to find group with ID ${id}` });
     }
 
     let customRole: TOrgRoles | undefined;
@@ -141,7 +140,7 @@ export const groupServiceFactory = ({
       const isCustomRole = Boolean(customOrgRole);
       const hasRequiredNewRolePermission = isAtLeastAsPrivileged(permission, rolePermission);
       if (!hasRequiredNewRolePermission)
-        throw new ForbiddenRequestError({ message: "Failed to create a more privileged group" });
+        throw new BadRequestError({ message: "Failed to create a more privileged group" });
       if (isCustomRole) customRole = customOrgRole;
     }
 
@@ -165,7 +164,7 @@ export const groupServiceFactory = ({
   };
 
   const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -192,7 +191,9 @@ export const groupServiceFactory = ({
   };
 
   const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) {
+      throw new BadRequestError({ message: "Failed to read group without organization" });
+    }
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -223,7 +224,7 @@ export const groupServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TListGroupUsersDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -240,7 +241,7 @@ export const groupServiceFactory = ({
     });
 
     if (!group)
-      throw new NotFoundError({
+      throw new BadRequestError({
         message: `Failed to find group with ID ${id}`
       });
 
@@ -258,7 +259,7 @@ export const groupServiceFactory = ({
   };
 
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -276,7 +277,7 @@ export const groupServiceFactory = ({
     });
 
     if (!group)
-      throw new NotFoundError({
+      throw new BadRequestError({
         message: `Failed to find group with ID ${id}`
       });
 
@@ -288,7 +289,7 @@ export const groupServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
 
     const user = await userDAL.findOne({ username });
-    if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
+    if (!user) throw new BadRequestError({ message: `Failed to find user with username ${username}` });
 
     const users = await addUsersToGroupByUserIds({
       group,
@@ -313,7 +314,7 @@ export const groupServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRemoveUserFromGroupDTO) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -331,7 +332,7 @@ export const groupServiceFactory = ({
     });
 
     if (!group)
-      throw new NotFoundError({
+      throw new BadRequestError({
         message: `Failed to find group with ID ${id}`
       });
 
@@ -343,7 +344,7 @@ export const groupServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
 
     const user = await userDAL.findOne({ username });
-    if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
+    if (!user) throw new BadRequestError({ message: `Failed to find user with username ${username}` });
 
     const users = await removeUsersFromGroupByUserIds({
       group,

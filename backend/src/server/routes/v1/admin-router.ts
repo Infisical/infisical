@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -227,7 +227,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const appCfg = getConfig();
       const serverCfg = await getServerCfg();
-      if (serverCfg.initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
+      if (serverCfg.initialized)
+        throw new UnauthorizedError({ name: "Admin sign up", message: "Admin has been created" });
       const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,

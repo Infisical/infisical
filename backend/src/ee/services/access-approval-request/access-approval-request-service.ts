@@ -3,7 +3,7 @@ import ms from "ms";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -18,7 +18,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { verifyApprovers } from "../access-approval-policy/access-approval-policy-fns";
-import { VerifyApproversError } from "../access-approval-policy/access-approval-policy-types";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -100,7 +99,7 @@ export const accessApprovalRequestServiceFactory = ({
   }: TCreateAccessApprovalRequestDTO) => {
     const cfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new ForbiddenRequestError({ message: "Project not found" });
+    if (!project) throw new UnauthorizedError({ message: "Project not found" });
 
     // Anyone can create an access approval request.
     const { membership } = await permissionService.getProjectPermission(
@@ -110,23 +109,23 @@ export const accessApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
 
     const requestedByUser = await userDAL.findById(actorId);
-    if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
+    if (!requestedByUser) throw new UnauthorizedError({ message: "User not found" });
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
 
     const { envSlug, secretPath, accessTypes } = verifyRequestedPermissions({ permissions: requestedPermissions });
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
 
-    if (!environment) throw new NotFoundError({ message: "Environment not found" });
+    if (!environment) throw new UnauthorizedError({ message: "Environment not found" });
 
     const policy = await accessApprovalPolicyDAL.findOne({
       envId: environment.id,
       secretPath
     });
-    if (!policy) throw new NotFoundError({ message: "No policy matching criteria was found." });
+    if (!policy) throw new UnauthorizedError({ message: "No policy matching criteria was found." });
 
     const approverIds: string[] = [];
     const approverGroupIds: string[] = [];
@@ -263,7 +262,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorAuthMethod
   }: TListApprovalRequestsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new UnauthorizedError({ message: "Project not found" });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,
@@ -272,7 +271,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new NotFoundError({ message: "You don't have a membership for the specified project" });
+    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
 
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
@@ -297,7 +296,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId
   }: TReviewAccessRequestDTO) => {
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
-    if (!accessApprovalRequest) throw new NotFoundError({ message: "Secret approval request not found" });
+    if (!accessApprovalRequest) throw new BadRequestError({ message: "Secret approval request not found" });
 
     const { policy } = accessApprovalRequest;
     const { membership, hasRole } = await permissionService.getProjectPermission(
@@ -308,14 +307,14 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId
     );
 
-    if (!membership) throw new ForbiddenRequestError({ message: "You are not a member of this project" });
+    if (!membership) throw new UnauthorizedError({ message: "You are not a member of this project" });
 
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
       accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
       !policy.approvers.find((approver) => approver.userId === actorId) // The request isn't performed by an assigned approver
     ) {
-      throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
+      throw new UnauthorizedError({ message: "You are not authorized to approve this request" });
     }
 
     const reviewerProjectMembership = await projectMembershipDAL.findById(membership.id);
@@ -327,8 +326,7 @@ export const accessApprovalRequestServiceFactory = ({
       secretPath: accessApprovalRequest.policy.secretPath!,
       actorAuthMethod,
       permissionService,
-      userIds: [reviewerProjectMembership.userId],
-      error: VerifyApproversError.ForbiddenError
+      userIds: [reviewerProjectMembership.userId]
     });
 
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
@@ -413,7 +411,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const getCount = async ({ projectSlug, actor, actorAuthMethod, actorId, actorOrgId }: TGetAccessRequestCountDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new UnauthorizedError({ message: "Project not found" });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,
@@ -422,7 +420,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!membership) throw new NotFoundError({ message: "You don't have a membership for the specified project" });
+    if (!membership) throw new BadRequestError({ message: "User not found in project" });
 
     const count = await accessApprovalRequestDAL.getCount({ projectId: project.id });
 

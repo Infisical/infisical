@@ -6,7 +6,6 @@ import { ZodError } from "zod";
 import {
   BadRequestError,
   DatabaseError,
-  ForbiddenRequestError,
   InternalServerError,
   NotFoundError,
   ScimRequestError,
@@ -27,22 +26,16 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     } else if (error instanceof NotFoundError) {
       void res.status(404).send({ statusCode: 404, message: error.message, error: error.name });
     } else if (error instanceof UnauthorizedError) {
-      void res.status(401).send({ statusCode: 401, message: error.message, error: error.name });
+      void res.status(403).send({ statusCode: 403, message: error.message, error: error.name });
     } else if (error instanceof DatabaseError || error instanceof InternalServerError) {
       void res.status(500).send({ statusCode: 500, message: "Something went wrong", error: error.name });
     } else if (error instanceof ZodError) {
-      void res.status(401).send({ statusCode: 401, error: "ValidationFailure", message: error.issues });
+      void res.status(403).send({ statusCode: 403, error: "ValidationFailure", message: error.issues });
     } else if (error instanceof ForbiddenError) {
-      void res.status(403).send({
-        statusCode: 403,
+      void res.status(401).send({
+        statusCode: 401,
         error: "PermissionDenied",
         message: `You are not allowed to ${error.action} on ${error.subjectType}`
-      });
-    } else if (error instanceof ForbiddenRequestError) {
-      void res.status(403).send({
-        statusCode: 403,
-        message: error.message,
-        error: error.name
       });
     } else if (error instanceof ScimRequestError) {
       void res.status(error.status).send({
@@ -66,8 +59,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         return error.message;
       })();
 
-      void res.status(403).send({
-        statusCode: 403,
+      void res.status(401).send({
+        statusCode: 401,
         error: "TokenError",
         message
       });

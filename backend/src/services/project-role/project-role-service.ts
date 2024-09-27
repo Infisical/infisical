@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub,
   validateProjectPermissions
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { ActorAuthMethod } from "../auth/auth-type";
 import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
@@ -44,7 +44,7 @@ export const projectRoleServiceFactory = ({
 }: TProjectRoleServiceFactoryDep) => {
   const createRole = async ({ projectSlug, data, actor, actorId, actorAuthMethod, actorOrgId }: TCreateRoleDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new BadRequestError({ message: "Project not found" });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -56,9 +56,7 @@ export const projectRoleServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
     const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
-    if (existingRole) {
-      throw new BadRequestError({ name: "Create Role", message: "Project role with same slug already exists" });
-    }
+    if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
 
     validateProjectPermissions(data.permissions);
 
@@ -78,7 +76,7 @@ export const projectRoleServiceFactory = ({
     roleSlug
   }: TGetRoleBySlugDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new BadRequestError({ message: "Project not found" });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -95,7 +93,7 @@ export const projectRoleServiceFactory = ({
     }
 
     const customRole = await projectRoleDAL.findOne({ slug: roleSlug, projectId });
-    if (!customRole) throw new NotFoundError({ message: "Project role not found" });
+    if (!customRole) throw new BadRequestError({ message: "Role not found" });
     return { ...customRole, permissions: unpackPermissions(customRole.permissions) };
   };
 
@@ -109,7 +107,7 @@ export const projectRoleServiceFactory = ({
     data
   }: TUpdateRoleDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new BadRequestError({ message: "Project not found" });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -124,7 +122,7 @@ export const projectRoleServiceFactory = ({
     if (data?.slug) {
       const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
       if (existingRole && existingRole.id !== roleId)
-        throw new BadRequestError({ name: "Update Role", message: "Project role with the same slug already exists" });
+        throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
 
     if (data.permissions) {
@@ -138,13 +136,13 @@ export const projectRoleServiceFactory = ({
         permissions: data.permissions ? data.permissions : undefined
       }
     );
-    if (!updatedRole) throw new NotFoundError({ message: "Project role not found", name: "Update role" });
+    if (!updatedRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
     return { ...updatedRole, permissions: unpackPermissions(updatedRole.permissions) };
   };
 
   const deleteRole = async ({ actor, actorId, actorAuthMethod, actorOrgId, projectSlug, roleId }: TDeleteRoleDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new BadRequestError({ message: "Project not found" });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -173,7 +171,7 @@ export const projectRoleServiceFactory = ({
     }
 
     const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
-    if (!deletedRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
+    if (!deletedRole) throw new BadRequestError({ message: "Role not found", name: "Delete role" });
 
     return { ...deletedRole, permissions: unpackPermissions(deletedRole.permissions) };
   };

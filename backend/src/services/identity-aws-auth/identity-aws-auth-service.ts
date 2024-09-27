@@ -9,7 +9,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -50,9 +50,7 @@ export const identityAwsAuthServiceFactory = ({
 }: TIdentityAwsAuthServiceFactoryDep) => {
   const login = async ({ identityId, iamHttpRequestMethod, iamRequestBody, iamRequestHeaders }: TLoginAwsAuthDTO) => {
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
-    if (!identityAwsAuth) {
-      throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
-    }
+    if (!identityAwsAuth) throw new UnauthorizedError();
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAwsAuth.identityId });
 
@@ -154,7 +152,7 @@ export const identityAwsAuthServiceFactory = ({
     actorOrgId
   }: TAttachAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add AWS Auth to already configured identity"
@@ -233,7 +231,7 @@ export const identityAwsAuthServiceFactory = ({
     actorOrgId
   }: TUpdateAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
         message: "Failed to update AWS Auth"
@@ -292,7 +290,7 @@ export const identityAwsAuthServiceFactory = ({
 
   const getAwsAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
         message: "The identity does not have AWS Auth attached"
@@ -319,7 +317,7 @@ export const identityAwsAuthServiceFactory = ({
     actorOrgId
   }: TRevokeAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
         message: "The identity does not have aws auth"
@@ -340,8 +338,8 @@ export const identityAwsAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-
-    if (!isAtLeastAsPrivileged(permission, rolePermission))
+    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
+    if (!hasPriviledge)
       throw new ForbiddenRequestError({
         message: "Failed to revoke aws auth of identity with more privileged role"
       });
