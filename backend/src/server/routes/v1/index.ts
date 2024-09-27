@@ -1,3 +1,5 @@
+import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
+
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
@@ -101,4 +103,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityRouter, { prefix: "/identities" });
   await server.register(registerSecretSharingRouter, { prefix: "/secret-sharing" });
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
+
+  await server.register(registerDashboardRouter, { prefix: "/dashboard" });
 };
