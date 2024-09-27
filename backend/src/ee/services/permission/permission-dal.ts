@@ -441,7 +441,7 @@ export const permissionDALFactory = (db: TDbClient) => {
             .on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`)
             .andOn(`${TableName.Project}.orgId`, `${TableName.IdentityMetadata}.orgId`);
         })
-        .where("identityId", identityId)
+        .where(`${TableName.IdentityProjectMembership}.identityId`, identityId)
         .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
         .select(selectAllTableCols(TableName.IdentityProjectMembershipRole))
         .select(

@@ -12,8 +12,14 @@ type Props = {
   isDisabled?: boolean;
 };
 
+const getValueLabel = (type: string) => {
+  if (type === "environment") return "Environment slug";
+  if (type === "secretPath") return "Folder path";
+  return "";
+};
+
 export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) => {
-  const { control } = useFormContext<TFormSchema>();
+  const { control, watch } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
     name: `permissions.secrets.${position}.conditions`
@@ -22,86 +28,91 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
   return (
     <div className="mt-6 border-t border-t-gray-800 bg-mineshaft-800 pt-2">
       <div className="mt-2 flex flex-col space-y-2">
-        {items.fields.map((el, index) => (
-          <div
-            key={el.id}
-            className="flex gap-2 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md"
-          >
-            <div className="w-1/4">
-              <Controller
-                control={control}
-                name={`permissions.secrets.${position}.conditions.${index}.lhs`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0"
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => field.onChange(e)}
-                      className="w-full"
+        {items.fields.map((el, index) => {
+          const lhs = watch(`permissions.secrets.${position}.conditions.${index}.lhs`);
+          return (
+            <div
+              key={el.id}
+              className="flex gap-2 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md"
+            >
+              <div className="w-1/4">
+                <Controller
+                  control={control}
+                  name={`permissions.secrets.${position}.conditions.${index}.lhs`}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      className="mb-0"
                     >
-                      <SelectItem value="environment">Environment</SelectItem>
-                      <SelectItem value="secretPath">Secret Path</SelectItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="w-36">
-              <Controller
-                control={control}
-                name={`permissions.secrets.${position}.conditions.${index}.operator`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0 flex-grow"
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => field.onChange(e)}
-                      className="w-full"
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => field.onChange(e)}
+                        className="w-full"
+                      >
+                        <SelectItem value="environment">Environment</SelectItem>
+                        <SelectItem value="secretPath">Secret Path</SelectItem>
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <div className="w-36">
+                <Controller
+                  control={control}
+                  name={`permissions.secrets.${position}.conditions.${index}.operator`}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      className="mb-0 flex-grow"
                     >
-                      <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
-                      <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
-                      <SelectItem value={PermissionConditionOperators.$GLOB}>Glob Match</SelectItem>
-                      <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => field.onChange(e)}
+                        className="w-full"
+                      >
+                        <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+                        <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
+                        <SelectItem value={PermissionConditionOperators.$GLOB}>
+                          Glob Match
+                        </SelectItem>
+                        <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <div className="flex-grow">
+                <Controller
+                  control={control}
+                  name={`permissions.secrets.${position}.conditions.${index}.rhs`}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      className="mb-0 flex-grow"
+                    >
+                      <Input {...field} placeholder={getValueLabel(lhs)} />
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <div>
+                <IconButton
+                  ariaLabel="plus"
+                  variant="outline_bg"
+                  className="p-2.5"
+                  onClick={() => items.remove(index)}
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                </IconButton>
+              </div>
             </div>
-            <div className="flex-grow">
-              <Controller
-                control={control}
-                name={`permissions.secrets.${position}.conditions.${index}.rhs`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0 flex-grow"
-                  >
-                    <Input {...field} placeholder="value" />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div>
-              <IconButton
-                ariaLabel="plus"
-                variant="outline_bg"
-                className="p-2.5"
-                onClick={() => items.remove(index)}
-              >
-                <FontAwesomeIcon icon={faTrash} />
-              </IconButton>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div>
         <Button

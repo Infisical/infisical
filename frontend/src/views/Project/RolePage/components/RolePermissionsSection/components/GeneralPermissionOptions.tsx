@@ -93,6 +93,7 @@ export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema
                             render={({ field }) => (
                               <div className="flex items-center justify-center">
                                 <Checkbox
+                                  isDisabled={isDisabled}
                                   isChecked={Boolean(field.value)}
                                   onCheckedChange={field.onChange}
                                   id={`permissions.${subject}.${rootIndex}.${String(value)}`}

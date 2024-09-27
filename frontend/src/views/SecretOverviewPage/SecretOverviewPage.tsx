@@ -190,6 +190,7 @@ export const SecretOverviewPage = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs = currentWorkspace?.environments || [];
+
   const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
 
   useEffect(() => {
