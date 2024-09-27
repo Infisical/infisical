@@ -90,16 +90,20 @@ export const NewPermissionRule = ({ onClose }: Props) => {
           onClick={form.handleSubmit((el) => {
             const rootPolicyValue = rootForm.getValues("permissions")?.[el.type];
             if (rootPolicyValue && selectedSubject === ProjectPermissionSub.Secrets) {
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-              rootForm.setValue(`permissions.${el.type}`, [
-                ...rootPolicyValue,
-                ...(el?.permissions[el.type] || [])
-              ]);
+              rootForm.setValue(
+                `permissions.${el.type}`,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore-error akhilmhdh: this is because of ts collision with both
+                [...rootPolicyValue, ...(el?.permissions[el.type] || [])],
+                { shouldDirty: true, shouldTouch: true }
+              );
             } else {
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-              rootForm.setValue(`permissions.${el.type}`, el?.permissions?.[el.type]);
+              rootForm.setValue(`permissions.${el.type}`, el?.permissions?.[el.type], {
+                shouldDirty: true,
+                shouldTouch: true
+              });
             }
             onClose();
           })}

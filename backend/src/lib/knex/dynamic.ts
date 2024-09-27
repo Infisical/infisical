@@ -21,6 +21,7 @@ type TKnexGroupOperator = {
   value: (TKnexNonGroupOperator | TKnexGroupOperator)[];
 };
 
+// akhilmhdh: This is still in pending state and not yet ready. If you want to use it ping me.
 // used when you need to write a complex query with the orm
 // use it when you need complex or and and condition - most of the time not needed
 // majorly used with casl permission to filter data based on permission
@@ -33,19 +34,19 @@ export const buildDynamicKnexQuery = (dynamicQuery: TKnexDynamicOperator, rootQu
     const { filterAst, queryBuilder } = stack.pop()!;
     switch (filterAst.operator) {
       case "eq": {
-        void queryBuilder.where(filterAst.field, filterAst.value);
+        void queryBuilder.where(filterAst.field, "=", filterAst.value);
         break;
       }
       case "ne": {
-        void queryBuilder.where(filterAst.field, filterAst.value);
+        void queryBuilder.whereNot(filterAst.field, filterAst.value);
         break;
       }
       case "startsWith": {
-        void queryBuilder.where(filterAst.field, filterAst.value);
+        void queryBuilder.whereILike(filterAst.field, `${filterAst.value}%`);
         break;
       }
       case "endsWith": {
-        void queryBuilder.where(filterAst.field, filterAst.value);
+        void queryBuilder.whereILike(filterAst.field, `%${filterAst.value}`);
         break;
       }
       case "and": {

@@ -9,9 +9,10 @@ import { TFormSchema } from "../ProjectRoleModifySection.utils";
 
 type Props = {
   position?: number;
+  isDisabled?: boolean;
 };
 
-export const SecretPermissionConditions = ({ position = 0 }: Props) => {
+export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) => {
   const { control } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
@@ -108,6 +109,7 @@ export const SecretPermissionConditions = ({ position = 0 }: Props) => {
           variant="star"
           size="xs"
           className="mt-3"
+          isDisabled={isDisabled}
           onClick={() =>
             items.append({
               lhs: "environment",

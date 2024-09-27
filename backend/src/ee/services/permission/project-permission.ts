@@ -137,9 +137,7 @@ const SecretConditionSchema = z
 
 export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Secrets)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     ),
@@ -148,185 +146,139 @@ export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SecretApproval)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SecretRotation)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SecretRollback)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.SecretRollback).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read, ProjectPermissionActions.Create]).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Member)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Member).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Groups)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Groups).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Role)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Role).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Integrations)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Integrations).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Webhooks)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Webhooks).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Identity)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.ServiceTokens)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.ServiceTokens).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Settings)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Settings).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Environments)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Environments).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Tags)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Tags).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.AuditLogs)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.AuditLogs).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.IpAllowList)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.IpAllowList).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.CertificateAuthorities)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.CertificateAuthorities).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Certificates)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Certificates).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.CertificateTemplates)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to. "),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.PkiAlerts)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.PkiCollections)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.PkiCollections).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Project)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Project).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete]).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.Kms)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.Kms).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit]).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SecretFolders)
-      .describe("The entity this permission pertains to. Possible options: secrets, environments"),
+    subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read]).describe(
       "Describe what action an entity can take."
     )

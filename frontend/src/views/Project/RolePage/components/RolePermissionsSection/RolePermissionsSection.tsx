@@ -2,7 +2,6 @@ import { FormProvider, useForm } from "react-hook-form";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence } from "framer-motion";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
@@ -95,22 +94,21 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
             )}
           </div>
         </div>
-        <AnimatePresence>
-          <div className="py-4">
-            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-              <GeneralPermissionOptions
-                subject={subject}
-                actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                title={PROJECT_PERMISSION_OBJECT[subject].title}
-                key={`project-permission-${subject}`}
-              >
-                {subject === ProjectPermissionSub.Secrets ? (
-                  <SecretPermissionConditions />
-                ) : undefined}
-              </GeneralPermissionOptions>
-            ))}
-          </div>
-        </AnimatePresence>
+        <div className="py-4">
+          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
+            <GeneralPermissionOptions
+              subject={subject}
+              actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+              title={PROJECT_PERMISSION_OBJECT[subject].title}
+              key={`project-permission-${subject}`}
+              isDisabled={isDisabled}
+            >
+              {subject === ProjectPermissionSub.Secrets ? (
+                <SecretPermissionConditions isDisabled={isDisabled} />
+              ) : undefined}
+            </GeneralPermissionOptions>
+          ))}
+        </div>
         <Modal
           isOpen={popUp.createPolicy.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}

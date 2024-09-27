@@ -178,7 +178,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
     } else if (subject === ProjectPermissionSub.SecretFolders) {
       const canRead = action.includes(ProjectPermissionActions.Read);
-      if (!formVal[subject]) formVal[subject] = [];
+      if (!formVal[subject]) formVal[subject] = [{}];
 
       // from above statement we are sure it won't be undefined
       if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;

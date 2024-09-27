@@ -85,7 +85,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         <div>
           <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>
           {data?.metadata?.length ? (
-            <div className="mt-1 flex gap-2 text-sm text-mineshaft-300">
+            <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
               {data.metadata?.map((el) => (
                 <div key={el.id} className="flex items-center">
                   <Tag
@@ -99,7 +99,9 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                     size="xs"
                     className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                   >
-                    <div>{el.value}</div>
+                    <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {el.value}
+                    </div>
                   </Tag>
                 </div>
               ))}
