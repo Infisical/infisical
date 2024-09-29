@@ -185,6 +185,14 @@
             "documentation/platform/workflow-integrations/slack-integration"
           ]
         },
+        {
+          "group": "Admin panel",
+          "pages": [
+            "documentation/platform/admin-panel/overview",
+            "documentation/platform/admin-panel/server-admin",
+            "documentation/platform/admin-panel/org-admin-console"
+          ]
+        },
         "documentation/platform/secret-sharing"
       ]
     },
