@@ -75,7 +75,7 @@ export const secretSharingServiceFactory = ({
     // This will be 36 characters long, due to encoding it to base64.
     const id = crypto.randomBytes(27).toString("base64url");
 
-    const hashedHex = crypto.createHash("sha256").update(id).digest("base64").substring(0, 13);
+    const hashedHex = crypto.createHash("sha256").update(id).digest("base64url").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
@@ -125,7 +125,7 @@ export const secretSharingServiceFactory = ({
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const id = crypto.randomBytes(27).toString("base64url");
-    const hashedHex = crypto.createHash("sha256").update(id).digest("hex").substring(0, 13);
+    const hashedHex = crypto.createHash("sha256").update(id).digest("base64url").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
