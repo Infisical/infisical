@@ -63,6 +63,9 @@ export async function down(knex: Knex): Promise<void> {
 
       // Set the new column as primary key
       t.primary(["id"]);
+
+      // Set the id column to use a UUID default
+      t.uuid("id").defaultTo(knex.raw("gen_random_uuid()")).notNullable().alter();
     });
   }
 }
