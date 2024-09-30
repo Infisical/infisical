@@ -132,7 +132,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // check the response to determine if the token is valid
     if (!(data.status && data.status.authenticated))
-      throw new ForbiddenRequestError({ message: "Kubernetes token not authenticated" });
+      throw new UnauthorizedError({ message: "Kubernetes token not authenticated" });
 
     const { namespace: targetNamespace, name: targetName } = extractK8sUsername(data.status.user.username);
 
@@ -145,7 +145,7 @@ export const identityKubernetesAuthServiceFactory = ({
         .some((namespace) => namespace === targetNamespace);
 
       if (!isNamespaceAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: K8s namespace not allowed."
         });
     }
@@ -159,7 +159,7 @@ export const identityKubernetesAuthServiceFactory = ({
         .some((name) => name === targetName);
 
       if (!isNameAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: K8s name not allowed."
         });
     }
@@ -171,7 +171,7 @@ export const identityKubernetesAuthServiceFactory = ({
       );
 
       if (!isAudienceAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: K8s audience not allowed."
         });
     }

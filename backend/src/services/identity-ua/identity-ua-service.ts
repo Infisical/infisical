@@ -88,7 +88,7 @@ export const identityUaServiceFactory = ({
           isClientSecretRevoked: true
         });
 
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied due to expired client secret"
         });
       }
@@ -100,7 +100,7 @@ export const identityUaServiceFactory = ({
       await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
         isClientSecretRevoked: true
       });
-      throw new ForbiddenRequestError({
+      throw new UnauthorizedError({
         message: "Access denied due to client secret usage limit reached"
       });
     }
@@ -368,8 +368,7 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to revoke universal auth of identity with more privileged role"
       });
@@ -474,8 +473,8 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to add identity to project with more privileged role"
       });
@@ -521,8 +520,7 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to read identity client secret of project with more privileged role"
       });
@@ -561,8 +559,8 @@ export const identityUaServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to revoke identity client secret with more privileged role"
       });

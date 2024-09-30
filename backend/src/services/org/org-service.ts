@@ -892,7 +892,7 @@ export const orgServiceFactory = ({
 
     const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
     if (!membership) {
-      throw new NotFoundError({ message: "Failed to find organization membership" });
+      throw new NotFoundError({ message: "Organization membership not found" });
     }
     if (membership.orgId !== orgId) {
       throw new ForbiddenRequestError({ message: "Membership does not belong to organization" });
@@ -937,7 +937,9 @@ export const orgServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
-    if (!membership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (!membership) {
+      throw new NotFoundError({ message: "Organization membership not found" });
+    }
     if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
 
     const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, membership.user.id);

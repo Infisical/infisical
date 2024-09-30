@@ -73,7 +73,7 @@ export const identityAzureAuthServiceFactory = ({
         .map((servicePrincipalId) => servicePrincipalId.trim())
         .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
 
-      if (!isServicePrincipalAllowed) throw new ForbiddenRequestError({ message: "Service principal not allowed" });
+      if (!isServicePrincipalAllowed) throw new UnauthorizedError({ message: "Service principal not allowed" });
     }
 
     const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
@@ -314,8 +314,7 @@ export const identityAzureAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to revoke azure auth of identity with more privileged role"
       });

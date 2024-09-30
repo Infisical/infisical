@@ -1,23 +1,21 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TVerifyApprovers, VerifyApproversError } from "./access-approval-policy-types";
+import { TIsApproversValid } from "./access-approval-policy-types";
 
-export const verifyApprovers = async ({
+export const isApproversValid = async ({
   userIds,
   projectId,
   orgId,
   envSlug,
   actorAuthMethod,
   secretPath,
-  permissionService,
-  error
-}: TVerifyApprovers) => {
-  for await (const userId of userIds) {
-    try {
+  permissionService
+}: TIsApproversValid) => {
+  try {
+    for await (const userId of userIds) {
       const { permission: approverPermission } = await permissionService.getProjectPermission(
         ActorType.USER,
         userId,
@@ -30,17 +28,9 @@ export const verifyApprovers = async ({
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment: envSlug, secretPath })
       );
-    } catch (err) {
-      if (error === VerifyApproversError.BadRequestError) {
-        throw new BadRequestError({
-          message: "One or more approvers doesn't have access to be specified secret path"
-        });
-      }
-      if (error === VerifyApproversError.ForbiddenError) {
-        throw new ForbiddenRequestError({
-          message: "You don't have access to approve this request"
-        });
-      }
     }
+  } catch {
+    return false;
   }
+  return true;
 };

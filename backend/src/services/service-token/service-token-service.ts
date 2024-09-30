@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
@@ -168,7 +168,7 @@ export const serviceTokenServiceFactory = ({
     }
 
     const isMatch = await bcrypt.compare(tokenSecret, serviceToken.secretHash);
-    if (!isMatch) throw new ForbiddenRequestError();
+    if (!isMatch) throw new UnauthorizedError({ message: "Invalid service token" });
     await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
 
     return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
