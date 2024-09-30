@@ -55,7 +55,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string()
       }),
       body: z.object({
         hashedHex: z.string().min(1),
@@ -107,8 +107,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          id: z.string().uuid(),
-          hashedHex: z.string()
+          id: z.string()
         })
       }
     },
@@ -117,7 +116,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         ...req.body,
         accessType: SecretSharingAccessType.Anyone
       });
-      return { id: sharedSecret.id, hashedHex: sharedSecret.hashedHex };
+      return { id: sharedSecret.id };
     }
   });
 
@@ -138,8 +137,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          id: z.string().uuid(),
-          hashedHex: z.string()
+          id: z.string()
         })
       }
     },
@@ -153,7 +151,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         ...req.body
       });
-      return { id: sharedSecret.id, hashedHex: sharedSecret.hashedHex };
+      return { id: sharedSecret.id };
     }
   });
 
@@ -165,7 +163,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        sharedSecretId: z.string().uuid()
+        sharedSecretId: z.string()
       }),
       response: {
         200: SecretSharingSchema

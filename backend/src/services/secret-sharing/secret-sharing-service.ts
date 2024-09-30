@@ -68,10 +68,15 @@ export const secretSharingServiceFactory = ({
     const encryptWithRoot = kmsService.encryptWithRootKey();
 
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
-    const hashedHex = crypto.createHash("sha256").update(secretValue).digest("hex").substring(0, 13);
+
+    // This will be 36 characters long, due to encoding it to base64.
+    const id = crypto.randomBytes(27).toString("base64url");
+
+    const hashedHex = crypto.createHash("sha256").update(id).digest("base64").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
+      id,
       iv: null,
       tag: null,
       encryptedValue: null,
@@ -86,7 +91,7 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: newSharedSecret.id, hashedHex: newSharedSecret.hashedHex };
+    return { id: `${newSharedSecret.id}${hashedHex}` };
   };
 
   const createPublicSharedSecret = async ({
@@ -116,10 +121,12 @@ export const secretSharingServiceFactory = ({
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
-    const hashedHex = crypto.createHash("sha256").update(secretValue).digest("hex").substring(0, 13);
+    const id = crypto.randomBytes(27).toString("base64url");
+    const hashedHex = crypto.createHash("sha256").update(id).digest("hex").substring(0, 13);
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
+      id,
       encryptedValue: null,
       iv: null,
       tag: null,
@@ -132,7 +139,7 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: newSharedSecret.id, hashedHex: newSharedSecret.hashedHex };
+    return { id: `${newSharedSecret.id}${hashedHex}` };
   };
 
   const getSharedSecrets = async ({

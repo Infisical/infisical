@@ -15,7 +15,6 @@ export type TSharedSecret = {
 
 export type TCreatedSharedSecret = {
   id: string;
-  hashedHex: string;
 };
 
 export type TCreateSharedSecretRequest = {

@@ -13,23 +13,33 @@ import { PasswordContainer, SecretContainer, SecretErrorContainer } from "./comp
 const extractDetailsFromUrl = (router: NextRouter) => {
   const { id, key: urlEncodedKey } = router.query;
 
+  const idString = id as string;
+
+  if (!idString) {
+    return {
+      id: "",
+      hashedHex: "",
+      key: null
+    };
+  }
+
   if (urlEncodedKey) {
     const [hashedHex, key] = urlEncodedKey ? urlEncodedKey.toString().split("-") : ["", ""];
 
     return {
-      id: id as string,
+      id: idString,
       hashedHex,
       key
     };
   }
 
-  // its like this {uuid}-{hex} so example: idpart1-idpart2-idpart3-idpart4-hex
-  const extractedId = id?.toString().split("-").slice(0, 5).join("-");
-  const extractedHex = id?.toString().split("-").slice(5).join("-");
+  // get the first 36 characters as id and the rest as hex
+  const idPart = idString.substring(0, 36);
+  const hexPart = idString.substring(36);
 
   return {
-    id: extractedId || "",
-    hashedHex: extractedHex || "",
+    id: idPart || "",
+    hashedHex: hexPart || "",
     key: null
   };
 };

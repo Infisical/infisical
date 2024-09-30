@@ -76,7 +76,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
     try {
       const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
-      const { id, hashedHex } = await createSharedSecret.mutateAsync({
+      const { id } = await createSharedSecret.mutateAsync({
         name,
         password,
         secretValue: secret,
@@ -85,7 +85,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         accessType
       });
 
-      setSecretLink(`${window.location.origin}/shared/secret/${id}-${hashedHex}`);
+      setSecretLink(`${window.location.origin}/shared/secret/${id}`);
       reset();
 
       setCopyTextSecret("secret");
