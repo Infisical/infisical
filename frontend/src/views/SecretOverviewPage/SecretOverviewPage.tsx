@@ -351,7 +351,7 @@ export const SecretOverviewPage = () => {
           });
         }
       }
-      await createSecretV3({
+      const result = await createSecretV3({
         environment: env,
         workspaceId,
         secretPath,
@@ -360,10 +360,18 @@ export const SecretOverviewPage = () => {
         secretComment: "",
         type: SecretType.Shared
       });
-      createNotification({
-        type: "success",
-        text: "Successfully created secret"
-      });
+
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully created secret"
+        });
+      }
     } catch (error) {
       console.log(error);
       createNotification({
@@ -388,7 +396,7 @@ export const SecretOverviewPage = () => {
     type = SecretType.Shared
   ) => {
     try {
-      await updateSecretV3({
+      const result = await updateSecretV3({
         environment: env,
         workspaceId,
         secretPath,
@@ -396,10 +404,18 @@ export const SecretOverviewPage = () => {
         secretValue: value,
         type
       });
-      createNotification({
-        type: "success",
-        text: "Successfully updated secret"
-      });
+
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully updated secret"
+        });
+      }
     } catch (error) {
       console.log(error);
       createNotification({
@@ -411,7 +427,7 @@ export const SecretOverviewPage = () => {
 
   const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
     try {
-      await deleteSecretV3({
+      const result = await deleteSecretV3({
         environment: env,
         workspaceId,
         secretPath,
@@ -419,10 +435,18 @@ export const SecretOverviewPage = () => {
         secretId,
         type: SecretType.Shared
       });
-      createNotification({
-        type: "success",
-        text: "Successfully deleted secret"
-      });
+
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully deleted secret"
+        });
+      }
     } catch (error) {
       console.log(error);
       createNotification({

@@ -122,42 +122,76 @@ export const CreateSecretForm = ({
 
       const isEdit = getSecretByKey(environment, key) !== undefined;
       if (isEdit) {
-        return updateSecretV3({
+        return {
+          ...(await updateSecretV3({
+            environment,
+            workspaceId,
+            secretPath,
+            secretKey: key,
+            secretValue: value || "",
+            type: SecretType.Shared
+          })),
+          environment
+        };
+      }
+
+      return {
+        ...(await createSecretV3({
           environment,
           workspaceId,
           secretPath,
           secretKey: key,
           secretValue: value || "",
+          secretComment: "",
           type: SecretType.Shared
-        });
-      }
-
-      return createSecretV3({
-        environment,
-        workspaceId,
-        secretPath,
-        secretKey: key,
-        secretValue: value || "",
-        secretComment: "",
-        type: SecretType.Shared
-      });
+        })),
+        environment
+      };
     });
 
     const results = await Promise.allSettled(promises);
-    const isSecretsAdded = results.some((result) => result.status === "fulfilled");
+    const forApprovalEnvs = results
+      .map((result) =>
+        result.status === "fulfilled" && "approval" in result.value
+          ? result.value.environment
+          : undefined
+      )
+      .filter(Boolean) as string[];
 
-    if (isSecretsAdded) {
+    const updatedEnvs = results
+      .map((result) =>
+        result.status === "fulfilled" && !("approval" in result.value)
+          ? result.value.environment
+          : undefined
+      )
+      .filter(Boolean) as string[];
+
+    if (forApprovalEnvs.length) {
+      createNotification({
+        type: "info",
+        text: `Change request submitted for ${
+          forApprovalEnvs.length > 1 ? "environments" : "environment"
+        }: ${forApprovalEnvs.join(", ")}`
+      });
+    }
+
+    if (updatedEnvs.length) {
       createNotification({
         type: "success",
-        text: "Secrets created successfully"
+        text: `Secrets created in ${
+          updatedEnvs.length > 1 ? "environments" : "environment"
+        }: ${updatedEnvs.join(", ")}`
       });
-      onClose();
-      reset();
-    } else {
+    }
+
+    if (!updatedEnvs.length && !forApprovalEnvs.length) {
       createNotification({
         type: "error",
         text: "Failed to create secrets"
       });
+    } else {
+      onClose();
+      reset();
     }
   };
 
