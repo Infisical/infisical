@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 import { getConfig } from "@app/lib/config/env";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -76,7 +76,7 @@ export const certificateAuthorityQueueFactory = ({
     logger.info(`secretReminderQueue.process: [secretDocument=${caId}]`);
 
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new BadRequestError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: "CA not found" });
 
     const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 

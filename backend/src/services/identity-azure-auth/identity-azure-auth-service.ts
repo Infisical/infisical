@@ -7,7 +7,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -49,10 +49,12 @@ export const identityAzureAuthServiceFactory = ({
 }: TIdentityAzureAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: azureJwt }: TLoginAzureAuthDTO) => {
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
-    if (!identityAzureAuth) throw new UnauthorizedError();
+    if (!identityAzureAuth) {
+      throw new NotFoundError({ message: "Azure auth method not found for identity, did you configure Azure Auth?" });
+    }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAzureAuth.identityId });
-    if (!identityMembershipOrg) throw new UnauthorizedError();
+    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
 
     const azureIdentity = await validateAzureIdentity({
       tenantId: identityAzureAuth.tenantId,
@@ -60,7 +62,8 @@ export const identityAzureAuthServiceFactory = ({
       jwt: azureJwt
     });
 
-    if (azureIdentity.tid !== identityAzureAuth.tenantId) throw new UnauthorizedError();
+    if (azureIdentity.tid !== identityAzureAuth.tenantId)
+      throw new UnauthorizedError({ message: "Tenant ID mismatch" });
 
     if (identityAzureAuth.allowedServicePrincipalIds) {
       // validate if the service principal id is in the list of allowed service principal ids
@@ -70,7 +73,7 @@ export const identityAzureAuthServiceFactory = ({
         .map((servicePrincipalId) => servicePrincipalId.trim())
         .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
 
-      if (!isServicePrincipalAllowed) throw new UnauthorizedError();
+      if (!isServicePrincipalAllowed) throw new UnauthorizedError({ message: "Service principal not allowed" });
     }
 
     const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
@@ -122,7 +125,7 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId
   }: TAttachAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add Azure Auth to already configured identity"
@@ -200,7 +203,7 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId
   }: TUpdateAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
       throw new BadRequestError({
         message: "Failed to update Azure Auth"
@@ -262,7 +265,7 @@ export const identityAzureAuthServiceFactory = ({
 
   const getAzureAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Azure Auth attached"
@@ -290,7 +293,7 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId
   }: TRevokeAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
       throw new BadRequestError({
         message: "The identity does not have azure auth"
@@ -311,8 +314,7 @@ export const identityAzureAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to revoke azure auth of identity with more privileged role"
       });

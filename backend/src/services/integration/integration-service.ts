@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
@@ -76,7 +76,7 @@ export const integrationServiceFactory = ({
     targetEnvironmentId
   }: TCreateIntegrationDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
-    if (!integrationAuth) throw new BadRequestError({ message: "Integration auth not found" });
+    if (!integrationAuth) throw new NotFoundError({ message: "Integration auth not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -93,7 +93,7 @@ export const integrationServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder path not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder path not found" });
 
     const integration = await integrationDAL.create({
       envId: folder.envId,
@@ -139,7 +139,7 @@ export const integrationServiceFactory = ({
     metadata
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
-    if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
+    if (!integration) throw new NotFoundError({ message: "Integration auth not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -156,7 +156,7 @@ export const integrationServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(integration.projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder path not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder path not found" });
 
     const updatedIntegration = await integrationDAL.updateById(id, {
       envId: folder.envId,
@@ -211,7 +211,7 @@ export const integrationServiceFactory = ({
     shouldDeleteIntegrationSecrets
   }: TDeleteIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
-    if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
+    if (!integration) throw new NotFoundError({ message: "Integration auth not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -285,7 +285,7 @@ export const integrationServiceFactory = ({
   const syncIntegration = async ({ id, actorId, actor, actorOrgId, actorAuthMethod }: TSyncIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) {
-      throw new BadRequestError({ message: "Integration not found" });
+      throw new NotFoundError({ message: "Integration not found" });
     }
 
     const { permission } = await permissionService.getProjectPermission(

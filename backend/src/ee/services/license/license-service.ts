@@ -10,7 +10,7 @@ import { Knex } from "knex";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -145,7 +145,7 @@ export const licenseServiceFactory = ({
         if (cachedPlan) return JSON.parse(cachedPlan) as TFeatureSet;
 
         const org = await orgDAL.findOrgById(orgId);
-        if (!org) throw new BadRequestError({ message: "Org not found" });
+        if (!org) throw new NotFoundError({ message: "Organization not found" });
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
@@ -204,7 +204,7 @@ export const licenseServiceFactory = ({
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
     if (instanceType === InstanceType.Cloud) {
       const org = await orgDAL.findOrgById(orgId);
-      if (!org) throw new BadRequestError({ message: "Org not found" });
+      if (!org) throw new NotFoundError({ message: "Organization not found" });
 
       const quantity = await licenseDAL.countOfOrgMembers(orgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
@@ -266,8 +266,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -294,8 +294,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -340,8 +340,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
     const { data } = await licenseServerCloudApi.request.get(
@@ -357,8 +357,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
     const { data } = await licenseServerCloudApi.request.get(
@@ -373,8 +373,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -398,8 +398,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
     const { data } = await licenseServerCloudApi.request.patch(
@@ -418,8 +418,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -445,8 +445,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
     const {
@@ -474,8 +474,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -491,8 +491,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
     const {
@@ -509,8 +509,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -530,8 +530,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -547,8 +547,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 
@@ -564,8 +564,8 @@ export const licenseServiceFactory = ({
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
-      throw new BadRequestError({
-        message: "Failed to find organization"
+      throw new NotFoundError({
+        message: "Organization not found"
       });
     }
 

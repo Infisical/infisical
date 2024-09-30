@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -99,7 +99,7 @@ export const secretSnapshotServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
     return snapshotDAL.countOfSnapshotsByFolderId(folder.id);
   };
@@ -131,7 +131,7 @@ export const secretSnapshotServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
     const snapshots = await snapshotDAL.find({ folderId: folder.id }, { limit, offset, sort: [["createdAt", "desc"]] });
     return snapshots;
@@ -139,7 +139,7 @@ export const secretSnapshotServiceFactory = ({
 
   const getSnapshotData = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetSnapshotDataDTO) => {
     const snapshot = await snapshotDAL.findById(id);
-    if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
+    if (!snapshot) throw new NotFoundError({ message: "Snapshot not found" });
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -173,7 +173,7 @@ export const secretSnapshotServiceFactory = ({
     } else {
       const encryptedSnapshotDetails = await snapshotDAL.findSecretSnapshotDataById(id);
       const { botKey } = await projectBotService.getBotKey(snapshot.projectId);
-      if (!botKey) throw new BadRequestError({ message: "bot not found" });
+      if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
       snapshotDetails = {
         ...encryptedSnapshotDetails,
         secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => ({
@@ -225,7 +225,7 @@ export const secretSnapshotServiceFactory = ({
     try {
       if (!licenseService.isValidLicense) throw new InternalServerError({ message: "Invalid license" });
       const folder = await folderDAL.findById(folderId);
-      if (!folder) throw new BadRequestError({ message: "Folder not found" });
+      if (!folder) throw new NotFoundError({ message: "Folder not found" });
       const shouldUseSecretV2Bridge = folder.projectVersion === 3;
 
       if (shouldUseSecretV2Bridge) {
@@ -309,7 +309,7 @@ export const secretSnapshotServiceFactory = ({
     actorOrgId
   }: TRollbackSnapshotDTO) => {
     const snapshot = await snapshotDAL.findById(snapshotId);
-    if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
+    if (!snapshot) throw new NotFoundError({ message: "Snapshot not found" });
     const shouldUseBridge = snapshot.projectVersion === 3;
 
     const { permission } = await permissionService.getProjectPermission(

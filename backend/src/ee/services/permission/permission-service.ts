@@ -10,7 +10,7 @@ import {
   TProjectMemberships
 } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -62,7 +62,7 @@ export const permissionServiceFactory = ({
               permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
             );
           default:
-            throw new BadRequestError({ name: "OrgRoleInvalid", message: "Org role not found" });
+            throw new NotFoundError({ name: "OrgRoleInvalid", message: "Organization role not found" });
         }
       })
       .reduce((curr, prev) => prev.concat(curr), []);
@@ -90,7 +90,7 @@ export const permissionServiceFactory = ({
             );
           }
           default:
-            throw new BadRequestError({
+            throw new NotFoundError({
               name: "ProjectRoleInvalid",
               message: "Project role not found"
             });
@@ -114,11 +114,11 @@ export const permissionServiceFactory = ({
   ) => {
     // when token is scoped, ensure the passed org id is same as user org id
     if (userOrgId && userOrgId !== orgId)
-      throw new BadRequestError({ message: "Invalid user token. Scoped to different organization." });
+      throw new ForbiddenRequestError({ message: "Invalid user token. Scoped to different organization." });
     const membership = await permissionDAL.getOrgPermission(userId, orgId);
-    if (!membership) throw new UnauthorizedError({ name: "User not in org" });
+    if (!membership) throw new ForbiddenRequestError({ name: "You are not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new BadRequestError({ name: "Custom organization permission not found" });
     }
 
     // If the org ID is API_KEY, the request is being made with an API Key.
@@ -127,7 +127,7 @@ export const permissionServiceFactory = ({
     // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
     // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
     if (userOrgId !== "API_KEY" && membership.orgId !== userOrgId) {
-      throw new UnauthorizedError({ name: "You are not logged into this organization" });
+      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
     validateOrgSAML(authMethod, membership.orgAuthEnforced);
@@ -143,9 +143,9 @@ export const permissionServiceFactory = ({
 
   const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
     const membership = await permissionDAL.getOrgIdentityPermission(identityId, orgId);
-    if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
+    if (!membership) throw new ForbiddenRequestError({ name: "Identity is not apart of this organization" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new NotFoundError({ name: "Custom organization permission not found" });
     }
     return {
       permission: buildOrgPermission([{ role: membership.role, permissions: membership.permissions }]),
@@ -166,8 +166,8 @@ export const permissionServiceFactory = ({
       case ActorType.IDENTITY:
         return getIdentityOrgPermission(id, orgId);
       default:
-        throw new UnauthorizedError({
-          message: "Permission not defined",
+        throw new BadRequestError({
+          message: "Invalid actor provided",
           name: "Get org permission"
         });
     }
@@ -179,7 +179,7 @@ export const permissionServiceFactory = ({
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (isCustomRole) {
       const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
-      if (!orgRole) throw new BadRequestError({ message: "Role not found" });
+      if (!orgRole) throw new NotFoundError({ message: "Specified role was not found" });
       return {
         permission: buildOrgPermission([{ role: OrgMembershipRole.Custom, permissions: orgRole.permissions }]),
         role: orgRole
@@ -196,12 +196,12 @@ export const permissionServiceFactory = ({
     userOrgId?: string
   ): Promise<TProjectPermissionRT<ActorType.USER>> => {
     const userProjectPermission = await permissionDAL.getProjectPermission(userId, projectId);
-    if (!userProjectPermission) throw new UnauthorizedError({ name: "User not in project" });
+    if (!userProjectPermission) throw new ForbiddenRequestError({ name: "User not a part of the specified project" });
 
     if (
       userProjectPermission.roles.some(({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions)
     ) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new NotFoundError({ name: "The permission was not found" });
     }
 
     // If the org ID is API_KEY, the request is being made with an API Key.
@@ -210,7 +210,7 @@ export const permissionServiceFactory = ({
     // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
     // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
     if (userOrgId !== "API_KEY" && userProjectPermission.orgId !== userOrgId) {
-      throw new UnauthorizedError({ name: "You are not logged into this organization" });
+      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
     validateOrgSAML(authMethod, userProjectPermission.orgAuthEnforced);
@@ -239,18 +239,19 @@ export const permissionServiceFactory = ({
     identityOrgId: string | undefined
   ): Promise<TProjectPermissionRT<ActorType.IDENTITY>> => {
     const identityProjectPermission = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
-    if (!identityProjectPermission) throw new UnauthorizedError({ name: "Identity not in project" });
+    if (!identityProjectPermission)
+      throw new ForbiddenRequestError({ name: "Identity is not a member of the specified project" });
 
     if (
       identityProjectPermission.roles.some(
         ({ role, permissions }) => role === ProjectMembershipRole.Custom && !permissions
       )
     ) {
-      throw new BadRequestError({ name: "Custom permission not found" });
+      throw new NotFoundError({ name: "Custom permission not found" });
     }
 
     if (identityProjectPermission.orgId !== identityOrgId) {
-      throw new UnauthorizedError({ name: "You are not a member of this organization" });
+      throw new ForbiddenRequestError({ name: "Identity is not a member of the specified organization" });
     }
 
     const rolePermissions =
@@ -277,25 +278,23 @@ export const permissionServiceFactory = ({
     actorOrgId: string | undefined
   ) => {
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
-    if (!serviceToken) throw new BadRequestError({ message: "Service token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: "Service token not found" });
 
     const serviceTokenProject = await projectDAL.findById(serviceToken.projectId);
 
     if (!serviceTokenProject) throw new BadRequestError({ message: "Service token not linked to a project" });
 
     if (serviceTokenProject.orgId !== actorOrgId) {
-      throw new UnauthorizedError({ message: "Service token not a part of this organization" });
+      throw new ForbiddenRequestError({ message: "Service token not a part of the specified organization" });
     }
 
-    if (serviceToken.projectId !== projectId)
-      throw new UnauthorizedError({
-        message: "Failed to find service authorization for given project"
-      });
+    if (serviceToken.projectId !== projectId) {
+      throw new ForbiddenRequestError({ name: "Service token not a part of the specified project" });
+    }
 
-    if (serviceTokenProject.orgId !== actorOrgId)
-      throw new UnauthorizedError({
-        message: "Failed to find service authorization for given project"
-      });
+    if (serviceTokenProject.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Service token not a part of the specified organization" });
+    }
 
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
@@ -335,8 +334,8 @@ export const permissionServiceFactory = ({
       case ActorType.IDENTITY:
         return getIdentityProjectPermission(id, projectId, actorOrgId) as Promise<TProjectPermissionRT<T>>;
       default:
-        throw new UnauthorizedError({
-          message: "Permission not defined",
+        throw new BadRequestError({
+          message: "Invalid actor provided",
           name: "Get project permission"
         });
     }
@@ -346,7 +345,7 @@ export const permissionServiceFactory = ({
     const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
-      if (!projectRole) throw new BadRequestError({ message: `Role not found: ${role}` });
+      if (!projectRole) throw new NotFoundError({ message: `Specified role was not found: ${role}` });
       return {
         permission: buildProjectPermission([
           { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }

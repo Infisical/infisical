@@ -70,7 +70,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         metadata: {}
       };
     } else {
-      throw new BadRequestError({ message: "Missing logic for other actor" });
+      throw new BadRequestError({ message: "Invalid actor type provided" });
     }
     req.auditLogInfo = payload;
   });

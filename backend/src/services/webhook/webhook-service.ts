@@ -4,7 +4,7 @@ import { TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -54,7 +54,7 @@ export const webhookServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-    if (!env) throw new BadRequestError({ message: "Env not found" });
+    if (!env) throw new NotFoundError({ message: "Environment not found" });
 
     const insertDoc: TWebhooksInsert = {
       url: "", // deprecated - we are moving away from plaintext URLs
@@ -88,7 +88,7 @@ export const webhookServiceFactory = ({
 
   const updateWebhook = async ({ actorId, actor, actorOrgId, actorAuthMethod, id, isDisabled }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
+    if (!webhook) throw new NotFoundError({ message: "Webhook not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -105,7 +105,7 @@ export const webhookServiceFactory = ({
 
   const deleteWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
+    if (!webhook) throw new NotFoundError({ message: "Webhook not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -122,7 +122,7 @@ export const webhookServiceFactory = ({
 
   const testWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TTestWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
+    if (!webhook) throw new NotFoundError({ message: "Webhook not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

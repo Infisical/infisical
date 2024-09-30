@@ -14,7 +14,7 @@ import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { generateHash } from "@app/lib/crypto/encryption";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
@@ -105,7 +105,7 @@ export const kmsServiceFactory = ({
   const deleteInternalKms = async (kmsId: string, orgId: string, tx?: Knex) => {
     const kms = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (kms.isExternal) return;
-    if (kms.orgId !== orgId) throw new BadRequestError({ message: "KMS doesn't belong to organization" });
+    if (kms.orgId !== orgId) throw new ForbiddenRequestError({ message: "KMS doesn't belong to organization" });
     return kmsDAL.deleteById(kmsId, tx);
   };
 
@@ -638,7 +638,7 @@ export const kmsServiceFactory = ({
       }
 
       if (kmsDoc.orgId !== project.orgId) {
-        throw new BadRequestError({
+        throw new ForbiddenRequestError({
           message: "KMS ID does not belong in the organization."
         });
       }
@@ -722,8 +722,8 @@ export const kmsServiceFactory = ({
     }
 
     if (backupProjectId !== projectId) {
-      throw new BadRequestError({
-        message: "Invalid backup for project"
+      throw new ForbiddenRequestError({
+        message: "Backup does not belong to project"
       });
     }
 

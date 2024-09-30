@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -29,8 +29,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       const serverCfg = await getServerCfg();
       if (!serverCfg.allowSignUp) {
-        throw new BadRequestError({
-          message: "Sign up is disabled"
+        throw new ForbiddenRequestError({
+          message: "Signup's are disabled"
         });
       }
 
@@ -38,7 +38,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         const domain = email.split("@")[1];
         const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
         if (!allowedDomains.includes(domain)) {
-          throw new BadRequestError({
+          throw new ForbiddenRequestError({
             message: `Email with a domain (@${domain}) is not supported`
           });
         }
@@ -70,13 +70,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const serverCfg = await getServerCfg();
       if (!serverCfg.allowSignUp) {
-        throw new BadRequestError({
-          message: "Sign up is disabled"
+        throw new ForbiddenRequestError({
+          message: "Signup's are disabled"
         });
       }
 
       const { token, user } = await server.services.signup.verifyEmailSignup(req.body.email, req.body.code);
-      return { message: "Successfuly verified email", token, user };
+      return { message: "Successfully verified email", token, user };
     }
   });
 
@@ -121,8 +121,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       const serverCfg = await getServerCfg();
       if (!serverCfg.allowSignUp) {
-        throw new BadRequestError({
-          message: "Sign up is disabled"
+        throw new ForbiddenRequestError({
+          message: "Signup's are disabled"
         });
       }
 

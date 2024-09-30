@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { ProjectsSchema, ProjectUpgradeStatus, ProjectVersion, TableName, TProjectsUpdate } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { Filter, ProjectFilterType } from "./project-types";
@@ -186,7 +186,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new BadRequestError({ message: "Project not found" });
+        throw new NotFoundError({ message: "Project not found" });
       }
 
       return project;
@@ -198,7 +198,7 @@ export const projectDALFactory = (db: TDbClient) => {
   const findProjectBySlug = async (slug: string, orgId: string | undefined) => {
     try {
       if (!orgId) {
-        throw new BadRequestError({ message: "Organization ID is required when querying with slugs" });
+        throw new UnauthorizedError({ message: "Organization ID is required when querying with slugs" });
       }
 
       const projects = await db
@@ -235,7 +235,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new BadRequestError({ message: "Project not found" });
+        throw new NotFoundError({ message: "Project not found" });
       }
 
       return project;
@@ -251,7 +251,7 @@ export const projectDALFactory = (db: TDbClient) => {
       }
       if (filter.type === ProjectFilterType.SLUG) {
         if (!filter.orgId) {
-          throw new BadRequestError({
+          throw new UnauthorizedError({
             message: "Organization ID is required when querying with slugs"
           });
         }
@@ -295,7 +295,7 @@ export const projectDALFactory = (db: TDbClient) => {
       .first();
 
     if (!project) {
-      throw new BadRequestError({ message: "Project not found" });
+      throw new NotFoundError({ message: "Project not found" });
     }
 
     return {

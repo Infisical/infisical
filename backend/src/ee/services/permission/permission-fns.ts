@@ -1,5 +1,5 @@
 import { TOrganizations } from "@app/db/schemas";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
@@ -20,7 +20,7 @@ function validateOrgSAML(actorAuthMethod: ActorAuthMethod, isSamlEnforced: TOrga
   }
 
   if (isSamlEnforced && actorAuthMethod !== null && !isAuthMethodSaml(actorAuthMethod)) {
-    throw new UnauthorizedError({ name: "Cannot access org-scoped resource" });
+    throw new ForbiddenRequestError({ name: "SAML auth enforced, cannot access org-scoped resource" });
   }
 }
 

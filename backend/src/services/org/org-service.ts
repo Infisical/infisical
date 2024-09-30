@@ -27,7 +27,7 @@ import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -128,7 +128,7 @@ export const orgServiceFactory = ({
   ) => {
     await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     const org = await orgDAL.findOrgById(orgId);
-    if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
+    if (!org) throw new NotFoundError({ message: "Organization not found" });
     return org;
   };
   /*
@@ -286,8 +286,7 @@ export const orgServiceFactory = ({
     if (authEnforced) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
       if (!samlCfg)
-        throw new BadRequestError({
-          name: "No enforceable SAML config found",
+        throw new NotFoundError({
           message: "No enforceable SAML config found"
         });
     }
@@ -298,7 +297,7 @@ export const orgServiceFactory = ({
       authEnforced,
       scimEnabled
     });
-    if (!org) throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
+    if (!org) throw new NotFoundError({ message: "Organization not found" });
     return org;
   };
   /*
@@ -383,7 +382,10 @@ export const orgServiceFactory = ({
   ) => {
     const { membership } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin)
-      throw new UnauthorizedError({ name: "Delete org by id", message: "Not an admin" });
+      throw new ForbiddenRequestError({
+        name: "DeleteOrganizationById",
+        message: "Insufficient privileges"
+      });
 
     const organization = await orgDAL.deleteById(orgId);
     if (organization.customerId) {
@@ -413,12 +415,12 @@ export const orgServiceFactory = ({
     });
     if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
     if (foundMembership.userId === userId)
-      throw new BadRequestError({ message: "Cannot update own organization membership" });
+      throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (role && isCustomRole) {
       const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
-      if (!customRole) throw new BadRequestError({ name: "Update membership", message: "Role not found" });
+      if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
       const plan = await licenseService.getPlan(orgId);
       if (!plan?.rbac)
@@ -461,8 +463,8 @@ export const orgServiceFactory = ({
     const isEmailInvalid = await isDisposableEmail(inviteeEmails);
     if (isEmailInvalid) {
       throw new BadRequestError({
-        message: "Provided a disposable email",
-        name: "Org invite"
+        message: "Disposable emails are not allowed",
+        name: "InviteUser"
       });
     }
     const plan = await licenseService.getPlan(orgId);
@@ -483,8 +485,8 @@ export const orgServiceFactory = ({
         })
       : [];
     if (projectsToInvite.length !== invitedProjects?.length) {
-      throw new UnauthorizedError({
-        message: "One or more project doesn't have access to"
+      throw new ForbiddenRequestError({
+        message: "Access denied to one or more of the specified projects"
       });
     }
 
@@ -495,7 +497,7 @@ export const orgServiceFactory = ({
     }
 
     const mailsForOrgInvitation: { email: string; userId: string; firstName: string; lastName: string }[] = [];
-    const mailsForProjectInvitaion: { email: string[]; projectName: string }[] = [];
+    const mailsForProjectInvitation: { email: string[]; projectName: string }[] = [];
     const newProjectMemberships: TProjectMemberships[] = [];
     await orgDAL.transaction(async (tx) => {
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username">[] = [];
@@ -563,6 +565,7 @@ export const orgServiceFactory = ({
           if (plan?.slug !== "enterprise" && plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
             // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
             throw new BadRequestError({
+              name: "InviteUser",
               message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
             });
           }
@@ -570,12 +573,14 @@ export const orgServiceFactory = ({
           if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
             // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
             throw new BadRequestError({
+              name: "InviteUser",
               message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
             });
           }
 
           if (org?.authEnforced) {
-            throw new BadRequestError({
+            throw new ForbiddenRequestError({
+              name: "InviteUser",
               message: "Failed to invite user due to org-level auth enforced for organization"
             });
           }
@@ -587,7 +592,7 @@ export const orgServiceFactory = ({
           if (isCustomOrgRole) {
             const customRole = await orgRoleDAL.findOne({ slug: organizationRoleSlug, orgId });
             if (!customRole)
-              throw new BadRequestError({ name: "Invite membership", message: "Organization role not found" });
+              throw new NotFoundError({ name: "InviteUser", message: "Custom organization role not found" });
             roleId = customRole.id;
           }
 
@@ -660,6 +665,7 @@ export const orgServiceFactory = ({
         if (hasCustomRole) {
           if (!plan?.rbac)
             throw new BadRequestError({
+              name: "InviteUser",
               message:
                 "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
             });
@@ -671,29 +677,33 @@ export const orgServiceFactory = ({
               $in: { slug: customProjectRoles.map((role) => role) }
             })
           : [];
-        if (customRoles.length !== customProjectRoles.length)
-          throw new BadRequestError({ message: "Custom role not found" });
+        if (customRoles.length !== customProjectRoles.length) {
+          throw new NotFoundError({ name: "InviteUser", message: "Custom project role not found" });
+        }
 
         const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
         const ghostUser = await projectDAL.findProjectGhostUser(projectId, tx);
         if (!ghostUser) {
-          throw new BadRequestError({
-            message: "Failed to find sudo user"
+          throw new NotFoundError({
+            name: "InviteUser",
+            message: "Failed to find project owner"
           });
         }
 
         const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId, tx);
         if (!ghostUserLatestKey) {
-          throw new BadRequestError({
-            message: "Failed to find sudo user latest key"
+          throw new NotFoundError({
+            name: "InviteUser",
+            message: "Failed to find project owner's latest key"
           });
         }
 
         const bot = await projectBotDAL.findOne({ projectId }, tx);
         if (!bot) {
-          throw new BadRequestError({
-            message: "Failed to find bot"
+          throw new NotFoundError({
+            name: "InviteUser",
+            message: "Failed to find project bot"
           });
         }
 
@@ -746,7 +756,7 @@ export const orgServiceFactory = ({
           })),
           tx
         );
-        mailsForProjectInvitaion.push({
+        mailsForProjectInvitation.push({
           email: userWithEncryptionKeyInvitedToProject
             .filter((el) => !userIdsWithOrgInvitation.has(el.userId))
             .map((el) => el.email || el.username),
@@ -790,7 +800,7 @@ export const orgServiceFactory = ({
     );
 
     await Promise.allSettled(
-      mailsForProjectInvitaion
+      mailsForProjectInvitation
         .filter((el) => Boolean(el.email.length))
         .map(async (el) => {
           return smtpService.sendMail({
@@ -819,17 +829,17 @@ export const orgServiceFactory = ({
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
     const user = await userDAL.findUserByUsername(email);
     if (!user) {
-      throw new BadRequestError({ message: "Invalid request", name: "Verify user to org" });
+      throw new NotFoundError({ message: "User not found" });
     }
     const [orgMembership] = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
       status: OrgMembershipStatus.Invited,
       [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
     });
+
     if (!orgMembership)
-      throw new BadRequestError({
-        message: "Failed to find invitation",
-        name: "Verify user to org"
+      throw new NotFoundError({
+        message: "No pending invitation found"
       });
 
     await tokenService.validateTokenForUser({
@@ -881,8 +891,12 @@ export const orgServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
-    if (!membership) throw new NotFoundError({ message: "Failed to find organization membership" });
-    if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (!membership) {
+      throw new NotFoundError({ message: "Organization membership not found" });
+    }
+    if (membership.orgId !== orgId) {
+      throw new ForbiddenRequestError({ message: "Membership does not belong to organization" });
+    }
 
     return membership;
   };
@@ -923,7 +937,9 @@ export const orgServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
-    if (!membership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (!membership) {
+      throw new NotFoundError({ message: "Organization membership not found" });
+    }
     if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
 
     const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, membership.user.id);

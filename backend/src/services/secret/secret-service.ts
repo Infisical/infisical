@@ -23,7 +23,7 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -153,7 +153,7 @@ export const secretServiceFactory = ({
     const appCfg = getConfig();
 
     const secretBlindIndexDoc = await secretBlindIndexDAL.findOne({ projectId });
-    if (!secretBlindIndexDoc) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
+    if (!secretBlindIndexDoc) throw new NotFoundError({ message: "Blind index not found", name: "Create secret" });
 
     const secretBlindIndex = await buildSecretBlindIndexFromName({
       secretName,
@@ -164,7 +164,7 @@ export const secretServiceFactory = ({
       ciphertext: secretBlindIndexDoc.encryptedSaltCipherText,
       iv: secretBlindIndexDoc.saltIV
     });
-    if (!secretBlindIndex) throw new BadRequestError({ message: "Secret not found" });
+    if (!secretBlindIndex) throw new NotFoundError({ message: "Secret not found" });
     return secretBlindIndex;
   };
 
@@ -194,14 +194,14 @@ export const secretServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "CreateSecret" });
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to create personal secret" });
@@ -232,7 +232,7 @@ export const secretServiceFactory = ({
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tags ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags) : [];
-    if ((inputSecret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if ((inputSecret.tags || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const { secretName, type, ...el } = inputSecret;
     const references = await getSecretReference(projectId);
@@ -305,14 +305,14 @@ export const secretServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "CreateSecret" });
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to create personal secret" });
@@ -352,7 +352,7 @@ export const secretServiceFactory = ({
     });
 
     const tags = inputSecret.tags ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags) : [];
-    if ((inputSecret.tags || []).length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if ((inputSecret.tags || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const { secretName, ...el } = inputSecret;
 
@@ -436,14 +436,14 @@ export const secretServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "CreateSecret" });
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to create personal secret" });
@@ -617,7 +617,7 @@ export const secretServiceFactory = ({
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
@@ -688,7 +688,7 @@ export const secretServiceFactory = ({
         }
       }
     }
-    if (!secret) throw new BadRequestError({ message: "Secret not found" });
+    if (!secret) throw new NotFoundError({ message: "Secret not found" });
 
     return { ...secret, workspace: projectId, environment, secretPath: path };
   };
@@ -719,14 +719,14 @@ export const secretServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Create secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets,
@@ -739,7 +739,7 @@ export const secretServiceFactory = ({
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tags.length !== tagIds.length) throw new NotFoundError({ message: "Tag not found" });
 
     const references = await getSecretReference(projectId);
     const newSecrets = await secretDAL.transaction(async (tx) =>
@@ -804,14 +804,14 @@ export const secretServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Update secret"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Update secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets,
@@ -835,7 +835,7 @@ export const secretServiceFactory = ({
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     const references = await getSecretReference(projectId);
     const secrets = await secretDAL.transaction(async (tx) =>
@@ -910,14 +910,14 @@ export const secretServiceFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
     const folderId = folder.id;
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Update secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets,
@@ -981,7 +981,7 @@ export const secretServiceFactory = ({
     if (!shouldUseSecretV2Bridge)
       throw new BadRequestError({
         message: "Project version does not support pagination",
-        name: "pagination_not_supported"
+        name: "PaginationNotSupportedError"
       });
 
     const count = await secretV2BridgeService.getSecretsCount({
@@ -1017,7 +1017,7 @@ export const secretServiceFactory = ({
     if (!shouldUseSecretV2Bridge)
       throw new BadRequestError({
         message: "Project version does not support pagination",
-        name: "pagination_not_supported"
+        name: "PaginationNotSupportedError"
       });
 
     const count = await secretV2BridgeService.getSecretsCountMultiEnv({
@@ -1052,7 +1052,7 @@ export const secretServiceFactory = ({
     if (!shouldUseSecretV2Bridge)
       throw new BadRequestError({
         message: "Project version does not support pagination",
-        name: "pagination_not_supported"
+        name: "PaginationNotSupportError"
       });
 
     const secrets = await secretV2BridgeService.getSecretsMultiEnv({
@@ -1103,7 +1103,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1267,7 +1267,7 @@ export const secretServiceFactory = ({
     });
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1363,7 +1363,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1505,7 +1505,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1631,7 +1631,7 @@ export const secretServiceFactory = ({
       return { type: SecretProtectionType.Direct as const, secret };
     }
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1688,7 +1688,7 @@ export const secretServiceFactory = ({
     // pick either project slug or projectid
     if (!optionalProjectId && projectSlug) {
       const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
+      if (!project) throw new NotFoundError({ message: "Project not found" });
       projectId = project.id;
     }
 
@@ -1735,7 +1735,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1815,7 +1815,7 @@ export const secretServiceFactory = ({
     let projectId = optionalProjectId as string;
     if (!optionalProjectId && projectSlug) {
       const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
+      if (!project) throw new NotFoundError({ message: "Project not found" });
       projectId = project.id;
     }
 
@@ -1861,7 +1861,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -1953,7 +1953,7 @@ export const secretServiceFactory = ({
     let projectId = optionalProjectId as string;
     if (!optionalProjectId && projectSlug) {
       const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
+      if (!project) throw new NotFoundError({ message: "Project not found" });
       projectId = project.id;
     }
 
@@ -1993,7 +1993,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -2060,12 +2060,12 @@ export const secretServiceFactory = ({
     if (secretVersionV2) return secretVersionV2;
 
     const secret = await secretDAL.findById(secretId);
-    if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
+    if (!secret) throw new NotFoundError({ message: "Failed to find secret" });
     const folder = await folderDAL.findById(secret.folderId);
-    if (!folder) throw new BadRequestError({ message: "Failed to find secret" });
+    if (!folder) throw new NotFoundError({ message: "Failed to find secret" });
 
     const { botKey } = await projectBotService.getBotKey(folder.projectId);
-    if (!botKey) throw new BadRequestError({ message: "bot not found" });
+    if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -2130,12 +2130,12 @@ export const secretServiceFactory = ({
     });
 
     if (!secret) {
-      throw new BadRequestError({ message: "Secret not found" });
+      throw new NotFoundError({ message: "Secret not found" });
     }
     const folder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
 
     if (!folder) {
-      throw new BadRequestError({ message: "Folder not found" });
+      throw new NotFoundError({ message: "Folder not found" });
     }
 
     const tags = await secretTagDAL.find({
@@ -2146,7 +2146,7 @@ export const secretServiceFactory = ({
     });
 
     if (tags.length !== tagSlugs.length) {
-      throw new BadRequestError({ message: "One or more tags not found." });
+      throw new NotFoundError({ message: "One or more tags not found." });
     }
 
     const existingSecretTags = await secretDAL.getSecretTags(secret.id);
@@ -2232,12 +2232,12 @@ export const secretServiceFactory = ({
     });
 
     if (!secret) {
-      throw new BadRequestError({ message: "Secret not found" });
+      throw new NotFoundError({ message: "Secret not found" });
     }
     const folder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
 
     if (!folder) {
-      throw new BadRequestError({ message: "Folder not found" });
+      throw new NotFoundError({ message: "Folder not found" });
     }
 
     const tags = await secretTagDAL.find({
@@ -2248,7 +2248,7 @@ export const secretServiceFactory = ({
     });
 
     if (tags.length !== tagSlugs.length) {
-      throw new BadRequestError({ message: "One or more tags not found." });
+      throw new NotFoundError({ message: "One or more tags not found." });
     }
 
     const existingSecretTags = await secretDAL.getSecretTags(secret.id);
@@ -2258,7 +2258,7 @@ export const secretServiceFactory = ({
     const secretTagIds = existingSecretTags.map((tag) => tag.id);
 
     if (!tagIdsToRemove.every((el) => secretTagIds.includes(el))) {
-      throw new BadRequestError({ message: "One or more tags not found on the secret" });
+      throw new NotFoundError({ message: "One or more tags not found on the secret" });
     }
 
     const newTags = existingSecretTags.filter((tag) => !tagIdsToRemove.includes(tag.id));
@@ -2316,7 +2316,7 @@ export const secretServiceFactory = ({
     );
 
     if (!hasRole(ProjectMembershipRole.Admin))
-      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+      throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -2330,7 +2330,7 @@ export const secretServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -2416,7 +2416,7 @@ export const secretServiceFactory = ({
 
     const { botKey } = await projectBotService.getBotKey(project.id);
     if (!botKey) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -2777,12 +2777,12 @@ export const secretServiceFactory = ({
     );
 
     if (!hasRole(ProjectMembershipRole.Admin))
-      throw new BadRequestError({ message: "Only admins are allowed to take this action" });
+      throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
 
     const { shouldUseSecretV2Bridge: isProjectV3, project } = await projectBotService.getBotKey(projectId);
-    if (isProjectV3) throw new BadRequestError({ message: "project is already in v3" });
+    if (isProjectV3) throw new BadRequestError({ message: "Project is already V3" });
     if (project.upgradeStatus === ProjectUpgradeStatus.InProgress)
-      throw new BadRequestError({ message: "project is upgrading" });
+      throw new BadRequestError({ message: "Project is already being upgraded" });
 
     await secretQueueService.startSecretV2Migration(projectId);
     return { message: "Migrating project to new KMS architecture" };

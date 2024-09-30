@@ -4,7 +4,7 @@ import { SecretKeyEncoding } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -55,7 +55,7 @@ export const userServiceFactory = ({
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (username: string) => {
     const user = await userDAL.findOne({ username });
-    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user) throw new NotFoundError({ name: "Failed to find user" });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -78,7 +78,7 @@ export const userServiceFactory = ({
 
   const verifyEmailVerificationCode = async (username: string, code: string) => {
     const user = await userDAL.findOne({ username });
-    if (!user) throw new BadRequestError({ name: "Failed to find user" });
+    if (!user) throw new NotFoundError({ name: "Failed to find user" });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -113,7 +113,7 @@ export const userServiceFactory = ({
       if (users.length > 1) {
         // merge users
         const mergeUser = users.find((u) => u.id !== user.id);
-        if (!mergeUser) throw new BadRequestError({ name: "Failed to find merge user" });
+        if (!mergeUser) throw new NotFoundError({ name: "Failed to find merge user" });
 
         const mergeUserOrgMembershipSet = new Set(
           (await orgMembershipDAL.find({ userId: mergeUser.id }, { tx })).map((m) => m.orgId)
@@ -193,13 +193,11 @@ export const userServiceFactory = ({
 
   const updateAuthMethods = async (userId: string, authMethods: AuthMethod[]) => {
     const user = await userDAL.findById(userId);
-    if (!user) throw new BadRequestError({ name: "Update auth methods" });
+    if (!user) throw new NotFoundError({ message: "User not found" });
 
-    if (user.authMethods?.includes(AuthMethod.LDAP))
+    if (user.authMethods?.includes(AuthMethod.LDAP) || authMethods.includes(AuthMethod.LDAP)) {
       throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
-
-    if (authMethods.includes(AuthMethod.LDAP))
-      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+    }
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
@@ -207,7 +205,7 @@ export const userServiceFactory = ({
 
   const getMe = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user) throw new BadRequestError({ message: "user not found", name: "Get Me" });
+    if (!user) throw new NotFoundError({ message: "User not found" });
     return user;
   };
 
@@ -248,7 +246,7 @@ export const userServiceFactory = ({
   const getUserPrivateKey = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
-      throw new BadRequestError({ message: "Private key not found. Please login again" });
+      throw new NotFoundError({ message: "Private key not found. Please login again" });
     }
     const privateKey = infisicalSymmetricDecrypt({
       ciphertext: user.serverEncryptedPrivateKey,
@@ -267,7 +265,7 @@ export const userServiceFactory = ({
     });
 
     if (!orgMembership) {
-      throw new BadRequestError({
+      throw new ForbiddenRequestError({
         message: "User does not belong in the organization."
       });
     }
@@ -282,7 +280,7 @@ export const userServiceFactory = ({
     });
 
     if (!orgMembership) {
-      throw new BadRequestError({
+      throw new ForbiddenRequestError({
         message: "User does not belong in the organization."
       });
     }

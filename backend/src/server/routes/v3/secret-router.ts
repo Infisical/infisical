@@ -10,7 +10,7 @@ import {
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -240,7 +240,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId
         });
 
-        if (!workspace) throw new BadRequestError({ message: `No project found with slug ${req.query.workspaceSlug}` });
+        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.query.workspaceSlug}` });
 
         workspaceId = workspace.id;
       }

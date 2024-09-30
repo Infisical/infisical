@@ -50,7 +50,7 @@ export const projectEnvServiceFactory = ({
     if (existingEnv)
       throw new BadRequestError({
         message: "Environment with slug already exist",
-        name: "Create envv"
+        name: "CreateEnvironment"
       });
 
     const project = await projectDAL.findById(projectId);
@@ -94,14 +94,14 @@ export const projectEnvServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
 
     const oldEnv = await projectEnvDAL.findOne({ id, projectId });
-    if (!oldEnv) throw new BadRequestError({ message: "Environment not found" });
+    if (!oldEnv) throw new NotFoundError({ message: "Environment not found" });
 
     if (slug) {
       const existingEnv = await projectEnvDAL.findOne({ slug, projectId });
       if (existingEnv && existingEnv.id !== id) {
         throw new BadRequestError({
           message: "Environment with slug already exist",
-          name: "Create envv"
+          name: "UpdateEnvironment"
         });
       }
     }
@@ -128,9 +128,9 @@ export const projectEnvServiceFactory = ({
     const env = await projectEnvDAL.transaction(async (tx) => {
       const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
       if (!doc)
-        throw new BadRequestError({
+        throw new NotFoundError({
           message: "Env doesn't exist",
-          name: "Re-order env"
+          name: "DeleteEnvironment"
         });
 
       await projectEnvDAL.updateAllPosition(projectId, doc.position, -1, tx);

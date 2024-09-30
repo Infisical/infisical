@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { RateLimitSchema } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -29,7 +29,7 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
     handler: async () => {
       const rateLimit = await server.services.rateLimit.getRateLimits();
       if (!rateLimit) {
-        throw new BadRequestError({
+        throw new NotFoundError({
           name: "Get Rate Limit Error",
           message: "Rate limit configuration does not exist."
         });

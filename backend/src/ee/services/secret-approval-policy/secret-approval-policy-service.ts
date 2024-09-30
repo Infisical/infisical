@@ -95,7 +95,7 @@ export const secretApprovalPolicyServiceFactory = ({
     }
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env) throw new BadRequestError({ message: "Environment not found" });
+    if (!env) throw new NotFoundError({ message: "Environment not found" });
 
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.create(
@@ -178,7 +178,7 @@ export const secretApprovalPolicyServiceFactory = ({
       .filter(Boolean) as string[];
 
     const secretApprovalPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
-    if (!secretApprovalPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
+    if (!secretApprovalPolicy) throw new NotFoundError({ message: "Secret approval policy not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -271,7 +271,7 @@ export const secretApprovalPolicyServiceFactory = ({
     actorOrgId
   }: TDeleteSapDTO) => {
     const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
-    if (!sapPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
+    if (!sapPolicy) throw new NotFoundError({ message: "Secret approval policy not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -320,7 +320,7 @@ export const secretApprovalPolicyServiceFactory = ({
   const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
     const secretPath = removeTrailingSlash(path);
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env) throw new BadRequestError({ message: "Environment not found" });
+    if (!env) throw new NotFoundError({ message: "Environment not found" });
 
     const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
     if (!policies.length) return;
