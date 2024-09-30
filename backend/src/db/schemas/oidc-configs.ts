@@ -26,7 +26,8 @@ export const OidcConfigsSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid()
+  orgId: z.string().uuid(),
+  lastUsed: z.date().nullable().optional()
 });
 
 export type TOidcConfigs = z.infer<typeof OidcConfigsSchema>;

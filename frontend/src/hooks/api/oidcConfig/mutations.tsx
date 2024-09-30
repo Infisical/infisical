@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { organizationKeys } from "../organization/queries";
 import { oidcConfigKeys } from "./queries";
 
 export const useUpdateOIDCConfig = () => {
@@ -53,6 +54,7 @@ export const useUpdateOIDCConfig = () => {
     },
     onSuccess(_, dto) {
       queryClient.invalidateQueries(oidcConfigKeys.getOIDCConfig(dto.orgSlug));
+      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
     }
   });
 };

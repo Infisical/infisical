@@ -28,7 +28,7 @@ Prerequisites:
       1.4. Access the IdP’s OIDC discovery document (usually located at `https://<idp-domain>/.well-known/openid-configuration`). This document contains important endpoints such as authorization, token, userinfo, and keys.
    </Step>
    <Step title="Finish configuring OIDC in Infisical">
-      2.1. Back in Infisical, in the Organization settings > Security > OIDC, click Manage
+      2.1. Back in Infisical, in the Organization settings > Security > OIDC, click Connect.
       ![OIDC general manage org Infisical](../../../images/sso/general-oidc/org-oidc-manage.png)
 
       2.2. You can configure OIDC either through the Discovery URL (Recommended) or by inputting custom endpoints.
@@ -53,9 +53,20 @@ Prerequisites:
      <Step title="Enable OIDC SSO in Infisical">
       Enabling OIDC SSO allows members in your organization to log into Infisical via the configured Identity Provider
 
-          ![OIDC general enable OIDC](../../../images/sso/general-oidc/org-oidc-enable.png)
+      ![OIDC general enable OIDC](../../../images/sso/general-oidc/org-oidc-enable.png)
+    </Step>
 
-       </Step>
+    <Step title="Enforce OIDC SSO in Infisical">
+      Enforcing OIDC SSO ensures that members in your organization can only access Infisical
+      by logging into the organization via the Identity provider.
+
+      To enforce OIDC SSO, you're required to test out the OpenID connection by successfully authenticating at least one IdP user with Infisical.
+      Once you've completed this requirement, you can toggle the **Enforce OIDC SSO** button to enforce OIDC SSO.
+
+      <Warning>
+         We recommend ensuring that your account is provisioned using the identity provider prior to enforcing OIDC SSO to prevent any unintended issues.
+      </Warning>
+    </Step>
 
   </Steps>
 

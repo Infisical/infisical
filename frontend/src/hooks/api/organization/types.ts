@@ -7,6 +7,7 @@ export type Organization = {
   createAt: string;
   updatedAt: string;
   authEnforced: boolean;
+  orgAuthMethod: string;
   scimEnabled: boolean;
   slug: string;
 };

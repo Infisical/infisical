@@ -29,13 +29,37 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findAllOrgsByUserId = async (userId: string): Promise<TOrganizations[]> => {
+  const findAllOrgsByUserId = async (userId: string): Promise<(TOrganizations & { orgAuthMethod: string })[]> => {
     try {
-      const org = await db
+      const org = (await db
         .replicaNode()(TableName.OrgMembership)
         .where({ userId })
         .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
-        .select(selectAllTableCols(TableName.Organization));
+        .leftJoin(TableName.SamlConfig, (qb) => {
+          qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.SamlConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .leftJoin(TableName.OidcConfig, (qb) => {
+          qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.OidcConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .select(selectAllTableCols(TableName.Organization))
+        .select(
+          db.raw(`
+            CASE 
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN 'oidc'
+              ELSE ''
+            END as "orgAuthMethod"
+        `)
+        )) as (TOrganizations & { orgAuthMethod: string })[];
+
       return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });
