@@ -110,7 +110,7 @@ export const RegionSelect = () => {
         </ModalTrigger>
         <ModalContent
           title="Infisical Cloud data regions"
-          subTitle="Select the closest region to you and your team."
+          subTitle="Select the closest region to you and your team. Contact Infisical if you need to migrate regions."
         >
           {regions.map(({ value, label, location, flag }) => (
             <div className="mb-6" key={value}>
