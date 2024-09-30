@@ -1,31 +1,27 @@
-import { useMutation } from "@tanstack/react-query";
-import { AxiosError } from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { workspaceKeys } from "../workspace";
+
 export const useImportEnvKey = () => {
+    const queryClient = useQueryClient();
+
     return useMutation({
-        mutationFn: async ({ encryptedJson, decryptionKey }: { encryptedJson: {
-            nonce: string,
-            data: string
-        }, decryptionKey: string }) : Promise<{ success: boolean, message:string }>=> {
-            try{
-                const { data } = await apiRequest.post<{
-                    success: boolean,
-                    message: string
-                }>("/api/v3/migrate/envkey/", {
-                    encryptedJson,
-                    decryptionKey
-                });
-                return data;
-            } catch (err) {
-                if ((err as AxiosError<{
-                    message: string
-                }>).response) {
-                    return { success: false, message: (err as AxiosError<{message: string}>).response?.data?.message as string};
-                }
-            }
-            return { success: false, message: "Something went wrong" };
+        mutationFn: async ({ encryptedJson, decryptionKey }: {
+            encryptedJson: {
+                nonce: string,
+                data: string
+            }, decryptionKey: string
+        }): Promise<{ success: boolean, message: string }> => {
+            const { data } = await apiRequest.post("/api/v3/migrate/env-key/", {
+                encryptedJson,
+                decryptionKey
+            });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
         }
     });
 };

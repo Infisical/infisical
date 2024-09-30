@@ -11,7 +11,7 @@ import { Button, FormControl, IconButton } from "@app/components/v2";
 import { useImportEnvKey } from "@app/hooks/api/migration/mutations";
 
 const formSchema = z.object({
-  decryptionKey: z.string().min(1),
+  encryptionKey: z.string().min(1),
   file: z.unknown(),
   encryptedJson: z.object({
     nonce: z.string().min(1),
@@ -39,7 +39,7 @@ export const ImportTab = () => {
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
-      decryptionKey: "",
+      encryptionKey: "",
       encryptedJson: {
         nonce: "",
         data: ""
@@ -49,7 +49,6 @@ export const ImportTab = () => {
   });
 
   const parseJson = (src: ArrayBuffer) => {
-    console.log("here")
     const file = src.toString();
     const formatedData: Record<string, string> = JSON.parse(file);
     if (Object.keys(formatedData).includes("nonce") && Object.keys(formatedData).includes("data")) {
@@ -59,7 +58,6 @@ export const ImportTab = () => {
       };
       setValue("encryptedJson", data);
       trigger("encryptedJson");
-      console.log(data);
     } else {
       setValue("encryptedJson", {
         nonce: "",
@@ -101,8 +99,8 @@ export const ImportTab = () => {
       return;
     }
 
-    const res = await importEnvKey({ encryptedJson: data.encryptedJson, decryptionKey: data.decryptionKey });
-    if (res.success) {
+    try{
+      await importEnvKey({ encryptedJson: data.encryptedJson, decryptionKey: data.encryptionKey });
       createNotification({
         text: "Data imported successfully.",
         type: "success"
@@ -111,12 +109,10 @@ export const ImportTab = () => {
       if (fileUploadRef.current) {
         fileUploadRef.current.value = "";
       }
-    } else {
-      createNotification({
-        text: res.message,
-        type: "error"
-      });
+    } catch (error) {
+      reset();
     }
+
   }
 
   const watchEncryptedJsonFile: any = watch("file");
@@ -152,17 +148,17 @@ export const ImportTab = () => {
         <form onSubmit={handleSubmit(submitExport)}>
           <Controller
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl errorText={error?.message} isError={Boolean(error)} label="Decryption Key">
+              <FormControl errorText={error?.message} isError={Boolean(error)} label="Encryption Key">
                 <input
                   {...field}
                   onChange={onChange}
                   type="password"
                   className="w-full bg-mineshaft-800 text-white rounded-lg py-2 px-4"
-                  placeholder="Enter decryption key"
+                  placeholder="Enter encryption key"
                 />
               </FormControl>
             )}
-            name="decryptionKey"
+            name="encryptionKey"
             control={control}
           />
           <div className="flex justify-left">

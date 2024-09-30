@@ -208,7 +208,15 @@ export const projectServiceFactory = ({
       );
 
       // set default environments and root folder for provided environments
-      let envs;
+      let envs: {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        projectId: string;
+        name: string;
+        slug: string;
+        position: number;
+      }[] = [];
       if (createDefaultEnvs) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
@@ -364,7 +372,7 @@ export const projectServiceFactory = ({
 
       return {
         ...project,
-        environments: envs || [],
+        environments: envs,
         _id: project.id
       };
     });

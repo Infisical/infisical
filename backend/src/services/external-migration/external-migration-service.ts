@@ -36,11 +36,7 @@ export const externalMigrationServiceFactory = ({
   }: TImportInfisicalDataCreate) => {
     // Import data to infisical
     if (!data || !data.projects) {
-      logger.error("No projects found in data");
-      return {
-        success: false,
-        message: "No projects found in data"
-      };
+      throw new BadRequestError({ message: "No projects found in data" });
     }
 
     const orginalToNewProjectId = new Map<string, string>();
@@ -55,13 +51,12 @@ export const externalMigrationServiceFactory = ({
           actorId,
           actorOrgId,
           actorAuthMethod,
-          workspaceName: project?.name,
+          workspaceName: project.name,
           createDefaultEnvs: false
         })
         .then((projectResponse) => {
           if (!projectResponse) {
-            logger.error(`Failed to import project: [name:${project.name}] [id:${id}]`);
-            throw new Error(`Failed to import project: [name:${project.name}] [id:${id}]`);
+            throw new BadRequestError({ message: `Failed to import to project [name:${project.name}] [id:${id}]` });
           }
           orginalToNewProjectId.set(project.id, projectResponse.id);
         });
@@ -86,19 +81,14 @@ export const externalMigrationServiceFactory = ({
       })
     });
     if (!response) {
-      logger.error(`Failed to invite user to projects: [userId:${actorId}]`);
-      return {
-        success: false,
-        message: `Failed to invite user to project: [userId:${actorId}]`
-      };
+      throw new BadRequestError({ message: `Failed to invite user to projects: [userId:${actorId}]` });
     }
 
     // Import environments
     if (data.environments) {
-      for (const [id, environment] of data.environments) {
+      for await (const [id, environment] of data.environments) {
         try {
           // TODO: we can create envs parallely once the position constraint is handled differently
-          // eslint-disable-next-line
           const newEnvironment = await projectEnvService.createEnvironment({
             actor,
             actorId,
@@ -126,7 +116,7 @@ export const externalMigrationServiceFactory = ({
 
     // Import secrets
     if (data.secrets) {
-      for (const [id, secret] of data.secrets) {
+      for await (const [id, secret] of data.secrets) {
         const dataProjectId = data.environments?.get(secret.environmentId)?.projectId;
         if (!dataProjectId) {
           logger.error(`Failed to import secret: [name:${secret.name}] [id:${id}], project not found`);
@@ -137,7 +127,6 @@ export const externalMigrationServiceFactory = ({
         }
         const projectId = orginalToNewProjectId.get(dataProjectId);
         // TODO: we can create secrets parallely once the KMS ID bug on create is fixed
-        // eslint-disable-next-line
         const newSecret = await secretService.createSecretRaw({
           actorId,
           actor,
@@ -151,18 +140,12 @@ export const externalMigrationServiceFactory = ({
           secretValue: secret.value
         });
         if (!newSecret) {
-          logger.error(`Failed to import secret: [name:${secret.name}] [id:${id}]`);
-          return {
-            success: false,
-            message: `Failed to import secret: [name:${secret.name}] [id:${id}]`
-          };
+          throw new BadRequestError({ message: `Failed to import secret: [name:${secret.name}] [id:${id}]` });
         }
       }
     }
 
-    return {
-      success: true
-    };
+    return true;
   };
 
   const importEnvnKeyData = async ({

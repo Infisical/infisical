@@ -3,6 +3,8 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
+import { BadRequestError } from "@app/lib/errors";
+
 import { InfisicalImportData, TEnvKeyExportJSON } from "./external-migration-types";
 
 const { codec, hash } = sjcl;
@@ -16,7 +18,7 @@ export const decryptEnvKeyData = async (decryptionKey: string, encryptedJson: { 
   const decrypted = secretbox.open(encryptedData, nonce, key);
 
   if (!decrypted) {
-    throw new Error("Decryption failed, please check the entered encryption key");
+    throw new BadRequestError({ message: "Decryption failed, please check the entered encryption key" });
   }
 
   const decryptedJson = tweetnaclUtil.encodeUTF8(decrypted);
@@ -33,7 +35,7 @@ export const parseEnvKeyData = async (decryptedJson: string): Promise<InfisicalI
   };
 
   parsedJson.apps.forEach((app: { name: string; id: string }) => {
-    infisicalImportData.projects?.set(app.id, { name: app.name, id: app.id });
+    infisicalImportData.projects.set(app.id, { name: app.name, id: app.id });
   });
 
   // string to string map for env templates

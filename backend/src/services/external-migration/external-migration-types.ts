@@ -1,7 +1,7 @@
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type InfisicalImportData = {
-  projects?: Map<string, { name: string; id: string }>;
+  projects: Map<string, { name: string; id: string }>;
 
   environments?: Map<
     string,

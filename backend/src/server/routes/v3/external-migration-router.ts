@@ -7,7 +7,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 export const registerExternalMigrationRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/envkey",
+    url: "/env-key",
     config: {
       rateLimit: readLimit
     },
@@ -20,15 +20,12 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }),
       response: {
-        200: z.object({
-          success: z.boolean(),
-          error: z.string().optional()
-        })
+        200: z.object({})
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.migration.importEnvnKeyData({
+      await server.services.migration.importEnvnKeyData({
         decryptionKey: req.body.decryptionKey,
         encryptedJson: req.body.encryptedJson,
         actorId: req.permission.id,
@@ -36,7 +33,6 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      return result;
     }
   });
 };
