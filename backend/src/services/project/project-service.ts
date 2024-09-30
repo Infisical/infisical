@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -208,15 +208,7 @@ export const projectServiceFactory = ({
       );
 
       // set default environments and root folder for provided environments
-      let envs: {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        projectId: string;
-        name: string;
-        slug: string;
-        position: number;
-      }[] = [];
+      let envs: TProjectEnvironments[] = [];
       if (createDefaultEnvs) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),

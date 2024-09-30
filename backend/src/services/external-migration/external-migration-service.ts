@@ -1,16 +1,9 @@
-import slugify from "@sindresorhus/slugify";
-
-import { OrgMembershipRole, ProjectMembershipRole, SecretType } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
-
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
 import { TSecretServiceFactory } from "../secret/secret-service";
-import { decryptEnvKeyData, parseEnvKeyData } from "./external-migration-fns";
-import { TImportEnvKeyDataCreate, TImportInfisicalDataCreate } from "./external-migration-types";
+import { decryptEnvKeyDataFn, importDataIntoInfisicalFn, parseEnvKeyDataFn } from "./external-migration-fns";
+import { TImportEnvKeyDataCreate } from "./external-migration-types";
 
 type TExternalMigrationServiceFactoryDep = {
   projectService: TProjectServiceFactory;
@@ -27,128 +20,7 @@ export const externalMigrationServiceFactory = ({
   projectEnvService,
   secretService
 }: TExternalMigrationServiceFactoryDep) => {
-  const importInfisicalData = async ({
-    data,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TImportInfisicalDataCreate) => {
-    // Import data to infisical
-    if (!data || !data.projects) {
-      throw new BadRequestError({ message: "No projects found in data" });
-    }
-
-    const orginalToNewProjectId = new Map<string, string>();
-    const orginalToNewEnvironmentId = new Map<string, string>();
-
-    // Import projects
-    const projectPromises = [];
-    for (const [id, project] of data.projects) {
-      const projectPromise = projectService
-        .createProject({
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
-          workspaceName: project.name,
-          createDefaultEnvs: false
-        })
-        .then((projectResponse) => {
-          if (!projectResponse) {
-            throw new BadRequestError({ message: `Failed to import to project [name:${project.name}] [id:${id}]` });
-          }
-          orginalToNewProjectId.set(project.id, projectResponse.id);
-        });
-      projectPromises.push(projectPromise);
-    }
-    await Promise.all(projectPromises);
-
-    // Invite user importing projects
-    const response = await orgService.inviteUserToOrganization({
-      actorAuthMethod,
-      actorId,
-      actorOrgId,
-      actor,
-      inviteeEmails: [],
-      orgId: actorOrgId,
-      organizationRoleSlug: OrgMembershipRole.NoAccess,
-      projects: Array.from(orginalToNewProjectId.values()).map((project) => {
-        return {
-          id: project,
-          projectRoleSlug: [ProjectMembershipRole.Member]
-        };
-      })
-    });
-    if (!response) {
-      throw new BadRequestError({ message: `Failed to invite user to projects: [userId:${actorId}]` });
-    }
-
-    // Import environments
-    if (data.environments) {
-      for await (const [id, environment] of data.environments) {
-        try {
-          // TODO: we can create envs parallely once the position constraint is handled differently
-          const newEnvironment = await projectEnvService.createEnvironment({
-            actor,
-            actorId,
-            actorOrgId,
-            actorAuthMethod,
-            name: environment.name,
-            projectId: orginalToNewProjectId.get(environment.projectId)!,
-            slug: slugify(`${environment.name}-${alphaNumericNanoId(4)}`)
-          });
-
-          if (!newEnvironment) {
-            logger.error(`Failed to import environment: [name:${environment.name}] [id:${id}]`);
-            throw new BadRequestError({
-              message: `Failed to import environment: [name:${environment.name}] [id:${id}]`
-            });
-          }
-          orginalToNewEnvironmentId.set(id, newEnvironment.slug);
-        } catch (error) {
-          return {
-            success: false
-          };
-        }
-      }
-    }
-
-    // Import secrets
-    if (data.secrets) {
-      for await (const [id, secret] of data.secrets) {
-        const dataProjectId = data.environments?.get(secret.environmentId)?.projectId;
-        if (!dataProjectId) {
-          logger.error(`Failed to import secret: [name:${secret.name}] [id:${id}], project not found`);
-          return {
-            success: false,
-            message: `Failed to import secret: [name:${secret.name}] [id:${id}], project not found`
-          };
-        }
-        const projectId = orginalToNewProjectId.get(dataProjectId);
-        // TODO: we can create secrets parallely once the KMS ID bug on create is fixed
-        const newSecret = await secretService.createSecretRaw({
-          actorId,
-          actor,
-          actorOrgId,
-          environment: orginalToNewEnvironmentId.get(secret.environmentId)!,
-          actorAuthMethod,
-          projectId: projectId!,
-          secretPath: "/",
-          secretName: secret.name,
-          type: SecretType.Shared,
-          secretValue: secret.value
-        });
-        if (!newSecret) {
-          throw new BadRequestError({ message: `Failed to import secret: [name:${secret.name}] [id:${id}]` });
-        }
-      }
-    }
-
-    return true;
-  };
-
-  const importEnvnKeyData = async ({
+  const importEnvKeyData = async ({
     decryptionKey,
     encryptedJson,
     actor,
@@ -156,13 +28,19 @@ export const externalMigrationServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TImportEnvKeyDataCreate) => {
-    const json = await decryptEnvKeyData(decryptionKey, encryptedJson);
-    const envKeyData = await parseEnvKeyData(json);
-    const response = await importInfisicalData({ data: envKeyData, actor, actorId, actorOrgId, actorAuthMethod });
+    const json = await decryptEnvKeyDataFn(decryptionKey, encryptedJson);
+    const envKeyData = await parseEnvKeyDataFn(json);
+    const response = await importDataIntoInfisicalFn({
+      input: { data: envKeyData, actor, actorId, actorOrgId, actorAuthMethod },
+      projectService,
+      orgService,
+      projectEnvService,
+      secretService
+    });
     return response;
   };
 
   return {
-    importEnvnKeyData
+    importEnvKeyData
   };
 };

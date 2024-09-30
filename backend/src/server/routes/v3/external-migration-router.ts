@@ -18,14 +18,11 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
           nonce: z.string().trim().min(1),
           data: z.string().trim().min(1)
         })
-      }),
-      response: {
-        200: z.object({})
-      }
+      })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.migration.importEnvnKeyData({
+      await server.services.migration.importEnvKeyData({
         decryptionKey: req.body.decryptionKey,
         encryptedJson: req.body.encryptedJson,
         actorId: req.permission.id,
