@@ -930,6 +930,11 @@ export const secretQueueFactory = ({
               }
             });
 
+            // re-throw error to re-run job unless final attempt, then log and send fail email
+            if (job.attemptsStarted !== job.opts.attempts) {
+              throw err;
+            }
+
             await integrationDAL.updateById(integration.id, {
               lastSyncJobId: job.id,
               syncMessage: message,
