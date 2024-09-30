@@ -148,7 +148,7 @@ export const identityOidcAuthServiceFactory = ({
           .split(", ")
           .some((policyValue) => doesFieldValueMatchOidcPolicy(tokenData.aud, policyValue))
       ) {
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: OIDC audience not allowed."
         });
       }
@@ -161,7 +161,7 @@ export const identityOidcAuthServiceFactory = ({
         if (
           !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(tokenData[claimKey], claimEntry))
         ) {
-          throw new ForbiddenRequestError({
+          throw new UnauthorizedError({
             message: "Access denied: OIDC claim not allowed."
           });
         }
@@ -532,8 +532,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge) {
+    if (!isAtLeastAsPrivileged(permission, rolePermission)) {
       throw new ForbiddenRequestError({
         message: "Failed to revoke OIDC auth of identity with more privileged role"
       });

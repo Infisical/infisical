@@ -86,7 +86,7 @@ export const identityGcpAuthServiceFactory = ({
         .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
 
       if (!isServiceAccountAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: GCP service account not allowed."
         });
     }
@@ -100,7 +100,7 @@ export const identityGcpAuthServiceFactory = ({
         .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
 
       if (!isProjectAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: GCP project not allowed."
         });
     }
@@ -112,7 +112,7 @@ export const identityGcpAuthServiceFactory = ({
         .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
 
       if (!isZoneAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: GCP zone not allowed."
         });
     }
@@ -359,8 +359,7 @@ export const identityGcpAuthServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge)
+    if (!isAtLeastAsPrivileged(permission, rolePermission))
       throw new ForbiddenRequestError({
         message: "Failed to revoke gcp auth of identity with more privileged role"
       });

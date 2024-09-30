@@ -40,12 +40,12 @@ export const DefaultResponseErrorsSchema = {
   }),
   401: z.object({
     statusCode: z.literal(401),
-    message: z.string(),
+    message: z.any(),
     error: z.string()
   }),
   403: z.object({
     statusCode: z.literal(403),
-    message: z.any(),
+    message: z.string(),
     error: z.string()
   }),
   500: z.object({

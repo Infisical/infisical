@@ -9,7 +9,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -81,7 +81,7 @@ export const identityAwsAuthServiceFactory = ({
         .some((accountId) => accountId === Account);
 
       if (!isAccountAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: AWS account ID not allowed."
         });
     }
@@ -100,7 +100,7 @@ export const identityAwsAuthServiceFactory = ({
         });
 
       if (!isArnAllowed)
-        throw new ForbiddenRequestError({
+        throw new UnauthorizedError({
           message: "Access denied: AWS principal ARN not allowed."
         });
     }
