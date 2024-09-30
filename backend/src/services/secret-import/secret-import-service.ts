@@ -548,7 +548,7 @@ export const secretImportServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
 
     const importedSecrets = await fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });

@@ -835,7 +835,7 @@ export const createManySecretsRawFnFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     const inputSecrets = secrets.map((secret) => {
       const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
@@ -1000,7 +1000,7 @@ export const updateManySecretsRawFnFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
     if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Update secret" });

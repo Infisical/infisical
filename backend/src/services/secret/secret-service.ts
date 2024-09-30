@@ -1105,7 +1105,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
 
     const { secrets, imports } = await getSecrets({
@@ -1269,7 +1269,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     const decryptedSecret = decryptSecretRaw(encryptedSecret, botKey);
 
@@ -1365,7 +1365,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretName, botKey);
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
@@ -1507,7 +1507,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
 
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
@@ -1633,7 +1633,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
@@ -1737,7 +1737,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     const sanitizedSecrets = inputSecrets.map(
       ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
@@ -1863,7 +1863,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     const sanitizedSecrets = inputSecrets.map(
       ({
@@ -1995,7 +1995,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
 
     if (policy) {
@@ -2332,7 +2332,7 @@ export const secretServiceFactory = ({
     if (!botKey)
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
 
     await secretDAL.transaction(async (tx) => {
@@ -2418,7 +2418,7 @@ export const secretServiceFactory = ({
     if (!botKey) {
       throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
-        name: "BotNotFoundError"
+        name: "bot_not_found_error"
       });
     }
 
