@@ -18,7 +18,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -1028,7 +1028,7 @@ export const secretQueueFactory = ({
     if (isProjectUpgradedToV3 || project.upgradeStatus === ProjectUpgradeStatus.InProgress) {
       return;
     }
-    if (!botKey) throw new BadRequestError({ message: "Bot not found" });
+    if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
     await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({

@@ -76,7 +76,7 @@ export const secretFolderServiceFactory = ({
     }
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-    if (!env) throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
+    if (!env) throw new NotFoundError({ message: "Environment not found", name: "Create folder" });
 
     const folder = await folderDAL.transaction(async (tx) => {
       // the logic is simple we need to avoid creating same folder in same path multiple times
@@ -86,7 +86,7 @@ export const secretFolderServiceFactory = ({
       const pathWithFolder = path.join(secretPath, name);
       const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
       // no folder found is not possible root should be their
-      if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+      if (!parentFolder) throw new NotFoundError({ message: "Secret path not found" });
       // exact folder
       if (parentFolder.path === pathWithFolder) return parentFolder;
 
@@ -149,7 +149,7 @@ export const secretFolderServiceFactory = ({
   }: TUpdateManyFoldersDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) {
-      throw new BadRequestError({ message: "Project not found" });
+      throw new NotFoundError({ message: "Project not found" });
     }
 
     const { permission } = await permissionService.getProjectPermission(
@@ -184,12 +184,12 @@ export const secretFolderServiceFactory = ({
 
           const parentFolder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
           if (!parentFolder) {
-            throw new BadRequestError({ message: "Secret path not found", name: "Batch update folder" });
+            throw new NotFoundError({ message: "Secret path not found", name: "Batch update folder" });
           }
 
           const env = await projectEnvDAL.findOne({ projectId: project.id, slug: environment });
           if (!env) {
-            throw new BadRequestError({ message: "Environment not found", name: "Batch update folder" });
+            throw new NotFoundError({ message: "Environment not found", name: "Batch update folder" });
           }
           const folder = await folderDAL
             .findOne({ envId: env.id, id, parentId: parentFolder.id })
@@ -198,7 +198,7 @@ export const secretFolderServiceFactory = ({
             .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
           if (!folder) {
-            throw new BadRequestError({ message: "Folder not found" });
+            throw new NotFoundError({ message: "Folder not found" });
           }
           if (name !== folder.name) {
             // ensure that new folder name is unique
@@ -231,7 +231,7 @@ export const secretFolderServiceFactory = ({
             tx
           );
           if (!doc) {
-            throw new BadRequestError({ message: "Folder not found", name: "Batch update folder" });
+            throw new NotFoundError({ message: "Folder not found", name: "Batch update folder" });
           }
 
           return { oldFolder: folder, newFolder: doc };
@@ -283,17 +283,17 @@ export const secretFolderServiceFactory = ({
     }
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+    if (!parentFolder) throw new NotFoundError({ message: "Secret path not found" });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-    if (!env) throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
+    if (!env) throw new NotFoundError({ message: "Environment not found", name: "Update folder" });
     const folder = await folderDAL
       .findOne({ envId: env.id, id, parentId: parentFolder.id, isReserved: false })
       // now folder api accepts id based change
       // this is for cli backward compatiability and when cli removes this, we will remove this logic
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
-    if (!folder) throw new BadRequestError({ message: "Folder not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
     if (name !== folder.name) {
       // ensure that new folder name is unique
       const folderToCheck = await folderDAL.findOne({
@@ -325,7 +325,7 @@ export const secretFolderServiceFactory = ({
         },
         tx
       );
-      if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Update folder" });
+      if (!doc) throw new NotFoundError({ message: "Folder not found", name: "Update folder" });
       return doc;
     });
 
@@ -367,11 +367,11 @@ export const secretFolderServiceFactory = ({
     }
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-    if (!env) throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
+    if (!env) throw new NotFoundError({ message: "Environment not found", name: "Create folder" });
 
     const folder = await folderDAL.transaction(async (tx) => {
       const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
-      if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+      if (!parentFolder) throw new NotFoundError({ message: "Secret path not found" });
 
       const [doc] = await folderDAL.delete(
         {
@@ -382,7 +382,7 @@ export const secretFolderServiceFactory = ({
         },
         tx
       );
-      if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Delete folder" });
+      if (!doc) throw new NotFoundError({ message: "Folder not found", name: "Delete folder" });
       return doc;
     });
 
@@ -409,7 +409,7 @@ export const secretFolderServiceFactory = ({
     await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-    if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });
+    if (!env) throw new NotFoundError({ message: "Environment not found", name: "get folders" });
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
@@ -448,7 +448,7 @@ export const secretFolderServiceFactory = ({
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
     if (!envs.length)
-      throw new BadRequestError({ message: "Environment(s) not found", name: "get project folder count" });
+      throw new NotFoundError({ message: "Environment(s) not found", name: "get project folder count" });
 
     const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!parentFolders.length) return [];
@@ -480,7 +480,7 @@ export const secretFolderServiceFactory = ({
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
     if (!envs.length)
-      throw new BadRequestError({ message: "Environment(s) not found", name: "get project folder count" });
+      throw new NotFoundError({ message: "Environment(s) not found", name: "get project folder count" });
 
     const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!parentFolders.length) return 0;

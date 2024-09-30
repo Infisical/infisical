@@ -47,7 +47,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
 
   const updateTag = async ({ actorId, actor, actorOrgId, actorAuthMethod, id, color, slug }: TUpdateTagDTO) => {
     const tag = await secretTagDAL.findById(id);
-    if (!tag) throw new BadRequestError({ message: "Tag doesn't exist" });
+    if (!tag) throw new NotFoundError({ message: "Tag not found" });
 
     if (slug) {
       const existingTag = await secretTagDAL.findOne({ slug, projectId: tag.projectId });
@@ -69,7 +69,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
 
   const deleteTag = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteTagDTO) => {
     const tag = await secretTagDAL.findById(id);
-    if (!tag) throw new BadRequestError({ message: "Tag doesn't exist" });
+    if (!tag) throw new NotFoundError({ message: "Tag not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -86,7 +86,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
 
   const getTagById = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TGetTagByIdDTO) => {
     const tag = await secretTagDAL.findById(id);
-    if (!tag) throw new NotFoundError({ message: "Tag doesn't exist" });
+    if (!tag) throw new NotFoundError({ message: "Tag not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -102,7 +102,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
 
   const getTagBySlug = async ({ actorId, actor, actorOrgId, actorAuthMethod, slug, projectId }: TGetTagBySlugDTO) => {
     const tag = await secretTagDAL.findOne({ projectId, slug });
-    if (!tag) throw new NotFoundError({ message: "Tag doesn't exist" });
+    if (!tag) throw new NotFoundError({ message: "Tag not found" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

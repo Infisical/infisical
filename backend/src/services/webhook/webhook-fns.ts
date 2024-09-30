@@ -6,7 +6,7 @@ import picomatch from "picomatch";
 import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -172,7 +172,7 @@ export const fnTriggerWebhook = async ({
 
   await webhookDAL.transaction(async (tx) => {
     const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
-    if (!env) throw new BadRequestError({ message: "Env not found" });
+    if (!env) throw new NotFoundError({ message: "Environment not found" });
     if (successWebhooks.length) {
       await webhookDAL.update(
         { envId: env.id, $in: { id: successWebhooks } },

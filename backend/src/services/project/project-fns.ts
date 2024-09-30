@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 import { ProjectVersion, TProjects } from "@app/db/schemas";
 import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -75,7 +75,7 @@ export const getProjectKmsCertificateKeyId = async ({
   const keyId = await projectDAL.transaction(async (tx) => {
     const project = await projectDAL.findOne({ id: projectId }, tx);
     if (!project) {
-      throw new BadRequestError({ message: "Project not found" });
+      throw new NotFoundError({ message: "Project not found" });
     }
 
     if (!project.kmsCertificateKeyId) {

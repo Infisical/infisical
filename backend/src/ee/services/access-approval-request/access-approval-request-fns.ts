@@ -1,6 +1,6 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
 
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TVerifyPermission } from "./access-approval-request-types";
 
@@ -19,7 +19,7 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
   );
 
   if (!permission || !permission.length) {
-    throw new UnauthorizedError({ message: "No permission provided" });
+    throw new BadRequestError({ message: "No permission provided" });
   }
 
   const requestedPermissions: string[] = [];
@@ -39,10 +39,10 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
   const permissionEnv = firstPermission.conditions?.environment;
 
   if (!permissionEnv || typeof permissionEnv !== "string") {
-    throw new UnauthorizedError({ message: "Permission environment is not a string" });
+    throw new BadRequestError({ message: "Permission environment is not a string" });
   }
   if (!permissionSecretPath || typeof permissionSecretPath !== "string") {
-    throw new UnauthorizedError({ message: "Permission path is not a string" });
+    throw new BadRequestError({ message: "Permission path is not a string" });
   }
 
   return {

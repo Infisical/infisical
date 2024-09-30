@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
 import { AuthModeJwtTokenPayload } from "../auth/auth-type";
@@ -150,11 +150,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
       id: token.tokenVersionId,
       userId: token.userId
     });
-    if (!session) throw new UnauthorizedError({ name: "Session not found" });
-    if (token.accessVersion !== session.accessVersion) throw new UnauthorizedError({ name: "Stale session" });
+    if (!session) throw new NotFoundError({ name: "Session not found" });
+    if (token.accessVersion !== session.accessVersion) {
+      throw new UnauthorizedError({ name: "StaleSession", message: "User session is stale, please re-authenticate" });
+    }
 
     const user = await userDAL.findById(session.userId);
-    if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
+    if (!user || !user.isAccepted) throw new NotFoundError({ message: "User not found" });
 
     if (token.organizationId) {
       const orgMembership = await orgMembershipDAL.findOne({
@@ -162,8 +164,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
         orgId: token.organizationId
       });
 
-      if (!orgMembership) throw new ForbiddenRequestError({ message: "User not member of organization" });
-      if (!orgMembership.isActive) throw new ForbiddenRequestError({ message: "User not active in organization" });
+      if (!orgMembership) {
+        throw new ForbiddenRequestError({ message: "User not member of organization" });
+      }
+      if (!orgMembership.isActive) {
+        throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+      }
     }
 
     return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };

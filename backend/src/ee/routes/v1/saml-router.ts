@@ -61,7 +61,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
                 id: samlConfigId
               };
             } else {
-              throw new BadRequestError({ message: "Missing sso identitier or org slug" });
+              throw new BadRequestError({ message: "Missing sso identifier or org slug" });
             }
 
             const ssoConfig = await server.services.saml.getSaml(ssoLookupDetails);

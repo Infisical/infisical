@@ -2,7 +2,7 @@
 import { Octokit } from "@octokit/rest";
 
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
 
@@ -1192,6 +1192,6 @@ export const getApps = async ({
       });
 
     default:
-      throw new BadRequestError({ message: "integration not found" });
+      throw new NotFoundError({ message: "integration not found" });
   }
 };

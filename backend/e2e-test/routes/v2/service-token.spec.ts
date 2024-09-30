@@ -510,7 +510,7 @@ describe("Service token fail cases", async () => {
         authorization: `Bearer ${serviceToken}`
       }
     });
-    expect(fetchSecrets.statusCode).toBe(401);
+    expect(fetchSecrets.statusCode).toBe(403);
     expect(fetchSecrets.json().error).toBe("PermissionDenied");
     await deleteServiceToken();
   });
@@ -532,7 +532,7 @@ describe("Service token fail cases", async () => {
         authorization: `Bearer ${serviceToken}`
       }
     });
-    expect(fetchSecrets.statusCode).toBe(401);
+    expect(fetchSecrets.statusCode).toBe(403);
     expect(fetchSecrets.json().error).toBe("PermissionDenied");
     await deleteServiceToken();
   });
@@ -557,7 +557,7 @@ describe("Service token fail cases", async () => {
         authorization: `Bearer ${serviceToken}`
       }
     });
-    expect(writeSecrets.statusCode).toBe(401);
+    expect(writeSecrets.statusCode).toBe(403);
     expect(writeSecrets.json().error).toBe("PermissionDenied");
 
     // but read access should still work fine

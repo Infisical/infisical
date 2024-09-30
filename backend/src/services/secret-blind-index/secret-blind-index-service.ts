@@ -1,6 +1,6 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { generateSecretBlindIndexBySalt } from "../secret/secret-fns";
@@ -52,7 +52,7 @@ export const secretBlindIndexServiceFactory = ({
       actorOrgId
     );
     if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new UnauthorizedError({ message: "User must be admin" });
+      throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
     }
 
     const secrets = await secretBlindIndexDAL.findAllSecretsByProjectId(projectId);
@@ -75,17 +75,17 @@ export const secretBlindIndexServiceFactory = ({
       actorOrgId
     );
     if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new UnauthorizedError({ message: "User must be admin" });
+      throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
     }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "CreateSecret" });
 
     const secrets = await secretBlindIndexDAL.findSecretsByProjectId(
       projectId,
       secretsToUpdate.map(({ secretId }) => secretId)
     );
-    if (secrets.length !== secretsToUpdate.length) throw new BadRequestError({ message: "Secret not found" });
+    if (secrets.length !== secretsToUpdate.length) throw new NotFoundError({ message: "Secret not found" });
 
     const operations = await Promise.all(
       secretsToUpdate.map(async ({ secretName, secretId: id }) => {

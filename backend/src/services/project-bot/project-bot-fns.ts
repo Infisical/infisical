@@ -6,7 +6,7 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -27,7 +27,7 @@ export const getBotKeyFnFactory = (
   const getBotKeyFn = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
     if (!project)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project not found during bot lookup. Are you sure you are using the correct project ID?"
       });
 
@@ -39,7 +39,7 @@ export const getBotKeyFnFactory = (
     if (!bot || !bot.isActive || !bot.encryptedProjectKey || !bot.encryptedProjectKeyNonce) {
       // trying to set bot automatically
       const projectV1Keys = await projectBotDAL.findProjectUserWorkspaceKey(projectId);
-      if (!projectV1Keys) throw new BadRequestError({ message: "Bot not found. Please ask admin user to login" });
+      if (!projectV1Keys) throw new NotFoundError({ message: "Bot not found. Please ask admin user to login" });
 
       let userPrivateKey = "";
       if (

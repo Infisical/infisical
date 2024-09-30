@@ -45,7 +45,7 @@ export const secretSharingServiceFactory = ({
     expiresAfterViews
   }: TCreateSharedSecretDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+    if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
     if (new Date(expiresAt) < new Date()) {
       throw new BadRequestError({ message: "Expiration date cannot be in the past" });
@@ -132,7 +132,7 @@ export const secretSharingServiceFactory = ({
     offset,
     limit
   }: TGetSharedSecretsDTO) => {
-    if (!actorOrgId) throw new BadRequestError({ message: "Failed to create group without organization" });
+    if (!actorOrgId) throw new ForbiddenRequestError();
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -141,7 +141,7 @@ export const secretSharingServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+    if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
     const secrets = await secretSharingDAL.find(
       {
@@ -191,7 +191,7 @@ export const secretSharingServiceFactory = ({
     const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
 
     if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId)
-      throw new UnauthorizedError();
+      throw new ForbiddenRequestError();
 
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
     // or can be safely sent to the client.
@@ -240,7 +240,7 @@ export const secretSharingServiceFactory = ({
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    if (!permission) throw new UnauthorizedError({ name: "User not in org" });
+    if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
     const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
     return deletedSharedSecret;
   };

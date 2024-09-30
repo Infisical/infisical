@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
@@ -436,7 +436,7 @@ export const expandSecretReferencesFactory = ({
             const [secretKey] = entities;
 
             if (!canExpandValue(environment, secretPath))
-              throw new UnauthorizedError({
+              throw new ForbiddenRequestError({
                 message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
               });
 
@@ -461,7 +461,7 @@ export const expandSecretReferencesFactory = ({
             const secretReferenceKey = entities[entities.length - 1];
 
             if (!canExpandValue(secretReferenceEnvironment, secretReferencePath))
-              throw new UnauthorizedError({
+              throw new ForbiddenRequestError({
                 message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to.`
               });
 

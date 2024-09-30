@@ -9,6 +9,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateAzureAuthField } from "@app/services/identity-azure-auth/identity-azure-auth-validators";
 
+import {} from "../sanitizedSchemas";
+
 export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",

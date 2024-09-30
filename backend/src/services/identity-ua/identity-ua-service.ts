@@ -10,7 +10,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -54,7 +54,11 @@ export const identityUaServiceFactory = ({
 }: TIdentityUaServiceFactoryDep) => {
   const login = async (clientId: string, clientSecret: string, ip: string) => {
     const identityUa = await identityUaDAL.findOne({ clientId });
-    if (!identityUa) throw new UnauthorizedError({ message: "Invalid credentials" });
+    if (!identityUa) {
+      throw new NotFoundError({
+        message: "No identity with specified client ID was found"
+      });
+    }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
 
@@ -84,8 +88,8 @@ export const identityUaServiceFactory = ({
           isClientSecretRevoked: true
         });
 
-        throw new UnauthorizedError({
-          message: "Failed to authenticate identity credentials due to expired client secret"
+        throw new ForbiddenRequestError({
+          message: "Access denied due to expired client secret"
         });
       }
     }
@@ -96,8 +100,8 @@ export const identityUaServiceFactory = ({
       await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
         isClientSecretRevoked: true
       });
-      throw new UnauthorizedError({
-        message: "Failed to authenticate identity credentials due to client secret number of uses limit reached"
+      throw new ForbiddenRequestError({
+        message: "Access denied due to client secret usage limit reached"
       });
     }
 
@@ -151,7 +155,7 @@ export const identityUaServiceFactory = ({
     actorOrgId
   }: TAttachUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add universal auth to already configured identity"
@@ -242,7 +246,7 @@ export const identityUaServiceFactory = ({
     actorOrgId
   }: TUpdateUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "Failed to updated universal auth"
@@ -316,7 +320,7 @@ export const identityUaServiceFactory = ({
 
   const getIdentityUniversalAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
@@ -343,7 +347,7 @@ export const identityUaServiceFactory = ({
     actorOrgId
   }: TRevokeUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
@@ -389,7 +393,7 @@ export const identityUaServiceFactory = ({
     numUsesLimit
   }: TCreateUaClientSecretDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
@@ -449,7 +453,7 @@ export const identityUaServiceFactory = ({
     identityId
   }: TGetUaClientSecretsDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
@@ -496,7 +500,7 @@ export const identityUaServiceFactory = ({
     clientSecretId
   }: TGetUniversalAuthClientSecretByIdDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
@@ -536,7 +540,7 @@ export const identityUaServiceFactory = ({
     clientSecretId
   }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
