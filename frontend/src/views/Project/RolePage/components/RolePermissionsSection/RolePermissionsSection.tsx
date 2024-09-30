@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { Button, EmptyState, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
@@ -29,7 +29,10 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
   const projectSlug = currentWorkspace?.slug || "";
-  const { data: role } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
+  const { data: role, isLoading } = useGetProjectRoleBySlug(
+    currentWorkspace?.slug ?? "",
+    roleSlug as string
+  );
 
   const form = useForm<TFormSchema>({
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
@@ -95,6 +98,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           </div>
         </div>
         <div className="py-4">
+          {!isLoading && !role?.permissions?.length && <EmptyState title="No policies applied" />}
           {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
             <GeneralPermissionOptions
               subject={subject}
