@@ -88,14 +88,16 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     return (
       <ErrorBoundaryWrapper>
         <QueryClientProvider client={queryClient}>
-          <NotificationContainer />
-          <ServerConfigProvider>
-            <UserProvider>
-              <AuthProvider>
-                <Component {...pageProps} />
-              </AuthProvider>
-            </UserProvider>
-          </ServerConfigProvider>
+          <TooltipProvider>
+            <NotificationContainer />
+            <ServerConfigProvider>
+              <UserProvider>
+                <AuthProvider>
+                  <Component {...pageProps} />
+                </AuthProvider>
+              </UserProvider>
+            </ServerConfigProvider>
+          </TooltipProvider>
         </QueryClientProvider>
       </ErrorBoundaryWrapper>
     );

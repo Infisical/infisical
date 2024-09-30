@@ -4,6 +4,7 @@ import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
@@ -25,6 +26,7 @@ export default function InitialSignupStep({
       <h1 className="mb-8 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         {t("signup.initial-title")}
       </h1>
+      <RegionSelect />
       {shouldDisplaySignupMethod(LoginMethod.GOOGLE) && (
         <div className="w-1/4 min-w-[20rem] rounded-md lg:w-1/6">
           <Button
