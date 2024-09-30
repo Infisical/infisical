@@ -212,7 +212,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                 <Select
                                   value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
                                   isDisabled={userId === u?.id || !isAllowed}
-                                  className="w-40 bg-mineshaft-600"
+                                  className="w-48 bg-mineshaft-600"
                                   dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                                   onValueChange={(selectedRole) =>
                                     onRoleChange(orgMembershipId, selectedRole)
@@ -235,7 +235,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                 serverDetails?.emailConfigured && (
                                   <Button
                                     isDisabled={!isAllowed}
-                                    className="w-40"
+                                    className="w-48"
                                     colorSchema="primary"
                                     variant="outline_bg"
                                     onClick={() => onResendInvite(email)}
