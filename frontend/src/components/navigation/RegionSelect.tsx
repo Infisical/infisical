@@ -80,8 +80,8 @@ export const RegionSelect = () => {
 
   const [subdomain, domain] = window.location.host.split(".");
 
-  // only display region select for local dev and cloud
-  if (!(subdomain.match(/localhost:8080/) || domain.match(/infisical/))) return null;
+  // only display region select for cloud
+  if (!domain?.match(/infisical/)) return null;
 
   // default to US if not eu
   const currentRegion = subdomain === Region.EU ? regions[1] : regions[0];
