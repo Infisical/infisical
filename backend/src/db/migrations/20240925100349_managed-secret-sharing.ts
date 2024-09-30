@@ -10,6 +10,11 @@ export async function up(knex: Knex): Promise<void> {
       t.string("encryptedValue").nullable().alter();
 
       t.binary("encryptedSecret").nullable();
+      t.string("hashedHex").nullable().alter();
+
+      t.string("identifier", 64).nullable();
+      t.unique("identifier");
+      t.index("identifier");
     });
   }
 }
@@ -17,11 +22,9 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretSharing)) {
     await knex.schema.alterTable(TableName.SecretSharing, (t) => {
-      t.string("iv").notNullable().alter();
-      t.string("tag").notNullable().alter();
-      t.string("encryptedValue").notNullable().alter();
-
       t.dropColumn("encryptedSecret");
+
+      t.dropColumn("identifier");
     });
   }
 }

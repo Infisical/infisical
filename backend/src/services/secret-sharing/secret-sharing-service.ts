@@ -72,10 +72,7 @@ export const secretSharingServiceFactory = ({
 
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
-    // This will be 36 characters long, due to encoding it to base64.
-    const id = crypto.randomBytes(27).toString("base64url");
-
-    const hashedHex = crypto.createHash("sha256").update(id).digest("base64url").substring(0, 13);
+    const id = crypto.randomBytes(32).toString("hex");
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
@@ -84,7 +81,6 @@ export const secretSharingServiceFactory = ({
       tag: null,
       encryptedValue: null,
       encryptedSecret,
-      hashedHex,
       name,
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
@@ -94,7 +90,9 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: `${newSharedSecret.identifier}${hashedHex}` };
+    const idToReturn = `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}`;
+
+    return { id: idToReturn };
   };
 
   const createPublicSharedSecret = async ({
@@ -124,8 +122,7 @@ export const secretSharingServiceFactory = ({
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
-    const id = crypto.randomBytes(27).toString("base64url");
-    const hashedHex = crypto.createHash("sha256").update(id).digest("base64url").substring(0, 13);
+    const id = crypto.randomBytes(32).toString("hex");
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
@@ -133,16 +130,14 @@ export const secretSharingServiceFactory = ({
       encryptedValue: null,
       iv: null,
       tag: null,
-      hashedHex,
       encryptedSecret,
-
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
       expiresAfterViews,
       accessType
     });
 
-    return { id: `${newSharedSecret.identifier}${hashedHex}` };
+    return { id: `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}` };
   };
 
   const getSharedSecrets = async ({
@@ -220,8 +215,7 @@ export const secretSharingServiceFactory = ({
           hashedHex
         })
       : await secretSharingDAL.findOne({
-          hashedHex,
-          identifier: sharedSecretId
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
         });
 
     if (!sharedSecret)
@@ -295,11 +289,11 @@ export const secretSharingServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
-    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
-
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findById(sharedSecretId)
       : await secretSharingDAL.findOne({ identifier: sharedSecretId });
+
+    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
 
     if (sharedSecret.orgId && sharedSecret.orgId !== orgId)
       throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });

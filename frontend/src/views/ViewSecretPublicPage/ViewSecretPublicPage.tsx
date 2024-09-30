@@ -15,14 +15,6 @@ const extractDetailsFromUrl = (router: NextRouter) => {
 
   const idString = id as string;
 
-  if (!idString) {
-    return {
-      id: "",
-      hashedHex: "",
-      key: null
-    };
-  }
-
   if (urlEncodedKey) {
     const [hashedHex, key] = urlEncodedKey ? urlEncodedKey.toString().split("-") : ["", ""];
 
@@ -33,13 +25,9 @@ const extractDetailsFromUrl = (router: NextRouter) => {
     };
   }
 
-  // get the first 36 characters as id and the rest as hex
-  const idPart = idString.substring(0, 36);
-  const hexPart = idString.substring(36);
-
   return {
-    id: idPart || "",
-    hashedHex: hexPart || "",
+    id: idString,
+    hashedHex: null,
     key: null
   };
 };
@@ -64,6 +52,9 @@ export const ViewSecretPublicPage = () => {
   const isInvalidCredential =
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
     "Invalid credentials";
+
+  console.log("data", fetchSecret);
+  console.log("err", error);
 
   const shouldShowPasswordPrompt =
     isInvalidCredential || (fetchSecret?.isPasswordProtected && !fetchSecret.secret);
