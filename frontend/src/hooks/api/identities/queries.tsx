@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -13,7 +13,8 @@ import {
   IdentityMembershipOrg,
   IdentityOidcAuth,
   IdentityTokenAuth,
-  IdentityUniversalAuth} from "./types";
+  IdentityUniversalAuth
+} from "./types";
 
 export const identitiesKeys = {
   getIdentityById: (identityId: string) => [{ identityId }, "identity"] as const,
@@ -64,9 +65,16 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
   });
 };
 
-export const useGetIdentityUniversalAuth = (identityId: string) => {
+export const useGetIdentityUniversalAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityUniversalAuth,
+    unknown,
+    IdentityUniversalAuth,
+    ReturnType<typeof identitiesKeys.getIdentityUniversalAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityUniversalAuth(identityId),
     queryFn: async () => {
       const {
@@ -76,8 +84,10 @@ export const useGetIdentityUniversalAuth = (identityId: string) => {
       );
       return identityUniversalAuth;
     },
+    cacheTime: 0,
     staleTime: 0,
-    cacheTime: 0
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 
@@ -96,9 +106,16 @@ export const useGetIdentityUniversalAuthClientSecrets = (identityId: string) => 
   });
 };
 
-export const useGetIdentityGcpAuth = (identityId: string) => {
+export const useGetIdentityGcpAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityGcpAuth,
+    unknown,
+    IdentityGcpAuth,
+    ReturnType<typeof identitiesKeys.getIdentityGcpAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityGcpAuth(identityId),
     queryFn: async () => {
       const {
@@ -109,13 +126,22 @@ export const useGetIdentityGcpAuth = (identityId: string) => {
       return identityGcpAuth;
     },
     staleTime: 0,
-    cacheTime: 0
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 
-export const useGetIdentityAwsAuth = (identityId: string) => {
+export const useGetIdentityAwsAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityAwsAuth,
+    unknown,
+    IdentityAwsAuth,
+    ReturnType<typeof identitiesKeys.getIdentityAwsAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityAwsAuth(identityId),
     queryFn: async () => {
       const {
@@ -126,13 +152,22 @@ export const useGetIdentityAwsAuth = (identityId: string) => {
       return identityAwsAuth;
     },
     staleTime: 0,
-    cacheTime: 0
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 
-export const useGetIdentityAzureAuth = (identityId: string) => {
+export const useGetIdentityAzureAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityAzureAuth,
+    unknown,
+    IdentityAzureAuth,
+    ReturnType<typeof identitiesKeys.getIdentityAzureAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityAzureAuth(identityId),
     queryFn: async () => {
       const {
@@ -143,13 +178,22 @@ export const useGetIdentityAzureAuth = (identityId: string) => {
       return identityAzureAuth;
     },
     staleTime: 0,
-    cacheTime: 0
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 
-export const useGetIdentityKubernetesAuth = (identityId: string) => {
+export const useGetIdentityKubernetesAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityKubernetesAuth,
+    unknown,
+    IdentityKubernetesAuth,
+    ReturnType<typeof identitiesKeys.getIdentityKubernetesAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId),
     queryFn: async () => {
       const {
@@ -160,13 +204,22 @@ export const useGetIdentityKubernetesAuth = (identityId: string) => {
       return identityKubernetesAuth;
     },
     staleTime: 0,
-    cacheTime: 0
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 
-export const useGetIdentityTokenAuth = (identityId: string) => {
+export const useGetIdentityTokenAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityTokenAuth,
+    unknown,
+    IdentityTokenAuth,
+    ReturnType<typeof identitiesKeys.getIdentityTokenAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityTokenAuth(identityId),
     queryFn: async () => {
       const {
@@ -177,7 +230,9 @@ export const useGetIdentityTokenAuth = (identityId: string) => {
       return identityTokenAuth;
     },
     staleTime: 0,
-    cacheTime: 0
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };
 
@@ -196,9 +251,16 @@ export const useGetIdentityTokensTokenAuth = (identityId: string) => {
   });
 };
 
-export const useGetIdentityOidcAuth = (identityId: string) => {
+export const useGetIdentityOidcAuth = (
+  identityId: string,
+  options?: UseQueryOptions<
+    IdentityOidcAuth,
+    unknown,
+    IdentityOidcAuth,
+    ReturnType<typeof identitiesKeys.getIdentityOidcAuth>
+  >
+) => {
   return useQuery({
-    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityOidcAuth(identityId),
     queryFn: async () => {
       const {
@@ -209,6 +271,8 @@ export const useGetIdentityOidcAuth = (identityId: string) => {
       return identityOidcAuth;
     },
     staleTime: 0,
-    cacheTime: 0
+    cacheTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
 };

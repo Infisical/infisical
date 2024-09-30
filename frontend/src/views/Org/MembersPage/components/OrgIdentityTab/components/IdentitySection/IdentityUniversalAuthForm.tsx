@@ -86,10 +86,12 @@ export const IdentityUniversalAuthForm = ({
   const { subscription } = useSubscription();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityUniversalAuth();
-  const { data } = useGetIdentityUniversalAuth(identityAuthMethodData?.identityId ?? "");
-  const popup = usePopUp([
-    "overwriteAuthMethod",
-  ] as const);
+
+  const isCurrentAuthMethod = identityAuthMethodData?.authMethod === initialAuthMethod;
+  const { data } = useGetIdentityUniversalAuth(identityAuthMethodData?.identityId ?? "", {
+    enabled: isCurrentAuthMethod
+  });
+  const internalPopUpState = usePopUp(["overwriteAuthMethod"] as const);
 
   const {
     control,
@@ -188,8 +190,7 @@ export const IdentityUniversalAuthForm = ({
       handlePopUpToggle("identityAuthMethod", false);
 
       createNotification({
-        text: `Successfully ${identityAuthMethodData?.authMethod === initialAuthMethod ? "updated" : "configured"
-          } auth method`,
+        text: `Successfully ${isCurrentAuthMethod ? "updated" : "configured"} auth method`,
         type: "success"
       });
 
@@ -209,234 +210,243 @@ export const IdentityUniversalAuthForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="accessTokenTTL"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token TTL (seconds)"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="accessTokenMaxTTL"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token Max TTL (seconds)"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="0"
-        name="accessTokenNumUsesLimit"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token Max Number of Uses"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="0" type="number" min="0" step="1" />
-          </FormControl>
-        )}
-      />
-      {clientSecretTrustedIpsFields.map(({ id }, index) => (
-        <div className="mb-3 flex items-end space-x-2" key={id}>
-          <Controller
-            control={control}
-            name={`clientSecretTrustedIps.${index}.ipAddress`}
-            defaultValue="0.0.0.0/0"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  className="mb-0 flex-grow"
-                  label={index === 0 ? "Client Secret Trusted IPs" : undefined}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input
-                    value={field.value}
-                    onChange={(e) => {
-                      if (subscription?.ipAllowlisting) {
-                        field.onChange(e);
-                        return;
-                      }
-
-                      handlePopUpOpen("upgradePlan");
-                    }}
-                    placeholder="123.456.789.0"
-                  />
-                </FormControl>
-              );
-            }}
-          />
-          <IconButton
-            onClick={() => {
-              if (subscription?.ipAllowlisting) {
-                removeClientSecretTrustedIp(index);
-                return;
-              }
-
-              handlePopUpOpen("upgradePlan");
-            }}
-            size="lg"
-            colorSchema="danger"
-            variant="plain"
-            ariaLabel="update"
-            className="p-3"
-          >
-            <FontAwesomeIcon icon={faXmark} />
-          </IconButton>
-        </div>
-      ))}
-      <div className="my-4 ml-1">
-        <Button
-          variant="outline_bg"
-          onClick={() => {
-            if (subscription?.ipAllowlisting) {
-              appendClientSecretTrustedIp({
-                ipAddress: "0.0.0.0/0"
-              });
-              return;
-            }
-
-            handlePopUpOpen("upgradePlan");
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          size="xs"
-        >
-          Add IP Address
-        </Button>
-      </div>
-      {accessTokenTrustedIpsFields.map(({ id }, index) => (
-        <div className="mb-3 flex items-end space-x-2" key={id}>
-          <Controller
-            control={control}
-            name={`accessTokenTrustedIps.${index}.ipAddress`}
-            defaultValue="0.0.0.0/0"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  className="mb-0 flex-grow"
-                  label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input
-                    value={field.value}
-                    onChange={(e) => {
-                      if (subscription?.ipAllowlisting) {
-                        field.onChange(e);
-                        return;
-                      }
-
-                      handlePopUpOpen("upgradePlan");
-                    }}
-                    placeholder="123.456.789.0"
-                  />
-                </FormControl>
-              );
-            }}
-          />
-          <IconButton
-            onClick={() => {
-              if (subscription?.ipAllowlisting) {
-                removeAccessTokenTrustedIp(index);
-                return;
-              }
-
-              handlePopUpOpen("upgradePlan");
-            }}
-            size="lg"
-            colorSchema="danger"
-            variant="plain"
-            ariaLabel="update"
-            className="p-3"
-          >
-            <FontAwesomeIcon icon={faXmark} />
-          </IconButton>
-        </div>
-      ))}
-      <div className="my-4 ml-1">
-        <Button
-          variant="outline_bg"
-          onClick={() => {
-            if (subscription?.ipAllowlisting) {
-              appendAccessTokenTrustedIp({
-                ipAddress: "0.0.0.0/0"
-              });
-              return;
-            }
-
-            handlePopUpOpen("upgradePlan");
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          size="xs"
-        >
-          Add IP Address
-        </Button>
-      </div>
-      <div className="flex justify-between">
-        <div className="flex items-center">
-        {(initialAuthMethod && identityAuthMethodData?.authMethod !== initialAuthMethod) ?
-            <Button
-              className="mr-4"
-              size="sm"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-              onClick={() => popup.handlePopUpToggle("overwriteAuthMethod", true)}
+    <>
+      <form onSubmit={handleSubmit(onFormSubmit)}>
+        <Controller
+          control={control}
+          defaultValue="2592000"
+          name="accessTokenTTL"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Access Token TTL (seconds)"
+              isError={Boolean(error)}
+              errorText={error?.message}
             >
-              Overwrite
-            </Button>
-            : <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >Submit</Button>
-          }
+              <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue="2592000"
+          name="accessTokenMaxTTL"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Access Token Max TTL (seconds)"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue="0"
+          name="accessTokenNumUsesLimit"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Access Token Max Number of Uses"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="0" type="number" min="0" step="1" />
+            </FormControl>
+          )}
+        />
+        {clientSecretTrustedIpsFields.map(({ id }, index) => (
+          <div className="mb-3 flex items-end space-x-2" key={id}>
+            <Controller
+              control={control}
+              name={`clientSecretTrustedIps.${index}.ipAddress`}
+              defaultValue="0.0.0.0/0"
+              render={({ field, fieldState: { error } }) => {
+                return (
+                  <FormControl
+                    className="mb-0 flex-grow"
+                    label={index === 0 ? "Client Secret Trusted IPs" : undefined}
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input
+                      value={field.value}
+                      onChange={(e) => {
+                        if (subscription?.ipAllowlisting) {
+                          field.onChange(e);
+                          return;
+                        }
+
+                        handlePopUpOpen("upgradePlan");
+                      }}
+                      placeholder="123.456.789.0"
+                    />
+                  </FormControl>
+                );
+              }}
+            />
+            <IconButton
+              onClick={() => {
+                if (subscription?.ipAllowlisting) {
+                  removeClientSecretTrustedIp(index);
+                  return;
+                }
+
+                handlePopUpOpen("upgradePlan");
+              }}
+              size="lg"
+              colorSchema="danger"
+              variant="plain"
+              ariaLabel="update"
+              className="p-3"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </IconButton>
+          </div>
+        ))}
+        <div className="my-4 ml-1">
           <Button
-            colorSchema="secondary"
-            variant="plain"
-            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+            variant="outline_bg"
+            onClick={() => {
+              if (subscription?.ipAllowlisting) {
+                appendClientSecretTrustedIp({
+                  ipAddress: "0.0.0.0/0"
+                });
+                return;
+              }
+
+              handlePopUpOpen("upgradePlan");
+            }}
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            size="xs"
           >
-            Cancel
+            Add IP Address
           </Button>
         </div>
-        {identityAuthMethodData?.authMethod === initialAuthMethod && (
+        {accessTokenTrustedIpsFields.map(({ id }, index) => (
+          <div className="mb-3 flex items-end space-x-2" key={id}>
+            <Controller
+              control={control}
+              name={`accessTokenTrustedIps.${index}.ipAddress`}
+              defaultValue="0.0.0.0/0"
+              render={({ field, fieldState: { error } }) => {
+                return (
+                  <FormControl
+                    className="mb-0 flex-grow"
+                    label={index === 0 ? "Access Token Trusted IPs" : undefined}
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input
+                      value={field.value}
+                      onChange={(e) => {
+                        if (subscription?.ipAllowlisting) {
+                          field.onChange(e);
+                          return;
+                        }
+
+                        handlePopUpOpen("upgradePlan");
+                      }}
+                      placeholder="123.456.789.0"
+                    />
+                  </FormControl>
+                );
+              }}
+            />
+            <IconButton
+              onClick={() => {
+                if (subscription?.ipAllowlisting) {
+                  removeAccessTokenTrustedIp(index);
+                  return;
+                }
+
+                handlePopUpOpen("upgradePlan");
+              }}
+              size="lg"
+              colorSchema="danger"
+              variant="plain"
+              ariaLabel="update"
+              className="p-3"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </IconButton>
+          </div>
+        ))}
+        <div className="my-4 ml-1">
           <Button
-            size="sm"
-            colorSchema="danger"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+            variant="outline_bg"
+            onClick={() => {
+              if (subscription?.ipAllowlisting) {
+                appendAccessTokenTrustedIp({
+                  ipAddress: "0.0.0.0/0"
+                });
+                return;
+              }
+
+              handlePopUpOpen("upgradePlan");
+            }}
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            size="xs"
           >
-            Remove Auth Method
+            Add IP Address
           </Button>
-        )}
-      </div>
+        </div>
+        <div className="flex justify-between">
+          <div className="flex items-center">
+            {initialAuthMethod && identityAuthMethodData?.authMethod !== initialAuthMethod ? (
+              <Button
+                className="mr-4"
+                size="sm"
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+                onClick={() => internalPopUpState.handlePopUpToggle("overwriteAuthMethod", true)}
+              >
+                Overwrite
+              </Button>
+            ) : (
+              <Button
+                className="mr-4"
+                size="sm"
+                type="submit"
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                Submit
+              </Button>
+            )}
+            <Button
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+            >
+              Cancel
+            </Button>
+          </div>
+          {isCurrentAuthMethod && (
+            <Button
+              size="sm"
+              colorSchema="danger"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+              onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+            >
+              Remove Auth Method
+            </Button>
+          )}
+        </div>
+      </form>
       <DeleteActionModal
-          isOpen={popup.popUp.overwriteAuthMethod?.isOpen}
-          title={`Are you sure want to overwrite ${
-            initialAuthMethod || "the auth method"
-          } on ${identityAuthMethodData?.name ?? ""}?`}
-          onChange={(isOpen) => popup.handlePopUpToggle("overwriteAuthMethod", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={async () => { await revokeAuth(initialAuthMethod); handleSubmit(onFormSubmit)(); }}
-        />
-    </form>
+        isOpen={internalPopUpState.popUp.overwriteAuthMethod?.isOpen}
+        title={`Are you sure want to overwrite ${initialAuthMethod || "the auth method"} on ${
+          identityAuthMethodData?.name ?? ""
+        }?`}
+        onChange={(isOpen) => internalPopUpState.handlePopUpToggle("overwriteAuthMethod", isOpen)}
+        deleteKey="confirm"
+        buttonText="Overwrite"
+        onDeleteApproved={async () => {
+          await revokeAuth(initialAuthMethod);
+          handleSubmit(onFormSubmit)();
+        }}
+      />
+    </>
   );
 };

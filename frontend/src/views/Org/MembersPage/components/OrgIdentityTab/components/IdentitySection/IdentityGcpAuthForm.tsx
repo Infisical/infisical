@@ -6,7 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  DeleteActionModal,
+  FormControl,
+  IconButton,
+  Input,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
   useAddIdentityGcpAuth,
@@ -71,17 +79,18 @@ export const IdentityGcpAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityGcpAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityGcpAuth();
 
-  const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "");
-  const popup = usePopUp([
-    "overwriteAuthMethod",
-  ] as const);
+  const isCurrentAuthMethod = identityAuthMethodData?.authMethod === initialAuthMethod;
+  const { data } = useGetIdentityGcpAuth(identityAuthMethodData?.identityId ?? "", {
+    enabled: isCurrentAuthMethod
+  });
+  const internalPopUpState = usePopUp(["overwriteAuthMethod"] as const);
 
   const {
     control,
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    watch,
+    watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -180,11 +189,9 @@ export const IdentityGcpAuthForm = ({
       handlePopUpToggle("identityAuthMethod", false);
 
       createNotification({
-        text: `Successfully ${identityAuthMethodData?.authMethod === initialAuthMethod ? "updated" : "configured"
-          } auth method`,
+        text: `Successfully ${isCurrentAuthMethod ? "updated" : "configured"} auth method`,
         type: "success"
       });
-
 
       reset();
     } catch (err) {
@@ -196,231 +203,244 @@ export const IdentityGcpAuthForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="type"
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Type" isError={Boolean(error)} errorText={error?.message}>
-            <Select
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => onChange(e)}
-              className="w-full"
-            >
-              <SelectItem value="gce" key="gce">
-                GCP ID Token Auth (Recommended)
-              </SelectItem>
-              <SelectItem value="iam" key="iam">
-                GCP IAM Auth
-              </SelectItem>
-            </Select>
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="allowedServiceAccounts"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Service Account Emails"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input
-              {...field}
-              placeholder="test@project.iam.gserviceaccount.com, 12345-compute@developer.gserviceaccount.com"
-              type="text"
-            />
-          </FormControl>
-        )}
-      />
-      {watchedType === "gce" && (
+    <>
+      <form onSubmit={handleSubmit(onFormSubmit)}>
         <Controller
           control={control}
-          name="allowedProjects"
+          name="type"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <FormControl label="Type" isError={Boolean(error)} errorText={error?.message}>
+              <Select
+                defaultValue={field.value}
+                {...field}
+                onValueChange={(e) => onChange(e)}
+                className="w-full"
+              >
+                <SelectItem value="gce" key="gce">
+                  GCP ID Token Auth (Recommended)
+                </SelectItem>
+                <SelectItem value="iam" key="iam">
+                  GCP IAM Auth
+                </SelectItem>
+              </Select>
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue="2592000"
+          name="allowedServiceAccounts"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Allowed Projects"
+              label="Allowed Service Account Emails"
               isError={Boolean(error)}
               errorText={error?.message}
             >
-              <Input {...field} placeholder="my-gcp-project, ..." />
+              <Input
+                {...field}
+                placeholder="test@project.iam.gserviceaccount.com, 12345-compute@developer.gserviceaccount.com"
+                type="text"
+              />
             </FormControl>
           )}
         />
-      )}
-      {watchedType === "gce" && (
-        <Controller
-          control={control}
-          name="allowedZones"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl label="Allowed Zones" isError={Boolean(error)} errorText={error?.message}>
-              <Input {...field} placeholder="us-west2-a, us-central1-a, ..." />
-            </FormControl>
-          )}
-        />
-      )}
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="accessTokenTTL"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token TTL (seconds)"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="2592000"
-        name="accessTokenMaxTTL"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token Max TTL (seconds)"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue="0"
-        name="accessTokenNumUsesLimit"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Access Token Max Number of Uses"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="0" type="number" min="0" step="1" />
-          </FormControl>
-        )}
-      />
-      {accessTokenTrustedIpsFields.map(({ id }, index) => (
-        <div className="mb-3 flex items-end space-x-2" key={id}>
+        {watchedType === "gce" && (
           <Controller
             control={control}
-            name={`accessTokenTrustedIps.${index}.ipAddress`}
-            defaultValue="0.0.0.0/0"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  className="mb-0 flex-grow"
-                  label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input
-                    value={field.value}
-                    onChange={(e) => {
-                      if (subscription?.ipAllowlisting) {
-                        field.onChange(e);
-                        return;
-                      }
-
-                      handlePopUpOpen("upgradePlan");
-                    }}
-                    placeholder="123.456.789.0"
-                  />
-                </FormControl>
-              );
-            }}
+            name="allowedProjects"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Projects"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="my-gcp-project, ..." />
+              </FormControl>
+            )}
           />
-          <IconButton
+        )}
+        {watchedType === "gce" && (
+          <Controller
+            control={control}
+            name="allowedZones"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Allowed Zones"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} placeholder="us-west2-a, us-central1-a, ..." />
+              </FormControl>
+            )}
+          />
+        )}
+        <Controller
+          control={control}
+          defaultValue="2592000"
+          name="accessTokenTTL"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Access Token TTL (seconds)"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue="2592000"
+          name="accessTokenMaxTTL"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Access Token Max TTL (seconds)"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue="0"
+          name="accessTokenNumUsesLimit"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Access Token Max Number of Uses"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="0" type="number" min="0" step="1" />
+            </FormControl>
+          )}
+        />
+        {accessTokenTrustedIpsFields.map(({ id }, index) => (
+          <div className="mb-3 flex items-end space-x-2" key={id}>
+            <Controller
+              control={control}
+              name={`accessTokenTrustedIps.${index}.ipAddress`}
+              defaultValue="0.0.0.0/0"
+              render={({ field, fieldState: { error } }) => {
+                return (
+                  <FormControl
+                    className="mb-0 flex-grow"
+                    label={index === 0 ? "Access Token Trusted IPs" : undefined}
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Input
+                      value={field.value}
+                      onChange={(e) => {
+                        if (subscription?.ipAllowlisting) {
+                          field.onChange(e);
+                          return;
+                        }
+
+                        handlePopUpOpen("upgradePlan");
+                      }}
+                      placeholder="123.456.789.0"
+                    />
+                  </FormControl>
+                );
+              }}
+            />
+            <IconButton
+              onClick={() => {
+                if (subscription?.ipAllowlisting) {
+                  removeAccessTokenTrustedIp(index);
+                  return;
+                }
+
+                handlePopUpOpen("upgradePlan");
+              }}
+              size="lg"
+              colorSchema="danger"
+              variant="plain"
+              ariaLabel="update"
+              className="p-3"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </IconButton>
+          </div>
+        ))}
+        <div className="my-4 ml-1">
+          <Button
+            variant="outline_bg"
             onClick={() => {
               if (subscription?.ipAllowlisting) {
-                removeAccessTokenTrustedIp(index);
+                appendAccessTokenTrustedIp({
+                  ipAddress: "0.0.0.0/0"
+                });
                 return;
               }
 
               handlePopUpOpen("upgradePlan");
             }}
-            size="lg"
-            colorSchema="danger"
-            variant="plain"
-            ariaLabel="update"
-            className="p-3"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            size="xs"
           >
-            <FontAwesomeIcon icon={faXmark} />
-          </IconButton>
+            Add IP Address
+          </Button>
         </div>
-      ))}
-      <div className="my-4 ml-1">
-        <Button
-          variant="outline_bg"
-          onClick={() => {
-            if (subscription?.ipAllowlisting) {
-              appendAccessTokenTrustedIp({
-                ipAddress: "0.0.0.0/0"
-              });
-              return;
-            }
-
-            handlePopUpOpen("upgradePlan");
-          }}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          size="xs"
-        >
-          Add IP Address
-        </Button>
-      </div>
-      <div className="flex justify-between">
-        <div className="flex items-center">
-        {(initialAuthMethod && identityAuthMethodData?.authMethod !== initialAuthMethod) ?
+        <div className="flex justify-between">
+          <div className="flex items-center">
+            {initialAuthMethod && identityAuthMethodData?.authMethod !== initialAuthMethod ? (
+              <Button
+                className="mr-4"
+                size="sm"
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+                onClick={() => internalPopUpState.handlePopUpToggle("overwriteAuthMethod", true)}
+              >
+                Overwrite
+              </Button>
+            ) : (
+              <Button
+                className="mr-4"
+                size="sm"
+                type="submit"
+                isLoading={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                Submit
+              </Button>
+            )}
             <Button
-              className="mr-4"
-              size="sm"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-              onClick={() => popup.handlePopUpToggle("overwriteAuthMethod", true)}
+              colorSchema="secondary"
+              variant="plain"
+              onClick={() => handlePopUpToggle("identityAuthMethod", false)}
             >
-              Overwrite
+              Cancel
             </Button>
-            : <Button
-              className="mr-4"
+          </div>
+          {isCurrentAuthMethod && (
+            <Button
               size="sm"
-              type="submit"
+              colorSchema="danger"
               isLoading={isSubmitting}
               isDisabled={isSubmitting}
-            >Submit</Button>
-          }
-          <Button
-            colorSchema="secondary"
-            variant="plain"
-            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-          >
-            Cancel
-          </Button>
+              onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
+            >
+              Remove Auth Method
+            </Button>
+          )}
         </div>
-        {identityAuthMethodData?.authMethod === initialAuthMethod && (
-          <Button
-            size="sm"
-            colorSchema="danger"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-            onClick={() => handlePopUpToggle("revokeAuthMethod", true)}
-          >
-            Remove Auth Method
-          </Button>
-        )}
-      </div>
+      </form>
       <DeleteActionModal
-          isOpen={popup.popUp.overwriteAuthMethod?.isOpen}
-          title={`Are you sure want to overwrite ${
-            initialAuthMethod || "the auth method"
-          } on ${identityAuthMethodData?.name ?? ""}?`}
-          onChange={(isOpen) => popup.handlePopUpToggle("overwriteAuthMethod", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={async () => { await revokeAuth(initialAuthMethod); handleSubmit(onFormSubmit)(); }}
-        />
-    </form>
+        isOpen={internalPopUpState.popUp.overwriteAuthMethod?.isOpen}
+        title={`Are you sure want to overwrite ${initialAuthMethod || "the auth method"} on ${
+          identityAuthMethodData?.name ?? ""
+        }?`}
+        buttonText="Overwrite"
+        onChange={(isOpen) => internalPopUpState.handlePopUpToggle("overwriteAuthMethod", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={async () => {
+          await revokeAuth(initialAuthMethod);
+          handleSubmit(onFormSubmit)();
+        }}
+      />
+    </>
   );
 };

@@ -21,7 +21,8 @@ import {
   useDeleteIdentityKubernetesAuth,
   useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
-  useDeleteIdentityUniversalAuth} from "@app/hooks/api";
+  useDeleteIdentityUniversalAuth
+} from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -54,7 +55,10 @@ const identityAuthMethods = [
 
 const schema = yup
   .object({
-    authMethod: yup.mixed<IdentityAuthMethod>().oneOf(Object.values(IdentityAuthMethod)).required("Auth method is required")
+    authMethod: yup
+      .mixed<IdentityAuthMethod>()
+      .oneOf(Object.values(IdentityAuthMethod))
+      .required("Auth method is required")
   })
   .required();
 
@@ -71,27 +75,33 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
-  
+
   const initialAuthMethod = popUp?.identityAuthMethod?.data?.authMethod;
-    
-    const { control, watch, setValue } = useForm<FormData>({
-      resolver: yupResolver(schema),
-      defaultValues: {
-        authMethod: initialAuthMethod
-      }
-    });
-    
-    const identityAuthMethodData = {
-      identityId: popUp?.identityAuthMethod.data?.identityId,
-      name: popUp?.identityAuthMethod?.data?.name,
-      authMethod: watch("authMethod")
-    } as {
-      identityId: string;
-      name: string;
-      authMethod?: IdentityAuthMethod;
+
+  const { control, watch, setValue, reset } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      authMethod: initialAuthMethod
+    }
+  });
+
+  useEffect(() => {
+    // reset form on open
+    if (popUp.identityAuthMethod.isOpen)
+      reset({ authMethod: popUp?.identityAuthMethod?.data?.authMethod });
+  }, [popUp.identityAuthMethod.isOpen]);
+
+  const identityAuthMethodData = {
+    identityId: popUp?.identityAuthMethod.data?.identityId,
+    name: popUp?.identityAuthMethod?.data?.name,
+    authMethod: watch("authMethod")
+  } as {
+    identityId: string;
+    name: string;
+    authMethod?: IdentityAuthMethod;
   };
 
-    useEffect(() => {
+  useEffect(() => {
     if (identityAuthMethodData?.authMethod) {
       setValue("authMethod", identityAuthMethodData.authMethod);
       return;
@@ -103,7 +113,6 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
   const onRevokeAuthMethodSubmit = async (authMethod: IdentityAuthMethod) => {
     if (!orgId || !authMethod) return;
     try {
-      console.log("onRevokeAuthMethodSubmit identityId: ", identityAuthMethodData);
       switch (authMethod) {
         case IdentityAuthMethod.UNIVERSAL_AUTH: {
           await revokeUniversalAuth({
@@ -159,9 +168,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
       }
 
       createNotification({
-        text: `Successfully removed ${
-          identityAuthToNameMap[authMethod]
-        } on ${identityAuthMethodData.name}`,
+        text: `Successfully removed ${identityAuthToNameMap[authMethod]} on ${identityAuthMethodData.name}`,
         type: "success"
       });
 
@@ -170,9 +177,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
     } catch (err) {
       console.error(err);
       createNotification({
-        text: `Failed to remove ${identityAuthToNameMap[authMethod]} on ${
-          identityAuthMethodData.name
-        }`,
+        text: `Failed to remove ${identityAuthToNameMap[authMethod]} on ${identityAuthMethodData.name}`,
         type: "error"
       });
     }
@@ -272,7 +277,9 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
       <ModalContent
         title={`${
           identityAuthMethodData.authMethod === initialAuthMethod ? "Update" : "Configure"
-        } Identity Auth Method for ${identityAuthToNameMap[identityAuthMethodData.authMethod!] ?? ""}`}
+        } Identity Auth Method for ${
+          identityAuthToNameMap[identityAuthMethodData.authMethod!] ?? ""
+        }`}
       >
         <Controller
           control={control}
@@ -283,7 +290,9 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
               <Select
                 defaultValue={field.value}
                 {...field}
-                onValueChange={(e) => {onChange(e)}}
+                onValueChange={(e) => {
+                  onChange(e);
+                }}
                 className="w-full"
               >
                 {identityAuthMethods.map(({ label, value }) => (
@@ -310,6 +319,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
           } on ${identityAuthMethodData?.name ?? ""}?`}
           onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
           deleteKey="confirm"
+          buttonText="Remove"
           onDeleteApproved={() => onRevokeAuthMethodSubmit(identityAuthMethodData.authMethod!)}
         />
       </ModalContent>
