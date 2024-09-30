@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import bcrypt from "bcrypt";
+import { z } from "zod";
 
 import { TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -26,6 +27,8 @@ type TSecretSharingServiceFactoryDep = {
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
+
+const isUuidV4 = (uuid: string) => z.string().uuid().safeParse(uuid).success;
 
 export const secretSharingServiceFactory = ({
   permissionService,
@@ -76,7 +79,7 @@ export const secretSharingServiceFactory = ({
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
-      id,
+      identifier: id,
       iv: null,
       tag: null,
       encryptedValue: null,
@@ -91,7 +94,7 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: `${newSharedSecret.id}${hashedHex}` };
+    return { id: `${newSharedSecret.identifier}${hashedHex}` };
   };
 
   const createPublicSharedSecret = async ({
@@ -126,7 +129,7 @@ export const secretSharingServiceFactory = ({
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
-      id,
+      identifier: id,
       encryptedValue: null,
       iv: null,
       tag: null,
@@ -139,7 +142,7 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: `${newSharedSecret.id}${hashedHex}` };
+    return { id: `${newSharedSecret.identifier}${hashedHex}` };
   };
 
   const getSharedSecrets = async ({
@@ -183,22 +186,44 @@ export const secretSharingServiceFactory = ({
   const $decrementSecretViewCount = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
     const { expiresAfterViews } = sharedSecret;
 
+    const isUuid = isUuidV4(sharedSecretId);
+
     if (expiresAfterViews) {
       // decrement view count if view count expiry set
-      await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+
+      if (isUuid) {
+        await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
+      } else {
+        await secretSharingDAL.update({ identifier: sharedSecretId }, { $decr: { expiresAfterViews: 1 } });
+      }
     }
 
-    await secretSharingDAL.updateById(sharedSecretId, {
-      lastViewedAt: new Date()
-    });
+    if (isUuid) {
+      await secretSharingDAL.updateById(sharedSecretId, {
+        lastViewedAt: new Date()
+      });
+    } else {
+      await secretSharingDAL.update(
+        { identifier: sharedSecretId },
+        {
+          lastViewedAt: new Date()
+        }
+      );
+    }
   };
 
-  /** Get's passwordless secret. validates all secret's requested (must be fresh). */
+  /** Get's password-less secret. validates all secret's requested (must be fresh). */
   const getSharedSecretById = async ({ sharedSecretId, hashedHex, orgId, password }: TGetActiveSharedSecretByIdDTO) => {
-    const sharedSecret = await secretSharingDAL.findOne({
-      id: sharedSecretId,
-      hashedHex
-    });
+    const sharedSecret = isUuidV4(sharedSecretId)
+      ? await secretSharingDAL.findOne({
+          id: sharedSecretId,
+          hashedHex
+        })
+      : await secretSharingDAL.findOne({
+          hashedHex,
+          identifier: sharedSecretId
+        });
+
     if (!sharedSecret)
       throw new NotFoundError({
         message: "Shared secret not found"
@@ -269,7 +294,16 @@ export const secretSharingServiceFactory = ({
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
+
     const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
+
+    const sharedSecret = isUuidV4(sharedSecretId)
+      ? await secretSharingDAL.findById(sharedSecretId)
+      : await secretSharingDAL.findOne({ identifier: sharedSecretId });
+
+    if (sharedSecret.orgId && sharedSecret.orgId !== orgId)
+      throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
+
     return deletedSharedSecret;
   };
 

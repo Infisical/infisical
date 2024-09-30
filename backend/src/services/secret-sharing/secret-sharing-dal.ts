@@ -82,21 +82,11 @@ export const secretSharingDALFactory = (db: TDbClient) => {
     }
   };
 
-  const create = async (data: Omit<TSecretSharing, "createdAt" | "updatedAt">, tx?: Knex) => {
-    try {
-      const [res] = await (tx || db)(TableName.SecretSharing).insert(data).returning("*");
-      return res;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Create Shared Secret" });
-    }
-  };
-
   return {
     ...sharedSecretOrm,
     countAllUserOrgSharedSecrets,
     pruneExpiredSharedSecrets,
     softDeleteById,
-    findActiveSharedSecrets,
-    create
+    findActiveSharedSecrets
   };
 };
