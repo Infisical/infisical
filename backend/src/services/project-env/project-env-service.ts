@@ -50,7 +50,7 @@ export const projectEnvServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
 
     const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.ProjectEnvironmentCreation, projectId], 5000)
+      .acquireLock([KeyStorePrefixes.ProjectEnvironmentCreate, projectId], 5000)
       .catch(() => null);
 
     try {
