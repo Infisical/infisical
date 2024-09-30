@@ -748,6 +748,7 @@ export const registerRoutes = async (
   const projectEnvService = projectEnvServiceFactory({
     permissionService,
     projectEnvDAL,
+    keyStore,
     licenseService,
     projectDAL,
     folderDAL
