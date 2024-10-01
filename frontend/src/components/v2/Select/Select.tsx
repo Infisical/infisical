@@ -56,7 +56,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               isDisabled && "cursor-not-allowed opacity-50"
             )}
           >
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 overflow-hidden text-ellipsis whitespace-nowrap">
               {props.icon && <FontAwesomeIcon icon={props.icon} />}
               <SelectPrimitive.Value placeholder={placeholder} />
             </div>
@@ -72,7 +72,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Portal>
             <SelectPrimitive.Content
               className={twMerge(
-                "relative top-1 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
+                "relative top-1 z-[100] max-w-sm overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
                 position === "popper" && "max-h-72",
                 dropdownContainerClassName
               )}
@@ -122,8 +122,8 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         {...props}
         className={twMerge(
           `relative mb-0.5 flex
-          cursor-pointer select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
-          outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80`,
+          cursor-pointer select-none items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-md py-2
+          pl-10 pr-4 text-sm outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80`,
           isSelected && "bg-primary",
           isDisabled &&
             "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",

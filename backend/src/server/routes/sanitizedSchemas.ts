@@ -27,6 +27,34 @@ export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({
   updatedAt: true
 });
 
+export const DefaultResponseErrorsSchema = {
+  400: z.object({
+    statusCode: z.literal(400),
+    message: z.string(),
+    error: z.string()
+  }),
+  404: z.object({
+    statusCode: z.literal(404),
+    message: z.string(),
+    error: z.string()
+  }),
+  401: z.object({
+    statusCode: z.literal(401),
+    message: z.any(),
+    error: z.string()
+  }),
+  403: z.object({
+    statusCode: z.literal(403),
+    message: z.string(),
+    error: z.string()
+  }),
+  500: z.object({
+    statusCode: z.literal(500),
+    message: z.string(),
+    error: z.string()
+  })
+};
+
 export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   z.object({
     environment: z.object({

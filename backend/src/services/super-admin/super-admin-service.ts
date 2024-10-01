@@ -54,7 +54,7 @@ export const superAdminServiceFactory = ({
         const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
 
         if (!serverCfg) {
-          throw new BadRequestError({ name: "Admin config", message: "Admin config not found" });
+          throw new NotFoundError({ message: "Admin config not found" });
         }
 
         await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
@@ -167,7 +167,7 @@ export const superAdminServiceFactory = ({
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
     const existingUser = await userDAL.findOne({ email });
-    if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
+    if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
     const privateKey = await getUserPrivateKey(password, {
       encryptionVersion: 2,

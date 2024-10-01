@@ -61,19 +61,19 @@ export const identityOidcAuthServiceFactory = ({
   const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
     if (!identityOidcAuth) {
-      throw new UnauthorizedError();
+      throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
     }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
       identityId: identityOidcAuth.identityId
     });
     if (!identityMembershipOrg) {
-      throw new NotFoundError({ message: "Failed to find identity in organization" });
+      throw new NotFoundError({ message: "Identity organization membership not found" });
     }
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new NotFoundError({ message: "Org bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({ message: "Organization bot was not found", name: "OrgBotNotFound" });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -136,7 +136,7 @@ export const identityOidcAuthServiceFactory = ({
 
     if (identityOidcAuth.boundSubject) {
       if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
-        throw new UnauthorizedError({
+        throw new ForbiddenRequestError({
           message: "Access denied: OIDC subject not allowed."
         });
       }
@@ -221,7 +221,7 @@ export const identityOidcAuthServiceFactory = ({
   }: TAttachOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new BadRequestError({ message: "Failed to find identity" });
+      throw new NotFoundError({ message: "Failed to find identity" });
     }
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
@@ -360,7 +360,7 @@ export const identityOidcAuthServiceFactory = ({
   }: TUpdateOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new BadRequestError({ message: "Failed to find identity" });
+      throw new NotFoundError({ message: "Failed to find identity" });
     }
 
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
@@ -422,7 +422,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -460,7 +460,7 @@ export const identityOidcAuthServiceFactory = ({
   const getOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new BadRequestError({ message: "Failed to find identity" });
+      throw new NotFoundError({ message: "Failed to find identity" });
     }
 
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
@@ -482,7 +482,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -505,7 +505,7 @@ export const identityOidcAuthServiceFactory = ({
   const revokeOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TRevokeOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new BadRequestError({ message: "Failed to find identity" });
+      throw new NotFoundError({ message: "Failed to find identity" });
     }
 
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
@@ -532,8 +532,7 @@ export const identityOidcAuthServiceFactory = ({
       actorOrgId
     );
 
-    const hasPriviledge = isAtLeastAsPrivileged(permission, rolePermission);
-    if (!hasPriviledge) {
+    if (!isAtLeastAsPrivileged(permission, rolePermission)) {
       throw new ForbiddenRequestError({
         message: "Failed to revoke OIDC auth of identity with more privileged role"
       });

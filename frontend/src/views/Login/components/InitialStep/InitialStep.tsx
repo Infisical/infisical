@@ -8,11 +8,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 import Error from "@app/components/basic/Error";
+import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
-import { Button, Input } from "@app/components/v2";
+import { Button, IconButton, Input, Tooltip } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -166,70 +167,9 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       <h1 className="mb-8 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Login to Infisical
       </h1>
-      {shouldDisplayLoginMethod(LoginMethod.GOOGLE) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={() => {
-              const callbackPort = queryParams.get("callback_port");
-
-              window.open(
-                `/api/v1/sso/redirect/google${callbackPort ? `?callback_port=${callbackPort}` : ""}`
-              );
-              window.close();
-            }}
-            leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            {t("login.continue-with-google")}
-          </Button>
-        </div>
-      )}
-      {shouldDisplayLoginMethod(LoginMethod.GITHUB) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={() => {
-              const callbackPort = queryParams.get("callback_port");
-
-              window.open(
-                `/api/v1/sso/redirect/github${callbackPort ? `?callback_port=${callbackPort}` : ""}`
-              );
-
-              window.close();
-            }}
-            leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with GitHub
-          </Button>
-        </div>
-      )}
-      {shouldDisplayLoginMethod(LoginMethod.GITLAB) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={() => {
-              const callbackPort = queryParams.get("callback_port");
-
-              window.open(
-                `/api/v1/sso/redirect/gitlab${callbackPort ? `?callback_port=${callbackPort}` : ""}`
-              );
-
-              window.close();
-            }}
-            leftIcon={<FontAwesomeIcon icon={faGitlab} className="mr-2" />}
-            className="mx-0 h-10 w-full"
-          >
-            Continue with GitLab
-          </Button>
-        </div>
-      )}
+      <RegionSelect />
       {shouldDisplayLoginMethod(LoginMethod.SAML) && (
-        <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
           <Button
             colorSchema="primary"
             variant="outline_bg"
@@ -273,6 +213,76 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           </Button>
         </div>
       )}
+      <div className="mt-2 flex w-1/4 min-w-[21.2rem] gap-2 md:min-w-[20.1rem] lg:w-1/6">
+        {shouldDisplayLoginMethod(LoginMethod.GOOGLE) && (
+          <Tooltip position="bottom" content={t("login.continue-with-google")}>
+            <IconButton
+              ariaLabel={t("login.continue-with-google")}
+              colorSchema="primary"
+              variant="outline_bg"
+              onClick={() => {
+                const callbackPort = queryParams.get("callback_port");
+
+                window.open(
+                  `/api/v1/sso/redirect/google${
+                    callbackPort ? `?callback_port=${callbackPort}` : ""
+                  }`
+                );
+                window.close();
+              }}
+              className="h-10 w-full bg-mineshaft-600"
+            >
+              <FontAwesomeIcon icon={faGoogle} />
+            </IconButton>
+          </Tooltip>
+        )}
+        {shouldDisplayLoginMethod(LoginMethod.GITHUB) && (
+          <Tooltip position="bottom" content="Continue with GitHub">
+            <IconButton
+              ariaLabel="Login continue with GitHub"
+              colorSchema="primary"
+              variant="outline_bg"
+              onClick={() => {
+                const callbackPort = queryParams.get("callback_port");
+
+                window.open(
+                  `/api/v1/sso/redirect/github${
+                    callbackPort ? `?callback_port=${callbackPort}` : ""
+                  }`
+                );
+
+                window.close();
+              }}
+              className="h-10 w-full bg-mineshaft-600"
+            >
+              <FontAwesomeIcon icon={faGithub} />
+            </IconButton>
+          </Tooltip>
+        )}
+        {shouldDisplayLoginMethod(LoginMethod.GITLAB) && (
+          <Tooltip position="bottom" content="Continue with GitLab">
+            <IconButton
+              ariaLabel="Login continue with GitLab"
+              colorSchema="primary"
+              variant="outline_bg"
+              onClick={() => {
+                const callbackPort = queryParams.get("callback_port");
+
+                window.open(
+                  `/api/v1/sso/redirect/gitlab${
+                    callbackPort ? `?callback_port=${callbackPort}` : ""
+                  }`
+                );
+
+                window.close();
+              }}
+              className="h-10 w-full bg-mineshaft-600"
+            >
+              <FontAwesomeIcon icon={faGitlab} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </div>
       {(!config.enabledLoginMethods ||
         (shouldDisplayLoginMethod(LoginMethod.EMAIL) && config.enabledLoginMethods.length > 1)) && (
         <div className="my-4 flex w-1/4 min-w-[20rem] flex-row items-center py-2 lg:w-1/6">
@@ -316,7 +326,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
               />
             </div>
           )}
-          <div className="mt-3 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+          <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
             <Button
               disabled={shouldShowCaptcha && captchaToken === ""}
               type="submit"

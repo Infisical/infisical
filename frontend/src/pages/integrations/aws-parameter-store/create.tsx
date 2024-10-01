@@ -17,6 +17,7 @@ import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
 
 import {
+  Badge,
   Button,
   Card,
   CardTitle,
@@ -245,8 +246,8 @@ export default function AWSParameterStoreCreateIntegrationPage() {
                   className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
-                    <SelectItem value={awsRegion.slug} key={`flyio-environment-${awsRegion.slug}`}>
-                      {awsRegion.name}
+                    <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
+                      {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
                     </SelectItem>
                   ))}
                 </Select>

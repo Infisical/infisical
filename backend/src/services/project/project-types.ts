@@ -29,6 +29,7 @@ export type TCreateProjectDTO = {
   workspaceName: string;
   slug?: string;
   kmsKeyId?: string;
+  createDefaultEnvs?: boolean;
 };
 
 export type TDeleteProjectBySlugDTO = {

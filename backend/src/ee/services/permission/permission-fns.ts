@@ -1,5 +1,5 @@
 import { TOrganizations } from "@app/db/schemas";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
 function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
@@ -25,7 +25,7 @@ function validateOrgSSO(actorAuthMethod: ActorAuthMethod, isOrgSsoEnforced: TOrg
     !isAuthMethodSaml(actorAuthMethod) &&
     actorAuthMethod !== AuthMethod.OIDC
   ) {
-    throw new UnauthorizedError({ name: "Cannot access org-scoped resource" });
+    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
   }
 }
 

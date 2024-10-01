@@ -19,7 +19,7 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import {
@@ -498,7 +498,7 @@ export const fnSecretBlindIndexCheck = async ({
     const hasUnknownSecretsProvided = secretKeysInDB.length !== inputSecrets.length;
     if (hasUnknownSecretsProvided) {
       const keysMissingInDB = Object.keys(keyName2BlindIndex).filter((key) => !secretKeysInDB.includes(key));
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: `Secret not found: blind index ${keysMissingInDB.join(",")}`
       });
     }
@@ -757,7 +757,7 @@ export const createManySecretsRawFnFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Create secret"
       });
@@ -798,7 +798,7 @@ export const createManySecretsRawFnFactory = ({
       // get all tags
       const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
       const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-      if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
+      if (tags.length !== tagIds.length) throw new NotFoundError({ message: "Tag not found" });
 
       const newSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkInsert({
@@ -820,7 +820,7 @@ export const createManySecretsRawFnFactory = ({
     }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Create secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Create secret" });
 
     // insert operation
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
@@ -833,7 +833,7 @@ export const createManySecretsRawFnFactory = ({
     });
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
@@ -865,7 +865,7 @@ export const createManySecretsRawFnFactory = ({
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tags.length !== tagIds.length) throw new NotFoundError({ message: "Tag not found" });
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
@@ -917,7 +917,7 @@ export const updateManySecretsRawFnFactory = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Folder not found for the given environment slug & secret path",
         name: "Update secret"
       });
@@ -936,7 +936,7 @@ export const updateManySecretsRawFnFactory = ({
         }))
       );
       if (secretsToUpdate.length !== secrets.length)
-        throw new BadRequestError({ message: `Secret not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
+        throw new NotFoundError({ message: `Secret does not exist: ${secretsToUpdate.map((el) => el.key).join(",")}` });
 
       // now find any secret that needs to update its name
       // same process as above
@@ -950,8 +950,8 @@ export const updateManySecretsRawFnFactory = ({
           }))
         );
         if (secretsWithNewNameInDB.length)
-          throw new BadRequestError({
-            message: `Secret not exist: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
+          throw new NotFoundError({
+            message: `Secret does not exist: ${secretsWithNewName.map((el) => el.newSecretName).join(",")}`
           });
       }
 
@@ -977,7 +977,7 @@ export const updateManySecretsRawFnFactory = ({
 
       const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
       const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-      if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+      if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
       const updatedSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkUpdate({
@@ -998,12 +998,12 @@ export const updateManySecretsRawFnFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
+    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "Update secret" });
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets: secrets,
@@ -1046,7 +1046,7 @@ export const updateManySecretsRawFnFactory = ({
 
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
 
     // now find any secret that needs to update its name
     // same process as above

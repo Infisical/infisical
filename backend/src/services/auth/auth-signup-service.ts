@@ -9,7 +9,7 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
-import { BadRequestError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -380,7 +380,7 @@ export const authSignupServiceFactory = ({
       status: OrgMembershipStatus.Invited
     });
     if (!orgMembership)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Failed to find invitation for email",
         name: "complete account invite"
       });

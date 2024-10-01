@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import {
   BadRequestError,
   DatabaseError,
+  ForbiddenRequestError,
   InternalServerError,
   NotFoundError,
   ScimRequestError,
@@ -18,24 +19,49 @@ enum JWTErrors {
   InvalidAlgorithm = "invalid algorithm"
 }
 
+enum HttpStatusCodes {
+  BadRequest = 400,
+  NotFound = 404,
+  Unauthorized = 401,
+  Forbidden = 403,
+  // eslint-disable-next-line @typescript-eslint/no-shadow
+  InternalServerError = 500
+}
+
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   server.setErrorHandler((error, req, res) => {
     req.log.error(error);
     if (error instanceof BadRequestError) {
-      void res.status(400).send({ statusCode: 400, message: error.message, error: error.name });
+      void res
+        .status(HttpStatusCodes.BadRequest)
+        .send({ statusCode: HttpStatusCodes.BadRequest, message: error.message, error: error.name });
     } else if (error instanceof NotFoundError) {
-      void res.status(404).send({ statusCode: 404, message: error.message, error: error.name });
+      void res
+        .status(HttpStatusCodes.NotFound)
+        .send({ statusCode: HttpStatusCodes.NotFound, message: error.message, error: error.name });
     } else if (error instanceof UnauthorizedError) {
-      void res.status(403).send({ statusCode: 403, message: error.message, error: error.name });
+      void res
+        .status(HttpStatusCodes.Unauthorized)
+        .send({ statusCode: HttpStatusCodes.Unauthorized, message: error.message, error: error.name });
     } else if (error instanceof DatabaseError || error instanceof InternalServerError) {
-      void res.status(500).send({ statusCode: 500, message: "Something went wrong", error: error.name });
+      void res
+        .status(HttpStatusCodes.InternalServerError)
+        .send({ statusCode: HttpStatusCodes.InternalServerError, message: "Something went wrong", error: error.name });
     } else if (error instanceof ZodError) {
-      void res.status(403).send({ statusCode: 403, error: "ValidationFailure", message: error.issues });
+      void res
+        .status(HttpStatusCodes.Unauthorized)
+        .send({ statusCode: HttpStatusCodes.Unauthorized, error: "ValidationFailure", message: error.issues });
     } else if (error instanceof ForbiddenError) {
-      void res.status(401).send({
-        statusCode: 401,
+      void res.status(HttpStatusCodes.Forbidden).send({
+        statusCode: HttpStatusCodes.Forbidden,
         error: "PermissionDenied",
         message: `You are not allowed to ${error.action} on ${error.subjectType}`
+      });
+    } else if (error instanceof ForbiddenRequestError) {
+      void res.status(HttpStatusCodes.Forbidden).send({
+        statusCode: HttpStatusCodes.Forbidden,
+        message: error.message,
+        error: error.name
       });
     } else if (error instanceof ScimRequestError) {
       void res.status(error.status).send({
@@ -59,8 +85,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         return error.message;
       })();
 
-      void res.status(401).send({
-        statusCode: 401,
+      void res.status(HttpStatusCodes.Forbidden).send({
+        statusCode: HttpStatusCodes.Forbidden,
         error: "TokenError",
         message
       });

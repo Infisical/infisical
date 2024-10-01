@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { Badge, Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useAddExternalKms, useUpdateExternalKms } from "@app/hooks/api";
 import {
@@ -244,7 +244,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
             >
               {AWS_REGIONS.map((awsRegion) => (
                 <SelectItem value={awsRegion.slug} key={`kms-aws-region-${awsRegion.slug}`}>
-                  {awsRegion.name} ({awsRegion.slug})
+                  {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
                 </SelectItem>
               ))}
             </Select>

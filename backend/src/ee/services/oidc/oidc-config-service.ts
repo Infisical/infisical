@@ -17,7 +17,7 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -77,7 +77,7 @@ export const oidcConfigServiceFactory = ({
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const org = await orgDAL.findOne({ slug: dto.orgSlug });
     if (!org) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Organization not found",
         name: "OrgNotFound"
       });
@@ -98,7 +98,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     if (!oidcCfg) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Failed to find organization OIDC configuration"
       });
     }
@@ -106,7 +106,7 @@ export const oidcConfigServiceFactory = ({
     // decrypt and return cfg
     const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
     if (!orgBot) {
-      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -160,7 +160,7 @@ export const oidcConfigServiceFactory = ({
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
-      throw new BadRequestError({
+      throw new ForbiddenRequestError({
         message: "Login with OIDC is disabled by administrator."
       });
     }
@@ -173,7 +173,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     const organization = await orgDAL.findOrgById(orgId);
-    if (!organization) throw new BadRequestError({ message: "Org not found" });
+    if (!organization) throw new NotFoundError({ message: "Organization not found" });
 
     let user: TUsers;
     if (userAlias) {
@@ -358,7 +358,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     if (!org) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Organization not found"
       });
     }
@@ -380,7 +380,7 @@ export const oidcConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
     const orgBot = await orgBotDAL.findOne({ orgId: org.id });
-    if (!orgBot) throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -447,7 +447,7 @@ export const oidcConfigServiceFactory = ({
       slug: orgSlug
     });
     if (!org) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Organization not found"
       });
     }
@@ -553,7 +553,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     if (!org) {
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Organization not found."
       });
     }
@@ -564,7 +564,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     if (!oidcCfg || !oidcCfg.isActive) {
-      throw new BadRequestError({
+      throw new ForbiddenRequestError({
         message: "Failed to authenticate with OIDC SSO"
       });
     }
@@ -621,7 +621,7 @@ export const oidcConfigServiceFactory = ({
         if (oidcCfg.allowedEmailDomains) {
           const allowedDomains = oidcCfg.allowedEmailDomains.split(", ");
           if (!allowedDomains.includes(claims.email.split("@")[1])) {
-            throw new BadRequestError({
+            throw new ForbiddenRequestError({
               message: "Email not allowed."
             });
           }

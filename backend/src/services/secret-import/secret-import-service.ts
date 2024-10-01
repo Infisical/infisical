@@ -106,10 +106,10 @@ export const secretImportServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Create import" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found", name: "Create import" });
 
     const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
-    if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+    if (!importEnv) throw new NotFoundError({ error: "Imported env not found", name: "Create import" });
 
     const sourceFolder = await folderDAL.findBySecretPath(projectId, data.environment, data.path);
     if (sourceFolder) {
@@ -118,7 +118,7 @@ export const secretImportServiceFactory = ({
         importEnv: folder.environment.id,
         importPath: secretPath
       });
-      if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
+      if (existingImport) throw new NotFoundError({ message: "Cyclic import not allowed" });
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
@@ -194,7 +194,7 @@ export const secretImportServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Update import" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found", name: "Update import" });
 
     const secImpDoc = await secretImportDAL.findOne({ folderId: folder.id, id });
     if (!secImpDoc) throw ERR_SEC_IMP_NOT_FOUND;
@@ -202,7 +202,7 @@ export const secretImportServiceFactory = ({
     const importedEnv = data.environment // this is get env information of new one or old one
       ? (await projectEnvDAL.findBySlugs(projectId, [data.environment]))?.[0]
       : await projectEnvDAL.findById(secImpDoc.importEnv);
-    if (!importedEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+    if (!importedEnv) throw new NotFoundError({ error: "Imported env not found", name: "Create import" });
 
     const sourceFolder = await folderDAL.findBySecretPath(
       projectId,
@@ -215,7 +215,7 @@ export const secretImportServiceFactory = ({
         importEnv: folder.environment.id,
         importPath: secretPath
       });
-      if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
+      if (existingImport) throw new NotFoundError({ message: "Cyclic import not allowed" });
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
@@ -280,11 +280,11 @@ export const secretImportServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Delete import" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found", name: "Delete import" });
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
-      if (!doc) throw new BadRequestError({ name: "Sec imp del", message: "Secret import doc not found" });
+      if (!doc) throw new NotFoundError({ message: "Secret import not found" });
       if (doc.isReplication) {
         const replicationFolderPath = path.join(secretPath, getReplicationFolderName(doc.id));
         const replicatedFolder = await folderDAL.findBySecretPath(projectId, environment, replicationFolderPath, tx);
@@ -306,7 +306,7 @@ export const secretImportServiceFactory = ({
       }
 
       const importEnv = await projectEnvDAL.findById(doc.importEnv);
-      if (!importEnv) throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
+      if (!importEnv) throw new NotFoundError({ error: "Imported env not found" });
       return { ...doc, importEnv };
     });
 
@@ -353,13 +353,13 @@ export const secretImportServiceFactory = ({
     }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Update import" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
     const [secretImportDoc] = await secretImportDAL.find({
       folderId: folder.id,
       [`${TableName.SecretImport}.id` as "id"]: secretImportDocId
     });
-    if (!secretImportDoc) throw new BadRequestError({ message: "Failed to find secret import" });
+    if (!secretImportDoc) throw new NotFoundError({ message: "Failed to find secret import" });
 
     if (!secretImportDoc.isReplication) throw new BadRequestError({ message: "Import is not in replication mode" });
 
@@ -449,7 +449,7 @@ export const secretImportServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
     const secImports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
     return secImports;
@@ -546,7 +546,7 @@ export const secretImportServiceFactory = ({
     }
 
     if (!botKey)
-      throw new BadRequestError({
+      throw new NotFoundError({
         message: "Project bot not found. Please upgrade your project.",
         name: "bot_not_found_error"
       });

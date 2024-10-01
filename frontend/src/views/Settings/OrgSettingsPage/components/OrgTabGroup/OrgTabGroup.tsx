@@ -2,7 +2,11 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Tab } from "@headlessui/react";
 
+import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
+import { ImportTab } from "../ImportTab";
 import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
@@ -13,7 +17,8 @@ const tabs = [
   { name: "Security", key: "tab-org-security" },
   { name: "Encryption", key: "tab-org-encryption" },
   { name: "Workflow Integrations", key: "workflow-integrations" },
-  { name: "Audit Log Streams", key: "tag-audit-log-streams" }
+  { name: "Audit Log Streams", key: "tag-audit-log-streams" },
+  { name: "Import", key: "tab-import" }
 ];
 export const OrgTabGroup = () => {
   const { query } = useRouter();
@@ -63,6 +68,11 @@ export const OrgTabGroup = () => {
         <Tab.Panel>
           <AuditLogStreamsTab />
         </Tab.Panel>
+        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+        <Tab.Panel>
+          <ImportTab />
+        </Tab.Panel>
+        </OrgPermissionCan>
       </Tab.Panels>
     </Tab.Group>
   );

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -61,7 +61,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { permissions, privilegePermission } = req.body;
       if (!permissions && !privilegePermission) {
-        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+        throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
 
       const permission = privilegePermission
@@ -140,7 +140,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { permissions, privilegePermission } = req.body;
       if (!permissions && !privilegePermission) {
-        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+        throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
 
       const permission = privilegePermission
@@ -224,7 +224,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     handler: async (req) => {
       const { permissions, privilegePermission, ...updatedInfo } = req.body.privilegeDetails;
       if (!permissions && !privilegePermission) {
-        throw new BadRequestError({ message: "Permission or privilegePermission must be provided" });
+        throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
 
       const permission = privilegePermission

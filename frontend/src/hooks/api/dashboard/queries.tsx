@@ -48,21 +48,15 @@ export const dashboardKeys = {
 };
 
 export const fetchProjectSecretsOverview = async ({
-  includeFolders,
-  includeSecrets,
-  includeDynamicSecrets,
   environments,
   ...params
 }: TGetDashboardProjectSecretsOverviewDTO) => {
   const { data } = await apiRequest.get<DashboardProjectSecretsOverviewResponse>(
-    "/api/v3/dashboard/secrets-overview",
+    "/api/v1/dashboard/secrets-overview",
     {
       params: {
         ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        includeFolders: includeFolders ? "1" : "",
-        includeSecrets: includeSecrets ? "1" : "",
-        includeDynamicSecrets: includeDynamicSecrets ? "1" : ""
+        environments: encodeURIComponent(environments.join(","))
       }
     }
   );
@@ -71,22 +65,14 @@ export const fetchProjectSecretsOverview = async ({
 };
 
 export const fetchProjectSecretsDetails = async ({
-  includeFolders,
-  includeImports,
-  includeSecrets,
-  includeDynamicSecrets,
   tags,
   ...params
 }: TGetDashboardProjectSecretsDetailsDTO) => {
   const { data } = await apiRequest.get<DashboardProjectSecretsDetailsResponse>(
-    "/api/v3/dashboard/secrets-details",
+    "/api/v1/dashboard/secrets-details",
     {
       params: {
         ...params,
-        includeImports: includeImports ? "1" : "",
-        includeFolders: includeFolders ? "1" : "",
-        includeSecrets: includeSecrets ? "1" : "",
-        includeDynamicSecrets: includeDynamicSecrets ? "1" : "",
         tags: encodeURIComponent(
           Object.entries(tags)
             // eslint-disable-next-line @typescript-eslint/no-unused-vars

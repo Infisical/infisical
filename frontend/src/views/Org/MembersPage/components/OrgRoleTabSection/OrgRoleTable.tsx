@@ -96,8 +96,12 @@ export const OrgRoleTable = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() => router.push(`/org/${orgId}/roles/${id}`)}
                 >
-                  <Td>{name}</Td>
-                  <Td>{slug}</Td>
+                  <Td className="max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
+                    {name}
+                  </Td>
+                  <Td className="max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
+                    {slug}
+                  </Td>
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">

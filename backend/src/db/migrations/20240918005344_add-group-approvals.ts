@@ -3,34 +3,74 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
+  const hasAccessApproverGroupId = await knex.schema.hasColumn(
+    TableName.AccessApprovalPolicyApprover,
+    "approverGroupId"
+  );
+  const hasAccessApproverUserId = await knex.schema.hasColumn(TableName.AccessApprovalPolicyApprover, "approverUserId");
+  const hasSecretApproverGroupId = await knex.schema.hasColumn(
+    TableName.SecretApprovalPolicyApprover,
+    "approverGroupId"
+  );
+  const hasSecretApproverUserId = await knex.schema.hasColumn(TableName.SecretApprovalPolicyApprover, "approverUserId");
   if (await knex.schema.hasTable(TableName.AccessApprovalPolicyApprover)) {
-    // add column approverGroupId to AccessApprovalPolicyApprover
     await knex.schema.alterTable(TableName.AccessApprovalPolicyApprover, (table) => {
-      // make nullable
-      table.uuid("approverGroupId").nullable().references("id").inTable(TableName.Groups).onDelete("CASCADE");
+      // add column approverGroupId to AccessApprovalPolicyApprover
+      if (!hasAccessApproverGroupId) {
+        table.uuid("approverGroupId").nullable().references("id").inTable(TableName.Groups).onDelete("CASCADE");
+      }
+
       // make approverUserId nullable
-      table.uuid("approverUserId").nullable().alter();
+      if (hasAccessApproverUserId) {
+        table.uuid("approverUserId").nullable().alter();
+      }
     });
-    // add column approverGroupId to SecretApprovalPolicyApprover
     await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (table) => {
-      table.uuid("approverGroupId").references("id").inTable(TableName.Groups).onDelete("CASCADE");
-      table.uuid("approverUserId").nullable().alter();
+      // add column approverGroupId to SecretApprovalPolicyApprover
+      if (!hasSecretApproverGroupId) {
+        table.uuid("approverGroupId").nullable().references("id").inTable(TableName.Groups).onDelete("CASCADE");
+      }
+
+      // make approverUserId nullable
+      if (hasSecretApproverUserId) {
+        table.uuid("approverUserId").nullable().alter();
+      }
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  const hasAccessApproverGroupId = await knex.schema.hasColumn(
+    TableName.AccessApprovalPolicyApprover,
+    "approverGroupId"
+  );
+  const hasAccessApproverUserId = await knex.schema.hasColumn(TableName.AccessApprovalPolicyApprover, "approverUserId");
+  const hasSecretApproverGroupId = await knex.schema.hasColumn(
+    TableName.SecretApprovalPolicyApprover,
+    "approverGroupId"
+  );
+  const hasSecretApproverUserId = await knex.schema.hasColumn(TableName.SecretApprovalPolicyApprover, "approverUserId");
+
   if (await knex.schema.hasTable(TableName.AccessApprovalPolicyApprover)) {
-    // remove
     await knex.schema.alterTable(TableName.AccessApprovalPolicyApprover, (table) => {
-      table.dropColumn("approverGroupId");
-      table.uuid("approverUserId").notNullable().alter();
+      if (hasAccessApproverGroupId) {
+        table.dropColumn("approverGroupId");
+      }
+      // make approverUserId not nullable
+      if (hasAccessApproverUserId) {
+        table.uuid("approverUserId").notNullable().alter();
+      }
     });
 
     // remove
     await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (table) => {
-      table.dropColumn("approverGroupId");
-      table.uuid("approverUserId").notNullable().alter();
+      if (hasSecretApproverGroupId) {
+        table.dropColumn("approverGroupId");
+      }
+      // make approverUserId not nullable
+      if (hasSecretApproverUserId) {
+        table.uuid("approverUserId").notNullable().alter();
+      }
     });
   }
 }

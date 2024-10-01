@@ -39,7 +39,7 @@ export const identityAccessTokenServiceFactory = ({
 
     if (accessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
       await identityAccessTokenDAL.deleteById(tokenId);
-      throw new BadRequestError({
+      throw new UnauthorizedError({
         message: "Unable to renew because access token number of uses limit reached"
       });
     }
@@ -81,13 +81,15 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
+      throw new BadRequestError({ message: "Only identity access tokens can be renewed" });
+    }
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError();
+    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
 
     let { accessTokenNumUses } = identityAccessToken;
     const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
@@ -134,13 +136,15 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
       identityAccessTokenId: string;
     };
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) throw new UnauthorizedError();
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
+      throw new UnauthorizedError({ message: "Only identity access tokens can be revoked" });
+    }
 
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError();
+    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
 
     const revokedToken = await identityAccessTokenDAL.updateById(identityAccessToken.id, {
       isAccessTokenRevoked: true
@@ -154,10 +158,10 @@ export const identityAccessTokenServiceFactory = ({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
-    if (!identityAccessToken) throw new UnauthorizedError();
+    if (!identityAccessToken) throw new UnauthorizedError({ message: "No identity access token found" });
     if (identityAccessToken.isAccessTokenRevoked)
       throw new UnauthorizedError({
-        message: "Failed to authorize revoked access token"
+        message: "Failed to authorize revoked access token, access token is revoked"
       });
 
     if (ipAddress && identityAccessToken) {
@@ -172,7 +176,7 @@ export const identityAccessTokenServiceFactory = ({
     });
 
     if (!identityOrgMembership) {
-      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
+      throw new BadRequestError({ message: "Identity does not belong to any organization" });
     }
 
     let { accessTokenNumUses } = identityAccessToken;

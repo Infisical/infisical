@@ -1,4 +1,4 @@
-import { registerDashboardRouter } from "./dashboard-router";
+import { registerExternalMigrationRouter } from "./external-migration-router";
 import { registerLoginRouter } from "./login-router";
 import { registerSecretBlindIndexRouter } from "./secret-blind-index-router";
 import { registerSecretRouter } from "./secret-router";
@@ -11,5 +11,5 @@ export const registerV3Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserRouter, { prefix: "/users" });
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretBlindIndexRouter, { prefix: "/workspaces" });
-  await server.register(registerDashboardRouter, { prefix: "/dashboard" });
+  await server.register(registerExternalMigrationRouter, { prefix: "/migrate" });
 };

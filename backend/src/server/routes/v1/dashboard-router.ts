@@ -17,6 +17,20 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+// handle querystring boolean values
+const booleanSchema = z
+  .union([z.boolean(), z.string().trim()])
+  .transform((value) => {
+    if (typeof value === "string") {
+      // ie if not empty, 0 or false, return true
+      return Boolean(value) && Number(value) !== 0 && value.toLowerCase() !== "false";
+    }
+
+    return value;
+  })
+  .optional()
+  .default(true);
+
 export const registerDashboardRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -57,21 +71,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
-        includeSecrets: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
-        includeFolders: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
-        includeDynamicSecrets: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets)
+        includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
+        includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
+        includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets)
       }),
       response: {
         200: z.object({
@@ -354,26 +356,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
-        includeSecrets: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
-        includeFolders: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
-        includeDynamicSecrets: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
-        includeImports: z.coerce
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports)
+        includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
+        includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
+        includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
+        includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports)
       }),
       response: {
         200: z.object({

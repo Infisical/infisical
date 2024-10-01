@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 
 import { TApiKeys } from "@app/db/schemas/api-keys";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
 import { TUserDALFactory } from "../user/user-dal";
 import { TApiKeyDALFactory } from "./api-key-dal";
@@ -45,7 +45,7 @@ export const apiKeyServiceFactory = ({ apiKeyDAL, userDAL }: TApiKeyServiceFacto
 
   const deleteApiKey = async (userId: string, apiKeyId: string) => {
     const [apiKeyData] = await apiKeyDAL.delete({ id: apiKeyId, userId });
-    if (!apiKeyData) throw new BadRequestError({ message: "Failed to find api key", name: "delete api key" });
+    if (!apiKeyData) throw new NotFoundError({ message: "API key not found" });
     return formatApiKey(apiKeyData);
   };
 

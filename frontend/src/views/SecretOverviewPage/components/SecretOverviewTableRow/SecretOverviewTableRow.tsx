@@ -73,7 +73,7 @@ export const SecretOverviewTableRow = ({
         >
           <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
-              <div className="text-blue-300/70">
+              <div className="text-bunker-300">
                 <Checkbox
                   id={`checkbox-${secretKey}`}
                   isChecked={isSelected}

@@ -1,12 +1,11 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TVerifyApprovers } from "./access-approval-policy-types";
+import { TIsApproversValid } from "./access-approval-policy-types";
 
-export const verifyApprovers = async ({
+export const isApproversValid = async ({
   userIds,
   projectId,
   orgId,
@@ -14,9 +13,9 @@ export const verifyApprovers = async ({
   actorAuthMethod,
   secretPath,
   permissionService
-}: TVerifyApprovers) => {
-  for await (const userId of userIds) {
-    try {
+}: TIsApproversValid) => {
+  try {
+    for await (const userId of userIds) {
       const { permission: approverPermission } = await permissionService.getProjectPermission(
         ActorType.USER,
         userId,
@@ -29,8 +28,9 @@ export const verifyApprovers = async ({
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment: envSlug, secretPath })
       );
-    } catch (err) {
-      throw new BadRequestError({ message: "One or more approvers doesn't have access to be specified secret path" });
     }
+  } catch {
+    return false;
   }
+  return true;
 };

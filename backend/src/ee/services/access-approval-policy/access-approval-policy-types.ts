@@ -3,7 +3,7 @@ import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 
-export type TVerifyApprovers = {
+export type TIsApproversValid = {
   userIds: string[];
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   envSlug: string;
