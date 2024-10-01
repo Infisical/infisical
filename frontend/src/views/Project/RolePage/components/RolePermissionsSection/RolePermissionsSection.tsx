@@ -1,5 +1,5 @@
 import { FormProvider, useForm } from "react-hook-form";
-import { faCancel, faPlus, faSave } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -81,12 +81,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               <>
                 {isDirty && (
                   <Button
-                    className="ml-4 text-mineshaft-300"
+                    className="mr-4 text-mineshaft-300"
                     variant="link"
                     isDisabled={isSubmitting}
                     isLoading={isSubmitting}
                     onClick={() => reset()}
-                    leftIcon={<FontAwesomeIcon icon={faCancel} />}
                   >
                     Discard
                   </Button>
