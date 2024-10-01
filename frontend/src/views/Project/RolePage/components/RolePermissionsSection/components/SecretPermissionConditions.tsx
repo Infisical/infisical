@@ -1,7 +1,6 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
@@ -31,12 +30,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
   });
 
   return (
-    <div
-      className={twMerge(
-        "mt-6 bg-mineshaft-800",
-        items.fields.length && " border-t border-t-gray-800  pt-2"
-      )}
-    >
+    <div className="mt-6 border-t  border-t-gray-800 bg-mineshaft-800  pt-2">
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
           const lhs = watch(`permissions.secrets.${position}.conditions.${index}.lhs`);
