@@ -18,13 +18,15 @@ type Props = {
   environment: string;
   workspaceId: string;
   secretPath?: string;
+  onNavigateToFolder: (path: string) => void;
 };
 
 export const FolderListView = ({
   folders = [],
   environment,
   workspaceId,
-  secretPath = "/"
+  secretPath = "/",
+  onNavigateToFolder
 }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "updateFolder",
@@ -88,13 +90,16 @@ export const FolderListView = ({
   };
 
   const handleFolderClick = (name: string) => {
-    router.push({
-      pathname: router.pathname,
-      query: {
-        ...router.query,
-        secretPath: `${router.query?.secretPath || ""}/${name}`
-      }
-    });
+    const path = `${router.query?.secretPath || ""}/${name}`;
+    router
+      .push({
+        pathname: router.pathname,
+        query: {
+          ...router.query,
+          secretPath: path
+        }
+      })
+      .then(() => onNavigateToFolder(path));
   };
 
   return (

@@ -38,7 +38,7 @@ const UserPanelTable = ({
   const [searchUserFilter, setSearchUserFilter] = useState("");
   const { user } = useUser();
   const userId = user?.id || "";
-  const debounedSearchTerm = useDebounce(searchUserFilter, 500);
+  const [debounedSearchTerm] = useDebounce(searchUserFilter, 500);
   const { subscription } = useSubscription();
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetUsers({

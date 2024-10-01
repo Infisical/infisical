@@ -33,7 +33,7 @@ export const SecretPathInput = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isInputFocused, setIsInputFocus] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const debouncedInputValue = useDebounce(inputValue, 200);
+  const [debouncedInputValue] = useDebounce(inputValue, 200);
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";

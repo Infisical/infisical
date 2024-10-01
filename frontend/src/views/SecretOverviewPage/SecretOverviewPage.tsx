@@ -97,11 +97,16 @@ type Filter = {
 };
 const INIT_PER_PAGE = 20;
 
+const DEFAULT_FILTER_STATE = {
+  [RowType.Folder]: true,
+  [RowType.DynamicSecret]: true,
+  [RowType.Secret]: true
+};
+
 export const SecretOverviewPage = () => {
   const { t } = useTranslation();
 
   const router = useRouter();
-
   // this is to set expandable table width
   // coz when overflow the table goes to the right
   const parentTableRef = useRef<HTMLTableElement>(null);
@@ -121,14 +126,13 @@ export const SecretOverviewPage = () => {
   const workspaceId = currentWorkspace?.id as string;
   const projectSlug = currentWorkspace?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
-  const debouncedSearchFilter = useDebounce(searchFilter);
+  const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (router.query?.secretPath as string) || "/";
 
-  const [filter, setFilter] = useState<Filter>({
-    [RowType.Folder]: true,
-    [RowType.DynamicSecret]: true,
-    [RowType.Secret]: true
-  });
+  const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
+  const [filterHistory, setFilterHistory] = useState<
+    Map<string, { filter: Filter; searchFilter: string }>
+  >(new Map());
 
   const [selectedEntries, setSelectedEntries] = useState<{
     [EntryType.FOLDER]: Record<string, boolean>;
@@ -195,7 +199,7 @@ export const SecretOverviewPage = () => {
 
   useEffect(() => {
     setVisibleEnvs(userAvailableEnvs);
-  }, [userAvailableEnvs, secretPath]);
+  }, [userAvailableEnvs]);
 
   const { isImportedSecretPresentInEnv, getImportedSecretByKey, getEnvImportedSecretKeyCount } =
     useGetImportedSecretsAllEnvs({
@@ -456,16 +460,35 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleResetSearch = () => setSearchFilter("");
+  const handleResetSearch = (path: string) => {
+    const restore = filterHistory.get(path);
+    setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
+    const search = restore?.searchFilter ?? "";
+    setSearchFilter(search);
+    setDebouncedSearchFilter(search);
+  };
 
   const handleFolderClick = (path: string) => {
-    router.push({
-      pathname: router.pathname,
-      query: {
-        ...router.query,
-        secretPath: `${router.query?.secretPath || ""}/${path}`
-      }
+    // store for breadcrumb nav to restore previously used filters
+    setFilterHistory((prev) => {
+      const curr = new Map(prev);
+      curr.set(secretPath, { filter, searchFilter });
+      return curr;
     });
+
+    router
+      .push({
+        pathname: router.pathname,
+        query: {
+          ...router.query,
+          secretPath: `${router.query?.secretPath || ""}/${path}`
+        }
+      })
+      .then(() => {
+        setFilter(DEFAULT_FILTER_STATE);
+        setSearchFilter("");
+        setDebouncedSearchFilter("");
+      });
   };
 
   const handleExploreEnvClick = async (slug: string) => {
@@ -544,7 +567,9 @@ export const SecretOverviewPage = () => {
 
   const isTableEmpty = totalCount === 0;
 
-  const isTableFiltered = Boolean(Object.values(filter).filter((enabled) => !enabled).length);
+  const isTableFiltered =
+    Boolean(Object.values(filter).filter((enabled) => !enabled).length) ||
+    userAvailableEnvs.length !== visibleEnvs.length;
 
   if (!isProjectV3)
     return (
@@ -706,7 +731,12 @@ export const SecretOverviewPage = () => {
                   placeholder="Search by secret/folder name..."
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
-                  leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                  leftIcon={
+                    <FontAwesomeIcon
+                      icon={faMagnifyingGlass}
+                      className={searchFilter ? "text-primary" : ""}
+                    />
+                  }
                 />
               </div>
               {userAvailableEnvs.length > 0 && (

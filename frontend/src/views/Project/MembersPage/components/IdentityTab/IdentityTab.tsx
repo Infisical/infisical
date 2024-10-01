@@ -72,7 +72,7 @@ export const IdentityTab = withProjectPermission(
     const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
     const [orderBy, setOrderBy] = useState(ProjectIdentityOrderBy.Name);
     const [search, setSearch] = useState("");
-    const debouncedSearch = useDebounce(search);
+    const [debouncedSearch] = useDebounce(search);
 
     const workspaceId = currentWorkspace?.id ?? "";
 
