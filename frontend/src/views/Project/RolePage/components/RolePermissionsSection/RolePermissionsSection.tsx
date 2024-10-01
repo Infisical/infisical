@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent, ModalTrigger, Tooltip } from "@app/components/v2";
+import { Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
@@ -105,20 +105,16 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     isOpen={popUp.createPolicy.isOpen}
                     onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
                   >
-                    <Tooltip content="New policy">
-                      <div>
-                        <ModalTrigger asChild disabled={isDisabled}>
-                          <Button
-                            isDisabled={isDisabled}
-                            className="h-10 rounded-l-none"
-                            variant="outline_bg"
-                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                          >
-                            New policy
-                          </Button>
-                        </ModalTrigger>
-                      </div>
-                    </Tooltip>
+                    <ModalTrigger asChild disabled={isDisabled}>
+                      <Button
+                        isDisabled={isDisabled}
+                        className="h-10 rounded-l-none"
+                        variant="outline_bg"
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        New policy
+                      </Button>
+                    </ModalTrigger>
                     <ModalContent
                       title="New Policy"
                       subTitle="Policies grant additional permissions."
