@@ -1,3 +1,7 @@
+import { OrgMembershipRole } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ForbiddenRequestError } from "@app/lib/errors";
+
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
@@ -10,6 +14,7 @@ type TExternalMigrationServiceFactoryDep = {
   orgService: TOrgServiceFactory;
   projectEnvService: TProjectEnvServiceFactory;
   secretService: TSecretServiceFactory;
+  permissionService: TPermissionServiceFactory;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -18,6 +23,7 @@ export const externalMigrationServiceFactory = ({
   projectService,
   orgService,
   projectEnvService,
+  permissionService,
   secretService
 }: TExternalMigrationServiceFactoryDep) => {
   const importEnvKeyData = async ({
@@ -28,6 +34,18 @@ export const externalMigrationServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TImportEnvKeyDataCreate) => {
+    const { membership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (membership.role !== OrgMembershipRole.Admin) {
+      throw new ForbiddenRequestError({ message: "Only admins can import data" });
+    }
+
     const json = await decryptEnvKeyDataFn(decryptionKey, encryptedJson);
     const envKeyData = await parseEnvKeyDataFn(json);
     const response = await importDataIntoInfisicalFn({

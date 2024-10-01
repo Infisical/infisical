@@ -1190,6 +1190,7 @@ export const registerRoutes = async (
     projectService,
     orgService,
     projectEnvService,
+    permissionService,
     secretService
   });
 
