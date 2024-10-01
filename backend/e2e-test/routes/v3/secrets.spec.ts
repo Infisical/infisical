@@ -812,8 +812,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
         },
         body: createSecretReqBody
       });
-      console.log(">>>>>>>>>>");
-      console.log(createSecRes.payload);
       expect(createSecRes.statusCode).toBe(200);
       const createdSecretPayload = JSON.parse(createSecRes.payload);
       expect(createdSecretPayload).toHaveProperty("secret");
