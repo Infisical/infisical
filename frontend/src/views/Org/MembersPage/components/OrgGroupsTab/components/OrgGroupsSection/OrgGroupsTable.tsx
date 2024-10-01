@@ -108,7 +108,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             <Select
                               value={role === "custom" ? (customRole?.slug as string) : role}
                               isDisabled={!isAllowed}
-                              className="w-40 bg-mineshaft-600"
+                              className="w-48 bg-mineshaft-600"
                               dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                               onValueChange={(selectedRole) =>
                                 handleChangeRole({
