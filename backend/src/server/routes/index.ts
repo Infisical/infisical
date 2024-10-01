@@ -96,6 +96,7 @@ import { certificateAuthorityServiceFactory } from "@app/services/certificate-au
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -1185,6 +1186,14 @@ export const registerRoutes = async (
     workflowIntegrationDAL
   });
 
+  const migrationService = externalMigrationServiceFactory({
+    projectService,
+    orgService,
+    projectEnvService,
+    permissionService,
+    secretService
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1268,7 +1277,8 @@ export const registerRoutes = async (
     externalKms: externalKmsService,
     orgAdmin: orgAdminService,
     slack: slackService,
-    workflowIntegration: workflowIntegrationService
+    workflowIntegration: workflowIntegrationService,
+    migration: migrationService
   });
 
   const cronJobs: CronJob[] = [];

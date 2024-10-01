@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ProjectVersion, TProjectEnvironments } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -146,7 +146,8 @@ export const projectServiceFactory = ({
     actorAuthMethod,
     workspaceName,
     slug: projectSlug,
-    kmsKeyId
+    kmsKeyId,
+    createDefaultEnvs = true
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
 
@@ -207,14 +208,17 @@ export const projectServiceFactory = ({
       );
 
       // set default environments and root folder for provided environments
-      const envs = await projectEnvDAL.insertMany(
-        DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
-        tx
-      );
-      await folderDAL.insertMany(
-        envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
-        tx
-      );
+      let envs: TProjectEnvironments[] = [];
+      if (createDefaultEnvs) {
+        envs = await projectEnvDAL.insertMany(
+          DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
+          tx
+        );
+        await folderDAL.insertMany(
+          envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
+          tx
+        );
+      }
 
       // 3. Create a random key that we'll use as the project key.
       const { key: encryptedProjectKey, iv: encryptedProjectKeyIv } = createProjectKey({
