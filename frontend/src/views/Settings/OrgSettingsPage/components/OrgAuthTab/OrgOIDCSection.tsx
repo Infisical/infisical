@@ -47,17 +47,13 @@ export const OrgOIDCSection = (): JSX.Element => {
       });
     } catch (err) {
       console.error(err);
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} OIDC SSO`,
-        type: "error"
-      });
     }
   };
 
   const handleEnforceOrgAuthToggle = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
-      if (!subscription?.samlSSO) {
+      if (!subscription?.oidcSSO) {
         handlePopUpOpen("upgradePlan");
         return;
       }
@@ -78,10 +74,7 @@ export const OrgOIDCSection = (): JSX.Element => {
         window.close();
       }
     } catch (err) {
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
+      console.error(err);
     }
   };
 
