@@ -34,18 +34,12 @@ export type TIdentityProjectAdditionalPrivilegeServiceFactory = ReturnType<
 
 // TODO(akhilmhdh): move this to more centralized
 export const UnpackedPermissionSchema = z.object({
-  subject: z.union([z.string().min(1), z.string().array()]).optional(),
-  action: z.union([z.string().min(1), z.string().array()]),
-  conditions: z
-    .object({
-      environment: z.string().optional(),
-      secretPath: z
-        .object({
-          $glob: z.string().min(1)
-        })
-        .optional()
-    })
-    .optional()
+  subject: z
+    .union([z.string().min(1), z.string().array()])
+    .transform((el) => (typeof el !== "string" ? el[0] : el))
+    .optional(),
+  action: z.union([z.string().min(1), z.string().array()]).transform((el) => (typeof el === "string" ? [el] : el)),
+  conditions: z.unknown().optional()
 });
 
 const unpackPermissions = (permissions: unknown) =>

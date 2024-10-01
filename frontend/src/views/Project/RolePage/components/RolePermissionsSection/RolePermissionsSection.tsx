@@ -1,127 +1,57 @@
-import { useForm } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
+import { faPlus, faSave } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
+import { Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
+
+import { GeneralPermissionOptions } from "./components/GeneralPermissionOptions";
+import { NewPermissionRule } from "./components/NewPermissionRule";
+import { SecretPermissionConditions } from "./components/SecretPermissionConditions";
+import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
   formSchema,
+  PROJECT_PERMISSION_OBJECT,
   rolePermission2Form,
   TFormSchema
-} from "@app/views/Project/RolePage/components/RolePermissionsSection/ProjectRoleModifySection.utils";
-
-import { RolePermissionRow } from "./RolePermissionRow";
-import { RowPermissionSecretFoldersRow } from "./RolePermissionSecretFoldersRow";
-import { RowPermissionSecretsRow } from "./RolePermissionSecretsRow";
-
-const SINGLE_PERMISSION_LIST = [
-  {
-    title: "Project",
-    formName: "workspace"
-  },
-  {
-    title: "Integrations",
-    formName: "integrations"
-  },
-  {
-    title: "Secret Protect policy",
-    formName: ProjectPermissionSub.SecretApproval
-  },
-  {
-    title: "Roles",
-    formName: "role"
-  },
-  {
-    title: "User Management",
-    formName: "member"
-  },
-  {
-    title: "Group Management",
-    formName: "groups"
-  },
-  {
-    title: "Machine Identity Management",
-    formName: "identity"
-  },
-  {
-    title: "Webhooks",
-    formName: "webhooks"
-  },
-  {
-    title: "Service Tokens",
-    formName: "service-tokens"
-  },
-  {
-    title: "Settings",
-    formName: "settings"
-  },
-  {
-    title: "Environments",
-    formName: "environments"
-  },
-  {
-    title: "Tags",
-    formName: "tags"
-  },
-  {
-    title: "IP Allowlist",
-    formName: "ip-allowlist"
-  },
-  {
-    title: "Certificate Authorities",
-    formName: "certificate-authorities"
-  },
-  {
-    title: "Certificates",
-    formName: "certificates"
-  },
-  {
-    title: "Certificate Templates",
-    formName: "certificate-templates"
-  },
-  {
-    title: "PKI Collections",
-    formName: "pki-collections"
-  },
-  {
-    title: "PKI Alerts",
-    formName: "pki-alerts"
-  },
-  {
-    title: "Secret Rollback",
-    formName: "secret-rollback"
-  }
-] as const;
+} from "./ProjectRoleModifySection.utils";
 
 type Props = {
   roleSlug: string;
+  isDisabled?: boolean;
 };
 
-export const RolePermissionsSection = ({ roleSlug }: Props) => {
+export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
   const projectSlug = currentWorkspace?.slug || "";
-  const { data: role } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
+  const { data: role, isLoading } = useGetProjectRoleBySlug(
+    currentWorkspace?.slug ?? "",
+    roleSlug as string
+  );
+
+  const form = useForm<TFormSchema>({
+    values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
+    resolver: zodResolver(formSchema)
+  });
 
   const {
-    setValue,
-    getValues,
-    control,
     handleSubmit,
     formState: { isDirty, isSubmitting },
     reset
-  } = useForm<TFormSchema>({
-    defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
-    resolver: zodResolver(formSchema)
-  });
+  } = form;
 
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
   const onSubmit = async (el: TFormSchema) => {
     try {
       if (!projectSlug || !role?.id) return;
-
       await updateRole({
         id: role?.id as string,
         projectSlug,
@@ -143,70 +73,77 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
       onSubmit={handleSubmit(onSubmit)}
       className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Permissions</h3>
-        {isCustomRole && (
-          <div className="flex items-center">
-            <Button
-              colorSchema="primary"
-              type="submit"
-              isDisabled={isSubmitting || !isDirty}
-              isLoading={isSubmitting}
-            >
-              Save
-            </Button>
-            <Button
-              className="ml-4 text-mineshaft-300"
-              variant="link"
-              isDisabled={isSubmitting || !isDirty}
-              isLoading={isSubmitting}
-              onClick={() => reset()}
-            >
-              Cancel
-            </Button>
+      <FormProvider {...form}>
+        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+          <h3 className="text-lg font-semibold text-mineshaft-100">Policies</h3>
+          <div className="flex items-center space-x-4">
+            {isCustomRole && (
+              <>
+                {isDirty && (
+                  <Button
+                    className="mr-4 text-mineshaft-300"
+                    variant="link"
+                    isDisabled={isSubmitting}
+                    isLoading={isSubmitting}
+                    onClick={() => reset()}
+                  >
+                    Discard
+                  </Button>
+                )}
+                <div className="flex items-center">
+                  <Button
+                    variant="outline_bg"
+                    type="submit"
+                    className={twMerge("h-10 rounded-r-none", isDirty && "bg-primary text-black")}
+                    isDisabled={isSubmitting || !isDirty}
+                    isLoading={isSubmitting}
+                    leftIcon={<FontAwesomeIcon icon={faSave} />}
+                  >
+                    Save
+                  </Button>
+                  <Modal
+                    isOpen={popUp.createPolicy.isOpen}
+                    onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
+                  >
+                    <ModalTrigger asChild disabled={isDisabled}>
+                      <Button
+                        isDisabled={isDisabled}
+                        className="h-10 rounded-l-none"
+                        variant="outline_bg"
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        New policy
+                      </Button>
+                    </ModalTrigger>
+                    <ModalContent
+                      title="New Policy"
+                      subTitle="Policies grant additional permissions."
+                    >
+                      <NewPermissionRule onClose={() => handlePopUpToggle("createPolicy")} />
+                    </ModalContent>
+                  </Modal>
+                </div>
+              </>
+            )}
           </div>
-        )}
-      </div>
-      <div className="py-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th className="w-5" />
-                <Th>Resource</Th>
-                <Th>Permission</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              <RowPermissionSecretsRow
-                title="Secrets"
-                formName={ProjectPermissionSub.Secrets}
-                isEditable={isCustomRole}
-                setValue={setValue}
-                getValue={getValues}
-                control={control}
-              />
-              <RowPermissionSecretFoldersRow
-                isEditable={isCustomRole}
-                setValue={setValue}
-                control={control}
-              />
-              {SINGLE_PERMISSION_LIST.map((permission) => {
-                return (
-                  <RolePermissionRow
-                    title={permission.title}
-                    formName={permission.formName}
-                    control={control}
-                    setValue={setValue}
-                    key={`project-role-${roleSlug}-permission-${permission.formName}`}
-                    isEditable={isCustomRole}
-                  />
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableContainer>
-      </div>
+        </div>
+        <div className="py-4">
+          {!isLoading && <PermissionEmptyState />}
+          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
+            <GeneralPermissionOptions
+              subject={subject}
+              actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+              title={PROJECT_PERMISSION_OBJECT[subject].title}
+              key={`project-permission-${subject}`}
+              isDisabled={isDisabled}
+            >
+              {subject === ProjectPermissionSub.Secrets ? (
+                <SecretPermissionConditions isDisabled={isDisabled} />
+              ) : undefined}
+            </GeneralPermissionOptions>
+          ))}
+        </div>
+      </FormProvider>
     </form>
   );
 };

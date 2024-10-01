@@ -7,6 +7,30 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum PermissionConditionOperators {
+  $IN = "$in",
+  $ALL = "$all",
+  $REGEX = "$regex",
+  $EQ = "$eq",
+  $NEQ = "$neq",
+  $GLOB = "$glob"
+}
+
+export type TPermissionConditionOperators = {
+  [PermissionConditionOperators.$IN]: string[];
+  [PermissionConditionOperators.$ALL]: string[];
+  [PermissionConditionOperators.$EQ]: string;
+  [PermissionConditionOperators.$NEQ]: string;
+  [PermissionConditionOperators.$REGEX]: string;
+  [PermissionConditionOperators.$GLOB]: string;
+};
+
+export type TPermissionCondition = Record<
+  string,
+  | string
+  | { $in: string[]; $all: string[]; $regex: string; $eq: string; $neq: string; $glob: string }
+>;
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",

@@ -3,13 +3,14 @@ import {
   faCheckCircle,
   faCircleXmark,
   faCopy,
+  faKey,
   faPencil
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, Tooltip } from "@app/components/v2";
+import { Button, IconButton, Tag, Tooltip } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -98,7 +99,8 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                     onClick={() => {
                       handlePopUpOpen("orgMembership", {
                         membershipId: membership.id,
-                        role: membership.role
+                        role: membership.role,
+                        metadata: membership.metadata
                       });
                     }}
                   >
@@ -162,9 +164,37 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
           <p className="text-sm text-mineshaft-300">{roleName ?? "-"}</p>
         </div>
-        <div>
+        <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Status</p>
           <p className="text-sm text-mineshaft-300">{getStatus(membership)}</p>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>
+          {membership?.metadata?.length ? (
+            <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
+              {membership.metadata?.map((el) => (
+                <div key={el.id} className="flex items-center">
+                  <Tag
+                    size="xs"
+                    className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
+                  >
+                    <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
+                    <div>{el.key}</div>
+                  </Tag>
+                  <Tag
+                    size="xs"
+                    className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
+                  >
+                    <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {el.value}
+                    </div>
+                  </Tag>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-mineshaft-300">-</p>
+          )}
         </div>
         {membership.isActive &&
           (membership.status === "invited" || membership.status === "verified") &&

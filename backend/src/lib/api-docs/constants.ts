@@ -360,7 +360,11 @@ export const ORGANIZATIONS = {
     organizationId: "The ID of the organization to update the membership for.",
     membershipId: "The ID of the membership to update.",
     role: "The new role of the membership.",
-    isActive: "The active status of the membership"
+    isActive: "The active status of the membership",
+    metadata: {
+      key: "The key for user metadata tag.",
+      value: "The value for user metadata tag."
+    }
   },
   DELETE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to delete the membership from.",

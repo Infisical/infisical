@@ -1,6 +1,7 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import { MongoQuery } from "@ucast/mongo2js";
+import handlebars from "handlebars";
 
 import {
   OrgMembershipRole,
@@ -11,6 +12,7 @@ import {
 } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { objectify } from "@app/lib/fn";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -20,7 +22,7 @@ import { TServiceTokenDALFactory } from "@app/services/service-token/service-tok
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { validateOrgSAML } from "./permission-fns";
-import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-types";
+import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
   projectAdminPermissions,
@@ -72,7 +74,7 @@ export const permissionServiceFactory = ({
     });
   };
 
-  const buildProjectPermission = (projectUserRoles: TBuildProjectPermissionDTO) => {
+  const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
     const rules = projectUserRoles
       .map(({ role, permissions }) => {
         switch (role) {
@@ -98,9 +100,7 @@ export const permissionServiceFactory = ({
       })
       .reduce((curr, prev) => prev.concat(curr), []);
 
-    return createMongoAbility<ProjectPermissionSet>(rules, {
-      conditionsMatcher
-    });
+    return rules;
   };
 
   /*
@@ -223,8 +223,32 @@ export const permissionServiceFactory = ({
         permissions
       })) || [];
 
+    const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false, strict: true });
+    const metadataKeyValuePair = objectify(
+      userProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+    );
+    const interpolateRules = templatedRules(
+      {
+        identity: {
+          id: userProjectPermission.userId,
+          username: userProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
+      { data: false }
+    );
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+      {
+        conditionsMatcher
+      }
+    );
+
     return {
-      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
+      permission,
       membership: userProjectPermission,
       hasRole: (role: string) =>
         userProjectPermission.roles.findIndex(
@@ -262,8 +286,32 @@ export const permissionServiceFactory = ({
         permissions
       })) || [];
 
+    const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false, strict: true });
+    const metadataKeyValuePair = objectify(
+      identityProjectPermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+    );
+    const interpolateRules = templatedRules(
+      {
+        identity: {
+          id: identityProjectPermission.identityId,
+          username: identityProjectPermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
+      { data: false }
+    );
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+      {
+        conditionsMatcher
+      }
+    );
+
     return {
-      permission: buildProjectPermission(rolePermissions.concat(additionalPrivileges)),
+      permission,
       membership: identityProjectPermission,
       hasRole: (role: string) =>
         identityProjectPermission.roles.findIndex(
@@ -346,14 +394,22 @@ export const permissionServiceFactory = ({
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
       if (!projectRole) throw new NotFoundError({ message: `Specified role was not found: ${role}` });
+      const rules = buildProjectPermissionRules([
+        { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }
+      ]);
       return {
-        permission: buildProjectPermission([
-          { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }
-        ]),
+        permission: createMongoAbility<ProjectPermissionSet>(rules, {
+          conditionsMatcher
+        }),
         role: projectRole
       };
     }
-    return { permission: buildProjectPermission([{ role, permissions: [] }]) };
+
+    const rules = buildProjectPermissionRules([{ role, permissions: [] }]);
+    const permission = createMongoAbility<ProjectPermissionSet>(rules, {
+      conditionsMatcher
+    });
+    return { permission };
   };
 
   return {
@@ -364,6 +420,6 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRole,
     getProjectPermissionByRole,
     buildOrgPermission,
-    buildProjectPermission
+    buildProjectPermissionRules
   };
 };

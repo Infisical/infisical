@@ -1,7 +1,11 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
+import { z } from "zod";
 
+import { TableName } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
+
+import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
 
 export enum ProjectPermissionActions {
   Read = "read",
@@ -37,7 +41,25 @@ export enum ProjectPermissionSub {
   Kms = "kms"
 }
 
-type SubjectFields = {
+export type SecretSubjectFields = {
+  environment: string;
+  secretPath: string;
+  // secretName: string;
+  // secretTags: string[];
+};
+
+export const CaslSecretsV2SubjectKnexMapper = (field: string) => {
+  switch (field) {
+    case "secretName":
+      return `${TableName.SecretV2}.key`;
+    case "secretTags":
+      return `${TableName.SecretTag}.slug`;
+    default:
+      break;
+  }
+};
+
+export type SecretFolderSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -45,11 +67,14 @@ type SubjectFields = {
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
-      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
+      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
     ]
   | [
       ProjectPermissionActions,
-      ProjectPermissionSub.SecretFolders | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
@@ -76,128 +101,230 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
 
-export const fullProjectPermissionSet: [ProjectPermissionActions, ProjectPermissionSub][] = [
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Secrets],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Secrets],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets],
+const CASL_ACTION_SCHEMA_NATIVE_ENUM = <ACTION extends z.EnumLike>(actions: ACTION) =>
+  z
+    .union([z.nativeEnum(actions), z.nativeEnum(actions).array().min(1)])
+    .transform((el) => (typeof el === "string" ? [el] : el));
 
-  [ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.SecretApproval],
+const CASL_ACTION_SCHEMA_ENUM = <ACTION extends z.EnumValues>(actions: ACTION) =>
+  z.union([z.enum(actions), z.enum(actions).array().min(1)]).transform((el) => (typeof el === "string" ? [el] : el));
 
-  [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRotation],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.SecretRotation],
+const SecretConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ]),
+    secretPath: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ])
+  })
+  .partial();
 
-  [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Member],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Member],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Member],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Member],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Groups],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Groups],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Groups],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Groups],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Role],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Role],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Role],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Role],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Integrations],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Integrations],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Identity],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Identity],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Identity],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Identity],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Settings],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Settings],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Settings],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Settings],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Environments],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Environments],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Environments],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Environments],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Tags],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Tags],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Tags],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Tags],
-
-  // TODO(Daniel): Remove the audit logs permissions from project-level permissions.
-  // TODO: We haven't done this yet because it might break existing roles, since those roles will become "invalid" since the audit log permission defined on those roles, no longer exist in the project-level defined permissions.
-  [ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.AuditLogs],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.AuditLogs],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.AuditLogs],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.IpAllowList],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList],
-
-  // double check if all CRUD are needed for CA and Certificates
-  [ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.CertificateAuthorities],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateAuthorities],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateAuthorities],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.Certificates],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.Certificates],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.CertificateTemplates],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.CertificateTemplates],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.CertificateTemplates],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.CertificateTemplates],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts],
-
-  [ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections],
-  [ProjectPermissionActions.Create, ProjectPermissionSub.PkiCollections],
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.PkiCollections],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.PkiCollections],
-
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Project],
-  [ProjectPermissionActions.Delete, ProjectPermissionSub.Project],
-
-  [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-];
+export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretRotation).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretRollback).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read, ProjectPermissionActions.Create]).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Member).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Groups).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Role).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Integrations).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Webhooks).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ServiceTokens).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Settings).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Environments).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Tags).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AuditLogs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.IpAllowList).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CertificateAuthorities).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Certificates).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to. "),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PkiCollections).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Project).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete]).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Kms).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit]).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read]).describe(
+      "Describe what action an entity can take."
+    )
+  })
+]);
 
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   // Admins get full access to everything
-  fullProjectPermissionSet.forEach((permission) => {
-    const [action, subject] = permission;
-    can(action, subject);
+  [
+    ProjectPermissionSub.Secrets,
+    ProjectPermissionSub.SecretApproval,
+    ProjectPermissionSub.SecretRotation,
+    ProjectPermissionSub.Member,
+    ProjectPermissionSub.Groups,
+    ProjectPermissionSub.Role,
+    ProjectPermissionSub.Integrations,
+    ProjectPermissionSub.Webhooks,
+    ProjectPermissionSub.Identity,
+    ProjectPermissionSub.ServiceTokens,
+    ProjectPermissionSub.Settings,
+    ProjectPermissionSub.Environments,
+    ProjectPermissionSub.Tags,
+    ProjectPermissionSub.AuditLogs,
+    ProjectPermissionSub.IpAllowList,
+    ProjectPermissionSub.CertificateAuthorities,
+    ProjectPermissionSub.Certificates,
+    ProjectPermissionSub.CertificateTemplates,
+    ProjectPermissionSub.PkiAlerts,
+    ProjectPermissionSub.PkiCollections
+  ].forEach((el) => {
+    can(
+      [
+        ProjectPermissionActions.Read,
+        ProjectPermissionActions.Edit,
+        ProjectPermissionActions.Create,
+        ProjectPermissionActions.Delete
+      ],
+      el as ProjectPermissionSub
+    );
   });
 
+  can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
+  can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
+  can([ProjectPermissionActions.Edit], ProjectPermissionSub.Kms);
   return rules;
 };
 
@@ -206,73 +333,116 @@ export const projectAdminPermissions = buildAdminPermissionRules();
 const buildMemberPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Secrets
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretRotation);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
+  can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
+  can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.Member);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.Groups);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Integrations
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Webhooks
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Identity
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.ServiceTokens
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Settings
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Environments
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Tags
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.Role);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   // double check if all CRUD are needed for CA and Certificates
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateAuthorities);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Certificates);
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.Certificates
+  );
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateTemplates);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateTemplates);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
 
   return rules;
 };
@@ -382,32 +552,19 @@ export const isAtLeastAsPrivilegedWorkspace = (
 
   return set1.size >= set2.size;
 };
+/* eslint-enable */
 
-/*
- * Case: The user requests to create a role with permissions that are not valid and not supposed to be used ever.
- * If we don't check for this, we can run into issues where functions like the `isAtLeastAsPrivileged` will not work as expected, because we compare the size of each permission set.
- * If the permission set contains invalid permissions, the size will be different, and result in incorrect results.
- */
-export const validateProjectPermissions = (permissions: unknown) => {
-  const parsedPermissions =
-    typeof permissions === "string" ? (JSON.parse(permissions) as string[]) : (permissions as string[]);
-
-  const flattenedPermissions = [...parsedPermissions];
-
-  for (const perm of flattenedPermissions) {
-    const [action, subject] = perm;
-
-    if (
-      !fullProjectPermissionSet.find(
-        (currentPermission) => currentPermission[0] === action && currentPermission[1] === subject
-      )
-    ) {
-      throw new BadRequestError({
-        message: `Permission action ${action} on subject ${subject} is not valid`,
-        name: "Create Role"
-      });
-    }
+export const SecretV2SubjectFieldMapper = (arg: string) => {
+  switch (arg) {
+    case "environment":
+      return null;
+    case "secretPath":
+      return null;
+    case "secretName":
+      return `${TableName.SecretV2}.key`;
+    case "secretTags":
+      return `${TableName.SecretTag}.slug`;
+    default:
+      throw new BadRequestError({ message: `Invalid dynamic knex operator field: ${arg}` });
   }
 };
-
-/* eslint-enable */

@@ -200,7 +200,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           )
         );
 
-      if (includeDynamicSecrets) {
+      if (includeDynamicSecrets && permissiveEnvs.length) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
           actor: req.permission.type,
@@ -241,7 +241,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (includeSecrets) {
+      if (includeSecrets && permissiveEnvs.length) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalSecretCount = await server.services.secret.getSecretsCountMultiEnv({
           actorId: req.permission.id,

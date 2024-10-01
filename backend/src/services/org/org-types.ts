@@ -9,6 +9,7 @@ export type TUpdateOrgMembershipDTO = {
   role?: string;
   isActive?: boolean;
   actorOrgId: string | undefined;
+  metadata?: { key: string; value: string }[];
   actorAuthMethod: ActorAuthMethod;
 };
 

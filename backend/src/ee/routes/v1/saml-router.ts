@@ -100,6 +100,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       async (req, profile, cb) => {
         try {
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
+
           const email =
             profile?.email ??
             // entra sends data in this format
@@ -123,6 +124,14 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             );
           }
 
+          const userMetadata = Object.keys(profile.attributes || {})
+            .map((key) => {
+              // for the ones like in format: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email
+              const formatedKey = key.startsWith("http") ? key.split("/").at(-1) || "" : key;
+              return { key: formatedKey, value: String((profile.attributes as Record<string, string>)[key]) };
+            })
+            .filter((el) => el.key && !["email", "firstName", "lastName"].includes(el.key));
+
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             externalId: profile.nameID,
             email,
@@ -130,7 +139,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             lastName: lastName as string,
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
-            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
+            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string,
+            metadata: userMetadata
           });
           cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TIdentityOrgMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { TListOrgIdentitiesByOrgIdDTO } from "@app/services/identity/identity-types";
 
@@ -42,10 +42,25 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
+      const paginatedFetchIdentity = (tx || db.replicaNode())(TableName.Identity)
+        .where((queryBuilder) => {
+          if (limit) {
+            void queryBuilder.offset(offset).limit(limit);
+          }
+        })
+        .as(TableName.Identity);
+
       const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
-        .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
+        .join<Awaited<typeof paginatedFetchIdentity>>(paginatedFetchIdentity, (queryBuilder) => {
+          queryBuilder.on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`);
+        })
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.IdentityMetadata}.identityId`)
+            .andOn(`${TableName.IdentityOrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .select(selectAllTableCols(TableName.IdentityOrgMembership))
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
@@ -55,12 +70,15 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.OrgRoles))
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.OrgRoles))
         .select(db.ref("id").as("identityId").withSchema(TableName.Identity))
-        .select(db.ref("name").as("identityName").withSchema(TableName.Identity))
-        .select(db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity));
-
-      if (limit) {
-        void query.offset(offset).limit(limit);
-      }
+        .select(
+          db.ref("name").as("identityName").withSchema(TableName.Identity),
+          db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity)
+        )
+        .select(
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
+        );
 
       if (orderBy) {
         switch (orderBy) {
@@ -80,9 +98,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       }
 
       const docs = await query;
-
-      return docs.map(
-        ({
+      const formattedDocs = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: ({
           crId,
           crDescription,
           crSlug,
@@ -91,16 +110,21 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identityId,
           identityName,
           identityAuthMethod,
-          ...el
+          role,
+          roleId,
+          id,
+          orgId,
+          createdAt,
+          updatedAt
         }) => ({
-          ...el,
+          role,
+          roleId,
           identityId,
-          identity: {
-            id: identityId,
-            name: identityName,
-            authMethod: identityAuthMethod
-          },
-          customRole: el.roleId
+          id,
+          orgId,
+          createdAt,
+          updatedAt,
+          customRole: roleId
             ? {
                 id: crId,
                 name: crName,
@@ -108,9 +132,27 @@ export const identityOrgDALFactory = (db: TDbClient) => {
                 permissions: crPermission,
                 description: crDescription
               }
-            : undefined
-        })
-      );
+            : undefined,
+          identity: {
+            id: identityId,
+            name: identityName,
+            authMethod: identityAuthMethod as string
+          }
+        }),
+        childrenMapper: [
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
+
+      return formattedDocs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByOrgId" });
     }

@@ -3,10 +3,11 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
+import { ProjectPermissionSchema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ProjectPermissionSchema, SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
