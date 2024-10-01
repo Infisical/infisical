@@ -1,6 +1,7 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
@@ -19,14 +20,23 @@ const getValueLabel = (type: string) => {
 };
 
 export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) => {
-  const { control, watch } = useFormContext<TFormSchema>();
+  const {
+    control,
+    watch,
+    formState: { errors }
+  } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
     name: `permissions.secrets.${position}.conditions`
   });
 
   return (
-    <div className="mt-6 border-t border-t-gray-800 bg-mineshaft-800 pt-2">
+    <div
+      className={twMerge(
+        "mt-6 bg-mineshaft-800",
+        items.fields.length && " border-t border-t-gray-800  pt-2"
+      )}
+    >
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
           const lhs = watch(`permissions.secrets.${position}.conditions.${index}.lhs`);
@@ -51,7 +61,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                         onValueChange={(e) => field.onChange(e)}
                         className="w-full"
                       >
-                        <SelectItem value="environment">Environment</SelectItem>
+                        <SelectItem value="environment">Environment Slug</SelectItem>
                         <SelectItem value="secretPath">Secret Path</SelectItem>
                       </Select>
                     </FormControl>
@@ -114,6 +124,13 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
           );
         })}
       </div>
+      {errors?.permissions?.secrets?.[position]?.conditions?.message && (
+        <div className="flex items-center space-x-2 py-2 text-sm text-gray-400">
+          <FontAwesomeIcon icon={faWarning} className="text-red" />
+          <span>{errors?.permissions?.secrets?.[position]?.conditions?.message}</span>
+        </div>
+      )}
+      <div>{}</div>
       <div>
         <Button
           leftIcon={<FontAwesomeIcon icon={faPlus} />}

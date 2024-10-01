@@ -125,7 +125,7 @@ export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema
                         }}
                         isDisabled={isDisabled}
                       >
-                        Add rule
+                        Add policy
                       </Button>
                     )}
                     {!isDisabled && (
@@ -137,7 +137,7 @@ export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema
                         onClick={() => items.remove(rootIndex)}
                         isDisabled={isDisabled}
                       >
-                        Remove Rule
+                        Remove policy
                       </Button>
                     )}{" "}
                   </div>

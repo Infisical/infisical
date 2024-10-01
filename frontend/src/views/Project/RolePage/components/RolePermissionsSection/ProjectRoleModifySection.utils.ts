@@ -32,7 +32,7 @@ const WorkspacePolicyActionSchema = z.object({
 const ConditionSchema = z.object({
   operator: z.string(),
   lhs: z.string(),
-  rhs: z.string()
+  rhs: z.string().min(1)
 });
 
 export const formSchema = z.object({
@@ -46,7 +46,23 @@ export const formSchema = z.object({
   permissions: z
     .object({
       [ProjectPermissionSub.Secrets]: GeneralPolicyActionSchema.extend({
-        conditions: ConditionSchema.array().optional().default([])
+        conditions: ConditionSchema.array()
+          .optional()
+          .default([])
+          .refine(
+            (el) => {
+              const lhsOperatorSet = new Set<string>();
+              for (let i = 0; i < el.length; i += 1) {
+                const { lhs, operator } = el[i];
+                if (lhsOperatorSet.has(`${lhs}-${operator}`)) {
+                  return false;
+                }
+                lhsOperatorSet.add(`${lhs}-${operator}`);
+              }
+              return true;
+            },
+            { message: "Duplicate operator found for a condition" }
+          )
       })
         .array()
         .default([]),

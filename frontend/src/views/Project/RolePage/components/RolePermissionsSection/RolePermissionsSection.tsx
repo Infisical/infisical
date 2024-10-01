@@ -1,10 +1,10 @@
 import { FormProvider, useForm } from "react-hook-form";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faCancel, faPlus, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, EmptyState, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { Button, Modal, ModalContent, ModalTrigger, Spinner } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
@@ -12,6 +12,7 @@ import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { GeneralPermissionOptions } from "./components/GeneralPermissionOptions";
 import { NewPermissionRule } from "./components/NewPermissionRule";
 import { SecretPermissionConditions } from "./components/SecretPermissionConditions";
+import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
   formSchema,
@@ -38,6 +39,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
     resolver: zodResolver(formSchema)
   });
+
   const {
     handleSubmit,
     formState: { isDirty, isSubmitting },
@@ -81,6 +83,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   type="submit"
                   isDisabled={isSubmitting || !isDirty}
                   isLoading={isSubmitting}
+                  leftIcon={<FontAwesomeIcon icon={faSave} />}
                 >
                   Save
                 </Button>
@@ -90,6 +93,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   isDisabled={isSubmitting || !isDirty}
                   isLoading={isSubmitting}
                   onClick={() => reset()}
+                  leftIcon={<FontAwesomeIcon icon={faCancel} />}
                 >
                   Cancel
                 </Button>
@@ -97,35 +101,44 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
             )}
           </div>
         </div>
-        <div className="py-4">
-          {!isLoading && !role?.permissions?.length && <EmptyState title="No policies applied" />}
-          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-            <GeneralPermissionOptions
-              subject={subject}
-              actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-              title={PROJECT_PERMISSION_OBJECT[subject].title}
-              key={`project-permission-${subject}`}
-              isDisabled={isDisabled}
+        {isSubmitting ? (
+          <div className="flex items-center justify-center space-x-4 pt-16">
+            <Spinner size="lg" />
+            <p className="text-sm text-gray-400">Saving your policy.</p>
+          </div>
+        ) : (
+          <>
+            <div className="py-4">
+              {!isLoading && <PermissionEmptyState />}
+              {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
+                <GeneralPermissionOptions
+                  subject={subject}
+                  actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                  title={PROJECT_PERMISSION_OBJECT[subject].title}
+                  key={`project-permission-${subject}`}
+                  isDisabled={isDisabled}
+                >
+                  {subject === ProjectPermissionSub.Secrets ? (
+                    <SecretPermissionConditions isDisabled={isDisabled} />
+                  ) : undefined}
+                </GeneralPermissionOptions>
+              ))}
+            </div>
+            <Modal
+              isOpen={popUp.createPolicy.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
             >
-              {subject === ProjectPermissionSub.Secrets ? (
-                <SecretPermissionConditions isDisabled={isDisabled} />
-              ) : undefined}
-            </GeneralPermissionOptions>
-          ))}
-        </div>
-        <Modal
-          isOpen={popUp.createPolicy.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
-        >
-          <ModalTrigger asChild disabled={isDisabled}>
-            <Button isDisabled={isDisabled} leftIcon={<FontAwesomeIcon icon={faPlus} />}>
-              Add Policy
-            </Button>
-          </ModalTrigger>
-          <ModalContent title="New Policy" subTitle="Policies grant additional permissions.">
-            <NewPermissionRule onClose={() => handlePopUpToggle("createPolicy")} />
-          </ModalContent>
-        </Modal>
+              <ModalTrigger asChild disabled={isDisabled}>
+                <Button isDisabled={isDisabled} leftIcon={<FontAwesomeIcon icon={faPlus} />}>
+                  Add Policy
+                </Button>
+              </ModalTrigger>
+              <ModalContent title="New Policy" subTitle="Policies grant additional permissions.">
+                <NewPermissionRule onClose={() => handlePopUpToggle("createPolicy")} />
+              </ModalContent>
+            </Modal>
+          </>
+        )}
       </FormProvider>
     </form>
   );
