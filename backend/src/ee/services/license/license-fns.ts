@@ -40,7 +40,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretRotation: true,
   caCrl: false,
   instanceUserManagement: false,
-  externalKms: true,
+  externalKms: false,
   rateLimits: {
     readLimit: 60,
     writeLimit: 200,
