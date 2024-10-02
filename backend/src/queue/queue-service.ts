@@ -39,6 +39,7 @@ export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
+  AuditLogWriteToDB = "audit-log-write-to-db-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
@@ -73,10 +74,15 @@ export type TQueueJobTypes = {
     payload: { rotationId: string };
     name: QueueJobs.SecretRotation;
   };
-  [QueueName.AuditLog]: {
-    name: QueueJobs.AuditLog;
-    payload: TCreateAuditLogDTO;
-  };
+  [QueueName.AuditLog]:
+    | {
+        name: QueueJobs.AuditLog;
+        payload: TCreateAuditLogDTO;
+      }
+    | {
+        name: QueueJobs.AuditLogWriteToDB;
+        payload: undefined;
+      };
   [QueueName.DailyResourceCleanUp]: {
     name: QueueJobs.DailyResourceCleanUp;
     payload: undefined;
