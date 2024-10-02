@@ -3,14 +3,14 @@ import { TOrgPermission } from "@app/lib/types";
 import { TExternalKmsInputSchema, TExternalKmsInputUpdateSchema } from "./providers/model";
 
 export type TCreateExternalKmsDTO = {
-  slug?: string;
+  name?: string;
   description?: string;
   provider: TExternalKmsInputSchema;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TUpdateExternalKmsDTO = {
   id: string;
-  slug?: string;
+  name?: string;
   description?: string;
   provider?: TExternalKmsInputUpdateSchema;
 } & Omit<TOrgPermission, "orgId">;
@@ -26,5 +26,5 @@ export type TGetExternalKmsByIdDTO = {
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetExternalKmsBySlugDTO = {
-  slug: string;
+  name: string;
 } & Omit<TOrgPermission, "orgId">;

@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionCmekActions,
+  ProjectPermissionSub
+} from "@app/context";
 import {
   PermissionConditionOperators,
   TPermissionCondition,
@@ -13,6 +17,15 @@ const GeneralPolicyActionSchema = z.object({
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),
   create: z.boolean().optional()
+});
+
+const CmekPolicyActionSchema = z.object({
+  read: z.boolean().optional(),
+  edit: z.boolean().optional(),
+  delete: z.boolean().optional(),
+  create: z.boolean().optional(),
+  encrypt: z.boolean().optional(),
+  decrypt: z.boolean().optional()
 });
 
 const SecretFolderPolicyActionSchema = z.object({
@@ -88,7 +101,8 @@ export const formSchema = z.object({
       [ProjectPermissionSub.Workspace]: WorkspacePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Tags]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRotation]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -119,7 +133,7 @@ const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition
   return formConditions;
 };
 
-// convert role permission to form compatiable  data structure
+// convert role permission to form compatible data structure
 export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Partial<TFormSchema["permissions"]> = {};
 
@@ -198,6 +212,23 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       // from above statement we are sure it won't be undefined
       if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
+    } else if (subject === ProjectPermissionSub.Cmek) {
+      const canRead = action.includes(ProjectPermissionCmekActions.Read);
+      const canEdit = action.includes(ProjectPermissionCmekActions.Edit);
+      const canDelete = action.includes(ProjectPermissionCmekActions.Delete);
+      const canCreate = action.includes(ProjectPermissionCmekActions.Create);
+      const canEncrypt = action.includes(ProjectPermissionCmekActions.Encrypt);
+      const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // from above statement we are sure it won't be undefined
+      if (canRead) formVal[subject]![0].read = true;
+      if (canEdit) formVal[subject]![0].edit = true;
+      if (canCreate) formVal[subject]![0].create = true;
+      if (canDelete) formVal[subject]![0].delete = true;
+      if (canEncrypt) formVal[subject]![0].encrypt = true;
+      if (canDecrypt) formVal[subject]![0].decrypt = true;
     }
   });
   return formVal;
@@ -277,8 +308,19 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Secret Folders",
     actions: [{ label: "Read Only", value: "read" }]
   },
-  [ProjectPermissionSub.Kms]: {
+  [ProjectPermissionSub.Cmek]: {
     title: "KMS",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" },
+      { label: "Encrypt", value: "encrypt" },
+      { label: "Decrypt", value: "decrypt" }
+    ]
+  },
+  [ProjectPermissionSub.Kms]: {
+    title: "Project KMS Configuration",
     actions: [{ label: "Modify", value: "edit" }]
   },
   [ProjectPermissionSub.Integrations]: {

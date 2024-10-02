@@ -8,6 +8,7 @@ export type SwitchProps = Omit<SwitchPrimitive.SwitchProps, "checked" | "disable
   isChecked?: boolean;
   isRequired?: boolean;
   isDisabled?: boolean;
+  containerClassName?: string;
 };
 
 export const Switch = ({
@@ -17,9 +18,10 @@ export const Switch = ({
   isChecked,
   isDisabled,
   isRequired,
+  containerClassName,
   ...props
 }: SwitchProps): JSX.Element => (
-  <div className="flex items-center font-inter text-bunker-300">
+  <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
     <label className="text-sm" htmlFor={id}>
       {children}
       {isRequired && <span className="pl-1 text-red">*</span>}

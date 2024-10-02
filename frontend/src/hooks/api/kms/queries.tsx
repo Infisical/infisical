@@ -46,7 +46,7 @@ export const useGetActiveProjectKms = (projectId: string) => {
       } = await apiRequest.get<{
         secretManagerKmsKey: {
           id: string;
-          slug: string;
+          name: string;
           isExternal: string;
         };
       }>(`/api/v1/workspace/${projectId}/kms`);

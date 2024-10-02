@@ -96,6 +96,7 @@ import { certificateAuthorityServiceFactory } from "@app/services/certificate-au
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
@@ -1192,6 +1193,12 @@ export const registerRoutes = async (
     workflowIntegrationDAL
   });
 
+  const cmekService = cmekServiceFactory({
+    kmsDAL,
+    kmsService,
+    permissionService
+  });
+
   const migrationService = externalMigrationServiceFactory({
     projectService,
     orgService,
@@ -1281,6 +1288,7 @@ export const registerRoutes = async (
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
+    cmek: cmekService,
     orgAdmin: orgAdminService,
     slack: slackService,
     workflowIntegration: workflowIntegrationService,

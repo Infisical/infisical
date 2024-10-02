@@ -16,7 +16,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { useDebounce, usePopUp } from "@app/hooks";
+import { useDebounce, usePagination, usePopUp } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
   useGetSecretApprovalPolicyOfABoard,
@@ -25,6 +25,7 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
+import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { DynamicSecretListView } from "@app/views/SecretMainPage/components/DynamicSecretListView";
 import { FolderListView } from "@app/views/SecretMainPage/components/FolderListView";
@@ -47,7 +48,6 @@ const LOADER_TEXT = [
   "Getting secret import links..."
 ];
 
-const INIT_PER_PAGE = 20;
 export const SecretMainPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
@@ -55,11 +55,18 @@ export const SecretMainPage = () => {
   const { permission } = useProjectPermission();
 
   const [isVisible, setIsVisible] = useState(false);
-  const [orderDirection, setOrderDirection] = useState<OrderByDirection>(OrderByDirection.ASC);
 
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-  const paginationOffset = (page - 1) * perPage;
+  const {
+    offset,
+    limit,
+    orderDirection,
+    setOrderDirection,
+    setPage,
+    perPage,
+    page,
+    setPerPage,
+    orderBy
+  } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name);
 
   const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const isRollbackMode = Boolean(snapshotId);
@@ -129,8 +136,9 @@ export const SecretMainPage = () => {
     environment,
     projectId: workspaceId,
     secretPath,
-    offset: paginationOffset,
-    limit: perPage,
+    offset,
+    limit,
+    orderBy,
     search: debouncedSearchFilter,
     orderDirection,
     includeImports: canReadSecret && filter.include.import,
@@ -151,6 +159,11 @@ export const SecretMainPage = () => {
     totalSecretCount = 0,
     totalCount = 0
   } = data ?? {};
+
+  useEffect(() => {
+    // reset page if no longer valid
+    if (totalCount <= offset) setPage(1);
+  }, [totalCount]);
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
@@ -252,11 +265,6 @@ export const SecretMainPage = () => {
     setSnapshotId(null);
     handlePopUpClose("snapshots");
   }, []);
-
-  useEffect(() => {
-    // reset page if no longer valid
-    if (totalCount < paginationOffset) setPage(1);
-  }, [totalCount]);
 
   useEffect(() => {
     // restore filters for path if set

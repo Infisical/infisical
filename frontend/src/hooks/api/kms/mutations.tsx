@@ -8,9 +8,9 @@ import { AddExternalKmsType, KmsType } from "./types";
 export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slug, description, provider }: AddExternalKmsType) => {
+    mutationFn: async ({ name, description, provider }: AddExternalKmsType) => {
       const { data } = await apiRequest.post("/api/v1/external-kms", {
-        slug,
+        name,
         description,
         provider
       });
@@ -28,14 +28,14 @@ export const useUpdateExternalKms = (orgId: string) => {
   return useMutation({
     mutationFn: async ({
       kmsId,
-      slug,
+      name,
       description,
       provider
     }: {
       kmsId: string;
     } & AddExternalKmsType) => {
       const { data } = await apiRequest.patch(`/api/v1/external-kms/${kmsId}`, {
-        slug,
+        name,
         description,
         provider
       });

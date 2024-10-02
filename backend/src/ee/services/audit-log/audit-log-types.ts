@@ -1,3 +1,4 @@
+import { SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-types";
@@ -182,7 +183,13 @@ export enum EventType {
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
   UPDATE_PROJECT_SLACK_CONFIG = "update-project-slack-config",
-  INTEGRATION_SYNCED = "integration-synced"
+  INTEGRATION_SYNCED = "integration-synced",
+  CREATE_CMEK = "create-cmek",
+  UPDATE_CMEK = "update-cmek",
+  DELETE_CMEK = "delete-cmek",
+  GET_CMEKS = "get-cmeks",
+  CMEK_ENCRYPT = "cmek-encrypt",
+  CMEK_DECRYPT = "cmek-decrypt"
 }
 
 interface UserActorMetadata {
@@ -1350,7 +1357,7 @@ interface CreateKmsEvent {
   metadata: {
     kmsId: string;
     provider: string;
-    slug: string;
+    name: string;
     description?: string;
   };
 }
@@ -1359,7 +1366,7 @@ interface DeleteKmsEvent {
   type: EventType.DELETE_KMS;
   metadata: {
     kmsId: string;
-    slug: string;
+    name: string;
   };
 }
 
@@ -1368,7 +1375,7 @@ interface UpdateKmsEvent {
   metadata: {
     kmsId: string;
     provider: string;
-    slug?: string;
+    name?: string;
     description?: string;
   };
 }
@@ -1377,7 +1384,7 @@ interface GetKmsEvent {
   type: EventType.GET_KMS;
   metadata: {
     kmsId: string;
-    slug: string;
+    name: string;
   };
 }
 
@@ -1386,7 +1393,7 @@ interface UpdateProjectKmsEvent {
   metadata: {
     secretManagerKmsKey: {
       id: string;
-      slug: string;
+      name: string;
     };
   };
 }
@@ -1541,6 +1548,53 @@ interface IntegrationSyncedEvent {
   };
 }
 
+interface CreateCmekEvent {
+  type: EventType.CREATE_CMEK;
+  metadata: {
+    keyId: string;
+    name: string;
+    description?: string;
+    encryptionAlgorithm: SymmetricEncryption;
+  };
+}
+
+interface DeleteCmekEvent {
+  type: EventType.DELETE_CMEK;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface UpdateCmekEvent {
+  type: EventType.UPDATE_CMEK;
+  metadata: {
+    keyId: string;
+    name?: string;
+    description?: string;
+  };
+}
+
+interface GetCmeksEvent {
+  type: EventType.GET_CMEKS;
+  metadata: {
+    keyIds: string[];
+  };
+}
+
+interface CmekEncryptEvent {
+  type: EventType.CMEK_ENCRYPT;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekDecryptEvent {
+  type: EventType.CMEK_DECRYPT;
+  metadata: {
+    keyId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1680,4 +1734,10 @@ export type Event =
   | GetSlackIntegration
   | UpdateProjectSlackConfig
   | GetProjectSlackConfig
-  | IntegrationSyncedEvent;
+  | IntegrationSyncedEvent
+  | CreateCmekEvent
+  | UpdateCmekEvent
+  | DeleteCmekEvent
+  | GetCmeksEvent
+  | CmekEncryptEvent
+  | CmekDecryptEvent;
