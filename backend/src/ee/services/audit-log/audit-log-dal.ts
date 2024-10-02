@@ -77,13 +77,13 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Special case: Filter by actor ID
       if (actorId) {
-        void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actorId]);
+        void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object('userId', ?::text)`, [actorId]);
       }
 
       // Special case: Filter by key/value pairs in eventMetadata field
       if (eventMetadata && Object.keys(eventMetadata).length) {
         Object.entries(eventMetadata).forEach(([key, value]) => {
-          void sqlQuery.whereRaw(`"eventMetadata"->>'${key}' = ?`, [value]);
+          void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object(?::text, ?::text)`, [key, value]);
         });
       }
 
@@ -104,6 +104,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       if (endDate) {
         void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
       }
+
       const docs = await sqlQuery;
 
       return docs;
