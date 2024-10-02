@@ -178,33 +178,17 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing, sharedSecretId: string) => {
+  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing) => {
     const { expiresAfterViews } = sharedSecret;
-
-    const isUuid = isUuidV4(sharedSecretId);
 
     if (expiresAfterViews) {
       // decrement view count if view count expiry set
-
-      if (isUuid) {
-        await secretSharingDAL.updateById(sharedSecretId, { $decr: { expiresAfterViews: 1 } });
-      } else {
-        await secretSharingDAL.update({ identifier: sharedSecretId }, { $decr: { expiresAfterViews: 1 } });
-      }
+      await secretSharingDAL.updateById(sharedSecret.id, { $decr: { expiresAfterViews: 1 } });
     }
 
-    if (isUuid) {
-      await secretSharingDAL.updateById(sharedSecretId, {
-        lastViewedAt: new Date()
-      });
-    } else {
-      await secretSharingDAL.update(
-        { identifier: sharedSecretId },
-        {
-          lastViewedAt: new Date()
-        }
-      );
-    }
+    await secretSharingDAL.updateById(sharedSecret.id, {
+      lastViewedAt: new Date()
+    });
   };
 
   /** Get's password-less secret. validates all secret's requested (must be fresh). */
@@ -267,7 +251,7 @@ export const secretSharingServiceFactory = ({
     }
 
     // decrement when we are sure the user will view secret.
-    await $decrementSecretViewCount(sharedSecret, sharedSecretId);
+    await $decrementSecretViewCount(sharedSecret);
 
     return {
       isPasswordProtected,
