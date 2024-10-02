@@ -152,7 +152,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
         });
       } else {
         client.unbind();
-        throw new Error(`Unsupported operation type ${entry.type}`);
+        throw new BadRequestError({ message: `Unsupported operation type ${entry.type}` });
       }
 
       dnArray.push(response_dn);
