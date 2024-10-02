@@ -28,7 +28,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          organizations: OrganizationsSchema.array()
+          organizations: OrganizationsSchema.extend({
+            orgAuthMethod: z.string()
+          }).array()
         })
       }
     },

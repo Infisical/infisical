@@ -18,6 +18,7 @@ import { useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import { Organization } from "@app/hooks/api/types";
+import { AuthMethod } from "@app/hooks/api/users/types";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 
@@ -57,14 +58,21 @@ export default function LoginPage() {
       if (organization.authEnforced) {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
-        let samlUrl = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
+        await logout.mutateAsync();
+        let url = "";
+        if (organization.orgAuthMethod === AuthMethod.OIDC) {
+          url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
+            callbackPort ? `&callbackPort=${callbackPort}` : ""
+          }`;
+        } else {
+          url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
 
-        if (callbackPort) {
-          samlUrl += `?callback_port=${callbackPort}`;
+          if (callbackPort) {
+            url += `?callback_port=${callbackPort}`;
+          }
         }
 
-        await logout.mutateAsync();
-        window.open(samlUrl);
+        window.open(url);
         window.close();
         return;
       }

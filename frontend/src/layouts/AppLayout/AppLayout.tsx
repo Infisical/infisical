@@ -80,6 +80,7 @@ import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { Workspace } from "@app/hooks/api/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { CreateOrgModal } from "@app/views/Org/components";
 
@@ -385,9 +386,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                                     // -> logout + redirect to SAML SSO
 
                                     await logout.mutateAsync();
-                                    window.open(
-                                      `/api/v1/sso/redirect/saml2/organizations/${org.slug}`
-                                    );
+                                    if (org.orgAuthMethod === AuthMethod.OIDC) {
+                                      window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
+                                    } else {
+                                      window.open(
+                                        `/api/v1/sso/redirect/saml2/organizations/${org.slug}`
+                                      );
+                                    }
                                     window.close();
                                     return;
                                   }

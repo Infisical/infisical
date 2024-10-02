@@ -18,6 +18,7 @@ import {
 import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -82,6 +83,7 @@ type TOrgServiceFactoryDep = {
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne" | "findById">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "findEnforceableOidcCfg">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -116,6 +118,7 @@ export const orgServiceFactory = ({
   licenseService,
   projectRoleDAL,
   samlConfigDAL,
+  oidcConfigDAL,
   projectBotDAL,
   projectUserMembershipRoleDAL,
   identityMetadataDAL
@@ -269,10 +272,9 @@ export const orgServiceFactory = ({
     const plan = await licenseService.getPlan(orgId);
 
     if (authEnforced !== undefined) {
-      if (!plan?.samlSSO)
+      if (!plan?.samlSSO || !plan.oidcSSO)
         throw new BadRequestError({
-          message:
-            "Failed to enforce/un-enforce SAML SSO due to plan restriction. Upgrade plan to enforce/un-enforce SAML SSO."
+          message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
         });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     }
@@ -288,9 +290,11 @@ export const orgServiceFactory = ({
 
     if (authEnforced) {
       const samlCfg = await samlConfigDAL.findEnforceableSamlCfg(orgId);
-      if (!samlCfg)
+      const oidcCfg = await oidcConfigDAL.findEnforceableOidcCfg(orgId);
+
+      if (!samlCfg && !oidcCfg)
         throw new NotFoundError({
-          message: "No enforceable SAML config found"
+          message: "No enforceable SSO config found"
         });
     }
 

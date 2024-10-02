@@ -21,7 +21,7 @@ import { TServiceTokenDALFactory } from "@app/services/service-token/service-tok
 
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { validateOrgSAML } from "./permission-fns";
+import { validateOrgSSO } from "./permission-fns";
 import { TBuildOrgPermissionDTO, TBuildProjectPermissionDTO } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
@@ -130,7 +130,7 @@ export const permissionServiceFactory = ({
       throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSAML(authMethod, membership.orgAuthEnforced);
+    validateOrgSSO(authMethod, membership.orgAuthEnforced);
 
     const finalPolicyRoles = [{ role: membership.role, permissions: membership.permissions }].concat(
       membership?.groups?.map(({ role, customRolePermission }) => ({
@@ -213,7 +213,7 @@ export const permissionServiceFactory = ({
       throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
-    validateOrgSAML(authMethod, userProjectPermission.orgAuthEnforced);
+    validateOrgSSO(authMethod, userProjectPermission.orgAuthEnforced);
 
     // join two permissions and pass to build the final permission set
     const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];

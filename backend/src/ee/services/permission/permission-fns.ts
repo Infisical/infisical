@@ -14,14 +14,19 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   ].includes(actorAuthMethod);
 }
 
-function validateOrgSAML(actorAuthMethod: ActorAuthMethod, isSamlEnforced: TOrganizations["authEnforced"]) {
+function validateOrgSSO(actorAuthMethod: ActorAuthMethod, isOrgSsoEnforced: TOrganizations["authEnforced"]) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
 
-  if (isSamlEnforced && actorAuthMethod !== null && !isAuthMethodSaml(actorAuthMethod)) {
-    throw new ForbiddenRequestError({ name: "SAML auth enforced, cannot access org-scoped resource" });
+  if (
+    isOrgSsoEnforced &&
+    actorAuthMethod !== null &&
+    !isAuthMethodSaml(actorAuthMethod) &&
+    actorAuthMethod !== AuthMethod.OIDC
+  ) {
+    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
   }
 }
 
-export { isAuthMethodSaml, validateOrgSAML };
+export { isAuthMethodSaml, validateOrgSSO };

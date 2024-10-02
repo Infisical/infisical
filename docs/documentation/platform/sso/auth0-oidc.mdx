@@ -39,7 +39,7 @@ description: "Learn how to configure Auth0 OIDC for Infisical SSO."
 
    </Step>
    <Step title="Finish configuring OIDC in Infisical">
-      3.1. Back in Infisical, in the Organization settings > Security > OIDC, click **Manage**.
+      3.1. Back in Infisical, in the Organization settings > Security > OIDC, click **Connect**.
       ![OIDC auth0 manage org Infisical](../../../images/sso/auth0-oidc/org-oidc-overview.png)
 
       3.2. For configuration type, select **Discovery URL**. Then, set **Discovery Document URL**, **Client ID**, and **Client Secret** from step 2.1 and 2.2.
@@ -52,6 +52,19 @@ description: "Learn how to configure Auth0 OIDC for Infisical SSO."
       Enabling OIDC allows members in your organization to log into Infisical via Auth0.
 
       ![OIDC auth0 enable OIDC](../../../images/sso/auth0-oidc/enable-oidc.png)
+
+   </Step>
+   <Step title="Enforce OIDC SSO in Infisical">
+      Enforcing OIDC SSO ensures that members in your organization can only access Infisical
+      by logging into the organization via Auth0.
+
+      To enforce OIDC SSO, you're required to test out the OpenID connection by successfully authenticating at least one Auth0 user with Infisical.
+      Once you've completed this requirement, you can toggle the **Enforce OIDC SSO** button to enforce OIDC SSO.
+
+      <Warning>
+         We recommend ensuring that your account is provisioned using the application in Auth0
+         prior to enforcing OIDC SSO to prevent any unintended issues.
+      </Warning>
 
    </Step>
 </Steps>

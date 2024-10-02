@@ -9,7 +9,8 @@ export enum AuthMethod {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
-  LDAP = "ldap"
+  LDAP = "ldap",
+  OIDC = "oidc"
 }
 
 export type User = {

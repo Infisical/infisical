@@ -7,7 +7,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { useGetOIDCConfig } from "@app/hooks/api";
+import { useGetOIDCConfig, useLogoutUser, useUpdateOrg } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -19,6 +19,9 @@ export const OrgOIDCSection = (): JSX.Element => {
 
   const { data, isLoading } = useGetOIDCConfig(currentOrg?.slug ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
+  const { mutateAsync: updateOrg } = useUpdateOrg();
+
+  const logout = useLogoutUser();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addOIDC",
     "upgradePlan"
@@ -44,10 +47,34 @@ export const OrgOIDCSection = (): JSX.Element => {
       });
     } catch (err) {
       console.error(err);
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} OIDC SSO`,
-        type: "error"
+    }
+  };
+
+  const handleEnforceOrgAuthToggle = async (value: boolean) => {
+    try {
+      if (!currentOrg?.id) return;
+      if (!subscription?.oidcSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
+
+      await updateOrg({
+        orgId: currentOrg?.id,
+        authEnforced: value
       });
+
+      createNotification({
+        text: `Successfully ${value ? "enforced" : "un-enforced"} org-level auth`,
+        type: "success"
+      });
+
+      if (value) {
+        await logout.mutateAsync();
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${currentOrg.slug}`);
+        window.close();
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -102,6 +129,24 @@ export const OrgOIDCSection = (): JSX.Element => {
           </p>
         </div>
       )}
+      <div className="py-4">
+        <div className="mb-2 flex justify-between">
+          <h3 className="text-md text-mineshaft-100">Enforce OIDC SSO</h3>
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+            {(isAllowed) => (
+              <Switch
+                id="enforce-org-auth"
+                isChecked={currentOrg?.authEnforced ?? false}
+                onCheckedChange={(value) => handleEnforceOrgAuthToggle(value)}
+                isDisabled={!isAllowed}
+              />
+            )}
+          </OrgPermissionCan>
+        </div>
+        <p className="text-sm text-mineshaft-300">
+          Enforce members to authenticate via OIDC to access this organization
+        </p>
+      </div>
       <OIDCModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

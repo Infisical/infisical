@@ -314,6 +314,8 @@ export const oidcConfigServiceFactory = ({
       }
     );
 
+    await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
+
     if (user.email && !user.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
@@ -395,7 +397,8 @@ export const oidcConfigServiceFactory = ({
       tokenEndpoint,
       userinfoEndpoint,
       jwksUri,
-      isActive
+      isActive,
+      lastUsed: null
     };
 
     if (clientId !== undefined) {
@@ -418,6 +421,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
+    await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
     return ssoConfig;
   };
 
