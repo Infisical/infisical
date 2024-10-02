@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import https from "https";
 import jwt from "jsonwebtoken";
 
@@ -107,32 +107,54 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const { data }: { data: TCreateTokenReviewResponse } = await axios.post(
-      `${identityKubernetesAuth.kubernetesHost}/apis/authentication.k8s.io/v1/tokenreviews`,
-      {
-        apiVersion: "authentication.k8s.io/v1",
-        kind: "TokenReview",
-        spec: {
-          token: serviceAccountJwt
-        }
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${tokenReviewerJwt}`
+    const { data } = await axios
+      .post<TCreateTokenReviewResponse>(
+        `${identityKubernetesAuth.kubernetesHost}/apis/authentication.k8s.io/v1/tokenreviews`,
+        {
+          apiVersion: "authentication.k8s.io/v1",
+          kind: "TokenReview",
+          spec: {
+            token: serviceAccountJwt
+          }
         },
-        httpsAgent: new https.Agent({
-          ca: caCert,
-          rejectUnauthorized: !!caCert
-        })
-      }
-    );
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokenReviewerJwt}`
+          },
 
-    if ("error" in data.status) throw new UnauthorizedError({ message: data.status.error });
+          // if ca cert, rejectUnauthorized: true
+          httpsAgent: new https.Agent({
+            ca: caCert,
+            rejectUnauthorized: !!caCert
+          })
+        }
+      )
+      .catch((err) => {
+        if (err instanceof AxiosError) {
+          if (err.response) {
+            const { message } = err?.response?.data as unknown as { message?: string };
+
+            if (message) {
+              throw new UnauthorizedError({
+                message,
+                name: "KubernetesTokenReviewRequestError"
+              });
+            }
+          }
+        }
+        throw err;
+      });
+
+    if ("error" in data.status)
+      throw new UnauthorizedError({ message: data.status.error, name: "KubernetesTokenReviewError" });
 
     // check the response to determine if the token is valid
     if (!(data.status && data.status.authenticated))
-      throw new UnauthorizedError({ message: "Kubernetes token not authenticated" });
+      throw new UnauthorizedError({
+        message: "Kubernetes token not authenticated",
+        name: "KubernetesTokenReviewError"
+      });
 
     const { namespace: targetNamespace, name: targetName } = extractK8sUsername(data.status.user.username);
 
