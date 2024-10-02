@@ -5,11 +5,10 @@ import { render } from "mustache";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { LdapSchema, TDynamicProviderFns } from "./models";
-
+import { BadRequestError } from "@app/lib/errors";
 const ldif = require("ldif");
 
 const generatePassword = () => {
@@ -17,8 +16,15 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
+const encodePassword = (password?: string) => {
+  const quotedPassword = `"${password}"`;
+  const utf16lePassword = Buffer.from(quotedPassword, "utf16le");
+  const base64Password = utf16lePassword.toString("base64");
+  return base64Password;
+}
+
 const generateUsername = () => {
-  return alphaNumericNanoId(32);
+  return alphaNumericNanoId(20);
 };
 
 const generateLDIF = ({
@@ -30,9 +36,11 @@ const generateLDIF = ({
   password?: string;
   ldifTemplate: string;
 }): string => {
+
   const data = {
     Username: username,
-    Password: password
+    Password: password,
+    EncodedPassword: encodePassword(password)
   };
 
   const ldif = render(ldifTemplate, data);
@@ -47,7 +55,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
   };
 
   const getClient = async (providerInputs: z.infer<typeof LdapSchema>): Promise<ldapjs.Client> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const client = ldapjs.createClient({
         url: providerInputs.url,
         tlsOptions: {
@@ -57,18 +65,17 @@ export const LdapProvider = (): TDynamicProviderFns => {
         reconnect: true,
         bindDN: providerInputs.binddn,
         bindCredentials: providerInputs.bindpass,
-        log: logger
       });
 
       client.on("error", (err) => {
         client.unbind();
-        throw new Error(err.message);
+        reject(new BadRequestError({ message: err.message }));
       });
 
       client.bind(providerInputs.binddn, providerInputs.bindpass, (err) => {
         if (err) {
           client.unbind();
-          throw new Error(err.message);
+          reject(new BadRequestError({ message: err.message }));
         } else {
           resolve(client);
         }
@@ -100,10 +107,10 @@ export const LdapProvider = (): TDynamicProviderFns => {
           attributes[attrName] = Array.isArray(attrValue) ? attrValue : [attrValue];
         });
 
-        response_dn = await new Promise((resolve) => {
+        response_dn = await new Promise((resolve, reject) => {
           client.add(dn, attributes, (err) => {
             if (err) {
-              throw new Error(err.message);
+              reject(new BadRequestError({ message: err.message }));
             } else {
               resolve(dn);
             }
@@ -117,28 +124,27 @@ export const LdapProvider = (): TDynamicProviderFns => {
             new ldapjs.Change({
               operation: change.operation || "replace",
               modification: {
-                [change.attribute.attribute]: Array.isArray(change.value.value)
-                  ? change.value.value
-                  : [change.value.value]
+                type: change.attribute.attribute,
+                values: change.values.map((value: any) => value.value)
               }
             })
           );
         });
 
-        response_dn = await new Promise((resolve) => {
+        response_dn = await new Promise((resolve, reject) => {
           client.modify(dn, changes, (err) => {
             if (err) {
-              throw new Error(err.message);
+              reject(new BadRequestError({ message: err.message }));
             } else {
               resolve(dn);
             }
           });
         });
       } else if (entry.type === "delete") {
-        response_dn = await new Promise((resolve) => {
+        response_dn = await new Promise((resolve, reject) => {
           client.del(dn, (err) => {
             if (err) {
-              throw new Error(err.message);
+              reject(new BadRequestError({ message: err.message }));
             } else {
               resolve(dn);
             }
@@ -168,11 +174,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
       return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
     } catch (err) {
-      const rollbackLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rollbackLdif });
-
-      await executeLdif(client, rollbackLdif);
-
-      throw new Error((err as Error).message);
+      if (providerInputs.rollbackLdif) {
+        const rollbackLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rollbackLdif });
+        await executeLdif(client, rollbackLdif);
+      }
+      throw new BadRequestError({ message: (err as Error).message });
     }
   };
 

@@ -180,9 +180,9 @@ export const LdapSchema = z.object({
   bindpass: z.string().trim().min(1),
   ca: z.string().optional(),
 
-  creationLdif: z.string().trim().min(1),
-  revocationLdif: z.string().trim().min(1),
-  rollbackLdif: z.string().trim().min(1)
+  creationLdif: z.string().min(1),
+  revocationLdif: z.string().min(1),
+  rollbackLdif: z.string().optional()
 });
 
 export enum DynamicSecretProviders {

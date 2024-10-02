@@ -199,7 +199,7 @@ export type TDynamicSecretProvider =
         ca?: string | undefined;
         creationLdif: string;
         revocationLdif: string;
-        rollbackLdif: string;
+        rollbackLdif?: string;
       };
     };
   ;

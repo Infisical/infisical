@@ -12,13 +12,13 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 const formSchema = z.object({
   inputs: z
     .object({
-        url: z.string().trim().min(1),
-        binddn: z.string().trim().min(1),
-        bindpass: z.string().trim().min(1),
-        ca: z.string().optional(),
-        creationLdif: z.string().trim().min(1),
-        revocationLdif: z.string().trim().min(1),
-        rollbackLdif: z.string().trim().min(1),
+      url: z.string().trim().min(1),
+      binddn: z.string().trim().min(1),
+      bindpass: z.string().trim().min(1),
+      ca: z.string().optional(),
+      creationLdif: z.string().min(1),
+      revocationLdif: z.string().min(1),
+      rollbackLdif: z.string().optional()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -58,62 +58,62 @@ type Props = {
 };
 
 export const EditDynamicSecretLdapForm = ({
-    onClose,
-    dynamicSecret,
-    environment,
-    secretPath,
-    projectSlug
-  }: Props) => {
-    const {
-      control,
-      formState: { isSubmitting },
-      handleSubmit
-    } = useForm<TForm>({
-      resolver: zodResolver(formSchema),
-      values: {
-        defaultTTL: dynamicSecret.defaultTTL,
-        maxTTL: dynamicSecret.maxTTL,
-        newName: dynamicSecret.name,
-        inputs: {
-          ...(dynamicSecret.inputs as TForm["inputs"])
+  onClose,
+  dynamicSecret,
+  environment,
+  secretPath,
+  projectSlug
+}: Props) => {
+  const {
+    control,
+    formState: { isSubmitting },
+    handleSubmit
+  } = useForm<TForm>({
+    resolver: zodResolver(formSchema),
+    values: {
+      defaultTTL: dynamicSecret.defaultTTL,
+      maxTTL: dynamicSecret.maxTTL,
+      newName: dynamicSecret.name,
+      inputs: {
+        ...(dynamicSecret.inputs as TForm["inputs"])
+      }
+    }
+  });
+
+  const updateDynamicSecret = useUpdateDynamicSecret();
+
+  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+    // wait till previous request is finished
+    if (updateDynamicSecret.isLoading) return;
+    try {
+      await updateDynamicSecret.mutateAsync({
+        name: dynamicSecret.name,
+        path: secretPath,
+        projectSlug,
+        environmentSlug: environment,
+        data: {
+          maxTTL: maxTTL || undefined,
+          defaultTTL,
+          inputs,
+          newName: newName === dynamicSecret.name ? undefined : newName
         }
-      }
-    });
-  
-    const updateDynamicSecret = useUpdateDynamicSecret();
-  
-    const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
-      // wait till previous request is finished
-      if (updateDynamicSecret.isLoading) return;
-      try {
-        await updateDynamicSecret.mutateAsync({
-          name: dynamicSecret.name,
-          path: secretPath,
-          projectSlug,
-          environmentSlug: environment,
-          data: {
-            maxTTL: maxTTL || undefined,
-            defaultTTL,
-            inputs,
-            newName: newName === dynamicSecret.name ? undefined : newName
-          }
-        });
-        onClose();
-        createNotification({
-          type: "success",
-          text: "Successfully updated dynamic secret"
-        });
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text: "Failed to update dynamic secret"
-        });
-      }
-    };
-  
-    return (
-      <div>
-        <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
+      });
+      onClose();
+      createNotification({
+        type: "success",
+        text: "Successfully updated dynamic secret"
+      });
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: "Failed to update dynamic secret"
+      });
+    }
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
           <div className="flex-grow">
             <Controller
@@ -162,107 +162,95 @@ export const EditDynamicSecretLdapForm = ({
           </div>
         </div>
         <div className="mt-4">
-            <Controller
-                control={control}
-                name="inputs.url"
-                render={({ field, fieldState: { error } }) => (
-                <FormControl
-                    label="URL"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                >
-                    <Input {...field} />
-                </FormControl>
-                )}
-            />
-            <Controller
-                control={control}
-                name="inputs.binddn"
-                render={({ field, fieldState: { error } }) => (
-                <FormControl
-                    label="Bind DN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                >
-                    <Input {...field} />
-                </FormControl>
-                )}
-            />
-            <Controller
-                control={control}
-                name="inputs.bindpass"
-                render={({ field, fieldState: { error } }) => (
-                <FormControl
-                    label="Bind Password"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                >
-                    <Input {...field} />
-                </FormControl>
-                )}
-            />
-            <Controller
-                control={control}
-                name="inputs.ca"
-                render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                    label="CA"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    >
-                    <TextArea {...field} />
-                </FormControl>
-                )}
-                />
-            <Controller
-                control={control}
-                name="inputs.creationLdif"
-                render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                    label="Creation LDIF"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    >
-                    <TextArea {...field} />
-                </FormControl>
-                )}
-                />
-            <Controller
-                control={control}
-                name="inputs.revocationLdif"
-                render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                    label="Revocation LDIF"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    >
-                    <TextArea {...field} />
-                </FormControl>
-                )}
-            />
-            <Controller
-                control={control}
-                name="inputs.rollbackLdif"
-                render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                    label="Rollback LDIF"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    >
-                    <TextArea {...field} />
-                </FormControl>
-                )}
-            />
-            </div>
-            <div className="mt-4 flex items-center space-x-4">
-                <Button type="submit" isLoading={isSubmitting}>
-                    Submit
-                </Button>
-                <Button variant="outline_bg" onClick={onClose}>
-                    Cancel
-                </Button>
-            </div>
+          <Controller
+            control={control}
+            name="inputs.url"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="URL" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="inputs.binddn"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Bind DN" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="inputs.bindpass"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Bind Password"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Input {...field} type="password" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="inputs.ca"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="CA" isError={Boolean(error)} errorText={error?.message}>
+                <TextArea {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="inputs.creationLdif"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Creation LDIF"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <TextArea {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="inputs.revocationLdif"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Revocation LDIF"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <TextArea {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="inputs.rollbackLdif"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Rollback LDIF"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <TextArea {...field} />
+              </FormControl>
+            )}
+          />
+        </div>
+        <div className="mt-4 flex items-center space-x-4">
+          <Button type="submit" isLoading={isSubmitting}>
+            Submit
+          </Button>
+          <Button variant="outline_bg" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
       </form>
-      </div>
-    )
-}  
+    </div>
+  );
+};
