@@ -36,6 +36,7 @@ const schema = z
         value: z.string().trim().min(1)
       })
       .array()
+      .default([])
       .optional()
   })
   .required();
