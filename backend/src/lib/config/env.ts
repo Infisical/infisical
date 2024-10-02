@@ -34,6 +34,12 @@ const envSchema = z
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
     ),
+    AUDIT_LOGS_DB_CONNECTION_URI: zpStr(
+      z.string().describe("Postgres database connection string for Audit logs").optional()
+    ),
+    AUDIT_LOGS_DB_ROOT_CERT: zpStr(
+      z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
+    ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
