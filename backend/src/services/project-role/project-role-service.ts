@@ -7,8 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionSet,
-  ProjectPermissionSub,
-  validateProjectPermissions
+  ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -59,8 +58,6 @@ export const projectRoleServiceFactory = ({
     if (existingRole) {
       throw new BadRequestError({ name: "Create Role", message: "Project role with same slug already exists" });
     }
-
-    validateProjectPermissions(data.permissions);
 
     const role = await projectRoleDAL.create({
       ...data,
@@ -125,10 +122,6 @@ export const projectRoleServiceFactory = ({
       const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Project role with the same slug already exists" });
-    }
-
-    if (data.permissions) {
-      validateProjectPermissions(data.permissions);
     }
 
     const [updatedRole] = await projectRoleDAL.update(

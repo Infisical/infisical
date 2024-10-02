@@ -130,18 +130,24 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          membership: OrgMembershipsSchema.merge(
-            z.object({
-              user: UsersSchema.pick({
-                username: true,
-                email: true,
-                isEmailVerified: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              }).merge(z.object({ publicKey: z.string().nullable() }))
-            })
-          ).omit({ createdAt: true, updatedAt: true })
+          membership: OrgMembershipsSchema.extend({
+            metadata: z
+              .object({
+                key: z.string().trim().min(1),
+                id: z.string().trim().min(1),
+                value: z.string().trim().min(1)
+              })
+              .array()
+              .optional(),
+            user: UsersSchema.pick({
+              username: true,
+              email: true,
+              isEmailVerified: true,
+              firstName: true,
+              lastName: true,
+              id: true
+            }).extend({ publicKey: z.string().nullable() })
+          }).omit({ createdAt: true, updatedAt: true })
         })
       }
     },
@@ -178,7 +184,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         role: z.string().trim().optional().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.role),
-        isActive: z.boolean().optional().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.isActive)
+        isActive: z.boolean().optional().describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.isActive),
+        metadata: z
+          .object({
+            key: z.string().trim().min(1).describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.metadata.key),
+            value: z.string().trim().min(1).describe(ORGANIZATIONS.UPDATE_USER_MEMBERSHIP.metadata.value)
+          })
+          .array()
+          .optional()
       }),
       response: {
         200: z.object({

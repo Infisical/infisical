@@ -38,6 +38,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { assignWorkspaceKeysToMembers } from "../project/project-fns";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -73,12 +74,13 @@ type TOrgServiceFactoryDep = {
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
   projectDAL: TProjectDALFactory;
+  identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
     "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne" | "findById">;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne" | "findEnforceableSamlCfg">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "findEnforceableOidcCfg">;
@@ -118,7 +120,8 @@ export const orgServiceFactory = ({
   samlConfigDAL,
   oidcConfigDAL,
   projectBotDAL,
-  projectUserMembershipRoleDAL
+  projectUserMembershipRoleDAL,
+  identityMetadataDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -408,20 +411,22 @@ export const orgServiceFactory = ({
     userId,
     membershipId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    metadata
   }: TUpdateOrgMembershipDTO) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
-    const foundMembership = await orgMembershipDAL.findOne({
-      id: membershipId,
-      orgId
-    });
+    const foundMembership = await orgMembershipDAL.findById(membershipId);
     if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (foundMembership.orgId !== orgId)
+      throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
     if (foundMembership.userId === userId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
+    let userRole = role;
+    let userRoleId: string | null = null;
     if (role && isCustomRole) {
       const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
@@ -432,17 +437,31 @@ export const orgServiceFactory = ({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });
 
-      const [membership] = await orgDAL.updateMembership(
-        { id: membershipId, orgId },
-        {
-          role: OrgMembershipRole.Custom,
-          roleId: customRole.id
-        }
-      );
-      return membership;
+      userRole = OrgMembershipRole.Custom;
+      userRoleId = customRole.id;
     }
+    const membership = await orgDAL.transaction(async (tx) => {
+      const [updatedOrgMembership] = await orgDAL.updateMembership(
+        { id: membershipId, orgId },
+        { role: userRole, roleId: userRoleId, isActive }
+      );
 
-    const [membership] = await orgDAL.updateMembership({ id: membershipId, orgId }, { role, roleId: null, isActive });
+      if (metadata) {
+        await identityMetadataDAL.delete({ userId: updatedOrgMembership.userId, orgId }, tx);
+        if (metadata.length) {
+          await identityMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              userId: updatedOrgMembership.userId,
+              orgId,
+              key,
+              value
+            })),
+            tx
+          );
+        }
+      }
+      return updatedOrgMembership;
+    });
     return membership;
   };
   /*

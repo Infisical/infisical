@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { useDeleteProjectRole,useGetProjectRoleBySlug } from "@app/hooks/api";
+import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { TabSections } from "../Types";
@@ -76,7 +76,9 @@ export const RolePage = withProjectPermission(
               variant="link"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-              onClick={() => router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`)}
+              onClick={() =>
+                router.push(`/project/${projectId}/members?selectedTab=${TabSections.Roles}`)
+              }
               className="mb-4"
             >
               Roles
@@ -139,7 +141,7 @@ export const RolePage = withProjectPermission(
               <div className="mr-4 w-96">
                 <RoleDetailsSection roleSlug={roleSlug} handlePopUpOpen={handlePopUpOpen} />
               </div>
-              <RolePermissionsSection roleSlug={roleSlug} />
+              <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />
             </div>
           </div>
         )}

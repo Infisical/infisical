@@ -23,6 +23,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -51,6 +52,8 @@ type TSamlConfigServiceFactoryDep = {
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
+
+  identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -71,7 +74,8 @@ export const samlConfigServiceFactory = ({
   permissionService,
   licenseService,
   tokenService,
-  smtpService
+  smtpService,
+  identityMetadataDAL
 }: TSamlConfigServiceFactoryDep) => {
   const createSamlCfg = async ({
     cert,
@@ -332,7 +336,8 @@ export const samlConfigServiceFactory = ({
     lastName,
     authProvider,
     orgId,
-    relayState
+    relayState,
+    metadata
   }: TSamlLoginDTO) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
@@ -384,6 +389,21 @@ export const samlConfigServiceFactory = ({
             },
             tx
           );
+        }
+
+        if (metadata && foundUser.id) {
+          await identityMetadataDAL.delete({ userId: foundUser.id, orgId }, tx);
+          if (metadata.length) {
+            await identityMetadataDAL.insertMany(
+              metadata.map(({ key, value }) => ({
+                userId: foundUser.id,
+                orgId,
+                key,
+                value
+              })),
+              tx
+            );
+          }
         }
 
         return foundUser;
@@ -474,6 +494,20 @@ export const samlConfigServiceFactory = ({
           );
         }
 
+        if (metadata && newUser.id) {
+          await identityMetadataDAL.delete({ userId: newUser.id, orgId }, tx);
+          if (metadata.length) {
+            await identityMetadataDAL.insertMany(
+              metadata.map(({ key, value }) => ({
+                userId: newUser?.id,
+                orgId,
+                key,
+                value
+              })),
+              tx
+            );
+          }
+        }
         return newUser;
       });
     }

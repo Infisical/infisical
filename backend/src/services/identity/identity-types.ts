@@ -4,12 +4,14 @@ import { OrderByDirection, TOrgPermission } from "@app/lib/types";
 export type TCreateIdentityDTO = {
   role: string;
   name: string;
+  metadata?: { key: string; value: string }[];
 } & TOrgPermission;
 
 export type TUpdateIdentityDTO = {
   id: string;
   role?: string;
   name?: string;
+  metadata?: { key: string; value: string }[];
 } & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteIdentityDTO = {

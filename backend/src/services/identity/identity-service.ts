@@ -10,6 +10,7 @@ import { TIdentityProjectDALFactory } from "@app/services/identity-project/ident
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "./identity-dal";
+import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
   TCreateIdentityDTO,
@@ -22,6 +23,7 @@ import {
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
+  identityMetadataDAL: TIdentityMetadataDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
@@ -32,6 +34,7 @@ export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 
 export const identityServiceFactory = ({
   identityDAL,
+  identityMetadataDAL,
   identityOrgMembershipDAL,
   identityProjectDAL,
   permissionService,
@@ -44,7 +47,8 @@ export const identityServiceFactory = ({
     orgId,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    metadata
   }: TCreateIdentityDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
@@ -78,6 +82,17 @@ export const identityServiceFactory = ({
         },
         tx
       );
+      if (metadata && metadata.length) {
+        await identityMetadataDAL.insertMany(
+          metadata.map(({ key, value }) => ({
+            identityId: newIdentity.id,
+            orgId,
+            key,
+            value
+          })),
+          tx
+        );
+      }
       return newIdentity;
     });
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
@@ -92,7 +107,8 @@ export const identityServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    metadata
   }: TUpdateIdentityDTO) => {
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
@@ -134,14 +150,28 @@ export const identityServiceFactory = ({
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = name ? await identityDAL.updateById(id, { name }, tx) : await identityDAL.findById(id, tx);
       if (role) {
-        await identityOrgMembershipDAL.update(
-          { identityId: id },
+        await identityOrgMembershipDAL.updateById(
+          identityOrgMembership.id,
           {
             role: customRole ? OrgMembershipRole.Custom : role,
             roleId: customRole?.id || null
           },
           tx
         );
+      }
+      if (metadata) {
+        await identityMetadataDAL.delete({ orgId: identityOrgMembership.orgId, identityId: id }, tx);
+        if (metadata.length) {
+          await identityMetadataDAL.insertMany(
+            metadata.map(({ key, value }) => ({
+              identityId: newIdentity.id,
+              orgId: identityOrgMembership.orgId,
+              key,
+              value
+            })),
+            tx
+          );
+        }
       }
       return newIdentity;
     });

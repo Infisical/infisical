@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, sqlNestRelationships } from "@app/lib/knex";
 
 export type TOrgMembershipDALFactory = ReturnType<typeof orgMembershipDALFactory>;
 
@@ -19,6 +19,11 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
         )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.OrgMembership}.userId`, `${TableName.IdentityMetadata}.userId`)
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .select(
           db.ref("id").withSchema(TableName.OrgMembership),
           db.ref("inviteEmail").withSchema(TableName.OrgMembership),
@@ -33,19 +38,66 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
         )
-        .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
-        .first();
+        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
 
       if (!member) return undefined;
 
-      const { email, isEmailVerified, username, firstName, lastName, userId, publicKey, ...data } = member;
+      const doc = sqlNestRelationships({
+        data: member,
+        key: "id",
+        parentMapper: ({
+          email,
+          isEmailVerified,
+          username,
+          firstName,
+          lastName,
+          userId,
+          publicKey,
+          roleId,
+          orgId,
+          id,
+          role,
+          status,
+          isActive,
+          inviteEmail
+        }) => ({
+          roleId,
+          orgId,
+          id,
+          role,
+          status,
+          isActive,
+          inviteEmail,
+          user: {
+            id: userId,
+            email,
+            isEmailVerified,
+            username,
+            firstName,
+            lastName,
+            userId,
+            publicKey
+          }
+        }),
+        childrenMapper: [
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
 
-      return {
-        ...data,
-        user: { email, isEmailVerified, username, firstName, lastName, id: userId, publicKey }
-      };
+      return doc?.[0];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org membership by id" });
     }

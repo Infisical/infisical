@@ -1,8 +1,8 @@
-import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faKey, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Tag, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetIdentityById } from "@app/hooks/api";
@@ -40,7 +40,8 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                       identityId,
                       name: data.identity.name,
                       role: data.role,
-                      customRole: data.customRole
+                      customRole: data.customRole,
+                      metadata: data.metadata
                     });
                   }}
                 >
@@ -77,9 +78,37 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
         </div>
-        <div>
+        <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
           <p className="text-sm text-mineshaft-300">{data.role}</p>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>
+          {data?.metadata?.length ? (
+            <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
+              {data.metadata?.map((el) => (
+                <div key={el.id} className="flex items-center">
+                  <Tag
+                    size="xs"
+                    className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
+                  >
+                    <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
+                    <div>{el.key}</div>
+                  </Tag>
+                  <Tag
+                    size="xs"
+                    className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
+                  >
+                    <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
+                      {el.value}
+                    </div>
+                  </Tag>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-mineshaft-300">-</p>
+          )}
         </div>
       </div>
     </div>

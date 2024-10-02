@@ -235,12 +235,13 @@ export const useUpdateOrgMembership = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, UpdateOrgMembershipDTO>({
-    mutationFn: ({ organizationId, membershipId, role, isActive }) => {
+    mutationFn: ({ organizationId, membershipId, role, isActive, metadata }) => {
       return apiRequest.patch(
         `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
         {
           role,
-          isActive
+          isActive,
+          metadata
         }
       );
     },
