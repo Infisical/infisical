@@ -168,7 +168,8 @@
             "documentation/platform/dynamic-secrets/aws-iam",
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db",
-            "documentation/platform/dynamic-secrets/azure-entra-id"
+            "documentation/platform/dynamic-secrets/azure-entra-id",
+            "documentation/platform/dynamic-secrets/ldap"
           ]
         },
         {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DiRedis } from "react-icons/di";
-import { SiApachecassandra, SiElasticsearch, SiMicrosoftazure, SiMongodb, SiRabbitmq } from "react-icons/si";
+import { SiApachecassandra, SiElasticsearch, SiFiles, SiMicrosoftazure, SiMongodb, SiRabbitmq } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -86,7 +86,7 @@ const DYNAMIC_SECRET_LIST = [
     title: "Azure Entra ID",
   },
   {
-    icon: <SiMicrosoftazure size="1.5rem" />,
+    icon: <SiFiles size="1.5rem" />,
     provider: DynamicSecretProviders.Ldap,
     title: "LDAP",
   }
