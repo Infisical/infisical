@@ -150,12 +150,17 @@ export const integrationServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
+    const newEnvironment = environment || integration.environment.slug;
+    const newSecretPath = secretPath || integration.secretPath;
 
-    const folder = await folderDAL.findBySecretPath(integration.projectId, environment, secretPath);
+    if (environment || secretPath) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment: newEnvironment, secretPath: newSecretPath })
+      );
+    }
+
+    const folder = await folderDAL.findBySecretPath(integration.projectId, newEnvironment, newSecretPath);
     if (!folder) throw new NotFoundError({ message: "Folder path not found" });
 
     const updatedIntegration = await integrationDAL.updateById(id, {
@@ -174,7 +179,7 @@ export const integrationServiceFactory = ({
 
     await secretQueueService.syncIntegrations({
       environment: folder.environment.slug,
-      secretPath,
+      secretPath: newSecretPath,
       projectId: folder.projectId
     });
 
