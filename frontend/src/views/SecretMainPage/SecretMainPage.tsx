@@ -79,7 +79,7 @@ export const SecretMainPage = () => {
     ProjectPermissionSub.SecretRollback
   );
 
-  const [filter, setFilter] = useState<Filter>({
+  const defaultFilterState = {
     tags: {},
     searchFilter: (router.query.searchFilter as string) || "",
     include: {
@@ -88,8 +88,11 @@ export const SecretMainPage = () => {
       [RowType.DynamicSecret]: canReadSecret,
       [RowType.Secret]: canReadSecret
     }
-  });
-  const debouncedSearchFilter = useDebounce(filter.searchFilter);
+  };
+
+  const [filter, setFilter] = useState<Filter>(defaultFilterState);
+  const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
+  const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
 
   // change filters if permissions change at different paths/env
   useEffect(() => {
@@ -255,9 +258,38 @@ export const SecretMainPage = () => {
     if (totalCount < paginationOffset) setPage(1);
   }, [totalCount]);
 
+  useEffect(() => {
+    // restore filters for path if set
+    const restore = filterHistory.get(secretPath);
+    setFilter(restore ?? defaultFilterState);
+    setDebouncedSearchFilter(restore?.searchFilter ?? "");
+    const { searchFilter, ...query } = router.query;
+
+    // this is a temp work around until we fully transition state to query params,
+    // setting the initial search filter by query and then moving it to internal state
+    if (router.query.searchFilter) {
+      router.push({
+        pathname: router.pathname,
+        query
+      });
+    }
+  }, [secretPath]);
+
   if (isDetailsLoading) {
     return <ContentLoader text={LOADER_TEXT} />;
   }
+
+  const handleResetFilter = () => {
+    // store for breadcrumb nav to restore previously used filters
+    setFilterHistory((prev) => {
+      const curr = new Map(prev);
+      curr.set(secretPath, filter);
+      return curr;
+    });
+
+    setFilter(defaultFilterState);
+    setDebouncedSearchFilter("");
+  };
 
   return (
     <StoreProvider>
@@ -339,6 +371,7 @@ export const SecretMainPage = () => {
                     environment={environment}
                     workspaceId={workspaceId}
                     secretPath={secretPath}
+                    onNavigateToFolder={handleResetFilter}
                   />
                 )}
                 {canReadSecret && dynamicSecrets?.length && (

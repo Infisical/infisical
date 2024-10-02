@@ -60,7 +60,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
   const [orderBy, setOrderBy] = useState(OrgIdentityOrderBy.Name);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search);
+  const [debouncedSearch] = useDebounce(search);
 
   const organizationId = currentOrg?.id || "";
 

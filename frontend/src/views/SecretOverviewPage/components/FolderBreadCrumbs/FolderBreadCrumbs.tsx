@@ -4,16 +4,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 type Props = {
   secretPath: string;
-  onResetSearch: () => void;
+  onResetSearch: (path: string) => void;
 };
 
 export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) => {
   const router = useRouter();
 
   const onFolderCrumbClick = (index: number) => {
-    const newSecPath = secretPath.split("/").filter(Boolean).slice(0, index).join("/");
-    if (secretPath === `/${newSecPath}`) return;
-    const query = { ...router.query, secretPath: `/${newSecPath}` } as Record<string, string>;
+    const newSecPath = `/${secretPath.split("/").filter(Boolean).slice(0, index).join("/")}`;
+    if (secretPath === newSecPath) return;
+    const query = { ...router.query, secretPath: newSecPath } as Record<string, string>;
     // root condition
     if (index === 0) delete query.secretPath;
     router
@@ -21,7 +21,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
         pathname: router.pathname,
         query
       })
-      .then(() => onResetSearch());
+      .then(() => onResetSearch(newSecPath));
   };
 
   return (
