@@ -100,7 +100,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       body: z.object({
-        secretValue: z.string(),
+        secretValue: z.string().max(10_000),
         password: z.string().optional(),
         expiresAt: z.string(),
         expiresAfterViews: z.number().min(1).optional()

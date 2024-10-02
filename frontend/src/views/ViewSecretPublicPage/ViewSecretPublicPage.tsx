@@ -53,9 +53,6 @@ export const ViewSecretPublicPage = () => {
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
     "Invalid credentials";
 
-  console.log("data", fetchSecret);
-  console.log("err", error);
-
   const shouldShowPasswordPrompt =
     isInvalidCredential || (fetchSecret?.isPasswordProtected && !fetchSecret.secret);
   const isValidatingPassword = Boolean(password) && isFetching;

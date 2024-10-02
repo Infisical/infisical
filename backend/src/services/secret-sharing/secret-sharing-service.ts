@@ -114,11 +114,6 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Expiration date cannot exceed more than 30 days" });
     }
 
-    // Limit Input ciphertext length to 13000 (equivalent to 10,000 characters of Plaintext)n
-    if (secretValue.length > 10_000) {
-      throw new BadRequestError({ message: "Shared secret value too long" });
-    }
-
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
