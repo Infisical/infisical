@@ -30,15 +30,15 @@ export async function down(knex: Knex): Promise<void> {
 
     // remove projectId for CMEK functionality
     await knex.schema.alterTable(TableName.KmsKey, (table) => {
+      if (hasName) {
+        table.renameColumn("name", "slug");
+      }
+
       if (hasOrgId) {
         table.dropUnique(["orgId", "projectId", "slug"]);
         table.unique(["orgId", "slug"]);
       }
       table.dropColumn("projectId");
-
-      if (hasName) {
-        table.renameColumn("name", "slug");
-      }
     });
   }
 }
