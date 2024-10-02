@@ -131,9 +131,9 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
           .default("/")
           .transform(removeTrailingSlash)
           .describe(INTEGRATION.UPDATE.secretPath),
-        targetEnvironment: z.string().trim().describe(INTEGRATION.UPDATE.targetEnvironment),
-        owner: z.string().trim().describe(INTEGRATION.UPDATE.owner),
-        environment: z.string().trim().describe(INTEGRATION.UPDATE.environment),
+        targetEnvironment: z.string().trim().optional().describe(INTEGRATION.UPDATE.targetEnvironment),
+        owner: z.string().trim().optional().describe(INTEGRATION.UPDATE.owner),
+        environment: z.string().trim().optional().describe(INTEGRATION.UPDATE.environment),
         metadata: IntegrationMetadataSchema.optional()
       }),
       response: {

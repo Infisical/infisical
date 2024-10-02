@@ -48,10 +48,10 @@ export type TUpdateIntegrationDTO = {
   app?: string;
   appId?: string;
   isActive?: boolean;
-  secretPath: string;
-  targetEnvironment: string;
-  owner: string;
-  environment: string;
+  secretPath?: string;
+  targetEnvironment?: string;
+  owner?: string;
+  environment?: string;
   metadata?: {
     secretPrefix?: string;
     secretSuffix?: string;
