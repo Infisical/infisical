@@ -38,6 +38,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
 
 export type TDynamicSecretLeaseServiceFactory = ReturnType<typeof dynamicSecretLeaseServiceFactory>;
 
+// TODO(casl): change the lease to different permission
 export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretLeaseDAL,
   dynamicSecretProviders,
@@ -73,7 +74,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -146,7 +147,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -220,7 +221,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -285,7 +286,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -321,7 +322,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
