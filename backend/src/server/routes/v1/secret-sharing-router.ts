@@ -55,10 +55,10 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        id: z.string().uuid()
+        id: z.string()
       }),
       body: z.object({
-        hashedHex: z.string().min(1),
+        hashedHex: z.string().min(1).optional(),
         password: z.string().optional()
       }),
       response: {
@@ -73,7 +73,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             accessType: true
           })
             .extend({
-              orgName: z.string().optional()
+              orgName: z.string().optional(),
+              secretValue: z.string().optional()
             })
             .optional()
         })
@@ -99,17 +100,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       body: z.object({
-        encryptedValue: z.string(),
+        secretValue: z.string().max(10_000),
         password: z.string().optional(),
-        hashedHex: z.string(),
-        iv: z.string(),
-        tag: z.string(),
         expiresAt: z.string(),
         expiresAfterViews: z.number().min(1).optional()
       }),
       response: {
         200: z.object({
-          id: z.string().uuid()
+          id: z.string()
         })
       }
     },
@@ -132,17 +130,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       body: z.object({
         name: z.string().max(50).optional(),
         password: z.string().optional(),
-        encryptedValue: z.string(),
-        hashedHex: z.string(),
-        iv: z.string(),
-        tag: z.string(),
+        secretValue: z.string(),
         expiresAt: z.string(),
         expiresAfterViews: z.number().min(1).optional(),
         accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
       }),
       response: {
         200: z.object({
-          id: z.string().uuid()
+          id: z.string()
         })
       }
     },
@@ -168,7 +163,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        sharedSecretId: z.string().uuid()
+        sharedSecretId: z.string()
       }),
       response: {
         200: SecretSharingSchema

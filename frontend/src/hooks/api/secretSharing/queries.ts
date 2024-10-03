@@ -8,7 +8,7 @@ export const secretSharingKeys = {
   allSharedSecrets: () => ["sharedSecrets"] as const,
   specificSharedSecrets: ({ offset, limit }: { offset: number; limit: number }) =>
     [...secretSharingKeys.allSharedSecrets(), { offset, limit }] as const,
-  getSecretById: (arg: { id: string; hashedHex: string; password?: string }) => [
+  getSecretById: (arg: { id: string; hashedHex: string | null; password?: string }) => [
     "shared-secret",
     arg
   ]
@@ -46,7 +46,7 @@ export const useGetActiveSharedSecretById = ({
   password
 }: {
   sharedSecretId: string;
-  hashedHex: string;
+  hashedHex: string | null;
   password?: string;
 }) => {
   return useQuery<TViewSharedSecretResponse>(
@@ -55,7 +55,7 @@ export const useGetActiveSharedSecretById = ({
       const { data } = await apiRequest.post<TViewSharedSecretResponse>(
         `/api/v1/secret-sharing/public/${sharedSecretId}`,
         {
-          hashedHex,
+          ...(hashedHex && { hashedHex }),
           password
         }
       );
@@ -63,7 +63,7 @@ export const useGetActiveSharedSecretById = ({
       return data;
     },
     {
-      enabled: Boolean(sharedSecretId) && Boolean(hashedHex)
+      enabled: Boolean(sharedSecretId)
     }
   );
 };
