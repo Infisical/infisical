@@ -19,9 +19,9 @@ export const KeyStorePrefixes = {
   ProjectEnvironmentCreate: "project-environment-creation-lock",
   ProjectEnvironmentUpdate: "project-environment-update-lock",
   ProjectEnvironmentDelete: "project-environment-delete-lock",
-  WaitUntilReadyCreateProjectEnvironment: "wait-until-ready-create-project-environments-",
-  WaitUntilReadyUpdateProjectEnvironment: "wait-until-ready-update-project-environments-",
-  WaitUntilReadyDeleteProjectEnvironment: "wait-until-ready-delete-project-environments-",
+
+  WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
+    `wait-until-ready-project-environments-operation-${projectId}`,
 
   SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,

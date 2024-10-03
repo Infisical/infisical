@@ -56,7 +56,7 @@ export const projectEnvServiceFactory = ({
     try {
       if (!lock) {
         await keyStore.waitTillReady({
-          key: `${KeyStorePrefixes.WaitUntilReadyCreateProjectEnvironment}${projectId}`,
+          key: KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
           keyCheckCb: (val) => val === "true",
           waitingCb: () => logger.debug("Create project environment. Waiting for "),
           delay: 500
@@ -90,7 +90,7 @@ export const projectEnvServiceFactory = ({
       });
 
       await keyStore.setItemWithExpiry(
-        `${KeyStorePrefixes.WaitUntilReadyCreateProjectEnvironment}${projectId}`,
+        KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
         10,
         "true"
       );
@@ -128,7 +128,7 @@ export const projectEnvServiceFactory = ({
     try {
       if (!lock) {
         await keyStore.waitTillReady({
-          key: `${KeyStorePrefixes.WaitUntilReadyUpdateProjectEnvironment}${projectId}`,
+          key: KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
           keyCheckCb: (val) => val === "true",
           waitingCb: () => logger.debug("Update project environment. Waiting for project environment update"),
           delay: 500
@@ -156,7 +156,7 @@ export const projectEnvServiceFactory = ({
       });
 
       await keyStore.setItemWithExpiry(
-        `${KeyStorePrefixes.WaitUntilReadyUpdateProjectEnvironment}${projectId}`,
+        KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
         10,
         "true"
       );
@@ -184,7 +184,7 @@ export const projectEnvServiceFactory = ({
     try {
       if (!lock) {
         await keyStore.waitTillReady({
-          key: `${KeyStorePrefixes.WaitUntilReadyDeleteProjectEnvironment}${projectId}`,
+          key: KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
           keyCheckCb: (val) => val === "true",
           waitingCb: () => logger.debug("Delete project environment. Waiting for "),
           delay: 500
@@ -204,7 +204,7 @@ export const projectEnvServiceFactory = ({
       });
 
       await keyStore.setItemWithExpiry(
-        `${KeyStorePrefixes.WaitUntilReadyDeleteProjectEnvironment}${projectId}`,
+        KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
         10,
         "true"
       );
