@@ -327,6 +327,6 @@ export const externalKmsServiceFactory = ({
     deleteById,
     list,
     findById,
-    findBySlug: findByName
+    findByName
   };
 };

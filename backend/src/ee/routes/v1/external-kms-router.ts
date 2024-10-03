@@ -260,7 +260,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/slug/:slug",
+    url: "/name/:name",
     config: {
       rateLimit: readLimit
     },
@@ -276,7 +276,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const externalKms = await server.services.externalKms.findBySlug({
+      const externalKms = await server.services.externalKms.findByName({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
