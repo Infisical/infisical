@@ -90,7 +90,13 @@ export const LdapProvider = (): TDynamicProviderFns => {
   };
 
   const executeLdif = async (client: ldapjs.Client, ldif_file: string) => {
-    const parsedEntries: any = ldif.parse(ldif_file).entries as any[];
+    let parsedEntries;
+    try {
+      parsedEntries = ldif.parse(ldif_file).entries as any[];
+    } catch (err) {
+      throw new BadRequestError({ message: "Invalid LDIF, Please check LDIF entries section in the documentation." });
+    }
+
     const dnArray: string[] = [];
 
     for (const entry of parsedEntries) {
