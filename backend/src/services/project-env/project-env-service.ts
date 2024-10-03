@@ -50,7 +50,7 @@ export const projectEnvServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
 
     const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.ProjectEnvironmentCreate, projectId], 5000)
+      .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
       .catch(() => null);
 
     try {
@@ -122,7 +122,7 @@ export const projectEnvServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
 
     const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.ProjectEnvironmentUpdate, projectId], 5000)
+      .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
       .catch(() => null);
 
     try {
@@ -178,7 +178,7 @@ export const projectEnvServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
     const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.ProjectEnvironmentDelete, projectId], 5000)
+      .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
       .catch(() => null);
 
     try {
