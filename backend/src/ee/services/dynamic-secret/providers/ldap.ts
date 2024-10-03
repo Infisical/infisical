@@ -1,16 +1,13 @@
-/* eslint-disable */
-
 import ldapjs from "ldapjs";
+import ldif from "ldif";
 import mustache from "mustache";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { LdapSchema, TDynamicProviderFns } from "./models";
-import { BadRequestError } from "@app/lib/errors";
-// @ts-ignore
-import ldif from "ldif";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -22,7 +19,7 @@ const encodePassword = (password?: string) => {
   const utf16lePassword = Buffer.from(quotedPassword, "utf16le");
   const base64Password = utf16lePassword.toString("base64");
   return base64Password;
-}
+};
 
 const generateUsername = () => {
   return alphaNumericNanoId(20);
@@ -37,16 +34,15 @@ const generateLDIF = ({
   password?: string;
   ldifTemplate: string;
 }): string => {
-
   const data = {
     Username: username,
     Password: password,
     EncodedPassword: encodePassword(password)
   };
 
-  const ldif = mustache.render(ldifTemplate, data);
+  const renderedLdif = mustache.render(ldifTemplate, data);
 
-  return ldif;
+  return renderedLdif;
 };
 
 export const LdapProvider = (): TDynamicProviderFns => {
@@ -65,10 +61,10 @@ export const LdapProvider = (): TDynamicProviderFns => {
         },
         reconnect: true,
         bindDN: providerInputs.binddn,
-        bindCredentials: providerInputs.bindpass,
+        bindCredentials: providerInputs.bindpass
       });
 
-      client.on("error", (err) => {
+      client.on("error", (err: Error) => {
         client.unbind();
         reject(new BadRequestError({ message: err.message }));
       });
@@ -91,30 +87,53 @@ export const LdapProvider = (): TDynamicProviderFns => {
   };
 
   const executeLdif = async (client: ldapjs.Client, ldif_file: string) => {
-    let parsedEntries;
+    type TEntry = {
+      dn: string;
+      type: string;
+
+      changes: {
+        operation?: string;
+        attribute: {
+          attribute: string;
+        };
+        value: {
+          value: string;
+        };
+        values: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Untyped, can be any for ldapjs.Change.modification.values
+          value: any;
+        }[];
+      }[];
+    };
+
+    let parsedEntries: TEntry[];
+
     try {
-      parsedEntries = ldif.parse(ldif_file).entries as any[];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      parsedEntries = ldif.parse(ldif_file).entries as TEntry[];
     } catch (err) {
-      throw new BadRequestError({ message: "Invalid LDIF format, refer to the documentation at Dynamic secrets > LDAP > LDIF Entries." });
+      throw new BadRequestError({
+        message: "Invalid LDIF format, refer to the documentation at Dynamic secrets > LDAP > LDIF Entries."
+      });
     }
 
     const dnArray: string[] = [];
 
-    for (const entry of parsedEntries) {
+    for await (const entry of parsedEntries) {
       const { dn } = entry;
-      let response_dn: string;
+      let responseDn: string;
 
       if (entry.type === "add") {
-        const attributes: any = {};
+        const attributes: Record<string, string | string[]> = {};
 
-        entry.changes.forEach((change: any) => {
+        entry.changes.forEach((change) => {
           const attrName = change.attribute.attribute;
           const attrValue = change.value.value;
 
           attributes[attrName] = Array.isArray(attrValue) ? attrValue : [attrValue];
         });
 
-        response_dn = await new Promise((resolve, reject) => {
+        responseDn = await new Promise((resolve, reject) => {
           client.add(dn, attributes, (err) => {
             if (err) {
               reject(new BadRequestError({ message: err.message }));
@@ -124,21 +143,22 @@ export const LdapProvider = (): TDynamicProviderFns => {
           });
         });
       } else if (entry.type === "modify") {
-        const changes: any = [];
+        const changes: ldapjs.Change[] = [];
 
-        entry.changes.forEach((change: any) => {
+        entry.changes.forEach((change) => {
           changes.push(
             new ldapjs.Change({
               operation: change.operation || "replace",
               modification: {
                 type: change.attribute.attribute,
-                values: change.values.map((value: any) => value.value)
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                values: change.values.map((value) => value.value)
               }
             })
           );
         });
 
-        response_dn = await new Promise((resolve, reject) => {
+        responseDn = await new Promise((resolve, reject) => {
           client.modify(dn, changes, (err) => {
             if (err) {
               reject(new BadRequestError({ message: err.message }));
@@ -148,7 +168,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
           });
         });
       } else if (entry.type === "delete") {
-        response_dn = await new Promise((resolve, reject) => {
+        responseDn = await new Promise((resolve, reject) => {
           client.del(dn, (err) => {
             if (err) {
               reject(new BadRequestError({ message: err.message }));
@@ -162,7 +182,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
         throw new BadRequestError({ message: `Unsupported operation type ${entry.type}` });
       }
 
-      dnArray.push(response_dn);
+      dnArray.push(responseDn);
     }
     client.unbind();
     return dnArray;
@@ -174,10 +194,10 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
     const username = generateUsername();
     const password = generatePassword();
-    const ldif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
+    const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
 
     try {
-      const dnArray = await executeLdif(client, ldif);
+      const dnArray = await executeLdif(client, generatedLdif);
 
       return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
     } catch (err) {
