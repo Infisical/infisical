@@ -2090,18 +2090,22 @@ const syncSecretsCircleCI = async ({
  */
 const syncSecretsDatabricks = async ({
   integration,
+  integrationAuth,
   secrets,
   accessToken
 }: {
   integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
+  const databricksApiUrl = `${integrationAuth.url}/api`;
+
   // sync secrets to Databricks
   await Promise.all(
     Object.keys(secrets).map(async (key) =>
       request.post(
-        `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/put`,
+        `${databricksApiUrl}/2.0/secrets/put`,
         {
           scope: integration.app,
           key,
@@ -2120,7 +2124,7 @@ const syncSecretsDatabricks = async ({
   // get secrets from Databricks
   const getSecretsRes = (
     await request.get<{ secrets: { key: string; last_updated_timestamp: number }[] }>(
-      `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/list`,
+      `${databricksApiUrl}/2.0/secrets/list`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -2138,7 +2142,7 @@ const syncSecretsDatabricks = async ({
     getSecretsRes.map(async (sec) => {
       if (!(sec.key in secrets)) {
         return request.post(
-          `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/delete`,
+          `${databricksApiUrl}/2.0/secrets/delete`,
           {
             scope: integration.app,
             key: sec.key
@@ -4094,6 +4098,7 @@ export const syncIntegrationSecrets = async ({
     case Integrations.DATABRICKS:
       await syncSecretsDatabricks({
         integration,
+        integrationAuth,
         secrets,
         accessToken
       });

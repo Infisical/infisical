@@ -15,14 +15,21 @@ export default function DatabricksCreateIntegrationPage() {
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const [apiKey, setApiKey] = useState("");
+  const [instanceURL, setInstanceURL] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
+  const [instanceURLErrorText, setInstanceURLErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
       setApiKeyErrorText("");
+      setInstanceURLErrorText("");
       if (apiKey.length === 0) {
         setApiKeyErrorText("API Key cannot be blank");
+        return;
+      }
+      if (instanceURL.length === 0) {
+        setInstanceURLErrorText("Instance URL cannot be blank");
         return;
       }
 
@@ -31,6 +38,7 @@ export default function DatabricksCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "databricks",
+        url: instanceURL,
         accessToken: apiKey
       });
 
@@ -78,12 +86,20 @@ export default function DatabricksCreateIntegrationPage() {
           </div>
         </CardTitle>
         <FormControl
-          label="Databricks Access Token"
+          label="Databricks Instance URL"
+          errorText={instanceURLErrorText}
+          isError={instanceURLErrorText !== "" ?? false}
+          className="px-6"
+        >
+          <Input value={instanceURL} onChange={(e) => setInstanceURL(e.target.value)} placeholder="https://xxxx.cloud.databricks.com" />
+        </FormControl>
+        <FormControl
+          label="Access Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
           className="px-6"
         >
-          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} type="password" />
         </FormControl>
         <Button
           onClick={handleButtonClick}
