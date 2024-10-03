@@ -9,6 +9,7 @@ import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
 import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
+import { EditDynamicSecretLdapForm } from "./EditDynamicSecretLdapForm";
 import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasForm";
 import { EditDynamicSecretMongoDBForm } from "./EditDynamicSecretMongoDBForm";
 import { EditDynamicSecretRabbitMqForm } from "./EditDynamicSecretRabbitMqForm";
@@ -221,6 +222,24 @@ export const EditDynamicSecretForm = ({
           />
         </motion.div>
       )}
+
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Ldap && (
+        <motion.div
+          key="ldap-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+          >
+            <EditDynamicSecretLdapForm
+              onClose={onClose}
+              projectSlug={projectSlug}
+              secretPath={secretPath}
+              dynamicSecret={dynamicSecretDetails}
+              environment={environment}
+            />
+          </motion.div>
+        )}
     </AnimatePresence>
   );
 };

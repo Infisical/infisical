@@ -25,7 +25,8 @@ export enum DynamicSecretProviders {
   ElasticSearch = "elastic-search",
   MongoDB = "mongo-db",
   RabbitMq = "rabbit-mq",
-  AzureEntraId = "azure-entra-id"
+  AzureEntraId = "azure-entra-id",
+  Ldap = "ldap"
 }
 
 export enum SqlProviders {
@@ -188,7 +189,20 @@ export type TDynamicSecretProvider =
         applicationId: string;
         clientSecret: string;
       };
-  };
+  }
+  | {
+      type: DynamicSecretProviders.Ldap;
+      inputs: {
+        url: string;
+        binddn: string;
+        bindpass: string;
+        ca?: string | undefined;
+        creationLdif: string;
+        revocationLdif: string;
+        rollbackLdif?: string;
+      };
+    };
+  ;
 
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;

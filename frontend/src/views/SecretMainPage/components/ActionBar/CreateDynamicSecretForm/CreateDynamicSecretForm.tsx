@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DiRedis } from "react-icons/di";
-import { SiApachecassandra, SiElasticsearch, SiMicrosoftazure, SiMongodb, SiRabbitmq } from "react-icons/si";
+import { SiApachecassandra, SiElasticsearch, SiFiles, SiMicrosoftazure, SiMongodb, SiRabbitmq } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -14,6 +14,7 @@ import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
+import { LdapInputForm } from "./LdapInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
 import { RabbitMqInputForm } from "./RabbitMqInputForm";
@@ -83,6 +84,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiMicrosoftazure size="1.5rem" />,
     provider: DynamicSecretProviders.AzureEntraId,
     title: "Azure Entra ID",
+  },
+  {
+    icon: <SiFiles size="1.5rem" />,
+    provider: DynamicSecretProviders.Ldap,
+    title: "LDAP",
   }
 ];
 
@@ -325,6 +331,26 @@ export const CreateDynamicSecretForm = ({
               </motion.div>
             )
           }
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Ldap && (
+              <motion.div
+                key="dynamic-ldap-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <LdapInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )
+          }
+
         </AnimatePresence>
       </ModalContent>
     </Modal>
