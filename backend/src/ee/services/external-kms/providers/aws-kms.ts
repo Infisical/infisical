@@ -2,24 +2,13 @@ import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, K
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { randomUUID } from "crypto";
 
-import { getConfig } from "@app/lib/config/env";
-
 import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
 
 const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
-  const appCfg = getConfig();
-
   if (providerInputs.credential.type === KmsAwsCredentialType.AssumeRole) {
     const awsCredential = providerInputs.credential.data;
     const stsClient = new STSClient({
-      region: providerInputs.awsRegion,
-      credentials:
-        appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
-          ? {
-              accessKeyId: appCfg.CLIENT_ID_AWS_INTEGRATION,
-              secretAccessKey: appCfg.CLIENT_SECRET_AWS_INTEGRATION
-            }
-          : undefined
+      region: providerInputs.awsRegion
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsCredential.assumeRoleArn,

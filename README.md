@@ -75,9 +75,8 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 
 ### Key Management (KMS):
 
-- **[Cryptograhic Keys](https://infisical.com/docs/documentation/platform/kms)**: Manage and perform cryptographic operations with personally managed keys.
+- **[Cryptograhic Keys](https://infisical.com/docs/documentation/platform/kms)**: Centrally manage keys across projects through a user-friendly interface or via the API.
 - **[Encrypt and Decrypt Data](https://infisical.com/docs/documentation/platform/kms#guide-to-encrypting-data)**: Use symmetric keys to encrypt and decrypt data.
-- **[Audit Trail](https://infisical.com/docs/documentation/platform/kms)**: Maintain detailed logs of all key-related activities for compliance and security analysis.
 
 ### General Platform:
 - **Authentication Methods**: Authenticate machine identities with Infisical using a cloud-native or platform agnostic authentication method ([Kubernetes Auth](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth), [GCP Auth](https://infisical.com/docs/documentation/platform/identities/gcp-auth), [Azure Auth](https://infisical.com/docs/documentation/platform/identities/azure-auth), [AWS Auth](https://infisical.com/docs/documentation/platform/identities/aws-auth), [OIDC Auth](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general), [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth)).

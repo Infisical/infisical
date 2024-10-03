@@ -31,10 +31,10 @@ const base64Schema = z.string().superRefine((val, ctx) => {
     });
   }
 
-  if (getBase64SizeInBytes(val) > 6144) {
+  if (getBase64SizeInBytes(val) > 4096) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "data cannot exceed 6144 bytes"
+      message: "data cannot exceed 4096 bytes"
     });
   }
 });
@@ -65,7 +65,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         body: { projectId, name, description, encryptionAlgorithm },
@@ -118,7 +118,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         params: { keyId },
@@ -162,7 +162,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         params: { keyId },
@@ -214,7 +214,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         query: { projectId, ...dto },
@@ -259,7 +259,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         params: { keyId },
@@ -304,7 +304,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         params: { keyId },

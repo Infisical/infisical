@@ -4,20 +4,43 @@ sidebarTitle: "Key Management (KMS)"
 description: "Learn how to manage and use cryptographic keys with Infisical."
 ---
 
-## Introduction
+## Diagram
 
-Infisical's <strong>Key Management System (KMS)</strong> allows you to create, store and manage cryptographic keys.
-These keys can be used to perform cryptographic operations such as data encryption. You can access
-Infisical's KMS from the [project](./project) sidebar.
+The following sequence diagram illustrates the KMS workflow for creating and using a cryptographic key.
 
-## Features
+<div align="center">
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant Infis as Infisical
 
-1. <strong>Centralized Key Storage:</strong> Securely store all your organization's cryptographic keys in one location.
-2. <strong>Encryption and
-    Decryption:</strong> Provide on-demand encryption and decryption services without exposing the keys to
-external applications.
-3. <strong>Audit
-    Trails:</strong> Maintain detailed logs of all key-related activities for compliance and security analysis.
+    Note over Client,Infis: Step 1: Create KMS Key
+    Client->>Infis: create key request
+    Infis->>Client: keyId
+
+    Note over Client,Infis: Step 2: Encrypt Data
+    Client->>Infis: plaintext and keyId
+    Infis->>Client: ciphertext
+
+    Note over Client,Infis: Step 3: Decrypt Data
+    Client->>Infis: ciphertext and keyId
+    Infis->>Client: plaintext
+```
+</div>
+
+## Concept
+
+At a high-level, Infisical generates a KMS key when requested, returning the `keyId` to the requester. This `keyId` can then be used
+to perform cryptographic operations such as encrypting and decrypting data.
+
+To be more specific:
+
+1. The client requests to create a key using the `/api/v1/kms/keys` endpoint.
+2. Infisical generates a KMS key and returns the `keyId` to the requester.
+3. The client requests to encrypt `plaintext` data (base64 encoded) with the specified `keyId` using the `/api/v1/kms/keys/<key-id>/encrypt` endpoint.
+4. Infisical returns the encrypted data or `ciphertext` (base64 encoded).
+3. The client requests to decrypt the `ciphertext` data with the original `keyId` using the `/api/v1/kms/keys/<key-id>/decrypt` endpoint.
+4. Infisical returns the decrypted `plaintext` data (base64 encoded).
 
 <Note>
     Your keys will never be used or viewable outside of Infisical KMS.
@@ -38,7 +61,8 @@ In the following steps, we'll explore how to generate a cryptographic key and en
                 Specify your key details. Here's some guidance on each field:
 
                 - Name: A slug-friendly name for the key.
-                - Type: The encryption algorithm associated with this key. By default symmetric `AES-GCM-256` is selected,
+                - Type: The encryption algorithm associated with this key. By default symmetric `AES-GCM-256` is
+                selected,
                 but
                 Infisical will continue to add more options down the road.
                 - Description: An optional description of what this key is used for.
@@ -75,11 +99,11 @@ In the following steps, we'll explore how to generate a cryptographic key and en
                 --url https://app.infisical.com/api/v1/kms/keys \
                 --header 'Content-Type: application/json' \
                 --data '{
-                "projectId": "<project-id>",
-                "name": "my-secret-key",
-                "description": "...",
-                "encryptionAlgorithm": "aes-256-gcm"
-            }'
+                    "projectId": "<project-id>",
+                    "name": "my-secret-key",
+                    "description": "...",
+                    "encryptionAlgorithm": "aes-256-gcm"
+                }'
                 ```
 
                 ### Sample response
@@ -113,20 +137,21 @@ In the following steps, we'll explore how to generate a cryptographic key and en
 
                 ```bash Request
                 curl --request POST \
-                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/encrypt \
-                --header 'Content-Type: application/json' \
-                --data '{
-                "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
-            }'
-                ```
+                --url https://app.infisical.com/api/v1/kms/keys/
+                <key-id>/encrypt \
+                    --header 'Content-Type: application/json' \
+                    --data '{
+                        "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
+                    }'
+                    ```
 
-                ### Sample response
+                    ### Sample response
 
-                ```bash Response
-                {
-                    "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
-                }
-                ```
+                    ```bash Response
+                    {
+                        "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
+                    }
+                    ```
             </Step>
         </Steps>
     </Tab>
@@ -168,20 +193,21 @@ In the following steps, we'll explore how to decrypt data.
 
                 ```bash Request
                 curl --request POST \
-                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/decrypt \
-                --header 'Content-Type: application/json' \
-                --data '{
-                    "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
-                }'
-                ```
+                --url https://app.infisical.com/api/v1/kms/keys/
+                <key-id>/decrypt \
+                    --header 'Content-Type: application/json' \
+                    --data '{
+                        "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
+                    }'
+                    ```
 
-                ### Sample response
+                    ### Sample response
 
-                ```bash Response
-                {
-                    "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
-                }
-                ```
+                    ```bash Response
+                    {
+                        "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
+                    }
+                    ```
             </Step>
         </Steps>
 
@@ -196,5 +222,9 @@ In the following steps, we'll explore how to decrypt data.
     </Accordion>
     <Accordion title="Can key material be accessed outside of Infisical KMS?">
         No. Infisical's KMS will never expose your keys, encrypted or decrypted, to external sources.
+    </Accordion>
+    <Accordion title="What algorithms does Infisical KMS support?">
+        Currently, Infisical only supports AES-128-GCM and AES-256-GCM for encryption operations. We anticipate
+        supporting more algorithms and cryptographic operations in the coming months.
     </Accordion>
 </AccordionGroup>
