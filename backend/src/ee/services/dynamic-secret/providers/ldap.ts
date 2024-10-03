@@ -1,7 +1,7 @@
 /* eslint-disable */
 
 import ldapjs from "ldapjs";
-import { render } from "mustache";
+import mustache from "mustache";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -9,7 +9,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { LdapSchema, TDynamicProviderFns } from "./models";
 import { BadRequestError } from "@app/lib/errors";
-const ldif = require("ldif");
+// @ts-ignore
+import ldif from "ldif";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -43,7 +44,7 @@ const generateLDIF = ({
     EncodedPassword: encodePassword(password)
   };
 
-  const ldif = render(ldifTemplate, data);
+  const ldif = mustache.render(ldifTemplate, data);
 
   return ldif;
 };
