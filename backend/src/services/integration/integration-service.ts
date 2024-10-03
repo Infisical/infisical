@@ -189,6 +189,12 @@ export const integrationServiceFactory = ({
   const getIntegration = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
 
+    if (!integration) {
+      throw new NotFoundError({
+        message: "Integration not found"
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
