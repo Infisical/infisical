@@ -12,7 +12,6 @@ import { OrderByDirection } from "@app/lib/types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
-import { shouldCheckFolderPermission } from "./secret-folder-fns";
 import {
   TCreateFolderDTO,
   TDeleteFolderDTO,
@@ -60,20 +59,10 @@ export const secretFolderServiceFactory = ({
       actorOrgId
     );
 
-    // we do this because we've split Secret and SecretFolder resources
-    // previously, if one can create/update/read/delete secrets then they can do the same for folders
-    // for backwards compatibility, we handle authorization only when SecretFolders subject is used
-    if (shouldCheckFolderPermission(permission.rules)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+    );
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: "Environment not found", name: "Create folder" });
@@ -161,20 +150,10 @@ export const secretFolderServiceFactory = ({
     );
 
     folders.forEach(({ environment, path: secretPath }) => {
-      // we do this because we've split Secret and SecretFolder resources
-      // previously, if one can create/update/read/delete secrets then they can do the same for folders
-      // for backwards compatibility, we handle authorization only when SecretFolders subject is used
-      if (shouldCheckFolderPermission(permission.rules)) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionActions.Edit,
-          subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-        );
-      } else {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionActions.Edit,
-          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-        );
-      }
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+      );
     });
 
     const result = await folderDAL.transaction(async (tx) =>
@@ -267,20 +246,10 @@ export const secretFolderServiceFactory = ({
       actorOrgId
     );
 
-    // we do this because we've split Secret and SecretFolder resources
-    // previously, if one can create/update/read/delete secrets then they can do the same for folders
-    // for backwards compatibility, we handle authorization differently only when SecretFolders subject is used
-    if (shouldCheckFolderPermission(permission.rules)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+    );
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) throw new NotFoundError({ message: "Secret path not found" });
@@ -351,20 +320,10 @@ export const secretFolderServiceFactory = ({
       actorOrgId
     );
 
-    // we do this because we've split Secret and SecretFolder resources
-    // previously, if one can create/update/read/delete secrets then they can do the same for folders
-    // for backwards compatibility, we handle authorization differently only when SecretFolders subject is used
-    if (shouldCheckFolderPermission(permission.rules)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Delete,
-        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Delete,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+    );
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: "Environment not found", name: "Create folder" });

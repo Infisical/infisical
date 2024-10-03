@@ -78,7 +78,7 @@ export const dynamicSecretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -147,7 +147,7 @@ export const dynamicSecretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -226,7 +226,7 @@ export const dynamicSecretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -283,7 +283,7 @@ export const dynamicSecretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -329,7 +329,7 @@ export const dynamicSecretServiceFactory = ({
       environmentSlugs.forEach((environmentSlug) =>
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+          subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
         )
       );
     }
@@ -365,7 +365,7 @@ export const dynamicSecretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -411,7 +411,7 @@ export const dynamicSecretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -453,7 +453,7 @@ export const dynamicSecretServiceFactory = ({
       environmentSlugs.forEach((environmentSlug) =>
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
+          subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
         )
       );
     }

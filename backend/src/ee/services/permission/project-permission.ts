@@ -38,6 +38,8 @@ export enum ProjectPermissionSub {
   Project = "workspace",
   Secrets = "secrets",
   SecretFolders = "secret-folders",
+  SecretImports = "secret-imports",
+  DynamicSecrets = "dynamic-secrets",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
@@ -54,8 +56,8 @@ export enum ProjectPermissionSub {
 export type SecretSubjectFields = {
   environment: string;
   secretPath: string;
-  // secretName: string;
-  // secretTags: string[];
+  secretName: string;
+  secretTags: string[];
 };
 
 export const CaslSecretsV2SubjectKnexMapper = (field: string) => {
@@ -74,6 +76,16 @@ export type SecretFolderSubjectFields = {
   secretPath: string;
 };
 
+export type DynamicSecretSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type SecretImportSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
@@ -84,6 +96,20 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.SecretFolders
         | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.DynamicSecrets
+        | (ForcedSubject<ProjectPermissionSub.DynamicSecrets> & DynamicSecretSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretImports
+        | (ForcedSubject<ProjectPermissionSub.SecretImports> & SecretImportSubjectFields)
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
