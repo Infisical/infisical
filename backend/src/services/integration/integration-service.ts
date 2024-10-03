@@ -89,7 +89,12 @@ export const integrationServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment: sourceEnvironment, secretPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: sourceEnvironment,
+        secretPath,
+        secretName: "",
+        secretTags: []
+      })
     );
 
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
@@ -162,7 +167,12 @@ export const integrationServiceFactory = ({
     if (environment || secretPath) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment: newEnvironment, secretPath: newSecretPath })
+        subject(ProjectPermissionSub.Secrets, {
+          environment: newEnvironment,
+          secretPath: newSecretPath,
+          secretName: "",
+          secretTags: []
+        })
       );
     }
 

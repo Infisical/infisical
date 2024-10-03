@@ -353,7 +353,7 @@ export const secretApprovalPolicyServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { secretPath, environment })
+      subject(ProjectPermissionSub.Secrets, { secretPath, environment, secretName: "", secretTags: [] })
     );
     return getSecretApprovalPolicy(projectId, environment, secretPath);
   };

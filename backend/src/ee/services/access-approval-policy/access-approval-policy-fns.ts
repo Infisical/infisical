@@ -26,7 +26,7 @@ export const isApproversValid = async ({
 
       ForbiddenError.from(approverPermission).throwUnlessCan(
         ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.Secrets, { environment: envSlug, secretPath })
+        subject(ProjectPermissionSub.Secrets, { environment: envSlug, secretPath, secretName: "", secretTags: [] })
       );
     }
   } catch {
