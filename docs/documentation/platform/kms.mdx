@@ -30,13 +30,13 @@ sequenceDiagram
 
 ## Concept
 
-At a high-level, Infisical generates a KMS key when requested, returning the `keyId` to the requester. This `keyId` can then be used
+At a high-level, Infisical generates a KMS key when requested, returning the `keyId` to the client. This `keyId` can then be used
 to perform cryptographic operations such as encrypting and decrypting data.
 
 To be more specific:
 
 1. The client requests to create a key using the `/api/v1/kms/keys` endpoint.
-2. Infisical generates a KMS key and returns the `keyId` to the requester.
+2. Infisical generates a KMS key and returns the `keyId` to the client.
 3. The client requests to encrypt `plaintext` data (base64 encoded) with the specified `keyId` using the `/api/v1/kms/keys/<key-id>/encrypt` endpoint.
 4. Infisical returns the encrypted data or `ciphertext` (base64 encoded).
 3. The client requests to decrypt the `ciphertext` data with the original `keyId` using the `/api/v1/kms/keys/<key-id>/decrypt` endpoint.
@@ -137,21 +137,20 @@ In the following steps, we'll explore how to generate a cryptographic key and en
 
                 ```bash Request
                 curl --request POST \
-                --url https://app.infisical.com/api/v1/kms/keys/
-                <key-id>/encrypt \
-                    --header 'Content-Type: application/json' \
-                    --data '{
-                        "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
-                    }'
-                    ```
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/encrypt \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
+                }'
+                ```
 
-                    ### Sample response
+                ### Sample response
 
-                    ```bash Response
-                    {
-                        "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
-                    }
-                    ```
+                ```bash Response
+                {
+                    "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
+                }
+                ```
             </Step>
         </Steps>
     </Tab>
@@ -193,21 +192,20 @@ In the following steps, we'll explore how to decrypt data.
 
                 ```bash Request
                 curl --request POST \
-                --url https://app.infisical.com/api/v1/kms/keys/
-                <key-id>/decrypt \
-                    --header 'Content-Type: application/json' \
-                    --data '{
-                        "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
-                    }'
-                    ```
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/decrypt \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
+                }'
+                ```
 
-                    ### Sample response
+                ### Sample response
 
-                    ```bash Response
-                    {
-                        "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
-                    }
-                    ```
+                ```bash Response
+                {
+                    "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
+                }
+                ```
             </Step>
         </Steps>
 
