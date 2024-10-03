@@ -209,7 +209,7 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
           value={PASSWORD}
           helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
         />
-        <FormControl label={"DNs"} className="flex-grow">
+        <FormControl label="DNs" className="flex-grow">
           <SecretInput
             isReadOnly
             isVisible

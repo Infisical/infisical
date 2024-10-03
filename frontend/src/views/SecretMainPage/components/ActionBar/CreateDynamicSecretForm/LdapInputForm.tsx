@@ -1,4 +1,7 @@
 import { Controller, useForm } from "react-hook-form";
+import Link from "next/link";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
@@ -160,6 +163,21 @@ export const LdapInputForm = ({
         <div>
           <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
             Configuration
+            <Link
+              href="https://infisical.com/docs/documentation/platform/dynamic-secrets/ldap"
+              passHref
+            >
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
+                </div>
+              </a>
+            </Link>
           </div>
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
