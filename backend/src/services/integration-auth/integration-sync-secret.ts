@@ -2086,6 +2086,76 @@ const syncSecretsCircleCI = async ({
 };
 
 /**
+ * Sync/push [secrets] to Databricks project
+ */
+const syncSecretsDatabricks = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  // sync secrets to Databricks
+  await Promise.all(
+    Object.keys(secrets).map(async (key) =>
+      request.post(
+        `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/put`,
+        {
+          scope: integration.app,
+          key,
+          string_value: secrets[key].value
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )
+    )
+  );
+
+  // get secrets from Databricks
+  const getSecretsRes = (
+    await request.get<{ secrets: { key: string; last_updated_timestamp: number }[] }>(
+      `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/list`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        params: {
+          scope: integration.app
+        }
+      }
+    )
+  ).data.secrets;
+
+  // delete secrets from Databricks
+  await Promise.all(
+    getSecretsRes.map(async (sec) => {
+      if (!(sec.key in secrets)) {
+        return request.post(
+          `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/delete`,
+          {
+            scope: integration.app,
+            key: sec.key
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      }
+    })
+  );
+};
+
+/**
  * Sync/push [secrets] to TravisCI project
  */
 const syncSecretsTravisCI = async ({
@@ -4016,6 +4086,13 @@ export const syncIntegrationSecrets = async ({
       break;
     case Integrations.CIRCLECI:
       await syncSecretsCircleCI({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.DATABRICKS:
+      await syncSecretsDatabricks({
         integration,
         secrets,
         accessToken

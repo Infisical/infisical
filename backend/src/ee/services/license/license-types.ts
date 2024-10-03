@@ -49,11 +49,11 @@ export type TFeatureSet = {
   oidcSSO: false;
   scim: false;
   ldap: false;
-  groups: false;
+  groups: true;
   status: null;
   trial_end: null;
   has_used_trial: true;
-  secretApproval: false;
+  secretApproval: true;
   secretRotation: true;
   caCrl: false;
   instanceUserManagement: false;
