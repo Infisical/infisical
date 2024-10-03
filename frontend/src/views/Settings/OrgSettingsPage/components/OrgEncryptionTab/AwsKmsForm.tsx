@@ -61,7 +61,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   } = useForm<AddExternalKmsType>({
     resolver: zodResolver(AddExternalKmsSchema),
     defaultValues: {
-      slug: kms?.slug,
+      name: kms?.name,
       description: kms?.description ?? "",
       provider: {
         type: ExternalKmsProvider.AWS,
@@ -89,12 +89,12 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
   const selectedAwsAuthType = watch("provider.inputs.credential.type");
 
   const handleAddAwsKms = async (data: AddExternalKmsType) => {
-    const { slug, description, provider } = data;
+    const { name, description, provider } = data;
     try {
       if (kms) {
         await updateAwsExternalKms({
           kmsId: kms.id,
-          slug,
+          name,
           description,
           provider
         });
@@ -105,7 +105,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         });
       } else {
         await addAwsExternalKms({
-          slug,
+          name,
           description,
           provider
         });
@@ -126,7 +126,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
     <form onSubmit={handleSubmit(handleAddAwsKms)} autoComplete="off">
       <Controller
         control={control}
-        name="slug"
+        name="name"
         render={({ field, fieldState: { error } }) => (
           <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
             <Input placeholder="" {...field} />

@@ -14,6 +14,15 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCmekActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Encrypt = "encrypt",
+  Decrypt = "decrypt"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -38,7 +47,8 @@ export enum ProjectPermissionSub {
   CertificateTemplates = "certificate-templates",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
-  Kms = "kms"
+  Kms = "kms",
+  Cmek = "cmek"
 }
 
 export type SecretSubjectFields = {
@@ -95,6 +105,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -282,6 +293,12 @@ export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read]).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Cmek).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -325,6 +342,17 @@ const buildAdminPermissionRules = () => {
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
   can([ProjectPermissionActions.Edit], ProjectPermissionSub.Kms);
+  can(
+    [
+      ProjectPermissionCmekActions.Create,
+      ProjectPermissionCmekActions.Edit,
+      ProjectPermissionCmekActions.Delete,
+      ProjectPermissionCmekActions.Read,
+      ProjectPermissionCmekActions.Encrypt,
+      ProjectPermissionCmekActions.Decrypt
+    ],
+    ProjectPermissionSub.Cmek
+  );
   return rules;
 };
 
@@ -444,6 +472,18 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);
 
+  can(
+    [
+      ProjectPermissionCmekActions.Create,
+      ProjectPermissionCmekActions.Edit,
+      ProjectPermissionCmekActions.Delete,
+      ProjectPermissionCmekActions.Read,
+      ProjectPermissionCmekActions.Encrypt,
+      ProjectPermissionCmekActions.Decrypt
+    ],
+    ProjectPermissionSub.Cmek
+  );
+
   return rules;
 };
 
@@ -470,6 +510,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Certificates);
+  can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
   return rules;
 };

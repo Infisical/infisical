@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
 import {
   faArrowDown,
@@ -34,7 +34,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useDebounce } from "@app/hooks";
+import { usePagination } from "@app/hooks";
 import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
@@ -50,28 +50,35 @@ type Props = {
   ) => void;
 };
 
-const INIT_PER_PAGE = 20;
-
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const router = useRouter();
   const { currentOrg } = useOrganization();
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-  const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
-  const [orderBy, setOrderBy] = useState(OrgIdentityOrderBy.Name);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounce(search);
+
+  const {
+    offset,
+    limit,
+    orderBy,
+    setOrderBy,
+    orderDirection,
+    setOrderDirection,
+    search,
+    debouncedSearch,
+    setPage,
+    setSearch,
+    perPage,
+    page,
+    setPerPage
+  } = usePagination<OrgIdentityOrderBy>(OrgIdentityOrderBy.Name);
 
   const organizationId = currentOrg?.id || "";
 
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
 
-  const offset = (page - 1) * perPage;
   const { data, isLoading, isFetching } = useGetIdentityMembershipOrgs(
     {
       organizationId,
       offset,
-      limit: perPage,
+      limit,
       orderDirection,
       orderBy,
       search: debouncedSearch
@@ -79,10 +86,11 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     { keepPreviousData: true }
   );
 
+  const { totalCount = 0 } = data ?? {};
   useEffect(() => {
     // reset page if no longer valid
-    if (data && data.totalCount < offset) setPage(1);
-  }, [data?.totalCount]);
+    if (totalCount <= offset) setPage(1);
+  }, [totalCount]);
 
   const { data: roles } = useGetOrgRoles(organizationId);
 
@@ -155,7 +163,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>
+              <Th>Role</Th>
+              {/* <Th>
                 <div className="flex items-center">
                   Role
                   <IconButton
@@ -174,7 +183,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     />
                   </IconButton>
                 </div>
-              </Th>
+              </Th> */}
               <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
             </Tr>
           </THead>
@@ -277,9 +286,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {!isLoading && data && data.totalCount > 0 && (
+        {!isLoading && data && totalCount > 0 && (
           <Pagination
-            count={data.totalCount}
+            count={totalCount}
             page={page}
             perPage={perPage}
             onChangePage={(newPage) => setPage(newPage)}

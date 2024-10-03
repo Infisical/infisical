@@ -86,13 +86,15 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   icon,
   as: Item = "button",
   iconPos = "left",
+  isDisabled = false,
   ...props
-}: DropdownMenuItemProps<T> & ComponentPropsWithRef<T>) => (
+}: DropdownMenuItemProps<T> & ComponentPropsWithRef<T> & { isDisabled?: boolean }) => (
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
       "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
-      className
+      className,
+      isDisabled ? "pointer-events-none opacity-50" : ""
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>

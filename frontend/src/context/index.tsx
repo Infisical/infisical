@@ -10,6 +10,7 @@ export {
 export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
+  ProjectPermissionCmekActions,
   ProjectPermissionProvider,
   ProjectPermissionSub,
   useProjectPermission

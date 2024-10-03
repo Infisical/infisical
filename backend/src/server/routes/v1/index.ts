@@ -1,3 +1,4 @@
+import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 
 import { registerAdminRouter } from "./admin-router";
@@ -103,6 +104,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityRouter, { prefix: "/identities" });
   await server.register(registerSecretSharingRouter, { prefix: "/secret-sharing" });
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
-
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
+  await server.register(registerCmekRouter, { prefix: "/kms" });
 };

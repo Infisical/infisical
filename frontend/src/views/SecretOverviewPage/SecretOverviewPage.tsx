@@ -54,7 +54,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { useDebounce, usePopUp } from "@app/hooks";
+import { useDebounce, usePagination, usePopUp } from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretV3,
@@ -95,7 +95,6 @@ enum RowType {
 type Filter = {
   [key in RowType]: boolean;
 };
-const INIT_PER_PAGE = 20;
 
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: true,
@@ -111,7 +110,6 @@ export const SecretOverviewPage = () => {
   // coz when overflow the table goes to the right
   const parentTableRef = useRef<HTMLTableElement>(null);
   const [expandableTableWidth, setExpandableTableWidth] = useState(0);
-  const [orderDirection, setOrderDirection] = useState<OrderByDirection>(OrderByDirection.ASC);
   const { permission } = useProjectPermission();
 
   useEffect(() => {
@@ -142,8 +140,17 @@ export const SecretOverviewPage = () => {
     [EntryType.SECRET]: {}
   });
 
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(INIT_PER_PAGE);
+  const {
+    offset,
+    limit,
+    orderDirection,
+    setOrderDirection,
+    setPage,
+    perPage,
+    page,
+    setPerPage,
+    orderBy
+  } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name);
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string) => {
@@ -208,21 +215,19 @@ export const SecretOverviewPage = () => {
       environments: userAvailableEnvs.map(({ slug }) => slug)
     });
 
-  const paginationOffset = (page - 1) * perPage;
-
   const { isLoading: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
       projectId: workspaceId,
       environments: visibleEnvs.map((env) => env.slug),
       secretPath,
       orderDirection,
-      orderBy: DashboardSecretsOrderBy.Name,
+      orderBy,
       includeFolders: filter.folder,
       includeDynamicSecrets: filter.dynamic,
       includeSecrets: filter.secret,
       search: debouncedSearchFilter,
-      limit: perPage,
-      offset: paginationOffset
+      limit,
+      offset
     },
     { enabled: isProjectV3 }
   );
@@ -231,11 +236,16 @@ export const SecretOverviewPage = () => {
     secrets,
     folders,
     dynamicSecrets,
-    totalCount = 0,
     totalFolderCount,
     totalSecretCount,
-    totalDynamicSecretCount
+    totalDynamicSecretCount,
+    totalCount = 0
   } = overview ?? {};
+
+  useEffect(() => {
+    // reset page if no longer valid
+    if (totalCount <= offset) setPage(1);
+  }, [totalCount]);
 
   const { folderNames, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(folders);
 
@@ -529,11 +539,6 @@ export const SecretOverviewPage = () => {
       });
     }
   };
-
-  useEffect(() => {
-    // reset page if no longer valid
-    if (totalCount < paginationOffset) setPage(1);
-  }, [totalCount]);
 
   const handleToggleRowType = useCallback(
     (rowType: RowType) =>

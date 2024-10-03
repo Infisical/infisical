@@ -30,7 +30,7 @@ export const externalKmsDALFactory = (db: TDbClient) => {
         isDisabled: el.isDisabled,
         isReserved: el.isReserved,
         orgId: el.orgId,
-        slug: el.slug,
+        name: el.name,
         createdAt: el.createdAt,
         updatedAt: el.updatedAt,
         externalKms: {

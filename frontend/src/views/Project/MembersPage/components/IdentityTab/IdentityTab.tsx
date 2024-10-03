@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   faArrowDown,
@@ -44,7 +44,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { useDebounce } from "@app/hooks";
+import { usePagination } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
@@ -56,7 +56,7 @@ import { IdentityModal } from "./components/IdentityModal";
 import { IdentityRoleForm } from "./components/IdentityRoleForm";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
-const INIT_PER_PAGE = 20;
+
 const formatRoleName = (role: string, customRoleName?: string) => {
   if (role === ProjectMembershipRole.Custom) return customRoleName;
   if (role === ProjectMembershipRole.Member) return "Developer";
@@ -67,27 +67,43 @@ export const IdentityTab = withProjectPermission(
   () => {
     const { currentWorkspace } = useWorkspace();
 
-    const [page, setPage] = useState(1);
-    const [perPage, setPerPage] = useState(INIT_PER_PAGE);
-    const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
-    const [orderBy, setOrderBy] = useState(ProjectIdentityOrderBy.Name);
-    const [search, setSearch] = useState("");
-    const [debouncedSearch] = useDebounce(search);
+    const {
+      offset,
+      limit,
+      orderBy,
+      setOrderBy,
+      orderDirection,
+      setOrderDirection,
+      search,
+      debouncedSearch,
+      setPage,
+      setSearch,
+      perPage,
+      page,
+      setPerPage
+    } = usePagination(ProjectIdentityOrderBy.Name);
 
     const workspaceId = currentWorkspace?.id ?? "";
 
-    const offset = (page - 1) * perPage;
     const { data, isLoading, isFetching } = useGetWorkspaceIdentityMemberships(
       {
         workspaceId: currentWorkspace?.id || "",
         offset,
-        limit: perPage,
+        limit,
         orderDirection,
         orderBy,
         search: debouncedSearch
       },
       { keepPreviousData: true }
     );
+
+    const { totalCount = 0 } = data ?? {};
+
+    useEffect(() => {
+      // reset page if no longer valid
+      if (totalCount <= offset) setPage(1);
+    }, [totalCount]);
+
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -121,11 +137,6 @@ export const IdentityTab = withProjectPermission(
         });
       }
     };
-
-    useEffect(() => {
-      // reset page if no longer valid
-      if (data && data.totalCount < offset) setPage(1);
-    }, [data?.totalCount]);
 
     const handleSort = (column: ProjectIdentityOrderBy) => {
       if (column === orderBy) {
@@ -369,9 +380,9 @@ export const IdentityTab = withProjectPermission(
                   })}
               </TBody>
             </Table>
-            {!isLoading && data && data.totalCount > 0 && (
+            {!isLoading && data && totalCount > 0 && (
               <Pagination
-                count={data.totalCount}
+                count={totalCount}
                 page={page}
                 perPage={perPage}
                 onChangePage={(newPage) => setPage(newPage)}

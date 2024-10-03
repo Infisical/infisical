@@ -122,6 +122,6 @@ export type TOrgIdentitiesList = {
 };
 
 export enum OrgIdentityOrderBy {
-  Name = "name",
-  Role = "role"
+  Name = "name"
+  // Role = "role"
 }

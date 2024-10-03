@@ -2,7 +2,7 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
-import { CaTab, CertificatesTab,PkiAlertsTab } from "./components";
+import { CaTab, CertificatesTab, PkiAlertsTab } from "./components";
 
 enum TabSections {
   Ca = "certificate-authorities",
@@ -36,5 +36,5 @@ export const CertificatesPage = withProjectPermission(
       </div>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.AuditLogs }
+  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Certificates }
 );
