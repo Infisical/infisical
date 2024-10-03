@@ -28,8 +28,8 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllNestedSecretReferences,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
+  getAllSecretReferences as getAllNestedSecretReferencesV2Bridge,
+  getAllSecretReferences
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
@@ -416,7 +416,9 @@ export const secretReplicationServiceFactory = ({
                         encryptedValue: doc.encryptedValue,
                         encryptedComment: doc.encryptedComment,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
-                        references: doc.secretValue ? getAllNestedSecretReferencesV2Bridge(doc.secretValue) : []
+                        references: doc.secretValue
+                          ? getAllNestedSecretReferencesV2Bridge(doc.secretValue).nestedReferences
+                          : []
                       };
                     })
                   });
@@ -442,7 +444,9 @@ export const secretReplicationServiceFactory = ({
                           encryptedValue: doc.encryptedValue as Buffer,
                           encryptedComment: doc.encryptedComment,
                           skipMultilineEncoding: doc.skipMultilineEncoding,
-                          references: doc.secretValue ? getAllNestedSecretReferencesV2Bridge(doc.secretValue) : []
+                          references: doc.secretValue
+                            ? getAllNestedSecretReferencesV2Bridge(doc.secretValue).nestedReferences
+                            : []
                         }
                       };
                     })
@@ -687,7 +691,7 @@ export const secretReplicationServiceFactory = ({
                       secretCommentTag: doc.secretCommentTag,
                       secretCommentCiphertext: doc.secretCommentCiphertext,
                       skipMultilineEncoding: doc.skipMultilineEncoding,
-                      references: getAllNestedSecretReferences(doc.secretValue)
+                      references: getAllSecretReferences(doc.secretValue).nestedReferences
                     };
                   })
                 });
@@ -723,7 +727,7 @@ export const secretReplicationServiceFactory = ({
                         secretCommentTag: doc.secretCommentTag,
                         secretCommentCiphertext: doc.secretCommentCiphertext,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
-                        references: getAllNestedSecretReferences(doc.secretValue)
+                        references: getAllSecretReferences(doc.secretValue).nestedReferences
                       }
                     };
                   })

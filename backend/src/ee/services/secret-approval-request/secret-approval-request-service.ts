@@ -43,7 +43,7 @@ import {
   fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
+  getAllSecretReferences as getAllNestedSecretReferencesV2Bridge
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
@@ -527,7 +527,7 @@ export const secretApprovalRequestServiceFactory = ({
                       secretManagerDecryptor({
                         cipherTextBlob: el.encryptedValue
                       }).toString()
-                    )
+                    ).nestedReferences
                   : [],
                 type: SecretType.Shared
               })),
@@ -551,7 +551,7 @@ export const secretApprovalRequestServiceFactory = ({
                               secretManagerDecryptor({
                                 cipherTextBlob: el.encryptedValue
                               }).toString()
-                            )
+                            ).nestedReferences
                           : []
                       }
                     : {};

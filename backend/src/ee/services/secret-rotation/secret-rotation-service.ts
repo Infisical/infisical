@@ -97,8 +97,9 @@ export const secretRotationServiceFactory = ({
     if (!folder) throw new NotFoundError({ message: "Secret path not found" });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName: "", secretTags: [] })
     );
+
     const project = await projectDAL.findById(projectId);
     const shouldUseBridge = project.version === ProjectVersion.V3;
 
