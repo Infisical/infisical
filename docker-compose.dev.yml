@@ -24,6 +24,11 @@ services:
       POSTGRES_PASSWORD: infisical
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical
+    healthcheck:
+      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
   redis:
     image: redis
@@ -59,7 +64,8 @@ services:
   db-migration:
     container_name: infisical-db-migration
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -120,7 +126,8 @@ services:
     ports:
       - 5050:80
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   smtp-server:
     container_name: infisical-dev-smtp-server
