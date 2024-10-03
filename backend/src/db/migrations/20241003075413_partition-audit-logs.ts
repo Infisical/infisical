@@ -2,17 +2,17 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-const formatDateToYYYYMMDD = (date: Date) => {
+const formatPartitionDate = (date: Date) => {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // getMonth() returns 0-based month, so add 1
+  const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 };
 
 const createAuditLogPartition = async (knex: Knex, startDate: Date, endDate: Date) => {
-  const startDateStr = formatDateToYYYYMMDD(startDate);
-  const endDateStr = formatDateToYYYYMMDD(endDate);
+  const startDateStr = formatPartitionDate(startDate);
+  const endDateStr = formatPartitionDate(endDate);
 
   const partitionName = `${TableName.PartitionedAuditLog}_${startDateStr.replace(/-/g, "")}_${endDateStr.replace(
     /-/g,
@@ -75,7 +75,14 @@ export async function up(knex: Knex): Promise<void> {
         ${createTableSql} PARTITION BY RANGE ("createdAt");
     `);
 
-    // add indices
+    await knex.schema.alterTable(TableName.PartitionedAuditLog, (t) => {
+      t.index(["projectId", "createdAt"]);
+      t.index(["orgId", "createdAt"]);
+      t.index("expiresAt");
+      t.index("orgId");
+      t.index("projectId");
+    });
+
     await knex.raw(
       `CREATE INDEX "audit_logs_actorMetadata_idx" ON ${TableName.PartitionedAuditLog} USING gin("actorMetadata" jsonb_path_ops)`
     );
@@ -91,7 +98,7 @@ export async function up(knex: Knex): Promise<void> {
 
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + 1);
-    const nextDateStr = formatDateToYYYYMMDD(nextDate);
+    const nextDateStr = formatPartitionDate(nextDate);
 
     // attach existing audit log table as a partition
     await knex.schema.raw(`
@@ -102,20 +109,23 @@ export async function up(knex: Knex): Promise<void> {
     FOR VALUES FROM (MINVALUE) TO ('${nextDateStr}' );
     `);
 
-    // create partitions 3 months ahead
-    await createAuditLogPartition(knex, nextDate, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 1));
+    // create partition from now until end of month
+    await createAuditLogPartition(knex, nextDate, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1));
 
-    await createAuditLogPartition(
-      knex,
-      new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 1),
-      new Date(nextDate.getFullYear(), nextDate.getMonth() + 2, 1)
-    );
+    // create partitions 4 years ahead
+    const partitionMonths = 4 * 12;
+    const partitionPromises: Promise<void>[] = [];
+    for (let x = 1; x < partitionMonths; x += 1) {
+      partitionPromises.push(
+        createAuditLogPartition(
+          knex,
+          new Date(nextDate.getFullYear(), nextDate.getMonth() + x, 1),
+          new Date(nextDate.getFullYear(), nextDate.getMonth() + (x + 1), 1)
+        )
+      );
+    }
 
-    await createAuditLogPartition(
-      knex,
-      new Date(nextDate.getFullYear(), nextDate.getMonth() + 2, 1),
-      new Date(nextDate.getFullYear(), nextDate.getMonth() + 3, 1)
-    );
+    await Promise.all(partitionPromises);
   }
 }
 
@@ -130,10 +140,9 @@ export async function down(knex: Knex): Promise<void> {
   // revert audit log modifications
   const doesProjectIdExist = await knex.schema.hasColumn(TableName.AuditLog, "projectId");
   const doesOrgIdExist = await knex.schema.hasColumn(TableName.AuditLog, "orgId");
-  const doesTableExist = await knex.schema.hasTable(TableName.AuditLog);
   const doesProjectNameExist = await knex.schema.hasColumn(TableName.AuditLog, "projectName");
 
-  if (doesTableExist) {
+  if (await knex.schema.hasTable(TableName.AuditLog)) {
     await knex.schema.alterTable(TableName.AuditLog, (t) => {
       // we drop this first because adding to the partition results in a new primary key
       t.dropPrimary();
