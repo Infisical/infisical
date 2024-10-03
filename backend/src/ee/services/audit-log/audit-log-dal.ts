@@ -105,7 +105,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
         void sqlQuery.where(`${TableName.PartitionedAuditLog}.createdAt`, "<=", endDate);
       }
 
-      const docs = await sqlQuery;
+      // we timeout long running queries to prevent DB resource issues (2 minutes)
+      const docs = await sqlQuery.timeout(1000 * 120);
 
       return docs;
     } catch (error) {
