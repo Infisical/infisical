@@ -37,6 +37,10 @@ export type TGetSecretImportsDTO = {
   offset?: number;
 } & TProjectPermission;
 
+export type TGetSecretImportByIdDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetSecretsFromImportDTO = {
   environment: string;
   path: string;
