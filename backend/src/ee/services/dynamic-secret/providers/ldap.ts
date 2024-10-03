@@ -94,7 +94,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
     try {
       parsedEntries = ldif.parse(ldif_file).entries as any[];
     } catch (err) {
-      throw new BadRequestError({ message: "Invalid LDIF, Please check LDIF entries section in the documentation." });
+      throw new BadRequestError({ message: "Invalid LDIF format, refer to the documentation at Dynamic secrets > LDAP > LDIF Entries." });
     }
 
     const dnArray: string[] = [];
