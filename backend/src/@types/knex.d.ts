@@ -170,6 +170,9 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPartitionedAuditLogs,
+  TPartitionedAuditLogsInsert,
+  TPartitionedAuditLogsUpdate,
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
@@ -714,6 +717,11 @@ declare module "knex/types/tables" {
       TAuditLogStreams,
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
+    >;
+    [TableName.PartitionedAuditLog]: KnexOriginal.CompositeTableType<
+      TPartitionedAuditLogs,
+      TPartitionedAuditLogsInsert,
+      TPartitionedAuditLogsUpdate
     >;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
