@@ -15,7 +15,14 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
       params: z.object({}),
       response: {
         200: z.object({
-          secrets: z.any()
+          secrets: z
+            .array(
+              z.object({
+                title: z.string(),
+                fields: z.record(z.string(), z.string())
+              })
+            )
+            .or(z.undefined())
         })
       }
     },
@@ -40,7 +47,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         credentialType: z.string(),
         title: z.string().min(1),
-        fields: z.string()
+        fields: z.record(z.string(), z.string())
       }),
       response: {
         200: z.boolean()
@@ -50,7 +57,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       try {
         const { orgId } = req.permission;
-        await server.services.userSecrets.createSecrets({ orgId }, { ...req.body });
+        await server.services.userSecrets.createSecrets({ orgId, ...req.body });
         return true;
       } catch (error) {
         server.log.error(error);

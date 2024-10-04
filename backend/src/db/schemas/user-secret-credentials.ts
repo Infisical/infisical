@@ -13,6 +13,8 @@ export const UserSecretCredentialsSchema = z.object({
   credentialType: z.string(),
   title: z.string(),
   fields: z.string(),
+  iv: z.string(),
+  tag: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

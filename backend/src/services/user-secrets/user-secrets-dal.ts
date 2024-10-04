@@ -1,20 +1,20 @@
 import { TDbClient } from "@app/db";
-import { TableName, TUserSecretCredentialsInsert, TUserSecretsInsert } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { GetSecretReturnType } from "./user-secrets-types";
+import { CreateSecretDALParamsType, GetSecretReturnType } from "./user-secrets-types";
 
 export type TUserSecretsDALFactory = ReturnType<typeof userSecretsDALFactory>;
 
 export const userSecretsDALFactory = (db: TDbClient) => {
   const userSecretCredentialsOrm = ormify(db, TableName.UserSecretCredentials);
 
-  const createSecret = async (orgData: TUserSecretsInsert, data: Omit<TUserSecretCredentialsInsert, "secretId">) => {
+  const createSecret = async (data: CreateSecretDALParamsType) => {
     try {
-      let orgSecrets = await db(TableName.UserSecrets).where({ orgId: orgData.orgId }).first().select("id");
+      let orgSecrets = await db(TableName.UserSecrets).where({ orgId: data.orgId }).first().select("id");
       if (!orgSecrets?.id) {
-        orgSecrets = await db(TableName.UserSecrets).insert(orgData).returning("id");
+        orgSecrets = await db(TableName.UserSecrets).insert({ orgId: data.orgId }).returning("id");
       }
 
       await userSecretCredentialsOrm.insertMany([
@@ -22,7 +22,9 @@ export const userSecretsDALFactory = (db: TDbClient) => {
           credentialType: data.credentialType,
           title: data.title,
           fields: data.fields,
-          secretId: orgSecrets?.id as unknown as string
+          secretId: orgSecrets?.id as unknown as string,
+          iv: data.iv,
+          tag: data.tag
         }
       ]);
     } catch (error) {
