@@ -1,4 +1,4 @@
-import { Knex, KnexTimeoutError } from "knex";
+import { Knex, knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
@@ -110,7 +110,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       return docs;
     } catch (error) {
-      if (error instanceof KnexTimeoutError) {
+      if (error instanceof knex.KnexTimeoutError) {
         throw new BadRequestError({
           error,
           message: "Failed to fetch audit logs due to timeout. Add more search filters."
