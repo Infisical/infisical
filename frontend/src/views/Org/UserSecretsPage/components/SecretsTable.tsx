@@ -11,26 +11,25 @@ import {
   Th,
   THead,
   Tr} from "@app/components/v2";
+import { Secrets } from "@app/hooks/api/userSecrets/types";
 
 type Props = {
   columns: string[];
   isLoading: boolean;
-  secrets: {
-    [key in string]: string;
-  }[];
+  secrets?: Secrets;
+  onDelete?: (id: string) => void
 };
 
 const SecretsTable = (props: Props) => {
-  const { columns, isLoading, secrets } = props;
+  const { columns, isLoading, secrets, onDelete } = props;
 
   return (
     <TableContainer>
       <Table>
         <THead>
           <Tr>
-            {columns.map((column, index) => (
-              // eslint-disable-next-line
-              <Th key={`th-${index}`}>{column}</Th>
+            {columns.map((column) => (
+              <Th key={column}>{column}</Th>
             ))}
             <Th aria-label="button" className="w-5" />
           </Tr>
@@ -38,31 +37,29 @@ const SecretsTable = (props: Props) => {
         <TBody>
           {isLoading && <TableSkeleton columns={7} innerKey="shared-secrets" />}
           {!isLoading &&
-            secrets.map((secret, index) => (
-              // eslint-disable-next-line
-              <Tr key={`tr-${index}`}
+            secrets?.map((secret) => (
+              <Tr key={secret.id}
                 className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
-                // onClick={() => setIsRowExpanded.toggle()}
               >
-                {Object.values(secret).map((value, i) => (
+                {Object.values(secret.fields).map((value, i) => (
                   // eslint-disable-next-line
                   <Td key={`secret-${value}-${i}`}>{value}</Td>
                 ))}
-                <Td>
+                {onDelete && (
+                  <Td>
                   <IconButton
-                    // onClick={(e) => {
-                    //   e.stopPropagation();
-                    //   handlePopUpOpen("deleteSharedSecretConfirmation", {
-                    //     name: "delete",
-                    //     id: row.id
-                    //   });
-                    // }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(secret.id);
+                    }}
                     variant="plain"
                     ariaLabel="delete"
                   >
                     <FontAwesomeIcon icon={faTrash} />
                   </IconButton>
                 </Td>
+                )}
+                
               </Tr>
             ))}
         </TBody>
