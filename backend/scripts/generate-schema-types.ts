@@ -90,7 +90,7 @@ const main = async () => {
       .whereRaw("table_schema =  current_schema()")
       .select<{ tableName: string }[]>("table_name as tableName")
       .orderBy("table_name")
-  ).filter((el) => !el.tableName.includes("_migrations"));
+  ).filter((el) => !el.tableName.includes("_migrations") && !el.tableName.includes("partitioned_audit_logs_"));
 
   for (let i = 0; i < tables.length; i += 1) {
     const { tableName } = tables[i];
