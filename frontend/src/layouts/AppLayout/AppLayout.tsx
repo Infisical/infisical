@@ -749,7 +749,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {(window.location.origin.includes("https://app.infisical.com") ||
+                      {(window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("https://eu.infisical.com") ||
                         window.location.origin.includes("https://gamma.infisical.com")) && (
                         <Link href={`/org/${currentOrg?.id}/billing`} passHref>
                           <a>
