@@ -12,13 +12,12 @@ import { Button, Card, CardTitle, FormControl, Input } from "../../../components
 
 export default function DatabricksCreateIntegrationPage() {
   const router = useRouter();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isLoading } = useSaveIntegrationAccessToken();
 
   const [apiKey, setApiKey] = useState("");
   const [instanceURL, setInstanceURL] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [instanceURLErrorText, setInstanceURLErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -33,16 +32,12 @@ export default function DatabricksCreateIntegrationPage() {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "databricks",
-        url: instanceURL,
+        url: instanceURL.replace(/\/$/, ""),
         accessToken: apiKey
       });
-
-      setIsLoading(false);
 
       router.push(`/integrations/databricks/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
@@ -107,6 +102,7 @@ export default function DatabricksCreateIntegrationPage() {
           variant="outline_bg"
           className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
+          isDisabled={isLoading}
         >
           Connect to Databricks
         </Button>

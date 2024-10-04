@@ -32,7 +32,7 @@ import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
 export default function DatabricksCreateIntegrationPage() {
   const router = useRouter();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isLoading } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -50,8 +50,6 @@ export default function DatabricksCreateIntegrationPage() {
   const [targetScope, setTargetScope] = useState("");
   const [secretPath, setSecretPath] = useState("/");
 
-  const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (workspace) {
       setSelectedSourceEnvironment(workspace.environments[0].slug);
@@ -67,11 +65,8 @@ export default function DatabricksCreateIntegrationPage() {
           type: "error",
           text: "Please select a scope"
         });
-        setIsLoading(false);
         return;
       }
-
-      setIsLoading(true);
 
       const selectedScope = integrationAuthScopes?.find(
         (integrationAuthScope) => integrationAuthScope.name === targetScope
@@ -82,7 +77,6 @@ export default function DatabricksCreateIntegrationPage() {
           type: "error",
           text: "Invalid scope selected"
         });
-        setIsLoading(false);
         return;
       }
 
@@ -93,8 +87,6 @@ export default function DatabricksCreateIntegrationPage() {
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
-
-      setIsLoading(false);
 
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
@@ -193,7 +185,7 @@ export default function DatabricksCreateIntegrationPage() {
           variant="outline_bg"
           className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
-          isDisabled={integrationAuthScopes.length === 0}
+          isDisabled={integrationAuthScopes.length === 0 || isLoading}
         >
           Create Integration
         </Button>
