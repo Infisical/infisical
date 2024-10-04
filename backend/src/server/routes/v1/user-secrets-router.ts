@@ -17,6 +17,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secrets: z.array(
             z.object({
+              id: z.string(),
               title: z.string(),
               fields: z.any()
             })
@@ -56,6 +57,59 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
       try {
         const { orgId } = req.permission;
         await server.services.userSecrets.createSecrets({ orgId, ...req.body });
+        return true;
+      } catch (error) {
+        server.log.error(error);
+        return false;
+      }
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.boolean()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      try {
+        await server.services.userSecrets.deleteSecret(req.query.id);
+        return true;
+      } catch (error) {
+        server.log.error(error);
+        return false;
+      }
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        id: z.string(),
+        fields: z.record(z.string(), z.string())
+      }),
+      response: {
+        200: z.boolean()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      try {
+        await server.services.userSecrets.updateSecrets(req.body.id, req.body.fields);
         return true;
       } catch (error) {
         server.log.error(error);

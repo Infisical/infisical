@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TUserSecretCredentialsUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -48,8 +48,44 @@ export const userSecretsDALFactory = (db: TDbClient) => {
     }
   };
 
+  const updateSecrets = async (recordId: string, data: TUserSecretCredentialsUpdate) => {
+    try {
+      await db(TableName.UserSecretCredentials).update(data).where({ id: recordId });
+    } catch (error) {
+      throw new DatabaseError({ error, message: "Error updating secret" });
+    }
+  };
+
+  const deleteSecret = async (recordId: string) => {
+    try {
+      await db(TableName.UserSecretCredentials).delete().where({ id: recordId });
+    } catch (error) {
+      throw new DatabaseError({ error, message: "Error deleting secret" });
+    }
+  };
+
+  const getSecretByCredentialType = async (orgId: string, credentialType: string) => {
+    try {
+      const secret = await db(TableName.UserSecrets)
+        .where({ orgId })
+        .join(
+          TableName.UserSecretCredentials,
+          `${TableName.UserSecrets}.id`,
+          `${TableName.UserSecretCredentials}.secretId`
+        )
+        .where({ credentialType })
+        .select(`${TableName.UserSecrets}.*`, `${TableName.UserSecretCredentials}.*`);
+      return secret as GetSecretReturnType[];
+    } catch (error) {
+      throw new DatabaseError({ error, message: "Error getting secret by validation type" });
+    }
+  };
+
   return {
     createSecret,
-    getSecrets
+    getSecrets,
+    updateSecrets,
+    deleteSecret,
+    getSecretByCredentialType
   };
 };

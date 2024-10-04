@@ -25,5 +25,10 @@ export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServic
     if (!secrets) return [];
     return transformToWebLoginSecretApiResponse(secrets);
   };
-  return { getSecrets, createSecrets };
+  return {
+    getSecrets,
+    createSecrets,
+    updateSecrets: userSecretsDAL.updateSecrets,
+    deleteSecret: userSecretsDAL.deleteSecret
+  };
 };
