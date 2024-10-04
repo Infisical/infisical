@@ -70,6 +70,8 @@ export enum TableName {
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
+  UserSecrets = "user_secrets",
+  UserSecretCredentials = "user_secret_credentials",
   // used by both identity and users
   IdentityMetadata = "identity_metadata",
   ScimToken = "scim_tokens",
