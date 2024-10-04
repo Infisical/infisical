@@ -1,6 +1,7 @@
-import { decryptFields, encryptFields } from "./user-secrets.helpers";
+import { encryptFields } from "./user-secrets.helpers";
 import { TUserSecretsDALFactory } from "./user-secrets-dal";
-import { CreateSecretFuncParamsType, GetSecretsServiceReturnType } from "./user-secrets-types";
+import { transformToWebLoginSecretApiResponse } from "./user-secrets-transformer";
+import { CreateSecretFuncParamsType } from "./user-secrets-types";
 
 type TUserSecretsServiceFactoryDep = {
   userSecretsDAL: TUserSecretsDALFactory;
@@ -19,17 +20,10 @@ export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServic
     });
   };
 
-  const getSecrets = async (orgId: string): Promise<GetSecretsServiceReturnType[] | undefined> => {
+  const getSecrets = async (orgId: string) => {
     const secrets = await userSecretsDAL.getSecrets(orgId);
-    if (secrets) {
-      return secrets.map((secret) => {
-        const decryptedFields = decryptFields(secret.fields, secret.iv, secret.tag);
-        return {
-          title: secret.title,
-          fields: decryptedFields
-        };
-      });
-    }
+    if (!secrets) return [];
+    return transformToWebLoginSecretApiResponse(secrets);
   };
   return { getSecrets, createSecrets };
 };

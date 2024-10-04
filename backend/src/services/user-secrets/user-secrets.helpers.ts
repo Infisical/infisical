@@ -5,7 +5,6 @@ const KEY = "gazkgS0QKEzHdTprx6EIGZxIvwYTtx6SxYQBJzOzquk=";
 export const encryptFields = (fields: Record<string, string>) => {
   const stringifiedFields = JSON.stringify(fields);
   const encryptedFields = encryptSymmetric(stringifiedFields, KEY);
-  console.log({ KEY });
   return encryptedFields;
 };
 

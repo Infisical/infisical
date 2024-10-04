@@ -15,14 +15,12 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
       params: z.object({}),
       response: {
         200: z.object({
-          secrets: z
-            .array(
-              z.object({
-                title: z.string(),
-                fields: z.record(z.string(), z.string())
-              })
-            )
-            .or(z.undefined())
+          secrets: z.array(
+            z.object({
+              title: z.string(),
+              fields: z.any()
+            })
+          )
         })
       }
     },
