@@ -110,6 +110,8 @@ export * from "./user-actions";
 export * from "./user-aliases";
 export * from "./user-encryption-keys";
 export * from "./user-group-membership";
+export * from "./user-secret-credentials";
+export * from "./user-secrets";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workflow-integrations";

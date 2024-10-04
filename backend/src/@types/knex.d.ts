@@ -327,6 +327,12 @@ import {
   TUserGroupMembershipInsert,
   TUserGroupMembershipUpdate,
   TUsers,
+  TUserSecretCredentials,
+  TUserSecretCredentialsInsert,
+  TUserSecretCredentialsUpdate,
+  TUserSecrets,
+  TUserSecretsInsert,
+  TUserSecretsUpdate,
   TUsersInsert,
   TUsersUpdate,
   TWebhooks,
@@ -807,6 +813,12 @@ declare module "knex/types/tables" {
       TWorkflowIntegrations,
       TWorkflowIntegrationsInsert,
       TWorkflowIntegrationsUpdate
+    >;
+    [TableName.UserSecrets]: KnexOriginal.CompositeTableType<TUserSecrets, TUserSecretsInsert, TUserSecretsUpdate>;
+    [TableName.UserSecretCredentials]: KnexOriginal.CompositeTableType<
+      TUserSecretCredentials,
+      TUserSecretCredentialsInsert,
+      TUserSecretCredentialsUpdate
     >;
   }
 }
