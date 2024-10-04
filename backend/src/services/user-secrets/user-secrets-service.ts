@@ -7,6 +7,7 @@ type TUserSecretsServiceFactoryDep = {
 export type TUserSecretsServiceFactory = ReturnType<typeof userSecretsServiceFactory>;
 
 export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServiceFactoryDep) => {
-  console.log(userSecretsDAL);
-  return {};
+  const { getSecrets } = userSecretsDAL;
+  const createSecrets = userSecretsDAL.createSecret;
+  return { getSecrets, createSecrets };
 };

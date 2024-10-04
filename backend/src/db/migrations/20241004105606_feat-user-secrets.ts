@@ -12,14 +12,11 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.UserSecrets))) {
     await knex.schema.createTable(TableName.UserSecrets, (table) => {
       table.uuid("id").primary().defaultTo(knex.raw("gen_random_uuid()"));
-      table.uuid("userId").notNullable();
       table.uuid("orgId").notNullable();
       table.timestamp("createdAt").defaultTo(knex.fn.now());
       table.timestamp("updatedAt").defaultTo(knex.fn.now());
 
-      table.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
       table.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      table.unique(["userId", "orgId"]);
     });
   }
 

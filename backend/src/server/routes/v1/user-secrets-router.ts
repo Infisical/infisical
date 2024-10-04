@@ -14,15 +14,48 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({}),
       response: {
-        200: z.object({})
+        200: z.object({
+          secrets: z.any()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      console.log(req);
+      const { orgId } = req.permission;
+      const secrets = await server.services.userSecrets.getSecrets(orgId);
       return {
-        hello: "world"
+        secrets
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({}),
+      body: z.object({
+        credentialType: z.string(),
+        title: z.string().min(1),
+        fields: z.string()
+      }),
+      response: {
+        200: z.boolean()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      try {
+        const { orgId } = req.permission;
+        await server.services.userSecrets.createSecrets({ orgId }, { ...req.body });
+        return true;
+      } catch (error) {
+        server.log.error(error);
+        return false;
+      }
     }
   });
 };
