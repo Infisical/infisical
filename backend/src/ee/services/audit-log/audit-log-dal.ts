@@ -1,4 +1,5 @@
-import { Knex, knex } from "knex";
+// weird commonjs-related error in the CI requires us to use this kind of import
+import * as kx from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
@@ -46,7 +47,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
-    tx?: Knex
+    tx?: kx.Knex
   ) => {
     if (!orgId && !projectId) {
       throw new Error("Either orgId or projectId must be provided");
@@ -110,7 +111,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       return docs;
     } catch (error) {
-      if (error instanceof knex.KnexTimeoutError) {
+      if (error instanceof kx.KnexTimeoutError) {
         throw new BadRequestError({
           error,
           message: "Failed to fetch audit logs due to timeout. Add more search filters."
@@ -122,7 +123,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   };
 
   // delete all audit log that have expired
-  const pruneAuditLog = async (tx?: Knex) => {
+  const pruneAuditLog = async (tx?: kx.Knex) => {
     const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
 
