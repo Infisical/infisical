@@ -12,7 +12,9 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.UserSecrets))) {
     await knex.schema.createTable(TableName.UserSecrets, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("userId");
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("orgId");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.dateTime("createdAt").defaultTo(knex.fn.now());
     });
@@ -21,6 +23,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.UserSecretCredentials))) {
     await knex.schema.createTable(TableName.UserSecretCredentials, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("credentialId");
       t.foreign("credentialId").references("id").inTable(TableName.UserSecrets).onDelete("CASCADE");
       t.enum("credentialType", Object.values(CredentialTypes)).notNullable();
       t.string("name").notNullable();
