@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("credentialId").references("id").inTable(TableName.UserSecrets).onDelete("CASCADE");
       t.enum("credentialType", Object.values(CredentialTypes)).notNullable();
       t.string("name").notNullable();
-      t.json("data").notNullable();
+      t.text("data").notNullable();
       t.dateTime("createdAt").defaultTo(knex.fn.now());
       t.dateTime("updatedAt").defaultTo(knex.fn.now());
     });
