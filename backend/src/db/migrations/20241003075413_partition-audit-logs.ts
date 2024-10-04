@@ -24,9 +24,11 @@ const createAuditLogPartition = async (knex: Knex, startDate: Date, endDate: Dat
   );
 };
 
+const isUsingDedicatedAuditLogDb = Boolean(process.env.AUDIT_LOGS_DB_CONNECTION_URI);
+
 export async function up(knex: Knex): Promise<void> {
-  // prepare the existing audit log table for it to become a partition
-  if (await knex.schema.hasTable(TableName.AuditLog)) {
+  if (!isUsingDedicatedAuditLogDb && (await knex.schema.hasTable(TableName.AuditLog))) {
+    // prepare the existing audit log table for it to become a partition
     const doesProjectIdExist = await knex.schema.hasColumn(TableName.AuditLog, "projectId");
     const doesOrgIdExist = await knex.schema.hasColumn(TableName.AuditLog, "orgId");
     const doesProjectNameExist = await knex.schema.hasColumn(TableName.AuditLog, "projectName");
@@ -84,11 +86,11 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await knex.raw(
-      `CREATE INDEX "audit_logs_actorMetadata_idx" ON ${TableName.PartitionedAuditLog} USING gin("actorMetadata" jsonb_path_ops)`
+      `CREATE INDEX IF NOT EXISTS "audit_logs_actorMetadata_idx" ON ${TableName.PartitionedAuditLog} USING gin("actorMetadata" jsonb_path_ops)`
     );
 
     await knex.raw(
-      `CREATE INDEX "audit_logs_eventMetadata_idx" ON ${TableName.PartitionedAuditLog} USING gin("eventMetadata" jsonb_path_ops)`
+      `CREATE INDEX IF NOT EXISTS "audit_logs_eventMetadata_idx" ON ${TableName.PartitionedAuditLog} USING gin("eventMetadata" jsonb_path_ops)`
     );
 
     // create default partition
@@ -100,14 +102,16 @@ export async function up(knex: Knex): Promise<void> {
     nextDate.setDate(nextDate.getDate() + 1);
     const nextDateStr = formatPartitionDate(nextDate);
 
-    // attach existing audit log table as a partition
-    await knex.schema.raw(`
-    ALTER TABLE ${TableName.AuditLog} ADD CONSTRAINT audit_log_old
-    CHECK ( "createdAt" < DATE '${nextDateStr}' );
-
-    ALTER TABLE ${TableName.PartitionedAuditLog} ATTACH PARTITION ${TableName.AuditLog}
-    FOR VALUES FROM (MINVALUE) TO ('${nextDateStr}' );
-    `);
+    // attach existing audit log table as a partition ONLY if using the same DB
+    if (!isUsingDedicatedAuditLogDb) {
+      await knex.schema.raw(`
+      ALTER TABLE ${TableName.AuditLog} ADD CONSTRAINT audit_log_old
+      CHECK ( "createdAt" < DATE '${nextDateStr}' );
+  
+      ALTER TABLE ${TableName.PartitionedAuditLog} ATTACH PARTITION ${TableName.AuditLog}
+      FOR VALUES FROM (MINVALUE) TO ('${nextDateStr}' );
+      `);
+    }
 
     // create partition from now until end of month
     await createAuditLogPartition(knex, nextDate, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1));
@@ -130,40 +134,50 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // detach audit log from partition
-  await knex.schema.raw(`
+  const result = await knex.raw(`
+      SELECT inhrelid::regclass::text
+      FROM pg_inherits
+      WHERE inhparent::regclass::text = '${TableName.PartitionedAuditLog}'
+      AND inhrelid::regclass::text = '${TableName.AuditLog}'
+  `);
+
+  const isAuditLogAPartition = result.rows.length > 0;
+  if (isAuditLogAPartition) {
+    // detach audit log from partition
+    await knex.schema.raw(`
     ALTER TABLE ${TableName.PartitionedAuditLog} DETACH PARTITION ${TableName.AuditLog};
 
     ALTER TABLE ${TableName.AuditLog} DROP CONSTRAINT audit_log_old;
   `);
 
-  // revert audit log modifications
-  const doesProjectIdExist = await knex.schema.hasColumn(TableName.AuditLog, "projectId");
-  const doesOrgIdExist = await knex.schema.hasColumn(TableName.AuditLog, "orgId");
-  const doesProjectNameExist = await knex.schema.hasColumn(TableName.AuditLog, "projectName");
+    // revert audit log modifications
+    const doesProjectIdExist = await knex.schema.hasColumn(TableName.AuditLog, "projectId");
+    const doesOrgIdExist = await knex.schema.hasColumn(TableName.AuditLog, "orgId");
+    const doesProjectNameExist = await knex.schema.hasColumn(TableName.AuditLog, "projectName");
 
-  if (await knex.schema.hasTable(TableName.AuditLog)) {
-    await knex.schema.alterTable(TableName.AuditLog, (t) => {
-      // we drop this first because adding to the partition results in a new primary key
-      t.dropPrimary();
+    if (await knex.schema.hasTable(TableName.AuditLog)) {
+      await knex.schema.alterTable(TableName.AuditLog, (t) => {
+        // we drop this first because adding to the partition results in a new primary key
+        t.dropPrimary();
 
-      // add back the original keys of the audit logs table
-      t.primary(["id"], {
-        constraintName: "audit_logs_pkey"
+        // add back the original keys of the audit logs table
+        t.primary(["id"], {
+          constraintName: "audit_logs_pkey"
+        });
+
+        if (doesOrgIdExist) {
+          t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+        }
+        if (doesProjectIdExist) {
+          t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+        }
+
+        // remove normalized fields
+        if (doesProjectNameExist) {
+          t.dropColumn("projectName");
+        }
       });
-
-      if (doesOrgIdExist) {
-        t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      }
-      if (doesProjectIdExist) {
-        t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      }
-
-      // remove normalized fields
-      if (doesProjectNameExist) {
-        t.dropColumn("projectName");
-      }
-    });
+    }
   }
 
   await knex.schema.dropTableIfExists(TableName.PartitionedAuditLog);

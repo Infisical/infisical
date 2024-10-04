@@ -18,6 +18,8 @@ if (!process.env.AUDIT_LOGS_DB_CONNECTION_URI && !process.env.AUDIT_LOGS_DB_HOST
   process.exit(0);
 }
 
+console.info("Executing migration on audit log database...");
+
 export default {
   development: {
     client: "postgres",
