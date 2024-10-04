@@ -458,9 +458,11 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of projects for Databricks integration
  */
-const getAppsDatabricks = async ({ accessToken }: { accessToken: string }) => {
+const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; accessToken: string }) => {
+  const databricksApiUrl = `${url}/api`;
+
   const res = await request.get<{ scopes: { name: string; backend_type: string }[] }>(
-    `${IntegrationUrls.DATABRICKS_API_URL}/2.0/secrets/scopes/list`,
+    `${databricksApiUrl}/2.0/secrets/scopes/list`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -1128,6 +1130,7 @@ export const getApps = async ({
 
     case Integrations.DATABRICKS:
       return getAppsDatabricks({
+        url,
         accessToken
       });
 

@@ -36,20 +36,16 @@ export default function DatabricksCreateIntegrationPage() {
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  console.log("integrationAuthId", integrationAuthId)
-
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
 
-  console.log("integrationAuth", integrationAuth)
   const { data: integrationAuthScopes, isLoading: isIntegrationAuthScopesLoading } =
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
 
-  console.log("integrationAuthScopes", integrationAuthScopes)
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [targetScope, setTargetScope] = useState("");
   const [secretPath, setSecretPath] = useState("/");
