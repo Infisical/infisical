@@ -9,9 +9,9 @@ import { TImmutableDBKeys } from "./models";
 
 export const UserSecretsSchema = z.object({
   id: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid().nullable().optional(),
-  createdAt: z.date().nullable().optional()
+  userId: z.string(),
+  orgId: z.string(),
+  createdAt: z.date()
 });
 
 export type TUserSecrets = z.infer<typeof UserSecretsSchema>;

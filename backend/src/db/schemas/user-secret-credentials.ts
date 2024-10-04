@@ -9,12 +9,12 @@ import { TImmutableDBKeys } from "./models";
 
 export const UserSecretCredentialsSchema = z.object({
   id: z.string().uuid(),
-  credentialId: z.string().uuid().nullable().optional(),
+  secretId: z.string().uuid(),
   credentialType: z.string(),
-  name: z.string(),
-  data: z.string(),
-  createdAt: z.date().nullable().optional(),
-  updatedAt: z.date().nullable().optional()
+  title: z.string(),
+  fields: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TUserSecretCredentials = z.infer<typeof UserSecretCredentialsSchema>;

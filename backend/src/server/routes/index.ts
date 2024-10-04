@@ -197,6 +197,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+import { userSecretsDALFactory } from "@app/services/user-secrets/user-secrets-dal";
+import { userSecretsServiceFactory } from "@app/services/user-secrets/user-secrets-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -333,6 +335,10 @@ export const registerRoutes = async (
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
+
+  const userSecretsDAL = userSecretsDALFactory(db);
+
+  const userSecretsService = userSecretsServiceFactory({ userSecretsDAL });
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1294,7 +1300,8 @@ export const registerRoutes = async (
     orgAdmin: orgAdminService,
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
-    migration: migrationService
+    migration: migrationService,
+    userSecrets: userSecretsService
   });
 
   const cronJobs: CronJob[] = [];
