@@ -122,7 +122,7 @@ export const OrgEncryptionTab = withPermission(
                       )}
                       <div className="ml-2">{kms.externalKms.provider.toUpperCase()}</div>
                     </Td>
-                    <Td>{kms.slug}</Td>
+                    <Td>{kms.name}</Td>
                     <Td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
@@ -170,7 +170,7 @@ export const OrgEncryptionTab = withPermission(
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("removeExternalKms", {
-                                    slug: kms.slug,
+                                    name: kms.name,
                                     kmsId: kms.id,
                                     provider: kms.externalKms.provider
                                   });

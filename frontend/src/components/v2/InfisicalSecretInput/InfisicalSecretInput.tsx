@@ -77,7 +77,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?.id || "";
 
-    const debouncedValue = useDebounce(value, 500);
+    const [debouncedValue] = useDebounce(value, 500);
 
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
 

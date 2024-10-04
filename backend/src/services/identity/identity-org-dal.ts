@@ -5,7 +5,7 @@ import { TableName, TIdentityOrgMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { TListOrgIdentitiesByOrgIdDTO } from "@app/services/identity/identity-types";
+import { OrgIdentityOrderBy, TListOrgIdentitiesByOrgIdDTO } from "@app/services/identity/identity-types";
 
 export type TIdentityOrgDALFactory = ReturnType<typeof identityOrgDALFactory>;
 
@@ -33,7 +33,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     {
       limit,
       offset = 0,
-      orderBy,
+      orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       search,
       ...filter
@@ -43,12 +43,16 @@ export const identityOrgDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const paginatedFetchIdentity = (tx || db.replicaNode())(TableName.Identity)
-        .where((queryBuilder) => {
-          if (limit) {
-            void queryBuilder.offset(offset).limit(limit);
-          }
-        })
-        .as(TableName.Identity);
+        .as(TableName.Identity)
+        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
+
+      if (search?.length) {
+        void paginatedFetchIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
+      }
+
+      if (limit) {
+        void paginatedFetchIdentity.offset(offset).limit(limit);
+      }
 
       const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
@@ -78,24 +82,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
-        );
-
-      if (orderBy) {
-        switch (orderBy) {
-          case "name":
-            void query.orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
-            break;
-          case "role":
-            void query.orderBy(`${TableName.IdentityOrgMembership}.${orderBy}`, orderDirection);
-            break;
-          default:
-          // do nothing
-        }
-      }
-
-      if (search?.length) {
-        void query.whereILike(`${TableName.Identity}.name`, `%${search}%`);
-      }
+        )
+        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
 
       const docs = await query;
       const formattedDocs = sqlNestRelationships({

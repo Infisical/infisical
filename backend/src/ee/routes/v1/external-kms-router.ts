@@ -26,7 +26,7 @@ const sanitizedExternalSchemaForGetAll = KmsKeysSchema.pick({
   isDisabled: true,
   createdAt: true,
   updatedAt: true,
-  slug: true
+  name: true
 })
   .extend({
     externalKms: ExternalKmsSchema.pick({
@@ -57,7 +57,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        slug: z.string().min(1).trim().toLowerCase(),
+        name: z.string().min(1).trim().toLowerCase(),
         description: z.string().trim().optional(),
         provider: ExternalKmsInputSchema
       }),
@@ -74,7 +74,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        slug: req.body.slug,
+        name: req.body.name,
         provider: req.body.provider,
         description: req.body.description
       });
@@ -87,7 +87,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
           metadata: {
             kmsId: externalKms.id,
             provider: req.body.provider.type,
-            slug: req.body.slug,
+            name: req.body.name,
             description: req.body.description
           }
         }
@@ -108,7 +108,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().min(1)
       }),
       body: z.object({
-        slug: z.string().min(1).trim().toLowerCase().optional(),
+        name: z.string().min(1).trim().toLowerCase().optional(),
         description: z.string().trim().optional(),
         provider: ExternalKmsInputUpdateSchema
       }),
@@ -125,7 +125,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        slug: req.body.slug,
+        name: req.body.name,
         provider: req.body.provider,
         description: req.body.description,
         id: req.params.id
@@ -139,7 +139,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
           metadata: {
             kmsId: externalKms.id,
             provider: req.body.provider.type,
-            slug: req.body.slug,
+            name: req.body.name,
             description: req.body.description
           }
         }
@@ -182,7 +182,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
           type: EventType.DELETE_KMS,
           metadata: {
             kmsId: externalKms.id,
-            slug: externalKms.slug
+            name: externalKms.name
           }
         }
       });
@@ -224,7 +224,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
           type: EventType.GET_KMS,
           metadata: {
             kmsId: externalKms.id,
-            slug: externalKms.slug
+            name: externalKms.name
           }
         }
       });
@@ -260,13 +260,13 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/slug/:slug",
+    url: "/name/:name",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        slug: z.string().trim().min(1)
+        name: z.string().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -276,12 +276,12 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const externalKms = await server.services.externalKms.findBySlug({
+      const externalKms = await server.services.externalKms.findByName({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        slug: req.params.slug
+        name: req.params.name
       });
       return { externalKms };
     }

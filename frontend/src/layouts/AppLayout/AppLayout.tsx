@@ -630,6 +630,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/kms`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/project/${currentWorkspace?.id}/kms`}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            Key Management
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
                         <a>
                           <MenuItem
@@ -942,7 +952,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                                 </SelectItem>
                                 {externalKmsList?.map((kms) => (
                                   <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                                    {kms.slug}
+                                    {kms.name}
                                   </SelectItem>
                                 ))}
                               </Select>

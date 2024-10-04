@@ -1347,3 +1347,37 @@ export const PROJECT_ROLE = {
     projectSlug: "The slug of the project to list the roles of."
   }
 };
+
+export const KMS = {
+  CREATE_KEY: {
+    projectId: "The ID of the project to create the key in.",
+    name: "The name of the key to be created. Must be slug-friendly.",
+    description: "An optional description of the key.",
+    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key."
+  },
+  UPDATE_KEY: {
+    keyId: "The ID of the key to be updated.",
+    name: "The updated name of this key. Must be slug-friendly.",
+    description: "The updated description of this key.",
+    isDisabled: "The flag to enable or disable this key."
+  },
+  DELETE_KEY: {
+    keyId: "The ID of the key to be deleted."
+  },
+  LIST_KEYS: {
+    projectId: "The ID of the project to list keys from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th key.",
+    limit: "The number of keys to return.",
+    orderBy: "The column to order keys by.",
+    orderDirection: "The direction to order keys in.",
+    search: "The text string to filter key names by."
+  },
+  ENCRYPT: {
+    keyId: "The ID of the key to encrypt the data with.",
+    plaintext: "The plaintext to be encrypted (base64 encoded)."
+  },
+  DECRYPT: {
+    keyId: "The ID of the key to decrypt the data with.",
+    ciphertext: "The ciphertext to be decrypted (base64 encoded)."
+  }
+};

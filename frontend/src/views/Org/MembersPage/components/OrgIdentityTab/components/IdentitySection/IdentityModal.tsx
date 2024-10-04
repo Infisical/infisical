@@ -36,6 +36,7 @@ const schema = z
         value: z.string().trim().min(1)
       })
       .array()
+      .default([])
       .optional()
   })
   .required();
@@ -88,6 +89,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       identityId: string;
       name: string;
       role: string;
+      metadata?: { key: string; value: string }[];
       customRole: {
         name: string;
         slug: string;
@@ -99,7 +101,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (identity) {
       reset({
         name: identity.name,
-        role: identity?.customRole?.slug ?? identity.role
+        role: identity?.customRole?.slug ?? identity.role,
+        metadata: identity.metadata
       });
     } else {
       reset({

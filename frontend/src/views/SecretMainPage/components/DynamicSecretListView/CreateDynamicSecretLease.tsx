@@ -194,6 +194,33 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
     );
   }
 
+  if (provider === DynamicSecretProviders.Ldap) {
+    const { USERNAME, PASSWORD, DN_ARRAY } = data as {
+      USERNAME: string;
+      PASSWORD: string;
+      DN_ARRAY: string[];
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+        <FormControl label="DNs" className="flex-grow">
+          <SecretInput
+            isReadOnly
+            isVisible
+            value={JSON.stringify(DN_ARRAY)}
+            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+          />
+        </FormControl>
+      </div>
+    );
+  }
+
   return null;
 };
 

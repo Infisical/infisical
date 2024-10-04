@@ -54,7 +54,7 @@ export const getSecretManagerDataKey = async (knex: Knex, projectId: string) => 
   } else {
     const [kmsDoc] = await knex(TableName.KmsKey)
       .insert({
-        slug: slugify(alphaNumericNanoId(8).toLowerCase()),
+        name: slugify(alphaNumericNanoId(8).toLowerCase()),
         orgId: project.orgId,
         isReserved: false
       })

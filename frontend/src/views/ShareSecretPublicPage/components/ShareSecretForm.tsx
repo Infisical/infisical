@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
@@ -8,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { encryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
@@ -79,30 +76,16 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
     try {
       const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
-      const key = crypto.randomBytes(16).toString("hex");
-      const hashedHex = crypto.createHash("sha256").update(key).digest("hex");
-      const { ciphertext, iv, tag } = encryptSymmetric({
-        plaintext: secret,
-        key
-      });
-
       const { id } = await createSharedSecret.mutateAsync({
         name,
         password,
-        encryptedValue: ciphertext,
-        hashedHex,
-        iv,
-        tag,
+        secretValue: secret,
         expiresAt,
         expiresAfterViews: viewLimit === "-1" ? undefined : Number(viewLimit),
         accessType
       });
 
-      setSecretLink(
-        `${window.location.origin}/shared/secret/${id}?key=${encodeURIComponent(
-          hashedHex
-        )}-${encodeURIComponent(key)}`
-      );
+      setSecretLink(`${window.location.origin}/shared/secret/${id}`);
       reset();
 
       setCopyTextSecret("secret");

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
@@ -56,7 +55,6 @@ import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
-import { debounce } from "@app/lib/fn/debounce";
 
 import {
   PopUpNames,
@@ -118,7 +116,6 @@ export const ActionBar = ({
   ] as const);
   const { subscription } = useSubscription();
   const { openPopUp } = usePopUpAction();
-  const [search, setSearch] = useState(filter.searchFilter);
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
@@ -133,8 +130,6 @@ export const ActionBar = ({
   const shouldCheckFolderPermission = permission.rules.some((rule) =>
     (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
   );
-
-  const debouncedOnSearch = debounce(onSearchChange, 500);
 
   const handleFolderCreate = async (folderName: string) => {
     try {
@@ -286,11 +281,15 @@ export const ActionBar = ({
           <Input
             className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
             placeholder="Search by folder name, key name, comment..."
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            value={search}
+            leftIcon={
+              <FontAwesomeIcon
+                className={filter.searchFilter ? "text-primary" : ""}
+                icon={faMagnifyingGlass}
+              />
+            }
+            value={filter.searchFilter}
             onChange={(evt) => {
-              setSearch(evt.target.value);
-              debouncedOnSearch(evt.target.value);
+              onSearchChange(evt.target.value);
             }}
           />
         </div>

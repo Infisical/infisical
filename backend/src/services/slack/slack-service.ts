@@ -141,16 +141,14 @@ export const slackServiceFactory = ({
     let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
     let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
 
-    const decrypt = await kmsService.decryptWithRootKey();
+    const decrypt = kmsService.decryptWithRootKey();
 
     if (serverCfg.encryptedSlackClientId) {
-      slackClientId = (await decrypt({ cipherTextBlob: Buffer.from(serverCfg.encryptedSlackClientId) })).toString();
+      slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
     }
 
     if (serverCfg.encryptedSlackClientSecret) {
-      slackClientSecret = (
-        await decrypt({ cipherTextBlob: Buffer.from(serverCfg.encryptedSlackClientSecret) })
-      ).toString();
+      slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedSlackClientSecret)).toString();
     }
 
     if (!slackClientId || !slackClientSecret) {

@@ -203,7 +203,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secretManagerKmsKey: z.object({
             id: z.string(),
-            slug: z.string(),
+            name: z.string(),
             isExternal: z.boolean()
           })
         })
@@ -243,7 +243,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secretManagerKmsKey: z.object({
             id: z.string(),
-            slug: z.string(),
+            name: z.string(),
             isExternal: z.boolean()
           })
         })
@@ -268,7 +268,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           metadata: {
             secretManagerKmsKey: {
               id: secretManagerKmsKey.id,
-              slug: secretManagerKmsKey.slug
+              name: secretManagerKmsKey.name
             }
           }
         }
@@ -336,7 +336,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secretManagerKmsKey: z.object({
             id: z.string(),
-            slug: z.string(),
+            name: z.string(),
             isExternal: z.boolean()
           })
         })

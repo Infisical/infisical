@@ -1101,7 +1101,7 @@ const OrganizationPage = () => {
                             </SelectItem>
                             {externalKmsList?.map((kms) => (
                               <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                                {kms.slug}
+                                {kms.name}
                               </SelectItem>
                             ))}
                           </Select>

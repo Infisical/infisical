@@ -1,0 +1,208 @@
+---
+title: "Key Management Service (KMS)"
+sidebarTitle: "Key Management (KMS)"
+description: "Learn how to manage and use cryptographic keys with Infisical."
+---
+
+## Concept
+
+Infisical can be used as a Key Management System (KMS), referred to as Infisical KMS, to centralize management of keys to be used for cryptographic operations like encryption/decryption.
+
+<Note>
+  Keys managed in KMS are not extractable from the platform. Additionally, data
+  is never stored when performing cryptographic operations.
+</Note>
+
+## Workflow
+
+The typical workflow for using Infisical KMS consists of the following steps:
+
+1. Creating a KMS key. As part of this step, you specify a name for the key and the encryption algorithm meant to be used for it (e.g. `AES-GCM-128`, `AES-GCM-256`).
+2. Encryption: To encrypt data, you would make a request to the Infisical KMS API endpoint, specifying the base64-encoded plaintext and the intended key to use for encryption; the API would return the base64-encoded ciphertext.
+3. Decryption: To decrypt data, you would make a request to the Infisical KMS API endpoint, specifying the base64-encoded ciphertext and the intended key to use for decryption; the API would return the base64-encoded plaintext.
+
+<Note>
+  Note that this workflow can be executed via the Infisical UI or manually such
+  as via API.
+</Note>
+
+## Guide to Encrypting Data
+
+In the following steps, we explore how to generate a key and use it to encrypt data.
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Creating a KMS key">
+                Navigate to Project > Key Management and tap on the **Add Key** button.
+                ![kms add key button](/images/platform/kms/infisical-kms/kms-add-key.png)
+
+                Specify your key details. Here's some guidance on each field:
+
+                - Name: A slug-friendly name for the key.
+                - Type: The encryption algorithm associated with the key (e.g. `AES-GCM-256`).
+                - Description: An optional description of what the intended usage is for the key.
+
+                ![kms add key modal](/images/platform/kms/infisical-kms/kms-add-key-modal.png)
+            </Step>
+            <Step title="Encrypting data with the KMS key">
+                Once your key is generated, open the options menu for the newly created key and select encrypt data.
+                ![kms key options](/images/platform/kms/infisical-kms/kms-key-options.png)
+
+                Populate the text area with your data and tap on the Encrypt button.
+                ![kms encrypt data](/images/platform/kms/infisical-kms/kms-encrypt-data.png)
+
+                <Note>
+                    If your data is already Base64 encoded make sure to toggle the respective switch on to avoid
+                    redundant encoding.
+                </Note>
+
+                Copy and store the encrypted data.
+                ![kms encrypted data](/images/platform/kms/infisical-kms/kms-encrypted-data.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        <Steps>
+            <Step title="Creating a KMS key">
+                To create a cryptographic key, make an API request to the [Create KMS
+                Key](/api-reference/endpoints/kms/keys/create) API endpoint.
+
+                ### Sample request
+
+                ```bash Request
+                curl --request POST \
+                --url https://app.infisical.com/api/v1/kms/keys \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "projectId": "<project-id>",
+                    "name": "my-secret-key",
+                    "description": "...",
+                    "encryptionAlgorithm": "aes-256-gcm"
+                }'
+                ```
+
+                ### Sample response
+
+                ```bash Response
+                {
+                    "key": {
+                        "id": "<key-id>",
+                        "description": "...",
+                        "isDisabled": false,
+                        "isReserved": false,
+                        "orgId": "<org-id>",
+                        "name": "my-secret-key",
+                        "createdAt": "2023-11-07T05:31:56Z",
+                        "updatedAt": "2023-11-07T05:31:56Z",
+                        "projectId": "<project-id>"
+                    }
+                }
+                ```
+            </Step>
+            <Step title="Encrypting data with the KMS key">
+                To encrypt data, make an API request to the [Encrypt
+                Data](/api-reference/endpoints/kms/keys/encrypt) API endpoint,
+                specifying the key to use.
+
+                <Note>
+                    Make sure your data is Base64 encoded
+                </Note>
+
+                ### Sample request
+
+                ```bash Request
+                curl --request POST \
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/encrypt \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
+                }'
+                ```
+
+                ### Sample response
+
+                ```bash Response
+                {
+                    "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
+                }
+                ```
+            </Step>
+        </Steps>
+    </Tab>
+
+</Tabs>
+
+## Guide to Decrypting Data
+
+In the following steps, we explore how to use decrypt data using an existing key in Infisical KMS.
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Accessing your key">
+                Navigate to Project > Key Management and open the options menu for the key used to encrypt the data
+                you want to decrypt.
+                ![kms key options](/images/platform/kms/infisical-kms/kms-decrypt-options.png)
+
+            </Step>
+            <Step title="Decrypting your data">
+                Paste your encrypted data into the text area and tap on the Decrypt button. Optionally, if your data was
+                originally plain text, enable the decode Base64 switch.
+                ![kms decrypt data](/images/platform/kms/infisical-kms/kms-decrypt-data.png)
+
+                Your decrypted data will be displayed and can be copied for use.
+                ![kms decrypted data](/images/platform/kms/infisical-kms/kms-decrypted-data.png)
+
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        <Steps>
+            <Step title="Decrypting data">
+                To decrypt data, make an API request to the [Decrypt
+                Data](/api-reference/endpoints/kms/keys/decrypt) API endpoint,
+                specifying the key to use.
+
+                ### Sample request
+
+                ```bash Request
+                curl --request POST \
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/decrypt \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "ciphertext": "HwFHwSFHwlMF6TOfp==" // base64 encoded ciphertext
+                }'
+                ```
+
+                ### Sample response
+
+                ```bash Response
+                {
+                    "plaintext": "lUFHM5Ggwo6TOfpuN1S==" // base64 encoded plaintext
+                }
+                ```
+            </Step>
+        </Steps>
+
+    </Tab>
+
+</Tabs>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Is my data stored in Infisical KMS?">
+    No. Infisical's KMS only provides cryptographic services and does not store
+    any encrypted or decrypted data.
+  </Accordion>
+  <Accordion title="Can key material be accessed outside of Infisical KMS?">
+    No. Infisical's KMS will never expose your keys, encrypted or decrypted, to
+    external sources.
+  </Accordion>
+  <Accordion title="What algorithms does Infisical KMS support?">
+    Currently, Infisical only supports `AES-128-GCM` and `AES-256-GCM` for
+    encryption operations. We anticipate supporting more algorithms and
+    cryptographic operations in the coming months.
+  </Accordion>
+</AccordionGroup>

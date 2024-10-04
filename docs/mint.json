@@ -113,6 +113,15 @@
             "documentation/platform/pki/alerting"
           ]
         },
+        "documentation/platform/kms",
+        {
+          "group": "KMS Configuration",
+          "pages": [
+            "documentation/platform/kms-configuration/overview",
+            "documentation/platform/kms-configuration/aws-kms",
+            "documentation/platform/kms-configuration/aws-hsm"
+          ]
+        },
         {
           "group": "Identities",
           "pages": [
@@ -168,15 +177,8 @@
             "documentation/platform/dynamic-secrets/aws-iam",
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db",
-            "documentation/platform/dynamic-secrets/azure-entra-id"
-          ]
-        },
-        {
-          "group": "Key Management (KMS)",
-          "pages": [
-            "documentation/platform/kms/overview",
-            "documentation/platform/kms/aws-kms",
-            "documentation/platform/kms/aws-hsm"
+            "documentation/platform/dynamic-secrets/azure-entra-id",
+            "documentation/platform/dynamic-secrets/ldap"
           ]
         },
         {
@@ -785,6 +787,22 @@
             "api-reference/endpoints/pki-alerts/read",
             "api-reference/endpoints/pki-alerts/update",
             "api-reference/endpoints/pki-alerts/delete"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Infisical KMS",
+      "pages": [
+        {
+          "group": "Keys",
+          "pages": [
+            "api-reference/endpoints/kms/keys/list",
+            "api-reference/endpoints/kms/keys/create",
+            "api-reference/endpoints/kms/keys/update",
+            "api-reference/endpoints/kms/keys/delete",
+            "api-reference/endpoints/kms/keys/encrypt",
+            "api-reference/endpoints/kms/keys/decrypt"
           ]
         }
       ]

@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { SymmetricEncryption } from "@app/lib/crypto/cipher";
+
 export enum KmsDataKey {
   Organization,
   SecretManager
@@ -22,8 +24,11 @@ export type TEncryptWithKmsDataKeyDTO =
 
 export type TGenerateKMSDTO = {
   orgId: string;
+  projectId?: string;
+  encryptionAlgorithm?: SymmetricEncryption;
   isReserved?: boolean;
-  slug?: string;
+  name?: string;
+  description?: string;
   tx?: Knex;
 };
 

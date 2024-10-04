@@ -5,7 +5,7 @@ export type Kms = {
   id: string;
   description: string;
   orgId: string;
-  slug: string;
+  name: string;
   external: {
     id: string;
     status: string;
@@ -21,7 +21,7 @@ export type KmsListEntry = {
   isDisabled: boolean;
   createdAt: string;
   updatedAt: string;
-  slug: string;
+  name: string;
   externalKms: {
     provider: string;
     status: string;
@@ -88,7 +88,7 @@ export const ExternalKmsInputSchema = z.discriminatedUnion("type", [
 ]);
 
 export const AddExternalKmsSchema = z.object({
-  slug: z
+  name: z
     .string()
     .trim()
     .min(1)

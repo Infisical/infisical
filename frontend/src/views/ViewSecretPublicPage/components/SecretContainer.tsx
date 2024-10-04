@@ -15,7 +15,7 @@ import { TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
 type Props = {
   secret: TViewSharedSecretResponse["secret"];
-  secretKey: string;
+  secretKey: string | null;
 };
 
 export const SecretContainer = ({ secret, secretKey: key }: Props) => {
@@ -25,6 +25,10 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
   });
 
   const decryptedSecret = useMemo(() => {
+    if (secret.secretValue) {
+      return secret.secretValue;
+    }
+
     if (secret && secret.encryptedValue && key) {
       const res = decryptSymmetric({
         ciphertext: secret.encryptedValue,

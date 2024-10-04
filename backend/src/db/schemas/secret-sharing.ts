@@ -5,14 +5,16 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSharingSchema = z.object({
   id: z.string().uuid(),
-  encryptedValue: z.string(),
-  iv: z.string(),
-  tag: z.string(),
-  hashedHex: z.string(),
+  encryptedValue: z.string().nullable().optional(),
+  iv: z.string().nullable().optional(),
+  tag: z.string().nullable().optional(),
+  hashedHex: z.string().nullable().optional(),
   expiresAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),
@@ -22,7 +24,9 @@ export const SecretSharingSchema = z.object({
   accessType: z.string().default("anyone"),
   name: z.string().nullable().optional(),
   lastViewedAt: z.date().nullable().optional(),
-  password: z.string().nullable().optional()
+  password: z.string().nullable().optional(),
+  encryptedSecret: zodBuffer.nullable().optional(),
+  identifier: z.string().nullable().optional()
 });
 
 export type TSecretSharing = z.infer<typeof SecretSharingSchema>;

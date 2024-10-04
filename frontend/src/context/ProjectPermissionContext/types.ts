@@ -7,6 +7,15 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCmekActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Encrypt = "encrypt",
+  Decrypt = "decrypt"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -55,7 +64,8 @@ export enum ProjectPermissionSub {
   CertificateTemplates = "certificate-templates",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
-  Kms = "kms"
+  Kms = "kms",
+  Cmek = "cmek"
 }
 
 type SubjectFields = {
@@ -97,6 +107,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
-  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback];
+  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
+  | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

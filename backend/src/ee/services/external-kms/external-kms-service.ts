@@ -43,7 +43,7 @@ export const externalKmsServiceFactory = ({
     provider,
     description,
     actor,
-    slug,
+    name,
     actorId,
     actorOrgId,
     actorAuthMethod
@@ -64,7 +64,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    const kmsSlug = slug ? slugify(slug) : slugify(alphaNumericNanoId(8).toLowerCase());
+    const kmsName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
 
     let sanitizedProviderInput = "";
     switch (provider.type) {
@@ -96,7 +96,7 @@ export const externalKmsServiceFactory = ({
         {
           isReserved: false,
           description,
-          slug: kmsSlug,
+          name: kmsName,
           orgId: actorOrgId
         },
         tx
@@ -120,7 +120,7 @@ export const externalKmsServiceFactory = ({
     description,
     actor,
     id: kmsId,
-    slug,
+    name,
     actorId,
     actorOrgId,
     actorAuthMethod
@@ -142,7 +142,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    const kmsSlug = slug ? slugify(slug) : undefined;
+    const kmsName = name ? slugify(name) : undefined;
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
@@ -188,7 +188,7 @@ export const externalKmsServiceFactory = ({
         kmsDoc.id,
         {
           description,
-          slug: kmsSlug
+          name: kmsName
         },
         tx
       );
@@ -280,14 +280,14 @@ export const externalKmsServiceFactory = ({
     }
   };
 
-  const findBySlug = async ({
+  const findByName = async ({
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod,
-    slug: kmsSlug
+    name: kmsName
   }: TGetExternalKmsBySlugDTO) => {
-    const kmsDoc = await kmsDAL.findOne({ slug: kmsSlug, orgId: actorOrgId });
+    const kmsDoc = await kmsDAL.findOne({ name: kmsName, orgId: actorOrgId });
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -327,6 +327,6 @@ export const externalKmsServiceFactory = ({
     deleteById,
     list,
     findById,
-    findBySlug
+    findByName
   };
 };

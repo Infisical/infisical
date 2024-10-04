@@ -3,6 +3,7 @@ import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
 import { CassandraProvider } from "./cassandra";
 import { ElasticSearchProvider } from "./elastic-search";
+import { LdapProvider } from "./ldap";
 import { DynamicSecretProviders } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
@@ -20,5 +21,6 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.MongoDB]: MongoDBProvider(),
   [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
   [DynamicSecretProviders.RabbitMq]: RabbitMqProvider(),
-  [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider()
+  [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider(),
+  [DynamicSecretProviders.Ldap]: LdapProvider()
 });

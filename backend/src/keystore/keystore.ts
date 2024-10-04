@@ -16,6 +16,9 @@ export const KeyStorePrefixes = {
   WaitUntilReadyKmsOrgKeyCreation: "wait-until-ready-kms-org-key-creation-",
   WaitUntilReadyKmsOrgDataKeyCreation: "wait-until-ready-kms-org-data-key-creation-",
 
+  WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
+    `wait-until-ready-project-environments-operation-${projectId}`,
+  ProjectEnvironmentLock: (projectId: string) => `project-environment-lock-${projectId}` as const,
   SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>

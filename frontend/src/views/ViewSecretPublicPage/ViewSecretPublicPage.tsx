@@ -1,23 +1,42 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
+import { NextRouter, useRouter } from "next/router";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AxiosError } from "axios";
 
 import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 
-import { PasswordContainer,SecretContainer, SecretErrorContainer } from "./components";
+import { PasswordContainer, SecretContainer, SecretErrorContainer } from "./components";
+
+const extractDetailsFromUrl = (router: NextRouter) => {
+  const { id, key: urlEncodedKey } = router.query;
+
+  const idString = id as string;
+
+  if (urlEncodedKey) {
+    const [hashedHex, key] = urlEncodedKey ? urlEncodedKey.toString().split("-") : ["", ""];
+
+    return {
+      id: idString,
+      hashedHex,
+      key
+    };
+  }
+
+  return {
+    id: idString,
+    hashedHex: null,
+    key: null
+  };
+};
 
 export const ViewSecretPublicPage = () => {
   const router = useRouter();
   const [password, setPassword] = useState<string>();
-  const { id, key: urlEncodedPublicKey } = router.query;
 
-  const [hashedHex, key] = urlEncodedPublicKey
-    ? urlEncodedPublicKey.toString().split("-")
-    : ["", ""];
+  const { hashedHex, key, id } = extractDetailsFromUrl(router);
 
   const {
     data: fetchSecret,
@@ -25,7 +44,7 @@ export const ViewSecretPublicPage = () => {
     isLoading,
     isFetching
   } = useGetActiveSharedSecretById({
-    sharedSecretId: id as string,
+    sharedSecretId: id,
     hashedHex,
     password
   });
@@ -80,7 +99,7 @@ export const ViewSecretPublicPage = () => {
         )}
         {!isLoading && (
           <>
-            {!error && fetchSecret?.secret && key && (
+            {!error && fetchSecret?.secret && (
               <SecretContainer secret={fetchSecret.secret} secretKey={key} />
             )}
             {error && !isInvalidCredential && <SecretErrorContainer />}

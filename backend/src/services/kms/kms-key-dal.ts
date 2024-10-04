@@ -1,9 +1,11 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { KmsKeysSchema, TableName } from "@app/db/schemas";
+import { KmsKeysSchema, TableName, TInternalKms, TKmsKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
+import { CmekOrderBy, TListCmeksByProjectIdDTO } from "@app/services/cmek/cmek-types";
 
 export type TKmsKeyDALFactory = ReturnType<typeof kmskeyDALFactory>;
 
@@ -71,5 +73,50 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...kmsOrm, findByIdWithAssociatedKms };
+  const findKmsKeysByProjectId = async (
+    {
+      projectId,
+      offset = 0,
+      limit,
+      orderBy = CmekOrderBy.Name,
+      orderDirection = OrderByDirection.ASC,
+      search
+    }: TListCmeksByProjectIdDTO,
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.KmsKey)
+        .where("projectId", projectId)
+        .where((qb) => {
+          if (search) {
+            void qb.whereILike("name", `%${search}%`);
+          }
+        })
+        .join(TableName.InternalKms, `${TableName.InternalKms}.kmsKeyId`, `${TableName.KmsKey}.id`)
+        .select<
+          (TKmsKeys &
+            Pick<TInternalKms, "version" | "encryptionAlgorithm"> & {
+              total_count: number;
+            })[]
+        >(
+          selectAllTableCols(TableName.KmsKey),
+          db.raw(`count(*) OVER() as total_count`),
+          db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms),
+          db.ref("version").withSchema(TableName.InternalKms)
+        )
+        .orderBy(orderBy, orderDirection);
+
+      if (limit) {
+        void query.limit(limit).offset(offset);
+      }
+
+      const data = await query;
+
+      return { keys: data, totalCount: Number(data?.[0]?.total_count ?? 0) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find kms keys by project id" });
+    }
+  };
+
+  return { ...kmsOrm, findByIdWithAssociatedKms, findKmsKeysByProjectId };
 };
