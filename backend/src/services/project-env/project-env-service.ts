@@ -215,29 +215,26 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const getEnvironmentById = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
+  const getEnvironmentById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
+    const environment = await projectEnvDAL.findById(id);
+
+    if (!environment) {
+      throw new NotFoundError({
+        message: "Environment does not exist"
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      projectId,
+      environment.projectId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
 
-    const [env] = await projectEnvDAL.find({
-      id,
-      projectId
-    });
-
-    if (!env) {
-      throw new NotFoundError({
-        message: "Environment does not exist"
-      });
-    }
-
-    return env;
+    return environment;
   };
 
   return {

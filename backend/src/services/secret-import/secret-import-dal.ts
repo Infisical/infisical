@@ -97,6 +97,34 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findById = async (id: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where({ [`${TableName.SecretImport}.id` as "id"]: id })
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .select(
+          db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
+          db.ref("slug").withSchema(TableName.Environment),
+          db.ref("name").withSchema(TableName.Environment),
+          db.ref("id").withSchema(TableName.Environment).as("envId")
+        )
+        .first();
+
+      if (!doc) {
+        return null;
+      }
+
+      const { envId, slug, name, ...el } = doc;
+
+      return {
+        ...el,
+        importEnv: { id: envId, slug, name }
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find secret imports" });
+    }
+  };
+
   const getProjectImportCount = async (
     { search, ...filter }: Partial<TSecretImports & { projectId: string; search?: string }>,
     tx?: Knex
@@ -144,6 +172,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
   return {
     ...secretImportOrm,
     find,
+    findById,
     findByFolderIds,
     findLastImportPosition,
     updateAllPosition,

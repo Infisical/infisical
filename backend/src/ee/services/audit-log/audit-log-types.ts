@@ -123,6 +123,7 @@ export enum EventType {
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
   GET_SECRET_IMPORTS = "get-secret-imports",
+  GET_SECRET_IMPORT = "get-secret-import",
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
@@ -1011,6 +1012,14 @@ interface GetSecretImportsEvent {
   };
 }
 
+interface GetSecretImportEvent {
+  type: EventType.GET_SECRET_IMPORT;
+  metadata: {
+    secretImportId: string;
+    folderId: string;
+  };
+}
+
 interface CreateSecretImportEvent {
   type: EventType.CREATE_SECRET_IMPORT;
   metadata: {
@@ -1674,6 +1683,7 @@ export type Event =
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
   | GetSecretImportsEvent
+  | GetSecretImportEvent
   | CreateSecretImportEvent
   | UpdateSecretImportEvent
   | DeleteSecretImportEvent

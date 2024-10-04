@@ -502,12 +502,21 @@ export const secretFolderServiceFactory = ({
 
   const getFolderById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetFolderByIdDTO) => {
     const folder = await folderDAL.findById(id);
-    if (!folder) throw new NotFoundError({ message: "folder not found" });
+    if (!folder) throw new NotFoundError({ message: "Folder not found" });
     // folder list is allowed to be read by anyone
     // permission to check does user has access
     await permissionService.getProjectPermission(actor, actorId, folder.projectId, actorAuthMethod, actorOrgId);
 
-    return folder;
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: "Folder path not found" });
+    }
+
+    return {
+      ...folder,
+      path: folderWithPath.path
+    };
   };
 
   return {
