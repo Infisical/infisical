@@ -92,7 +92,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "PATCH",
+    method: "PUT",
     url: "/",
     config: {
       rateLimit: readLimit

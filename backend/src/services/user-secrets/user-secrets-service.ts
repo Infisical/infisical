@@ -1,3 +1,5 @@
+import { TUserSecretCredentialsUpdate } from "@app/db/schemas";
+
 import { encryptFields } from "./user-secrets.helpers";
 import { TUserSecretsDALFactory } from "./user-secrets-dal";
 import { transformToWebLoginSecretApiResponse } from "./user-secrets-transformer";
@@ -25,10 +27,20 @@ export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServic
     if (!secrets) return [];
     return transformToWebLoginSecretApiResponse(secrets);
   };
+
+  const updateSecrets = async (orgId: string, fields: Pick<TUserSecretCredentialsUpdate, "fields">) => {
+    const encryptedFields = encryptFields(fields);
+    await userSecretsDAL.updateSecrets(orgId, {
+      fields: encryptedFields.ciphertext,
+      iv: encryptedFields.iv,
+      tag: encryptedFields.tag
+    });
+  };
+
   return {
     getSecrets,
     createSecrets,
-    updateSecrets: userSecretsDAL.updateSecrets,
+    updateSecrets,
     deleteSecret: userSecretsDAL.deleteSecret
   };
 };

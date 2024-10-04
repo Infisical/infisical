@@ -34,7 +34,6 @@ export async function up(knex: Knex): Promise<void> {
       table.string("tag").notNullable();
 
       table.foreign("secretId").references("id").inTable(TableName.UserSecrets).onDelete("CASCADE");
-      table.unique(["secretId", "title"]);
     });
   }
 }

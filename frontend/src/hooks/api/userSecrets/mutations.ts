@@ -25,3 +25,14 @@ export const useCreateUserSecret = () => {
     onSuccess: () => queryClient.invalidateQueries(userSecretQueryKeys.userSecrets())
   });
 };
+
+export const useUpdateUserSecret = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (formData: any) => {
+      const { data } = await apiRequest.put("/api/v1/user-secrets", formData);
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries(userSecretQueryKeys.userSecrets())
+  });
+}

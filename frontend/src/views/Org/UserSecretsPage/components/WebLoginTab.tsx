@@ -8,7 +8,8 @@ import { usePopUp } from "@app/hooks";
 import {
   useCreateUserSecret,
   useDeleteUserSecret,
-  useGetUserSecrets} from "@app/hooks/api/userSecrets";
+  useGetUserSecrets,
+  useUpdateUserSecret} from "@app/hooks/api/userSecrets";
 import { TabTypes } from "@app/pages/org/[id]/user-secrets/user-secrets.types";
 
 import { FormModal } from "./Form/FormModal";
@@ -19,13 +20,13 @@ const WebLoginTab = () => {
   const { isLoading, isError, data } = useGetUserSecrets();
   const deleteUserSecret = useDeleteUserSecret();
   const createUserSecret = useCreateUserSecret();
+  const updateUserSecret = useUpdateUserSecret();
 
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createUserSecret",
-    "deleteUserSecretConfirmation"
+    "deleteUserSecretConfirmation",
+    "editUserSecret"
   ] as const);
-
-  const columns = ["Username", "Password", "URL", "Created At"];
 
   const onDeleteApproved = async () => {
     try {
@@ -45,18 +46,14 @@ const WebLoginTab = () => {
     }
   };
 
-  const handleDeletePopupOpen = (id: string) => {
-    handlePopUpOpen("deleteUserSecretConfirmation", id);
-  };
-
-  const formModalProps = {
+  const onCreateFormModalProps = {
     isOpen: popUp.createUserSecret.isOpen,
     onOpenChange: (isOpen: boolean) => handlePopUpToggle("createUserSecret", isOpen),
     title: "Create a Web Login",
     subtitle: "Create a web login secret"
   };
 
-  const formProps = {
+  const onCreateFormProps = {
     defaultValues: {
       username: "",
       password: "",
@@ -78,7 +75,7 @@ const WebLoginTab = () => {
           text: "Successfully created a shared secret",
           type: "success"
         });
-        handlePopUpClose("createUserSecret")
+        handlePopUpClose("createUserSecret");
       } catch (error) {
         console.error(error);
         createNotification({
@@ -88,6 +85,71 @@ const WebLoginTab = () => {
       }
     },
     submitText: "Create"
+  };
+
+  const secretsTableProps = {
+    onDelete: (id: string) => {
+      handlePopUpOpen("deleteUserSecretConfirmation", id);
+    },
+    columns: ["Username", "Password", "URL", "Created At"],
+    isLoading,
+    secrets: data?.secrets,
+    onEdit: (id: string) => {
+      handlePopUpOpen("editUserSecret", id);
+    }
+  };
+
+  const deleteActionModalProps = {
+    isOpen: popUp.deleteUserSecretConfirmation.isOpen,
+    title: "Are you sure you want to delete this secret?",
+    onChange: (isOpen: boolean) => handlePopUpToggle("deleteUserSecretConfirmation", isOpen),
+    deleteKey: "delete",
+    onClose: () => handlePopUpClose("deleteUserSecretConfirmation"),
+    onDeleteApproved
+  };
+
+  const getEditFormModalProps = {
+    isOpen: popUp.editUserSecret.isOpen,
+    onOpenChange: (isOpen: boolean) => handlePopUpToggle("editUserSecret", isOpen),
+    title: "Edit Web Login",
+    subtitle: "Edit a web login secret"
+  };
+
+  const getEditFormProps = () => {
+    const formdata = data?.secrets.find((secret) => secret.id === popUp.editUserSecret.data)?.fields;
+    return {
+      defaultValues: {
+        username: formdata?.username ?? "",
+        password: formdata?.password ?? "",
+        url: formdata?.url ?? ""
+      },
+      schema: z.object({
+        username: z.string().min(1, "Username is required"),
+        password: z.string().min(1, "Password is required"),
+        url: z.string().min(1, "URL is required")
+      }),
+      onSubmit: async (onEditFormData: any) => {
+        try {
+          await updateUserSecret.mutateAsync({
+            id: popUp.editUserSecret.data,
+            fields: onEditFormData,
+          });
+          createNotification({
+            text: "Successfully updated a secret",
+            type: "success"
+          });
+          handlePopUpClose("editUserSecret");
+        } catch (error) {
+          console.error(error);
+          createNotification({
+            text: "Failed to update a secret",
+            type: "error"
+          });
+        }
+      },
+      submitText: "Create"
+    }
+    
   };
 
   if (isError && !isLoading) {
@@ -107,23 +169,14 @@ const WebLoginTab = () => {
           Create Secret
         </Button>
       </div>
-      <SecretsTable
-        onDelete={handleDeletePopupOpen}
-        columns={columns}
-        isLoading={false}
-        secrets={data?.secrets}
-      />
-      <FormModal {...formModalProps}>
-        <UserSecretForm {...formProps} />
+      <SecretsTable {...secretsTableProps} />
+      <FormModal {...onCreateFormModalProps}>
+        <UserSecretForm {...onCreateFormProps} />
       </FormModal>
-      <DeleteActionModal
-        isOpen={popUp.deleteUserSecretConfirmation.isOpen}
-        title="Are you sure you want to delete this secret?"
-        onChange={(isOpen) => handlePopUpToggle("deleteUserSecretConfirmation", isOpen)}
-        deleteKey="delete"
-        onClose={() => handlePopUpClose("deleteUserSecretConfirmation")}
-        onDeleteApproved={onDeleteApproved}
-      />
+      <FormModal {...getEditFormModalProps}>
+        <UserSecretForm {...getEditFormProps()} />
+      </FormModal>
+      <DeleteActionModal {...deleteActionModalProps} />
     </div>
   );
 };

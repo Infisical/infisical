@@ -1,2 +1,2 @@
-export {useCreateUserSecret,useDeleteUserSecret} from "./mutations"
+export {useCreateUserSecret,useDeleteUserSecret, useUpdateUserSecret} from "./mutations"
 export {useGetUserSecrets} from "./queries"
