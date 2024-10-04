@@ -1,6 +1,6 @@
 import ldapjs from "ldapjs";
 import ldif from "ldif";
-import mustache from "mustache";
+import { compile } from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
@@ -40,7 +40,8 @@ const generateLDIF = ({
     EncodedPassword: encodePassword(password)
   };
 
-  const renderedLdif = mustache.render(ldifTemplate, data);
+  const renderTemplate = compile(ldifTemplate);
+  const renderedLdif = renderTemplate(data);
 
   return renderedLdif;
 };
