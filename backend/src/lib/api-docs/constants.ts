@@ -675,6 +675,9 @@ export const SECRET_IMPORTS = {
     environment: "The slug of the environment to list secret imports from.",
     path: "The path to list secret imports from."
   },
+  GET: {
+    secretImportId: "The ID of the secret import to fetch."
+  },
   CREATE: {
     environment: "The slug of the environment to import into.",
     path: "The path to import into.",
