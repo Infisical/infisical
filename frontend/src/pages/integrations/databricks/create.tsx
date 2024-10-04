@@ -170,7 +170,7 @@ export default function DatabricksCreateIntegrationPage() {
                 setTargetScope(val);
               }}
               className="w-full border border-mineshaft-500"
-              placeholder="Select scope..."
+              placeholder={integrationAuthScopes.length === 0 ? "No scopes found." : "Select scope..."}
               isDisabled={integrationAuthScopes.length === 0}
             >
               {integrationAuthScopes.length > 0 ? (

@@ -471,10 +471,11 @@ const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; ac
     }
   );
 
-  const scopes = res.data.scopes.map((a) => ({
-    name: a.name, // name maps to unique scope name in Databricks
-    backend_type: a.backend_type
-  }));
+  const scopes =
+    res.data?.scopes?.map((a) => ({
+      name: a.name, // name maps to unique scope name in Databricks
+      backend_type: a.backend_type
+    })) ?? [];
 
   return scopes;
 };
