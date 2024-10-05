@@ -30,8 +30,8 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { orgId } = req.permission;
-      const secrets = await server.services.userSecrets.getSecrets(orgId, req.query.credentialType);
+      const { orgId, id } = req.permission;
+      const secrets = await server.services.userSecrets.getSecrets(orgId, id, req.query.credentialType);
       return {
         secrets
       };
@@ -58,8 +58,8 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       try {
-        const { orgId } = req.permission;
-        await server.services.userSecrets.createSecrets({ orgId, ...req.body });
+        const { orgId, id } = req.permission;
+        await server.services.userSecrets.createSecrets({ orgId, userId: id, ...req.body });
         return true;
       } catch (error) {
         server.log.error(error);

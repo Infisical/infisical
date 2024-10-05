@@ -1,4 +1,5 @@
-import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { faEdit, faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -25,6 +26,15 @@ type Props = {
 const SecretsTable = (props: Props) => {
   const { columns, isLoading, secrets, onDelete, onEdit } = props;
 
+  const [showSecretId, setShowSecretId] = useState<string>("");
+
+  const onCLickShow = (id: string) => {
+    setShowSecretId(id)
+    setTimeout(() => {
+      setShowSecretId("")
+    }, 3000);
+  }
+
   return (
     <TableContainer>
       <Table>
@@ -33,6 +43,7 @@ const SecretsTable = (props: Props) => {
             {columns.map((column) => (
               <Th key={column}>{column}</Th>
             ))}
+            <Th aria-label="button" className="w-5" />
             {onEdit && (<Th aria-label="button" className="w-5" />)}
             {onDelete && (<Th aria-label="button" className="w-5" />)}
           </Tr>
@@ -45,10 +56,34 @@ const SecretsTable = (props: Props) => {
                 key={secret.id}
                 className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
               >
-                {Object.values(secret.fields).map((value, i) => (
-                  // eslint-disable-next-line
-                  <Td key={`secret-${value}-${i}`}>{value}</Td>
-                ))}
+                {Object.values(secret.fields).map((value, i) => {
+                  if(showSecretId === secret.id){
+                    return (
+                      // eslint-disable-next-line
+                      <Td key={`secret-${value}-${i}`}>{value}</Td>
+                    )
+                  }
+                  
+                    return (
+                      (
+                        // eslint-disable-next-line
+                        <Td key={`secret-${value}-${i}`} className="blur">xxxxxxx</Td>
+                      )
+                    )
+                  
+                })}
+                <Td>
+                  <IconButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCLickShow(secret.id)
+                      }}
+                      variant="plain"
+                      ariaLabel="edit"
+                    >
+                    <FontAwesomeIcon icon={faEye} />
+                  </IconButton>
+                </Td>
                 {onEdit && (
                   <Td>
                     <IconButton

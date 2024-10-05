@@ -12,9 +12,12 @@ export const userSecretsDALFactory = (db: TDbClient) => {
 
   const createSecret = async (data: CreateSecretDALParamsType) => {
     try {
-      let orgSecrets = await db(TableName.UserSecrets).where({ orgId: data.orgId }).first().select("id");
+      let orgSecrets = await db(TableName.UserSecrets)
+        .where({ orgId: data.orgId, userId: data.userId })
+        .first()
+        .select("id");
       if (!orgSecrets?.id) {
-        orgSecrets = await db(TableName.UserSecrets).insert({ orgId: data.orgId }).returning("id");
+        orgSecrets = await db(TableName.UserSecrets).insert({ orgId: data.orgId, userId: data.userId }).returning("id");
       }
 
       await userSecretCredentialsOrm.insertMany([
@@ -32,10 +35,10 @@ export const userSecretsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getSecrets = async (orgId: string): Promise<GetSecretReturnType[] | void> => {
+  const getSecrets = async (orgId: string, userId: string): Promise<GetSecretReturnType[] | void> => {
     try {
       const secrets = await db(TableName.UserSecrets)
-        .where({ orgId })
+        .where({ orgId, userId })
         .join(
           TableName.UserSecretCredentials,
           `${TableName.UserSecrets}.id`,
@@ -64,10 +67,10 @@ export const userSecretsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getSecretByCredentialType = async (orgId: string, credentialType: string) => {
+  const getSecretByCredentialType = async (orgId: string, userId: string, credentialType: string) => {
     try {
       const secret = await db(TableName.UserSecrets)
-        .where({ orgId })
+        .where({ orgId, userId })
         .join(
           TableName.UserSecretCredentials,
           `${TableName.UserSecrets}.id`,

@@ -9,6 +9,7 @@ export enum CredentialTypes {
 export type GetSecretReturnType = TUserSecrets & TUserSecretCredentials;
 
 export type CreateSecretDALParamsType = Omit<TUserSecretCredentialsInsert, "secretId"> & {
+  userId: string;
   orgId: string;
   iv: string;
   tag: string;
@@ -17,6 +18,7 @@ export type CreateSecretDALParamsType = Omit<TUserSecretCredentialsInsert, "secr
 export type CreateSecretFuncParamsType = Omit<TUserSecretCredentialsInsert, "secretId" | "fields" | "iv" | "tag"> & {
   fields: Record<string, string>;
   orgId: string;
+  userId: string;
 };
 
 export type GetSecretsServiceReturnType = {
