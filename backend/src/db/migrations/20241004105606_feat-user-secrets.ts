@@ -35,9 +35,6 @@ export async function up(knex: Knex): Promise<void> {
       table.timestamp("createdAt").defaultTo(knex.fn.now());
       table.timestamp("updatedAt").defaultTo(knex.fn.now());
 
-      table.string("iv").notNullable();
-      table.string("tag").notNullable();
-
       table.foreign("secretId").references("id").inTable(TableName.UserSecrets).onDelete("CASCADE");
     });
   }

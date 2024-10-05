@@ -16,9 +16,7 @@ export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServic
     const encryptedFields = encryptFields(data.fields);
     await userSecretsDAL.createSecret({
       ...data,
-      fields: encryptedFields.ciphertext,
-      iv: encryptedFields.iv,
-      tag: encryptedFields.tag
+      fields: encryptedFields
     });
   };
 
@@ -33,9 +31,7 @@ export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServic
   const updateSecrets = async (orgId: string, fields: Pick<TUserSecretCredentialsUpdate, "fields">) => {
     const encryptedFields = encryptFields(fields);
     await userSecretsDAL.updateSecrets(orgId, {
-      fields: encryptedFields.ciphertext,
-      iv: encryptedFields.iv,
-      tag: encryptedFields.tag
+      fields: encryptedFields
     });
   };
 

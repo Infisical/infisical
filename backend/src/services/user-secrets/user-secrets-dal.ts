@@ -25,9 +25,7 @@ export const userSecretsDALFactory = (db: TDbClient) => {
           credentialType: data.credentialType,
           title: data.title,
           fields: data.fields,
-          secretId: orgSecrets?.id as unknown as string,
-          iv: data.iv,
-          tag: data.tag
+          secretId: orgSecrets?.id as unknown as string
         }
       ]);
     } catch (error) {

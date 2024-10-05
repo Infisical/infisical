@@ -55,7 +55,7 @@ const getTransformedField = (field: Record<string, string>, createdAt: Date, cre
 
 export const transformToWebLoginSecretApiResponse = (secrets: GetSecretReturnType[]) => {
   return secrets.map((secret) => {
-    const decryptedFields = decryptFields(secret.fields, secret.iv, secret.tag);
+    const decryptedFields = decryptFields(secret.fields);
     return {
       id: secret.id,
       title: secret.title,

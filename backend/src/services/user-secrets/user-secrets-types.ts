@@ -11,11 +11,9 @@ export type GetSecretReturnType = TUserSecrets & TUserSecretCredentials;
 export type CreateSecretDALParamsType = Omit<TUserSecretCredentialsInsert, "secretId"> & {
   userId: string;
   orgId: string;
-  iv: string;
-  tag: string;
 };
 
-export type CreateSecretFuncParamsType = Omit<TUserSecretCredentialsInsert, "secretId" | "fields" | "iv" | "tag"> & {
+export type CreateSecretFuncParamsType = Omit<TUserSecretCredentialsInsert, "secretId" | "fields"> & {
   fields: Record<string, string>;
   orgId: string;
   userId: string;
