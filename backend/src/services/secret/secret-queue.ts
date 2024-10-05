@@ -342,7 +342,8 @@ export const secretQueueFactory = ({
       secretDAL: secretV2BridgeDAL,
       expandSecretReferences,
       secretImportDAL,
-      allowedImports: secretImports
+      secretImports,
+      hasSecretAccess: () => true
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
