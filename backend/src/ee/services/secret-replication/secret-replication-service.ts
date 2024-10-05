@@ -253,11 +253,13 @@ export const secretReplicationServiceFactory = ({
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
       const sourceSecretImports = await secretImportDAL.find({ folderId: folder.id });
       const sourceImportedSecrets = await fnSecretsV2FromImports({
-        allowedImports: sourceSecretImports,
+        secretImports: sourceSecretImports,
         secretDAL: secretV2BridgeDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        // TODO(casl): check with team
+        hasSecretAccess: () => true
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({

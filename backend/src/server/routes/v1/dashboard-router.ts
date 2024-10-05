@@ -192,15 +192,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         req.permission.orgId
       );
 
-      const permissiveEnvs = // filter envs user has access to
+      const allowedDynamicSecretEnviroments = // filter envs user has access to
         environments.filter((environment) =>
           permission.can(
             ProjectPermissionActions.Read,
-            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+            subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
           )
         );
 
-      if (includeDynamicSecrets && permissiveEnvs.length) {
+      if (includeDynamicSecrets && allowedDynamicSecretEnviroments.length) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
           actor: req.permission.type,
@@ -209,7 +209,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           search,
-          environmentSlugs: permissiveEnvs,
+          environmentSlugs: allowedDynamicSecretEnviroments,
           path: secretPath,
           isInternal: true
         });
@@ -224,7 +224,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             orderBy,
             orderDirection,
-            environmentSlugs: permissiveEnvs,
+            environmentSlugs: allowedDynamicSecretEnviroments,
             path: secretPath,
             limit: remainingLimit,
             offset: adjustedOffset,
@@ -241,13 +241,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (includeSecrets && permissiveEnvs.length) {
+      if (includeSecrets) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalSecretCount = await server.services.secret.getSecretsCountMultiEnv({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorOrgId: req.permission.orgId,
-          environments: permissiveEnvs,
+          environments,
           actorAuthMethod: req.permission.authMethod,
           projectId,
           path: secretPath,
@@ -260,7 +260,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             actorId: req.permission.id,
             actor: req.permission.type,
             actorOrgId: req.permission.orgId,
-            environments: permissiveEnvs,
+            environments,
             actorAuthMethod: req.permission.authMethod,
             projectId,
             path: secretPath,
@@ -272,7 +272,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             isInternal: true
           });
 
-          for await (const environment of permissiveEnvs) {
+          for await (const environment of environments) {
             const secretCountFromEnv = secrets.filter((secret) => secret.environment === environment).length;
 
             if (secretCountFromEnv) {

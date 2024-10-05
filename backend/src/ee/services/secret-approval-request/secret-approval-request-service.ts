@@ -853,7 +853,7 @@ export const secretApprovalRequestServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName: "", secretTags: [] })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -1125,10 +1125,6 @@ export const secretApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1292,6 +1288,23 @@ export const secretApprovalRequestServiceFactory = ({
     const tagIds = unique(Object.values(commitTagIds).flat());
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
     if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+    const tagsGroupById = groupBy(tags, (i) => i.id);
+
+    commits.forEach((commit) => {
+      let action = ProjectPermissionActions.Create;
+      if (commit.op === SecretOperations.Update) action = ProjectPermissionActions.Edit;
+      if (commit.op === SecretOperations.Delete) action = ProjectPermissionActions.Delete;
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        action,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName: commit.key,
+          secretTags: commitTagIds[commit.key].map((secretTagId) => tagsGroupById[secretTagId][0].slug)
+        })
+      );
+    });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
       const doc = await secretApprovalRequestDAL.create(

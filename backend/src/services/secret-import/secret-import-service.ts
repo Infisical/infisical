@@ -581,11 +581,21 @@ export const secretImportServiceFactory = ({
         projectId
       });
       const importedSecrets = await fnSecretsV2FromImports({
-        allowedImports: secretImports,
+        secretImports,
         folderDAL,
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+          permission.can(
+            ProjectPermissionActions.Read,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            })
+          )
       });
       return importedSecrets;
     }
