@@ -50,10 +50,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         void paginatedFetchIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
       }
 
-      if (limit) {
-        void paginatedFetchIdentity.offset(offset).limit(limit);
-      }
-
       const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where(filter)
         .join<Awaited<typeof paginatedFetchIdentity>>(paginatedFetchIdentity, (queryBuilder) => {
@@ -84,6 +80,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
         )
         .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
+
+      if (limit) {
+        void query.offset(offset).limit(limit);
+      }
 
       const docs = await query;
       const formattedDocs = sqlNestRelationships({
