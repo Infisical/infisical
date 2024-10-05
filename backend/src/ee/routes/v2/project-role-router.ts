@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
-import { ProjectPermissionV1Schema } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -43,7 +43,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.CREATE.description),
-        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
+        permissions: ProjectPermissionV2Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
       }),
       response: {
         200: z.object({
@@ -103,7 +103,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           }),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.description),
-        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
+        permissions: ProjectPermissionV2Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {
         200: z.object({

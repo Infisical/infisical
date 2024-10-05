@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { registerV2EERoutes } from "@app/ee/routes/v2";
 import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
@@ -1420,6 +1421,7 @@ export const registerRoutes = async (
   await server.register(
     async (v1Server) => {
       await v1Server.register(registerV1EERoutes);
+      await v1Server.register(registerV2EERoutes);
       await v1Server.register(registerV1Routes);
     },
     { prefix: "/api/v1" }
