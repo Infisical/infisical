@@ -146,7 +146,9 @@ const CASL_ACTION_SCHEMA_NATIVE_ENUM = <ACTION extends z.EnumLike>(actions: ACTI
 const CASL_ACTION_SCHEMA_ENUM = <ACTION extends z.EnumValues>(actions: ACTION) =>
   z.union([z.enum(actions), z.enum(actions).array().min(1)]).transform((el) => (typeof el === "string" ? [el] : el));
 
-const SecretConditionSchema = z
+// akhilmhdh: don't mondify this for v2
+// if you want to update create a new schema
+const SecretConditionV1Schema = z
   .object({
     environment: z.union([
       z.string(),
@@ -172,16 +174,50 @@ const SecretConditionSchema = z
   })
   .partial();
 
-export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: SecretConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
+const SecretConditionV2Schema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretTags: z
+      .object({
+        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+      })
+      .partial()
+  })
+  .partial();
+
+const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
@@ -313,6 +349,18 @@ export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit]).describe(
       "Describe what action an entity can take."
     )
+  })
+];
+
+export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
@@ -325,7 +373,48 @@ export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
       "Describe what action an entity can take."
     )
-  })
+  }),
+  ...GeneralPermissionSchema
+]);
+
+export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV2Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretImports).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.DynamicSecrets).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  ...GeneralPermissionSchema
 ]);
 
 const buildAdminPermissionRules = () => {
@@ -334,6 +423,9 @@ const buildAdminPermissionRules = () => {
   // Admins get full access to everything
   [
     ProjectPermissionSub.Secrets,
+    ProjectPermissionSub.SecretFolders,
+    ProjectPermissionSub.DynamicSecrets,
+    ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
     ProjectPermissionSub.SecretRotation,
     ProjectPermissionSub.Member,
@@ -395,6 +487,33 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionActions.Delete
     ],
     ProjectPermissionSub.Secrets
+  );
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretFolders
+  );
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.DynamicSecrets
+  );
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretImports
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
@@ -519,6 +638,9 @@ const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.DynamicSecrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
