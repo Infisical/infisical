@@ -6,15 +6,15 @@ import { Secrets } from "./types";
 
 
 export const userSecretQueryKeys = {
-  userSecrets: () => ["userSecrets"] as const,
+  userSecrets: (credentialType: string) => [`userSecrets-${credentialType}`] as const,
 };
 
-export const useGetUserSecrets = () => {
+export const useGetUserSecrets = (credentialType: string) => {
   return useQuery({
-    queryKey: userSecretQueryKeys.userSecrets(),
+    queryKey: userSecretQueryKeys.userSecrets(credentialType),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ secrets: Secrets }>(
-        "/api/v1/user-secrets",
+        `/api/v1/user-secrets?credentialType=${credentialType}`,
       );
       return data;
     }

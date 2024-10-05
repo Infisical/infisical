@@ -13,6 +13,9 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({}),
+      querystring: z.object({
+        credentialType: z.string().optional()
+      }),
       response: {
         200: z.object({
           secrets: z.array(
@@ -28,7 +31,7 @@ export const registerUserSecretsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { orgId } = req.permission;
-      const secrets = await server.services.userSecrets.getSecrets(orgId);
+      const secrets = await server.services.userSecrets.getSecrets(orgId, req.query.credentialType);
       return {
         secrets
       };

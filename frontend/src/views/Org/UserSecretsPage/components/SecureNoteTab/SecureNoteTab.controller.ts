@@ -1,26 +1,20 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateUserSecret,
   useDeleteUserSecret,
   useGetUserSecrets,
-  useUpdateUserSecret} from "@app/hooks/api/userSecrets";
+  useUpdateUserSecret
+} from "@app/hooks/api/userSecrets";
 import { TabTypes } from "@app/pages/org/[id]/user-secrets/user-secrets.types";
 
-import { FormModal } from "./Form/FormModal";
-import UserSecretForm from "./Form/UserForm";
-import SecretsTable from "./SecretsTable";
-
-const WebLoginTab = () => {
-  const { isLoading, isError, data } = useGetUserSecrets();
-  const deleteUserSecret = useDeleteUserSecret();
-  const createUserSecret = useCreateUserSecret();
-  const updateUserSecret = useUpdateUserSecret();
+export const useUserSecretNodeTab = () => {
+  const { isLoading, isError, data } = useGetUserSecrets(TabTypes.SecureNote);
+  const deleteUserSecret = useDeleteUserSecret(TabTypes.SecureNote);
+  const createUserSecret = useCreateUserSecret(TabTypes.SecureNote);
+  const updateUserSecret = useUpdateUserSecret(TabTypes.SecureNote);
 
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "createUserSecret",
@@ -49,37 +43,35 @@ const WebLoginTab = () => {
   const onCreateFormModalProps = {
     isOpen: popUp.createUserSecret.isOpen,
     onOpenChange: (isOpen: boolean) => handlePopUpToggle("createUserSecret", isOpen),
-    title: "Create a Web Login",
-    subtitle: "Create a web login secret"
+    title: "Create a Secure Note",
+    subtitle: "We will keep it safe"
   };
 
   const onCreateFormProps = {
     defaultValues: {
-      username: "",
-      password: "",
-      url: ""
+      title: "",
+      content: "",
     },
     schema: z.object({
-      username: z.string().min(1, "Username is required"),
-      password: z.string().min(1, "Password is required"),
-      url: z.string().min(1, "URL is required")
+      title: z.string().min(1, "Title is required"),
+      content: z.string().min(1, "Content is required"),
     }),
     onSubmit: async (formdata: any) => {
       try {
         await createUserSecret.mutateAsync({
-          title: TabTypes.WebLogin,
+          title: TabTypes.SecureNote,
           fields: formdata,
-          credentialType: TabTypes.WebLogin
+          credentialType: TabTypes.SecureNote
         });
         createNotification({
-          text: "Successfully created a shared secret",
+          text: "Successfully created a secret",
           type: "success"
         });
         handlePopUpClose("createUserSecret");
       } catch (error) {
         console.error(error);
         createNotification({
-          text: "Failed to create a shared secret",
+          text: "Failed to create a secret",
           type: "error"
         });
       }
@@ -91,7 +83,7 @@ const WebLoginTab = () => {
     onDelete: (id: string) => {
       handlePopUpOpen("deleteUserSecretConfirmation", id);
     },
-    columns: ["Username", "Password", "URL", "Created At"],
+    columns: ["Title", "Content", "Created At"],
     isLoading,
     secrets: data?.secrets,
     onEdit: (id: string) => {
@@ -111,28 +103,28 @@ const WebLoginTab = () => {
   const getEditFormModalProps = {
     isOpen: popUp.editUserSecret.isOpen,
     onOpenChange: (isOpen: boolean) => handlePopUpToggle("editUserSecret", isOpen),
-    title: "Edit Web Login",
-    subtitle: "Edit a web login secret"
+    title: "Edit your secure note",
+    subtitle: "We will keep it safe"
   };
 
   const getEditFormProps = () => {
-    const formdata = data?.secrets.find((secret) => secret.id === popUp.editUserSecret.data)?.fields;
+    const formdata = data?.secrets.find(
+      (secret) => secret.id === popUp.editUserSecret.data
+    )?.fields;
     return {
       defaultValues: {
-        username: formdata?.username ?? "",
-        password: formdata?.password ?? "",
-        url: formdata?.url ?? ""
+        title: formdata?.title ?? "",
+        content: formdata?.content ?? "",
       },
       schema: z.object({
-        username: z.string().min(1, "Username is required"),
-        password: z.string().min(1, "Password is required"),
-        url: z.string().min(1, "URL is required")
+        title: z.string().min(1, "Title is required"),
+        content: z.string().min(1, "Content is required"),
       }),
       onSubmit: async (onEditFormData: any) => {
         try {
           await updateUserSecret.mutateAsync({
             id: popUp.editUserSecret.data,
-            fields: onEditFormData,
+            fields: onEditFormData
           });
           createNotification({
             text: "Successfully updated a secret",
@@ -148,37 +140,22 @@ const WebLoginTab = () => {
         }
       },
       submitText: "Create"
-    }
-    
+    };
   };
 
-  if (isError && !isLoading) {
-    return <div>Error...</div>;
-  }
-  return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Web Login</p>
-        <Button
-          colorSchema="primary"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            handlePopUpOpen("createUserSecret");
-          }}
-        >
-          Create Secret
-        </Button>
-      </div>
-      <SecretsTable {...secretsTableProps} />
-      <FormModal {...onCreateFormModalProps}>
-        <UserSecretForm {...onCreateFormProps} />
-      </FormModal>
-      <FormModal {...getEditFormModalProps}>
-        <UserSecretForm {...getEditFormProps()} />
-      </FormModal>
-      <DeleteActionModal {...deleteActionModalProps} />
-    </div>
-  );
-};
+  const onClickCreateSecret = () => {
+    handlePopUpOpen("createUserSecret");
+  };
 
-export default WebLoginTab;
+  return {
+    isLoading,
+    isError,
+    onCreateFormModalProps,
+    onCreateFormProps,
+    secretsTableProps,
+    deleteActionModalProps,
+    getEditFormModalProps,
+    getEditFormProps,
+    onClickCreateSecret
+  };
+};

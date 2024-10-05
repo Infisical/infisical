@@ -23,10 +23,31 @@ const transformToWebLoginFields = (field: Record<string, string>, createdAt: Dat
   };
 };
 
+const transformToCreditCardFields = (field: Record<string, string>, createdAt: Date) => {
+  return {
+    card_number: field.card_number ?? "",
+    expiry: field.expiry ?? "",
+    cvv: field.cvv ?? "",
+    createdAt: getFormatedDate(createdAt)
+  };
+};
+
+const transformToSecureNoteFields = (field: Record<string, string>, createdAt: Date) => {
+  return {
+    title: field.title ?? "",
+    content: field.content ?? "",
+    createdAt: getFormatedDate(createdAt)
+  };
+};
+
 const getTransformedField = (field: Record<string, string>, createdAt: Date, credentialType: string) => {
   switch (credentialType) {
     case CredentialTypes.WebLogin:
       return transformToWebLoginFields(field, createdAt);
+    case CredentialTypes.CreditCard:
+      return transformToCreditCardFields(field, createdAt);
+    case CredentialTypes.SecureNote:
+      return transformToSecureNoteFields(field, createdAt);
     default:
       return null;
   }

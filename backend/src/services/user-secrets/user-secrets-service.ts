@@ -22,8 +22,10 @@ export const userSecretsServiceFactory = ({ userSecretsDAL }: TUserSecretsServic
     });
   };
 
-  const getSecrets = async (orgId: string) => {
-    const secrets = await userSecretsDAL.getSecrets(orgId);
+  const getSecrets = async (orgId: string, credentialType?: string) => {
+    const secrets = credentialType
+      ? await userSecretsDAL.getSecretByCredentialType(orgId, credentialType)
+      : await userSecretsDAL.getSecrets(orgId);
     if (!secrets) return [];
     return transformToWebLoginSecretApiResponse(secrets);
   };
