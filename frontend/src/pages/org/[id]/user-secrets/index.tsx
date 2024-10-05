@@ -19,7 +19,7 @@ export default function UserSecrets() {
       <TabList>
         <Tab value={TabTypes.WebLogin}>Web Login</Tab>
         <Tab value={TabTypes.CreditCard}>Credit Card</Tab>
-        <Tab value={TabTypes.SecureNote}>Secure Node</Tab>
+        <Tab value={TabTypes.SecureNote}>Secure Note</Tab>
       </TabList>
       <TabPanel value={TabTypes.WebLogin}>
         <WebLoginTab />
