@@ -60,7 +60,6 @@ export const DynamicSecretLease = ({
     path: secretPath,
     dynamicSecretName
   });
-  
 
   const deleteDynamicSecretLease = useRevokeDynamicSecretLease();
 
@@ -141,7 +140,7 @@ export const DynamicSecretLease = ({
                   <div className="flex items-center space-x-4">
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
                       renderTooltip
                       allowedLabel="Renew"
                     >
@@ -160,7 +159,7 @@ export const DynamicSecretLease = ({
                     </ProjectPermissionCan>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Delete}
-                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
                       renderTooltip
                       allowedLabel="Delete"
                     >
@@ -180,7 +179,10 @@ export const DynamicSecretLease = ({
                     {status === DynamicSecretLeaseStatus.FailedDeletion && (
                       <ProjectPermissionCan
                         I={ProjectPermissionActions.Delete}
-                        a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                        a={subject(ProjectPermissionSub.DynamicSecrets, {
+                          environment,
+                          secretPath
+                        })}
                         renderTooltip
                         allowedLabel="Force Delete. This action will remove the secret from internal storage, but it will remain in external systems."
                       >
