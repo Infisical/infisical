@@ -60,17 +60,6 @@ export type SecretSubjectFields = {
   secretTags: string[];
 };
 
-export const CaslSecretsV2SubjectKnexMapper = (field: string) => {
-  switch (field) {
-    case "secretName":
-      return `${TableName.SecretV2}.key`;
-    case "secretTags":
-      return `${TableName.SecretTag}.slug`;
-    default:
-      break;
-  }
-};
-
 export type SecretFolderSubjectFields = {
   environment: string;
   secretPath: string;
