@@ -1421,12 +1421,17 @@ export const registerRoutes = async (
   await server.register(
     async (v1Server) => {
       await v1Server.register(registerV1EERoutes);
-      await v1Server.register(registerV2EERoutes);
       await v1Server.register(registerV1Routes);
     },
     { prefix: "/api/v1" }
   );
-  await server.register(registerV2Routes, { prefix: "/api/v2" });
+  await server.register(
+    async (v2Server) => {
+      await v2Server.register(registerV2EERoutes);
+      await v2Server.register(registerV2Routes);
+    },
+    { prefix: "/api/v2" }
+  );
   await server.register(registerV3Routes, { prefix: "/api/v3" });
 
   server.addHook("onClose", async () => {
