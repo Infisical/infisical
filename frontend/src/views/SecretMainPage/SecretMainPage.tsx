@@ -79,8 +79,23 @@ export const SecretMainPage = () => {
   const secretPath = (router.query.secretPath as string) || "/";
   const canReadSecret = permission.can(
     ProjectPermissionActions.Read,
-    subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
   );
+  const canReadSecretImports = permission.can(
+    ProjectPermissionActions.Read,
+    subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+  );
+
+  const canReadDynamicSecret = permission.can(
+    ProjectPermissionActions.Read,
+    subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
+  );
+
   const canDoReadRollback = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -91,8 +106,8 @@ export const SecretMainPage = () => {
     searchFilter: (router.query.searchFilter as string) || "",
     include: {
       [RowType.Folder]: true,
-      [RowType.Import]: canReadSecret,
-      [RowType.DynamicSecret]: canReadSecret,
+      [RowType.Import]: canReadSecretImports,
+      [RowType.DynamicSecret]: canReadDynamicSecret,
       [RowType.Secret]: canReadSecret
     }
   };
@@ -107,12 +122,12 @@ export const SecretMainPage = () => {
       ...prev,
       include: {
         [RowType.Folder]: true,
-        [RowType.Import]: canReadSecret,
-        [RowType.DynamicSecret]: canReadSecret,
+        [RowType.Import]: canReadSecretImports,
+        [RowType.DynamicSecret]: canReadDynamicSecret,
         [RowType.Secret]: canReadSecret
       }
     }));
-  }, [canReadSecret]);
+  }, [canReadSecret, canReadSecretImports, canReadDynamicSecret]);
 
   useEffect(() => {
     if (
@@ -141,9 +156,9 @@ export const SecretMainPage = () => {
     orderBy,
     search: debouncedSearchFilter,
     orderDirection,
-    includeImports: canReadSecret && filter.include.import,
+    includeImports: canReadSecretImports && filter.include.import,
     includeFolders: filter.include.folder,
-    includeDynamicSecrets: canReadSecret && filter.include.dynamic,
+    includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
     includeSecrets: canReadSecret && filter.include.secret,
     tags: filter.tags
   });
@@ -362,7 +377,7 @@ export const SecretMainPage = () => {
                     <div className="flex-grow px-4 py-2">Value</div>
                   </div>
                 )}
-                {canReadSecret && imports?.length && (
+                {canReadSecretImports && imports?.length && (
                   <SecretImportListView
                     searchTerm={debouncedSearchFilter}
                     secretImports={imports}
@@ -382,7 +397,7 @@ export const SecretMainPage = () => {
                     onNavigateToFolder={handleResetFilter}
                   />
                 )}
-                {canReadSecret && dynamicSecrets?.length && (
+                {canReadDynamicSecret && dynamicSecrets?.length && (
                   <DynamicSecretListView
                     environment={environment}
                     projectSlug={projectSlug}
@@ -401,7 +416,10 @@ export const SecretMainPage = () => {
                     isProtectedBranch={isProtectedBranch}
                   />
                 )}
-                {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
+                {!canReadSecret &&
+                  !canReadDynamicSecret &&
+                  !canReadSecretImports &&
+                  folders?.length === 0 && <PermissionDeniedBanner />}
               </div>
             </div>
             {!isDetailsLoading && totalCount > 0 && (

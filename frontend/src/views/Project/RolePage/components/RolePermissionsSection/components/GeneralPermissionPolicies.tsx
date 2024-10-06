@@ -8,7 +8,11 @@ import { Button, Checkbox, Tag } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema, TProjectPermissionObject } from "../ProjectRoleModifySection.utils";
+import {
+  isConditionalSubjects,
+  TFormSchema,
+  TProjectPermissionObject
+} from "../ProjectRoleModifySection.utils";
 
 type Props<T extends ProjectPermissionSub> = {
   title: string;
@@ -18,7 +22,7 @@ type Props<T extends ProjectPermissionSub> = {
   isDisabled?: boolean;
 };
 
-export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema["permissions"]>>({
+export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchema["permissions"]>>({
   subject,
   actions,
   children,
@@ -98,10 +102,10 @@ export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema
               <div
                 className={twMerge(
                   "mt-4 flex justify-start space-x-4",
-                  subject === ProjectPermissionSub.Secrets && "justify-end"
+                  isConditionalSubjects(subject) && "justify-end"
                 )}
               >
-                {!isDisabled && subject === ProjectPermissionSub.Secrets && (
+                {!isDisabled && isConditionalSubjects(subject) && (
                   <Button
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     variant="star"

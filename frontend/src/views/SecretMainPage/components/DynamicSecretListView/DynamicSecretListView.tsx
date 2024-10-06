@@ -166,7 +166,7 @@ export const DynamicSecretListView = ({
               <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
                   renderTooltip
                   allowedLabel="Edit"
                 >
@@ -188,7 +188,7 @@ export const DynamicSecretListView = ({
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
                   renderTooltip
                   allowedLabel="Delete"
                 >
