@@ -356,20 +356,21 @@
             "integrations/cloud/cloudflare-workers"
           ]
         },
-        "integrations/cloud/heroku",
-        "integrations/cloud/render",
+        "integrations/cloud/terraform-cloud",
+        "integrations/cloud/databricks",
         {
           "group": "View more",
           "pages": [
             "integrations/cloud/digital-ocean-app-platform",
+            "integrations/cloud/heroku",
             "integrations/cloud/netlify",
             "integrations/cloud/railway",
             "integrations/cloud/flyio",
+            "integrations/cloud/render",
             "integrations/cloud/laravel-forge",
             "integrations/cloud/supabase",
             "integrations/cloud/northflank",
             "integrations/cloud/hasura-cloud",
-            "integrations/cloud/terraform-cloud",
             "integrations/cloud/qovery",
             "integrations/cloud/hashicorp-vault",
             "integrations/cloud/cloud-66",

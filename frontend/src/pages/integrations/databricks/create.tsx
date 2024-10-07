@@ -1,0 +1,239 @@
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faBugs,
+  faCircleInfo
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import queryString from "query-string";
+
+import { createNotification } from "@app/components/notifications";
+import { useCreateIntegration } from "@app/hooks/api";
+
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from "../../../components/v2";
+import {
+  useGetIntegrationAuthApps,
+  useGetIntegrationAuthById
+} from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+export default function DatabricksCreateIntegrationPage() {
+  const router = useRouter();
+  const { mutateAsync, isLoading } = useCreateIntegration();
+
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
+
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
+    (integrationAuthId as string) ?? ""
+  );
+
+  const { data: integrationAuthScopes, isLoading: isIntegrationAuthScopesLoading } =
+    useGetIntegrationAuthApps({
+      integrationAuthId: (integrationAuthId as string) ?? ""
+    });
+
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [targetScope, setTargetScope] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+
+  useEffect(() => {
+    if (workspace) {
+      setSelectedSourceEnvironment(workspace.environments[0].slug);
+    }
+  }, [workspace]);
+
+  const handleButtonClick = async () => {
+    try {
+      if (!integrationAuth?.id) return;
+
+      if (!targetScope) {
+        createNotification({
+          type: "error",
+          text: "Please select a scope"
+        });
+        return;
+      }
+
+      const selectedScope = integrationAuthScopes?.find(
+        (integrationAuthScope) => integrationAuthScope.name === targetScope
+      );
+
+      if (!selectedScope) {
+        createNotification({
+          type: "error",
+          text: "Invalid scope selected"
+        });
+        return;
+      }
+
+      await mutateAsync({
+        integrationAuthId: integrationAuth?.id,
+        isActive: true,
+        app: selectedScope.name, // scope name
+        sourceEnvironment: selectedSourceEnvironment,
+        secretPath
+      });
+
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return integrationAuth && workspace && selectedSourceEnvironment && integrationAuthScopes ? (
+    <div className="flex h-full w-full flex-col items-center justify-center">
+      <Head>
+        <title>Set Up Databricks Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
+          subTitle="Choose which environment or folder in Infisical you want to sync to which Databricks secrets scope."
+        >
+          <div className="flex flex-row items-center">
+            <div className="flex items-center pb-0.5">
+              <Image
+                src="/images/integrations/Databricks.png"
+                height={30}
+                width={30}
+                alt="Databricks logo"
+              />
+            </div>
+            <span className="ml-1.5">Databricks Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/databricks" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
+                </div>
+              </a>
+            </Link>
+          </div>
+        </CardTitle>
+
+        <FormControl label="Project Environment" className="px-6">
+          <Select
+            value={selectedSourceEnvironment}
+            onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            className="w-full border border-mineshaft-500"
+          >
+            {workspace?.environments.map((sourceEnvironment) => (
+              <SelectItem
+                value={sourceEnvironment.slug}
+                key={`source-environment-${sourceEnvironment.slug}`}
+              >
+                {sourceEnvironment.name}
+              </SelectItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl label="Secrets Path" className="px-6">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
+        </FormControl>
+
+        {integrationAuthScopes && (
+          <FormControl label="Databricks Scope" className="px-6">
+            <Select
+              value={targetScope}
+              onValueChange={(val) => {
+                setTargetScope(val);
+              }}
+              className="w-full border border-mineshaft-500"
+              placeholder={integrationAuthScopes.length === 0 ? "No scopes found." : "Select scope..."}
+              isDisabled={integrationAuthScopes.length === 0}
+            >
+              {integrationAuthScopes.length > 0 ? (
+                integrationAuthScopes.map((scope) => (
+                  <SelectItem value={scope.name!} key={`target-scope-${scope.name}`}>
+                    {scope.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-app-none">
+                  No scopes found
+                </SelectItem>
+              )}
+            </Select>
+          </FormControl>
+        )}
+        <Button
+          onClick={handleButtonClick}
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6 w-min"
+          isLoading={isLoading}
+          isDisabled={integrationAuthScopes.length === 0 || isLoading}
+        >
+          Create Integration
+        </Button>
+      </Card>
+      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+        <div className="flex flex-row items-center">
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
+          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+        </div>
+        <span className="mt-4 text-sm text-mineshaft-300">
+          After creating an integration, your secrets will start syncing immediately. This might
+          cause an unexpected override of current secrets in Databricks with secrets from Infisical.
+        </span>
+      </div>
+    </div>
+  ) : (
+    <div className="flex h-full w-full items-center justify-center">
+      <Head>
+        <title>Set Up Databricks Integration</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
+      {isIntegrationAuthScopesLoading || isintegrationAuthLoading ? (
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          alt="infisical loading indicator"
+        />
+      ) : (
+        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+          <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
+          <p>
+            Something went wrong. Please contact{" "}
+            <a
+              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="mailto:support@infisical.com"
+            >
+              support@infisical.com
+            </a>{" "}
+            if the issue persists.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+DatabricksCreateIntegrationPage.requireAuth = true;

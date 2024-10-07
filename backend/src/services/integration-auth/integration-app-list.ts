@@ -455,6 +455,31 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
+/**
+ * Return list of projects for Databricks integration
+ */
+const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; accessToken: string }) => {
+  const databricksApiUrl = `${url}/api`;
+
+  const res = await request.get<{ scopes: { name: string; backend_type: string }[] }>(
+    `${databricksApiUrl}/2.0/secrets/scopes/list`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    }
+  );
+
+  const scopes =
+    res.data?.scopes?.map((a) => ({
+      name: a.name, // name maps to unique scope name in Databricks
+      backend_type: a.backend_type
+    })) ?? [];
+
+  return scopes;
+};
+
 const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
   const res = (
     await request.get<{ id: string; slug: string }[]>(`${IntegrationUrls.TRAVISCI_API_URL}/repos`, {
@@ -1101,6 +1126,12 @@ export const getApps = async ({
 
     case Integrations.CIRCLECI:
       return getAppsCircleCI({
+        accessToken
+      });
+
+    case Integrations.DATABRICKS:
+      return getAppsDatabricks({
+        url,
         accessToken
       });
 

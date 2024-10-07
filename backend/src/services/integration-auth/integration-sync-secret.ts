@@ -2086,6 +2086,80 @@ const syncSecretsCircleCI = async ({
 };
 
 /**
+ * Sync/push [secrets] to Databricks project
+ */
+const syncSecretsDatabricks = async ({
+  integration,
+  integrationAuth,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  const databricksApiUrl = `${integrationAuth.url}/api`;
+
+  // sync secrets to Databricks
+  await Promise.all(
+    Object.keys(secrets).map(async (key) =>
+      request.post(
+        `${databricksApiUrl}/2.0/secrets/put`,
+        {
+          scope: integration.app,
+          key,
+          string_value: secrets[key].value
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )
+    )
+  );
+
+  // get secrets from Databricks
+  const getSecretsRes = (
+    await request.get<{ secrets: { key: string; last_updated_timestamp: number }[] }>(
+      `${databricksApiUrl}/2.0/secrets/list`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        params: {
+          scope: integration.app
+        }
+      }
+    )
+  ).data.secrets;
+
+  // delete secrets from Databricks
+  await Promise.all(
+    getSecretsRes.map(async (sec) => {
+      if (!(sec.key in secrets)) {
+        return request.post(
+          `${databricksApiUrl}/2.0/secrets/delete`,
+          {
+            scope: integration.app,
+            key: sec.key
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      }
+    })
+  );
+};
+
+/**
  * Sync/push [secrets] to TravisCI project
  */
 const syncSecretsTravisCI = async ({
@@ -4017,6 +4091,14 @@ export const syncIntegrationSecrets = async ({
     case Integrations.CIRCLECI:
       await syncSecretsCircleCI({
         integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.DATABRICKS:
+      await syncSecretsDatabricks({
+        integration,
+        integrationAuth,
         secrets,
         accessToken
       });
