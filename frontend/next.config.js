@@ -2,6 +2,7 @@ const path = require("path");
 
 const ContentSecurityPolicy = `
 	default-src 'self';
+  connect-src 'self' https://*.posthog.com;
 	script-src 'self' https://*.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval';
 	style-src 'self' https://rsms.me 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com;
 	child-src https://api.stripe.com;
