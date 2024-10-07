@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import {
-  AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
   OrgRolesSchema,
+  PartitionedAuditLogsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
@@ -117,7 +117,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       response: {
         200: z.object({
-          auditLogs: AuditLogsSchema.omit({
+          auditLogs: PartitionedAuditLogsSchema.omit({
             eventMetadata: true,
             eventType: true,
             actor: true,
