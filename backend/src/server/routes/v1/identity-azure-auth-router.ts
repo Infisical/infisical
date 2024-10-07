@@ -21,7 +21,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       description: "Login with Azure Auth",
       body: z.object({
-        identityId: z.string().describe(AZURE_AUTH.LOGIN.identityId),
+        identityId: z.string().trim().describe(AZURE_AUTH.LOGIN.identityId),
         jwt: z.string()
       }),
       response: {

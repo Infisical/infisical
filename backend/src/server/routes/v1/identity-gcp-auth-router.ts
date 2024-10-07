@@ -19,7 +19,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       description: "Login with GCP Auth",
       body: z.object({
-        identityId: z.string().describe(GCP_AUTH.LOGIN.identityId),
+        identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId).trim(),
         jwt: z.string()
       }),
       response: {
