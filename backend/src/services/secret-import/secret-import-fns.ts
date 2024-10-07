@@ -180,7 +180,7 @@ export const fnSecretsV2FromImports = async ({
       ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
     );
 
-    if (sanitizedImports.length) continue;
+    if (!sanitizedImports.length) continue;
 
     const importedFolders = await folderDAL.findByManySecretPath(
       sanitizedImports.map(({ importEnv, importPath }) => ({
@@ -212,7 +212,7 @@ export const fnSecretsV2FromImports = async ({
     const deeperImports = await secretImportDAL.findByFolderIds(importedFolderIds);
     const deeperImportsGroupByFolderId = groupBy(deeperImports, (i) => i.folderId);
 
-    const isFirstIteration = processedImports.length;
+    const isFirstIteration = !processedImports.length;
     sanitizedImports.forEach(({ importPath, importEnv, id, folderId }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
       const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
@@ -250,7 +250,7 @@ export const fnSecretsV2FromImports = async ({
           folderId: importedFolders?.[i]?.id,
           id,
           importFolderId: folderId,
-          secrets: unique(secretsWithDuplicate, (el) => el.secretKey)
+          secrets: secretsWithDuplicate
         });
       } else {
         parentImportedSecrets.push(...secretsWithDuplicate);
@@ -258,7 +258,6 @@ export const fnSecretsV2FromImports = async ({
     });
   }
   /* eslint-enable */
-
   if (expandSecretReferences) {
     await Promise.allSettled(
       processedImports.map((processedImport) => {
