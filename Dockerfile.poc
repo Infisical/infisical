@@ -1,0 +1,153 @@
+ARG POSTHOG_HOST=https://app.posthog.com
+ARG POSTHOG_API_KEY=posthog-api-key
+ARG INTERCOM_ID=intercom-id
+
+FROM  node:20-alpine AS base
+
+FROM base AS frontend-dependencies
+
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
+
+# Install dependencies
+RUN npm ci --only-production --ignore-scripts
+
+# Rebuild the source code only when needed
+FROM base AS frontend-builder
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=frontend-dependencies /app/node_modules ./node_modules
+# Copy all files 
+COPY /frontend .
+
+ENV NODE_ENV production
+ENV NEXT_PUBLIC_ENV production
+ARG POSTHOG_HOST
+ENV NEXT_PUBLIC_POSTHOG_HOST $POSTHOG_HOST
+ARG POSTHOG_API_KEY
+ENV NEXT_PUBLIC_POSTHOG_API_KEY $POSTHOG_API_KEY
+ARG INTERCOM_ID
+ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
+ARG INFISICAL_PLATFORM_VERSION
+ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
+
+# Build
+RUN npm run build
+
+# Production image
+FROM base AS frontend-runner
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 non-root-user
+
+RUN mkdir -p /app/.next/cache/images && chown non-root-user:nodejs /app/.next/cache/images
+VOLUME /app/.next/cache/images
+
+COPY --chown=non-root-user:nodejs --chmod=555 frontend/scripts ./scripts
+COPY --from=frontend-builder /app/public ./public
+RUN chown non-root-user:nodejs ./public/data
+COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/standalone ./
+COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/static ./.next/static
+
+USER non-root-user
+
+ENV NEXT_TELEMETRY_DISABLED 1
+
+##
+## BACKEND
+##
+FROM base AS backend-build
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 non-root-user
+
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci --only-production
+
+COPY /backend .
+COPY --chown=non-root-user:nodejs --chmod=555 poc-entrypoint.sh poc-entrypoint.sh
+RUN npm i -D tsconfig-paths
+RUN npm run build
+
+# Production stage
+FROM base AS backend-runner
+
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci --only-production
+
+COPY --from=backend-build /app .
+
+RUN mkdir frontend-build
+
+# Production stage
+FROM postgres:alpine
+
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 non-root-user
+
+## set pre baked keys
+ARG POSTHOG_API_KEY
+ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
+  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
+ARG INTERCOM_ID=intercom-id
+ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
+  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
+
+# Set environment variables (optional, but recommended for production)
+ENV POSTGRES_PASSWORD=infisical
+ENV POSTGRES_USER=infisical
+ENV POSTGRES_DB=postgres
+
+# Set additional configurations as needed (e.g., memory, shared buffers)
+# ENV PGDATA=/var/lib/postgresql/data/your_db_name
+# ENV MAX_CONNECTIONS=200
+# ENV SHARED_BUFFERS=256MB
+
+
+RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache redis
+RUN mkdir -p /data/redis
+RUN touch /data/redis/logs
+
+RUN chmod -R 700  /var/lib/postgresql/data
+RUN chmod -R 700  /data/redis
+RUN chown -R non-root-user:nodejs /data/redis
+RUN chown -R non-root-user:nodejs /var/lib/postgresql/data
+
+WORKDIR /
+COPY --from=backend-runner /app /backend
+COPY --from=frontend-runner /app ./backend/frontend-build
+
+ENV PORT 8080
+ENV HOST=0.0.0.0
+ENV HTTPS_ENABLED false 
+ENV NODE_ENV production
+ENV STANDALONE_BUILD true 
+ENV STANDALONE_MODE true
+ENV REDIS_URL=redis://localhost:6379
+ENV AUTH_SECRET=4be6ba5602e0fa0ac6ac05c3cd4d247f
+ENV ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
+ENV DB_CONNECTION_URI=postgres://infisical:infisical@localhost:5432/postgres
+
+WORKDIR /backend
+
+ENV TELEMETRY_ENABLED true
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s CMD node healthcheck.js
+
+EXPOSE 8080
+EXPOSE 443
+EXPOSE 5432
+EXPOSE 6379
+
+USER non-root-user
+CMD ["./poc-entrypoint.sh"]
