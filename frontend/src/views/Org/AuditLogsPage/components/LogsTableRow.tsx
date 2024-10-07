@@ -573,7 +573,7 @@ export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Prop
     <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
       <Td>{formatDate(auditLog.createdAt)}</Td>
       <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
-      {isOrgAuditLogs && <Td>{auditLog?.project?.name ?? "N/A"}</Td>}
+      {isOrgAuditLogs && <Td>{auditLog?.projectName ?? "N/A"}</Td>}
       {showActorColumn && renderActor(auditLog.actor)}
       {renderSource()}
       {renderMetadata(auditLog.event)}

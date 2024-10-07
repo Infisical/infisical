@@ -214,11 +214,12 @@ import { registerV3Routes } from "./v3";
 export const registerRoutes = async (
   server: FastifyZodProvider,
   {
+    auditLogDb,
     db,
     smtp: smtpService,
     queue: queueService,
     keyStore
-  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
+  }: { auditLogDb?: Knex; db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
 ) => {
   const appCfg = getConfig();
   if (!appCfg.DISABLE_SECRET_SCANNING) {
@@ -283,7 +284,7 @@ export const registerRoutes = async (
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
 
-  const auditLogDAL = auditLogDALFactory(db);
+  const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);

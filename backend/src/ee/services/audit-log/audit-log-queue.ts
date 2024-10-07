@@ -74,6 +74,7 @@ export const auditLogQueueServiceFactory = ({
       actorMetadata: actor.metadata,
       userAgent,
       projectId,
+      projectName: project?.name,
       ipAddress,
       orgId,
       eventType: event.type,

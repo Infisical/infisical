@@ -70,3 +70,45 @@ export const initDbConnection = ({
 
   return db;
 };
+
+export const initAuditLogDbConnection = ({
+  dbConnectionUri,
+  dbRootCert
+}: {
+  dbConnectionUri: string;
+  dbRootCert?: string;
+}) => {
+  // akhilmhdh: the default Knex is knex.Knex<any, any[]>. but when assigned with knex({<config>}) the value is knex.Knex<any, unknown[]>
+  // this was causing issue with files like `snapshot-dal` `findRecursivelySnapshots` this i am explicitly putting the any and unknown[]
+  // eslint-disable-next-line
+  const db: Knex<any, unknown[]> = knex({
+    client: "pg",
+    connection: {
+      connectionString: dbConnectionUri,
+      host: process.env.AUDIT_LOGS_DB_HOST,
+      // @ts-expect-error I have no clue why only for the port there is a type error
+      // eslint-disable-next-line
+      port: process.env.AUDIT_LOGS_DB_PORT,
+      user: process.env.AUDIT_LOGS_DB_USER,
+      database: process.env.AUDIT_LOGS_DB_NAME,
+      password: process.env.AUDIT_LOGS_DB_PASSWORD,
+      ssl: dbRootCert
+        ? {
+            rejectUnauthorized: true,
+            ca: Buffer.from(dbRootCert, "base64").toString("ascii")
+          }
+        : false
+    }
+  });
+
+  // we add these overrides so that auditLogDb and the primary DB are interchangeable
+  db.primaryNode = () => {
+    return db;
+  };
+
+  db.replicaNode = () => {
+    return db;
+  };
+
+  return db;
+};
