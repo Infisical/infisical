@@ -1,14 +1,26 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  Select,
+  SelectItem,
+  Tooltip
+} from "@app/components/v2";
 import {
   PermissionConditionOperators,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
 import { TFormSchema } from "../ProjectRoleModifySection.utils";
+import {
+  getConditionOperatorHelperInfo,
+  renderOperatorSelectItems
+} from "./PermissionConditionHelpers";
 
 type Props = {
   position?: number;
@@ -17,12 +29,6 @@ type Props = {
     | ProjectPermissionSub.DynamicSecrets
     | ProjectPermissionSub.SecretFolders
     | ProjectPermissionSub.SecretImports;
-};
-
-const getValueLabel = (type: string) => {
-  if (type === "environment") return "Environment slug";
-  if (type === "secretPath") return "Folder path";
-  return "";
 };
 
 export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: Props) => {
@@ -40,7 +46,11 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
     <div className="mt-6 border-t  border-t-gray-800 bg-mineshaft-800  pt-2">
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
-          const lhs = watch(`permissions.${type}.${position}.conditions.${index}.lhs`);
+          const condition = watch(`permissions.secrets.${position}.conditions.${index}`) as {
+            lhs: string;
+            rhs: string;
+            operator: string;
+          };
           return (
             <div
               key={el.id}
@@ -69,10 +79,10 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
                   )}
                 />
               </div>
-              <div className="w-36">
+              <div className="flex w-36 items-center space-x-2">
                 <Controller
                   control={control}
-                  name={`permissions.${type}.${position}.conditions.${index}.operator`}
+                  name={`permissions.secrets.${position}.conditions.${index}.operator`}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isError={Boolean(error?.message)}
@@ -85,16 +95,22 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
                         onValueChange={(e) => field.onChange(e)}
                         className="w-full"
                       >
-                        <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$GLOB}>
-                          Glob Match
-                        </SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
+                        {renderOperatorSelectItems(condition.lhs)}
                       </Select>
                     </FormControl>
                   )}
                 />
+                <div>
+                  <Tooltip
+                    asChild
+                    content={getConditionOperatorHelperInfo(
+                      condition.operator as PermissionConditionOperators
+                    )}
+                    className="max-w-xs"
+                  >
+                    <FontAwesomeIcon icon={faInfoCircle} size="xs" className="text-gray-400" />
+                  </Tooltip>
+                </div>
               </div>
               <div className="flex-grow">
                 <Controller
@@ -106,7 +122,7 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
                       errorText={error?.message}
                       className="mb-0 flex-grow"
                     >
-                      <Input {...field} placeholder={getValueLabel(lhs)} />
+                      <Input {...field} />
                     </FormControl>
                   )}
                 />
