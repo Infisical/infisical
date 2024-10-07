@@ -16,7 +16,8 @@ export const KmsKeysSchema = z.object({
   name: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  projectId: z.string().nullable().optional()
+  projectId: z.string().nullable().optional(),
+  slug: z.string().nullable().optional()
 });
 
 export type TKmsKeys = z.infer<typeof KmsKeysSchema>;
