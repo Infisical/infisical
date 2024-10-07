@@ -493,7 +493,7 @@ export const secretImportServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
+      subject(ProjectPermissionSub.SecretImports, {
         environment: folder.environment.envSlug,
         secretPath: folderWithPath.path
       })

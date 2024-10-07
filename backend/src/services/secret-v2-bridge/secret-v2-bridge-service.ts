@@ -114,12 +114,14 @@ export const secretV2BridgeServiceFactory = ({
         envId: referencesEnvironmentGroupBySlug[el.environment][0].id
       }))
     );
-    const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => i?.path as string);
+    const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
     const referredSecrets = await secretDAL.find({
       $complex: {
         operator: "or",
         value: references.map((el) => {
-          const folderId = referencesFolderGroupByPath[el.secretPath][0]?.id;
+          const folderId =
+            referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`][0]
+              ?.id;
           if (!folderId) throw new BadRequestError({ message: `Reference path ${el.secretPath} doesn't exist` });
 
           return {
@@ -140,6 +142,7 @@ export const secretV2BridgeServiceFactory = ({
         })
       }
     });
+
     if (referredSecrets.length !== references.length)
       throw new BadRequestError({ message: "Reference secret not found" });
 
@@ -355,6 +358,17 @@ export const secretV2BridgeServiceFactory = ({
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
     if ((inputSecret.tagIds || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+
+    // now check with new ids
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName,
+        secretTags: tags?.map((el) => el.slug)
+      })
+    );
 
     if (inputSecret.newSecretName) {
       const doesNewNameSecretExist = await secretDAL.findOne({
@@ -1228,6 +1242,19 @@ export const secretV2BridgeServiceFactory = ({
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
     if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
     const tagsGroupByID = groupBy(tags, (i) => i.id);
+
+    // check again to avoid non authorized tags are removed
+    inputSecrets.forEach((el) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName: el.secretKey,
+          secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
+        })
+      );
+    });
 
     // now find any secret that needs to update its name
     // same process as above

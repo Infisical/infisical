@@ -42,7 +42,7 @@ export const buildFindFilter =
       });
     }
     if ($complex) {
-      buildDynamicKnexQuery($complex, bd);
+      return buildDynamicKnexQuery(bd, $complex);
     }
     return bd;
   };

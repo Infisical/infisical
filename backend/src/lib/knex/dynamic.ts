@@ -28,8 +28,8 @@ type TKnexGroupOperator<T extends object> = {
 export type TKnexDynamicOperator<T extends object> = TKnexGroupOperator<T> | TKnexNonGroupOperator<T>;
 
 export const buildDynamicKnexQuery = <T extends object>(
-  dynamicQuery: TKnexDynamicOperator<T>,
-  rootQueryBuild: Knex.QueryBuilder
+  rootQueryBuild: Knex.QueryBuilder,
+  dynamicQuery: TKnexDynamicOperator<T>
 ) => {
   const stack = [{ filterAst: dynamicQuery, queryBuilder: rootQueryBuild }];
 
@@ -53,34 +53,25 @@ export const buildDynamicKnexQuery = <T extends object>(
         break;
       }
       case "and": {
-        void queryBuilder.andWhere((subQueryBuilder) => {
-          filterAst.value.forEach((el) => {
-            stack.push({
-              queryBuilder: subQueryBuilder,
-              filterAst: el
-            });
+        filterAst.value.forEach((el) => {
+          void queryBuilder.andWhere((subQueryBuilder) => {
+            buildDynamicKnexQuery(subQueryBuilder, el);
           });
         });
         break;
       }
       case "or": {
-        void queryBuilder.orWhere((subQueryBuilder) => {
-          filterAst.value.forEach((el) => {
-            stack.push({
-              queryBuilder: subQueryBuilder,
-              filterAst: el
-            });
+        filterAst.value.forEach((el) => {
+          void queryBuilder.orWhere((subQueryBuilder) => {
+            buildDynamicKnexQuery(subQueryBuilder, el);
           });
         });
         break;
       }
       case "not": {
-        void queryBuilder.whereNot((subQueryBuilder) => {
-          filterAst.value.forEach((el) => {
-            stack.push({
-              queryBuilder: subQueryBuilder,
-              filterAst: el
-            });
+        filterAst.value.forEach((el) => {
+          void queryBuilder.whereNot((subQueryBuilder) => {
+            buildDynamicKnexQuery(subQueryBuilder, el);
           });
         });
         break;
