@@ -123,7 +123,7 @@ describe("Project Environment Router", async () => {
         id: deletedProjectEnvironment.id,
         name: mockProjectEnv.name,
         slug: mockProjectEnv.slug,
-        position: 4,
+        position: 5,
         createdAt: expect.any(String),
         updatedAt: expect.any(String)
       })
