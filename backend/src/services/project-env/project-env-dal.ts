@@ -65,10 +65,16 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
+  const shiftPositions = async (projectId: string, pos: number, tx?: Knex) => {
+    // Shift all positions >= the new position up by 1
+    await (tx || db)(TableName.Environment).where({ projectId }).where("position", ">=", pos).increment("position", 1);
+  };
+
   return {
     ...projectEnvOrm,
     findBySlugs,
     findLastEnvPosition,
-    updateAllPosition
+    updateAllPosition,
+    shiftPositions
   };
 };

@@ -123,6 +123,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
+        position: z.number().min(1).optional().describe(ENVIRONMENTS.CREATE.position),
         slug: z
           .string()
           .trim()
