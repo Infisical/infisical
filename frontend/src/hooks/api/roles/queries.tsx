@@ -153,7 +153,7 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
           return (entity) => {
             const rulesStrippedOfWildcard = omit(
               rules,
-              Object.keys(entity).filter((el) => entity[el].includes("*"))
+              Object.keys(entity).filter((el) => entity[el]?.includes("*"))
             );
             const baseMatcher = conditionsMatcher(rulesStrippedOfWildcard);
             return baseMatcher(entity);

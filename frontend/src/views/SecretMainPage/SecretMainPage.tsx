@@ -86,6 +86,7 @@ export const SecretMainPage = () => {
       secretTags: ["*"]
     })
   );
+
   const canReadSecretImports = permission.can(
     ProjectPermissionActions.Read,
     subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -377,7 +378,7 @@ export const SecretMainPage = () => {
                     <div className="flex-grow px-4 py-2">Value</div>
                   </div>
                 )}
-                {canReadSecretImports && imports?.length && (
+                {canReadSecretImports && Boolean(imports?.length) && (
                   <SecretImportListView
                     searchTerm={debouncedSearchFilter}
                     secretImports={imports}
@@ -388,7 +389,7 @@ export const SecretMainPage = () => {
                     importedSecrets={importedSecrets}
                   />
                 )}
-                {folders?.length && (
+                {Boolean(folders?.length) && (
                   <FolderListView
                     folders={folders}
                     environment={environment}
@@ -397,7 +398,7 @@ export const SecretMainPage = () => {
                     onNavigateToFolder={handleResetFilter}
                   />
                 )}
-                {canReadDynamicSecret && dynamicSecrets?.length && (
+                {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
                   <DynamicSecretListView
                     environment={environment}
                     projectSlug={projectSlug}
@@ -405,7 +406,7 @@ export const SecretMainPage = () => {
                     dynamicSecrets={dynamicSecrets}
                   />
                 )}
-                {canReadSecret && secrets?.length && (
+                {canReadSecret && Boolean(secrets?.length) && (
                   <SecretListView
                     secrets={secrets}
                     tags={tags}

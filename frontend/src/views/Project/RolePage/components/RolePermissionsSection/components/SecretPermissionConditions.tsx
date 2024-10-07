@@ -57,6 +57,8 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                       >
                         <SelectItem value="environment">Environment Slug</SelectItem>
                         <SelectItem value="secretPath">Secret Path</SelectItem>
+                        <SelectItem value="secretName">Secret Name</SelectItem>
+                        <SelectItem value="secretTags">Secret Tags</SelectItem>
                       </Select>
                     </FormControl>
                   )}
