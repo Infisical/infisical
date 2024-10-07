@@ -3,7 +3,7 @@ import knex from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
@@ -112,7 +112,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       return docs;
     } catch (error) {
       if (error instanceof knex.KnexTimeoutError) {
-        throw new BadRequestError({
+        throw new GatewayTimeoutError({
           error,
           message: "Failed to fetch audit logs due to timeout. Add more search filters."
         });

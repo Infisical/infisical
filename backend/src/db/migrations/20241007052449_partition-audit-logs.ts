@@ -28,27 +28,9 @@ const isUsingDedicatedAuditLogDb = Boolean(process.env.AUDIT_LOGS_DB_CONNECTION_
 
 export async function up(knex: Knex): Promise<void> {
   if (!isUsingDedicatedAuditLogDb && (await knex.schema.hasTable(TableName.AuditLog))) {
-    // prepare the existing audit log table for it to become a partition
-    const doesProjectIdExist = await knex.schema.hasColumn(TableName.AuditLog, "projectId");
-    const doesOrgIdExist = await knex.schema.hasColumn(TableName.AuditLog, "orgId");
-    const doesProjectNameExist = await knex.schema.hasColumn(TableName.AuditLog, "projectName");
-
     await knex.schema.alterTable(TableName.AuditLog, (t) => {
       // remove existing keys
       t.dropPrimary();
-
-      if (doesOrgIdExist) {
-        t.dropForeign("orgId");
-      }
-
-      if (doesProjectIdExist) {
-        t.dropForeign("projectId");
-      }
-
-      // add normalized fields present in the partition table
-      if (!doesProjectNameExist) {
-        t.string("projectName");
-      }
     });
   }
 
@@ -119,7 +101,7 @@ export async function up(knex: Knex): Promise<void> {
     // create partitions 4 years ahead
     const partitionMonths = 4 * 12;
     const partitionPromises: Promise<void>[] = [];
-    for (let x = 1; x < partitionMonths; x += 1) {
+    for (let x = 1; x <= partitionMonths; x += 1) {
       partitionPromises.push(
         createAuditLogPartition(
           knex,
@@ -134,14 +116,14 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const result = await knex.raw(`
+  const partitionSearchResult = await knex.raw(`
       SELECT inhrelid::regclass::text
       FROM pg_inherits
       WHERE inhparent::regclass::text = '${TableName.PartitionedAuditLog}'
       AND inhrelid::regclass::text = '${TableName.AuditLog}'
   `);
 
-  const isAuditLogAPartition = result.rows.length > 0;
+  const isAuditLogAPartition = partitionSearchResult.rows.length > 0;
   if (isAuditLogAPartition) {
     // detach audit log from partition
     await knex.schema.raw(`
@@ -151,10 +133,6 @@ export async function down(knex: Knex): Promise<void> {
   `);
 
     // revert audit log modifications
-    const doesProjectIdExist = await knex.schema.hasColumn(TableName.AuditLog, "projectId");
-    const doesOrgIdExist = await knex.schema.hasColumn(TableName.AuditLog, "orgId");
-    const doesProjectNameExist = await knex.schema.hasColumn(TableName.AuditLog, "projectName");
-
     if (await knex.schema.hasTable(TableName.AuditLog)) {
       await knex.schema.alterTable(TableName.AuditLog, (t) => {
         // we drop this first because adding to the partition results in a new primary key
@@ -164,18 +142,6 @@ export async function down(knex: Knex): Promise<void> {
         t.primary(["id"], {
           constraintName: "audit_logs_pkey"
         });
-
-        if (doesOrgIdExist) {
-          t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-        }
-        if (doesProjectIdExist) {
-          t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-        }
-
-        // remove normalized fields
-        if (doesProjectNameExist) {
-          t.dropColumn("projectName");
-        }
       });
     }
   }
