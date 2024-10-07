@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -229,7 +230,15 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .regex(/^[a-zA-Z0-9-]+$/, "Slug must only contain alphanumeric characters or hyphens")
           .optional(),
         authEnforced: z.boolean().optional(),
-        scimEnabled: z.boolean().optional()
+        scimEnabled: z.boolean().optional(),
+        defaultMembershipRoleSlug: z
+          .string()
+          .min(1)
+          .trim()
+          .refine((v) => slugify(v) === v, {
+            message: "Membership role must be a valid slug"
+          })
+          .optional()
       }),
       response: {
         200: z.object({

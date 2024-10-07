@@ -370,6 +370,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("scimEnabled").withSchema(TableName.Organization),
+          db.ref("defaultMembershipRole").withSchema(TableName.Organization),
           db.ref("externalId").withSchema(TableName.UserAliases)
         )
         .where({ isGhost: false });

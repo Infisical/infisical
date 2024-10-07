@@ -531,7 +531,7 @@ export const registerRoutes = async (
     orgService,
     licenseService
   });
-  const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDAL });
+  const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDAL, orgDAL });
   const superAdminService = superAdminServiceFactory({
     userDAL,
     authService: loginService,

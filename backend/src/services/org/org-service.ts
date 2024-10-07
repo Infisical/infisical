@@ -32,6 +32,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
+import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
@@ -264,7 +265,7 @@ export const orgServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     orgId,
-    data: { name, slug, authEnforced, scimEnabled }
+    data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug }
   }: TUpdateOrgDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
@@ -298,11 +299,22 @@ export const orgServiceFactory = ({
         });
     }
 
+    let defaultMembershipRole: string | undefined;
+    if (defaultMembershipRoleSlug) {
+      defaultMembershipRole = await getDefaultOrgMembershipRoleForUpdateOrg({
+        membershipRoleSlug: defaultMembershipRoleSlug,
+        orgId,
+        orgRoleDAL,
+        plan
+      });
+    }
+
     const org = await orgDAL.updateById(orgId, {
       name,
       slug: slug ? slugify(slug) : undefined,
       authEnforced,
-      scimEnabled
+      scimEnabled,
+      defaultMembershipRole
     });
     if (!org) throw new NotFoundError({ message: "Organization not found" });
     return org;

@@ -10,6 +10,7 @@ export type Organization = {
   orgAuthMethod: string;
   scimEnabled: boolean;
   slug: string;
+  defaultMembershipRole: string;
 };
 
 export type UpdateOrgDTO = {
@@ -18,6 +19,7 @@ export type UpdateOrgDTO = {
   authEnforced?: boolean;
   scimEnabled?: boolean;
   slug?: string;
+  defaultMembershipRoleSlug?: string;
 };
 
 export type BillingDetails = {

@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { ActorAuthMethod } from "../auth/auth-type";
 import { TOrgRoleDALFactory } from "./org-role-dal";
@@ -18,11 +19,12 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 type TOrgRoleServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;
   permissionService: TPermissionServiceFactory;
+  orgDAL: TOrgDALFactory;
 };
 
 export type TOrgRoleServiceFactory = ReturnType<typeof orgRoleServiceFactory>;
 
-export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRoleServiceFactoryDep) => {
+export const orgRoleServiceFactory = ({ orgRoleDAL, orgDAL, permissionService }: TOrgRoleServiceFactoryDep) => {
   const createRole = async (
     userId: string,
     orgId: string,
@@ -129,6 +131,20 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org)
+      throw new NotFoundError({
+        message: "Failed to find organization"
+      });
+
+    // prevent deletion of custom role if set as default org membership role
+    if (org.defaultMembershipRole === roleId)
+      throw new BadRequestError({
+        message: "Cannot delete default org membership role. Please re-assign and try again."
+      });
+
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deletedRole) throw new NotFoundError({ message: "Organization role not found", name: "Update role" });
 

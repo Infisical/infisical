@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -19,13 +20,29 @@ import {
   Td,
   Th,
   THead,
-  Tr
+  Tooltip,
+  Tr,
+  UpgradePlanModal
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteOrgRole, useGetOrgRoles } from "@app/hooks/api";
+import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
 import { RoleModal } from "@app/views/Org/RolePage/components";
+
+enum OrgMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  NoAccess = "no-access"
+}
+
+export const isCustomOrgRole = (slug: string) =>
+  !Object.values(OrgMembershipRole).includes(slug as OrgMembershipRole);
 
 export const OrgRoleTable = () => {
   const router = useRouter();
@@ -34,12 +51,14 @@ export const OrgRoleTable = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
-    "deleteRole"
+    "deleteRole",
+    "upgradePlan"
   ] as const);
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
-
   const { mutateAsync: deleteRole } = useDeleteOrgRole();
+  const { mutateAsync: updateOrg } = useUpdateOrg();
+  const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TOrgRole;
@@ -53,6 +72,29 @@ export const OrgRoleTable = () => {
     } catch (err) {
       console.log(err);
       createNotification({ type: "error", text: "Failed to delete role" });
+    }
+  };
+
+  const handleSetRoleAsDefault = async (defaultMembershipRoleSlug: string) => {
+    const isCustomRole = isCustomOrgRole(defaultMembershipRoleSlug);
+
+    if (isCustomRole && subscription && !subscription?.rbac) {
+      handlePopUpOpen("upgradePlan", {
+        description: "You can assign custom roles to members if you upgrade your Infisical plan."
+      });
+      return;
+    }
+
+    try {
+      await updateOrg({
+        orgId,
+        defaultMembershipRoleSlug
+      });
+      createNotification({ type: "success", text: "Successfully updated default membership role" });
+      handlePopUpClose("deleteRole");
+    } catch (err) {
+      console.log(err);
+      createNotification({ type: "error", text: "Failed to update default membership role" });
     }
   };
 
@@ -90,14 +132,28 @@ export const OrgRoleTable = () => {
             {roles?.map((role) => {
               const { id, name, slug } = role;
               const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
+              const isDefaultOrgRole = isCustomOrgRole(slug)
+                ? id === currentOrg?.defaultMembershipRole
+                : slug === currentOrg?.defaultMembershipRole;
               return (
                 <Tr
                   key={`role-list-${id}`}
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() => router.push(`/org/${orgId}/roles/${id}`)}
                 >
-                  <Td className="max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
-                    {name}
+                  <Td className="max-w-md">
+                    <div className="flex">
+                      <p className="overflow-hidden text-ellipsis whitespace-nowrap">{name}</p>
+                      {isDefaultOrgRole && (
+                        <Tooltip content="Members joining your organization will be assigned this role unless otherwise specified">
+                          <div>
+                            <Badge variant="success" className="ml-1">
+                              Default
+                            </Badge>
+                          </div>
+                        </Tooltip>
+                      )}
+                    </div>
                   </Td>
                   <Td className="max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
                     {slug}
@@ -129,28 +185,60 @@ export const OrgRoleTable = () => {
                             </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
-                        {!isNonMutatable && (
+                        {!isDefaultOrgRole && (
                           <OrgPermissionCan
-                            I={OrgPermissionActions.Delete}
-                            a={OrgPermissionSubjects.Role}
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.Settings}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
                                 className={twMerge(
-                                  isAllowed
-                                    ? "hover:!bg-red-500 hover:!text-white"
-                                    : "pointer-events-none cursor-not-allowed opacity-50"
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
+                                disabled={!isAllowed}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("deleteRole", role);
+                                  handleSetRoleAsDefault(slug);
                                 }}
-                                disabled={!isAllowed}
                               >
-                                Delete Role
+                                Set as Default Role
                               </DropdownMenuItem>
                             )}
                           </OrgPermissionCan>
+                        )}
+                        {!isNonMutatable && (
+                          <Tooltip
+                            position="left"
+                            content={
+                              isDefaultOrgRole
+                                ? "Cannot delete default organization membership role. Re-assign default to allow deletion."
+                                : ""
+                            }
+                          >
+                            <div>
+                              <OrgPermissionCan
+                                I={OrgPermissionActions.Delete}
+                                a={OrgPermissionSubjects.Role}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    className={twMerge(
+                                      isAllowed && !isDefaultOrgRole
+                                        ? "hover:!bg-red-500 hover:!text-white"
+                                        : "pointer-events-none cursor-not-allowed opacity-50"
+                                    )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteRole", role);
+                                    }}
+                                    disabled={!isAllowed || isDefaultOrgRole}
+                                  >
+                                    Delete Role
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            </div>
+                          </Tooltip>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -171,6 +259,11 @@ export const OrgRoleTable = () => {
         deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

@@ -16,6 +16,7 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipFn } from "@app/services/org/org-fns";
+import { getDefaultOrgMembershipRoleDto } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -318,12 +319,15 @@ export const scimServiceFactory = ({
         );
 
         if (!orgMembership) {
+          const { role, roleId } = await getDefaultOrgMembershipRoleDto(org.defaultMembershipRole);
+
           orgMembership = await orgMembershipDAL.create(
             {
               userId: userAlias.userId,
               inviteEmail: email,
               orgId,
-              role: OrgMembershipRole.NoAccess,
+              role,
+              roleId,
               status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
               isActive: true
             },
@@ -391,12 +395,15 @@ export const scimServiceFactory = ({
         orgMembership = foundOrgMembership;
 
         if (!orgMembership) {
+          const { role, roleId } = await getDefaultOrgMembershipRoleDto(org.defaultMembershipRole);
+
           orgMembership = await orgMembershipDAL.create(
             {
               userId: user.id,
               inviteEmail: email,
               orgId,
-              role: OrgMembershipRole.Member,
+              role,
+              roleId,
               status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
               isActive: true
             },

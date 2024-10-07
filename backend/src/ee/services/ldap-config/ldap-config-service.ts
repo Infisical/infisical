@@ -1,14 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import {
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  SecretKeyEncoding,
-  TableName,
-  TLdapConfigsUpdate,
-  TUsers
-} from "@app/db/schemas";
+import { OrgMembershipStatus, SecretKeyEncoding, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -28,6 +21,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getDefaultOrgMembershipRoleDto } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -444,11 +438,14 @@ export const ldapConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
+          const { role, roleId } = await getDefaultOrgMembershipRoleDto(organization.defaultMembershipRole);
+
           await orgDAL.createMembership(
             {
               userId: userAlias.userId,
               orgId,
-              role: OrgMembershipRole.Member,
+              role,
+              roleId,
               status: OrgMembershipStatus.Accepted,
               isActive: true
             },
@@ -529,12 +526,15 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
+          const { role, roleId } = await getDefaultOrgMembershipRoleDto(organization.defaultMembershipRole);
+
           await orgMembershipDAL.create(
             {
               userId: newUser.id,
               inviteEmail: email,
               orgId,
-              role: OrgMembershipRole.Member,
+              role,
+              roleId,
               status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
               isActive: true
             },
