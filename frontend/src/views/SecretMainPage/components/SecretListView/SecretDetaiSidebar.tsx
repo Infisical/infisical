@@ -84,12 +84,15 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: secret
   });
+
   const { permission } = useProjectPermission();
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "tags"
   });
+
+  const secretKey = secret?.key || "";
   const selectedTags = watch("tags", []) || [];
   const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
     (prev, curr) => ({ ...prev, [curr.id]: true }),
@@ -102,7 +105,7 @@ export const SecretDetailSidebar = ({
     subject(ProjectPermissionSub.Secrets, {
       environment,
       secretPath,
-      secretName: secret.key,
+      secretName: secretKey,
       secretTags: selectTagSlugs
     })
   );
@@ -112,7 +115,7 @@ export const SecretDetailSidebar = ({
       subject(ProjectPermissionSub.Secrets, {
         environment,
         secretPath,
-        secretName: secret.key,
+        secretName: secretKey,
         secretTags: selectTagSlugs
       })
     ) && cannotEditSecret;
@@ -209,7 +212,7 @@ export const SecretDetailSidebar = ({
                 a={subject(ProjectPermissionSub.Secrets, {
                   environment,
                   secretPath,
-                  secretName: secret.key,
+                  secretName: secretKey,
                   secretTags: selectTagSlugs
                 })}
               >
@@ -241,7 +244,7 @@ export const SecretDetailSidebar = ({
                   a={subject(ProjectPermissionSub.Secrets, {
                     environment,
                     secretPath,
-                    secretName: secret.key,
+                    secretName: secretKey,
                     secretTags: selectTagSlugs
                   })}
                 >
@@ -302,7 +305,7 @@ export const SecretDetailSidebar = ({
                       a={subject(ProjectPermissionSub.Secrets, {
                         environment,
                         secretPath,
-                        secretName: secret.key,
+                        secretName: secretKey,
                         secretTags: selectTagSlugs
                       })}
                     >
@@ -394,6 +397,7 @@ export const SecretDetailSidebar = ({
                       variant="outline_bg"
                       leftIcon={<FontAwesomeIcon icon={faClock} />}
                       onClick={() => setCreateReminderFormOpen.on()}
+                      isDisabled={cannotEditSecret}
                     >
                       Create Reminder
                     </Button>
@@ -418,7 +422,7 @@ export const SecretDetailSidebar = ({
                       a={subject(ProjectPermissionSub.Secrets, {
                         environment,
                         secretPath,
-                        secretName: secret.key,
+                        secretName: secretKey,
                         secretTags: selectTagSlugs
                       })}
                     >
@@ -485,7 +489,7 @@ export const SecretDetailSidebar = ({
                     a={subject(ProjectPermissionSub.Secrets, {
                       environment,
                       secretPath,
-                      secretName: secret.key,
+                      secretName: secretKey,
                       secretTags: selectTagSlugs
                     })}
                   >
@@ -505,7 +509,7 @@ export const SecretDetailSidebar = ({
                     a={subject(ProjectPermissionSub.Secrets, {
                       environment,
                       secretPath,
-                      secretName: secret.key,
+                      secretName: secretKey,
                       secretTags: selectTagSlugs
                     })}
                   >

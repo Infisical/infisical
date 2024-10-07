@@ -337,7 +337,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.SecretImports]: {
-    title: "Secret Folders",
+    title: "Secret Imports",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
@@ -346,7 +346,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     ]
   },
   [ProjectPermissionSub.DynamicSecrets]: {
-    title: "Secret Folders",
+    title: "Dynamic Secrets",
     actions: [
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
