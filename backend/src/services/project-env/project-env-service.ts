@@ -37,6 +37,7 @@ export const projectEnvServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
+    position,
     name,
     slug
   }: TCreateEnvDTO) => {
@@ -83,9 +84,25 @@ export const projectEnvServiceFactory = ({
       }
 
       const env = await projectEnvDAL.transaction(async (tx) => {
+        if (position !== undefined) {
+          // Check if there's an environment at the specified position
+          const existingEnvWithPosition = await projectEnvDAL.findOne({ projectId, position }, tx);
+
+          // If there is, then shift positions
+          if (existingEnvWithPosition) {
+            await projectEnvDAL.shiftPositions(projectId, position, tx);
+          }
+
+          const doc = await projectEnvDAL.create({ slug, name, projectId, position }, tx);
+          await folderDAL.create({ name: "root", parentId: null, envId: doc.id, version: 1 }, tx);
+
+          return doc;
+        }
+        // If no position is specified, add to the end
         const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
         const doc = await projectEnvDAL.create({ slug, name, projectId, position: lastPos + 1 }, tx);
         await folderDAL.create({ name: "root", parentId: null, envId: doc.id, version: 1 }, tx);
+
         return doc;
       });
 
@@ -150,7 +167,11 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         if (position) {
-          await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
+          const existingEnvWithPosition = await projectEnvDAL.findOne({ projectId, position }, tx);
+
+          if (existingEnvWithPosition && existingEnvWithPosition.id !== oldEnv.id) {
+            await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
+          }
         }
         return projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
       });
@@ -199,7 +220,6 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
-        await projectEnvDAL.updateAllPosition(projectId, doc.position, -1, tx);
         return doc;
       });
 

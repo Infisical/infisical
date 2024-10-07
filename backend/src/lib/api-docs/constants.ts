@@ -533,7 +533,8 @@ export const ENVIRONMENTS = {
   CREATE: {
     workspaceId: "The ID of the project to create the environment in.",
     name: "The name of the environment to create.",
-    slug: "The slug of the environment to create."
+    slug: "The slug of the environment to create.",
+    position: "The position of the environment. The lowest number will be displayed as the first environment."
   },
   UPDATE: {
     workspaceId: "The ID of the project to update the environment in.",
