@@ -82,6 +82,14 @@ jobs:
 
             ### RPM
 
+            # Set up .rpm package structure
+            - name: Set up .rpm package structure
+              if: matrix.os == 'linux'
+              run: |
+                  mkdir -p infisical-core-rpm/usr/local/bin
+                  cp ./binary/infisical-core infisical-core-rpm/usr/local/bin/
+                  chmod +x infisical-core-rpm/usr/local/bin/infisical-core
+
             # Install RPM build tools
             - name: Install RPM build tools
               if: matrix.os == 'linux'
@@ -108,9 +116,17 @@ jobs:
 
                   %files
                   /usr/local/bin/infisical-core
+
+                  %pre
+
+                  %post
+
+                  %preun
+
+                  %postun
                   EOF
 
-            # Build .rpm file (Red Hat-based systems only)
+            # Build .rpm file
             - name: Build .rpm package
               if: matrix.os == 'linux'
               run: |
@@ -118,11 +134,17 @@ jobs:
                   echo "Current directory contents:"
                   ls -R
 
+                  # Create necessary directories
+                  mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+                  # Copy the binary to SOURCES
+                  cp -R infisical-core-rpm rpmbuild/SOURCES/
+
                   # Run rpmbuild with verbose output
                   rpmbuild -vv -bb \
                     --define "_topdir $(pwd)/rpmbuild" \
-                    --define "_sourcedir $(pwd)" \
-                    --define "_rpmdir $(pwd)/binary" \
+                    --define "_sourcedir $(pwd)/rpmbuild/SOURCES" \
+                    --define "_rpmdir $(pwd)/rpmbuild/RPMS" \
                     --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }} \
                     infisical-core.spec
 
