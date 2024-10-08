@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import {
+  AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
   OrgRolesSchema,
-  PartitionedAuditLogsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
@@ -117,7 +117,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       response: {
         200: z.object({
-          auditLogs: PartitionedAuditLogsSchema.omit({
+          auditLogs: AuditLogsSchema.omit({
             eventMetadata: true,
             eventType: true,
             actor: true,
@@ -125,6 +125,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           })
             .merge(
               z.object({
+                project: z
+                  .object({
+                    name: z.string(),
+                    slug: z.string()
+                  })
+                  .optional(),
                 event: z.object({
                   type: z.string(),
                   metadata: z.any()
@@ -162,7 +168,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
-
       return { auditLogs };
     }
   });

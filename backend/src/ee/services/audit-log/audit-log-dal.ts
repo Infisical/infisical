@@ -1,9 +1,8 @@
-// weird commonjs-related error in the CI requires us to do the import like this
-import knex from "knex";
+import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
-import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
+import { AuditLogsSchema, TableName } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
@@ -26,7 +25,7 @@ type TFindQuery = {
 };
 
 export const auditLogDALFactory = (db: TDbClient) => {
-  const auditLogOrm = ormify(db, TableName.PartitionedAuditLog);
+  const auditLogOrm = ormify(db, TableName.AuditLog);
 
   const find = async (
     {
@@ -47,7 +46,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
-    tx?: knex.Knex
+    tx?: Knex
   ) => {
     if (!orgId && !projectId) {
       throw new Error("Either orgId or projectId must be provided");
@@ -55,13 +54,14 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
     try {
       // Find statements
-      const sqlQuery = (tx || db.replicaNode())(TableName.PartitionedAuditLog)
+      const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
+        .leftJoin(TableName.Project, `${TableName.AuditLog}.projectId`, `${TableName.Project}.id`)
         // eslint-disable-next-line func-names
         .where(function () {
           if (orgId) {
-            void this.where(`${TableName.PartitionedAuditLog}.orgId`, orgId);
+            void this.where(`${TableName.Project}.orgId`, orgId).orWhere(`${TableName.AuditLog}.orgId`, orgId);
           } else if (projectId) {
-            void this.where(`${TableName.PartitionedAuditLog}.projectId`, projectId);
+            void this.where(`${TableName.AuditLog}.projectId`, projectId);
           }
         });
 
@@ -71,20 +71,24 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Select statements
       void sqlQuery
-        .select(selectAllTableCols(TableName.PartitionedAuditLog))
+        .select(selectAllTableCols(TableName.AuditLog))
+        .select(
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("slug").withSchema(TableName.Project).as("projectSlug")
+        )
         .limit(limit)
         .offset(offset)
-        .orderBy(`${TableName.PartitionedAuditLog}.createdAt`, "desc");
+        .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
 
       // Special case: Filter by actor ID
       if (actorId) {
-        void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object('userId', ?::text)`, [actorId]);
+        void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actorId]);
       }
 
       // Special case: Filter by key/value pairs in eventMetadata field
       if (eventMetadata && Object.keys(eventMetadata).length) {
         Object.entries(eventMetadata).forEach(([key, value]) => {
-          void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object(?::text, ?::text)`, [key, value]);
+          void sqlQuery.whereRaw(`"eventMetadata"->>'${key}' = ?`, [value]);
         });
       }
 
@@ -100,30 +104,35 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Filter by date range
       if (startDate) {
-        void sqlQuery.where(`${TableName.PartitionedAuditLog}.createdAt`, ">=", startDate);
+        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, ">=", startDate);
       }
       if (endDate) {
-        void sqlQuery.where(`${TableName.PartitionedAuditLog}.createdAt`, "<=", endDate);
+        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
       }
+      const docs = await sqlQuery;
 
-      // we timeout long running queries to prevent DB resource issues (2 minutes)
-      const docs = await sqlQuery.timeout(1000 * 120);
+      return docs.map((doc) => {
+        // Our type system refuses to acknowledge that the project name and slug are present in the doc, due to the disjointed query structure above.
+        // This is a quick and dirty way to get around the types.
+        const projectDoc = doc as unknown as { projectName: string; projectSlug: string };
 
-      return docs;
+        return {
+          ...AuditLogsSchema.parse(doc),
+          ...(projectDoc?.projectSlug && {
+            project: {
+              name: projectDoc.projectName,
+              slug: projectDoc.projectSlug
+            }
+          })
+        };
+      });
     } catch (error) {
-      if (error instanceof knex.KnexTimeoutError) {
-        throw new GatewayTimeoutError({
-          error,
-          message: "Failed to fetch audit logs due to timeout. Add more search filters."
-        });
-      }
-
       throw new DatabaseError({ error });
     }
   };
 
   // delete all audit log that have expired
-  const pruneAuditLog = async (tx?: knex.Knex) => {
+  const pruneAuditLog = async (tx?: Knex) => {
     const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
 
@@ -135,13 +144,12 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
     do {
       try {
-        const findExpiredLogSubQuery = (tx || db)(TableName.PartitionedAuditLog)
+        const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
           .where("expiresAt", "<", today)
           .select("id")
           .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
-
         // eslint-disable-next-line no-await-in-loop
-        deletedAuditLogIds = await (tx || db)(TableName.PartitionedAuditLog)
+        deletedAuditLogIds = await (tx || db)(TableName.AuditLog)
           .whereIn("id", findExpiredLogSubQuery)
           .del()
           .returning("id");

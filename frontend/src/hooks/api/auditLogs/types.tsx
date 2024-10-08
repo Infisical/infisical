@@ -886,5 +886,8 @@ export type AuditLog = {
   userAgentType: UserAgentType;
   createdAt: string;
   updatedAt: string;
-  projectName?: string;
+  project?: {
+    name: string;
+    slug: string;
+  };
 };

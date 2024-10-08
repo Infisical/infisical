@@ -30,7 +30,6 @@ import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
 type TMain = {
-  auditLogDb?: Knex;
   db: Knex;
   smtp: TSmtpService;
   logger?: Logger;
@@ -39,7 +38,7 @@ type TMain = {
 };
 
 // Run the server!
-export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
+export const main = async ({ db, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
@@ -95,7 +94,7 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore }: TM
 
     await server.register(maintenanceMode);
 
-    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore });
+    await server.register(registerRoutes, { smtp, queue, db, keyStore });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {

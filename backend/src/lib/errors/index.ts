@@ -23,18 +23,6 @@ export class InternalServerError extends Error {
   }
 }
 
-export class GatewayTimeoutError extends Error {
-  name: string;
-
-  error: unknown;
-
-  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
-    super(message || "Timeout error");
-    this.name = name || "GatewayTimeoutError";
-    this.error = error;
-  }
-}
-
 export class UnauthorizedError extends Error {
   name: string;
 

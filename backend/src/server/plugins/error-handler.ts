@@ -7,7 +7,6 @@ import {
   BadRequestError,
   DatabaseError,
   ForbiddenRequestError,
-  GatewayTimeoutError,
   InternalServerError,
   NotFoundError,
   ScimRequestError,
@@ -26,8 +25,7 @@ enum HttpStatusCodes {
   Unauthorized = 401,
   Forbidden = 403,
   // eslint-disable-next-line @typescript-eslint/no-shadow
-  InternalServerError = 500,
-  GatewayTimeout = 504
+  InternalServerError = 500
 }
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
@@ -49,10 +47,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res
         .status(HttpStatusCodes.InternalServerError)
         .send({ statusCode: HttpStatusCodes.InternalServerError, message: "Something went wrong", error: error.name });
-    } else if (error instanceof GatewayTimeoutError) {
-      void res
-        .status(HttpStatusCodes.GatewayTimeout)
-        .send({ statusCode: HttpStatusCodes.GatewayTimeout, message: error.message, error: error.name });
     } else if (error instanceof ZodError) {
       void res
         .status(HttpStatusCodes.Unauthorized)
