@@ -73,21 +73,25 @@ export const formSchema = z.object({
   permissions: z
     .object({
       [ProjectPermissionSub.Secrets]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
         .array()
         .default([]),
       [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
         .array()
         .default([]),
       [ProjectPermissionSub.SecretImports]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
         .array()
         .default([]),
       [ProjectPermissionSub.DynamicSecrets]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
         .array()
@@ -164,7 +168,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Partial<TFormSchema["permissions"]> = {};
 
   permissions.forEach((permission) => {
-    const { subject: caslSub, action, conditions } = permission;
+    const { subject: caslSub, action, conditions, inverted } = permission;
     const subject = (typeof caslSub === "string" ? caslSub : caslSub[0]) as ProjectPermissionSub;
 
     if (
@@ -208,7 +212,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           create: canCreate,
           edit: canEdit,
           delete: canDelete,
-          conditions: conditions ? convertCaslConditionToFormOperator(conditions) : []
+          conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+          inverted
         });
       } else {
         // deduplicate multiple rules for other policies
@@ -287,7 +292,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
     rules.forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
-        (el) => actions?.[el as keyof typeof actions] && el !== "conditions"
+        (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
       const caslConditions =
         "conditions" in actions
@@ -297,6 +302,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
       permissions.push({
         action: caslActions,
         subject,
+        inverted: (actions as { inverted?: boolean })?.inverted,
         conditions: caslConditions
       });
     });

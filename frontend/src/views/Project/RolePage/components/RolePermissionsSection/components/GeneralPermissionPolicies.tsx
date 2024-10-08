@@ -1,10 +1,16 @@
 import { cloneElement } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { faChevronDown, faChevronRight, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faChevronRight,
+  faInfoCircle,
+  faPlus,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, Checkbox, Tag } from "@app/components/v2";
+import { Button, Checkbox, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -95,6 +101,36 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   })}
                 </div>
               </div>
+              {isConditionalSubjects(subject) && (
+                <div className="mt-4 flex w-full items-center text-gray-300">
+                  <div className="w-1/4">Effect</div>
+                  <div className="mr-4 w-1/4">
+                    <Controller
+                      defaultValue={false as any}
+                      name={`permissions.${subject}.${rootIndex}.inverted`}
+                      render={({ field }) => (
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(val) => field.onChange(val === "true")}
+                          containerClassName="w-full"
+                          className="w-full"
+                        >
+                          <SelectItem value="false">Allow</SelectItem>
+                          <SelectItem value="true">Disallow</SelectItem>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <Tooltip
+                      asChild
+                      content="Whether to allow or forbid. Forbid rules must be added after allow rules."
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-gray-400" />
+                    </Tooltip>
+                  </div>
+                </div>
+              )}
               {children &&
                 cloneElement(children, {
                   position: rootIndex
