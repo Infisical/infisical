@@ -1,12 +1,9 @@
 name: Build Binaries and Deploy
 
 on:
-    workflow_dispatch:
-        inputs:
-            version:
-                description: "Version number"
-                required: true
-                type: string
+    push:
+        branches:
+            - daniel/rpm-binary
 
 defaults:
     run:
@@ -68,7 +65,7 @@ jobs:
               run: |
                   cat <<EOF > infisical-core/DEBIAN/control
                   Package: infisical-core
-                  Version: ${{ github.event.inputs.version }}
+                  Version: 1.1.2
                   Section: base
                   Priority: optional
                   Architecture: ${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}
@@ -103,7 +100,7 @@ jobs:
               run: |
                   cat <<EOF > infisical-core.spec
                   Name:           infisical-core
-                  Version:        ${{ github.event.inputs.version }}
+                  Version:        1.1.2
                   Release:        1%{?dist}
                   Summary:        Infisical Core standalone executable
                   License:        Proprietary
@@ -118,10 +115,6 @@ jobs:
 
                   %files
                   /usr/local/bin/infisical-core
-
-                  %changelog
-                  * $(date '+%a %b %d %Y') Infisical <daniel@infisical.com> - ${{ github.event.inputs.version }}-1
-                  - Initial RPM release
                   EOF
 
               # Build .rpm file (Red Hat-based systems only)
@@ -134,7 +127,7 @@ jobs:
                     --define "_rpmdir $(pwd)/binary" \
                     --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }} \
                     infisical-core.spec
-                  mv rpmbuild/RPMS/${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}/infisical-core-${{ github.event.inputs.version }}-1.*.${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}.rpm ./binary/infisical-core-${{matrix.arch}}.rpm
+                  mv rpmbuild/RPMS/${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}/infisical-core-1.1.2-1.*.${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}.rpm ./binary/infisical-core-${{matrix.arch}}.rpm
 
             - uses: actions/setup-python@v4
               with:
@@ -160,4 +153,4 @@ jobs:
             - name: Publish to Cloudsmith (Windows)
               if: matrix.os == 'win'
               working-directory: ./backend
-              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version ${{ github.event.inputs.version }} --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
+              run: cloudsmith push raw infisical/infisical-core ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }}.exe --republish --no-wait-for-sync --version 1.1.2 --api-key ${{ secrets.CLOUDSMITH_API_KEY }}
