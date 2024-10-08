@@ -4,6 +4,15 @@ export enum ProjectUserAdditionalPrivilegeTemporaryMode {
   Relative = "relative"
 }
 
+export type TProjectSpecificPrivilegePermission = {
+  conditions: {
+    environment: string;
+    secretPath?: { $glob: string };
+  };
+  actions: string[];
+  subject: string;
+};
+
 export type TProjectUserPrivilege = {
   projectMembershipId: string;
   slug: string;
@@ -12,21 +21,21 @@ export type TProjectUserPrivilege = {
   updatedAt: Date;
   permissions?: TProjectPermission[];
 } & (
-    | {
+  | {
       isTemporary: true;
       temporaryMode: string;
       temporaryRange: string;
       temporaryAccessStartTime: string;
       temporaryAccessEndTime?: string;
     }
-    | {
+  | {
       isTemporary: false;
       temporaryMode?: null;
       temporaryRange?: null;
       temporaryAccessStartTime?: null;
       temporaryAccessEndTime?: null;
     }
-  );
+);
 
 export type TCreateProjectUserPrivilegeDTO = {
   projectMembershipId: string;
@@ -35,7 +44,7 @@ export type TCreateProjectUserPrivilegeDTO = {
   temporaryMode?: ProjectUserAdditionalPrivilegeTemporaryMode;
   temporaryRange?: string;
   temporaryAccessStartTime?: string;
-  permissions: TProjectPermission[];
+  permissions: TProjectSpecificPrivilegePermission;
 };
 
 export type TUpdateProjectUserPrivlegeDTO = {

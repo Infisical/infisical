@@ -1,9 +1,8 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { TableName } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 
 import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
 
@@ -752,17 +751,35 @@ export const isAtLeastAsPrivilegedWorkspace = (
 };
 /* eslint-enable */
 
-export const SecretV2SubjectFieldMapper = (arg: string) => {
-  switch (arg) {
-    case "environment":
-      return null;
-    case "secretPath":
-      return null;
-    case "secretName":
-      return `${TableName.SecretV2}.key`;
-    case "secretTags":
-      return `${TableName.SecretTag}.slug`;
-    default:
-      throw new BadRequestError({ message: `Invalid dynamic knex operator field: ${arg}` });
-  }
+export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof ProjectPermissionV1Schema>[]) => {
+  const formattedData = UnpackedPermissionSchema.array().parse(data);
+  const secretSubjects = formattedData.filter((el) => el.subject === ProjectPermissionSub.Secrets);
+
+  // this means the folder permission as readonly is set
+  const hasReadOnlyFolder = formattedData.filter((el) => el.subject === ProjectPermissionSub.SecretFolders);
+  const secretImportPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    ...el,
+    subject: ProjectPermissionSub.SecretImports as const
+  }));
+
+  const secretFolderPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    ...el,
+    subject: ProjectPermissionSub.DynamicSecrets
+  }));
+
+  const dynamicSecretPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    ...el,
+    action: el.action.includes(ProjectPermissionActions.Edit)
+      ? [...el.action, ProjectPermissionDynamicSecretActions.Lease]
+      : el.action,
+    subject: ProjectPermissionSub.DynamicSecrets
+  }));
+
+  return formattedData.concat(
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore-error this is valid ts
+    secretImportPolicies,
+    dynamicSecretPolicies,
+    hasReadOnlyFolder.length ? [] : secretFolderPolicies
+  );
 };
