@@ -7,6 +7,7 @@ import picomatch from "picomatch";
 import { apiRequest } from "@app/config/request";
 import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/types";
+import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 
 import { OrgUser, TProjectMembership } from "../users/types";
@@ -147,10 +148,23 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
     enabled: Boolean(workspaceId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
+      const negatedRules = groupBy(
+        rule.filter((i) => i.inverted && i.conditions),
+        (i) => `${i.subject}-${JSON.stringify(i.conditions)}`
+      );
       const ability = createMongoAbility<ProjectPermissionSet>(rule, {
         // this allows in frontend to skip some rules using *
         conditionsMatcher: (rules) => {
           return (entity) => {
+            // skip validation if its negated rules
+            const isNegatedRule =
+              // eslint-disable-next-line no-underscore-dangle
+              negatedRules?.[`${entity.__caslSubjectType__}-${JSON.stringify(rules)}`];
+            if (isNegatedRule) {
+              const baseMatcher = conditionsMatcher(rules);
+              return baseMatcher(entity);
+            }
+
             const rulesStrippedOfWildcard = omit(
               rules,
               Object.keys(entity).filter((el) => entity[el]?.includes("*"))
@@ -160,7 +174,6 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
           };
         }
       });
-
       const membership = {
         ...data.membership,
         roles: data.membership.roles.map(({ role }) => role)
