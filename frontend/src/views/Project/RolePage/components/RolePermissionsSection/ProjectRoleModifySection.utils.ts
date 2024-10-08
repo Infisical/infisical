@@ -7,6 +7,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionDynamicSecretActions,
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
@@ -26,6 +27,14 @@ const CmekPolicyActionSchema = z.object({
   create: z.boolean().optional(),
   encrypt: z.boolean().optional(),
   decrypt: z.boolean().optional()
+});
+
+const DynamicSecretPolicyActionSchema = z.object({
+  read: z.boolean().optional(),
+  edit: z.boolean().optional(),
+  delete: z.boolean().optional(),
+  create: z.boolean().optional(),
+  lease: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -90,7 +99,7 @@ export const formSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.DynamicSecrets]: GeneralPolicyActionSchema.extend({
+      [ProjectPermissionSub.DynamicSecrets]: DynamicSecretPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -174,9 +183,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     if (
       [
         ProjectPermissionSub.Secrets,
+        ProjectPermissionSub.DynamicSecrets,
         ProjectPermissionSub.SecretFolders,
         ProjectPermissionSub.SecretImports,
-        ProjectPermissionSub.DynamicSecrets,
         ProjectPermissionSub.Member,
         ProjectPermissionSub.Groups,
         ProjectPermissionSub.Identity,
@@ -199,25 +208,50 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Kms
       ].includes(subject)
     ) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-      const canEdit = action.includes(ProjectPermissionActions.Edit);
-      const canDelete = action.includes(ProjectPermissionActions.Delete);
-      const canCreate = action.includes(ProjectPermissionActions.Create);
-
       // from above statement we are sure it won't be undefined
       if (isConditionalSubjects(subject)) {
         if (!formVal[subject]) formVal[subject] = [];
-        formVal[subject]!.push({
-          read: canRead,
-          create: canCreate,
-          edit: canEdit,
-          delete: canDelete,
-          conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-          inverted
-        });
+
+        if (subject === ProjectPermissionSub.DynamicSecrets) {
+          const canRead = action.includes(ProjectPermissionDynamicSecretActions.Read);
+          const canEdit = action.includes(ProjectPermissionDynamicSecretActions.Edit);
+          const canDelete = action.includes(ProjectPermissionDynamicSecretActions.Delete);
+          const canCreate = action.includes(ProjectPermissionDynamicSecretActions.Create);
+          const canLease = action.includes(ProjectPermissionDynamicSecretActions.Lease);
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            read: canRead,
+            create: canCreate,
+            edit: canEdit,
+            delete: canDelete,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted,
+            lease: canLease
+          });
+        } else {
+          // for other subjects
+          const canRead = action.includes(ProjectPermissionActions.Read);
+          const canEdit = action.includes(ProjectPermissionActions.Edit);
+          const canDelete = action.includes(ProjectPermissionActions.Delete);
+          const canCreate = action.includes(ProjectPermissionActions.Create);
+          formVal[subject]!.push({
+            read: canRead,
+            create: canCreate,
+            edit: canEdit,
+            delete: canDelete,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+        }
       } else {
         // deduplicate multiple rules for other policies
         // because they don't have condition it doesn't make sense for multiple rules
+        const canRead = action.includes(ProjectPermissionActions.Read);
+        const canEdit = action.includes(ProjectPermissionActions.Edit);
+        const canDelete = action.includes(ProjectPermissionActions.Delete);
+        const canCreate = action.includes(ProjectPermissionActions.Create);
+
         if (!formVal[subject]) formVal[subject] = [{}];
         if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
         if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
@@ -317,7 +351,7 @@ export type TProjectPermissionObject = {
       label: string;
       value: keyof Omit<
         NonNullable<NonNullable<TFormSchema["permissions"]>[K]>[number],
-        "conditions"
+        "conditions" | "inverted"
       >;
     }[];
   };
@@ -357,7 +391,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Read", value: "read" },
       { label: "Create", value: "create" },
       { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Remove", value: "delete" },
+      { label: "Lease", value: "lease" }
     ]
   },
   [ProjectPermissionSub.Cmek]: {

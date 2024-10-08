@@ -12,6 +12,7 @@ import { PermissionDeniedBanner } from "@app/components/permissions";
 import { ContentLoader, Pagination } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
@@ -93,7 +94,7 @@ export const SecretMainPage = () => {
   );
 
   const canReadDynamicSecret = permission.can(
-    ProjectPermissionActions.Read,
+    ProjectPermissionDynamicSecretActions.Lease,
     subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
   );
 

@@ -7,6 +7,14 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionDynamicSecretActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Lease = "lease"
+}
+
 export enum ProjectPermissionCmekActions {
   Read = "read",
   Create = "create",
@@ -108,7 +116,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [
-      ProjectPermissionActions,
+      ProjectPermissionDynamicSecretActions,
       (
         | ProjectPermissionSub.DynamicSecrets
         | (ForcedSubject<ProjectPermissionSub.DynamicSecrets> & DynamicSecretSubjectFields)
