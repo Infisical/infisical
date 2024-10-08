@@ -83,6 +83,59 @@ jobs:
                   dpkg-deb --build infisical-core
                   mv infisical-core.deb ./binary/infisical-core-${{matrix.arch}}.deb
 
+            ### RPM
+
+            - name: Set up .rpm package structure
+              if: matrix.os == 'ubuntu-latest'
+              run: |
+                  mkdir -p infisical-core-rpm/usr/local/bin
+                  cp ./binary/infisical-core infisical-core-rpm/usr/local/bin/
+                  chmod +x infisical-core-rpm/usr/local/bin/infisical-core
+
+            # Install RPM build tools
+            - name: Install RPM build tools
+              if: matrix.os == 'ubuntu-latest'
+              run: sudo apt-get update && sudo apt-get install -y rpm
+
+              # Create .spec file for RPM
+            - name: Create .spec file for RPM
+              if: matrix.os == 'ubuntu-latest'
+              run: |
+                  cat <<EOF > infisical-core.spec
+                  Name:           infisical-core
+                  Version:        ${{ github.event.inputs.version }}
+                  Release:        1%{?dist}
+                  Summary:        Infisical Core standalone executable
+                  License:        Proprietary
+                  URL:            https://app.infisical.com
+
+                  %description
+                  Infisical Core standalone executable (app.infisical.com)
+
+                  %install
+                  mkdir -p %{buildroot}/usr/local/bin
+                  cp %{_sourcedir}/infisical-core-rpm/usr/local/bin/infisical-core %{buildroot}/usr/local/bin/
+
+                  %files
+                  /usr/local/bin/infisical-core
+
+                  %changelog
+                  * $(date '+%a %b %d %Y') Infisical <daniel@infisical.com> - ${{ github.event.inputs.version }}-1
+                  - Initial RPM release
+                  EOF
+
+              # Build .rpm file (Red Hat-based systems only)
+            - name: Build .rpm package
+              if: matrix.os == 'ubuntu-latest'
+              run: |
+                  rpmbuild -bb \
+                    --define "_topdir $(pwd)/rpmbuild" \
+                    --define "_sourcedir $(pwd)" \
+                    --define "_rpmdir $(pwd)/binary" \
+                    --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }} \
+                    infisical-core.spec
+                  mv rpmbuild/RPMS/${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}/infisical-core-${{ github.event.inputs.version }}-1.*.${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}.rpm ./binary/infisical-core-${{matrix.arch}}.rpm
+
             - uses: actions/setup-python@v4
               with:
                   python-version: "3.x" # Specify the Python version you need
@@ -96,6 +149,12 @@ jobs:
               if: matrix.os == 'linux'
               working-directory: ./backend
               run: cloudsmith push deb --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.deb
+
+            # Publish .rpm file to Cloudsmith (Red Hat-based systems only)
+            - name: Publish .rpm to Cloudsmith
+              if: matrix.os == 'ubuntu-latest'
+              working-directory: ./backend
+              run: cloudsmith push rpm --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.rpm
 
             # Publish .exe file to Cloudsmith (Windows only)
             - name: Publish to Cloudsmith (Windows)
