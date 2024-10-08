@@ -149,7 +149,7 @@ export const executeMigration = async (url: string) => {
   });
 };
 
-const dbUrl = process.env.AUDIT_LOGS_DB_URL;
+const dbUrl = process.env.AUDIT_LOGS_DB_CONNECTION_URI;
 if (!dbUrl) {
   console.error("Please provide a DB connection URL as the first argument.");
   process.exit(1);
