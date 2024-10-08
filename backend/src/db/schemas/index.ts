@@ -55,7 +55,6 @@ export * from "./org-bots";
 export * from "./org-memberships";
 export * from "./org-roles";
 export * from "./organizations";
-export * from "./partitioned-audit-logs";
 export * from "./pki-alerts";
 export * from "./pki-collection-items";
 export * from "./pki-collections";
