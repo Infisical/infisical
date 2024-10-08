@@ -23,6 +23,14 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt"
 }
 
+export enum ProjectPermissionDynamicSecretActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Lease = "lease"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -88,7 +96,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [
-      ProjectPermissionActions,
+      ProjectPermissionDynamicSecretActions,
       (
         | ProjectPermissionSub.DynamicSecrets
         | (ForcedSubject<ProjectPermissionSub.DynamicSecrets> & DynamicSecretSubjectFields)
@@ -397,7 +405,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.DynamicSecrets).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionDynamicSecretActions).describe(
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV1Schema.describe(
@@ -414,7 +422,6 @@ const buildAdminPermissionRules = () => {
   [
     ProjectPermissionSub.Secrets,
     ProjectPermissionSub.SecretFolders,
-    ProjectPermissionSub.DynamicSecrets,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
     ProjectPermissionSub.SecretRotation,
@@ -446,6 +453,17 @@ const buildAdminPermissionRules = () => {
       el as ProjectPermissionSub
     );
   });
+
+  can(
+    [
+      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.Edit,
+      ProjectPermissionDynamicSecretActions.Create,
+      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.Lease
+    ],
+    ProjectPermissionSub.DynamicSecrets
+  );
 
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
@@ -489,10 +507,11 @@ const buildMemberPermissionRules = () => {
   );
   can(
     [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
+      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.Edit,
+      ProjectPermissionDynamicSecretActions.Create,
+      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.Lease
     ],
     ProjectPermissionSub.DynamicSecrets
   );
@@ -629,7 +648,7 @@ const buildViewerPermissionRules = () => {
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.DynamicSecrets);
+  can(ProjectPermissionDynamicSecretActions.Read, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);

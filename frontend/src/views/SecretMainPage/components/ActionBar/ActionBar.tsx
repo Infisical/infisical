@@ -45,7 +45,12 @@ import {
   Tooltip,
   UpgradePlanModal
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub,
+  useSubscription
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -482,8 +487,8 @@ export const ActionBar = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
-                  I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, {
+                  I={ProjectPermissionDynamicSecretActions.Create}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, {
                     environment,
                     secretPath,
                     secretName: "*",

@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { SecretFoldersSchema, SecretImportsSchema, SecretTagsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -195,7 +198,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const allowedDynamicSecretEnviroments = // filter envs user has access to
         environments.filter((environment) =>
           permission.can(
-            ProjectPermissionActions.Read,
+            ProjectPermissionDynamicSecretActions.Lease,
             subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
           )
         );
