@@ -112,7 +112,7 @@ jobs:
 
                   %install
                   mkdir -p %{buildroot}/usr/local/bin
-                  cp %{_sourcedir}/infisical-core-rpm/usr/local/bin/infisical-core %{buildroot}/usr/local/bin/
+                  cp %{_sourcedir}/infisical-core %{buildroot}/usr/local/bin/
 
                   %files
                   /usr/local/bin/infisical-core
@@ -132,13 +132,17 @@ jobs:
               run: |
                   # Debug: Print current directory contents
                   echo "Current directory contents:"
-                  ls -R
+                  ls -la
+
+                  # Debug: Print binary file size
+                  echo "Binary file size:"
+                  ls -lh ./binary/infisical-core
 
                   # Create necessary directories
                   mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
-                  # Copy the binary to SOURCES
-                  cp -R infisical-core-rpm rpmbuild/SOURCES/
+                  # Copy the binary directly to SOURCES
+                  cp ./binary/infisical-core rpmbuild/SOURCES/
 
                   # Run rpmbuild with verbose output
                   rpmbuild -vv -bb \
@@ -158,6 +162,9 @@ jobs:
                   # Move the RPM file if found
                   if [ -n "$(find rpmbuild -name '*.rpm')" ]; then
                     mv $(find rpmbuild -name '*.rpm') ./binary/infisical-core-${{matrix.arch}}.rpm
+                    # Debug: Print RPM file size
+                    echo "RPM file size:"
+                    ls -lh ./binary/infisical-core-${{matrix.arch}}.rpm
                   else
                     echo "RPM file not found!"
                     exit 1
