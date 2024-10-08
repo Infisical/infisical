@@ -48,9 +48,9 @@ jobs:
             - name: Package into node binary
               run: |
                   if [ "${{ matrix.os }}" != "linux" ]; then
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
+                    pkg --no-bytecode --public-packages "*" --public --compress GZip --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core-${{ matrix.os }}-${{ matrix.arch }} .
                   else
-                    pkg --no-bytecode --public-packages "*" --public --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
+                    pkg --no-bytecode --public-packages "*" --public --compress GZip --target ${{ matrix.target }}-${{ matrix.arch }} --output ./binary/infisical-core .
                   fi
 
             # Set up .deb package structure (Debian/Ubuntu only)
@@ -137,14 +137,6 @@ jobs:
             - name: Build .rpm package
               if: matrix.os == 'linux'
               run: |
-                  # Debug: Print current directory contents
-                  echo "Current directory contents:"
-                  ls -la
-
-                  # Debug: Print binary file size
-                  echo "Binary file size:"
-                  ls -lh ./binary/infisical-core
-
                   # Create necessary directories
                   mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
@@ -159,19 +151,12 @@ jobs:
                     --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }} \
                     infisical-core.spec
 
-                  # Debug: Print rpmbuild directory contents
-                  echo "rpmbuild directory contents:"
-                  ls -R rpmbuild
-
                   # Try to find the RPM file
                   find rpmbuild -name "*.rpm"
 
                   # Move the RPM file if found
                   if [ -n "$(find rpmbuild -name '*.rpm')" ]; then
                     mv $(find rpmbuild -name '*.rpm') ./binary/infisical-core-${{matrix.arch}}.rpm
-                    # Debug: Print RPM file size
-                    echo "RPM file size:"
-                    ls -lh ./binary/infisical-core-${{matrix.arch}}.rpm
                   else
                     echo "RPM file not found!"
                     exit 1
