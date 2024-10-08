@@ -83,7 +83,7 @@ jobs:
             ### RPM
 
             - name: Set up .rpm package structure
-              if: matrix.os == 'ubuntu-latest'
+              if: matrix.os == 'linux'
               run: |
                   mkdir -p infisical-core-rpm/usr/local/bin
                   cp ./binary/infisical-core infisical-core-rpm/usr/local/bin/
@@ -96,7 +96,7 @@ jobs:
 
               # Create .spec file for RPM
             - name: Create .spec file for RPM
-              if: matrix.os == 'ubuntu-latest'
+              if: matrix.os == 'linux'
               run: |
                   cat <<EOF > infisical-core.spec
                   Name:           infisical-core
@@ -119,7 +119,7 @@ jobs:
 
               # Build .rpm file (Red Hat-based systems only)
             - name: Build .rpm package
-              if: matrix.os == 'ubuntu-latest'
+              if: matrix.os == 'linux'
               run: |
                   rpmbuild -bb \
                     --define "_topdir $(pwd)/rpmbuild" \
@@ -145,7 +145,7 @@ jobs:
 
             # Publish .rpm file to Cloudsmith (Red Hat-based systems only)
             - name: Publish .rpm to Cloudsmith
-              if: matrix.os == 'ubuntu-latest'
+              if: matrix.os == 'linux'
               working-directory: ./backend
               run: cloudsmith push rpm --republish --no-wait-for-sync --api-key=${{ secrets.CLOUDSMITH_API_KEY }} infisical/infisical-core/any-distro/any-version ./binary/infisical-core-${{ matrix.arch }}.rpm
 
