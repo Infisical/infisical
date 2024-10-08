@@ -91,7 +91,7 @@ jobs:
 
             # Install RPM build tools
             - name: Install RPM build tools
-              if: matrix.os == 'ubuntu-latest'
+              if: matrix.os == 'linux'
               run: sudo apt-get update && sudo apt-get install -y rpm
 
               # Create .spec file for RPM
