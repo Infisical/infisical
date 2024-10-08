@@ -120,7 +120,13 @@ export const integrationServiceFactory = ({
       secretPath,
       projectId: integrationAuth.projectId
     });
-    return { integration, integrationAuth };
+    return {
+      integration: {
+        ...integration,
+        environment: folder.environment
+      },
+      integrationAuth
+    };
   };
 
   const updateIntegration = async ({
@@ -183,7 +189,10 @@ export const integrationServiceFactory = ({
       projectId: folder.projectId
     });
 
-    return updatedIntegration;
+    return {
+      ...updatedIntegration,
+      environment: folder.environment
+    };
   };
 
   const getIntegration = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
