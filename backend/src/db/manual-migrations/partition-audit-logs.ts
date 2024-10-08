@@ -138,7 +138,7 @@ const up = async (knex: Knex): Promise<void> => {
 };
 
 export const executeMigration = async (url: string) => {
-  console.log("Executing migration to:", url);
+  console.log("Executing migration...");
   const knex = kx({
     client: "pg",
     connection: url
@@ -149,9 +149,7 @@ export const executeMigration = async (url: string) => {
   });
 };
 
-const args = process.argv.slice(2);
-const dbUrl = args[0];
-
+const dbUrl = process.env.AUDIT_LOGS_DB_URL;
 if (!dbUrl) {
   console.error("Please provide a DB connection URL as the first argument.");
   process.exit(1);
