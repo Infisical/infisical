@@ -82,19 +82,12 @@ jobs:
 
             ### RPM
 
-            - name: Set up .rpm package structure
-              if: matrix.os == 'linux'
-              run: |
-                  mkdir -p infisical-core-rpm/usr/local/bin
-                  cp ./binary/infisical-core infisical-core-rpm/usr/local/bin/
-                  chmod +x infisical-core-rpm/usr/local/bin/infisical-core
-
             # Install RPM build tools
             - name: Install RPM build tools
               if: matrix.os == 'linux'
               run: sudo apt-get update && sudo apt-get install -y rpm
 
-              # Create .spec file for RPM
+            # Create .spec file for RPM
             - name: Create .spec file for RPM
               if: matrix.os == 'linux'
               run: |
@@ -117,17 +110,36 @@ jobs:
                   /usr/local/bin/infisical-core
                   EOF
 
-              # Build .rpm file (Red Hat-based systems only)
+            # Build .rpm file (Red Hat-based systems only)
             - name: Build .rpm package
               if: matrix.os == 'linux'
               run: |
-                  rpmbuild -bb \
+                  # Debug: Print current directory contents
+                  echo "Current directory contents:"
+                  ls -R
+
+                  # Run rpmbuild with verbose output
+                  rpmbuild -vv -bb \
                     --define "_topdir $(pwd)/rpmbuild" \
                     --define "_sourcedir $(pwd)" \
                     --define "_rpmdir $(pwd)/binary" \
                     --target ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }} \
                     infisical-core.spec
-                  mv rpmbuild/RPMS/${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}/infisical-core-1.1.2-1.*.${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}.rpm ./binary/infisical-core-${{matrix.arch}}.rpm
+
+                  # Debug: Print rpmbuild directory contents
+                  echo "rpmbuild directory contents:"
+                  ls -R rpmbuild
+
+                  # Try to find the RPM file
+                  find rpmbuild -name "*.rpm"
+
+                  # Move the RPM file if found
+                  if [ -n "$(find rpmbuild -name '*.rpm')" ]; then
+                    mv $(find rpmbuild -name '*.rpm') ./binary/infisical-core-${{matrix.arch}}.rpm
+                  else
+                    echo "RPM file not found!"
+                    exit 1
+                  fi
 
             - uses: actions/setup-python@v4
               with:
