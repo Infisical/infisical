@@ -30,6 +30,24 @@ const up = async (knex: Knex): Promise<void> => {
     t.dropPrimary();
   });
 
+  // Get all indices of the audit log table and drop them
+  const indexNames: { rows: { indexname: string }[] } = await knex.raw(
+    `
+    SELECT indexname
+    FROM pg_indexes
+    WHERE tablename = '${TableName.AuditLog}'
+  `
+  );
+
+  console.log(
+    "Deleting existing audit log indices:",
+    indexNames.rows.map((e) => e.indexname)
+  );
+
+  for await (const row of indexNames.rows) {
+    await knex.raw(`DROP INDEX IF EXISTS ${row.indexname}`);
+  }
+
   // renaming audit log to intermediate table
   console.log("Renaming audit log table to the intermediate name");
   await knex.schema.renameTable(TableName.AuditLog, INTERMEDIATE_AUDIT_LOG_TABLE);
@@ -116,7 +134,6 @@ const up = async (knex: Knex): Promise<void> => {
 
     await Promise.all(partitionPromises);
     console.log("Partition migration complete");
-    process.exit(0);
   }
 };
 
@@ -142,4 +159,5 @@ if (!dbUrl) {
 
 void executeMigration(dbUrl).then(() => {
   console.log("Migration: partition-audit-logs DONE");
+  process.exit(0);
 });
