@@ -26,7 +26,7 @@ type TFindQuery = {
 };
 
 export const auditLogDALFactory = (db: TDbClient) => {
-  const auditLogOrm = ormify(db, TableName.PartitionedAuditLog);
+  const auditLogOrm = ormify(db, TableName.AuditLog);
 
   const find = async (
     {
@@ -55,13 +55,13 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
     try {
       // Find statements
-      const sqlQuery = (tx || db.replicaNode())(TableName.PartitionedAuditLog)
+      const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
         // eslint-disable-next-line func-names
         .where(function () {
           if (orgId) {
-            void this.where(`${TableName.PartitionedAuditLog}.orgId`, orgId);
+            void this.where(`${TableName.AuditLog}.orgId`, orgId);
           } else if (projectId) {
-            void this.where(`${TableName.PartitionedAuditLog}.projectId`, projectId);
+            void this.where(`${TableName.AuditLog}.projectId`, projectId);
           }
         });
 
@@ -71,10 +71,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Select statements
       void sqlQuery
-        .select(selectAllTableCols(TableName.PartitionedAuditLog))
+        .select(selectAllTableCols(TableName.AuditLog))
         .limit(limit)
         .offset(offset)
-        .orderBy(`${TableName.PartitionedAuditLog}.createdAt`, "desc");
+        .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
 
       // Special case: Filter by actor ID
       if (actorId) {
@@ -100,10 +100,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Filter by date range
       if (startDate) {
-        void sqlQuery.where(`${TableName.PartitionedAuditLog}.createdAt`, ">=", startDate);
+        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, ">=", startDate);
       }
       if (endDate) {
-        void sqlQuery.where(`${TableName.PartitionedAuditLog}.createdAt`, "<=", endDate);
+        void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
       }
 
       // we timeout long running queries to prevent DB resource issues (2 minutes)
@@ -135,13 +135,13 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
     do {
       try {
-        const findExpiredLogSubQuery = (tx || db)(TableName.PartitionedAuditLog)
+        const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
           .where("expiresAt", "<", today)
           .select("id")
           .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
 
         // eslint-disable-next-line no-await-in-loop
-        deletedAuditLogIds = await (tx || db)(TableName.PartitionedAuditLog)
+        deletedAuditLogIds = await (tx || db)(TableName.AuditLog)
           .whereIn("id", findExpiredLogSubQuery)
           .del()
           .returning("id");
