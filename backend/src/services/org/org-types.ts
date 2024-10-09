@@ -63,7 +63,13 @@ export type TFindAllWorkspacesDTO = {
 };
 
 export type TUpdateOrgDTO = {
-  data: Partial<{ name: string; slug: string; authEnforced: boolean; scimEnabled: boolean }>;
+  data: Partial<{
+    name: string;
+    slug: string;
+    authEnforced: boolean;
+    scimEnabled: boolean;
+    defaultMembershipRoleSlug: string;
+  }>;
 } & TOrgPermission;
 
 export type TGetOrgGroupsDTO = TOrgPermission;
