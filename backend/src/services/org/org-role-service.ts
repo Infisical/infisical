@@ -139,7 +139,6 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, orgDAL, permissionService }:
         message: "Failed to find organization"
       });
 
-    // prevent deletion of custom role if set as default org membership role
     if (org.defaultMembershipRole === roleId)
       throw new BadRequestError({
         message: "Cannot delete default org membership role. Please re-assign and try again."

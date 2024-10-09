@@ -80,7 +80,8 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        description: "You can assign custom roles to members if you upgrade your Infisical plan."
+        description:
+          "You can set the default org role to a custom value if you upgrade your Infisical plan."
       });
       return;
     }

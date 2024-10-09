@@ -135,7 +135,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
             name="defaultMembershipRole"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
-                helperText="Users joining your org will be assigned this role unless otherwise specified"
+                helperText="Users joining your organization will be assigned this role unless otherwise specified."
                 isError={Boolean(error)}
                 errorText={error?.message}
                 className="max-w-md"

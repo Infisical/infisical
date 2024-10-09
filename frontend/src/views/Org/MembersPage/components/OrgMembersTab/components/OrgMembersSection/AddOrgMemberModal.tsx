@@ -84,7 +84,7 @@ export const AddOrgMemberModal = ({
     resolver: zodResolver(addMemberFormSchema)
   });
 
-  // set  initial form role based off org default role
+  // set initial form role based off org default role
   useEffect(() => {
     if (organizationRoles) {
       reset({
