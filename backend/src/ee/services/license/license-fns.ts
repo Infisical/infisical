@@ -21,7 +21,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretVersioning: true,
   pitRecovery: false,
   ipAllowlisting: false,
-  rbac: true,
+  rbac: false,
   customRateLimits: false,
   customAlerts: false,
   auditLogs: false,
