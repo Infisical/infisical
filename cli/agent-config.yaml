@@ -1,5 +1,6 @@
 infisical:
   address: "https://app.infisical.com/"
+  include-imports: false
 auth:
   type: "universal-auth"
   config:
