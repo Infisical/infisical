@@ -176,12 +176,16 @@ export const UserInfoSSOStep = ({
                 organizationId: orgId
               });
 
-              const project = await ProjectService.initProject({
-                projectName: "Example Project"
-              });
+              // only create example project if not joining existing org
+              if (!providerOrganizationName) {
+                const project = await ProjectService.initProject({
+                  projectName: "Example Project"
+                });
+
+                localStorage.setItem("projectData.id", project.id);
+              }
 
               localStorage.setItem("orgData.id", orgId);
-              localStorage.setItem("projectData.id", project.id);
 
               setStep(2);
             } catch (error) {
