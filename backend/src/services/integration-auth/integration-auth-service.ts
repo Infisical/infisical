@@ -109,7 +109,8 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     integration,
     url,
-    code
+    code,
+    installationId
   }: TOauthExchangeDTO) => {
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
@@ -123,7 +124,7 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    const tokenExchange = await exchangeCode({ integration, code, url });
+    const tokenExchange = await exchangeCode({ integration, code, url, installationId });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       integration,
@@ -141,6 +142,16 @@ export const integrationAuthServiceFactory = ({
       updateDoc.metadata = {
         authMethod: "oauth2"
       };
+    } else if (integration === Integrations.GITHUB && installationId) {
+      updateDoc.metadata = {
+        installationId,
+        installationName: tokenExchange.installationName,
+        authMethod: "app"
+      };
+    }
+
+    if (installationId && integration === Integrations.GITHUB) {
+      return integrationAuthDAL.create(updateDoc);
     }
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);

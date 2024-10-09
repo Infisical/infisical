@@ -96,7 +96,9 @@ export enum IntegrationUrls {
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
   GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com",
-  GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+  GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform",
+
+  GITHUB_USER_INSTALLATIONS = "https://api.github.com/user/installations"
 }
 
 export const getIntegrationOptions = async () => {
@@ -138,6 +140,7 @@ export const getIntegrationOptions = async () => {
       isAvailable: true,
       type: "oauth",
       clientId: appCfg.CLIENT_ID_GITHUB,
+      clientSlug: appCfg.CLIENT_SLUG_GITHUB,
       docsLink: ""
     },
     {

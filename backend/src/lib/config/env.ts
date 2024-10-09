@@ -117,9 +117,14 @@ const envSchema = z
     // gcp secret manager
     CLIENT_ID_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
     CLIENT_SECRET_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
-    // github
+    // github oauth
     CLIENT_ID_GITHUB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITHUB: zpStr(z.string().optional()),
+    CLIENT_SLUG_GITHUB: zpStr(z.string().optional()),
+    // github app
+    CLIENT_ID_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITHUB_APP: zpStr(z.string().optional()),
+
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),

@@ -9,6 +9,9 @@ export type IntegrationAuth = {
   keyEncoding: string;
   url?: string;
   teamId?: string;
+  metadata: {
+    installationName?: string;
+  };
 };
 
 export type App = {

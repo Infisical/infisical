@@ -8,18 +8,23 @@ export default function GitHubOAuth2CallbackPage() {
   const router = useRouter();
   const { mutateAsync } = useAuthorizeIntegration();
 
-  const { code, state } = queryString.parse(router.asPath.split("?")[1]);
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  const { code, state, installation_id } = queryString.parse(router.asPath.split("?")[1]);
 
   useEffect(() => {
     (async () => {
       try {
         // validate state
-        if (state !== localStorage.getItem("latestCSRFToken")) return;
+        if (state !== localStorage.getItem("latestCSRFToken")) {
+          return;
+        }
+
         localStorage.removeItem("latestCSRFToken");
 
         const integrationAuth = await mutateAsync({
           workspaceId: localStorage.getItem("projectData.id") as string,
           code: code as string,
+          installationId: installation_id as string,
           integration: "github"
         });
 
