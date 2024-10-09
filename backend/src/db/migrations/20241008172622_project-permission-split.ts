@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { unpackRules } from "@casl/ability/extra";
+import { packRules, unpackRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
 import {

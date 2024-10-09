@@ -38,7 +38,7 @@ import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
-import { SecretListView } from "./components/SecretListView";
+import { SecretListView, SecretNoAccessListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
 import { StoreProvider } from "./SecretMainPage.store";
 import { Filter, RowType } from "./SecretMainPage.types";
@@ -315,7 +315,6 @@ export const SecretMainPage = () => {
     setFilter(defaultFilterState);
     setDebouncedSearchFilter("");
   };
-
   return (
     <StoreProvider>
       <div className="container mx-auto flex flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -416,6 +415,17 @@ export const SecretMainPage = () => {
                     workspaceId={workspaceId}
                     secretPath={secretPath}
                     isProtectedBranch={isProtectedBranch}
+                  />
+                )}
+                {canReadSecret && (
+                  <SecretNoAccessListView
+                    count={Math.max(
+                      (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                        (folders?.length || 0) -
+                        (secrets?.length || 0) -
+                        (dynamicSecrets?.length || 0),
+                      0
+                    )}
                   />
                 )}
                 {!canReadSecret &&

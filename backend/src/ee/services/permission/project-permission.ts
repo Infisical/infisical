@@ -764,7 +764,7 @@ export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof Projec
 
   const secretFolderPolicies = secretSubjects.map(({ subject, ...el }) => ({
     ...el,
-    subject: ProjectPermissionSub.DynamicSecrets
+    subject: ProjectPermissionSub.SecretFolders
   }));
 
   const dynamicSecretPolicies = secretSubjects.map(({ subject, ...el }) => ({
