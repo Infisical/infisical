@@ -9,6 +9,7 @@
 
 import {
   CreateSecretCommand,
+  DeleteSecretCommand,
   DescribeSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
@@ -899,12 +900,21 @@ const syncSecretsAWSSecretManager = async ({
       }
 
       if (!isEqual(secretToCompare, secretValue)) {
-        await secretsManager.send(
-          new UpdateSecretCommand({
-            SecretId: secretId,
-            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
-          })
-        );
+        if (secretValue) {
+          await secretsManager.send(
+            new UpdateSecretCommand({
+              SecretId: secretId,
+              SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
+            })
+          );
+          // delete it
+        } else {
+          await secretsManager.send(
+            new DeleteSecretCommand({
+              SecretId: secretId
+            })
+          );
+        }
       }
 
       const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
@@ -989,16 +999,21 @@ const syncSecretsAWSSecretManager = async ({
     } catch (err) {
       // case 1: when AWS manager can't find the specified secret
       if (err instanceof ResourceNotFoundException && secretsManager) {
-        await secretsManager.send(
-          new CreateSecretCommand({
-            Name: secretId,
-            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
-            ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
-            Tags: metadata.secretAWSTag
-              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
-              : []
-          })
-        );
+        if (secretValue) {
+          await secretsManager.send(
+            new CreateSecretCommand({
+              Name: secretId,
+              SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
+              ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
+              Tags: metadata.secretAWSTag
+                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                    Key: tag.key,
+                    Value: tag.value
+                  }))
+                : []
+            })
+          );
+        }
         // case 2: something unexpected went wrong, so we'll throw the error to reflect the error in the integration sync status
       } else {
         throw err;
