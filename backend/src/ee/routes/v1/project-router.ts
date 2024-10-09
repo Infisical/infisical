@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PartitionedAuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
+import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
@@ -120,7 +120,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          auditLogs: PartitionedAuditLogsSchema.omit({
+          auditLogs: AuditLogsSchema.omit({
             eventMetadata: true,
             eventType: true,
             actor: true,

@@ -887,4 +887,5 @@ export type AuditLog = {
   createdAt: string;
   updatedAt: string;
   projectName?: string;
+  projectId?: string;
 };

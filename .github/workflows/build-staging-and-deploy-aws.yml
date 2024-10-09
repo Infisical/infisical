@@ -127,6 +127,7 @@ jobs:
       - name: Change directory to backend and install dependencies
         env:
           DB_CONNECTION_URI: ${{ secrets.DB_CONNECTION_URI }}
+          AUDIT_LOGS_DB_CONNECTION_URI: ${{ secrets.AUDIT_LOGS_DB_CONNECTION_URI }}
         run: |
           cd backend
           npm install

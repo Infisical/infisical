@@ -52,7 +52,13 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          integration: IntegrationsSchema
+          integration: IntegrationsSchema.extend({
+            environment: z.object({
+              slug: z.string().trim(),
+              name: z.string().trim(),
+              id: z.string().trim()
+            })
+          })
         })
       }
     },
@@ -138,7 +144,13 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          integration: IntegrationsSchema
+          integration: IntegrationsSchema.extend({
+            environment: z.object({
+              slug: z.string().trim(),
+              name: z.string().trim(),
+              id: z.string().trim()
+            })
+          })
         })
       }
     },

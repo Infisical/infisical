@@ -805,7 +805,7 @@ export const SecretOverviewPage = () => {
           resetSelectedEntries={resetSelectedEntries}
         />
         <div className="thin-scrollbar mt-4" ref={parentTableRef}>
-          <TableContainer>
+          <TableContainer className="rounded-b-none">
             <Table>
               <THead>
                 <Tr className="sticky top-0 z-20 border-0">
@@ -1003,24 +1003,24 @@ export const SecretOverviewPage = () => {
                 </Tr>
               </TFoot>
             </Table>
-            {!isOverviewLoading && totalCount > 0 && (
-              <Pagination
-                startAdornment={
-                  <SecretTableResourceCount
-                    dynamicSecretCount={totalDynamicSecretCount}
-                    secretCount={totalSecretCount}
-                    folderCount={totalFolderCount}
-                  />
-                }
-                className="border-t border-solid border-t-mineshaft-600"
-                count={totalCount}
-                page={page}
-                perPage={perPage}
-                onChangePage={(newPage) => setPage(newPage)}
-                onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-              />
-            )}
           </TableContainer>
+          {!isOverviewLoading && totalCount > 0 && (
+            <Pagination
+              startAdornment={
+                <SecretTableResourceCount
+                  dynamicSecretCount={totalDynamicSecretCount}
+                  secretCount={totalSecretCount}
+                  folderCount={totalFolderCount}
+                />
+              }
+              className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={(newPage) => setPage(newPage)}
+              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+            />
+          )}
         </div>
       </div>
       <CreateSecretForm
