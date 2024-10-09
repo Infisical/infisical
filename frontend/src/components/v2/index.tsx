@@ -18,6 +18,7 @@ export * from "./IconButton";
 export * from "./Input";
 export * from "./Menu";
 export * from "./Modal";
+export * from "./MultiSelect";
 export * from "./NoticeBanner";
 export * from "./Pagination";
 export * from "./Popoverv2";

@@ -108,7 +108,9 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
-        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
+        .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
+        .orderBy("firstName")
+        .orderBy("lastName");
 
       return members.map(({ email, isEmailVerified, username, firstName, lastName, userId, publicKey, ...data }) => ({
         ...data,
