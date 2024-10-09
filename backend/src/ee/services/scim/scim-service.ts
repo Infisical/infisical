@@ -16,7 +16,7 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipFn } from "@app/services/org/org-fns";
-import { getDefaultOrgMembershipRoleDto } from "@app/services/org/org-role-fns";
+import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -319,7 +319,7 @@ export const scimServiceFactory = ({
         );
 
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRoleDto(org.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
 
           orgMembership = await orgMembershipDAL.create(
             {
@@ -395,7 +395,7 @@ export const scimServiceFactory = ({
         orgMembership = foundOrgMembership;
 
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRoleDto(org.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
 
           orgMembership = await orgMembershipDAL.create(
             {

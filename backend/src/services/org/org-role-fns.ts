@@ -38,7 +38,7 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
 };
 
 // this is only for creating an org membership
-export const getDefaultOrgMembershipRoleDto = async (
+export const getDefaultOrgMembershipRole = async (
   defaultOrgMembershipRole: string // can either be ID or reserved slug
 ) => {
   const isCustomRole = !RESERVED_ORG_ROLE_SLUGS.includes(defaultOrgMembershipRole as OrgMembershipRole);

@@ -25,7 +25,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { getDefaultOrgMembershipRoleDto } from "@app/services/org/org-role-fns";
+import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -369,7 +369,7 @@ export const samlConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRoleDto(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(
             {
@@ -475,7 +475,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRoleDto(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(
             {

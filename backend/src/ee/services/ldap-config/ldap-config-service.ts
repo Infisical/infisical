@@ -21,7 +21,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { getDefaultOrgMembershipRoleDto } from "@app/services/org/org-role-fns";
+import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -438,7 +438,7 @@ export const ldapConfigServiceFactory = ({
           { tx }
         );
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRoleDto(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgDAL.createMembership(
             {
@@ -526,7 +526,7 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRoleDto(organization.defaultMembershipRole);
+          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(
             {
