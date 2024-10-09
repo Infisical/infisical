@@ -9,6 +9,7 @@ const (
 	INFISICAL_TOKEN_NAME                       = "INFISICAL_TOKEN"
 	INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME = "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN"
 	INFISICAL_VAULT_FILE_PASSPHRASE_ENV_NAME   = "INFISICAL_VAULT_FILE_PASSPHRASE" // This works because we've forked the keyring package and added support for this env variable. This explains why you won't find any occurrences of it in the CLI codebase.
+	INFISICAL_PROJECT_ID_NAME                  = "INFISICAL_PROJECT_ID"
 
 	VAULT_BACKEND_AUTO_MODE = "auto"
 	VAULT_BACKEND_FILE_MODE = "file"
