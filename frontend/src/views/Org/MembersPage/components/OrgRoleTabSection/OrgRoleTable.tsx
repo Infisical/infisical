@@ -145,7 +145,9 @@ export const OrgRoleTable = () => {
                     <div className="flex">
                       <p className="overflow-hidden text-ellipsis whitespace-nowrap">{name}</p>
                       {isDefaultOrgRole && (
-                        <Tooltip content="Members joining your organization will be assigned this role unless otherwise specified">
+                        <Tooltip
+                          content={`Members joining your organization will be assigned the ${name} role unless otherwise specified.`}
+                        >
                           <div>
                             <Badge variant="success" className="ml-1">
                               Default
