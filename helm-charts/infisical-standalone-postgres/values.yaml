@@ -49,6 +49,8 @@ infisical:
 
   # -- Node affinity settings for pod placement
   affinity: {}
+  # -- Tolerations definitions
+  tolerations: []
   # -- Kubernetes Secret reference containing Infisical root credentials
   kubeSecretRef: "infisical-secrets"
 
