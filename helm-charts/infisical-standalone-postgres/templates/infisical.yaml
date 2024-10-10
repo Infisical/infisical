@@ -55,6 +55,13 @@ spec:
         ports: 
         - containerPort: 8080
         env:
+        {{- if .Values.postgresql.useExistingPostgres.enabled }}
+        - name: DB_CONNECTION_URI
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.useExistingPostgres.existingUriSecret.name }}
+              key: {{ .Values.postgresql.useExistingPostgres.existingUriSecret.key }}
+        {{- end }}
         {{- if .Values.postgresql.enabled }}
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
