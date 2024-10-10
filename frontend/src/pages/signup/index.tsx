@@ -110,6 +110,7 @@ export default function SignUp() {
           email={email}
           incrementStep={incrementStep}
           setCode={setCode}
+          code={code}
           codeError={codeError}
           isCodeInputCheckLoading={isCodeInputCheckLoading}
         />
