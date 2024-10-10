@@ -189,6 +189,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         workspaceId: z.string().trim(),
         code: z.string().trim(),
         integration: z.string().trim(),
+        installationId: z.string().trim().optional(),
         url: z.string().trim().url().optional()
       }),
       response: {

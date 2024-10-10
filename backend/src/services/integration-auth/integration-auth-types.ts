@@ -9,6 +9,7 @@ export type TOauthExchangeDTO = {
   integration: string;
   code: string;
   url?: string;
+  installationId?: string;
 } & TProjectPermission;
 
 export type TSaveIntegrationAccessTokenDTO = {
