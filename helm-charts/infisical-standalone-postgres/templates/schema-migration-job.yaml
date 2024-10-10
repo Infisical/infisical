@@ -16,6 +16,7 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
+      serviceAccountName: {{ .Values.infisical.databaseSchemaMigrationJob.serviceAccountName | default "default" }}
     {{- if $infisicalValues.image.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
@@ -26,6 +27,13 @@ spec:
           image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
           command: ["npm", "run", "migration:latest"]
           env:
+          {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
+          - name: DB_CONNECTION_URI
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name }}
+                key: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key }}
+          {{- end }}
           {{- if .Values.postgresql.enabled }}
           - name: DB_CONNECTION_URI
             value: {{ include "infisical.postgresDBConnectionString" . }}

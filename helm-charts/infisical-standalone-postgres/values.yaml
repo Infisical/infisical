@@ -5,6 +5,10 @@ infisical:
   enabled: true
   name: infisical
   autoDatabaseSchemaMigration: true
+  databaseSchemaMigrationJob:
+    serviceAccountNamespace: default
+    serviceAccountName: default
+       
   fullnameOverride: ""
   podAnnotations: {}
   deploymentAnnotations: {}
@@ -18,6 +22,7 @@ infisical:
 
   affinity: {}
   kubeSecretRef: "infisical-secrets"
+
   service:
     annotations: {}
     type: ClusterIP
@@ -43,6 +48,7 @@ ingress:
     #     - some.domain.com
 
 postgresql:
+  # -- When enabled, this will start up a in cluster Postgres
   enabled: true
   name: "postgresql"
   fullnameOverride: "postgresql"
@@ -50,6 +56,15 @@ postgresql:
     username: infisical
     password: root
     database: infisicalDB
+  useExistingPostgresSecret:
+    # -- When this is enabled, postgresql.enabled needs to be false
+    enabled: false
+    # -- The name from where to get the existing postgresql connection string
+    existingConnectionStringSecret:
+      # -- The name of the secret that contains the postgres connection string
+      name: ""
+      # -- Secret key name that contains the postgres connection string
+      key: ""
 
 redis:
   enabled: true
