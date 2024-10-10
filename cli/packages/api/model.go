@@ -569,12 +569,12 @@ type CreateDynamicSecretLeaseV1Response struct {
 }
 
 type GetRawSecretsV3Request struct {
-	Environment   string `json:"environment"`
-	WorkspaceId   string `json:"workspaceId"`
-	SecretPath    string `json:"secretPath"`
-	IncludeImport bool   `json:"include_imports"`
-	Recursive     bool   `json:"recursive"`
-	TagSlugs      string `json:"tagSlugs,omitempty"`
+	Environment   string   `json:"environment"`
+	WorkspaceId   string   `json:"workspaceId"`
+	SecretPath    string   `json:"secretPath"`
+	IncludeImport bool     `json:"include_imports"`
+	Recursive     bool     `json:"recursive"`
+	TagSlugs      []string `json:"tagSlugs,omitempty"`
 }
 
 type GetRawSecretsV3Response struct {
