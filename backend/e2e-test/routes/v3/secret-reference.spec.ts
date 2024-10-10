@@ -56,7 +56,10 @@ describe("Secret expansion", () => {
       }
     ];
 
-    await Promise.all(secrets.map((el) => createSecretV2(el)));
+    for (const secret of secrets) {
+      // eslint-disable-next-line no-await-in-loop
+      await createSecretV2(secret);
+    }
 
     const expandedSecret = await getSecretByNameV2({
       environmentSlug: seedData1.environment.slug,
@@ -123,7 +126,10 @@ describe("Secret expansion", () => {
       }
     ];
 
-    await Promise.all(secrets.map((el) => createSecretV2(el)));
+    for (const secret of secrets) {
+      // eslint-disable-next-line no-await-in-loop
+      await createSecretV2(secret);
+    }
 
     const expandedSecret = await getSecretByNameV2({
       environmentSlug: seedData1.environment.slug,
@@ -190,7 +196,11 @@ describe("Secret expansion", () => {
       }
     ];
 
-    await Promise.all(secrets.map((el) => createSecretV2(el)));
+    for (const secret of secrets) {
+      // eslint-disable-next-line no-await-in-loop
+      await createSecretV2(secret);
+    }
+
     const secretImportFromProdToDev = await createSecretImport({
       environmentSlug: seedData1.environment.slug,
       workspaceId: projectId,
@@ -275,7 +285,11 @@ describe("Secret expansion", () => {
         }
       ];
 
-      await Promise.all(secrets.map((el) => createSecretV2(el)));
+      for (const secret of secrets) {
+        // eslint-disable-next-line no-await-in-loop
+        await createSecretV2(secret);
+      }
+
       const secretImportFromProdToDev = await createSecretImport({
         environmentSlug: seedData1.environment.slug,
         workspaceId: projectId,

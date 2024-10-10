@@ -15,6 +15,12 @@ type TPartialSecret = Pick<TSecretsV2, "id" | "reminderRepeatDays" | "reminderNo
 
 type TPartialInputSecret = Pick<TSecretsV2, "type" | "reminderNote" | "reminderRepeatDays" | "id">;
 
+export type TSecretReferenceDTO = {
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TGetSecretsDTO = {
   expandSecretReferences?: boolean;
   path: string;

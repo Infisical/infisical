@@ -303,7 +303,7 @@ export const SecretOverviewPage = () => {
       if (
         permission.can(
           ProjectPermissionActions.Edit,
-          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+          subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
         const folder = getFolderByNameAndEnv(oldFolderName, env.slug);
@@ -506,20 +506,13 @@ export const SecretOverviewPage = () => {
       const pathSegment = secretPath.split("/").filter(Boolean);
       const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
       const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.rules.some((rule) =>
-        (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
-      )
-        ? permission.can(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.SecretFolders, {
-              environment: slug,
-              secretPath: parentPath
-            })
-          )
-        : permission.can(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath: parentPath })
-          );
+      const canCreateFolder = permission.can(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, {
+          environment: slug,
+          secretPath: parentPath
+        })
+      );
       if (folderName && parentPath && canCreateFolder) {
         await createFolder({
           projectId: workspaceId,
@@ -771,7 +764,7 @@ export const SecretOverviewPage = () => {
                       <div className="flex flex-col space-y-1 p-1.5">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Create}
-                          a={subject(ProjectPermissionSub.Secrets, { secretPath })}
+                          a={ProjectPermissionSub.SecretFolders}
                         >
                           {(isAllowed) => (
                             <Button

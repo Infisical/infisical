@@ -95,7 +95,7 @@ export const secretSnapshotServiceFactory = ({
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -127,7 +127,7 @@ export const secretSnapshotServiceFactory = ({
     // We need to check if the user has access to the secrets in the folder. If we don't do this, a user could theoretically access snapshot secret values even if they don't have read access to the secrets in the folder.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -214,7 +214,9 @@ export const secretSnapshotServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment: snapshotDetails.environment.slug,
-        secretPath: fullFolderPath
+        secretPath: fullFolderPath,
+        secretName: "",
+        secretTags: []
       })
     );
 

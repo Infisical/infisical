@@ -1,9 +1,8 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { TableName } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 
 import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
 
@@ -23,6 +22,14 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt"
 }
 
+export enum ProjectPermissionDynamicSecretActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Lease = "lease"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -38,6 +45,8 @@ export enum ProjectPermissionSub {
   Project = "workspace",
   Secrets = "secrets",
   SecretFolders = "secret-folders",
+  SecretImports = "secret-imports",
+  DynamicSecrets = "dynamic-secrets",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
@@ -54,22 +63,21 @@ export enum ProjectPermissionSub {
 export type SecretSubjectFields = {
   environment: string;
   secretPath: string;
-  // secretName: string;
-  // secretTags: string[];
-};
-
-export const CaslSecretsV2SubjectKnexMapper = (field: string) => {
-  switch (field) {
-    case "secretName":
-      return `${TableName.SecretV2}.key`;
-    case "secretTags":
-      return `${TableName.SecretTag}.slug`;
-    default:
-      break;
-  }
+  secretName: string;
+  secretTags: string[];
 };
 
 export type SecretFolderSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type DynamicSecretSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type SecretImportSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -84,6 +92,20 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.SecretFolders
         | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionDynamicSecretActions,
+      (
+        | ProjectPermissionSub.DynamicSecrets
+        | (ForcedSubject<ProjectPermissionSub.DynamicSecrets> & DynamicSecretSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretImports
+        | (ForcedSubject<ProjectPermissionSub.SecretImports> & SecretImportSubjectFields)
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
@@ -120,7 +142,9 @@ const CASL_ACTION_SCHEMA_NATIVE_ENUM = <ACTION extends z.EnumLike>(actions: ACTI
 const CASL_ACTION_SCHEMA_ENUM = <ACTION extends z.EnumValues>(actions: ACTION) =>
   z.union([z.enum(actions), z.enum(actions).array().min(1)]).transform((el) => (typeof el === "string" ? [el] : el));
 
-const SecretConditionSchema = z
+// akhilmhdh: don't mondify this for v2
+// if you want to update create a new schema
+const SecretConditionV1Schema = z
   .object({
     environment: z.union([
       z.string(),
@@ -146,16 +170,50 @@ const SecretConditionSchema = z
   })
   .partial();
 
-export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: SecretConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
+const SecretConditionV2Schema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretTags: z
+      .object({
+        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+      })
+      .partial()
+  })
+  .partial();
+
+const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
@@ -259,12 +317,6 @@ export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
-    subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to. "),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -287,19 +339,79 @@ export const ProjectPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit]).describe(
       "Describe what action an entity can take."
     )
+  })
+];
+
+export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read]).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Cmek).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
       "Describe what action an entity can take."
     )
-  })
+  }),
+  ...GeneralPermissionSchema
+]);
+
+export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV2Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretImports).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.DynamicSecrets).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionDynamicSecretActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  ...GeneralPermissionSchema
 ]);
 
 const buildAdminPermissionRules = () => {
@@ -308,6 +420,8 @@ const buildAdminPermissionRules = () => {
   // Admins get full access to everything
   [
     ProjectPermissionSub.Secrets,
+    ProjectPermissionSub.SecretFolders,
+    ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.SecretApproval,
     ProjectPermissionSub.SecretRotation,
     ProjectPermissionSub.Member,
@@ -339,6 +453,17 @@ const buildAdminPermissionRules = () => {
     );
   });
 
+  can(
+    [
+      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.Edit,
+      ProjectPermissionDynamicSecretActions.Create,
+      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.Lease
+    ],
+    ProjectPermissionSub.DynamicSecrets
+  );
+
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
   can([ProjectPermissionActions.Edit], ProjectPermissionSub.Kms);
@@ -369,6 +494,34 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionActions.Delete
     ],
     ProjectPermissionSub.Secrets
+  );
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretFolders
+  );
+  can(
+    [
+      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.Edit,
+      ProjectPermissionDynamicSecretActions.Create,
+      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.Lease
+    ],
+    ProjectPermissionSub.DynamicSecrets
+  );
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretImports
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretApproval);
@@ -493,6 +646,9 @@ const buildViewerPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
+  can(ProjectPermissionDynamicSecretActions.Read, ProjectPermissionSub.DynamicSecrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
@@ -595,17 +751,35 @@ export const isAtLeastAsPrivilegedWorkspace = (
 };
 /* eslint-enable */
 
-export const SecretV2SubjectFieldMapper = (arg: string) => {
-  switch (arg) {
-    case "environment":
-      return null;
-    case "secretPath":
-      return null;
-    case "secretName":
-      return `${TableName.SecretV2}.key`;
-    case "secretTags":
-      return `${TableName.SecretTag}.slug`;
-    default:
-      throw new BadRequestError({ message: `Invalid dynamic knex operator field: ${arg}` });
-  }
+export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof ProjectPermissionV1Schema>[]) => {
+  const formattedData = UnpackedPermissionSchema.array().parse(data);
+  const secretSubjects = formattedData.filter((el) => el.subject === ProjectPermissionSub.Secrets);
+
+  // this means the folder permission as readonly is set
+  const hasReadOnlyFolder = formattedData.filter((el) => el.subject === ProjectPermissionSub.SecretFolders);
+  const secretImportPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    ...el,
+    subject: ProjectPermissionSub.SecretImports as const
+  }));
+
+  const secretFolderPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    ...el,
+    subject: ProjectPermissionSub.SecretFolders
+  }));
+
+  const dynamicSecretPolicies = secretSubjects.map(({ subject, ...el }) => ({
+    ...el,
+    action: el.action.includes(ProjectPermissionActions.Edit)
+      ? [...el.action, ProjectPermissionDynamicSecretActions.Lease]
+      : el.action,
+    subject: ProjectPermissionSub.DynamicSecrets
+  }));
+
+  return formattedData.concat(
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore-error this is valid ts
+    secretImportPolicies,
+    dynamicSecretPolicies,
+    hasReadOnlyFolder.length ? [] : secretFolderPolicies
+  );
 };
