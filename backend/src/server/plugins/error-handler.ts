@@ -97,7 +97,11 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message
       });
     } else {
-      void res.send(error);
+      void res.status(HttpStatusCodes.InternalServerError).send({
+        statusCode: HttpStatusCodes.InternalServerError,
+        error: "InternalServerError",
+        message: "Something went wrong"
+      });
     }
   });
 });

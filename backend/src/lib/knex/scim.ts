@@ -8,12 +8,14 @@ const appendParentToGroupingOperator = (parentPath: string, filter: Filter) => {
   return filter;
 };
 
-export const generateKnexQueryFromScim = (
+const processDynamicQuery = (
   rootQuery: Knex.QueryBuilder,
-  rootScimFilter: string,
-  getAttributeField: (attr: string) => string | null
+  scimRootFilterAst: Filter,
+  getAttributeField: (attr: string) => string | null,
+  depth = 0
 ) => {
-  const scimRootFilterAst = parse(rootScimFilter);
+  if (depth > 20) return;
+
   const stack = [
     {
       scimFilterAst: scimRootFilterAst,
@@ -75,42 +77,35 @@ export const generateKnexQueryFromScim = (
         break;
       }
       case "and": {
-        void query.andWhere((subQueryBuilder) => {
-          scimFilterAst.filters.forEach((el) => {
-            stack.push({
-              query: subQueryBuilder,
-              scimFilterAst: el
-            });
+        scimFilterAst.filters.forEach((el) => {
+          void query.andWhere((subQueryBuilder) => {
+            processDynamicQuery(subQueryBuilder, el, getAttributeField, depth + 1);
           });
         });
         break;
       }
       case "or": {
-        void query.orWhere((subQueryBuilder) => {
-          scimFilterAst.filters.forEach((el) => {
-            stack.push({
-              query: subQueryBuilder,
-              scimFilterAst: el
-            });
+        scimFilterAst.filters.forEach((el) => {
+          void query.orWhere((subQueryBuilder) => {
+            processDynamicQuery(subQueryBuilder, el, getAttributeField, depth + 1);
           });
         });
         break;
       }
       case "not": {
         void query.whereNot((subQueryBuilder) => {
-          stack.push({
-            query: subQueryBuilder,
-            scimFilterAst: scimFilterAst.filter
-          });
+          processDynamicQuery(subQueryBuilder, scimFilterAst.filter, getAttributeField, depth + 1);
         });
         break;
       }
       case "[]": {
-        void query.whereNot((subQueryBuilder) => {
-          stack.push({
-            query: subQueryBuilder,
-            scimFilterAst: appendParentToGroupingOperator(scimFilterAst.attrPath, scimFilterAst.valFilter)
-          });
+        void query.where((subQueryBuilder) => {
+          processDynamicQuery(
+            subQueryBuilder,
+            appendParentToGroupingOperator(scimFilterAst.attrPath, scimFilterAst.valFilter),
+            getAttributeField,
+            depth + 1
+          );
         });
         break;
       }
@@ -118,4 +113,13 @@ export const generateKnexQueryFromScim = (
         break;
     }
   }
+};
+
+export const generateKnexQueryFromScim = (
+  rootQuery: Knex.QueryBuilder,
+  rootScimFilter: string,
+  getAttributeField: (attr: string) => string | null
+) => {
+  const scimRootFilterAst = parse(rootScimFilter);
+  return processDynamicQuery(rootQuery, scimRootFilterAst, getAttributeField);
 };
