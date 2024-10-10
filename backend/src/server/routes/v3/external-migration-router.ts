@@ -4,9 +4,12 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const MB25_IN_BYTES = 26214400;
+
 export const registerExternalMigrationRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
+    bodyLimit: MB25_IN_BYTES,
     url: "/env-key",
     config: {
       rateLimit: readLimit
