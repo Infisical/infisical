@@ -18,7 +18,7 @@ export type InfisicalImportData = {
       name: string;
       id: string;
       environmentId: string;
-      value: string;
+      value?: string;
     }
   >;
 };
