@@ -14,7 +14,7 @@ const processDynamicQuery = (
   getAttributeField: (attr: string) => string | null,
   depth = 0
 ) => {
-  if (depth > 10) return;
+  if (depth > 20) return;
 
   const stack = [
     {
