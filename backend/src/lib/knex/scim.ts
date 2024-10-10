@@ -11,8 +11,11 @@ const appendParentToGroupingOperator = (parentPath: string, filter: Filter) => {
 const processDynamicQuery = (
   rootQuery: Knex.QueryBuilder,
   scimRootFilterAst: Filter,
-  getAttributeField: (attr: string) => string | null
+  getAttributeField: (attr: string) => string | null,
+  depth = 0
 ) => {
+  if (depth > 10) return;
+
   const stack = [
     {
       scimFilterAst: scimRootFilterAst,
@@ -76,7 +79,7 @@ const processDynamicQuery = (
       case "and": {
         scimFilterAst.filters.forEach((el) => {
           void query.andWhere((subQueryBuilder) => {
-            processDynamicQuery(subQueryBuilder, el, getAttributeField);
+            processDynamicQuery(subQueryBuilder, el, getAttributeField, depth + 1);
           });
         });
         break;
@@ -84,14 +87,14 @@ const processDynamicQuery = (
       case "or": {
         scimFilterAst.filters.forEach((el) => {
           void query.orWhere((subQueryBuilder) => {
-            processDynamicQuery(subQueryBuilder, el, getAttributeField);
+            processDynamicQuery(subQueryBuilder, el, getAttributeField, depth + 1);
           });
         });
         break;
       }
       case "not": {
         void query.whereNot((subQueryBuilder) => {
-          processDynamicQuery(subQueryBuilder, scimFilterAst.filter, getAttributeField);
+          processDynamicQuery(subQueryBuilder, scimFilterAst.filter, getAttributeField, depth + 1);
         });
         break;
       }
@@ -100,7 +103,8 @@ const processDynamicQuery = (
           processDynamicQuery(
             subQueryBuilder,
             appendParentToGroupingOperator(scimFilterAst.attrPath, scimFilterAst.valFilter),
-            getAttributeField
+            getAttributeField,
+            depth + 1
           );
         });
         break;
