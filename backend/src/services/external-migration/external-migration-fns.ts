@@ -187,7 +187,7 @@ export const importDataIntoInfisicalFn = async ({
         secretPath: "/",
         secretName: secret.name,
         type: SecretType.Shared,
-        secretValue: secret.value
+        secretValue: secret.value || ""
       });
       if (!newSecret) {
         throw new BadRequestError({ message: `Failed to import secret: [name:${secret.name}] [id:${id}]` });
