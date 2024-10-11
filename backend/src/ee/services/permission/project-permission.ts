@@ -317,6 +317,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.CertificateTemplates).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
