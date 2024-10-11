@@ -43,7 +43,11 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
   });
 
   return (
-    <div className="mt-6 border-t  border-t-gray-800 bg-mineshaft-800  pt-2">
+    <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
+      <p className="mt-2 text-gray-300">Conditions</p>
+      <p className="mb-2 text-sm text-mineshaft-400">
+        When this policy should apply (always if no conditions are added).
+      </p>
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
           const condition = watch(`permissions.secrets.${position}.conditions.${index}`) as {
@@ -163,7 +167,7 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
             })
           }
         >
-          New Condition
+          Add Condition
         </Button>
       </div>
     </div>

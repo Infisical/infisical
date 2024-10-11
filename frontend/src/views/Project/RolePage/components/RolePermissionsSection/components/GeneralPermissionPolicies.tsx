@@ -73,6 +73,44 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
         <div key={`select-${subject}-type`} className="flex flex-col space-y-4 bg-bunker-800 p-6">
           {items.fields.map((el, rootIndex) => (
             <div key={el.id} className="bg-mineshaft-800 p-5 first:rounded-t-md last:rounded-b-md">
+              {isConditionalSubjects(subject) && (
+                <div className="mt-4 mb-6 flex w-full items-center text-gray-300">
+                  <div className="w-1/4">Permission</div>
+                  <div className="mr-4 w-1/4">
+                    <Controller
+                      defaultValue={false as any}
+                      name={`permissions.${subject}.${rootIndex}.inverted`}
+                      render={({ field }) => (
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(val) => field.onChange(val === "true")}
+                          containerClassName="w-full"
+                          className="w-full"
+                        >
+                          <SelectItem value="false">Allow</SelectItem>
+                          <SelectItem value="true">Forbid</SelectItem>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <Tooltip
+                      asChild
+                      content={
+                        <>
+                          <p>
+                            Whether to allow or forbid the selected actions when the following
+                            conditions (if any) are met.
+                          </p>
+                          <p className="mt-2">Forbid rules must come after allow rules.</p>
+                        </>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-gray-400" />
+                    </Tooltip>
+                  </div>
+                </div>
+              )}
               <div className="flex text-gray-300">
                 <div className="w-1/4">Actions</div>
                 <div className="flex flex-grow flex-wrap justify-start gap-8">
@@ -101,36 +139,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   })}
                 </div>
               </div>
-              {isConditionalSubjects(subject) && (
-                <div className="mt-4 flex w-full items-center text-gray-300">
-                  <div className="w-1/4">Effect</div>
-                  <div className="mr-4 w-1/4">
-                    <Controller
-                      defaultValue={false as any}
-                      name={`permissions.${subject}.${rootIndex}.inverted`}
-                      render={({ field }) => (
-                        <Select
-                          value={String(field.value)}
-                          onValueChange={(val) => field.onChange(val === "true")}
-                          containerClassName="w-full"
-                          className="w-full"
-                        >
-                          <SelectItem value="false">Allow</SelectItem>
-                          <SelectItem value="true">Disallow</SelectItem>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <Tooltip
-                      asChild
-                      content="Whether to allow or forbid. Forbid rules must be added after allow rules."
-                    >
-                      <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-gray-400" />
-                    </Tooltip>
-                  </div>
-                </div>
-              )}
               {children &&
                 cloneElement(children, {
                   position: rootIndex
