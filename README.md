@@ -137,7 +137,7 @@ This repo available under the [MIT expat license](https://github.com/Infisical/i
 
 If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo):
 
-<a href="[https://infisical.cal.com/vlad/infisical-demo](https://infisical.cal.com/vlad/infisical-demo)"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
+<a href="https://infisical.cal.com/vlad/infisical-demo"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
 
 ## Security
 
