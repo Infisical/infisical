@@ -587,6 +587,7 @@ type GetRawSecretsV3Response struct {
 		SecretKey     string `json:"secretKey"`
 		SecretValue   string `json:"secretValue"`
 		SecretComment string `json:"secretComment"`
+		SecretPath    string `json:"secretPath"`
 	} `json:"secrets"`
 	Imports []ImportedRawSecretV3 `json:"imports"`
 	ETag    string
@@ -610,6 +611,7 @@ type GetRawSecretV3ByNameResponse struct {
 		SecretKey     string `json:"secretKey"`
 		SecretValue   string `json:"secretValue"`
 		SecretComment string `json:"secretComment"`
+		SecretPath    string `json:"secretPath"`
 	} `json:"secret"`
 	ETag string
 }

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -311,9 +312,22 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 	return config, nil
 }
 
-func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
-	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, false, "")
+type secretArguments struct {
+	IsRecursive bool `json:"recursive"`
+}
+
+func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string, ...string) ([]models.SingleEnvironmentVariable, error) {
+	return func(projectID, envSlug, secretPath string, args ...string) ([]models.SingleEnvironmentVariable, error) {
+		var parsedArguments secretArguments
+		// to make it optional
+		if len(args) > 0 {
+			err := json.Unmarshal([]byte(args[0]), &parsedArguments)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, parsedArguments.IsRecursive, "")
 		if err != nil {
 			return nil, err
 		}
@@ -455,7 +469,6 @@ func ProcessLiteralTemplate(templateId int, templateString string, data interfac
 
 	return &buf, nil
 }
-
 
 type AgentManager struct {
 	accessToken              string
