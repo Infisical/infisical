@@ -21,10 +21,6 @@ type TKnexGroupOperator<T extends object> = {
   value: (TKnexNonGroupOperator<T> | TKnexGroupOperator<T>)[];
 };
 
-// akhilmhdh: This is still in pending state and not yet ready. If you want to use it ping me.
-// used when you need to write a complex query with the orm
-// use it when you need complex or and and condition - most of the time not needed
-// majorly used with casl permission to filter data based on permission
 export type TKnexDynamicOperator<T extends object> = TKnexGroupOperator<T> | TKnexNonGroupOperator<T>;
 
 export const buildDynamicKnexQuery = <T extends object>(

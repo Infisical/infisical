@@ -39,6 +39,8 @@ export async function up(knex: Knex): Promise<void> {
       }
     }
 
+    // secret permission is split into multiple ones like secrets, folders, imports and dynamic-secrets
+    // so we just find all the privileges with respective mapping and map it as needed
     const identityPrivileges = await knex(TableName.IdentityProjectAdditionalPrivilege).select("*");
     const updatedIdentityPrivilegesDocs = identityPrivileges
       .filter((i) => {
@@ -63,7 +65,7 @@ export async function up(knex: Knex): Promise<void> {
     }
 
     const userPrivileges = await knex(TableName.ProjectUserAdditionalPrivilege).select("*");
-    const updatedUserPriviegeDocs = userPrivileges
+    const updatedUserPrivilegeDocs = userPrivileges
       .filter((i) => {
         const permissionString = JSON.stringify(i.permissions || []);
         return (
@@ -79,8 +81,8 @@ export async function up(knex: Knex): Promise<void> {
         permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(unpackRules(el.permissions))))
       }));
     if (docs.length) {
-      for (let i = 0; i < updatedUserPriviegeDocs.length; i += CHUNK_SIZE) {
-        const chunk = updatedUserPriviegeDocs.slice(i, i + CHUNK_SIZE);
+      for (let i = 0; i < updatedUserPrivilegeDocs.length; i += CHUNK_SIZE) {
+        const chunk = updatedUserPrivilegeDocs.slice(i, i + CHUNK_SIZE);
         await knex(TableName.ProjectUserAdditionalPrivilege).insert(chunk).onConflict("id").merge();
       }
     }

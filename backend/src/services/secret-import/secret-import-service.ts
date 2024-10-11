@@ -543,9 +543,18 @@ export const secretImportServiceFactory = ({
     // this will already order by position
     // so anything based on this order will also be in right position
     const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
-
-    // TODO(casl): update here
-    return fnSecretsFromImports({ allowedImports: secretImports, folderDAL, secretDAL, secretImportDAL });
+    const allowedImports = secretImports.filter((el) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: el.importEnv.slug,
+          secretPath: el.importPath,
+          secretName: "",
+          secretTags: []
+        })
+      )
+    );
+    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
   };
 
   const getRawSecretsFromImports = async ({
@@ -606,8 +615,19 @@ export const secretImportServiceFactory = ({
         name: "bot_not_found_error"
       });
 
+    const allowedImports = secretImports.filter((el) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: el.importEnv.slug,
+          secretPath: el.importPath,
+          secretName: "",
+          secretTags: []
+        })
+      )
+    );
     const importedSecrets = await fnSecretsFromImports({
-      allowedImports: secretImports,
+      allowedImports,
       folderDAL,
       secretDAL,
       secretImportDAL

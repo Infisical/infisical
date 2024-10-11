@@ -32,8 +32,6 @@ export type TIdentityProjectAdditionalPrivilegeServiceFactory = ReturnType<
   typeof identityProjectAdditionalPrivilegeServiceFactory
 >;
 
-// TODO(akhilmhdh): move this to more centralized
-
 const unpackPermissions = (permissions: unknown) =>
   UnpackedPermissionSchema.array().parse(
     unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])

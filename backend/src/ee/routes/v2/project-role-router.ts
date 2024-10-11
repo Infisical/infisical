@@ -203,14 +203,14 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:projectSlug/roles/slug/:slug",
+    url: "/:projectSlug/roles/slug/:roleSlug",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
         projectSlug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.projectSlug),
-        slug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.roleSlug)
+        roleSlug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.roleSlug)
       }),
       response: {
         200: z.object({
@@ -226,7 +226,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         projectSlug: req.params.projectSlug,
-        roleSlug: req.params.slug
+        roleSlug: req.params.roleSlug
       });
       return { role };
     }

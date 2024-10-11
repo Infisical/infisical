@@ -9,7 +9,7 @@ import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approv
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -105,7 +105,12 @@ export const secretV2BridgeServiceFactory = ({
     const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs);
     if (referencesEnvironments.length !== uniqueReferenceEnvironmentSlugs.length)
-      throw new BadRequestError({ message: "Referred environment not found" });
+      throw new BadRequestError({
+        message: `Referenced environment not found. Missing ${diff(
+          uniqueReferenceEnvironmentSlugs,
+          referencesEnvironments.map((el) => el.slug)
+        ).join(",")}`
+      });
 
     const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
     const referredFolders = await folderDAL.findByManySecretPath(
@@ -122,7 +127,7 @@ export const secretV2BridgeServiceFactory = ({
           const folderId =
             referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`][0]
               ?.id;
-          if (!folderId) throw new BadRequestError({ message: `Reference path ${el.secretPath} doesn't exist` });
+          if (!folderId) throw new BadRequestError({ message: `Referenced path ${el.secretPath} doesn't exist` });
 
           return {
             operator: "and",
@@ -144,7 +149,12 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     if (referredSecrets.length !== references.length)
-      throw new BadRequestError({ message: "Reference secret not found" });
+      throw new BadRequestError({
+        message: `Referenced secret not found. Found only ${diff(
+          references.map((el) => el.secretKey),
+          referredSecrets.map((el) => el.key)
+        ).join(",")}`
+      });
 
     const referredSecretsGroupBySecretKey = groupBy(referredSecrets, (i) => i.key);
     references.forEach((el) => {
@@ -210,7 +220,8 @@ export const secretV2BridgeServiceFactory = ({
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
-    if ((inputSecret.tagIds || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+    if ((inputSecret.tagIds || []).length !== tags.length)
+      throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
 
     const { secretName, type, ...inputSecretData } = inputSecret;
 
@@ -357,7 +368,8 @@ export const secretV2BridgeServiceFactory = ({
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
-    if ((inputSecret.tagIds || []).length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+    if ((inputSecret.tagIds || []).length !== tags.length)
+      throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
 
     // now check with new ids
     ForbiddenError.from(permission).throwUnlessCan(
@@ -505,7 +517,7 @@ export const secretV2BridgeServiceFactory = ({
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, {
         environment,
         secretPath,
@@ -1088,7 +1100,8 @@ export const secretV2BridgeServiceFactory = ({
     // get all tags
     const sanitizedTagIds = inputSecrets.flatMap(({ tagIds = [] }) => tagIds);
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
-    if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
+    if (tags.length !== sanitizedTagIds.length)
+      throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
     const tagsGroupByID = groupBy(tags, (i) => i.id);
 
     inputSecrets.forEach((el) => {

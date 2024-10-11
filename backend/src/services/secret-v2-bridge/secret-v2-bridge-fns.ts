@@ -434,24 +434,24 @@ export const expandSecretReferencesFactory = ({
             const [secretKey] = entities;
 
             // eslint-disable-next-line no-continue,no-await-in-loop
-            const referedValue = await fetchSecret(environment, secretPath, secretKey);
-            if (!canExpandValue(environment, secretPath, secretKey, referedValue.tags))
+            const referredValue = await fetchSecret(environment, secretPath, secretKey);
+            if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
                 message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
               });
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
-            secretCache[cacheKey][secretKey] = referedValue;
-            if (INTERPOLATION_SYNTAX_REG.test(referedValue.value)) {
+            secretCache[cacheKey][secretKey] = referredValue;
+            if (INTERPOLATION_SYNTAX_REG.test(referredValue.value)) {
               stack.push({
-                value: referedValue.value,
+                value: referredValue.value,
                 secretPath,
                 environment,
                 depth: depth + 1
               });
             }
-            if (referedValue) {
-              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue.value);
+            if (referredValue) {
+              expandedValue = expandedValue.replaceAll(interpolationSyntax, referredValue.value);
             }
           } else {
             const secretReferenceEnvironment = entities[0];

@@ -74,7 +74,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         slug,
         permissions: customPermission
       });
-      return additionalPrivilege;
+      return {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);

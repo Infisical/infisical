@@ -142,7 +142,7 @@ const CASL_ACTION_SCHEMA_NATIVE_ENUM = <ACTION extends z.EnumLike>(actions: ACTI
 const CASL_ACTION_SCHEMA_ENUM = <ACTION extends z.EnumValues>(actions: ACTION) =>
   z.union([z.enum(actions), z.enum(actions).array().min(1)]).transform((el) => (typeof el === "string" ? [el] : el));
 
-// akhilmhdh: don't mondify this for v2
+// akhilmhdh: don't modify this for v2
 // if you want to update create a new schema
 const SecretConditionV1Schema = z
   .object({
@@ -339,6 +339,13 @@ const GeneralPermissionSchema = [
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Edit]).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Cmek).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ];
 
@@ -357,13 +364,6 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_ENUM([ProjectPermissionActions.Read]).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Cmek).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCmekActions).describe(
       "Describe what action an entity can take."
     )
   }),

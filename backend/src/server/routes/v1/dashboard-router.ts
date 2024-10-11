@@ -195,7 +195,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         req.permission.orgId
       );
 
-      const allowedDynamicSecretEnviroments = // filter envs user has access to
+      const allowedDynamicSecretEnvironments = // filter envs user has access to
         environments.filter((environment) =>
           permission.can(
             ProjectPermissionDynamicSecretActions.Lease,
@@ -203,7 +203,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           )
         );
 
-      if (includeDynamicSecrets && allowedDynamicSecretEnviroments.length) {
+      if (includeDynamicSecrets && allowedDynamicSecretEnvironments.length) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
           actor: req.permission.type,
@@ -212,7 +212,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           search,
-          environmentSlugs: allowedDynamicSecretEnviroments,
+          environmentSlugs: allowedDynamicSecretEnvironments,
           path: secretPath,
           isInternal: true
         });
@@ -227,7 +227,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             orderBy,
             orderDirection,
-            environmentSlugs: allowedDynamicSecretEnviroments,
+            environmentSlugs: allowedDynamicSecretEnvironments,
             path: secretPath,
             limit: remainingLimit,
             offset: adjustedOffset,

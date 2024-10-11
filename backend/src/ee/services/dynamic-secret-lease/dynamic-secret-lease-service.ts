@@ -41,7 +41,6 @@ type TDynamicSecretLeaseServiceFactoryDep = {
 
 export type TDynamicSecretLeaseServiceFactory = ReturnType<typeof dynamicSecretLeaseServiceFactory>;
 
-// TODO(casl): change the lease to different permission
 export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretLeaseDAL,
   dynamicSecretProviders,

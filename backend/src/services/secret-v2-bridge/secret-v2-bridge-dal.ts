@@ -107,7 +107,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       });
       return data;
     } catch (error) {
-      throw new DatabaseError({ error, name: `${TableName.SecretV2}: FindOne` });
+      throw new DatabaseError({ error, name: `${TableName.SecretV2}: Find` });
     }
   };
 
