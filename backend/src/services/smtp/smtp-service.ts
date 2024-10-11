@@ -34,7 +34,10 @@ export enum SmtpTemplates {
   WorkspaceInvite = "workspaceInvitation.handlebars",
   ScimUserProvisioned = "scimUserProvisioned.handlebars",
   PkiExpirationAlert = "pkiExpirationAlert.handlebars",
-  IntegrationSyncFailed = "integrationSyncFailed.handlebars"
+  IntegrationSyncFailed = "integrationSyncFailed.handlebars",
+  ExternalImportSuccessful = "externalImportSuccessful.handlebars",
+  ExternalImportFailed = "externalImportFailed.handlebars",
+  ExternalImportStarted = "externalImportStarted.handlebars"
 }
 
 export enum SmtpHost {

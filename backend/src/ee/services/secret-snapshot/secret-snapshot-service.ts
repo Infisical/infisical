@@ -1,9 +1,15 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
+import {
+  TableName,
+  TSecretSnapshotFolders,
+  TSecretSnapshotSecretsV2,
+  TSecretTagJunctionInsert,
+  TSecretV2TagJunctionInsert
+} from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { chunkArray, groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -240,22 +246,37 @@ export const secretSnapshotServiceFactory = ({
             },
             tx
           );
-          const snapshotSecrets = await snapshotSecretV2BridgeDAL.insertMany(
-            secretVersions.map(({ id }) => ({
-              secretVersionId: id,
-              envId: folder.environment.envId,
-              snapshotId: newSnapshot.id
-            })),
-            tx
-          );
-          const snapshotFolders = await snapshotFolderDAL.insertMany(
-            folderVersions.map(({ id }) => ({
-              folderVersionId: id,
-              envId: folder.environment.envId,
-              snapshotId: newSnapshot.id
-            })),
-            tx
-          );
+
+          const chunkedSnapshotSecrets = chunkArray(secretVersions, 2500);
+          const chunkedSnapshotFolders = chunkArray(folderVersions, 2500);
+          const snapshotSecrets: TSecretSnapshotSecretsV2[] = [];
+          const snapshotFolders: TSecretSnapshotFolders[] = [];
+
+          for await (const chunk of chunkedSnapshotSecrets) {
+            const result = await snapshotSecretV2BridgeDAL.insertMany(
+              chunk.map(({ id }) => ({
+                secretVersionId: id,
+                envId: folder.environment.envId,
+                snapshotId: newSnapshot.id
+              })),
+              tx
+            );
+
+            snapshotSecrets.push(...result);
+          }
+
+          for await (const chunk of chunkedSnapshotFolders) {
+            const result = await snapshotFolderDAL.insertMany(
+              chunk.map(({ id }) => ({
+                folderVersionId: id,
+                envId: folder.environment.envId,
+                snapshotId: newSnapshot.id
+              })),
+              tx
+            );
+
+            snapshotFolders.push(...result);
+          }
 
           return { ...newSnapshot, secrets: snapshotSecrets, folder: snapshotFolders };
         });

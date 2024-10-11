@@ -1,26 +1,9 @@
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type InfisicalImportData = {
-  projects: Map<string, { name: string; id: string }>;
-
-  environments?: Map<
-    string,
-    {
-      name: string;
-      id: string;
-      projectId: string;
-    }
-  >;
-
-  secrets?: Map<
-    string,
-    {
-      name: string;
-      id: string;
-      environmentId: string;
-      value?: string;
-    }
-  >;
+  projects: Array<{ name: string; id: string }>;
+  environments: Array<{ name: string; id: string; projectId: string }>;
+  secrets: Array<{ name: string; id: string; environmentId: string; value: string }>;
 };
 
 export type TImportEnvKeyDataCreate = {
@@ -104,3 +87,7 @@ export type TEnvKeyExportJSON = {
     }
   >;
 };
+
+export enum ExternalPlatforms {
+  EnvKey = "EnvKey"
+}

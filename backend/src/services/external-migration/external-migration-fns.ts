@@ -4,22 +4,23 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
-import { OrgMembershipRole, ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
-import { TSecretServiceFactory } from "../secret/secret-service";
+import type { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { InfisicalImportData, TEnvKeyExportJSON, TImportInfisicalDataCreate } from "./external-migration-types";
 
 export type TImportDataIntoInfisicalDTO = {
-  projectService: TProjectServiceFactory;
-  orgService: TOrgServiceFactory;
-  projectEnvService: TProjectEnvServiceFactory;
-  secretService: TSecretServiceFactory;
+  projectService: Pick<TProjectServiceFactory, "createProject">;
+  orgService: Pick<TOrgServiceFactory, "inviteUserToOrganization">;
+  projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
+  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
 
   input: TImportInfisicalDataCreate;
 };
@@ -46,13 +47,13 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
   const parsedJson: TEnvKeyExportJSON = JSON.parse(decryptedJson) as TEnvKeyExportJSON;
 
   const infisicalImportData: InfisicalImportData = {
-    projects: new Map<string, { name: string; id: string }>(),
-    environments: new Map<string, { name: string; id: string; projectId: string }>(),
-    secrets: new Map<string, { name: string; id: string; projectId: string; environmentId: string; value: string }>()
+    projects: [],
+    environments: [],
+    secrets: []
   };
 
   parsedJson.apps.forEach((app: { name: string; id: string }) => {
-    infisicalImportData.projects.set(app.id, { name: app.name, id: app.id });
+    infisicalImportData.projects.push({ name: app.name, id: app.id });
   });
 
   // string to string map for env templates
@@ -63,7 +64,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
 
   // environments
   for (const env of parsedJson.baseEnvironments) {
-    infisicalImportData.environments?.set(env.id, {
+    infisicalImportData.environments.push({
       id: env.id,
       name: envTemplates.get(env.environmentRoleId)!,
       projectId: env.envParentId
@@ -75,9 +76,8 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
     if (!env.includes("|")) {
       const envData = parsedJson.envs[env];
       for (const secret of Object.keys(envData.variables)) {
-        const id = randomUUID();
-        infisicalImportData.secrets?.set(id, {
-          id,
+        infisicalImportData.secrets.push({
+          id: randomUUID(),
           name: secret,
           environmentId: env,
           value: envData.variables[secret].val
@@ -93,7 +93,7 @@ export const importDataIntoInfisicalFn = async ({
   projectService,
   orgService,
   projectEnvService,
-  secretService,
+  secretV2BridgeService,
   input: { data, actor, actorId, actorOrgId, actorAuthMethod }
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
@@ -104,7 +104,7 @@ export const importDataIntoInfisicalFn = async ({
   const originalToNewProjectId = new Map<string, string>();
   const originalToNewEnvironmentId = new Map<string, string>();
 
-  for await (const [id, project] of data.projects) {
+  for await (const project of data.projects) {
     const newProject = await projectService
       .createProject({
         actor,
@@ -115,7 +115,7 @@ export const importDataIntoInfisicalFn = async ({
         createDefaultEnvs: false
       })
       .catch(() => {
-        throw new BadRequestError({ message: `Failed to import to project [name:${project.name}] [id:${id}]` });
+        throw new BadRequestError({ message: `Failed to import to project [name:${project.name}` });
       });
 
     originalToNewProjectId.set(project.id, newProject.id);
@@ -141,7 +141,7 @@ export const importDataIntoInfisicalFn = async ({
 
   // Import environments
   if (data.environments) {
-    for await (const [id, environment] of data.environments) {
+    for await (const environment of data.environments) {
       try {
         const newEnvironment = await projectEnvService.createEnvironment({
           actor,
@@ -154,12 +154,12 @@ export const importDataIntoInfisicalFn = async ({
         });
 
         if (!newEnvironment) {
-          logger.error(`Failed to import environment: [name:${environment.name}] [id:${id}]`);
+          logger.error(`Failed to import environment: [name:${environment.name}]`);
           throw new BadRequestError({
-            message: `Failed to import environment: [name:${environment.name}] [id:${id}]`
+            message: `Failed to import environment: [name:${environment.name}]`
           });
         }
-        originalToNewEnvironmentId.set(id, newEnvironment.slug);
+        originalToNewEnvironmentId.set(environment.id, newEnvironment.slug);
       } catch (error) {
         throw new BadRequestError({
           message: `Failed to import environment: ${environment.name}]`,
@@ -169,28 +169,47 @@ export const importDataIntoInfisicalFn = async ({
     }
   }
 
-  // Import secrets
-  if (data.secrets) {
-    for await (const [id, secret] of data.secrets) {
-      const dataProjectId = data.environments?.get(secret.environmentId)?.projectId;
-      if (!dataProjectId) {
-        throw new BadRequestError({ message: `Failed to import secret "${secret.name}", project not found` });
+  if (data.secrets && data.secrets.length > 0) {
+    const mappedToEnvironmentId = new Map<
+      string,
+      {
+        secretKey: string;
+        secretValue: string;
+      }[]
+    >();
+
+    for (const secret of data.secrets) {
+      if (!mappedToEnvironmentId.has(secret.environmentId)) {
+        mappedToEnvironmentId.set(secret.environmentId, []);
       }
-      const projectId = originalToNewProjectId.get(dataProjectId);
-      const newSecret = await secretService.createSecretRaw({
-        actorId,
-        actor,
-        actorOrgId,
-        environment: originalToNewEnvironmentId.get(secret.environmentId)!,
-        actorAuthMethod,
-        projectId: projectId!,
-        secretPath: "/",
-        secretName: secret.name,
-        type: SecretType.Shared,
+      mappedToEnvironmentId.get(secret.environmentId)!.push({
+        secretKey: secret.name,
         secretValue: secret.value || ""
       });
-      if (!newSecret) {
-        throw new BadRequestError({ message: `Failed to import secret: [name:${secret.name}] [id:${id}]` });
+    }
+
+    // for each of the mappedEnvironmentId
+    for await (const [envId, secrets] of mappedToEnvironmentId) {
+      const environment = data.environments.find((env) => env.id === envId);
+      const projectId = environment?.projectId;
+
+      if (!projectId) {
+        throw new BadRequestError({ message: `Failed to import secret, project not found` });
+      }
+
+      const secretBatches = chunkArray(secrets, 2500);
+
+      for await (const secretBatch of secretBatches) {
+        await secretV2BridgeService.createManySecret({
+          actorId,
+          actor,
+          actorOrgId,
+          environment: originalToNewEnvironmentId.get(envId)!,
+          actorAuthMethod,
+          projectId: originalToNewProjectId.get(projectId)!,
+          secretPath: "/",
+          secrets: secretBatch
+        });
       }
     }
   }

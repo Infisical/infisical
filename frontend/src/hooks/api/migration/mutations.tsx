@@ -18,11 +18,10 @@ export const useImportEnvKey = () => {
       };
       decryptionKey: string;
     }) => {
-      const { data } = await apiRequest.post("/api/v3/migrate/env-key/", {
+      await apiRequest.post("/api/v3/migrate/env-key/", {
         encryptedJson,
         decryptionKey
       });
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);

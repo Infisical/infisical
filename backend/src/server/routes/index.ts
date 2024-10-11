@@ -97,6 +97,7 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
@@ -1202,12 +1203,19 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const migrationService = externalMigrationServiceFactory({
-    projectService,
+  const externalMigrationQueue = externalMigrationQueueFactory({
     orgService,
     projectEnvService,
-    permissionService,
-    secretService
+    projectService,
+    smtpService,
+    queueService,
+    secretV2BridgeService
+  });
+
+  const migrationService = externalMigrationServiceFactory({
+    externalMigrationQueue,
+    userDAL,
+    permissionService
   });
 
   await superAdminService.initServerCfg();

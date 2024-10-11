@@ -1,7 +1,7 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TScanFullRepoEventPayload,
@@ -32,7 +32,8 @@ export enum QueueName {
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
-  AccessTokenStatusUpdate = "access-token-status-update"
+  AccessTokenStatusUpdate = "access-token-status-update",
+  ImportSecretsFromExternalSource = "import-secrets-from-external-source"
 }
 
 export enum QueueJobs {
@@ -56,7 +57,8 @@ export enum QueueJobs {
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
   IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
-  ServiceTokenStatusUpdate = "service-token-status-update"
+  ServiceTokenStatusUpdate = "service-token-status-update",
+  ImportSecretsFromExternalSource = "import-secrets-from-external-source"
 }
 
 export type TQueueJobTypes = {
@@ -165,6 +167,19 @@ export type TQueueJobTypes = {
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
+  };
+  [QueueName.ImportSecretsFromExternalSource]: {
+    name: QueueJobs.ImportSecretsFromExternalSource;
+    payload: {
+      actorEmail: string;
+      data: {
+        iv: string;
+        tag: string;
+        ciphertext: string;
+        algorithm: SecretEncryptionAlgo;
+        encoding: SecretKeyEncoding;
+      };
+    };
   };
 };
 
