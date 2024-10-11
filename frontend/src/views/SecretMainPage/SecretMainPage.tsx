@@ -106,30 +106,18 @@ export const SecretMainPage = () => {
   const defaultFilterState = {
     tags: {},
     searchFilter: (router.query.searchFilter as string) || "",
+    // these should always be on by default for the UI, they will be disabled for the query below based off permissions
     include: {
       [RowType.Folder]: true,
-      [RowType.Import]: canReadSecretImports,
-      [RowType.DynamicSecret]: canReadDynamicSecret,
-      [RowType.Secret]: canReadSecret
+      [RowType.Import]: true,
+      [RowType.DynamicSecret]: true,
+      [RowType.Secret]: true
     }
   };
 
   const [filter, setFilter] = useState<Filter>(defaultFilterState);
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
   const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
-
-  // change filters if permissions change at different paths/env
-  useEffect(() => {
-    setFilter((prev) => ({
-      ...prev,
-      include: {
-        [RowType.Folder]: true,
-        [RowType.Import]: canReadSecretImports,
-        [RowType.DynamicSecret]: canReadDynamicSecret,
-        [RowType.Secret]: canReadSecret
-      }
-    }));
-  }, [canReadSecret, canReadSecretImports, canReadDynamicSecret]);
 
   useEffect(() => {
     if (
