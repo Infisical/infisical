@@ -317,6 +317,8 @@ type secretArguments struct {
 }
 
 func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string, ...string) ([]models.SingleEnvironmentVariable, error) {
+	// ...string is because golang doesn't have optional arguments.
+	// thus we make it slice and pick it only first element
 	return func(projectID, envSlug, secretPath string, args ...string) ([]models.SingleEnvironmentVariable, error) {
 		var parsedArguments secretArguments
 		// to make it optional
