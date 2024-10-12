@@ -1,5 +1,3 @@
-import { Knex } from "knex";
-
 import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -30,8 +28,6 @@ export type TDeleteOrgMembershipDTO = {
 export type TInviteUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;
-  tx?: Knex;
-  verifyPermissions?: boolean;
   projects?: {
     id: string;
     projectRoleSlug?: string[];

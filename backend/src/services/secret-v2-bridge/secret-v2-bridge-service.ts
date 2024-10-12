@@ -911,8 +911,7 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     environment,
     projectId,
-    secrets: inputSecrets,
-    tx: trx
+    secrets: inputSecrets
   }: TCreateManySecretDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -952,7 +951,7 @@ export const secretV2BridgeServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    const newSecrets = await (trx || secretDAL).transaction(async (tx) =>
+    const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => {
           const references = getAllNestedSecretReferences(el.secretValue);

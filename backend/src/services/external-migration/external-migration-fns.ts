@@ -4,7 +4,7 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
-import { OrgMembershipRole, ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -12,7 +12,6 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -38,7 +37,6 @@ export type TImportDataIntoInfisicalDTO = {
 
   folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
-  orgService: Pick<TOrgServiceFactory, "inviteUserToOrganization">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
 
@@ -113,7 +111,6 @@ export const importDataIntoInfisicalFn = async ({
   projectService,
   projectEnvDAL,
   projectDAL,
-  orgService,
   secretDAL,
   kmsService,
   secretVersionDAL,
@@ -148,26 +145,6 @@ export const importDataIntoInfisicalFn = async ({
         });
 
       originalToNewProjectId.set(project.id, newProject.id);
-    }
-
-    // Invite user importing projects
-    const invites = await orgService.inviteUserToOrganization({
-      verifyPermissions: false,
-      actorAuthMethod,
-      actorId,
-      actorOrgId,
-      actor,
-      inviteeEmails: [],
-      orgId: actorOrgId,
-      organizationRoleSlug: OrgMembershipRole.NoAccess,
-      projects: Array.from(originalToNewProjectId.values()).map((project) => ({
-        id: project,
-        projectRoleSlug: [ProjectMembershipRole.Member]
-      })),
-      tx
-    });
-    if (!invites) {
-      throw new BadRequestError({ message: `Failed to invite user to projects: [userId:${actorId}]` });
     }
 
     // Import environments

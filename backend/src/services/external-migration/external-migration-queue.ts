@@ -4,7 +4,6 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -34,7 +33,6 @@ export type TExternalMigrationQueueFactoryDep = {
 
   folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
-  orgService: Pick<TOrgServiceFactory, "inviteUserToOrganization">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
 };
@@ -44,7 +42,6 @@ export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigration
 export const externalMigrationQueueFactory = ({
   queueService,
   projectService,
-  orgService,
   smtpService,
   projectDAL,
   projectEnvService,
@@ -111,7 +108,6 @@ export const externalMigrationQueueFactory = ({
         folderDAL,
         kmsService,
         projectService,
-        orgService,
         projectEnvService,
         secretV2BridgeService
       });

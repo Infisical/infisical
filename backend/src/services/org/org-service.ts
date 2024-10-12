@@ -1,6 +1,5 @@
-import { ForbiddenError, MongoAbility } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
-import { MongoQuery } from "@ucast/mongo2js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
@@ -20,11 +19,7 @@ import { TProjects } from "@app/db/schemas/projects";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import {
-  OrgPermissionActions,
-  OrgPermissionSet,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -492,17 +487,11 @@ export const orgServiceFactory = ({
     organizationRoleSlug,
     projects: invitedProjects,
     actorAuthMethod,
-    actorOrgId,
-    tx: trx,
-    verifyPermissions = true
+    actorOrgId
   }: TInviteUserToOrgDTO) => {
     const appCfg = getConfig();
 
-    let permission: MongoAbility<OrgPermissionSet, MongoQuery> | undefined;
-    if (verifyPermissions) {
-      permission = (await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId))
-        .permission;
-    }
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
 
     const org = await orgDAL.findOrgById(orgId);
 
@@ -523,15 +512,12 @@ export const orgServiceFactory = ({
     }
 
     const projectsToInvite = invitedProjects?.length
-      ? await projectDAL.find(
-          {
-            orgId,
-            $in: {
-              id: invitedProjects?.map(({ id }) => id)
-            }
-          },
-          { tx: trx }
-        )
+      ? await projectDAL.find({
+          orgId,
+          $in: {
+            id: invitedProjects?.map(({ id }) => id)
+          }
+        })
       : [];
     if (projectsToInvite.length !== invitedProjects?.length) {
       throw new ForbiddenRequestError({
@@ -548,7 +534,7 @@ export const orgServiceFactory = ({
     const mailsForOrgInvitation: { email: string; userId: string; firstName: string; lastName: string }[] = [];
     const mailsForProjectInvitation: { email: string[]; projectName: string }[] = [];
     const newProjectMemberships: TProjectMemberships[] = [];
-    await (trx || orgDAL).transaction(async (tx) => {
+    await orgDAL.transaction(async (tx) => {
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username">[] = [];
 
       for await (const inviteeEmail of inviteeEmails) {
@@ -634,16 +620,8 @@ export const orgServiceFactory = ({
             });
           }
 
-          if (verifyPermissions) {
-            if (!permission) {
-              throw new ForbiddenRequestError({
-                name: "InviteUser",
-                message: "Failed to invite user because no permission was found"
-              });
-            }
-            // as its used by project invite also
-            ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
-          }
+          // as its used by project invite also
+          ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
           let roleId;
           const orgRole = isCustomOrgRole ? OrgMembershipRole.Custom : organizationRoleSlug;
           if (isCustomOrgRole) {
@@ -684,19 +662,17 @@ export const orgServiceFactory = ({
       // if there exist no project membership we set is as given by the request
       for await (const project of projectsToInvite) {
         const projectId = project.id;
-        if (verifyPermissions) {
-          const { permission: projectPermission } = await permissionService.getProjectPermission(
-            actor,
-            actorId,
-            projectId,
-            actorAuthMethod,
-            actorOrgId
-          );
-          ForbiddenError.from(projectPermission).throwUnlessCan(
-            ProjectPermissionActions.Create,
-            ProjectPermissionSub.Member
-          );
-        }
+        const { permission: projectPermission } = await permissionService.getProjectPermission(
+          actor,
+          actorId,
+          projectId,
+          actorAuthMethod,
+          actorOrgId
+        );
+        ForbiddenError.from(projectPermission).throwUnlessCan(
+          ProjectPermissionActions.Create,
+          ProjectPermissionSub.Member
+        );
         const existingMembers = await projectMembershipDAL.find(
           {
             projectId: project.id,

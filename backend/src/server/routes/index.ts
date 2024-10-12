@@ -1204,7 +1204,6 @@ export const registerRoutes = async (
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
-    orgService,
     projectEnvService,
     projectDAL,
     projectService,

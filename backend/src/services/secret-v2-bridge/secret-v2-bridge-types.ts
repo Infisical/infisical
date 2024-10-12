@@ -81,7 +81,6 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId: string;
   environment: string;
-  tx?: Knex;
   secrets: {
     secretKey: string;
     secretValue: string;
