@@ -33,7 +33,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch, maxLength =
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="mb-1 flex items-end space-x-2">
       <div
         className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 py-1 pl-5 pr-2 text-sm hover:bg-mineshaft-600"
         onClick={() => onFolderCrumbClick(0)}
