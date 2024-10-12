@@ -1206,8 +1206,16 @@ export const registerRoutes = async (
   const externalMigrationQueue = externalMigrationQueueFactory({
     orgService,
     projectEnvService,
+    projectDAL,
     projectService,
     smtpService,
+    kmsService,
+    projectEnvDAL,
+    secretVersionDAL: secretVersionV2BridgeDAL,
+    secretTagDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+    folderDAL,
+    secretDAL: secretV2BridgeDAL,
     queueService,
     secretV2BridgeService
   });

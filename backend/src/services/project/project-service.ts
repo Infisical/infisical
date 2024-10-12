@@ -147,6 +147,7 @@ export const projectServiceFactory = ({
     workspaceName,
     slug: projectSlug,
     kmsKeyId,
+    tx: trx,
     createDefaultEnvs = true
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
@@ -169,7 +170,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const results = await projectDAL.transaction(async (tx) => {
+    const results = await (trx || projectDAL).transaction(async (tx) => {
       const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
       if (kmsKeyId) {

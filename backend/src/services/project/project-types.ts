@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TProjectKeys } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -30,6 +32,7 @@ export type TCreateProjectDTO = {
   slug?: string;
   kmsKeyId?: string;
   createDefaultEnvs?: boolean;
+  tx?: Knex;
 };
 
 export type TDeleteProjectBySlugDTO = {

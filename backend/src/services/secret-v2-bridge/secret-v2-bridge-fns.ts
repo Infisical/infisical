@@ -82,7 +82,10 @@ export const fnSecretBulkInsert = async ({
     })
   );
 
-  const newSecrets = await secretDAL.insertMany(sanitizedInputSecrets.map((el) => ({ ...el, folderId })));
+  const newSecrets = await secretDAL.insertMany(
+    sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
+    tx
+  );
   const newSecretGroupedByKeyName = groupBy(newSecrets, (item) => item.key);
   const newSecretTags = inputSecrets.flatMap(({ tagIds: secretTags = [], key }) =>
     secretTags.map((tag) => ({

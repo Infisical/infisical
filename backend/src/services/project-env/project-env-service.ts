@@ -39,7 +39,8 @@ export const projectEnvServiceFactory = ({
     actorAuthMethod,
     position,
     name,
-    slug
+    slug,
+    tx: trx
   }: TCreateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -83,7 +84,7 @@ export const projectEnvServiceFactory = ({
         });
       }
 
-      const env = await projectEnvDAL.transaction(async (tx) => {
+      const env = await (trx || projectEnvDAL).transaction(async (tx) => {
         if (position !== undefined) {
           // Check if there's an environment at the specified position
           const existingEnvWithPosition = await projectEnvDAL.findOne({ projectId, position }, tx);

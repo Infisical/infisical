@@ -4,19 +4,39 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
-import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
+import { OrgMembershipRole, ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { fnSecretBulkInsert, getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import type { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { InfisicalImportData, TEnvKeyExportJSON, TImportInfisicalDataCreate } from "./external-migration-types";
 
 export type TImportDataIntoInfisicalDTO = {
+  projectDAL: Pick<TProjectDALFactory, "transaction">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
+  secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
+
+  folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
   orgService: Pick<TOrgServiceFactory, "inviteUserToOrganization">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
@@ -91,9 +111,15 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
 
 export const importDataIntoInfisicalFn = async ({
   projectService,
+  projectEnvDAL,
+  projectDAL,
   orgService,
-  projectEnvService,
-  secretV2BridgeService,
+  secretDAL,
+  kmsService,
+  secretVersionDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
+  folderDAL,
   input: { data, actor, actorId, actorOrgId, actorAuthMethod }
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
@@ -104,113 +130,152 @@ export const importDataIntoInfisicalFn = async ({
   const originalToNewProjectId = new Map<string, string>();
   const originalToNewEnvironmentId = new Map<string, string>();
 
-  for await (const project of data.projects) {
-    const newProject = await projectService
-      .createProject({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        workspaceName: project.name,
-        createDefaultEnvs: false
-      })
-      .catch(() => {
-        throw new BadRequestError({ message: `Failed to import to project [name:${project.name}` });
-      });
-
-    originalToNewProjectId.set(project.id, newProject.id);
-  }
-
-  // Invite user importing projects
-  const invites = await orgService.inviteUserToOrganization({
-    actorAuthMethod,
-    actorId,
-    actorOrgId,
-    actor,
-    inviteeEmails: [],
-    orgId: actorOrgId,
-    organizationRoleSlug: OrgMembershipRole.NoAccess,
-    projects: Array.from(originalToNewProjectId.values()).map((project) => ({
-      id: project,
-      projectRoleSlug: [ProjectMembershipRole.Member]
-    }))
-  });
-  if (!invites) {
-    throw new BadRequestError({ message: `Failed to invite user to projects: [userId:${actorId}]` });
-  }
-
-  // Import environments
-  if (data.environments) {
-    for await (const environment of data.environments) {
-      try {
-        const newEnvironment = await projectEnvService.createEnvironment({
+  await projectDAL.transaction(async (tx) => {
+    for await (const project of data.projects) {
+      const newProject = await projectService
+        .createProject({
           actor,
           actorId,
           actorOrgId,
           actorAuthMethod,
-          name: environment.name,
-          projectId: originalToNewProjectId.get(environment.projectId)!,
-          slug: slugify(`${environment.name}-${alphaNumericNanoId(4)}`)
+          workspaceName: project.name,
+          createDefaultEnvs: false,
+          tx
+        })
+        .catch((e) => {
+          logger.error(e, `Failed to import to project [name:${project.name}]`);
+          throw new BadRequestError({ message: `Failed to import to project [name:${project.name}]` });
         });
 
-        if (!newEnvironment) {
-          logger.error(`Failed to import environment: [name:${environment.name}]`);
+      originalToNewProjectId.set(project.id, newProject.id);
+    }
+
+    // Invite user importing projects
+    const invites = await orgService.inviteUserToOrganization({
+      verifyPermissions: false,
+      actorAuthMethod,
+      actorId,
+      actorOrgId,
+      actor,
+      inviteeEmails: [],
+      orgId: actorOrgId,
+      organizationRoleSlug: OrgMembershipRole.NoAccess,
+      projects: Array.from(originalToNewProjectId.values()).map((project) => ({
+        id: project,
+        projectRoleSlug: [ProjectMembershipRole.Member]
+      })),
+      tx
+    });
+    if (!invites) {
+      throw new BadRequestError({ message: `Failed to invite user to projects: [userId:${actorId}]` });
+    }
+
+    // Import environments
+    if (data.environments) {
+      for await (const environment of data.environments) {
+        const projectId = originalToNewProjectId.get(environment.projectId)!;
+        const slug = slugify(`${environment.name}-${alphaNumericNanoId(4)}`);
+
+        const existingEnv = await projectEnvDAL.findOne({ projectId, slug }, tx);
+
+        if (existingEnv) {
           throw new BadRequestError({
-            message: `Failed to import environment: [name:${environment.name}]`
+            message: `Environment with slug '${slug}' already exist`,
+            name: "CreateEnvironment"
           });
         }
-        originalToNewEnvironmentId.set(environment.id, newEnvironment.slug);
-      } catch (error) {
-        throw new BadRequestError({
-          message: `Failed to import environment: ${environment.name}]`,
-          name: "EnvKeyMigrationImportEnvironment"
+
+        const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
+        const doc = await projectEnvDAL.create({ slug, name: environment.name, projectId, position: lastPos + 1 }, tx);
+        await folderDAL.create({ name: "root", parentId: null, envId: doc.id, version: 1 }, tx);
+
+        originalToNewEnvironmentId.set(environment.id, doc.slug);
+      }
+    }
+
+    if (data.secrets && data.secrets.length > 0) {
+      const mappedToEnvironmentId = new Map<
+        string,
+        {
+          secretKey: string;
+          secretValue: string;
+        }[]
+      >();
+
+      for (const secret of data.secrets) {
+        if (!mappedToEnvironmentId.has(secret.environmentId)) {
+          mappedToEnvironmentId.set(secret.environmentId, []);
+        }
+        mappedToEnvironmentId.get(secret.environmentId)!.push({
+          secretKey: secret.name,
+          secretValue: secret.value || ""
         });
       }
-    }
-  }
 
-  if (data.secrets && data.secrets.length > 0) {
-    const mappedToEnvironmentId = new Map<
-      string,
-      {
-        secretKey: string;
-        secretValue: string;
-      }[]
-    >();
+      // for each of the mappedEnvironmentId
+      for await (const [envId, secrets] of mappedToEnvironmentId) {
+        const environment = data.environments.find((env) => env.id === envId);
+        const projectId = originalToNewProjectId.get(environment?.projectId as string)!;
 
-    for (const secret of data.secrets) {
-      if (!mappedToEnvironmentId.has(secret.environmentId)) {
-        mappedToEnvironmentId.set(secret.environmentId, []);
+        if (!projectId) {
+          throw new BadRequestError({ message: `Failed to import secret, project not found` });
+        }
+
+        const { encryptor: secretManagerEncrypt } = await kmsService.createCipherPairWithDataKey(
+          {
+            type: KmsDataKey.SecretManager,
+            projectId
+          },
+          tx
+        );
+
+        const envSlug = originalToNewEnvironmentId.get(envId)!;
+        const folder = await folderDAL.findBySecretPath(projectId, envSlug, "/", tx);
+        if (!folder)
+          throw new NotFoundError({
+            message: `Folder not found for the given environment slug (${envSlug}) & secret path (/)`,
+            name: "Create secret"
+          });
+
+        const secretsByKeys = await secretDAL.findBySecretKeys(
+          folder.id,
+          secrets.map((el) => ({
+            key: el.secretKey,
+            type: SecretType.Shared
+          })),
+          tx
+        );
+        if (secretsByKeys.length) {
+          throw new BadRequestError({
+            message: `Secret already exist: ${secretsByKeys.map((el) => el.key).join(",")}`
+          });
+        }
+
+        const secretBatches = chunkArray(secrets, 2500);
+        for await (const secretBatch of secretBatches) {
+          await fnSecretBulkInsert({
+            inputSecrets: secretBatch.map((el) => {
+              const references = getAllNestedSecretReferences(el.secretValue);
+
+              return {
+                version: 1,
+                encryptedValue: el.secretValue
+                  ? secretManagerEncrypt({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
+                  : undefined,
+                key: el.secretKey,
+                references,
+                type: SecretType.Shared
+              };
+            }),
+            folderId: folder.id,
+            secretDAL,
+            secretVersionDAL,
+            secretTagDAL,
+            secretVersionTagDAL,
+            tx
+          });
+        }
       }
-      mappedToEnvironmentId.get(secret.environmentId)!.push({
-        secretKey: secret.name,
-        secretValue: secret.value || ""
-      });
     }
-
-    // for each of the mappedEnvironmentId
-    for await (const [envId, secrets] of mappedToEnvironmentId) {
-      const environment = data.environments.find((env) => env.id === envId);
-      const projectId = environment?.projectId;
-
-      if (!projectId) {
-        throw new BadRequestError({ message: `Failed to import secret, project not found` });
-      }
-
-      const secretBatches = chunkArray(secrets, 2500);
-
-      for await (const secretBatch of secretBatches) {
-        await secretV2BridgeService.createManySecret({
-          actorId,
-          actor,
-          actorOrgId,
-          environment: originalToNewEnvironmentId.get(envId)!,
-          actorAuthMethod,
-          projectId: originalToNewProjectId.get(projectId)!,
-          secretPath: "/",
-          secrets: secretBatch
-        });
-      }
-    }
-  }
+  });
 };

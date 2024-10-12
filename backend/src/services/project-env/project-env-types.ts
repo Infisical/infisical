@@ -1,9 +1,12 @@
+import { Knex } from "knex";
+
 import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateEnvDTO = {
   name: string;
   slug: string;
   position?: number;
+  tx?: Knex;
 } & TProjectPermission;
 
 export type TUpdateEnvDTO = {

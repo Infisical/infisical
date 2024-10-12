@@ -3,22 +3,40 @@ import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { importDataIntoInfisicalFn } from "./external-migration-fns";
 import { ExternalPlatforms, TImportInfisicalDataCreate } from "./external-migration-types";
 
 export type TExternalMigrationQueueFactoryDep = {
+  smtpService: TSmtpService;
+  queueService: TQueueServiceFactory;
+
+  projectDAL: Pick<TProjectDALFactory, "transaction">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys">;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
+  secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
+
+  folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
   orgService: Pick<TOrgServiceFactory, "inviteUserToOrganization">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
-
-  smtpService: TSmtpService;
-  queueService: TQueueServiceFactory;
 };
 
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
@@ -28,8 +46,16 @@ export const externalMigrationQueueFactory = ({
   projectService,
   orgService,
   smtpService,
+  projectDAL,
   projectEnvService,
-  secretV2BridgeService
+  secretV2BridgeService,
+  kmsService,
+  projectEnvDAL,
+  secretDAL,
+  secretVersionDAL,
+  secretTagDAL,
+  secretVersionTagDAL,
+  folderDAL
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
     actorEmail: string;
@@ -76,6 +102,14 @@ export const externalMigrationQueueFactory = ({
 
       await importDataIntoInfisicalFn({
         input: decryptedJson,
+        projectDAL,
+        projectEnvDAL,
+        secretDAL,
+        secretVersionDAL,
+        secretTagDAL,
+        secretVersionTagDAL,
+        folderDAL,
+        kmsService,
         projectService,
         orgService,
         projectEnvService,
