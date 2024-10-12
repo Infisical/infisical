@@ -1,6 +1,6 @@
 ---
-title: 'Local development'
-description: 'This guide will help you set up and run the Infisical platform in local development.'
+title: "Local development"
+description: "This guide will help you set up and run the Infisical platform in local development."
 ---
 
 ## Fork and clone the repo
@@ -15,28 +15,28 @@ git checkout -b MY_BRANCH_NAME
 
 ## Set up environment variables
 
-
 Start by creating a .env file at the root of the Infisical directory then copy the contents of the file linked [here](https://github.com/Infisical/infisical/blob/main/.env.example). View all available [environment variables](https://infisical.com/docs/self-hosting/configuration/envars) and guidance for each.
 
 ## Starting Infisical for development
 
 We use Docker to spin up all required services for Infisical in local development. If you are unfamiliar with Docker, don’t worry, all you have to do is install Docker for your
-machine and run the command below to start up the development server. 
+machine and run the command below to start up the development server.
 
-#### Start local server 
+#### Start local server
 
 ```bash
-docker-compose -f docker-compose.dev.yml up --build --force-recreate
+docker compose -f docker-compose.dev.yml up --build --force-recreate
 ```
-#### Access local server 
+
+#### Access local server
 
 Once all the services have spun up, browse to http://localhost:8080.
 
-#### Shutdown local server 
+#### Shutdown local server
 
 ```bash
 # To stop environment use Control+C (on Mac) CTRL+C (on Win) or
-docker-compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.dev.yml down
 ```
 
 ## Starting Infisical docs locally
@@ -56,6 +56,7 @@ yarn global add mintlify
 ```
 
 #### Running the docs
+
 Go to `docs` directory and run `mintlify dev`. This will start up the docs on `localhost:3000`
 
 ```bash
