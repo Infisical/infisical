@@ -73,6 +73,8 @@ spec:
         envFrom:
         - secretRef:
             name: {{ $infisicalValues.kubeSecretRef }}
+        - configMapRef:
+            name: log-level
         {{- if  $infisicalValues.resources }}
         resources: {{- toYaml $infisicalValues.resources | nindent 12 }}
         {{- end }}

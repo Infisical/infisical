@@ -8,7 +8,7 @@ infisical:
   databaseSchemaMigrationJob:
     serviceAccountNamespace: default
     serviceAccountName: default
-       
+
   fullnameOverride: ""
   podAnnotations: {}
   deploymentAnnotations: {}
@@ -34,6 +34,11 @@ infisical:
     requests:
       cpu: 350m
 
+configMaps:
+  dotenv:
+  - name: log-level
+    path: values/prod/app.env
+
 ingress:
   enabled: false
   hostName: ""
@@ -41,11 +46,10 @@ ingress:
   nginx:
     enabled: false
   annotations: {}
-  tls:
-    []
-    # - secretName: letsencrypt-prod
-    #   hosts:
-    #     - some.domain.com
+  tls: []
+  # - secretName: letsencrypt-prod
+  #   hosts:
+  #     - some.domain.com
 
 postgresql:
   # -- When enabled, this will start up a in cluster Postgres

@@ -1,0 +1,19 @@
+{{/* Create configMaps from .env files (convert key=value to key: value) */}}
+{{- range $dotenv := .Values.configMaps.dotenv }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $dotenv.name }}
+  labels: 
+    app: infisical
+  annotations:
+    checksum/config: {{ (tpl ($.Files.Glob $dotenv.path).AsConfig $ ) | sha256sum }}
+  namespace: {{ $.Release.Namespace }}
+data:
+{{- range $.Files.Lines $dotenv.path }}
+  {{- if . }}
+  {{ (splitList "=" . | first ) }}: {{ (splitList "=" . | rest | join "=") | trim | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
