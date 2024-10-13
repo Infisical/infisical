@@ -49,8 +49,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch, maxLength =
           <FolderBreadCrumb
             key={`secret-path-${index + 1}`}
             onClick={() => onFolderCrumbClick(index + 1)}
-            pathList={pathList}
-            position={index}
+            isLast={index === pathList.length - 1}
           >
             {path}
           </FolderBreadCrumb>
@@ -58,19 +57,11 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch, maxLength =
 
       {pathList.length > maxLength && (
         <>
-          <FolderBreadCrumb position={1} pathList={pathList} onClick={() => onFolderCrumbClick(1)}>
-            {pathList[0]}
-          </FolderBreadCrumb>
-
-          <FolderBreadCrumb pathList={pathList} onClick={() => onBackCrumbClick()}>
+          <FolderBreadCrumb onClick={() => onFolderCrumbClick(1)}>{pathList[0]}</FolderBreadCrumb>
+          <FolderBreadCrumb onClick={() => onBackCrumbClick()}>
             <FontAwesomeIcon icon={faEllipsis} className="text-primary-700" />
           </FolderBreadCrumb>
-
-          <FolderBreadCrumb
-            position={pathList.length}
-            pathList={pathList}
-            onClick={() => onFolderCrumbClick(pathList.length)}
-          >
+          <FolderBreadCrumb onClick={() => onFolderCrumbClick(pathList.length)} isLast>
             {pathList.at(-1)}
           </FolderBreadCrumb>
         </>
