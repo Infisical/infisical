@@ -866,5 +866,166 @@
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
     }
+  },
+  "footer": {
+    "socials": {
+      "x": "https://www.twitter.com/infisical/",
+      "linkedin": "https://www.linkedin.com/company/infisical/",
+      "github": "https://github.com/Infisical/infisical-cli",
+      "slack": "https://infisical.com/slack"
+    },
+    "links": [
+      {
+        "title": "PRODUCT",
+        "links": [
+          { "label": "Secret Management", "url": "https://infisical.com/" },
+          { "label": "Secret Scanning", "url": "https://infisical.com/radar" },
+          {
+            "label": "Share Secrets",
+            "url": "https://app.infisical.com/share-secret"
+          },
+          { "label": "Pricing", "url": "https://infisical.com/pricing" },
+          {
+            "label": "Security",
+            "url": "https://infisical.com/docs/internals/security"
+          },
+          {
+            "label": "Blog",
+            "url": "https://infisical.com/blog"
+          },
+          {
+            "label": "Infisical vs Vault",
+            "url": "https://infisical.com/infisical-vs-hashicorp-vault"
+          },
+          {
+            "label": "Forum",
+            "url": "https://questions.infisical.com/"
+          }
+        ]
+      },
+      {
+        "title": "USE CASES",
+        "links": [
+          {
+            "label": "Infisical Agent",
+            "url": "https://infisical.com/docs/documentation/getting-started/introduction"
+          },
+          {
+            "label": "Kubernetes",
+            "url": "https://infisical.com/docs/integrations/platforms/kubernetes"
+          },
+          {
+            "label": "Dynamic Secrets",
+            "url": "https://infisical.com/docs/documentation/platform/dynamic-secrets/overview"
+          },
+          {
+            "label": "Terraform",
+            "url": "https://infisical.com/docs/integrations/frameworks/terraform"
+          },
+          {
+            "label": "Ansible",
+            "url": "https://infisical.com/docs/integrations/platforms/ansible"
+          },
+          {
+            "label": "Jenkins",
+            "url": "https://infisical.com/docs/integrations/cicd/jenkins"
+          },
+          {
+            "label": "Docker",
+            "url": "https://infisical.com/docs/integrations/platforms/docker-intro"
+          },
+          {
+            "label": "AWS ECS",
+            "url": "https://infisical.com/docs/integrations/platforms/ecs-with-agent"
+          },
+          {
+            "label": "GitLab",
+            "url": "https://infisical.com/docs/integrations/cicd/gitlab"
+          },
+          {
+            "label": "GitHub",
+            "url": "https://infisical.com/docs/integrations/cicd/githubactions"
+          },
+          {
+            "label": "SDK",
+            "url": "https://infisical.com/docs/sdks/overview"
+          }
+        ]
+      },
+      {
+        "title": "DEVELOPERS",
+        "links": [
+          {
+            "label": "Changelog",
+            "url": "https://www.infisical.com/docs/changelog"
+          },
+          {
+            "label": "Status",
+            "url": "https://status.infisical.com/"
+          },
+          {
+            "label": "Feedback & Requests",
+            "url": "https://github.com/Infisical/infisical/issues"
+          },
+          {
+            "label": "Trust of Center",
+            "url": "https://app.vanta.com/infisical.com/trust/hoop8cr78cuarxo9sztvs"
+          },
+          {
+            "label": "Open Source Friends",
+            "url": "https://infisical.com/infisical-friends"
+          },
+          {
+            "label": "How to contribute",
+            "url": "https://www.infisical.com/infisical-heroes"
+          }
+        ]
+      },
+      {
+        "title": "OTHERS",
+        "links": [
+          {
+            "label": "Customers",
+            "url": "https://infisical.com/customers/traba"
+          },
+          {
+            "label": "Company Handbook",
+            "url": "https://infisical.com/wiki/handbook/overview"
+          },
+          {
+            "label": "Careers",
+            "url": "https://infisical.com/careers"
+          },
+          {
+            "label": "Terms of Service",
+            "url": "https://infisical.com/terms"
+          },
+          {
+            "label": "Privacy Policy",
+            "url": "https://infisical.com/privacy"
+          },
+          {
+            "label": "Subprocessors",
+            "url": "https://infisical.com/subprocessors"
+          },
+          {
+            "label": "SLA",
+            "url": "https://infisical.com/sla"
+          },
+          {
+            "label": "Team Email",
+            "url": "mailto:team@infisical.com"
+          },
+          {
+            "label": "Sales",
+            "url": "mailto:sales@infisical.com"
+          },
+          {
+            "label": "Support",
+            "url": "https://infisical.com/slack"
+          }
+        ]
+      }
+    ]
   }
 }
