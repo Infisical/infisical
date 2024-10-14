@@ -18,6 +18,7 @@ import {
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
@@ -35,6 +36,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
+import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
 import { TIntegrationsWithEnvironment } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
@@ -1527,11 +1529,13 @@ const syncSecretsNetlify = async ({
  */
 const syncSecretsGitHub = async ({
   integration,
+  integrationAuth,
   secrets,
   accessToken,
   appendices
 }: {
   integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
   appendices?: { prefix: string; suffix: string };
@@ -1553,9 +1557,24 @@ const syncSecretsGitHub = async ({
     selected_repositories_url?: string | undefined;
   }
 
-  const octokit = new Octokit({
-    auth: accessToken
-  });
+  const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata);
+  let octokit: Octokit;
+  const appCfg = getConfig();
+
+  if (authMetadata.installationId) {
+    octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: appCfg.GITHUB_APP_ID,
+        privateKey: appCfg.GITHUB_APP_PRIVATE_KEY,
+        installationId: authMetadata.installationId
+      }
+    });
+  } else {
+    octokit = new Octokit({
+      auth: accessToken
+    });
+  }
 
   enum GithubScope {
     Repo = "github-repo",
@@ -4054,6 +4073,7 @@ export const syncIntegrationSecrets = async ({
     case Integrations.GITHUB:
       await syncSecretsGitHub({
         integration,
+        integrationAuth,
         secrets,
         accessToken,
         appendices

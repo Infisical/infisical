@@ -1,9 +1,12 @@
 /* eslint-disable no-await-in-loop */
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 
+import { TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
 
 // akhilmhdh: check this part later. Copied from old base
@@ -230,7 +233,13 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of repositories for Github integration
  */
-const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
+const getAppsGithub = async ({
+  accessToken,
+  authMetadata
+}: {
+  accessToken: string;
+  authMetadata?: TIntegrationAuthMetadata;
+}) => {
   interface GitHubApp {
     id: string;
     name: string;
@@ -240,6 +249,29 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
     owner: {
       login: string;
     };
+  }
+
+  if (authMetadata?.installationId) {
+    const appCfg = getConfig();
+    const octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: appCfg.GITHUB_APP_ID,
+        privateKey: appCfg.GITHUB_APP_PRIVATE_KEY,
+        installationId: authMetadata.installationId
+      }
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const repos = await octokit.paginate("GET /installation/repositories", {
+      per_page: 100
+    });
+
+    return repos.map((a) => ({
+      appId: String(a.id),
+      name: a.name,
+      owner: a.owner.login
+    }));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
@@ -1061,11 +1093,13 @@ export const getApps = async ({
   teamId,
   azureDevOpsOrgName,
   workspaceSlug,
+  authMetadata,
   url
 }: {
   integration: string;
   accessToken: string;
   accessId?: string;
+  authMetadata: TIntegrationAuthMetadata;
   teamId?: string | null;
   azureDevOpsOrgName?: string | null;
   workspaceSlug?: string;
@@ -1099,7 +1133,8 @@ export const getApps = async ({
 
     case Integrations.GITHUB:
       return getAppsGithub({
-        accessToken
+        accessToken,
+        authMetadata
       });
 
     case Integrations.GITLAB:

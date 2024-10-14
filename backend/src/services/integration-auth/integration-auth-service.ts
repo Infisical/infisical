@@ -1,10 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import AWS from "aws-sdk";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -16,6 +18,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
+import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
 import {
   TBitbucketWorkspace,
   TChecklyGroups,
@@ -345,6 +348,13 @@ export const integrationAuthServiceFactory = ({
     ) {
       return { accessToken: "", accessId: "" };
     }
+    if (
+      integrationAuth.integration === Integrations.GITHUB &&
+      IntegrationAuthMetadataSchema.parse(integrationAuth.metadata).installationId
+    ) {
+      return { accessToken: "", accessId: "" };
+    }
+
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
         await kmsService.createCipherPairWithDataKey({
@@ -471,6 +481,7 @@ export const integrationAuthServiceFactory = ({
     const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const apps = await getApps({
       integration: integrationAuth.integration,
+      authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata),
       accessToken,
       accessId,
       teamId,
@@ -586,6 +597,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   const getGithubOrgs = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TIntegrationAuthGithubOrgsDTO) => {
+    const appCfg = getConfig();
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: "Failed to find integration" });
 
@@ -598,9 +610,44 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const octokit = new Octokit({
+    let octokit: Octokit;
+    const { installationId } = integrationAuth.metadata as { installationId: string };
+    if (installationId) {
+      octokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: appCfg.GITHUB_APP_ID,
+          privateKey: appCfg.GITHUB_APP_PRIVATE_KEY,
+          installationId
+        }
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const repos = await octokit.paginate("GET /installation/repositories", {
+        per_page: 100
+      });
+
+      const orgSet: Set<string> = new Set();
+
+      return repos
+        .filter((repo) => repo.owner.type === "Organization")
+        .map((repo) => ({
+          name: repo.owner.login,
+          orgId: String(repo.owner.id)
+        }))
+        .filter((org) => {
+          const isOrgProcessed = !orgSet.has(org.orgId);
+          if (!isOrgProcessed) {
+            orgSet.add(org.orgId);
+          }
+
+          return isOrgProcessed;
+        });
+    }
+
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+    octokit = new Octokit({
       auth: accessToken
     });
 
@@ -609,7 +656,9 @@ export const integrationAuthServiceFactory = ({
         "X-GitHub-Api-Version": "2022-11-28"
       }
     });
-    if (!data) return [];
+    if (!data) {
+      return [];
+    }
 
     return data.map(({ login: name, id: orgId }) => ({ name, orgId: String(orgId) }));
   };
@@ -637,9 +686,24 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const octokit = new Octokit({
-      auth: accessToken
-    });
+    let octokit: Octokit;
+    const appCfg = getConfig();
+
+    const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata);
+    if (authMetadata.installationId) {
+      octokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: appCfg.GITHUB_APP_ID,
+          privateKey: appCfg.GITHUB_APP_PRIVATE_KEY,
+          installationId: authMetadata.installationId
+        }
+      });
+    } else {
+      octokit = new Octokit({
+        auth: accessToken
+      });
+    }
 
     const {
       data: { environments }

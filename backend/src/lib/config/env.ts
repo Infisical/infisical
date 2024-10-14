@@ -124,6 +124,8 @@ const envSchema = z
     // github app
     CLIENT_ID_GITHUB_APP: zpStr(z.string().optional()),
     CLIENT_SECRET_GITHUB_APP: zpStr(z.string().optional()),
+    GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
+    GITHUB_APP_ID: z.coerce.number().optional(),
 
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
