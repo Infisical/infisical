@@ -312,10 +312,10 @@ infisical agent --config example-agent-config-file.yaml
 
 <Accordion title="listSecrets">
   ```bash
-    listSecrets "<project-id>" "environment-slug" "<secret-path>"
+    listSecrets "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
   ```
     ```bash example-template-usage
-  {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" }}
+  {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
   {{- range . }}
   {{ .Key }}={{ .Value }}
   {{- end }}
@@ -324,9 +324,12 @@ infisical agent --config example-agent-config-file.yaml
 
 **Function name**: listSecrets
 
-**Description**: This function can be used to render the full list of secrets within a given project, environment and secret path.
+**Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
 
-**Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
+An optional JSON argument is also available. It includes the properties `recursive`, which defaults to false, and `expandSecretReferences`, which defaults to true and expands the returned
+
+
+**Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, SecretPath, Type, ID, and Comment`
 
 </Accordion>
 
