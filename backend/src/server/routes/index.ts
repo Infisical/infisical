@@ -493,6 +493,9 @@ export const registerRoutes = async (
     authDAL,
     userDAL
   });
+
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
   const orgService = orgServiceFactory({
     userAliasDAL,
     identityMetadataDAL,
@@ -515,7 +518,8 @@ export const registerRoutes = async (
     userDAL,
     groupDAL,
     orgBotDAL,
-    oidcConfigDAL
+    oidcConfigDAL,
+    projectBotService
   });
   const signupService = authSignupServiceFactory({
     tokenService,
@@ -574,7 +578,6 @@ export const registerRoutes = async (
     secretScanningDAL,
     secretScanningQueue
   });
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
 
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
@@ -838,7 +841,10 @@ export const registerRoutes = async (
     integrationAuthDAL,
     snapshotDAL,
     snapshotSecretV2BridgeDAL,
-    secretApprovalRequestDAL
+    secretApprovalRequestDAL,
+    projectKeyDAL,
+    projectUserMembershipRoleDAL,
+    orgService
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,
