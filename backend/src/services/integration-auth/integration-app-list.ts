@@ -2,11 +2,12 @@
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 
+import { TIntegrationAuths } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 
-import { TIntegrationAuthMetadata } from "./integration-auth-schema";
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
 
 // akhilmhdh: check this part later. Copied from old base
@@ -1088,18 +1089,18 @@ const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: strin
 
 export const getApps = async ({
   integration,
+  integrationAuth,
   accessToken,
   accessId,
   teamId,
   azureDevOpsOrgName,
   workspaceSlug,
-  authMetadata,
   url
 }: {
   integration: string;
   accessToken: string;
   accessId?: string;
-  authMetadata: TIntegrationAuthMetadata;
+  integrationAuth: TIntegrationAuths;
   teamId?: string | null;
   azureDevOpsOrgName?: string | null;
   workspaceSlug?: string;
@@ -1134,7 +1135,7 @@ export const getApps = async ({
     case Integrations.GITHUB:
       return getAppsGithub({
         accessToken,
-        authMetadata
+        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata)
       });
 
     case Integrations.GITLAB:

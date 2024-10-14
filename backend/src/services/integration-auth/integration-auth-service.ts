@@ -481,7 +481,7 @@ export const integrationAuthServiceFactory = ({
     const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const apps = await getApps({
       integration: integrationAuth.integration,
-      authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata),
+      integrationAuth,
       accessToken,
       accessId,
       teamId,
