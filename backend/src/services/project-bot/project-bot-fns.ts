@@ -24,14 +24,14 @@ export const getBotKeyFnFactory = (
   projectBotDAL: TProjectBotDALFactory,
   projectDAL: Pick<TProjectDALFactory, "findById">
 ) => {
-  const getBotKeyFn = async (projectId: string) => {
+  const getBotKeyFn = async (projectId: string, shouldGetBotKey?: boolean) => {
     const project = await projectDAL.findById(projectId);
     if (!project)
       throw new NotFoundError({
         message: "Project not found during bot lookup. Are you sure you are using the correct project ID?"
       });
 
-    if (project.version === 3) {
+    if (project.version === 3 && !shouldGetBotKey) {
       return { project, shouldUseSecretV2Bridge: true };
     }
 
@@ -65,8 +65,9 @@ export const getBotKeyFnFactory = (
       const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(botKey.privateKey);
       const encryptedWorkspaceKey = encryptAsymmetric(workspaceKey, botKey.publicKey, userPrivateKey);
 
+      let botId;
       if (!bot) {
-        await projectBotDAL.create({
+        const newBot = await projectBotDAL.create({
           name: "Infisical Bot (Ghost)",
           projectId,
           isActive: true,
@@ -80,8 +81,9 @@ export const getBotKeyFnFactory = (
           encryptedProjectKeyNonce: encryptedWorkspaceKey.nonce,
           senderId: projectV1Keys.userId
         });
+        botId = newBot.id;
       } else {
-        await projectBotDAL.updateById(bot.id, {
+        const updatedBot = await projectBotDAL.updateById(bot.id, {
           isActive: true,
           tag,
           iv,
@@ -93,8 +95,10 @@ export const getBotKeyFnFactory = (
           encryptedProjectKeyNonce: encryptedWorkspaceKey.nonce,
           senderId: projectV1Keys.userId
         });
+        botId = updatedBot.id;
       }
-      return { botKey: workspaceKey, project, shouldUseSecretV2Bridge: false };
+
+      return { botKey: workspaceKey, project, shouldUseSecretV2Bridge: false, bot: { id: botId } };
     }
 
     const botPrivateKey = getBotPrivateKey({ bot });
@@ -104,7 +108,7 @@ export const getBotKeyFnFactory = (
       nonce: bot.encryptedProjectKeyNonce,
       publicKey: bot.sender.publicKey
     });
-    return { botKey, project, shouldUseSecretV2Bridge: false };
+    return { botKey, project, shouldUseSecretV2Bridge: false, bot: { id: bot.id } };
   };
 
   return getBotKeyFn;
