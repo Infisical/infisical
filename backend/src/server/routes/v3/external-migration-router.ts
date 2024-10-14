@@ -34,7 +34,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
       const decryptionKey = (data.fields.decryptionKey as { value: string }).value;
 
-      if (!parsedJsonFile.nonce || parsedJsonFile.data) {
+      if (!parsedJsonFile.nonce || !parsedJsonFile.data) {
         throw new BadRequestError({ message: "Invalid file format. Nonce or data missing." });
       }
 
