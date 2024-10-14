@@ -108,6 +108,10 @@ export type TDeleteIntegrationAuthByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TDuplicateGithubIntegrationAuthDTO = {
+  id: string;
+} & TProjectPermission;
+
 export type TGetIntegrationAuthTeamCityBuildConfigDTO = {
   id: string;
   appId: string;

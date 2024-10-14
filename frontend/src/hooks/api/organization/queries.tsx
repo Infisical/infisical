@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
+import { IntegrationAuth } from "../types";
 import {
   BillingDetails,
   Invoice,
@@ -39,7 +40,8 @@ export const organizationKeys = {
     ...params
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
-  getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const
+  getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
+  getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const
 };
 
 export const fetchOrganizations = async () => {
@@ -461,5 +463,23 @@ export const useGetOrganizationGroups = (organizationId: string) => {
 
       return groups;
     }
+  });
+};
+
+export const useGetOrgIntegrationAuths = <TData = IntegrationAuth[],>(
+  organizationId: string,
+  select?: (data: IntegrationAuth[]) => TData
+) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgIntegrationAuths(organizationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
+        `/api/v1/organization/${organizationId}/integration-authorizations`
+      );
+
+      return data.authorizations;
+    },
+    enabled: Boolean(organizationId),
+    select
   });
 };

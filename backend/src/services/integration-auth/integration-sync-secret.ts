@@ -1557,7 +1557,7 @@ const syncSecretsGitHub = async ({
     selected_repositories_url?: string | undefined;
   }
 
-  const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata);
+  const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {});
   let octokit: Octokit;
   const appCfg = getConfig();
 

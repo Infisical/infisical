@@ -454,6 +454,40 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    method: "POST",
+    url: "/:integrationAuthId/duplicate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      body: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          integrationAuth: integrationAuthPubSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.duplicateIntegrationAuth({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        id: req.params.integrationAuthId,
+        projectId: req.body.projectId
+      });
+
+      return { integrationAuth };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:integrationAuthId/github/envs",
     config: {

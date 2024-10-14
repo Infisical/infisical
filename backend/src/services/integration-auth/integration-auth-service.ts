@@ -10,7 +10,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TProjectPermission } from "@app/lib/types";
+import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -24,6 +24,7 @@ import {
   TChecklyGroups,
   TDeleteIntegrationAuthByIdDTO,
   TDeleteIntegrationAuthsDTO,
+  TDuplicateGithubIntegrationAuthDTO,
   TGetIntegrationAuthDTO,
   TGetIntegrationAuthTeamCityBuildConfigDTO,
   THerokuPipelineCoupling,
@@ -87,6 +88,24 @@ export const integrationAuthServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const authorizations = await integrationAuthDAL.find({ projectId });
     return authorizations;
+  };
+
+  const listOrgIntegrationAuth = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGenericPermission) => {
+    const authorizations = await integrationAuthDAL.getByOrg(actorOrgId as string);
+
+    return Promise.all(
+      authorizations.filter(async (auth) => {
+        const { permission } = await permissionService.getProjectPermission(
+          actor,
+          actorId,
+          auth.projectId,
+          actorAuthMethod,
+          actorOrgId
+        );
+
+        return permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+      })
+    );
   };
 
   const getIntegrationAuth = async ({ actor, id, actorId, actorAuthMethod, actorOrgId }: TGetIntegrationAuthDTO) => {
@@ -350,7 +369,7 @@ export const integrationAuthServiceFactory = ({
     }
     if (
       integrationAuth.integration === Integrations.GITHUB &&
-      IntegrationAuthMetadataSchema.parse(integrationAuth.metadata).installationId
+      IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {}).installationId
     ) {
       return { accessToken: "", accessId: "" };
     }
@@ -612,7 +631,7 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
 
     let octokit: Octokit;
-    const { installationId } = integrationAuth.metadata as { installationId: string };
+    const { installationId } = (integrationAuth.metadata as { installationId: string }) || {};
     if (installationId) {
       octokit = new Octokit({
         authStrategy: createAppAuth,
@@ -637,12 +656,12 @@ export const integrationAuthServiceFactory = ({
           orgId: String(repo.owner.id)
         }))
         .filter((org) => {
-          const isOrgProcessed = !orgSet.has(org.orgId);
+          const isOrgProcessed = orgSet.has(org.orgId);
           if (!isOrgProcessed) {
             orgSet.add(org.orgId);
           }
 
-          return isOrgProcessed;
+          return !isOrgProcessed;
         });
     }
 
@@ -689,7 +708,7 @@ export const integrationAuthServiceFactory = ({
     let octokit: Octokit;
     const appCfg = getConfig();
 
-    const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata);
+    const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {});
     if (authMetadata.installationId) {
       octokit = new Octokit({
         authStrategy: createAppAuth,
@@ -1390,8 +1409,58 @@ export const integrationAuthServiceFactory = ({
     return delIntegrationAuth;
   };
 
+  // At the moment, we only use this for Github App integration as it's a special case
+  const duplicateIntegrationAuth = async ({
+    id,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    projectId
+  }: TDuplicateGithubIntegrationAuthDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) {
+      throw new NotFoundError({ message: "Failed to find integration" });
+    }
+
+    const { permission: sourcePermission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(sourcePermission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Integrations
+    );
+
+    const { permission: targetPermission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(targetPermission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Integrations
+    );
+
+    const newIntegrationAuth: Omit<typeof integrationAuth, "id"> & { id?: string } = {
+      ...integrationAuth,
+      id: undefined,
+      projectId
+    };
+
+    return integrationAuthDAL.create(newIntegrationAuth);
+  };
+
   return {
     listIntegrationAuthByProjectId,
+    listOrgIntegrationAuth,
     getIntegrationOptions,
     getIntegrationAuth,
     oauthExchange,
@@ -1418,6 +1487,7 @@ export const integrationAuthServiceFactory = ({
     getNorthFlankSecretGroups,
     getTeamcityBuildConfigs,
     getBitbucketWorkspaces,
-    getIntegrationAccessToken
+    getIntegrationAccessToken,
+    duplicateIntegrationAuth
   };
 };

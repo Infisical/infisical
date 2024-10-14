@@ -24,7 +24,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
-          subTitle="Select how you'd like to integrate with GitHub. For more precise control, we recommend using the GitHub App method."
+          subTitle="Select how you'd like to integrate with GitHub. We recommend using the GitHub App method for fine-grained access."
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
@@ -61,7 +61,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
               router.push("/integrations/select-integration-auth?integrationSlug=github");
             }}
           >
-            Connect with Github App
+            Connect with App
           </Button>
           <Button
             colorSchema="primary"
@@ -78,7 +78,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
               );
             }}
           >
-            Connect with Github OAuth
+            Connect with OAuth
           </Button>
         </div>
       </Card>

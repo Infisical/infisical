@@ -367,7 +367,7 @@ export const deleteIntegrationSecrets = async ({
     case Integrations.GITHUB: {
       await deleteGithubSecrets({
         integration,
-        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata),
+        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {}),
         accessToken,
         secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets
       });

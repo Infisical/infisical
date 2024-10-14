@@ -1135,7 +1135,7 @@ export const getApps = async ({
     case Integrations.GITHUB:
       return getAppsGithub({
         accessToken,
-        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata)
+        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {})
       });
 
     case Integrations.GITLAB:
