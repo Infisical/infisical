@@ -45,8 +45,9 @@ type Config struct {
 }
 
 type InfisicalConfig struct {
-	Address       string `yaml:"address"`
-	ExitAfterAuth bool   `yaml:"exit-after-auth"`
+	Address        string `yaml:"address"`
+	ExitAfterAuth  bool   `yaml:"exit-after-auth"`
+	IncludeImports bool   `yaml:"include-imports"`
 }
 
 type AuthConfig struct {
@@ -311,9 +312,9 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 	return config, nil
 }
 
-func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
+func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string, includeImports bool) func(string, string, string) ([]models.SingleEnvironmentVariable, error) {
 	return func(projectID, envSlug, secretPath string) ([]models.SingleEnvironmentVariable, error) {
-		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, false, "")
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, includeImports, false, "")
 		if err != nil {
 			return nil, err
 		}
@@ -370,9 +371,9 @@ func dynamicSecretTemplateFunction(accessToken string, dynamicSecretManager *Dyn
 	}
 }
 
-func ProcessTemplate(templateId int, templatePath string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretManager *DynamicSecretLeaseManager) (*bytes.Buffer, error) {
+func ProcessTemplate(templateId int, templatePath string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretManager *DynamicSecretLeaseManager, includeSecrets bool) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
-	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag)
+	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag, includeSecrets)
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretManager, templateId)
 	getSingleSecretFunction := getSingleSecretTemplateFunction(accessToken, existingEtag, currentEtag)
 	funcs := template.FuncMap{
@@ -402,7 +403,7 @@ func ProcessTemplate(templateId int, templatePath string, data interface{}, acce
 	return &buf, nil
 }
 
-func ProcessBase64Template(templateId int, encodedTemplate string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretLeaser *DynamicSecretLeaseManager) (*bytes.Buffer, error) {
+func ProcessBase64Template(templateId int, encodedTemplate string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretLeaser *DynamicSecretLeaseManager, includeImports bool) (*bytes.Buffer, error) {
 	// custom template function to fetch secrets from Infisical
 	decoded, err := base64.StdEncoding.DecodeString(encodedTemplate)
 	if err != nil {
@@ -411,7 +412,7 @@ func ProcessBase64Template(templateId int, encodedTemplate string, data interfac
 
 	templateString := string(decoded)
 
-	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag) // TODO: Fix this
+	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag, includeImports) // TODO: Fix this
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretLeaser, templateId)
 	funcs := template.FuncMap{
 		"secret":         secretFunction,
@@ -433,8 +434,8 @@ func ProcessBase64Template(templateId int, encodedTemplate string, data interfac
 	return &buf, nil
 }
 
-func ProcessLiteralTemplate(templateId int, templateString string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretLeaser *DynamicSecretLeaseManager) (*bytes.Buffer, error) {
-	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag) // TODO: Fix this
+func ProcessLiteralTemplate(templateId int, templateString string, data interface{}, accessToken string, existingEtag string, currentEtag *string, dynamicSecretLeaser *DynamicSecretLeaseManager, includeImports bool) (*bytes.Buffer, error) {
+	secretFunction := secretTemplateFunction(accessToken, existingEtag, currentEtag, includeImports) // TODO: Fix this
 	dynamicSecretFunction := dynamicSecretTemplateFunction(accessToken, dynamicSecretLeaser, templateId)
 	funcs := template.FuncMap{
 		"secret":         secretFunction,
@@ -456,7 +457,6 @@ func ProcessLiteralTemplate(templateId int, templateString string, data interfac
 	return &buf, nil
 }
 
-
 type AgentManager struct {
 	accessToken              string
 	accessTokenTTL           time.Duration
@@ -475,6 +475,7 @@ type AgentManager struct {
 	removeUniversalAuthClientSecretOnRead bool
 	cachedUniversalAuthClientSecret       string
 	exitAfterAuth                         bool
+	includeImports                        bool
 
 	infisicalClient infisicalSdk.InfisicalClientInterface
 }
@@ -488,6 +489,7 @@ type NewAgentMangerOptions struct {
 
 	NewAccessTokenNotificationChan chan bool
 	ExitAfterAuth                  bool
+	IncludeImports                 bool
 }
 
 func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
@@ -501,6 +503,7 @@ func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 
 		newAccessTokenNotificationChan: options.NewAccessTokenNotificationChan,
 		exitAfterAuth:                  options.ExitAfterAuth,
+		includeImports:                 options.IncludeImports,
 
 		infisicalClient: infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
 			SiteUrl:   config.INFISICAL_URL,
@@ -844,11 +847,11 @@ func (tm *AgentManager) MonitorSecretChanges(secretTemplate Template, templateId
 					var err error
 
 					if secretTemplate.SourcePath != "" {
-						processedTemplate, err = ProcessTemplate(templateId, secretTemplate.SourcePath, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
+						processedTemplate, err = ProcessTemplate(templateId, secretTemplate.SourcePath, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases, tm.includeImports)
 					} else if secretTemplate.TemplateContent != "" {
-						processedTemplate, err = ProcessLiteralTemplate(templateId, secretTemplate.TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
+						processedTemplate, err = ProcessLiteralTemplate(templateId, secretTemplate.TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases, tm.includeImports)
 					} else {
-						processedTemplate, err = ProcessBase64Template(templateId, secretTemplate.Base64TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases)
+						processedTemplate, err = ProcessBase64Template(templateId, secretTemplate.Base64TemplateContent, nil, token, existingEtag, &currentEtag, tm.dynamicSecretLeases, tm.includeImports)
 					}
 
 					if err != nil {
@@ -970,6 +973,7 @@ var agentCmd = &cobra.Command{
 			NewAccessTokenNotificationChan: tokenRefreshNotifier,
 			ExitAfterAuth:                  agentConfig.Infisical.ExitAfterAuth,
 			AuthStrategy:                   authStrategy,
+			IncludeImports:                 agentConfig.Infisical.IncludeImports,
 		})
 
 		tm.dynamicSecretLeases = NewDynamicSecretLeaseManager(sigChan)
