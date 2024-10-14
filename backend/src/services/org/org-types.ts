@@ -26,18 +26,13 @@ export type TDeleteOrgMembershipDTO = {
 };
 
 export type TInviteUserToOrgDTO = {
-  actorId: string;
-  actor: ActorType;
-  orgId: string;
-  actorOrgId: string | undefined;
-  actorAuthMethod: ActorAuthMethod;
   inviteeEmails: string[];
   organizationRoleSlug: string;
   projects?: {
     id: string;
     projectRoleSlug?: string[];
   }[];
-};
+} & TOrgPermission;
 
 export type TVerifyUserToOrgDTO = {
   email: string;

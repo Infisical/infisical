@@ -240,7 +240,8 @@ export const secretSnapshotServiceFactory = ({
             },
             tx
           );
-          const snapshotSecrets = await snapshotSecretV2BridgeDAL.insertMany(
+
+          const snapshotSecrets = await snapshotSecretV2BridgeDAL.batchInsert(
             secretVersions.map(({ id }) => ({
               secretVersionId: id,
               envId: folder.environment.envId,
@@ -248,7 +249,8 @@ export const secretSnapshotServiceFactory = ({
             })),
             tx
           );
-          const snapshotFolders = await snapshotFolderDAL.insertMany(
+
+          const snapshotFolders = await snapshotFolderDAL.batchInsert(
             folderVersions.map(({ id }) => ({
               folderVersionId: id,
               envId: folder.environment.envId,

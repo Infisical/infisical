@@ -85,7 +85,7 @@ type TSecretQueueFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsService: TKmsServiceFactory;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;

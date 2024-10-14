@@ -160,8 +160,8 @@ export const kmsServiceFactory = ({
    * In mean time the rest of the request will wait until creation is finished followed by getting the created on
    * In real time this would be milliseconds
    */
-  const getOrgKmsKeyId = async (orgId: string) => {
-    let org = await orgDAL.findById(orgId);
+  const getOrgKmsKeyId = async (orgId: string, trx?: Knex) => {
+    let org = await orgDAL.findById(orgId, trx);
 
     if (!org) {
       throw new NotFoundError({ message: "Org not found" });
@@ -180,9 +180,9 @@ export const kmsServiceFactory = ({
             waitingCb: () => logger.info("KMS. Waiting for org key to be created")
           });
 
-          org = await orgDAL.findById(orgId);
+          org = await orgDAL.findById(orgId, trx);
         } else {
-          const keyId = await orgDAL.transaction(async (tx) => {
+          const keyId = await (trx || orgDAL).transaction(async (tx) => {
             org = await orgDAL.findById(orgId, tx);
             if (org.kmsDefaultKeyId) {
               return org.kmsDefaultKeyId;
@@ -240,11 +240,12 @@ export const kmsServiceFactory = ({
 
   const decryptWithKmsKey = async ({
     kmsId,
-    depth = 0
-  }: Omit<TDecryptWithKmsDTO, "cipherTextBlob"> & { depth?: number }) => {
+    depth = 0,
+    tx
+  }: Omit<TDecryptWithKmsDTO, "cipherTextBlob"> & { depth?: number; tx?: Knex }) => {
     if (depth > 2) throw new BadRequestError({ message: "KMS depth max limit" });
 
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: "KMS ID not found" });
     }
@@ -261,7 +262,8 @@ export const kmsServiceFactory = ({
       // we put a limit of depth to avoid too many cycles
       const orgKmsDecryptor = await decryptWithKmsKey({
         kmsId: kmsDoc.orgKms.id,
-        depth: depth + 1
+        depth: depth + 1,
+        tx
       });
 
       const orgKmsDataKey = await orgKmsDecryptor({
@@ -375,9 +377,9 @@ export const kmsServiceFactory = ({
     };
   };
 
-  const $getOrgKmsDataKey = async (orgId: string) => {
-    const kmsKeyId = await getOrgKmsKeyId(orgId);
-    let org = await orgDAL.findById(orgId);
+  const $getOrgKmsDataKey = async (orgId: string, trx?: Knex) => {
+    const kmsKeyId = await getOrgKmsKeyId(orgId, trx);
+    let org = await orgDAL.findById(orgId, trx);
 
     if (!org) {
       throw new NotFoundError({ message: "Org not found" });
@@ -396,9 +398,9 @@ export const kmsServiceFactory = ({
             waitingCb: () => logger.info("KMS. Waiting for org data key to be created")
           });
 
-          org = await orgDAL.findById(orgId);
+          org = await orgDAL.findById(orgId, trx);
         } else {
-          const orgDataKey = await orgDAL.transaction(async (tx) => {
+          const orgDataKey = await (trx || orgDAL).transaction(async (tx) => {
             org = await orgDAL.findById(orgId, tx);
             if (org.kmsEncryptedDataKey) {
               return;
@@ -455,8 +457,8 @@ export const kmsServiceFactory = ({
     });
   };
 
-  const getProjectSecretManagerKmsKeyId = async (projectId: string) => {
-    let project = await projectDAL.findById(projectId);
+  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
+    let project = await projectDAL.findById(projectId, trx);
     if (!project) {
       throw new NotFoundError({ message: "Project not found" });
     }
@@ -477,7 +479,7 @@ export const kmsServiceFactory = ({
 
           project = await projectDAL.findById(projectId);
         } else {
-          const kmsKeyId = await projectDAL.transaction(async (tx) => {
+          const kmsKeyId = await (trx || projectDAL).transaction(async (tx) => {
             project = await projectDAL.findById(projectId, tx);
             if (project.kmsSecretManagerKeyId) {
               return project.kmsSecretManagerKeyId;
@@ -520,9 +522,9 @@ export const kmsServiceFactory = ({
     return project.kmsSecretManagerKeyId;
   };
 
-  const $getProjectSecretManagerKmsDataKey = async (projectId: string) => {
-    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
-    let project = await projectDAL.findById(projectId);
+  const $getProjectSecretManagerKmsDataKey = async (projectId: string, trx?: Knex) => {
+    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId, trx);
+    let project = await projectDAL.findById(projectId, trx);
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
       const lock = await keyStore
@@ -538,18 +540,21 @@ export const kmsServiceFactory = ({
             delay: 500
           });
 
-          project = await projectDAL.findById(projectId);
+          project = await projectDAL.findById(projectId, trx);
         } else {
-          const projectDataKey = await projectDAL.transaction(async (tx) => {
+          const projectDataKey = await (trx || projectDAL).transaction(async (tx) => {
             project = await projectDAL.findById(projectId, tx);
             if (project.kmsSecretManagerEncryptedDataKey) {
               return;
             }
 
             const dataKey = randomSecureBytes();
-            const kmsEncryptor = await encryptWithKmsKey({
-              kmsId: kmsKeyId
-            });
+            const kmsEncryptor = await encryptWithKmsKey(
+              {
+                kmsId: kmsKeyId
+              },
+              tx
+            );
 
             const { cipherTextBlob } = await kmsEncryptor({
               plainText: dataKey
@@ -585,7 +590,8 @@ export const kmsServiceFactory = ({
     }
 
     const kmsDecryptor = await decryptWithKmsKey({
-      kmsId: kmsKeyId
+      kmsId: kmsKeyId,
+      tx: trx
     });
 
     return kmsDecryptor({
@@ -593,13 +599,13 @@ export const kmsServiceFactory = ({
     });
   };
 
-  const $getDataKey = async (dto: TEncryptWithKmsDataKeyDTO) => {
+  const $getDataKey = async (dto: TEncryptWithKmsDataKeyDTO, trx?: Knex) => {
     switch (dto.type) {
       case KmsDataKey.SecretManager: {
-        return $getProjectSecretManagerKmsDataKey(dto.projectId);
+        return $getProjectSecretManagerKmsDataKey(dto.projectId, trx);
       }
       default: {
-        return $getOrgKmsDataKey(dto.orgId);
+        return $getOrgKmsDataKey(dto.orgId, trx);
       }
     }
   };
@@ -607,8 +613,9 @@ export const kmsServiceFactory = ({
   // by keeping the decrypted data key in inner scope
   // none of the entities outside can interact directly or expose the data key
   // NOTICE: If changing here update migrations/utils/kms
-  const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO) => {
-    const dataKey = await $getDataKey(encryptionContext);
+  const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO, trx?: Knex) => {
+    const dataKey = await $getDataKey(encryptionContext, trx);
+
     const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
 
     return {

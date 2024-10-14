@@ -54,8 +54,9 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
         decryptionKey: data.encryptionKey
       });
       createNotification({
-        text: "Data imported successfully.",
-        type: "success"
+        title: "Import started",
+        text: "Your data is being imported. You will receive an email when the import is complete or if the import fails. This may take up to 10 minutes.",
+        type: "info"
       });
 
       onClose();
