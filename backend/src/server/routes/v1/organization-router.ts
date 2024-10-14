@@ -138,7 +138,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
