@@ -313,7 +313,15 @@ func ParseAgentConfig(configFile []byte) (*Config, error) {
 }
 
 type secretArguments struct {
-	IsRecursive bool `json:"recursive"`
+	IsRecursive                  bool  `json:"recursive"`
+	ShouldExpandSecretReferences *bool `json:"expandSecretReferences,omitempty"`
+}
+
+func (s *secretArguments) SetDefaults() {
+	if s.ShouldExpandSecretReferences == nil {
+		var bool = true
+		s.ShouldExpandSecretReferences = &bool
+	}
 }
 
 func secretTemplateFunction(accessToken string, existingEtag string, currentEtag *string) func(string, string, string, ...string) ([]models.SingleEnvironmentVariable, error) {
@@ -329,7 +337,9 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 			}
 		}
 
-		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, parsedArguments.IsRecursive, "")
+		parsedArguments.SetDefaults()
+
+		res, err := util.GetPlainTextSecretsV3(accessToken, projectID, envSlug, secretPath, false, parsedArguments.IsRecursive, "", *parsedArguments.ShouldExpandSecretReferences)
 		if err != nil {
 			return nil, err
 		}
@@ -338,9 +348,7 @@ func secretTemplateFunction(accessToken string, existingEtag string, currentEtag
 			*currentEtag = res.Etag
 		}
 
-		expandedSecrets := util.ExpandSecrets(res.Secrets, models.ExpandSecretsAuthentication{UniversalAuthAccessToken: accessToken}, "")
-
-		return expandedSecrets, nil
+		return res.Secrets, nil
 	}
 }
 

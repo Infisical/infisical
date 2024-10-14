@@ -79,12 +79,13 @@ var secretsCmd = &cobra.Command{
 		}
 
 		request := models.GetAllSecretsParameters{
-			Environment:   environmentName,
-			WorkspaceId:   projectId,
-			TagSlugs:      tagSlugs,
-			SecretsPath:   secretsPath,
-			IncludeImport: includeImports,
-			Recursive:     recursive,
+			Environment:            environmentName,
+			WorkspaceId:            projectId,
+			TagSlugs:               tagSlugs,
+			SecretsPath:            secretsPath,
+			IncludeImport:          includeImports,
+			Recursive:              recursive,
+			ExpandSecretReferences: shouldExpandSecrets,
 		}
 
 		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
@@ -102,17 +103,6 @@ var secretsCmd = &cobra.Command{
 			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
 		} else {
 			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-		}
-
-		if shouldExpandSecrets {
-			authParams := models.ExpandSecretsAuthentication{}
-			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-				authParams.UniversalAuthAccessToken = token.Token
-			}
-
-			secrets = util.ExpandSecrets(secrets, authParams, "")
 		}
 
 		// Sort the secrets by key so we can create a consistent output
@@ -382,12 +372,13 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	}
 
 	request := models.GetAllSecretsParameters{
-		Environment:   environmentName,
-		WorkspaceId:   projectId,
-		TagSlugs:      tagSlugs,
-		SecretsPath:   secretsPath,
-		IncludeImport: includeImports,
-		Recursive:     recursive,
+		Environment:            environmentName,
+		WorkspaceId:            projectId,
+		TagSlugs:               tagSlugs,
+		SecretsPath:            secretsPath,
+		IncludeImport:          includeImports,
+		Recursive:              recursive,
+		ExpandSecretReferences: shouldExpand,
 	}
 
 	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
@@ -405,17 +396,6 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
 	} else {
 		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-	}
-
-	if shouldExpand {
-		authParams := models.ExpandSecretsAuthentication{}
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-			authParams.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-			authParams.UniversalAuthAccessToken = token.Token
-		}
-
-		secrets = util.ExpandSecrets(secrets, authParams, "")
 	}
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}

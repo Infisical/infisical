@@ -87,11 +87,12 @@ var exportCmd = &cobra.Command{
 		}
 
 		request := models.GetAllSecretsParameters{
-			Environment:   environmentName,
-			TagSlugs:      tagSlugs,
-			WorkspaceId:   projectId,
-			SecretsPath:   secretsPath,
-			IncludeImport: includeImports,
+			Environment:            environmentName,
+			TagSlugs:               tagSlugs,
+			WorkspaceId:            projectId,
+			SecretsPath:            secretsPath,
+			IncludeImport:          includeImports,
+			ExpandSecretReferences: shouldExpandSecrets,
 		}
 
 		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
@@ -137,18 +138,6 @@ var exportCmd = &cobra.Command{
 		}
 
 		var output string
-		if shouldExpandSecrets {
-
-			authParams := models.ExpandSecretsAuthentication{}
-
-			if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-				authParams.InfisicalToken = token.Token
-			} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-				authParams.UniversalAuthAccessToken = token.Token
-			}
-
-			secrets = util.ExpandSecrets(secrets, authParams, "")
-		}
 		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
 		secrets = util.SortSecretsByKeys(secrets)
 

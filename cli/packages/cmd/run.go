@@ -137,15 +137,16 @@ var runCmd = &cobra.Command{
 		}
 
 		request := models.GetAllSecretsParameters{
-			Environment:   environmentName,
-			WorkspaceId:   projectId,
-			TagSlugs:      tagSlugs,
-			SecretsPath:   secretsPath,
-			IncludeImport: includeImports,
-			Recursive:     recursive,
+			Environment:            environmentName,
+			WorkspaceId:            projectId,
+			TagSlugs:               tagSlugs,
+			SecretsPath:            secretsPath,
+			IncludeImport:          includeImports,
+			Recursive:              recursive,
+			ExpandSecretReferences: shouldExpandSecrets,
 		}
 
-		injectableEnvironment, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, shouldExpandSecrets, token)
+		injectableEnvironment, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, token)
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
 		}
@@ -153,7 +154,7 @@ var runCmd = &cobra.Command{
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", injectableEnvironment.Variables)
 
 		if watchMode {
-			executeCommandWithWatchMode(command, args, watchModeInterval, request, projectConfigDir, shouldExpandSecrets, secretOverriding, token)
+			executeCommandWithWatchMode(command, args, watchModeInterval, request, projectConfigDir, secretOverriding, token)
 		} else {
 			if cmd.Flags().Changed("command") {
 				command := cmd.Flag("command").Value.String()
@@ -306,7 +307,7 @@ func waitForExitCommand(cmd *exec.Cmd) (int, error) {
 	return waitStatus.ExitStatus(), nil
 }
 
-func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, expandSecrets bool, secretOverriding bool, token *models.TokenDetails) {
+func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInterval int, request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) {
 
 	var cmd *exec.Cmd
 	var err error
@@ -420,7 +421,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 		<-recheckSecretsChannel
 		watchMutex.Lock()
 
-		newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, expandSecrets, token)
+		newEnvironmentVariables, err := fetchAndFormatSecretsForShell(request, projectConfigDir, secretOverriding, token)
 		if err != nil {
 			log.Error().Err(err).Msg("[HOT RELOAD] Failed to fetch secrets")
 			continue
@@ -437,7 +438,7 @@ func executeCommandWithWatchMode(commandFlag string, args []string, watchModeInt
 	}
 }
 
-func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, shouldExpandSecrets bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
+func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, projectConfigDir string, secretOverriding bool, token *models.TokenDetails) (models.InjectableEnvironmentResult, error) {
 
 	if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
 		request.InfisicalToken = token.Token
@@ -455,19 +456,6 @@ func fetchAndFormatSecretsForShell(request models.GetAllSecretsParameters, proje
 		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
 	} else {
 		secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
-	}
-
-	if shouldExpandSecrets {
-
-		authParams := models.ExpandSecretsAuthentication{}
-
-		if token != nil && token.Type == util.SERVICE_TOKEN_IDENTIFIER {
-			authParams.InfisicalToken = token.Token
-		} else if token != nil && token.Type == util.UNIVERSAL_AUTH_TOKEN_IDENTIFIER {
-			authParams.UniversalAuthAccessToken = token.Token
-		}
-
-		secrets = util.ExpandSecrets(secrets, authParams, projectConfigDir)
 	}
 
 	secretsByKey := getSecretsByKeys(secrets)

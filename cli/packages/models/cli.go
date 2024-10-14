@@ -104,6 +104,7 @@ type GetAllSecretsParameters struct {
 	SecretsPath              string
 	IncludeImport            bool
 	Recursive                bool
+	ExpandSecretReferences   bool
 }
 
 type InjectableEnvironmentResult struct {
