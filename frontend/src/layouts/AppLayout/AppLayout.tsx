@@ -719,6 +719,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/org/${currentOrg?.id}/consumer-secrets`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath.includes("/consumer-secrets")}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            Consumer Secrets
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/org/${currentOrg?.id}/members`} passHref>
                         <a>
                           <MenuItem
