@@ -5,6 +5,9 @@ import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 
 const RESERVED_ORG_ROLE_SLUGS = Object.values(OrgMembershipRole).filter((role) => role !== "custom");
 
+export const isCustomOrgRole = (membershipSlug: string) =>
+  !RESERVED_ORG_ROLE_SLUGS.includes(membershipSlug as OrgMembershipRole);
+
 // this is only for updating an org
 export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   membershipRoleSlug,
@@ -17,9 +20,7 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   orgRoleDAL: TOrgRoleDALFactory;
   plan: TFeatureSet;
 }) => {
-  const isCustomRole = !RESERVED_ORG_ROLE_SLUGS.includes(membershipRoleSlug as OrgMembershipRole);
-
-  if (isCustomRole) {
+  if (isCustomOrgRole(membershipRoleSlug)) {
     if (!plan?.rbac)
       throw new BadRequestError({
         message:
@@ -41,9 +42,7 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
 export const getDefaultOrgMembershipRole = async (
   defaultOrgMembershipRole: string // can either be ID or reserved slug
 ) => {
-  const isCustomRole = !RESERVED_ORG_ROLE_SLUGS.includes(defaultOrgMembershipRole as OrgMembershipRole);
-
-  if (isCustomRole)
+  if (isCustomOrgRole(defaultOrgMembershipRole))
     return {
       roleId: defaultOrgMembershipRole,
       role: OrgMembershipRole.Custom

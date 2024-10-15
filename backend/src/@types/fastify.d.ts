@@ -39,6 +39,7 @@ import { TCertificateServiceFactory } from "@app/services/certificate/certificat
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
@@ -185,6 +186,7 @@ declare module "fastify" {
       workflowIntegration: TWorkflowIntegrationServiceFactory;
       cmek: TCmekServiceFactory;
       migration: TExternalMigrationServiceFactory;
+      externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -9,6 +9,7 @@ import {
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ExternalGroupOrgRoleMappings } from "@app/views/Settings/OrgSettingsPage/components/OrgAuthTab/ExternalGroupOrgRoleMappings";
 
 import { ScimTokenModal } from "./ScimTokenModal";
 
@@ -76,6 +77,7 @@ export const OrgScimSection = () => {
         </div>
         <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
       </div>
+      <ExternalGroupOrgRoleMappings />
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">Enable SCIM</h2>

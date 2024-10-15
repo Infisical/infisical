@@ -3,7 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 import { scimPatch } from "scim-patch";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName, TOrgMemberships, TUsers } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups, TOrgMemberships, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -13,6 +13,7 @@ import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } f
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TOrgPermission } from "@app/lib/types";
 import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipFn } from "@app/services/org/org-fns";
@@ -71,7 +72,10 @@ type TScimServiceFactoryDep = {
     | "transaction"
     | "updateMembershipById"
   >;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "findOne" | "create" | "updateById" | "findById">;
+  orgMembershipDAL: Pick<
+    TOrgMembershipDALFactory,
+    "find" | "findOne" | "create" | "updateById" | "findById" | "update"
+  >;
   projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
@@ -102,6 +106,7 @@ type TScimServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
 };
 
 export type TScimServiceFactory = ReturnType<typeof scimServiceFactory>;
@@ -122,7 +127,8 @@ export const scimServiceFactory = ({
   projectBotDAL,
   permissionService,
   projectUserAdditionalPrivilegeDAL,
-  smtpService
+  smtpService,
+  externalGroupOrgRoleMappingDAL
 }: TScimServiceFactoryDep) => {
   const createScimToken = async ({
     actor,
@@ -692,6 +698,43 @@ export const scimServiceFactory = ({
     });
   };
 
+  const $syncNewMembersRoles = async (group: TGroups, members: TScimGroup["members"]) => {
+    // this function handles configuring newly provisioned users org membership if an external group mapping exists
+
+    if (!members.length) return;
+
+    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne({
+      orgId: group.orgId,
+      groupName: group.name
+    });
+
+    // no mapping, user will have default org membership
+    if (!externalGroupMapping) return;
+
+    // only get org memberships that are new (invites)
+    const newOrgMemberships = await orgMembershipDAL.find({
+      status: "invited",
+      $in: {
+        id: members.map((member) => member.value)
+      }
+    });
+
+    if (!newOrgMemberships.length) return;
+
+    // set new membership roles to group mapping value
+    await orgMembershipDAL.update(
+      {
+        $in: {
+          id: newOrgMemberships.map((membership) => membership.id)
+        }
+      },
+      {
+        role: externalGroupMapping.role,
+        roleId: externalGroupMapping.roleId
+      }
+    );
+  };
+
   const createScimGroup = async ({ displayName, orgId, members }: TCreateScimGroupDTO) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
@@ -744,6 +787,8 @@ export const scimServiceFactory = ({
           projectBotDAL,
           tx
         });
+
+        await $syncNewMembersRoles(group, members);
 
         return { group, newMembers };
       }
@@ -820,22 +865,41 @@ export const scimServiceFactory = ({
     orgId: string,
     { displayName, members = [] }: { displayName: string; members: { value: string }[] }
   ) => {
-    const updatedGroup = await groupDAL.transaction(async (tx) => {
-      const [group] = await groupDAL.update(
-        {
-          id: groupId,
-          orgId
-        },
-        {
-          name: displayName
-        }
-      );
+    let group = await groupDAL.findOne({
+      id: groupId,
+      orgId
+    });
 
-      if (!group) {
-        throw new ScimRequestError({
-          detail: "Group Not Found",
-          status: 404
-        });
+    if (!group) {
+      throw new ScimRequestError({
+        detail: "Group Not Found",
+        status: 404
+      });
+    }
+
+    const updatedGroup = await groupDAL.transaction(async (tx) => {
+      if (group.name !== displayName) {
+        await externalGroupOrgRoleMappingDAL.update(
+          {
+            groupName: group.name,
+            orgId
+          },
+          {
+            groupName: displayName
+          }
+        );
+
+        const [modifiedGroup] = await groupDAL.update(
+          {
+            id: groupId,
+            orgId
+          },
+          {
+            name: displayName
+          }
+        );
+
+        group = modifiedGroup;
       }
 
       const orgMemberships = members.length
@@ -891,6 +955,8 @@ export const scimServiceFactory = ({
 
       return group;
     });
+
+    await $syncNewMembersRoles(group, members);
 
     return updatedGroup;
   };

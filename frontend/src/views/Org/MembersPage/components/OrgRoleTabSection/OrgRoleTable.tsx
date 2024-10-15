@@ -30,19 +30,11 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
 import { RoleModal } from "@app/views/Org/RolePage/components";
-
-enum OrgMembershipRole {
-  Admin = "admin",
-  Member = "member",
-  NoAccess = "no-access"
-}
-
-export const isCustomOrgRole = (slug: string) =>
-  !Object.values(OrgMembershipRole).includes(slug as OrgMembershipRole);
 
 export const OrgRoleTable = () => {
   const router = useRouter();

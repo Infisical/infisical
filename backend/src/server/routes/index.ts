@@ -97,6 +97,8 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
+import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -336,6 +338,8 @@ export const registerRoutes = async (
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
 
+  const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     orgRoleDAL,
@@ -442,7 +446,8 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectBotDAL,
     permissionService,
-    smtpService
+    smtpService,
+    externalGroupOrgRoleMappingDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -537,7 +542,12 @@ export const registerRoutes = async (
     orgService,
     licenseService
   });
-  const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDAL, orgDAL });
+  const orgRoleService = orgRoleServiceFactory({
+    permissionService,
+    orgRoleDAL,
+    orgDAL,
+    externalGroupOrgRoleMappingDAL
+  });
   const superAdminService = superAdminServiceFactory({
     userDAL,
     authService: loginService,
@@ -1231,6 +1241,13 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
+    permissionService,
+    licenseService,
+    orgRoleDAL,
+    externalGroupOrgRoleMappingDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1316,7 +1333,8 @@ export const registerRoutes = async (
     orgAdmin: orgAdminService,
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
-    migration: migrationService
+    migration: migrationService,
+    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
   });
 
   const cronJobs: CronJob[] = [];
