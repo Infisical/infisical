@@ -140,7 +140,7 @@ export const getIntegrationOptions = async () => {
       isAvailable: true,
       type: "oauth",
       clientId: appCfg.CLIENT_ID_GITHUB,
-      clientSlug: appCfg.CLIENT_SLUG_GITHUB,
+      clientSlug: appCfg.CLIENT_SLUG_GITHUB_APP,
       docsLink: ""
     },
     {

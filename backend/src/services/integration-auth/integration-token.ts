@@ -249,7 +249,7 @@ const exchangeCodeGithub = async ({ code, installationId }: { code: string; inst
 
   if (installationId) {
     // handle app installations
-    const res = (
+    const oauthRes = (
       await request.get<ExchangeCodeGithubResponse>(IntegrationUrls.GITHUB_TOKEN_URL, {
         params: {
           client_id: appCfg.CLIENT_ID_GITHUB_APP,
@@ -276,7 +276,7 @@ const exchangeCodeGithub = async ({ code, installationId }: { code: string; inst
       }>(IntegrationUrls.GITHUB_USER_INSTALLATIONS, {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${res.access_token}`,
+          Authorization: `Bearer ${oauthRes.access_token}`,
           "Accept-Encoding": "application/json"
         }
       })
@@ -293,14 +293,14 @@ const exchangeCodeGithub = async ({ code, installationId }: { code: string; inst
     }
 
     return {
-      accessToken: "",
+      accessToken: "", // for github app integrations, we only need the installationID from the metadata
       refreshToken: null,
       accessExpiresAt: null,
       installationName: matchingInstallation.account.login
     };
   }
 
-  // handle normal oauth
+  // handle oauth github integration
   const res = (
     await request.get<ExchangeCodeGithubResponse>(IntegrationUrls.GITHUB_TOKEN_URL, {
       params: {

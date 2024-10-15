@@ -647,8 +647,8 @@ export const integrationAuthServiceFactory = ({
       octokit = new Octokit({
         authStrategy: createAppAuth,
         auth: {
-          appId: appCfg.GITHUB_APP_ID,
-          privateKey: appCfg.GITHUB_APP_PRIVATE_KEY,
+          appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+          privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
           installationId
         }
       });
@@ -724,8 +724,8 @@ export const integrationAuthServiceFactory = ({
       octokit = new Octokit({
         authStrategy: createAppAuth,
         auth: {
-          appId: appCfg.GITHUB_APP_ID,
-          privateKey: appCfg.GITHUB_APP_PRIVATE_KEY,
+          appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+          privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
           installationId: authMetadata.installationId
         }
       });
