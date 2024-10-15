@@ -128,7 +128,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             .map((key) => {
               // for the ones like in format: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email
               const formatedKey = key.startsWith("http") ? key.split("/").at(-1) || "" : key;
-              return { key: formatedKey, value: String((profile.attributes as Record<string, string>)[key]) };
+              return {
+                key: formatedKey,
+                value: String((profile.attributes as Record<string, string>)[key]).substring(0, 1020)
+              };
             })
             .filter((el) => el.key && !["email", "firstName", "lastName"].includes(el.key));
 
