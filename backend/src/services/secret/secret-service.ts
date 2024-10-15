@@ -264,14 +264,16 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      secretPath: path,
-      actorId,
-      actor,
-      projectId,
-      environmentSlug: folder.environment.slug
-    });
+    if (inputSecret.type === SecretType.Shared) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        secretPath: path,
+        actorId,
+        actor,
+        projectId,
+        environmentSlug: folder.environment.slug
+      });
+    }
     return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
 
@@ -399,14 +401,16 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath: path,
-      projectId,
-      environmentSlug: folder.environment.slug
-    });
+    if (inputSecret.type === SecretType.Shared) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        secretPath: path,
+        actorId,
+        actor,
+        projectId,
+        environmentSlug: folder.environment.slug
+      });
+    }
     return { ...updatedSecret[0], workspace: projectId, environment, secretPath: path };
   };
 
@@ -474,15 +478,17 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath: path,
-      projectId,
-      environmentSlug: folder.environment.slug
-    });
-    // TODO(akhilmhdh-pg): license check, posthog service and snapshot
+    if (inputSecret.type === SecretType.Shared) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        secretPath: path,
+        actorId,
+        actor,
+        projectId,
+        environmentSlug: folder.environment.slug
+      });
+    }
+
     return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment, secretPath: path };
   };
 
