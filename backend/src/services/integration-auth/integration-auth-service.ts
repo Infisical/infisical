@@ -209,12 +209,23 @@ export const integrationAuthServiceFactory = ({
         updateDoc.accessCiphertext = accessEncToken.ciphertext;
       }
     }
+
     return integrationAuthDAL.transaction(async (tx) => {
-      const doc = await integrationAuthDAL.findOne({ projectId, integration }, tx);
-      if (!doc) {
+      const integrationAuths = await integrationAuthDAL.find({ projectId, integration }, { tx });
+      let existingIntegrationAuth: TIntegrationAuths | undefined;
+
+      // we need to ensure that the integration auth that we use for Github is actually Oauth
+      if (integration === Integrations.GITHUB) {
+        existingIntegrationAuth = integrationAuths.find((integAuth) => !integAuth.metadata);
+      } else {
+        [existingIntegrationAuth] = integrationAuths;
+      }
+
+      if (!existingIntegrationAuth) {
         return integrationAuthDAL.create(updateDoc, tx);
       }
-      return integrationAuthDAL.updateById(doc.id, updateDoc, tx);
+
+      return integrationAuthDAL.updateById(existingIntegrationAuth.id, updateDoc, tx);
     });
   };
 
