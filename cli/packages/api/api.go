@@ -415,6 +415,10 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		req.SetQueryParam("recursive", "true")
 	}
 
+	if request.ExpandSecretReferences {
+		req.SetQueryParam("expandSecretReferences", "true")
+	}
+
 	response, err := req.Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
 
 	if err != nil {
