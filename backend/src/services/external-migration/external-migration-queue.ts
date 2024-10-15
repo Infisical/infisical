@@ -97,7 +97,7 @@ export const externalMigrationQueueFactory = ({
 
       const decryptedJson = JSON.parse(decrypted) as TImportInfisicalDataCreate;
 
-      await importDataIntoInfisicalFn({
+      const { projectsNotImported } = await importDataIntoInfisicalFn({
         input: decryptedJson,
         projectDAL,
         projectEnvDAL,
@@ -111,6 +111,17 @@ export const externalMigrationQueueFactory = ({
         projectEnvService,
         secretV2BridgeService
       });
+
+      if (projectsNotImported.length) {
+        logger.info(
+          {
+            actorEmail,
+            actorOrgId: decryptedJson.actorOrgId,
+            projectsNotImported
+          },
+          "One or more projects were not imported during import from external source"
+        );
+      }
 
       await smtpService.sendMail({
         recipients: [actorEmail],

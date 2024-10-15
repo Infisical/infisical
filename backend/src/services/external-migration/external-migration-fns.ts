@@ -89,6 +89,13 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
     });
   }
 
+  // make sure that all the projectIds in the enviroments are present in the projects
+  for (const env of infisicalImportData.environments) {
+    if (!infisicalImportData.projects.find((project) => project.id === env.projectId)) {
+      infisicalImportData.projects.push({ name: "Unknown", id: env.projectId });
+    }
+  }
+
   // secrets
   for (const env of Object.keys(parsedJson.envs)) {
     if (!env.includes("|")) {
@@ -126,6 +133,7 @@ export const importDataIntoInfisicalFn = async ({
 
   const originalToNewProjectId = new Map<string, string>();
   const originalToNewEnvironmentId = new Map<string, string>();
+  const projectsNotImported: string[] = [];
 
   await projectDAL.transaction(async (tx) => {
     for await (const project of data.projects) {
@@ -149,23 +157,13 @@ export const importDataIntoInfisicalFn = async ({
     // Import environments
     if (data.environments) {
       for await (const environment of data.environments) {
-        let projectId = originalToNewProjectId.get(environment.projectId);
+        const projectId = originalToNewProjectId.get(environment.projectId);
         const slug = slugify(`${environment.name}-${alphaNumericNanoId(4)}`);
 
-        // case: if for some reason the project ID is not found, we will create a new project and import the corresponding environment into it.
         if (!projectId) {
-          const newProject = await projectService.createProject({
-            actor,
-            actorId,
-            actorOrgId,
-            actorAuthMethod,
-            workspaceName: `project-import-${environment.projectId}`,
-            createDefaultEnvs: false,
-            tx
-          });
-
-          originalToNewProjectId.set(environment.projectId, newProject.id);
-          projectId = newProject.id;
+          projectsNotImported.push(environment.projectId);
+          // eslint-disable-next-line no-continue
+          continue;
         }
 
         const existingEnv = await projectEnvDAL.findOne({ projectId, slug }, tx);
@@ -195,6 +193,11 @@ export const importDataIntoInfisicalFn = async ({
       >();
 
       for (const secret of data.secrets) {
+        if (!originalToNewEnvironmentId.get(secret.environmentId)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         if (!mappedToEnvironmentId.has(secret.environmentId)) {
           mappedToEnvironmentId.set(secret.environmentId, []);
         }
@@ -269,4 +272,6 @@ export const importDataIntoInfisicalFn = async ({
       }
     }
   });
+
+  return { projectsNotImported };
 };
