@@ -9,9 +9,12 @@ type Props = {
     popUpName: keyof UsePopUpState<["createConsumerSecret"]>,
     state?: boolean
   ) => void;
+  handlePopUpClose: (
+    popUpName: keyof UsePopUpState<["createConsumerSecret"]>
+  ) => void;
 };
 
-export const AddConsumerSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const AddConsumerSecretModal = ({ popUp, handlePopUpToggle, handlePopUpClose }: Props) => {
   return (
     <Modal
       isOpen={popUp?.createConsumerSecret?.isOpen}
@@ -23,7 +26,7 @@ export const AddConsumerSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         title="Create new consumer secret"
         subTitle="Securely store your secrets like login credentials, credit card details, etc"
       >
-        <AddConsumerSecretForm />
+        <AddConsumerSecretForm handlePopUpClose={handlePopUpClose} />
       </ModalContent>
     </Modal>
   );

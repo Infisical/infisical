@@ -14,6 +14,7 @@ import {
 } from "@app/components/v2";
 import {useAddConsumerSecret} from "@app/hooks/api/consumerSecrets"
 import { ConsumerSecretType, ConsumerSecretTypeUnion } from "@app/hooks/api/consumerSecrets/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 // Define the schema for form validation using Zod
 const schema = z.object({
@@ -32,7 +33,13 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
-export const AddConsumerSecretForm = () => {
+type Props = {
+  handlePopUpClose: (
+    popUpName: keyof UsePopUpState<["createConsumerSecret"]>
+  ) => void;
+};
+
+export const AddConsumerSecretForm = ({ handlePopUpClose }: Props) => {
   const [secretType, setSecretType] = useState<string>("credit_card");
   const createConsumerSecret = useAddConsumerSecret();
 
@@ -111,8 +118,9 @@ export const AddConsumerSecretForm = () => {
         console.log(payload);
       
         await createConsumerSecret.mutateAsync(payload);
-      
+        
         toastOnSecretCreationSuccess();
+        handlePopUpClose('createConsumerSecret');
     };
       
 

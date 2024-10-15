@@ -5,9 +5,10 @@ import { Button } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 
 import { AddConsumerSecretModal } from "./components/AddConsumerSecretModal";
+import { ConsumerSecretsTable } from "./components/ConsumerSecretsTable";
 
 export const ConsumerSecretsView = () => {
-    const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
+    const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
         "createConsumerSecret"
       ] as const);
       
@@ -26,7 +27,9 @@ export const ConsumerSecretsView = () => {
         </Button>
       </div>
 
-      <AddConsumerSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <AddConsumerSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} handlePopUpClose={handlePopUpClose} />
+
+      <ConsumerSecretsTable />
     </div>
         )
     
