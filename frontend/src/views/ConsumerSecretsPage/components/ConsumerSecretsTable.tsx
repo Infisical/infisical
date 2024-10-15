@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { AiFillDelete,AiFillEdit, AiFillEye } from "react-icons/ai";
+import { AiFillDelete,AiFillEdit } from "react-icons/ai";
+import ViewConsumerSecret from "./ViewConsumerSecret";
 
 import {
   EmptyState,
@@ -92,14 +93,7 @@ export const ConsumerSecretsTable = () => {
                 {/* <Th>{format(new Date(secret.createdAt), "dd/MM/yyyy")}</Th> */}
                 <Th>
                 <div className="flex space-x-2">
-                  <IconButton
-                    variant="plain"
-                    ariaLabel="view"
-                    className="hover:bg-gray-200 p-2 rounded"
-                    onClick={() => handleView(secret.id)}
-                  >
-                    <AiFillEye className="text-xl" />
-                  </IconButton>
+                  <ViewConsumerSecret secret={secret} />
                   <IconButton
                     variant="plain"
                     ariaLabel="edit"
