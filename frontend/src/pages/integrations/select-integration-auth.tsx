@@ -1,11 +1,11 @@
 import crypto from "crypto";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
 
-import { Button, Card, CardTitle } from "@app/components/v2";
+import { Button, Card, CardTitle, ContentLoader } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
   useDuplicateIntegrationAuth,
@@ -31,52 +31,77 @@ export default function SelectIntegrationAuthPage() {
 
   // for Github, we want to reuse the same connection across the Infisical organization
   // when we do need to reuse this page for other integrations, add handling to fetch workspace integration auths instead
-  const { data: integrationAuths, isLoading: isLoadingIntegrationAuths } =
-    useGetOrgIntegrationAuths(
-      orgId,
-      useCallback(
-        (data: IntegrationAuth[]) => {
-          const filteredIntegrationAuths = data.filter(
-            (integrationAuth) => integrationAuth.integration === integrationSlug
+  const {
+    data: integrationAuths,
+    isLoading: isLoadingIntegrationAuths,
+    isSuccess: isLoadingIntegrationAuthsSuccess
+  } = useGetOrgIntegrationAuths(
+    orgId,
+    useCallback(
+      (data: IntegrationAuth[]) => {
+        const filteredIntegrationAuths = data.filter(
+          (integrationAuth) => integrationAuth.integration === integrationSlug
+        );
+
+        if (integrationSlug === "github") {
+          const sameProjectIntegrationAuths = filteredIntegrationAuths.filter(
+            (auth) => auth.projectId === currentWorkspace?.id
+          );
+          const differentProjectIntegrationAuths = filteredIntegrationAuths.filter(
+            (auth) => auth.projectId !== currentWorkspace?.id
           );
 
-          if (integrationSlug === "github") {
-            const sameProjectIntegrationAuths = filteredIntegrationAuths.filter(
-              (auth) => auth.projectId === currentWorkspace?.id
-            );
-            const differentProjectIntegrationAuths = filteredIntegrationAuths.filter(
-              (auth) => auth.projectId !== currentWorkspace?.id
-            );
+          const installationIds = new Set<string>();
 
-            const installationIds = new Set<string>();
+          // for now, we only display the integration auths for Github apps
+          return (
+            // we concatenate it this way so that integration auths from the same project are prioritized for display
+            sameProjectIntegrationAuths
+              .concat(differentProjectIntegrationAuths)
+              .filter((integrationAuth) => Boolean(integrationAuth.metadata?.installationId))
+              // we filter it so that we only show unique installations because the same installation/connection
+              // can be used in multiple integration auths
+              .filter((integrationAuth) => {
+                const isProcessedInstallationId = installationIds.has(
+                  integrationAuth.metadata.installationId as string
+                );
 
-            // for now, we only display the integration auths for Github apps
-            return (
-              // we concatenate it this way so that integration auths from the same project are prioritized for display
-              sameProjectIntegrationAuths
-                .concat(differentProjectIntegrationAuths)
-                .filter((integrationAuth) => Boolean(integrationAuth.metadata?.installationId))
-                // we filter it so that we only show unique installations because the same installation/connection
-                // can be used in multiple integration auths
-                .filter((integrationAuth) => {
-                  const isProcessedInstallationId = installationIds.has(
-                    integrationAuth.metadata.installationId as string
-                  );
+                if (!isProcessedInstallationId) {
+                  installationIds.add(integrationAuth.metadata.installationId as string);
+                }
 
-                  if (!isProcessedInstallationId) {
-                    installationIds.add(integrationAuth.metadata.installationId as string);
-                  }
+                return !isProcessedInstallationId;
+              })
+          );
+        }
 
-                  return !isProcessedInstallationId;
-                })
-            );
-          }
+        return [];
+      },
+      [integrationSlug]
+    )
+  );
 
-          return [];
-        },
-        [integrationSlug]
-      )
-    );
+  const handleNewConnection = () => {
+    const state = crypto.randomBytes(16).toString("hex");
+    localStorage.setItem("latestCSRFToken", state);
+
+    if (integrationSlug === "github") {
+      // for now we only handle Github apps
+      window.location.assign(
+        `https://github.com/apps/${currentIntegration?.clientSlug}/installations/new?state=${state}`
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (
+      !isLoadingIntegrationAuths &&
+      integrationAuths?.length === 0 &&
+      isLoadingIntegrationAuthsSuccess
+    ) {
+      handleNewConnection();
+    }
+  }, [isLoadingIntegrationAuths, integrationAuths, isLoadingIntegrationAuthsSuccess]);
 
   const logo = integrationSlug === "github" ? "/images/integrations/GitHub.png" : "";
 
@@ -96,17 +121,12 @@ export default function SelectIntegrationAuthPage() {
     }
   };
 
-  const handleNewConnection = () => {
-    const state = crypto.randomBytes(16).toString("hex");
-    localStorage.setItem("latestCSRFToken", state);
-
-    if (integrationSlug === "github") {
-      // for now we only handle Github apps
-      window.location.assign(
-        `https://github.com/apps/${currentIntegration?.clientSlug}/installations/new?state=${state}`
-      );
-    }
-  };
+  if (
+    isLoadingIntegrationAuths ||
+    (integrationAuths?.length === 0 && isLoadingIntegrationAuthsSuccess)
+  ) {
+    return <ContentLoader />;
+  }
 
   return (
     <div className="flex h-full w-full items-center justify-center">
