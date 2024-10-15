@@ -89,13 +89,6 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
     });
   }
 
-  // make sure that all the projectIds in the enviroments are present in the projects
-  for (const env of infisicalImportData.environments) {
-    if (!infisicalImportData.projects.find((project) => project.id === env.projectId)) {
-      infisicalImportData.projects.push({ name: "Unknown", id: env.projectId });
-    }
-  }
-
   // secrets
   for (const env of Object.keys(parsedJson.envs)) {
     if (!env.includes("|")) {
