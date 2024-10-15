@@ -94,7 +94,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
               }}
               colorSchema="primary"
               variant="outline_bg"
-              className="mb-4 mt-4 ml-auto w-min"
+              className="mt-4 ml-auto w-min"
             >
               Connect to Github
             </Button>
