@@ -52,6 +52,7 @@ export const AddConsumerSecretForm = ({ handlePopUpClose }: Props) => {
     draggable: true,
     progress: undefined,
     theme: "dark",
+    type: 'success'
   })
 
   const {

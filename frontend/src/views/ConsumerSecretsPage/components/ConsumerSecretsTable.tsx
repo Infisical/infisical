@@ -13,11 +13,25 @@ import {
   Tr,
 } from "@app/components/v2";
 import { IconButton } from "@app/components/v2/IconButton";
-import { useGetConsumerSecrets } from "@app/hooks/api/consumerSecrets";
+import { useGetConsumerSecrets, useRemoveConsumerSecret } from "@app/hooks/api/consumerSecrets";
+import { toast } from "react-toastify";
 
 export const ConsumerSecretsTable = () => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+
+  const deleteConsumerSecret = useRemoveConsumerSecret();
+  const toastOnSecretDeletionSuccess = () => toast("Alert: Secret deleted!", {
+    autoClose: 3000,
+    position: "bottom-right",
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    theme: "dark",
+    type: 'error'
+  });
 
   const mapConsumerSecretValuesToTypes = {
     "web_login": "Web Login",
@@ -38,8 +52,14 @@ export const ConsumerSecretsTable = () => {
     console.log(`Edit secret: ${id}`);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     console.log(`Delete secret: ${id}`);
+
+    await deleteConsumerSecret.mutateAsync({
+      id: id
+    })
+
+    toastOnSecretDeletionSuccess();
   };
 
   if (isLoading) {
