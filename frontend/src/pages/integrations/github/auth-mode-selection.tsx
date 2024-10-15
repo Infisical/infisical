@@ -1,5 +1,6 @@
 import crypto from "crypto";
 
+import { useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,13 +8,27 @@ import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, Card, CardTitle } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardTitle,
+  FormControl,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { useGetCloudIntegrations } from "@app/hooks/api";
+
+enum AuthMethod {
+  APP = "APP",
+  OAUTH = "OAUTH"
+}
 
 export default function GithubIntegrationAuthModeSelectionPage() {
   const router = useRouter();
   const { data: cloudIntegrations } = useGetCloudIntegrations();
   const githubIntegration = cloudIntegrations?.find((integration) => integration.slug === "github");
+  const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>(AuthMethod.APP);
 
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -50,37 +65,41 @@ export default function GithubIntegrationAuthModeSelectionPage() {
             </Link>
           </div>
         </CardTitle>
-        <div className="mb-7 flex flex-col items-center">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 w-3/4"
-            size="sm"
-            type="submit"
-            onClick={() => {
-              router.push("/integrations/select-integration-auth?integrationSlug=github");
-            }}
-          >
-            Connect with App
-          </Button>
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-3 w-3/4"
-            size="sm"
-            type="submit"
-            onClick={() => {
-              const state = crypto.randomBytes(16).toString("hex");
-              localStorage.setItem("latestCSRFToken", state);
+        <CardBody>
+          <FormControl label="Select authentication method">
+            <Select
+              value={selectedAuthMethod}
+              onValueChange={(val) => {
+                setSelectedAuthMethod(val as AuthMethod);
+              }}
+              className="w-full border border-mineshaft-500"
+            >
+              <SelectItem value={AuthMethod.APP}>Github App (Recommended)</SelectItem>
+              <SelectItem value={AuthMethod.OAUTH}>OAuth</SelectItem>
+            </Select>
+          </FormControl>
+          <div className="flex items-end">
+            <Button
+              onClick={() => {
+                if (selectedAuthMethod === AuthMethod.APP) {
+                  router.push("/integrations/select-integration-auth?integrationSlug=github");
+                } else {
+                  const state = crypto.randomBytes(16).toString("hex");
+                  localStorage.setItem("latestCSRFToken", state);
 
-              window.location.assign(
-                `https://github.com/login/oauth/authorize?client_id=${githubIntegration?.clientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`
-              );
-            }}
-          >
-            Connect with OAuth
-          </Button>
-        </div>
+                  window.location.assign(
+                    `https://github.com/login/oauth/authorize?client_id=${githubIntegration?.clientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`
+                  );
+                }
+              }}
+              colorSchema="primary"
+              variant="outline_bg"
+              className="mb-4 mt-4 ml-auto w-min"
+            >
+              Connect to Github
+            </Button>
+          </div>
+        </CardBody>
       </Card>
     </div>
   );
