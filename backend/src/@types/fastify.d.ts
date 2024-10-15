@@ -80,6 +80,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { TConsumerSecretServiceFactory } from "@app/services/consumer-secret/consumer-secret-service"
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -166,6 +167,7 @@ declare module "fastify" {
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
+      consumerSecret: TConsumerSecretServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;

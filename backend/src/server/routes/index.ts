@@ -201,6 +201,8 @@ import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { createConsumerSecretDAL } from "@app/services/consumer-secret/consumer-secret-dal"
+import { consumerSecretServiceFactory } from "@app/services/consumer-secret/consumer-secret-service"
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
@@ -1210,6 +1212,12 @@ export const registerRoutes = async (
     secretService
   });
 
+  const consumerSecretDAL = createConsumerSecretDAL(db);
+  const consumerSecretService = consumerSecretServiceFactory({
+    consumerSecretDAL: consumerSecretDAL,
+    kmsService: kmsService
+  })
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1295,7 +1303,8 @@ export const registerRoutes = async (
     orgAdmin: orgAdminService,
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
-    migration: migrationService
+    migration: migrationService,
+    consumerSecret: consumerSecretService
   });
 
   const cronJobs: CronJob[] = [];
