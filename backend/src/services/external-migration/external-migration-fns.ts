@@ -143,15 +143,30 @@ export const importDataIntoInfisicalFn = async ({
           logger.error(e, `Failed to import to project [name:${project.name}]`);
           throw new BadRequestError({ message: `Failed to import to project [name:${project.name}]` });
         });
-
       originalToNewProjectId.set(project.id, newProject.id);
     }
 
     // Import environments
     if (data.environments) {
       for await (const environment of data.environments) {
-        const projectId = originalToNewProjectId.get(environment.projectId)!;
+        let projectId = originalToNewProjectId.get(environment.projectId);
         const slug = slugify(`${environment.name}-${alphaNumericNanoId(4)}`);
+
+        // case: if for some reason the project ID is not found, we will create a new project and import the corresponding environment into it.
+        if (!projectId) {
+          const newProject = await projectService.createProject({
+            actor,
+            actorId,
+            actorOrgId,
+            actorAuthMethod,
+            workspaceName: `project-import-${environment.projectId}`,
+            createDefaultEnvs: false,
+            tx
+          });
+
+          originalToNewProjectId.set(environment.projectId, newProject.id);
+          projectId = newProject.id;
+        }
 
         const existingEnv = await projectEnvDAL.findOne({ projectId, slug }, tx);
 
