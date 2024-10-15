@@ -9,21 +9,28 @@ export type TConsumerSecretDALFactory = ReturnType<typeof createConsumerSecretDA
 export const createConsumerSecretDAL = (db: TDbClient) => {
   const consumerSecretOrm = ormify(db, TableName.ConsumerSecret);
 
-  const getConsumerSecretCount = async ({ orgId, tx }: { orgId: string,  tx?: Knex }) => {
+  interface ConsumerSecretsCountResult {
+    count: string;
+  }
+
+  const getConsumerSecretCount = async ({ orgId, tx }: { orgId: string; tx?: Knex }) => {
     try {
-        const consumerSecretsCount = await (tx || db.replicaNode())(TableName.ConsumerSecret)
-        .where(`${TableName.ConsumerSecret}.orgId`, orgId)
-        .count("*")
-        .first();
-      
-      return consumerSecretsCount ? parseInt(consumerSecretsCount, 10) : "";
+        const consumerSecretsCountResult = await (tx || db.replicaNode())(TableName.ConsumerSecret)
+            .where(`${TableName.ConsumerSecret}.orgId`, orgId)
+            .count("* as count")
+            .first<ConsumerSecretsCountResult>();
+
+        // Safely parse the count, returning 0 if undefined
+        const count = consumerSecretsCountResult?.count ? parseInt(consumerSecretsCountResult.count, 10) : 0;
+        return count;
     } catch (error) {
-      throw new DatabaseError({
-        error,
-        name: "Failed to count user secrets for the organization"
-      });
+        throw new DatabaseError({
+            error,
+            name: "Failed to count user secrets for the organization"
+        });
     }
   };
+
 
   return {
     ...consumerSecretOrm,

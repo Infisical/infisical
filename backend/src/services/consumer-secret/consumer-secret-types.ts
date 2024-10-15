@@ -101,7 +101,9 @@ export const UpdateSecretSchema = z.object({
 export const SanitizedSecretSchema = ConsumerSecretsSchema.pick({
   id: true,
   title: true,
-  type: true
+  type: true,
+  name: true,
+  created_at: true
 }).extend({
   data: z.discriminatedUnion("type", [loginCredentialsSchema, creditCardSchema, privateNoteSchema])
 });
