@@ -126,6 +126,7 @@ export const importDataIntoInfisicalFn = async ({
 
   const originalToNewProjectId = new Map<string, string>();
   const originalToNewEnvironmentId = new Map<string, string>();
+  const projectsNotImported: string[] = [];
 
   await projectDAL.transaction(async (tx) => {
     for await (const project of data.projects) {
@@ -143,15 +144,20 @@ export const importDataIntoInfisicalFn = async ({
           logger.error(e, `Failed to import to project [name:${project.name}]`);
           throw new BadRequestError({ message: `Failed to import to project [name:${project.name}]` });
         });
-
       originalToNewProjectId.set(project.id, newProject.id);
     }
 
     // Import environments
     if (data.environments) {
       for await (const environment of data.environments) {
-        const projectId = originalToNewProjectId.get(environment.projectId)!;
+        const projectId = originalToNewProjectId.get(environment.projectId);
         const slug = slugify(`${environment.name}-${alphaNumericNanoId(4)}`);
+
+        if (!projectId) {
+          projectsNotImported.push(environment.projectId);
+          // eslint-disable-next-line no-continue
+          continue;
+        }
 
         const existingEnv = await projectEnvDAL.findOne({ projectId, slug }, tx);
 
@@ -180,6 +186,11 @@ export const importDataIntoInfisicalFn = async ({
       >();
 
       for (const secret of data.secrets) {
+        if (!originalToNewEnvironmentId.get(secret.environmentId)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         if (!mappedToEnvironmentId.has(secret.environmentId)) {
           mappedToEnvironmentId.set(secret.environmentId, []);
         }
@@ -254,4 +265,6 @@ export const importDataIntoInfisicalFn = async ({
       }
     }
   });
+
+  return { projectsNotImported };
 };
