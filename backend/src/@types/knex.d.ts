@@ -59,6 +59,9 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TConsumerSecrets,
+  TConsumerSecretsInsert,
+  TConsumerSecretsUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -401,6 +404,11 @@ declare module "knex/types/tables" {
       TCertificateSecrets,
       TCertificateSecretsInsert,
       TCertificateSecretsUpdate
+    >;
+    [TableName.ConsumerSecret]: KnexOriginal.CompositeTableType<
+      TConsumerSecrets,
+      TConsumerSecretsInsert,
+      TConsumerSecretsUpdate
     >;
     [TableName.PkiAlert]: KnexOriginal.CompositeTableType<TPkiAlerts, TPkiAlertsInsert, TPkiAlertsUpdate>;
     [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
