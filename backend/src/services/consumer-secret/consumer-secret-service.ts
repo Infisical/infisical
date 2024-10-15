@@ -91,7 +91,7 @@ export const consumerSecretServiceFactory = ({ consumerSecretDAL, kmsService }: 
       }))
     );
     const totalCount = await consumerSecretDAL.getConsumerSecretCount({ orgId });
-    return { secrets: decryptedSecrets.map(dbResultToConsumerSecret), totalCount };
+    return { secrets: decryptedSecrets.map(dbResultToConsumerSecret), totalCount: Number(totalCount) };
   };
 
   // Update Consumer Secret
