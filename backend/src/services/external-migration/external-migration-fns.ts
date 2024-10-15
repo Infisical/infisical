@@ -214,22 +214,21 @@ export const importDataIntoInfisicalFn = async ({
             name: "Create secret"
           });
 
-        const secretsByKeys = await secretDAL.findBySecretKeys(
-          folder.id,
-          secrets.map((el) => ({
-            key: el.secretKey,
-            type: SecretType.Shared
-          })),
-          tx
-        );
-        if (secretsByKeys.length) {
-          throw new BadRequestError({
-            message: `Secret already exist: ${secretsByKeys.map((el) => el.key).join(",")}`
-          });
-        }
-
         const secretBatches = chunkArray(secrets, 2500);
         for await (const secretBatch of secretBatches) {
+          const secretsByKeys = await secretDAL.findBySecretKeys(
+            folder.id,
+            secretBatch.map((el) => ({
+              key: el.secretKey,
+              type: SecretType.Shared
+            })),
+            tx
+          );
+          if (secretsByKeys.length) {
+            throw new BadRequestError({
+              message: `Secret already exist: ${secretsByKeys.map((el) => el.key).join(",")}`
+            });
+          }
           await fnSecretBulkInsert({
             inputSecrets: secretBatch.map((el) => {
               const references = getAllNestedSecretReferences(el.secretValue);
