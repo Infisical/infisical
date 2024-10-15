@@ -16,8 +16,8 @@ export const ConsumerSecretsSchema = z.object({
   orgId: z.string().uuid(),
   userId: z.string().uuid(),
   data: z.string(),
-  created_at: z.date(),
-  updated_at: z.date()
+  created_at: z.date().optional(),
+  updated_at: z.date().optional()
 });
 
 export type TConsumerSecrets = z.infer<typeof ConsumerSecretsSchema>;
