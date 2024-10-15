@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "react-toastify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -11,6 +12,8 @@ import {
   SelectItem,
   TextArea,
 } from "@app/components/v2";
+import {useAddConsumerSecret} from "@app/hooks/api/consumerSecrets"
+import { ConsumerSecretType, ConsumerSecretTypeUnion } from "@app/hooks/api/consumerSecrets/types";
 
 // Define the schema for form validation using Zod
 const schema = z.object({
@@ -29,12 +32,20 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
-// type AddConsumerSecretFormProps = {
-//     value?: string;
-// };
-
 export const AddConsumerSecretForm = () => {
   const [secretType, setSecretType] = useState<string>("credit_card");
+  const createConsumerSecret = useAddConsumerSecret();
+
+  const toastOnSecretCreationSuccess = () => toast("Secret added successfully!", {
+    autoClose: 3000,
+    position: "bottom-right",
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    theme: "dark",
+  })
 
   const {
     control,
@@ -47,11 +58,63 @@ export const AddConsumerSecretForm = () => {
       type: "credit_card",
     },
   });
+  
+    type TCreateConsumerSecretDTO = {
+        name: string;
+        data: ConsumerSecretTypeUnion;
+    };
+      
+    const generateMutationRequestPayload = (data: FormData): TCreateConsumerSecretDTO => {
+        let payloadData: ConsumerSecretTypeUnion;
+      
+        switch (data.type) {
+          case ConsumerSecretType.WebLogin:
+            payloadData = {
+              type: ConsumerSecretType.WebLogin,
+              url: data.url || "",
+              username: data.username || "",
+              password: data.password || ""
+            };
+            break;
+      
+          case ConsumerSecretType.CreditCard:
+            payloadData = {
+              type: ConsumerSecretType.CreditCard,
+              nameOnCard: data.nameOnCard || "",
+              cardNumber: data.cardNumber || "",
+              validThrough: data.validThrough || "",
+              cvv: data.cvv || ""
+            };
+            break;
+      
+          case ConsumerSecretType.PrivateNote:
+            payloadData = {
+              type: ConsumerSecretType.PrivateNote,
+              title: data.noteTitle || "",
+              content: data.noteDescription || ""
+            };
+            break;
+      
+          default:
+            throw new Error("Invalid type");
+        }
+      
+        return {
+          name: data.name,
+          data: payloadData 
+        };
+    };
 
-  const onFormSubmit = async (data: FormData) => {
-    // Handle form submission, perhaps send the data to the server
-    console.log(data);
-  };
+    const onFormSubmit = async (data: FormData) => {
+        const payload = generateMutationRequestPayload(data);
+      
+        console.log(payload);
+      
+        await createConsumerSecret.mutateAsync(payload);
+      
+        toastOnSecretCreationSuccess();
+    };
+      
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
@@ -69,10 +132,10 @@ export const AddConsumerSecretForm = () => {
         control={control}
         name="type"
         render={({ field }) => (
-          <FormControl label="Type" isError={Boolean(errors.type)} errorText={errors.type?.message} isRequired>
-            <Select {...field} onValueChange={(e) => {
+          <FormControl className="w-full" label="Type" isError={Boolean(errors.type)} errorText={errors.type?.message} isRequired>
+            <Select className="w-full" {...field} onValueChange={(e) => {
               field.onChange(e);
-              setSecretType(e); // Set secret type to control conditional rendering
+              setSecretType(e);
             }}>
               <SelectItem value="web_login">Login Credentials</SelectItem>
               <SelectItem value="credit_card">Credit Card</SelectItem>
