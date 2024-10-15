@@ -3,8 +3,8 @@ package util
 const (
 	CONFIG_FILE_NAME                           = "infisical-config.json"
 	CONFIG_FOLDER_NAME                         = ".infisical"
-	INFISICAL_DEFAULT_API_URL                  = "https://app.infisical.com/api"
-	INFISICAL_DEFAULT_URL                      = "https://app.infisical.com"
+	INFISICAL_DEFAULT_US_URL                   = "https://app.infisical.com"
+	INFISICAL_DEFAULT_EU_URL                   = "https://eu.infisical.com"
 	INFISICAL_WORKSPACE_CONFIG_FILE_NAME       = ".infisical.json"
 	INFISICAL_TOKEN_NAME                       = "INFISICAL_TOKEN"
 	INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME = "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN"
