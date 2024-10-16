@@ -210,8 +210,20 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
+  const noAccessSecretCount = Math.max(
+    (page * perPage > totalCount ? totalCount % perPage : perPage) -
+      (imports?.length || 0) -
+      (folders?.length || 0) -
+      (secrets?.length || 0) -
+      (dynamicSecrets?.length || 0),
+    0
+  );
   const isNotEmpty = Boolean(
-    secrets?.length || folders?.length || imports?.length || dynamicSecrets?.length
+    secrets?.length ||
+      folders?.length ||
+      imports?.length ||
+      dynamicSecrets?.length ||
+      noAccessSecretCount
   );
 
   const handleSortToggle = () =>
@@ -405,18 +417,7 @@ export const SecretMainPage = () => {
                     isProtectedBranch={isProtectedBranch}
                   />
                 )}
-                {canReadSecret && (
-                  <SecretNoAccessListView
-                    count={Math.max(
-                      (page * perPage > totalCount ? totalCount % perPage : perPage) -
-                        (imports?.length || 0) -
-                        (folders?.length || 0) -
-                        (secrets?.length || 0) -
-                        (dynamicSecrets?.length || 0),
-                      0
-                    )}
-                  />
-                )}
+                {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
                 {!canReadSecret &&
                   !canReadDynamicSecret &&
                   !canReadSecretImports &&

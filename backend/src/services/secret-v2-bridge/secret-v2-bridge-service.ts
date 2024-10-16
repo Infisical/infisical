@@ -394,7 +394,7 @@ export const secretV2BridgeServiceFactory = ({
         subject(ProjectPermissionSub.Secrets, {
           environment,
           secretPath,
-          secretName: inputSecret.secretName,
+          secretName: inputSecret.newSecretName,
           secretTags: tags?.map((el) => el.slug)
         })
       );
