@@ -728,7 +728,7 @@ const syncSecretsAWSParameterStore = async ({
           awsParameterStoreSecretsObj[key].KeyId !== metadata.kmsKeyId;
 
         // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
-        if (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+        if (secrets[key].value && (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value)) {
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
@@ -789,7 +789,7 @@ const syncSecretsAWSParameterStore = async ({
         logger.info(
           `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=2]`
         );
-        if (!(key in secrets)) {
+        if (!(key in secrets) || !secrets[key].value) {
           logger.info(
             `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=3]`
           );
