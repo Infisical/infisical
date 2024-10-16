@@ -56,6 +56,7 @@ export type OrgUser = {
     lastName: string;
     id: string;
     publicKey: string;
+    superAdmin: boolean;
   };
   inviteEmail: string;
   organization: string;
