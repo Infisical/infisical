@@ -155,16 +155,12 @@ export const useGetProjectSecretsOverview = (
     },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, ...select } = data;
-      const uniqueSecrets = secrets
-        ? unique(secrets, (i) => `${i.secretKey}:${i.environment}`)
-        : [];
+      const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
 
-      const uniqueFolders = select.folders
-        ? unique(select.folders, (i) => `${i.name}:${i.environment}`)
-        : [];
+      const uniqueFolders = select.folders ? unique(select.folders, (i) => i.name) : [];
 
       const uniqueDynamicSecrets = select.dynamicSecrets
-        ? unique(select.dynamicSecrets, (i) => `${i.name}:${i.environment}`)
+        ? unique(select.dynamicSecrets, (i) => i.name)
         : [];
 
       return {
