@@ -808,8 +808,8 @@ export const SecretOverviewPage = () => {
           <TableContainer className="rounded-b-none">
             <Table>
               <THead>
-                <Tr className="border-0">
-                  <Th className="  min-w-[20rem] border-b border-r p-0">
+                <Tr className="sticky top-0 z-20 border-0">
+                  <Th className="sticky left-0 z-20 min-w-[20rem] border-b border-r p-0">
                     <div className="flex items-center border-mineshaft-600 px-5 pt-3.5 pb-3">
                       Name
                       <IconButton
@@ -840,7 +840,7 @@ export const SecretOverviewPage = () => {
                         className="min-table-row min-w-[11rem] border-b p-0 text-center"
                         key={`secret-overview-${name}-${index + 1}`}
                       >
-                        <div className="flex items-center justify-center  border-mineshaft-600 px-5 pt-3.5 pb-3">
+                        <div className="flex items-center justify-center border-mineshaft-600 px-5 pt-3.5 pb-3">
                           <button
                             type="button"
                             className="text-sm font-medium duration-100 hover:text-mineshaft-100"
@@ -988,7 +988,7 @@ export const SecretOverviewPage = () => {
                   </Td>
                   {visibleEnvs?.map(({ name, slug }) => (
                     <Td key={`explore-${name}-btn`} className="border-t  border-mineshaft-600 p-0">
-                      <div className="flex w-full items-center justify-center   border-mineshaft-600 px-5 py-2">
+                      <div className="flex w-full items-center justify-center border-mineshaft-600 px-5 py-2">
                         <Button
                           size="xs"
                           variant="outline_bg"
