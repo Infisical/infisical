@@ -17,6 +17,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
+import { integrationAuthPubSchema } from "../sanitizedSchemas";
+
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -65,6 +67,35 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.orgId
       );
       return { organization };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/integration-authorizations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          authorizations: integrationAuthPubSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const authorizations = await server.services.integrationAuth.listOrgIntegrationAuth({
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { authorizations };
     }
   });
 

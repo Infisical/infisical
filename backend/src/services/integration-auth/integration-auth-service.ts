@@ -1,14 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import AWS from "aws-sdk";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TProjectPermission } from "@app/lib/types";
+import { TGenericPermission, TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -16,11 +18,13 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
   TBitbucketWorkspace,
   TChecklyGroups,
   TDeleteIntegrationAuthByIdDTO,
   TDeleteIntegrationAuthsDTO,
+  TDuplicateGithubIntegrationAuthDTO,
   TGetIntegrationAuthDTO,
   TGetIntegrationAuthTeamCityBuildConfigDTO,
   THerokuPipelineCoupling,
@@ -86,6 +90,24 @@ export const integrationAuthServiceFactory = ({
     return authorizations;
   };
 
+  const listOrgIntegrationAuth = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGenericPermission) => {
+    const authorizations = await integrationAuthDAL.getByOrg(actorOrgId as string);
+
+    return Promise.all(
+      authorizations.filter(async (auth) => {
+        const { permission } = await permissionService.getProjectPermission(
+          actor,
+          actorId,
+          auth.projectId,
+          actorAuthMethod,
+          actorOrgId
+        );
+
+        return permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+      })
+    );
+  };
+
   const getIntegrationAuth = async ({ actor, id, actorId, actorAuthMethod, actorOrgId }: TGetIntegrationAuthDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: "Failed to find integration" });
@@ -109,7 +131,8 @@ export const integrationAuthServiceFactory = ({
     actorAuthMethod,
     integration,
     url,
-    code
+    code,
+    installationId
   }: TOauthExchangeDTO) => {
     if (!Object.values(Integrations).includes(integration as Integrations))
       throw new BadRequestError({ message: "Invalid integration" });
@@ -123,7 +146,7 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
-    const tokenExchange = await exchangeCode({ integration, code, url });
+    const tokenExchange = await exchangeCode({ integration, code, url, installationId });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       integration,
@@ -141,6 +164,16 @@ export const integrationAuthServiceFactory = ({
       updateDoc.metadata = {
         authMethod: "oauth2"
       };
+    } else if (integration === Integrations.GITHUB && installationId) {
+      updateDoc.metadata = {
+        installationId,
+        installationName: tokenExchange.installationName,
+        authMethod: "app"
+      };
+    }
+
+    if (installationId && integration === Integrations.GITHUB) {
+      return integrationAuthDAL.create(updateDoc);
     }
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
@@ -176,12 +209,23 @@ export const integrationAuthServiceFactory = ({
         updateDoc.accessCiphertext = accessEncToken.ciphertext;
       }
     }
+
     return integrationAuthDAL.transaction(async (tx) => {
-      const doc = await integrationAuthDAL.findOne({ projectId, integration }, tx);
-      if (!doc) {
+      const integrationAuths = await integrationAuthDAL.find({ projectId, integration }, { tx });
+      let existingIntegrationAuth: TIntegrationAuths | undefined;
+
+      // we need to ensure that the integration auth that we use for Github is actually Oauth
+      if (integration === Integrations.GITHUB) {
+        existingIntegrationAuth = integrationAuths.find((integAuth) => !integAuth.metadata);
+      } else {
+        [existingIntegrationAuth] = integrationAuths;
+      }
+
+      if (!existingIntegrationAuth) {
         return integrationAuthDAL.create(updateDoc, tx);
       }
-      return integrationAuthDAL.updateById(doc.id, updateDoc, tx);
+
+      return integrationAuthDAL.updateById(existingIntegrationAuth.id, updateDoc, tx);
     });
   };
 
@@ -334,6 +378,13 @@ export const integrationAuthServiceFactory = ({
     ) {
       return { accessToken: "", accessId: "" };
     }
+    if (
+      integrationAuth.integration === Integrations.GITHUB &&
+      IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {}).installationId
+    ) {
+      return { accessToken: "", accessId: "" };
+    }
+
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
         await kmsService.createCipherPairWithDataKey({
@@ -460,6 +511,7 @@ export const integrationAuthServiceFactory = ({
     const { accessToken, accessId } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
     const apps = await getApps({
       integration: integrationAuth.integration,
+      integrationAuth,
       accessToken,
       accessId,
       teamId,
@@ -575,6 +627,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   const getGithubOrgs = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TIntegrationAuthGithubOrgsDTO) => {
+    const appCfg = getConfig();
     const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new NotFoundError({ message: "Failed to find integration" });
 
@@ -587,9 +640,44 @@ export const integrationAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
-    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const octokit = new Octokit({
+    let octokit: Octokit;
+    const { installationId } = (integrationAuth.metadata as TIntegrationAuthMetadata) || {};
+    if (installationId) {
+      octokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+          privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+          installationId
+        }
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const repos = await octokit.paginate("GET /installation/repositories", {
+        per_page: 100
+      });
+
+      const orgSet: Set<string> = new Set();
+
+      return repos
+        .filter((repo) => repo.owner.type === "Organization")
+        .map((repo) => ({
+          name: repo.owner.login,
+          orgId: String(repo.owner.id)
+        }))
+        .filter((org) => {
+          const isOrgProcessed = orgSet.has(org.orgId);
+          if (!isOrgProcessed) {
+            orgSet.add(org.orgId);
+          }
+
+          return !isOrgProcessed;
+        });
+    }
+
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+    octokit = new Octokit({
       auth: accessToken
     });
 
@@ -598,7 +686,9 @@ export const integrationAuthServiceFactory = ({
         "X-GitHub-Api-Version": "2022-11-28"
       }
     });
-    if (!data) return [];
+    if (!data) {
+      return [];
+    }
 
     return data.map(({ login: name, id: orgId }) => ({ name, orgId: String(orgId) }));
   };
@@ -626,9 +716,24 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const octokit = new Octokit({
-      auth: accessToken
-    });
+    let octokit: Octokit;
+    const appCfg = getConfig();
+
+    const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {});
+    if (authMetadata.installationId) {
+      octokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+          privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+          installationId: authMetadata.installationId
+        }
+      });
+    } else {
+      octokit = new Octokit({
+        auth: accessToken
+      });
+    }
 
     const {
       data: { environments }
@@ -1315,8 +1420,58 @@ export const integrationAuthServiceFactory = ({
     return delIntegrationAuth;
   };
 
+  // At the moment, we only use this for Github App integration as it's a special case
+  const duplicateIntegrationAuth = async ({
+    id,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    projectId
+  }: TDuplicateGithubIntegrationAuthDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) {
+      throw new NotFoundError({ message: "Failed to find integration" });
+    }
+
+    const { permission: sourcePermission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(sourcePermission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Integrations
+    );
+
+    const { permission: targetPermission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(targetPermission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Integrations
+    );
+
+    const newIntegrationAuth: Omit<typeof integrationAuth, "id"> & { id?: string } = {
+      ...integrationAuth,
+      id: undefined,
+      projectId
+    };
+
+    return integrationAuthDAL.create(newIntegrationAuth);
+  };
+
   return {
     listIntegrationAuthByProjectId,
+    listOrgIntegrationAuth,
     getIntegrationOptions,
     getIntegrationAuth,
     oauthExchange,
@@ -1343,6 +1498,7 @@ export const integrationAuthServiceFactory = ({
     getNorthFlankSecretGroups,
     getTeamcityBuildConfigs,
     getBitbucketWorkspaces,
-    getIntegrationAccessToken
+    getIntegrationAccessToken,
+    duplicateIntegrationAuth
   };
 };

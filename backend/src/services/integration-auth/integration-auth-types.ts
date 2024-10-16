@@ -9,6 +9,7 @@ export type TOauthExchangeDTO = {
   integration: string;
   code: string;
   url?: string;
+  installationId?: string;
 } & TProjectPermission;
 
 export type TSaveIntegrationAccessTokenDTO = {
@@ -106,6 +107,10 @@ export type TIntegrationAuthNorthflankSecretGroupDTO = {
 export type TDeleteIntegrationAuthByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TDuplicateGithubIntegrationAuthDTO = {
+  id: string;
+} & TProjectPermission;
 
 export type TGetIntegrationAuthTeamCityBuildConfigDTO = {
   id: string;

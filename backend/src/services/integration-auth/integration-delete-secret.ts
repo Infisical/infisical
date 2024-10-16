@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { createAppAuth } from "@octokit/auth-app";
 import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -15,6 +18,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { TIntegrationAuthServiceFactory } from "./integration-auth-service";
 import { Integrations } from "./integration-list";
 
@@ -154,10 +158,12 @@ const getIntegrationSecretsV1 = async (
 
 export const deleteGithubSecrets = async ({
   integration,
+  authMetadata,
   secrets,
   accessToken
 }: {
   integration: Omit<TIntegrations, "envId">;
+  authMetadata: TIntegrationAuthMetadata;
   secrets: Record<string, boolean>;
   accessToken: string;
 }) => {
@@ -170,9 +176,23 @@ export const deleteGithubSecrets = async ({
   }
 
   const OctokitWithRetry = Octokit.plugin(retry);
-  const octokit = new OctokitWithRetry({
-    auth: accessToken
-  });
+  let octokit: Octokit;
+  const appCfg = getConfig();
+
+  if (authMetadata.installationId) {
+    octokit = new OctokitWithRetry({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+        privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+        installationId: authMetadata.installationId
+      }
+    });
+  } else {
+    octokit = new OctokitWithRetry({
+      auth: accessToken
+    });
+  }
 
   enum GithubScope {
     Repo = "github-repo",
@@ -192,6 +212,7 @@ export const deleteGithubSecrets = async ({
       break;
     }
     case GithubScope.Env: {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       encryptedGithubSecrets = (
         await octokit.request("GET /repositories/{repository_id}/environments/{environment_name}/secrets", {
           repository_id: Number(integration.appId),
@@ -346,6 +367,7 @@ export const deleteIntegrationSecrets = async ({
     case Integrations.GITHUB: {
       await deleteGithubSecrets({
         integration,
+        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {}),
         accessToken,
         secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets
       });
