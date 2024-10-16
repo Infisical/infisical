@@ -370,7 +370,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SecretFolders]: {
     title: "Secret Folders",
     actions: [
-      { label: "Read", value: "read" },
       { label: "Create", value: "create" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" }
@@ -392,7 +391,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: "create" },
       { label: "Modify", value: "edit" },
       { label: "Remove", value: "delete" },
-      { label: "Lease", value: "lease" }
+      { label: "Manage Leases", value: "lease" }
     ]
   },
   [ProjectPermissionSub.Cmek]: {

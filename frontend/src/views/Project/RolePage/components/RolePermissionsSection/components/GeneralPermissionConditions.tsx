@@ -50,11 +50,12 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
       </p>
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
-          const condition = watch(`permissions.secrets.${position}.conditions.${index}`) as {
-            lhs: string;
-            rhs: string;
-            operator: string;
-          };
+          const condition =
+            (watch(`permissions.${type}.${position}.conditions.${index}`) as {
+              lhs: string;
+              rhs: string;
+              operator: string;
+            }) || {};
           return (
             <div
               key={el.id}
@@ -86,7 +87,7 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
               <div className="flex w-36 items-center space-x-2">
                 <Controller
                   control={control}
-                  name={`permissions.secrets.${position}.conditions.${index}.operator`}
+                  name={`permissions.${type}.${position}.conditions.${index}.operator`}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isError={Boolean(error?.message)}
@@ -108,7 +109,7 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
                   <Tooltip
                     asChild
                     content={getConditionOperatorHelperInfo(
-                      condition.operator as PermissionConditionOperators
+                      condition?.operator as PermissionConditionOperators
                     )}
                     className="max-w-xs"
                   >

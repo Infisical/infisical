@@ -28,6 +28,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
   const {
     control,
     watch,
+    setValue,
     formState: { errors }
   } = useFormContext<TFormSchema>();
   const items = useFieldArray({
@@ -66,7 +67,13 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                       <Select
                         defaultValue={field.value}
                         {...field}
-                        onValueChange={(e) => field.onChange(e)}
+                        onValueChange={(e) => {
+                          setValue(
+                            `permissions.secrets.${position}.conditions.${index}.operator`,
+                            PermissionConditionOperators.$IN as never
+                          );
+                          field.onChange(e);
+                        }}
                         className="w-full"
                       >
                         <SelectItem value="environment">Environment Slug</SelectItem>
@@ -103,7 +110,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                   <Tooltip
                     asChild
                     content={getConditionOperatorHelperInfo(
-                      condition.operator as PermissionConditionOperators
+                      condition?.operator as PermissionConditionOperators
                     )}
                     className="max-w-xs"
                   >

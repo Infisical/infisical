@@ -10,7 +10,7 @@ export const GlobPermissionInfo = () => {
 
   return (
     <div>
-      <div className="mt-2">A glob pattern uses wildcards to match file names or paths.</div>
+      <div className="mt-2">A glob pattern uses wildcards to match resources or paths.</div>
       <div>
         <FormControl label="Glob pattern" helperText="Examples: /{a,b}, DB_**">
           <Input value={pattern} onChange={(e) => setPattern(e.target.value)} />
@@ -19,7 +19,7 @@ export const GlobPermissionInfo = () => {
       <div>
         <FormControl
           label="Test string"
-          helperText="Type value to test"
+          helperText="Type a value to test glob match"
           isError={
             pattern && text ? !picomatch.isMatch(text, pattern, { strictSlashes: false }) : false
           }

@@ -29,7 +29,7 @@ export enum PermissionConditionOperators {
   $ALL = "$all",
   $REGEX = "$regex",
   $EQ = "$eq",
-  $NEQ = "$neq",
+  $NEQ = "$ne",
   $GLOB = "$glob"
 }
 
@@ -45,7 +45,7 @@ export type TPermissionConditionOperators = {
 export type TPermissionCondition = Record<
   string,
   | string
-  | { $in: string[]; $all: string[]; $regex: string; $eq: string; $neq: string; $glob: string }
+  | { $in: string[]; $all: string[]; $regex: string; $eq: string; $ne: string; $glob: string }
 >;
 
 export enum ProjectPermissionSub {
