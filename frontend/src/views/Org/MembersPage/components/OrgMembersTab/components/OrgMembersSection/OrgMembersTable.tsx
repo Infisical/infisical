@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -188,7 +189,14 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                       className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       onClick={() => router.push(`/org/${orgId}/memberships/${orgMembershipId}`)}
                     >
-                      <Td className={isActive ? "" : "text-mineshaft-400"}>{name}</Td>
+                      <Td className={isActive ? "" : "text-mineshaft-400"}>
+                        {name}
+                        {u.superAdmin && (
+                          <Badge variant="primary" className="ml-2">
+                            Server Admin
+                          </Badge>
+                        )}
+                      </Td>
                       <Td className={isActive ? "" : "text-mineshaft-400"}>{username}</Td>
                       <Td>
                         <OrgPermissionCan
