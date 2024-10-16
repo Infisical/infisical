@@ -71,7 +71,10 @@ import { SecretType, TSecretFolder } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 import { SecretOverviewDynamicSecretRow } from "@app/views/SecretOverviewPage/components/SecretOverviewDynamicSecretRow";
-import { SecretOverviewTableRow } from "@app/views/SecretOverviewPage/components/SecretOverviewTableRow";
+import {
+  SecretNoAccessOverviewTableRow,
+  SecretOverviewTableRow
+} from "@app/views/SecretOverviewPage/components/SecretOverviewTableRow";
 import { SecretTableResourceCount } from "@app/views/SecretOverviewPage/components/SecretTableResourceCount";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -239,7 +242,10 @@ export const SecretOverviewPage = () => {
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
-    totalCount = 0
+    totalCount = 0,
+    totalUniqueFoldersInPage,
+    totalUniqueSecretsInPage,
+    totalUniqueDynamicSecretsInPage
   } = overview ?? {};
 
   useEffect(() => {
@@ -968,6 +974,16 @@ export const SecretOverviewPage = () => {
                         expandableColWidth={expandableTableWidth}
                       />
                     ))}
+                    <SecretNoAccessOverviewTableRow
+                      environments={visibleEnvs}
+                      count={Math.max(
+                        (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                          (totalUniqueFoldersInPage || 0) -
+                          (totalUniqueDynamicSecretsInPage || 0) -
+                          (totalUniqueSecretsInPage || 0),
+                        0
+                      )}
+                    />
                   </>
                 )}
               </TBody>

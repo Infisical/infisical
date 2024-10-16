@@ -1,7 +1,7 @@
 import { ForbiddenError, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ProjectMembershipRole, SecretsV2Schema, SecretType } from "@app/db/schemas";
+import { ProjectMembershipRole, SecretsV2Schema, SecretType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -1617,7 +1617,7 @@ export const secretV2BridgeServiceFactory = ({
     const sourceSecrets = await secretDAL.find({
       type: SecretType.Shared,
       $in: {
-        id: secretIds
+        [`${TableName.SecretV2}.id` as "id"]: secretIds
       }
     });
     sourceSecrets.forEach((secret) => {

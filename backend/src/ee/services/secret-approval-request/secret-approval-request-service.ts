@@ -1301,7 +1301,7 @@ export const secretApprovalRequestServiceFactory = ({
           environment,
           secretPath,
           secretName: commit.key,
-          secretTags: commitTagIds[commit.key].map((secretTagId) => tagsGroupById[secretTagId][0].slug)
+          secretTags: commitTagIds?.[commit.key]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
         })
       );
     });

@@ -409,6 +409,7 @@ export const SecretMainPage = () => {
                   <SecretNoAccessListView
                     count={Math.max(
                       (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                        (imports?.length || 0) -
                         (folders?.length || 0) -
                         (secrets?.length || 0) -
                         (dynamicSecrets?.length || 0),
