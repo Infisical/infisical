@@ -280,10 +280,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         providerAuthToken: req.body.providerAuthToken
       });
 
-      if (data.isMfaEnabled) {
-        return { mfaEnabled: true, token: data.token } as const; // for discriminated union
-      }
-
       void res.setCookie("jid", data.token.refresh, {
         httpOnly: true,
         path: "/",

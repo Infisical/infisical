@@ -65,7 +65,7 @@ export const selectOrganization = async (data: {
   organizationId: string;
   userAgent?: UserAgentType;
 }) => {
-  const { data: res } = await apiRequest.post<{ token: string }>(
+  const { data: res } = await apiRequest.post<{ token: string; isMfaEnabled: boolean }>(
     "/api/v3/auth/select-organization",
     data
   );
