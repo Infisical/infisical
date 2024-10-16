@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AiFillDelete,AiFillEdit } from "react-icons/ai";
 import ViewConsumerSecret from "./ViewConsumerSecret";
 
@@ -16,10 +16,19 @@ import {
 import { IconButton } from "@app/components/v2/IconButton";
 import { useGetConsumerSecrets, useRemoveConsumerSecret } from "@app/hooks/api/consumerSecrets";
 import { toast } from "react-toastify";
+import { usePopUp } from "@app/hooks";
+import { Modal, ModalContent } from "@app/components/v2";
+import { EditConsumerSecretForm } from "./EditConsumerSecretForm";
+import { TConsumerSecret } from "@app/hooks/api/consumerSecrets/types";
 
 export const ConsumerSecretsTable = () => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [editState, setEditState] = useState<TConsumerSecret>();
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
+    "updateConsumerSecret"
+  ] as const);
 
   const deleteConsumerSecret = useRemoveConsumerSecret();
   const toastOnSecretDeletionSuccess = () => toast("Alert: Secret deleted!", {
@@ -44,14 +53,6 @@ export const ConsumerSecretsTable = () => {
     offset: (page - 1) * perPage,
     limit: perPage,
   });
-
-  const handleView = (id: string) => {
-    console.log(`View secret: ${id}`);
-  };
-
-  const handleEdit = (id: string) => {
-    console.log(`Edit secret: ${id}`);
-  };
 
   const handleDelete = async (id: string) => {
     console.log(`Delete secret: ${id}`);
@@ -98,10 +99,28 @@ export const ConsumerSecretsTable = () => {
                     variant="plain"
                     ariaLabel="edit"
                     className="hover:bg-gray-200 p-2 rounded"
-                    onClick={() => handleEdit(secret.id)}
+                    onClick={() => {
+                      handlePopUpOpen("updateConsumerSecret");
+                      setEditState(secret);
+                    }}
                   >
                     <AiFillEdit className="text-xl" />
                   </IconButton>
+
+                  {/* Edit Modal */}
+                  <Modal
+                    isOpen={popUp?.updateConsumerSecret?.isOpen}
+                    onOpenChange={(isOpen) => {
+                      handlePopUpToggle("updateConsumerSecret", isOpen);
+                    }}
+                  >
+                    <ModalContent
+                      title="Create new consumer secret"
+                      subTitle="Securely store your secrets like login credentials, credit card details, etc"
+                    >
+                      <EditConsumerSecretForm handlePopUpClose={handlePopUpClose} editingSecret={editState} />
+                    </ModalContent>
+                  </Modal>
                   <IconButton
                     variant="plain"
                     ariaLabel="delete"
@@ -118,6 +137,7 @@ export const ConsumerSecretsTable = () => {
           </TBody>
         </Table>
       </TableContainer>
+
       <Pagination
         count={data.totalCount}
         page={page}
