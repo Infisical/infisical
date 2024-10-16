@@ -205,7 +205,12 @@ export const SecretEditRow = ({
             </div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
-              a={ProjectPermissionSub.Secrets}
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName,
+                secretTags: ["*"]
+              })}
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">
