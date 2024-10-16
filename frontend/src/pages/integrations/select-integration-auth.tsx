@@ -170,6 +170,11 @@ export default function SelectIntegrationAuthPage() {
                 );
               })
             : undefined}
+          <div className="mt-6 flex w-full flex-row items-center justify-center">
+            <div className="w-1/5 border-t border-mineshaft-400" />
+            <p className="mx-4 text-xs text-gray-400">OR</p>
+            <div className="w-1/5 border-t border-mineshaft-400" />
+          </div>
           <Button
             colorSchema="primary"
             className="mt-6 w-3/4"

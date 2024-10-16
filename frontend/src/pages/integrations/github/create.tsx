@@ -478,7 +478,7 @@ export default function GitHubCreateIntegrationPage() {
                           errorText={
                             integrationAuthOrgs?.length ? error?.message : "No organizations found"
                           }
-                          isError={Boolean(integrationAuthOrgs?.length && error?.message)}
+                          isError={Boolean(integrationAuthOrgs?.length || error?.message)}
                         >
                           <Select
                             value={field.value}
