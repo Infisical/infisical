@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
@@ -342,7 +342,7 @@ export const recursivelyGetSecretPaths = async ({
   });
 
   if (!env) {
-    throw new Error(`'${environment}' environment not found in project with ID ${projectId}`);
+    throw new NotFoundError({ message: `'${environment}' environment not found in project with ID ${projectId}` });
   }
 
   // Fetch all folders in env once with a single query

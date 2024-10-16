@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -119,7 +120,7 @@ var domainCmd = &cobra.Command{
 
 		domain := ""
 		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) && config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
 
 			override, err := DomainOverridePrompt()
 			if err != nil {
