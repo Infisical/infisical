@@ -137,7 +137,7 @@ export default function SelectIntegrationAuthPage() {
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
-          subTitle="Select a connection that you want to use for the new integration."
+          subTitle="Select an existing connection below or create a new one for your integration."
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
@@ -157,8 +157,7 @@ export default function SelectIntegrationAuthPage() {
 
                 return (
                   <Button
-                    colorSchema="gray"
-                    variant="outline"
+                    colorSchema="secondary"
                     className="mt-3 w-3/4"
                     isDisabled={isIntegrationAuthSelectLoading}
                     key={integrationAuth.id}

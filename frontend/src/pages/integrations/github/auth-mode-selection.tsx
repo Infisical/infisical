@@ -33,7 +33,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Head>
-        <title>Select Github Integration Auth</title>
+        <title>Select GitHub Integration Auth</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
@@ -50,7 +50,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
                 alt="Github logo"
               />
             </div>
-            <span className="ml-2.5">Github Integration </span>
+            <span className="ml-2.5">GitHub Integration </span>
             <Link href="https://infisical.com/docs/integrations/cicd/githubactions" passHref>
               <a target="_blank" rel="noopener noreferrer">
                 <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
@@ -74,7 +74,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
               }}
               className="w-full border border-mineshaft-500"
             >
-              <SelectItem value={AuthMethod.APP}>Github App (Recommended)</SelectItem>
+              <SelectItem value={AuthMethod.APP}>GitHub App (Recommended)</SelectItem>
               <SelectItem value={AuthMethod.OAUTH}>OAuth</SelectItem>
             </Select>
           </FormControl>
@@ -96,7 +96,7 @@ export default function GithubIntegrationAuthModeSelectionPage() {
               variant="outline_bg"
               className="mt-4 ml-auto w-min"
             >
-              Connect to Github
+              Connect to GitHub
             </Button>
           </div>
         </CardBody>

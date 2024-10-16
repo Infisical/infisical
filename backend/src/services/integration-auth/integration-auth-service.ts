@@ -18,7 +18,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
-import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
   TBitbucketWorkspace,
   TChecklyGroups,
@@ -642,7 +642,7 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
 
     let octokit: Octokit;
-    const { installationId } = (integrationAuth.metadata as { installationId: string }) || {};
+    const { installationId } = (integrationAuth.metadata as TIntegrationAuthMetadata) || {};
     if (installationId) {
       octokit = new Octokit({
         authStrategy: createAppAuth,
