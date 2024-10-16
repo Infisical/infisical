@@ -5,8 +5,7 @@ import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 
 const RESERVED_ORG_ROLE_SLUGS = Object.values(OrgMembershipRole).filter((role) => role !== "custom");
 
-export const isCustomOrgRole = (membershipSlug: string) =>
-  !RESERVED_ORG_ROLE_SLUGS.includes(membershipSlug as OrgMembershipRole);
+export const isCustomOrgRole = (roleSlug: string) => !RESERVED_ORG_ROLE_SLUGS.includes(roleSlug as OrgMembershipRole);
 
 // this is only for updating an org
 export const getDefaultOrgMembershipRoleForUpdateOrg = async ({

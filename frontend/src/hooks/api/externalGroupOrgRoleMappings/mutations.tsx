@@ -8,7 +8,7 @@ export const useUpdateExternalGroupOrgRoleMappings = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: TSyncExternalGroupOrgRoleMappingsDTO) => {
-      const { data } = await apiRequest.post("/api/v1/external-group-mappings", payload);
+      const { data } = await apiRequest.put("/api/v1/external-group-mappings", payload);
 
       return data;
     },

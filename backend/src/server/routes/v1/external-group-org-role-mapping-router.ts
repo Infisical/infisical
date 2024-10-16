@@ -38,7 +38,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
 
   // update mappings for current org
   server.route({
-    method: "POST", // using post since this endpoint creates, updates and deletes mappings
+    method: "PUT", // using put since this endpoint creates, updates and deletes mappings
     url: "/",
     config: {
       rateLimit: writeLimit
