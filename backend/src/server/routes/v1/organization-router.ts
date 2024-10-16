@@ -226,7 +226,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .refine((v) => slugify(v) === v, {
             message: "Membership role must be a valid slug"
           })
-          .optional()
+          .optional(),
+        enforceMfa: z.boolean().optional()
       }),
       response: {
         200: z.object({

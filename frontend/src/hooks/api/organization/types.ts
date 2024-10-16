@@ -11,6 +11,7 @@ export type Organization = {
   scimEnabled: boolean;
   slug: string;
   defaultMembershipRole: string;
+  enforceMfa: boolean;
 };
 
 export type UpdateOrgDTO = {
@@ -20,6 +21,7 @@ export type UpdateOrgDTO = {
   scimEnabled?: boolean;
   slug?: string;
   defaultMembershipRoleSlug?: string;
+  enforceMfa?: boolean;
 };
 
 export type BillingDetails = {

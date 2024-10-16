@@ -42,4 +42,5 @@ export type SubscriptionPlan = {
   instanceUserManagement: boolean;
   externalKms: boolean;
   pkiEst: boolean;
+  enforceMfa: boolean;
 };
