@@ -99,13 +99,15 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     organizationId,
-    authMethod
+    authMethod,
+    isMfaVerified
   }: {
     user: TUsers;
     ip: string;
     userAgent: string;
     organizationId?: string;
     authMethod: AuthMethod;
+    isMfaVerified?: boolean;
   }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
@@ -123,7 +125,8 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
-        organizationId
+        organizationId,
+        isMfaVerified
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
@@ -136,7 +139,8 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
-        organizationId
+        organizationId,
+        isMfaVerified
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
@@ -350,7 +354,7 @@ export const authLoginServiceFactory = ({
     }
 
     // send multi factor auth token if they it enabled
-    if (user.isMfaEnabled && user.email) {
+    if (user.isMfaEnabled && user.email && !decodedToken.isMfaVerified) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
       const mfaToken = jwt.sign(
@@ -378,7 +382,8 @@ export const authLoginServiceFactory = ({
       user,
       userAgent,
       ip: ipAddress,
-      organizationId
+      organizationId,
+      isMfaVerified: decodedToken.isMfaVerified
     });
 
     return {
@@ -507,7 +512,8 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       organizationId: orgId,
-      authMethod: decodedToken.authMethod
+      authMethod: decodedToken.authMethod,
+      isMfaVerified: true
     });
 
     return { token, user: userEnc };

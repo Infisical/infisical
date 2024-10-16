@@ -52,6 +52,7 @@ export type AuthModeJwtTokenPayload = {
   tokenVersionId: string;
   accessVersion: number;
   organizationId?: string;
+  isMfaVerified?: boolean;
 };
 
 export type AuthModeMfaJwtTokenPayload = {
@@ -69,6 +70,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   tokenVersionId: string;
   refreshVersion: number;
   organizationId?: string;
+  isMfaVerified?: boolean;
 };
 
 export type AuthModeProviderJwtTokenPayload = {
