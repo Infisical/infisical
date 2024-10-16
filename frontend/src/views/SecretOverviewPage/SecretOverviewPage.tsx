@@ -808,9 +808,9 @@ export const SecretOverviewPage = () => {
           <TableContainer className="rounded-b-none">
             <Table>
               <THead>
-                <Tr className="sticky top-0 z-20 border-0">
-                  <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                    <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
+                <Tr className="border-0">
+                  <Th className="  min-w-[20rem] border-b border-r p-0">
+                    <div className="flex items-center border-mineshaft-600 px-5 pt-3.5 pb-3">
                       Name
                       <IconButton
                         variant="plain"
@@ -837,10 +837,10 @@ export const SecretOverviewPage = () => {
 
                     return (
                       <Th
-                        className="min-table-row min-w-[11rem] border-b-0 p-0 text-center"
+                        className="min-table-row min-w-[11rem] border-b p-0 text-center"
                         key={`secret-overview-${name}-${index + 1}`}
                       >
-                        <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-3.5 pb-[0.83rem]">
+                        <div className="flex items-center justify-center  border-mineshaft-600 px-5 pt-3.5 pb-3">
                           <button
                             type="button"
                             className="text-sm font-medium duration-100 hover:text-mineshaft-100"
@@ -980,15 +980,15 @@ export const SecretOverviewPage = () => {
               </TBody>
               <TFoot>
                 <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
-                  <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
+                  <Td className="sticky left-0 z-10 border-t border-r border-mineshaft-600 g-mineshaft-800 p-0">
                     <div
-                      className="w-full border-t border-r border-mineshaft-600"
+                      className="w-full border-mineshaft-600"
                       style={{ height: "45px" }}
                     />
                   </Td>
                   {visibleEnvs?.map(({ name, slug }) => (
-                    <Td key={`explore-${name}-btn`} className="border-0 border-mineshaft-600 p-0">
-                      <div className="flex w-full items-center justify-center border-r border-t border-mineshaft-600 px-5 py-2">
+                    <Td key={`explore-${name}-btn`} className="border-t  border-mineshaft-600 p-0">
+                      <div className="flex w-full items-center justify-center   border-mineshaft-600 px-5 py-2">
                         <Button
                           size="xs"
                           variant="outline_bg"
