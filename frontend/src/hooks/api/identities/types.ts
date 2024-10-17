@@ -12,7 +12,7 @@ export type IdentityTrustedIp = {
 export type Identity = {
   id: string;
   name: string;
-  authMethod?: IdentityAuthMethod;
+  authMethods: IdentityAuthMethod[];
   createdAt: string;
   updatedAt: string;
 };
