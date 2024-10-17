@@ -3,7 +3,7 @@ import { faPencil, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { IconButton, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { Button, IconButton, Select, SelectItem, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useGetIdentityById } from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
@@ -81,57 +81,74 @@ export const IdentityAuthenticationSection = ({
           }}
         </OrgPermissionCan>
       </div>
-      <div className="flex w-full items-center gap-2 pt-2">
-        {data.identity.authMethods.length > 0 && (
-          <>
-            <div className="w-full">
-              <Select
-                className="w-full"
-                value={selectedAuthMethod as string}
-                onValueChange={(value) => setSelectedAuthMethod(value as IdentityAuthMethod)}
-              >
-                {(data.identity?.authMethods || []).map((authMethod) => (
-                  <SelectItem key={authMethod || authMethod} value={authMethod}>
-                    {identityAuthToNameMap[authMethod]}
-                  </SelectItem>
-                ))}
-              </Select>
+      {data.identity.authMethods.length > 0 ? (
+        <>
+          <div className="py-4">
+            <div className="flex justify-between">
+              <p className="ml-px mb-0.5 text-sm font-semibold text-mineshaft-300">Auth Method</p>
             </div>
-            <div>
-              <Tooltip content="Edit auth method">
-                <IconButton
-                  onClick={() => {
-                    handlePopUpOpen("identityAuthMethod", {
-                      identityId,
-                      name: data.identity.name,
-                      authMethod: selectedAuthMethod,
-                      allAuthMethods: data.identity.authMethods
-                    });
-                  }}
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative"
+            <div className="flex items-center gap-2">
+              <div className="w-full">
+                <Select
+                  className="w-full"
+                  value={selectedAuthMethod as string}
+                  onValueChange={(value) => setSelectedAuthMethod(value as IdentityAuthMethod)}
                 >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
-              </Tooltip>{" "}
+                  {(data.identity?.authMethods || []).map((authMethod) => (
+                    <SelectItem key={authMethod || authMethod} value={authMethod}>
+                      {identityAuthToNameMap[authMethod]}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Tooltip content="Edit auth method">
+                  <IconButton
+                    onClick={() => {
+                      handlePopUpOpen("identityAuthMethod", {
+                        identityId,
+                        name: data.identity.name,
+                        authMethod: selectedAuthMethod,
+                        allAuthMethods: data.identity.authMethods
+                      });
+                    }}
+                    ariaLabel="copy icon"
+                    variant="plain"
+                    className="group relative"
+                  >
+                    <FontAwesomeIcon icon={faPencil} />
+                  </IconButton>
+                </Tooltip>{" "}
+              </div>
             </div>
-          </>
-        )}
-      </div>
-      <div className="py-4">
-        <div className="flex justify-between">
-          <p className="text-sm font-semibold text-mineshaft-300">Auth Method</p>
+          </div>
+          {selectedAuthMethod === IdentityAuthMethod.UNIVERSAL_AUTH && (
+            <IdentityClientSecrets identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
+          )}
+          {selectedAuthMethod === IdentityAuthMethod.TOKEN_AUTH && (
+            <IdentityTokens identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
+          )}
+        </>
+      ) : (
+        <div className="w-full space-y-2 pt-2">
+          <p className="text-sm text-mineshaft-300">
+            No authentication methods configured. Get started by creating a new auth method.
+          </p>
+          <Button
+            onClick={() => {
+              handlePopUpOpen("identityAuthMethod", {
+                identityId,
+                name: data.identity.name,
+                allAuthMethods: data.identity.authMethods
+              });
+            }}
+            variant="outline_bg"
+            className="w-full"
+            size="xs"
+          >
+            Create new auth method
+          </Button>
         </div>
-        <p className="text-sm text-mineshaft-300">
-          {selectedAuthMethod ? identityAuthToNameMap[selectedAuthMethod] : "Not configured"}
-        </p>
-      </div>
-      {selectedAuthMethod === IdentityAuthMethod.UNIVERSAL_AUTH && (
-        <IdentityClientSecrets identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
-      )}
-      {selectedAuthMethod === IdentityAuthMethod.TOKEN_AUTH && (
-        <IdentityTokens identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
       )}
     </div>
   ) : (
