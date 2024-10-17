@@ -14,7 +14,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const accessApprovalPolicyFindQuery = async (
     tx: Knex,
-    filter: TFindFilter<TAccessApprovalPolicies>,
+    filter: TFindFilter<TAccessApprovalPolicies & { projectId: string }>,
     customFilter?: {
       policyId?: string;
     }

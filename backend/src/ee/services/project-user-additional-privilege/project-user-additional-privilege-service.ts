@@ -1,11 +1,13 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "./project-user-additional-privilege-dal";
 import {
   ProjectUserAdditionalPrivilegeTemporaryMode,
@@ -25,6 +27,11 @@ type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
 export type TProjectUserAdditionalPrivilegeServiceFactory = ReturnType<
   typeof projectUserAdditionalPrivilegeServiceFactory
 >;
+
+const unpackPermissions = (permissions: unknown) =>
+  UnpackedPermissionSchema.array().parse(
+    unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+  );
 
 export const projectUserAdditionalPrivilegeServiceFactory = ({
   projectUserAdditionalPrivilegeDAL,
@@ -67,7 +74,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         slug,
         permissions: customPermission
       });
-      return additionalPrivilege;
+      return {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);
@@ -82,7 +92,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       temporaryAccessStartTime: new Date(dto.temporaryAccessStartTime),
       temporaryAccessEndTime: new Date(new Date(dto.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs)
     });
-    return additionalPrivilege;
+    return {
+      ...additionalPrivilege,
+      permissions: unpackPermissions(additionalPrivilege.permissions)
+    };
   };
 
   const updateById = async ({
@@ -131,7 +144,11 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
-      return additionalPrivilege;
+
+      return {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
@@ -142,7 +159,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       temporaryRange: null,
       temporaryMode: null
     });
-    return additionalPrivilege;
+    return {
+      ...additionalPrivilege,
+      permissions: unpackPermissions(additionalPrivilege.permissions)
+    };
   };
 
   const deleteById = async ({ actorId, actor, actorOrgId, actorAuthMethod, privilegeId }: TDeleteUserPrivilegeDTO) => {
@@ -165,7 +185,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
     const deletedPrivilege = await projectUserAdditionalPrivilegeDAL.deleteById(userPrivilege.id);
-    return deletedPrivilege;
+    return {
+      ...deletedPrivilege,
+      permissions: unpackPermissions(deletedPrivilege.permissions)
+    };
   };
 
   const getPrivilegeDetailsById = async ({
@@ -193,7 +216,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    return userPrivilege;
+    return {
+      ...userPrivilege,
+      permissions: unpackPermissions(userPrivilege.permissions)
+    };
   };
 
   const listPrivileges = async ({
@@ -219,7 +245,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       userId: projectMembership.userId,
       projectId: projectMembership.projectId
     });
-    return userPrivileges;
+    return userPrivileges.map((el) => ({
+      ...el,
+      permissions: unpackPermissions(el.permissions)
+    }));
   };
 
   return {

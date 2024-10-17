@@ -50,7 +50,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { expandSecretReferencesFactory, getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -342,7 +342,8 @@ export const secretQueueFactory = ({
       secretDAL: secretV2BridgeDAL,
       expandSecretReferences,
       secretImportDAL,
-      allowedImports: secretImports
+      secretImports,
+      hasSecretAccess: () => true
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -1147,7 +1148,7 @@ export const secretQueueFactory = ({
                   : "";
               const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
               // create references
-              const references = getAllNestedSecretReferences(value);
+              const references = getAllSecretReferences(value).nestedReferences;
               secretReferences.push({ secretId: el.id, references });
 
               const encryptedComment = comment

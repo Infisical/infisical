@@ -15,6 +15,7 @@ import {
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
+import { unique } from "@app/lib/fn/array";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -154,10 +155,20 @@ export const useGetProjectSecretsOverview = (
     },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, ...select } = data;
+      const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
+
+      const uniqueFolders = select.folders ? unique(select.folders, (i) => i.name) : [];
+
+      const uniqueDynamicSecrets = select.dynamicSecrets
+        ? unique(select.dynamicSecrets, (i) => i.name)
+        : [];
 
       return {
         ...select,
-        secrets: secrets ? mergePersonalSecrets(secrets) : undefined
+        secrets: secrets ? mergePersonalSecrets(secrets) : undefined,
+        totalUniqueSecretsInPage: uniqueSecrets.length,
+        totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
+        totalUniqueFoldersInPage: uniqueFolders.length
       };
     }, []),
     keepPreviousData: true

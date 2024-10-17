@@ -1,10 +1,10 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
-import { z } from "zod";
 
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -31,16 +31,6 @@ type TIdentityProjectAdditionalPrivilegeServiceFactoryDep = {
 export type TIdentityProjectAdditionalPrivilegeServiceFactory = ReturnType<
   typeof identityProjectAdditionalPrivilegeServiceFactory
 >;
-
-// TODO(akhilmhdh): move this to more centralized
-export const UnpackedPermissionSchema = z.object({
-  subject: z
-    .union([z.string().min(1), z.string().array()])
-    .transform((el) => (typeof el !== "string" ? el[0] : el))
-    .optional(),
-  action: z.union([z.string().min(1), z.string().array()]).transform((el) => (typeof el === "string" ? [el] : el)),
-  conditions: z.unknown().optional()
-});
 
 const unpackPermissions = (permissions: unknown) =>
   UnpackedPermissionSchema.array().parse(
@@ -203,7 +193,6 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return {
       ...additionalPrivilege,
-
       permissions: unpackPermissions(additionalPrivilege.permissions)
     };
   };
@@ -324,7 +313,6 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return identityPrivileges.map((el) => ({
       ...el,
-
       permissions: unpackPermissions(el.permissions)
     }));
   };

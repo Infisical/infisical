@@ -4,7 +4,14 @@ import { validate as uuidValidate } from "uuid";
 import { TDbClient } from "@app/db";
 import { SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import {
+  buildFindFilter,
+  ormify,
+  selectAllTableCols,
+  sqlNestRelationships,
+  TFindFilter,
+  TFindOpt
+} from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
@@ -12,6 +19,97 @@ export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFacto
 
 export const secretV2BridgeDALFactory = (db: TDbClient) => {
   const secretOrm = ormify(db, TableName.SecretV2);
+
+  const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.SecretV2)
+        .where(filter)
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          }
+        ]
+      });
+      return data?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: `${TableName.SecretV2}: FindOne` });
+    }
+  };
+
+  const find = async (filter: TFindFilter<TSecretsV2>, { offset, limit, sort, tx }: TFindOpt<TSecretsV2> = {}) => {
+    try {
+      const query = (tx || db)(TableName.SecretV2)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter))
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      }
+
+      const docs = await query;
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          }
+        ]
+      });
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: `${TableName.SecretV2}: Find` });
+    }
+  };
 
   const update = async (filter: Partial<TSecretsV2>, data: Omit<TSecretsV2Update, "version">, tx?: Knex) => {
     try {
@@ -484,6 +582,8 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues,
-    countByFolderIds
+    countByFolderIds,
+    findOne,
+    find
   };
 };
