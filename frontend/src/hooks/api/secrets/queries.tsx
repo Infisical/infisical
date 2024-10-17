@@ -17,14 +17,17 @@ import {
   SecretVersions,
   TGetProjectSecretsAllEnvDTO,
   TGetProjectSecretsDTO,
-  TGetProjectSecretsKey
+  TGetProjectSecretsKey,
+  TGetSecretReferenceTreeDTO,
+  TSecretReferenceTraceNode
 } from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
     [{ workspaceId, environment, secretPath }, "secrets"] as const,
-  getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const
+  getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
+  getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto]
 };
 
 export const fetchProjectSecrets = async ({
@@ -226,4 +229,34 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     select: useCallback((data: SecretVersions[]) => {
       return data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }, [])
+  });
+
+const fetchSecretReferenceTree = async ({
+  secretPath,
+  projectId,
+  secretKey,
+  environmentSlug
+}: TGetSecretReferenceTreeDTO) => {
+  const { data } = await apiRequest.get<{ tree: TSecretReferenceTraceNode; value: string }>(
+    `/api/v3/secrets/raw/${secretKey}/secret-reference-tree`,
+    {
+      params: {
+        secretPath,
+        workspaceId: projectId,
+        environment: environmentSlug
+      }
+    }
+  );
+  return data;
+};
+
+export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
+  useQuery({
+    enabled:
+      Boolean(dto.environmentSlug) &&
+      Boolean(dto.secretPath) &&
+      Boolean(dto.projectId) &&
+      Boolean(dto.secretKey),
+    queryKey: secretKeys.getSecretReferenceTree(dto),
+    queryFn: () => fetchSecretReferenceTree(dto)
   });

@@ -299,7 +299,7 @@ export const secretQueueFactory = ({
       );
       return content;
     }
-    const expandSecretReferences = expandSecretReferencesFactory({
+    const { expandSecretReferences } = expandSecretReferencesFactory({
       decryptSecretValue: dto.decryptor,
       secretDAL: secretV2BridgeDAL,
       folderDAL,
