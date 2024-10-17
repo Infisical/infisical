@@ -12,8 +12,8 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
-import { isCustomOrgRole } from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleTable";
 
 const formSchema = yup.object({
   name: yup

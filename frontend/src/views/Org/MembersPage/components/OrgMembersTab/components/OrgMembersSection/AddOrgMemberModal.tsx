@@ -25,6 +25,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
   useFetchServerStatus,
@@ -34,7 +35,6 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { isCustomOrgRole } from "@app/views/Org/MembersPage/components/OrgRoleTabSection/OrgRoleTable";
 
 import { OrgInviteLink } from "./OrgInviteLink";
 

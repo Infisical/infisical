@@ -190,7 +190,9 @@ export enum EventType {
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   CMEK_ENCRYPT = "cmek-encrypt",
-  CMEK_DECRYPT = "cmek-decrypt"
+  CMEK_DECRYPT = "cmek-decrypt",
+  UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
+  GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping"
 }
 
 interface UserActorMetadata {
@@ -1604,6 +1606,18 @@ interface CmekDecryptEvent {
   };
 }
 
+interface GetExternalGroupOrgRoleMappingsEvent {
+  type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
+  metadata?: Record<string, never>; // not needed, based off orgId
+}
+
+interface UpdateExternalGroupOrgRoleMappingsEvent {
+  type: EventType.UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
+  metadata: {
+    mappings: { groupName: string; roleSlug: string }[];
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1750,4 +1764,6 @@ export type Event =
   | DeleteCmekEvent
   | GetCmeksEvent
   | CmekEncryptEvent
-  | CmekDecryptEvent;
+  | CmekDecryptEvent
+  | GetExternalGroupOrgRoleMappingsEvent
+  | UpdateExternalGroupOrgRoleMappingsEvent;
