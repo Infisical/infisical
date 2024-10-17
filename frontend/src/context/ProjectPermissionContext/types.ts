@@ -7,14 +7,6 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
-export enum ProjectPermissionDynamicSecretActions {
-  ReadRootCredential = "read-root-credential",
-  CreateRootCredential = "create-root-credential",
-  EditRootCredential = "edit-root-credential",
-  DeleteRootCredential = "delete-root-credential",
-  Lease = "lease"
-}
-
 export enum ProjectPermissionCmekActions {
   Read = "read",
   Create = "create",
@@ -29,7 +21,7 @@ export enum PermissionConditionOperators {
   $ALL = "$all",
   $REGEX = "$regex",
   $EQ = "$eq",
-  $NEQ = "$ne",
+  $NEQ = "$neq",
   $GLOB = "$glob"
 }
 
@@ -45,7 +37,7 @@ export type TPermissionConditionOperators = {
 export type TPermissionCondition = Record<
   string,
   | string
-  | { $in: string[]; $all: string[]; $regex: string; $eq: string; $ne: string; $glob: string }
+  | { $in: string[]; $all: string[]; $regex: string; $eq: string; $neq: string; $glob: string }
 >;
 
 export enum ProjectPermissionSub {
@@ -60,11 +52,9 @@ export enum ProjectPermissionSub {
   Tags = "tags",
   AuditLogs = "audit-logs",
   IpAllowList = "ip-allowlist",
-  Project = "workspace",
+  Workspace = "workspace",
   Secrets = "secrets",
   SecretFolders = "secret-folders",
-  SecretImports = "secret-imports",
-  DynamicSecrets = "dynamic-secrets",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
@@ -78,24 +68,7 @@ export enum ProjectPermissionSub {
   Cmek = "cmek"
 }
 
-export type SecretSubjectFields = {
-  environment: string;
-  secretPath: string;
-  secretName: string;
-  secretTags: string[];
-};
-
-export type SecretFolderSubjectFields = {
-  environment: string;
-  secretPath: string;
-};
-
-export type DynamicSecretSubjectFields = {
-  environment: string;
-  secretPath: string;
-};
-
-export type SecretImportSubjectFields = {
+type SubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -103,30 +76,13 @@ export type SecretImportSubjectFields = {
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
-      (
-        | ProjectPermissionSub.Secrets
-        | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
-      )
+      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
     ]
   | [
       ProjectPermissionActions,
       (
         | ProjectPermissionSub.SecretFolders
-        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
-      )
-    ]
-  | [
-      ProjectPermissionDynamicSecretActions,
-      (
-        | ProjectPermissionSub.DynamicSecrets
-        | (ForcedSubject<ProjectPermissionSub.DynamicSecrets> & DynamicSecretSubjectFields)
-      )
-    ]
-  | [
-      ProjectPermissionActions,
-      (
-        | ProjectPermissionSub.SecretImports
-        | (ForcedSubject<ProjectPermissionSub.SecretImports> & SecretImportSubjectFields)
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SubjectFields)
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
@@ -139,19 +95,19 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Environments]
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
+  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
-  | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
-  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
+  | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
-  | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
-  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms];
+  | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek];
+
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

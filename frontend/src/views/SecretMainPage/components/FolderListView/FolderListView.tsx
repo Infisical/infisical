@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -33,6 +33,11 @@ export const FolderListView = ({
     "deleteFolder"
   ] as const);
   const router = useRouter();
+  const { permission } = useProjectPermission();
+
+  const shouldCheckFolderPermission = permission.rules.some((rule) =>
+    (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
+  );
 
   const { mutateAsync: updateFolder } = useUpdateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -121,7 +126,12 @@ export const FolderListView = ({
           <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
+              a={subject(
+                shouldCheckFolderPermission
+                  ? ProjectPermissionSub.SecretFolders
+                  : ProjectPermissionSub.Secrets,
+                { environment, secretPath }
+              )}
               renderTooltip
               allowedLabel="Edit"
             >
@@ -140,7 +150,12 @@ export const FolderListView = ({
             </ProjectPermissionCan>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
+              a={subject(
+                shouldCheckFolderPermission
+                  ? ProjectPermissionSub.SecretFolders
+                  : ProjectPermissionSub.Secrets,
+                { environment, secretPath }
+              )}
               renderTooltip
               allowedLabel="Delete"
             >

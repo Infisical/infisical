@@ -4,7 +4,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
-import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
 import { IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -80,9 +79,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error this is valid ts
-        permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(permission)))
+        permissions: JSON.stringify(packRules(permission))
       });
       return { privilege };
     }
@@ -162,9 +159,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: true,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error this is valid ts
-        permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(permission)))
+        permissions: JSON.stringify(packRules(permission))
       });
       return { privilege };
     }
@@ -249,11 +244,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: req.body.projectSlug,
         data: {
           ...updatedInfo,
-          permissions: permission
-            ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore-error this is valid ts
-              JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(permission)))
-            : undefined
+          permissions: permission ? JSON.stringify(packRules(permission)) : undefined
         }
       });
       return { privilege };

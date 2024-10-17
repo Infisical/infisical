@@ -67,7 +67,7 @@ export const permissionServiceFactory = ({
             throw new NotFoundError({ name: "OrgRoleInvalid", message: "Organization role not found" });
         }
       })
-      .reduce((prev, curr) => prev.concat(curr), []);
+      .reduce((curr, prev) => prev.concat(curr), []);
 
     return createMongoAbility<OrgPermissionSet>(rules, {
       conditionsMatcher
@@ -98,7 +98,7 @@ export const permissionServiceFactory = ({
             });
         }
       })
-      .reduce((prev, curr) => prev.concat(curr), []);
+      .reduce((curr, prev) => prev.concat(curr), []);
 
     return rules;
   };

@@ -4,10 +4,7 @@ import ms from "ms";
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import {
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -75,8 +72,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -148,8 +145,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -222,8 +219,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -287,8 +284,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -323,8 +320,8 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment: environmentSlug, secretPath: path })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);

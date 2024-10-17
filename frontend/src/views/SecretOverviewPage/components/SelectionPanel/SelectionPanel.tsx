@@ -49,9 +49,9 @@ export const SelectionPanel = ({
     "bulkDeleteEntries"
   ] as const);
 
-  const selectedFolderCount = Object.keys(selectedEntries.folder).length;
-  const selectedKeysCount = Object.keys(selectedEntries.secret).length;
-  const selectedCount = selectedFolderCount + selectedKeysCount;
+  const selectedFolderCount = Object.keys(selectedEntries.folder).length
+  const selectedKeysCount = Object.keys(selectedEntries.secret).length
+  const selectedCount = selectedFolderCount + selectedKeysCount
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -65,12 +65,7 @@ export const SelectionPanel = ({
   const shouldShowDelete = userAvailableEnvs.some((env) =>
     permission.can(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, {
-        environment: env.slug,
-        secretPath,
-        secretName: "*",
-        secretTags: ["*"]
-      })
+      subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
     )
   );
 
@@ -82,50 +77,41 @@ export const SelectionPanel = ({
       return "Do you want to delete the selected secrets across environments?";
     }
     return "Do you want to delete the selected folders across environments?";
-  };
+  }
 
   const handleBulkDelete = async () => {
     let processedEntries = 0;
 
     const promises = userAvailableEnvs.map(async (env) => {
       // additional check: ensure that bulk delete is only executed on envs that user has access to
-
       if (
-        permission.can(
+        permission.cannot(
           ProjectPermissionActions.Delete,
-          subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
+          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
         )
       ) {
-        await Promise.all(
-          Object.keys(selectedEntries.folder).map(async (folderName) => {
-            const folder = getFolderByNameAndEnv(folderName, env.slug);
-            if (folder) {
-              processedEntries += 1;
-              await deleteFolder({
-                folderId: folder?.id,
-                path: secretPath,
-                environment: env.slug,
-                projectId: workspaceId
-              });
-            }
-          })
-        );
+        return;
       }
+
+      await Promise.all(
+        Object.keys(selectedEntries.folder).map(async (folderName) => {
+          const folder = getFolderByNameAndEnv(folderName, env.slug);
+          if (folder) {
+            processedEntries += 1;
+            await deleteFolder({
+              folderId: folder?.id,
+              path: secretPath,
+              environment: env.slug,
+              projectId: workspaceId
+            });
+          }
+        })
+      );
 
       const secretsToDelete = Object.keys(selectedEntries.secret).reduce(
         (accum: TDeleteSecretBatchDTO["secrets"], secretName) => {
           const entry = getSecretByKey(env.slug, secretName);
-          const canDeleteSecret = permission.can(
-            ProjectPermissionActions.Delete,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: env.slug,
-              secretPath,
-              secretName,
-              secretTags: (entry?.tags || []).map((i) => i.slug)
-            })
-          );
-
-          if (entry && canDeleteSecret) {
+          if (entry) {
             return [
               ...accum,
               {

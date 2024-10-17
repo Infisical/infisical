@@ -26,7 +26,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecretLeases, useRevokeDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
@@ -60,6 +60,7 @@ export const DynamicSecretLease = ({
     path: secretPath,
     dynamicSecretName
   });
+  
 
   const deleteDynamicSecretLease = useRevokeDynamicSecretLease();
 
@@ -139,8 +140,8 @@ export const DynamicSecretLease = ({
                 <Td>
                   <div className="flex items-center space-x-4">
                     <ProjectPermissionCan
-                      I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                       renderTooltip
                       allowedLabel="Renew"
                     >
@@ -158,8 +159,8 @@ export const DynamicSecretLease = ({
                       )}
                     </ProjectPermissionCan>
                     <ProjectPermissionCan
-                      I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                      I={ProjectPermissionActions.Delete}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                       renderTooltip
                       allowedLabel="Delete"
                     >
@@ -178,11 +179,8 @@ export const DynamicSecretLease = ({
                     </ProjectPermissionCan>
                     {status === DynamicSecretLeaseStatus.FailedDeletion && (
                       <ProjectPermissionCan
-                        I={ProjectPermissionDynamicSecretActions.Lease}
-                        a={subject(ProjectPermissionSub.DynamicSecrets, {
-                          environment,
-                          secretPath
-                        })}
+                        I={ProjectPermissionActions.Delete}
+                        a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                         renderTooltip
                         allowedLabel="Force Delete. This action will remove the secret from internal storage, but it will remain in external systems."
                       >
@@ -211,19 +209,9 @@ export const DynamicSecretLease = ({
       </TableContainer>
       {!isLeaseLoading && Boolean(leases?.length) && (
         <div className="mt-6 flex items-center space-x-4">
-          <ProjectPermissionCan
-            I={ProjectPermissionDynamicSecretActions.Lease}
-            a={subject(ProjectPermissionSub.DynamicSecrets, {
-              environment,
-              secretPath
-            })}
-          >
-            {(isAllowed) => (
-              <Button onClick={onClickNewLease} size="xs" isDisabled={!isAllowed}>
-                New Lease
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          <Button onClick={onClickNewLease} size="xs">
+            New Lease
+          </Button>
           <Button onClick={onClose} variant="plain" colorSchema="secondary" size="xs">
             Close
           </Button>

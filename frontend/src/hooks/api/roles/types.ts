@@ -40,7 +40,6 @@ export type TPermission = {
 
 export type TProjectPermission = {
   conditions?: Record<string, any>;
-  inverted?: boolean;
   action: string | string[];
   subject: string | string[];
 };

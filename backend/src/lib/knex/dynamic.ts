@@ -2,31 +2,32 @@ import { Knex } from "knex";
 
 import { UnauthorizedError } from "../errors";
 
-type TKnexDynamicPrimitiveOperator<T extends object> = {
+type TKnexDynamicPrimitiveOperator = {
   operator: "eq" | "ne" | "startsWith" | "endsWith";
   value: string;
-  field: Extract<keyof T, string>;
+  field: string;
 };
 
-type TKnexDynamicInOperator<T extends object> = {
+type TKnexDynamicInOperator = {
   operator: "in";
   value: string[] | number[];
-  field: Extract<keyof T, string>;
+  field: string;
 };
 
-type TKnexNonGroupOperator<T extends object> = TKnexDynamicInOperator<T> | TKnexDynamicPrimitiveOperator<T>;
+type TKnexNonGroupOperator = TKnexDynamicInOperator | TKnexDynamicPrimitiveOperator;
 
-type TKnexGroupOperator<T extends object> = {
+type TKnexGroupOperator = {
   operator: "and" | "or" | "not";
-  value: (TKnexNonGroupOperator<T> | TKnexGroupOperator<T>)[];
+  value: (TKnexNonGroupOperator | TKnexGroupOperator)[];
 };
 
-export type TKnexDynamicOperator<T extends object> = TKnexGroupOperator<T> | TKnexNonGroupOperator<T>;
+// akhilmhdh: This is still in pending state and not yet ready. If you want to use it ping me.
+// used when you need to write a complex query with the orm
+// use it when you need complex or and and condition - most of the time not needed
+// majorly used with casl permission to filter data based on permission
+export type TKnexDynamicOperator = TKnexGroupOperator | TKnexNonGroupOperator;
 
-export const buildDynamicKnexQuery = <T extends object>(
-  rootQueryBuild: Knex.QueryBuilder,
-  dynamicQuery: TKnexDynamicOperator<T>
-) => {
+export const buildDynamicKnexQuery = (dynamicQuery: TKnexDynamicOperator, rootQueryBuild: Knex.QueryBuilder) => {
   const stack = [{ filterAst: dynamicQuery, queryBuilder: rootQueryBuild }];
 
   while (stack.length) {
@@ -49,25 +50,34 @@ export const buildDynamicKnexQuery = <T extends object>(
         break;
       }
       case "and": {
-        filterAst.value.forEach((el) => {
-          void queryBuilder.andWhere((subQueryBuilder) => {
-            buildDynamicKnexQuery(subQueryBuilder, el);
+        void queryBuilder.andWhere((subQueryBuilder) => {
+          filterAst.value.forEach((el) => {
+            stack.push({
+              queryBuilder: subQueryBuilder,
+              filterAst: el
+            });
           });
         });
         break;
       }
       case "or": {
-        filterAst.value.forEach((el) => {
-          void queryBuilder.orWhere((subQueryBuilder) => {
-            buildDynamicKnexQuery(subQueryBuilder, el);
+        void queryBuilder.orWhere((subQueryBuilder) => {
+          filterAst.value.forEach((el) => {
+            stack.push({
+              queryBuilder: subQueryBuilder,
+              filterAst: el
+            });
           });
         });
         break;
       }
       case "not": {
-        filterAst.value.forEach((el) => {
-          void queryBuilder.whereNot((subQueryBuilder) => {
-            buildDynamicKnexQuery(subQueryBuilder, el);
+        void queryBuilder.whereNot((subQueryBuilder) => {
+          filterAst.value.forEach((el) => {
+            stack.push({
+              queryBuilder: subQueryBuilder,
+              filterAst: el
+            });
           });
         });
         break;
