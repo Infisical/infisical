@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
-  IdentityAuthMethod,
   TableName,
   TIdentityAwsAuths,
   TIdentityAzureAuths,
@@ -19,33 +18,7 @@ import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex"
 import { OrderByDirection } from "@app/lib/types";
 import { OrgIdentityOrderBy, TListOrgIdentitiesByOrgIdDTO } from "@app/services/identity/identity-types";
 
-const buildAuthMethods = ({
-  uaId,
-  gcpId,
-  awsId,
-  kubernetesId,
-  oidcId,
-  azureId,
-  tokenId
-}: {
-  uaId?: string;
-  gcpId?: string;
-  awsId?: string;
-  kubernetesId?: string;
-  oidcId?: string;
-  azureId?: string;
-  tokenId?: string;
-}) => {
-  return [
-    ...(uaId ? [IdentityAuthMethod.UNIVERSAL_AUTH] : []),
-    ...(gcpId ? [IdentityAuthMethod.GCP_AUTH] : []),
-    ...(awsId ? [IdentityAuthMethod.AWS_AUTH] : []),
-    ...(kubernetesId ? [IdentityAuthMethod.KUBERNETES_AUTH] : []),
-    ...(oidcId ? [IdentityAuthMethod.OIDC_AUTH] : []),
-    ...(azureId ? [IdentityAuthMethod.AZURE_AUTH] : []),
-    ...(tokenId ? [IdentityAuthMethod.TOKEN_AUTH] : [])
-  ].filter((authMethod) => authMethod);
-};
+import { buildAuthMethods } from "./identity-fns";
 
 export type TIdentityOrgDALFactory = ReturnType<typeof identityOrgDALFactory>;
 
