@@ -292,18 +292,12 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
           deleteKey="confirm"
           buttonText="Remove"
           onDeleteApproved={async () => {
-            if (!identityAuthMethodData.authMethod || !orgId) {
-              return;
-            }
-
-            const selectedRevoke = methodMap[identityAuthMethodData.authMethod];
-
-            if (!selectedRevoke) {
+            if (!identityAuthMethodData.authMethod || !orgId || !selectedMethodItem) {
               return;
             }
 
             try {
-              await selectedRevoke.revokeMethod({
+              await selectedMethodItem.revokeMethod({
                 identityId: identityAuthMethodData.identityId,
                 organizationId: orgId
               });

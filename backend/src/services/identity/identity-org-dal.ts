@@ -141,7 +141,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const paginatedIdentitySubquery = (tx || db.replicaNode())(TableName.Identity)
+      const paginatedIdentity = (tx || db.replicaNode())(TableName.Identity)
         .join(
           TableName.IdentityOrgMembership,
           `${TableName.IdentityOrgMembership}.identityId`,
@@ -151,20 +151,17 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
           db.ref("name").withSchema(TableName.Identity).as("identityName")
-          // db.ref("authMethod").withSchema(TableName.Identity).as("identityAuthMethod")
         )
         .where(filter)
         .as("paginatedIdentity");
 
       if (search?.length) {
-        void paginatedIdentitySubquery.whereILike(`${TableName.Identity}.name`, `%${search}%`);
+        void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
       }
 
       if (limit) {
-        void paginatedIdentitySubquery.offset(offset).limit(limit);
+        void paginatedIdentity.offset(offset).limit(limit);
       }
-
-      const paginatedIdentity = paginatedIdentitySubquery.as("paginatedIdentity");
 
       // akhilmhdh: refer this for pagination with multiple left queries
       type TSubquery = Awaited<typeof paginatedIdentity>;
@@ -221,7 +218,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema("paginatedIdentity"),
           db.ref("createdAt").withSchema("paginatedIdentity"),
           db.ref("updatedAt").withSchema("paginatedIdentity"),
-          db.ref("identityId").withSchema("paginatedIdentity").as("identityNewId"),
+          db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
           db.ref("identityName").withSchema("paginatedIdentity"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
@@ -258,7 +255,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           crSlug,
           crPermission,
           crName,
-          identityNewId,
+          identityId,
           identityName,
           role,
           roleId,
@@ -276,7 +273,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         }) => ({
           role,
           roleId,
-          identityId: identityNewId,
+          identityId,
           id,
 
           orgId,
@@ -292,7 +289,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               }
             : undefined,
           identity: {
-            id: identityNewId,
+            id: identityId,
             name: identityName,
             authMethods: buildAuthMethods({
               uaId,
