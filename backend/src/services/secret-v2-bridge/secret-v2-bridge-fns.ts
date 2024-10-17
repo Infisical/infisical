@@ -446,10 +446,10 @@ export const expandSecretReferencesFactory = ({
           // eslint-disable-next-line no-continue
           if (!entities.length) continue;
 
-          let referredSecretPath = "";
-          let referredSecretKey = "";
-          let referredSecretEnvironmentSlug = "";
-          let referredSecretValue = "";
+          let referrencedSecretPath = "";
+          let referencedSecretKey = "";
+          let referencedSecretEnvironmentSlug = "";
+          let referencedSecretValue = "";
 
           if (entities.length === 1) {
             const [secretKey] = entities;
@@ -464,10 +464,10 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(environment, secretPath);
             secretCache[cacheKey][secretKey] = referredValue;
 
-            referredSecretValue = referredValue.value;
-            referredSecretKey = secretKey;
-            referredSecretPath = secretPath;
-            referredSecretEnvironmentSlug = environment;
+            referencedSecretValue = referredValue.value;
+            referencedSecretKey = secretKey;
+            referrencedSecretPath = secretPath;
+            referencedSecretEnvironmentSlug = environment;
           } else {
             const secretReferenceEnvironment = entities[0];
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
@@ -483,23 +483,23 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             secretCache[cacheKey][secretReferenceKey] = referedValue;
 
-            referredSecretValue = referedValue.value;
-            referredSecretKey = secretReferenceKey;
-            referredSecretPath = secretReferencePath;
-            referredSecretEnvironmentSlug = secretReferenceEnvironment;
+            referencedSecretValue = referedValue.value;
+            referencedSecretKey = secretReferenceKey;
+            referrencedSecretPath = secretReferencePath;
+            referencedSecretEnvironmentSlug = secretReferenceEnvironment;
           }
 
           const node = {
-            value: referredSecretValue,
-            secretPath: referredSecretPath,
-            environment: referredSecretEnvironmentSlug,
+            value: referencedSecretValue,
+            secretPath: referrencedSecretPath,
+            environment: referencedSecretEnvironmentSlug,
             depth: depth + 1,
             trace
           };
 
-          const shouldExpandMore = INTERPOLATION_SYNTAX_REG.test(referredSecretValue);
+          const shouldExpandMore = INTERPOLATION_SYNTAX_REG.test(referencedSecretValue);
           if (dto.shouldStackTrace) {
-            const stackTraceNode = { ...node, children: [], key: referredSecretKey, trace: null };
+            const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
             trace?.children.push(stackTraceNode);
             // if stack trace this would be child node
             if (shouldExpandMore) {
@@ -510,8 +510,8 @@ export const expandSecretReferencesFactory = ({
             stack.push(node);
           }
 
-          if (referredSecretValue) {
-            expandedValue = expandedValue.replaceAll(interpolationSyntax, referredSecretValue);
+          if (referencedSecretValue) {
+            expandedValue = expandedValue.replaceAll(interpolationSyntax, referencedSecretValue);
           }
         }
       }

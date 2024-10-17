@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
 
-import { FormControl, SecretInput, Tag, Tooltip } from "@app/components/v2";
+import { FormControl, SecretInput, Spinner, Tag, Tooltip } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetSecretReferenceTree } from "@app/hooks/api";
 import { SecretV3RawSanitized, TSecretReferenceTraceNode } from "@app/hooks/api/types";
@@ -39,7 +39,7 @@ export const SecretReferenceNode = ({
                 !node.value && "border-red-400 text-red-400"
               )}
             >
-              {node.value ? "value" : "empty"}
+              {node.value ? "Reveal Value" : "Empty"}
             </span>
           </Tooltip>
         </div>
@@ -96,7 +96,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secret }: Props) 
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
 
-  const { data } = useGetSecretReferenceTree({
+  const { data, isLoading } = useGetSecretReferenceTree({
     secretPath,
     environmentSlug: environment,
     projectId,
@@ -105,6 +105,14 @@ export const SecretReferenceTree = ({ secretPath, environment, secret }: Props) 
 
   const tree = data?.tree;
   const secretValue = data?.value;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Spinner size="xs" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -116,7 +124,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secret }: Props) 
           containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
         />
       </FormControl>
-      <div className="max-h-80 overflow-auto">
+      <div className="max-h-96 overflow-auto">
         {tree && <SecretReferenceNode node={tree} isRoot />}
       </div>
     </div>

@@ -7,7 +7,7 @@ import {
   faCircleDot,
   faClock,
   faPlus,
-  faRoad,
+  faProjectDiagram,
   faShare,
   faTag
 } from "@fortawesome/free-solid-svg-icons";
@@ -464,15 +464,15 @@ export const SecretDetailSidebar = ({
                         <Button
                           variant="outline_bg"
                           className="w-full px-2 py-1"
-                          leftIcon={<FontAwesomeIcon icon={faRoad} />}
+                          leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
                           isDisabled={!isAllowed}
                         >
-                          Reference tree
+                          Reference Tree
                         </Button>
                       </ModalTrigger>
                       <ModalContent
                         title="Secret Reference Tree"
-                        subTitle="Shows the actual value and reference tree"
+                        subTitle="Visual breakdown of secrets referenced by this secret."
                       >
                         <SecretReferenceTree
                           secretPath={secretPath}
