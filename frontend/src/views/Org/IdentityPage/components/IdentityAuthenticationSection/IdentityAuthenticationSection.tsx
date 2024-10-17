@@ -146,7 +146,7 @@ export const IdentityAuthenticationSection = ({
             className="w-full"
             size="xs"
           >
-            Create new auth method
+            Create Auth Method
           </Button>
         </div>
       )}
