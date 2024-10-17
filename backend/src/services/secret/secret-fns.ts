@@ -185,9 +185,7 @@ export const recursivelyGetSecretPaths = ({
           ProjectPermissionActions.Read,
           subject(ProjectPermissionSub.Secrets, {
             environment,
-            secretPath: folder.path,
-            secretName: "",
-            secretTags: []
+            secretPath: folder.path
           })
         ) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
     );

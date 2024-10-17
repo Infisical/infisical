@@ -92,9 +92,7 @@ export const secretImportServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment: data.environment,
-        secretPath: data.path,
-        secretName: "",
-        secretTags: []
+        secretPath: data.path
       })
     );
     if (isReplication) {
@@ -371,9 +369,7 @@ export const secretImportServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment: secretImportDoc.importEnv.slug,
-        secretPath: secretImportDoc.importPath,
-        secretName: "",
-        secretTags: []
+        secretPath: secretImportDoc.importPath
       })
     );
 
@@ -548,9 +544,7 @@ export const secretImportServiceFactory = ({
         ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.Secrets, {
           environment: el.importEnv.slug,
-          secretPath: el.importPath,
-          secretName: "",
-          secretTags: []
+          secretPath: el.importPath
         })
       )
     );
@@ -620,9 +614,7 @@ export const secretImportServiceFactory = ({
         ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.Secrets, {
           environment: el.importEnv.slug,
-          secretPath: el.importPath,
-          secretName: "",
-          secretTags: []
+          secretPath: el.importPath
         })
       )
     );

@@ -94,7 +94,7 @@ export const SecretMainPage = () => {
   );
 
   const canReadDynamicSecret = permission.can(
-    ProjectPermissionDynamicSecretActions.Read,
+    ProjectPermissionDynamicSecretActions.ReadRootCredential,
     subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
   );
 

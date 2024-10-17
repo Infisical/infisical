@@ -8,10 +8,10 @@ export enum ProjectPermissionActions {
 }
 
 export enum ProjectPermissionDynamicSecretActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
+  ReadRootCredential = "read-root-credential",
+  CreateRootCredential = "create-root-credential",
+  EditRootCredential = "edit-root-credential",
+  DeleteRootCredential = "delete-root-credential",
   Lease = "lease"
 }
 

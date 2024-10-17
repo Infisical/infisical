@@ -66,7 +66,7 @@ export const serviceTokenServiceFactory = ({
     scopes.forEach(({ environment, secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName: "", secretTags: [] })
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
     });
 

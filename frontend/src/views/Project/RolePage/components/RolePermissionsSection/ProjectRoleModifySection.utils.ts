@@ -30,11 +30,11 @@ const CmekPolicyActionSchema = z.object({
 });
 
 const DynamicSecretPolicyActionSchema = z.object({
-  read: z.boolean().optional(),
-  edit: z.boolean().optional(),
-  delete: z.boolean().optional(),
-  create: z.boolean().optional(),
-  lease: z.boolean().optional()
+  [ProjectPermissionDynamicSecretActions.ReadRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.EditRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.CreateRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.Lease]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -213,21 +213,25 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         if (!formVal[subject]) formVal[subject] = [];
 
         if (subject === ProjectPermissionSub.DynamicSecrets) {
-          const canRead = action.includes(ProjectPermissionDynamicSecretActions.Read);
-          const canEdit = action.includes(ProjectPermissionDynamicSecretActions.Edit);
-          const canDelete = action.includes(ProjectPermissionDynamicSecretActions.Delete);
-          const canCreate = action.includes(ProjectPermissionDynamicSecretActions.Create);
+          const canRead = action.includes(ProjectPermissionDynamicSecretActions.ReadRootCredential);
+          const canEdit = action.includes(ProjectPermissionDynamicSecretActions.EditRootCredential);
+          const canDelete = action.includes(
+            ProjectPermissionDynamicSecretActions.DeleteRootCredential
+          );
+          const canCreate = action.includes(
+            ProjectPermissionDynamicSecretActions.CreateRootCredential
+          );
           const canLease = action.includes(ProjectPermissionDynamicSecretActions.Lease);
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
-            read: canRead,
-            create: canCreate,
-            edit: canEdit,
-            delete: canDelete,
+            [ProjectPermissionDynamicSecretActions.ReadRootCredential]: canRead,
+            [ProjectPermissionDynamicSecretActions.CreateRootCredential]: canCreate,
+            [ProjectPermissionDynamicSecretActions.EditRootCredential]: canEdit,
+            [ProjectPermissionDynamicSecretActions.EditRootCredential]: canDelete,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted,
-            lease: canLease
+            [ProjectPermissionDynamicSecretActions.Lease]: canLease
           });
         } else {
           // for other subjects
@@ -387,11 +391,23 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.DynamicSecrets]: {
     title: "Dynamic Secrets",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" },
-      { label: "Manage Leases", value: "lease" }
+      {
+        label: "Read root credentials",
+        value: ProjectPermissionDynamicSecretActions.ReadRootCredential
+      },
+      {
+        label: "Create root credentials",
+        value: ProjectPermissionDynamicSecretActions.CreateRootCredential
+      },
+      {
+        label: "Modify root credentials",
+        value: ProjectPermissionDynamicSecretActions.EditRootCredential
+      },
+      {
+        label: "Remove root credentials",
+        value: ProjectPermissionDynamicSecretActions.DeleteRootCredential
+      },
+      { label: "Manage Leases", value: ProjectPermissionDynamicSecretActions.Lease }
     ]
   },
   [ProjectPermissionSub.Cmek]: {

@@ -91,9 +91,7 @@ export const integrationServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment: sourceEnvironment,
-        secretPath,
-        secretName: "",
-        secretTags: []
+        secretPath
       })
     );
 
@@ -169,9 +167,7 @@ export const integrationServiceFactory = ({
         ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.Secrets, {
           environment: newEnvironment,
-          secretPath: newSecretPath,
-          secretName: "",
-          secretTags: []
+          secretPath: newSecretPath
         })
       );
     }

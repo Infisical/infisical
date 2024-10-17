@@ -853,7 +853,7 @@ export const secretApprovalRequestServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);

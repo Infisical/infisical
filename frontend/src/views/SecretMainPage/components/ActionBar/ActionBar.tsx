@@ -487,7 +487,7 @@ export const ActionBar = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
-                  I={ProjectPermissionDynamicSecretActions.Create}
+                  I={ProjectPermissionDynamicSecretActions.CreateRootCredential}
                   a={subject(ProjectPermissionSub.DynamicSecrets, {
                     environment,
                     secretPath,

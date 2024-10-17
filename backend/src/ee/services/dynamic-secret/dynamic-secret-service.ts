@@ -80,7 +80,7 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Create,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
@@ -149,7 +149,7 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Edit,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
@@ -228,7 +228,7 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
@@ -285,11 +285,11 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Edit,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
@@ -335,7 +335,7 @@ export const dynamicSecretServiceFactory = ({
       // verify user has access to each env in request
       environmentSlugs.forEach((environmentSlug) =>
         ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionDynamicSecretActions.Read,
+          ProjectPermissionDynamicSecretActions.ReadRootCredential,
           subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
         )
       );
@@ -371,7 +371,7 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
@@ -417,7 +417,7 @@ export const dynamicSecretServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Read,
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
     );
 
@@ -459,7 +459,7 @@ export const dynamicSecretServiceFactory = ({
       // verify user has access to each env in request
       environmentSlugs.forEach((environmentSlug) =>
         ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionDynamicSecretActions.Read,
+          ProjectPermissionDynamicSecretActions.ReadRootCredential,
           subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
         )
       );

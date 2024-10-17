@@ -23,10 +23,10 @@ export enum ProjectPermissionCmekActions {
 }
 
 export enum ProjectPermissionDynamicSecretActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
+  ReadRootCredential = "read-root-credential",
+  CreateRootCredential = "create-root-credential",
+  EditRootCredential = "edit-root-credential",
+  DeleteRootCredential = "delete-root-credential",
   Lease = "lease"
 }
 
@@ -63,8 +63,8 @@ export enum ProjectPermissionSub {
 export type SecretSubjectFields = {
   environment: string;
   secretPath: string;
-  secretName: string;
-  secretTags: string[];
+  secretName?: string;
+  secretTags?: string[];
 };
 
 export type SecretFolderSubjectFields = {
@@ -461,10 +461,10 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionDynamicSecretActions.Read,
-      ProjectPermissionDynamicSecretActions.Edit,
-      ProjectPermissionDynamicSecretActions.Create,
-      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
       ProjectPermissionDynamicSecretActions.Lease
     ],
     ProjectPermissionSub.DynamicSecrets
@@ -512,10 +512,10 @@ const buildMemberPermissionRules = () => {
   );
   can(
     [
-      ProjectPermissionDynamicSecretActions.Read,
-      ProjectPermissionDynamicSecretActions.Edit,
-      ProjectPermissionDynamicSecretActions.Create,
-      ProjectPermissionDynamicSecretActions.Delete,
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
       ProjectPermissionDynamicSecretActions.Lease
     ],
     ProjectPermissionSub.DynamicSecrets
@@ -653,7 +653,7 @@ const buildViewerPermissionRules = () => {
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
-  can(ProjectPermissionDynamicSecretActions.Read, ProjectPermissionSub.DynamicSecrets);
+  can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
@@ -773,13 +773,30 @@ export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof Projec
     subject: ProjectPermissionSub.SecretFolders
   }));
 
-  const dynamicSecretPolicies = secretSubjects.map(({ subject, ...el }) => ({
-    ...el,
-    action: el.action.includes(ProjectPermissionActions.Edit)
-      ? [...el.action, ProjectPermissionDynamicSecretActions.Lease]
-      : el.action,
-    subject: ProjectPermissionSub.DynamicSecrets
-  }));
+  const dynamicSecretPolicies = secretSubjects.map(({ subject, ...el }) => {
+    const action = el.action.map((e) => {
+      switch (e) {
+        case ProjectPermissionActions.Edit:
+          return ProjectPermissionDynamicSecretActions.EditRootCredential;
+        case ProjectPermissionActions.Create:
+          return ProjectPermissionDynamicSecretActions.CreateRootCredential;
+        case ProjectPermissionActions.Delete:
+          return ProjectPermissionDynamicSecretActions.DeleteRootCredential;
+        case ProjectPermissionActions.Read:
+          return ProjectPermissionDynamicSecretActions.ReadRootCredential;
+        default:
+          return ProjectPermissionDynamicSecretActions.ReadRootCredential;
+      }
+    });
+
+    return {
+      ...el,
+      action: el.action.includes(ProjectPermissionActions.Edit)
+        ? [...action, ProjectPermissionDynamicSecretActions.Lease]
+        : action,
+      subject: ProjectPermissionSub.DynamicSecrets
+    };
+  });
 
   return formattedData.concat(
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment

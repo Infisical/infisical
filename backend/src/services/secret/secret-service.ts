@@ -187,7 +187,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -296,7 +296,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -433,7 +433,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -538,7 +538,7 @@ export const secretServiceFactory = ({
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
       );
 
       const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -565,9 +565,7 @@ export const secretServiceFactory = ({
               ProjectPermissionActions.Read,
               subject(ProjectPermissionSub.Secrets, {
                 environment: importEnv.slug,
-                secretPath: importPath,
-                secretName: "",
-                secretTags: []
+                secretPath: importPath
               })
             )
       );
@@ -621,7 +619,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
@@ -673,9 +671,7 @@ export const secretServiceFactory = ({
               ProjectPermissionActions.Read,
               subject(ProjectPermissionSub.Secrets, {
                 environment: importEnv.slug,
-                secretPath: importPath,
-                secretName: "",
-                secretTags: []
+                secretPath: importPath
               })
             )
       );
@@ -722,7 +718,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -807,7 +803,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -913,7 +909,7 @@ export const secretServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
@@ -2122,7 +2118,7 @@ export const secretServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
@@ -2224,7 +2220,7 @@ export const secretServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName: "", secretTags: [] })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
     await projectDAL.checkProjectUpgradeStatus(project.id);
@@ -2413,9 +2409,7 @@ export const secretServiceFactory = ({
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, {
         environment: sourceEnvironment,
-        secretPath: sourceSecretPath,
-        secretName: "",
-        secretTags: []
+        secretPath: sourceSecretPath
       })
     );
 
@@ -2423,9 +2417,7 @@ export const secretServiceFactory = ({
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, {
         environment: destinationEnvironment,
-        secretPath: destinationSecretPath,
-        secretName: "",
-        secretTags: []
+        secretPath: destinationSecretPath
       })
     );
 
@@ -2433,9 +2425,7 @@ export const secretServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, {
         environment: destinationEnvironment,
-        secretPath: destinationSecretPath,
-        secretName: "",
-        secretTags: []
+        secretPath: destinationSecretPath
       })
     );
 
