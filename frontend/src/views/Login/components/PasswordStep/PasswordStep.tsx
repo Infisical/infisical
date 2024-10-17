@@ -27,16 +27,9 @@ type Props = {
   email: string;
   password: string;
   setPassword: (password: string) => void;
-  setStep: (step: number) => void;
 };
 
-export const PasswordStep = ({
-  providerAuthToken,
-  email,
-  password,
-  setPassword,
-  setStep
-}: Props) => {
+export const PasswordStep = ({ providerAuthToken, email, password, setPassword }: Props) => {
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
@@ -169,12 +162,6 @@ export const PasswordStep = ({
         });
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
-          if (isCliLoginSuccessful.mfaEnabled) {
-            // case: login requires MFA step
-            setStep(2);
-            setIsLoading(false);
-            return;
-          }
           const cliUrl = `http://127.0.0.1:${callbackPort}/`;
 
           // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
@@ -237,16 +224,6 @@ export const PasswordStep = ({
 
         if (loginAttempt && loginAttempt.success) {
           // case: login was successful
-
-          if (loginAttempt.mfaEnabled) {
-            // TODO: deal with MFA
-            // case: login requires MFA step
-            setIsLoading(false);
-            setStep(2);
-            return;
-          }
-
-          // case: login does not require MFA step
           setIsLoading(false);
           createNotification({
             text: "Successfully logged in",

@@ -30,7 +30,6 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
             email={username}
             password={password}
             setPassword={setPassword}
-            setStep={setStep}
           />
         );
       default:
