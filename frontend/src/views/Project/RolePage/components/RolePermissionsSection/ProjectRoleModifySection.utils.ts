@@ -228,7 +228,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionDynamicSecretActions.ReadRootCredential]: canRead,
             [ProjectPermissionDynamicSecretActions.CreateRootCredential]: canCreate,
             [ProjectPermissionDynamicSecretActions.EditRootCredential]: canEdit,
-            [ProjectPermissionDynamicSecretActions.EditRootCredential]: canDelete,
+            [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: canDelete,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted,
             [ProjectPermissionDynamicSecretActions.Lease]: canLease
