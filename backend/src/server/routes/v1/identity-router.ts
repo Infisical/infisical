@@ -37,7 +37,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          identity: IdentitiesSchema
+          identity: IdentitiesSchema.extend({
+            authMethods: z.array(z.string())
+          })
         })
       }
     },
