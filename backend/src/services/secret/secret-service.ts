@@ -1081,7 +1081,7 @@ export const secretServiceFactory = ({
 
     if (!shouldUseSecretV2Bridge)
       throw new BadRequestError({
-        message: "Project version doesn't not support secret reference tree",
+        message: "Project version does not support secret reference tree",
         name: "SecretReferenceTreeNotSupported"
       });
 
