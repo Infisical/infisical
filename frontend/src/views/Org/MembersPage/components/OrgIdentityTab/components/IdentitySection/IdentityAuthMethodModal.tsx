@@ -265,7 +265,7 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
                       >
                         {label}{" "}
                         {alreadyConfigured && !isSelectedAuthAlreadyConfigured && (
-                          <Badge variant="info">Configured</Badge>
+                          <Badge>Configured</Badge>
                         )}
                       </SelectItem>
                     </Tooltip>

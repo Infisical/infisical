@@ -15,8 +15,7 @@ const badgeVariants = cva(
       variant: {
         primary: "bg-yellow/20 text-yellow",
         danger: "bg-red/20 text-red",
-        success: "bg-green/20 text-green",
-        info: "bg-blue-500/20 text-blue-500"
+        success: "bg-green/20 text-green"
       }
     }
   }
