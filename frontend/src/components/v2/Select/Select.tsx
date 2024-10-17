@@ -125,8 +125,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           cursor-pointer select-none items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-md py-2
           pl-10 pr-4 text-sm outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80`,
           isSelected && "bg-primary",
-          isDisabled &&
-            "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
+          isDisabled && "cursor-not-allowed  text-gray-600 opacity-80 hover:!bg-transparent",
           className
         )}
         ref={forwardedRef}

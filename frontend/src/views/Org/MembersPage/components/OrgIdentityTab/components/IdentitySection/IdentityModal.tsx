@@ -154,12 +154,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
 
         handlePopUpToggle("identity", false);
         router.push(`/org/${orgId}/identities/${createdId}`);
-
-        // handlePopUpOpen("identityAuthMethod", {
-        //   identityId: createdId,
-        //   name: createdName,
-        //   authMethod
-        // });
       }
 
       createNotification({

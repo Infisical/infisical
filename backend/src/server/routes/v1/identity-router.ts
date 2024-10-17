@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  IdentityAuthMethod,
+  IdentityOrgMembershipsSchema,
+  OrgMembershipRole,
+  OrgRolesSchema
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { IDENTITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -216,7 +222,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              authMethods: z.array(z.nativeEnum(IdentityAuthMethod))
+            })
           })
         })
       }

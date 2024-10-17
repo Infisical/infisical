@@ -62,6 +62,8 @@ export const IdentityClientSecretModal = ({ popUp, handlePopUpToggle }: Props) =
     identityId: string;
   };
 
+  console.log(popUpData);
+
   const onFormSubmit = async ({ description, ttl, numUsesLimit }: FormData) => {
     try {
       const { clientSecret } = await createClientSecret({
