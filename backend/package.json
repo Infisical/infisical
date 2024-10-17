@@ -156,7 +156,7 @@
     "connect-redis": "^7.1.1",
     "cron": "^3.1.7",
     "dotenv": "^16.4.1",
-    "fastify": "^4.26.0",
+    "fastify": "^4.28.1",
     "fastify-plugin": "^4.5.1",
     "google-auth-library": "^9.9.0",
     "googleapis": "^137.1.0",
