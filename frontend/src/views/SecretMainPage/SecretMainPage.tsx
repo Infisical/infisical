@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
@@ -9,7 +9,7 @@ import { twMerge } from "tailwind-merge";
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { ContentLoader, Pagination } from "@app/components/v2";
+import { Checkbox, ContentLoader, Pagination, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -39,7 +39,11 @@ import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
-import { StoreProvider } from "./SecretMainPage.store";
+import {
+  StoreProvider,
+  useSelectedSecretActions,
+  useSelectedSecrets
+} from "./SecretMainPage.store";
 import { Filter, RowType } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
@@ -48,7 +52,7 @@ const LOADER_TEXT = [
   "Getting secret import links..."
 ];
 
-export const SecretMainPage = () => {
+const SecretMainPageContent = () => {
   const { t } = useTranslation();
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
@@ -283,6 +287,33 @@ export const SecretMainPage = () => {
     }
   }, [secretPath]);
 
+  const selectedSecrets = useSelectedSecrets();
+  const selectedSecretActions = useSelectedSecretActions();
+
+  const allRowsSelectedOnPage = useMemo(() => {
+    if (secrets?.every((secret) => selectedSecrets[secret.id]))
+      return { isChecked: true, isIndeterminate: false };
+
+    if (secrets?.some((secret) => selectedSecrets[secret.id]))
+      return { isChecked: true, isIndeterminate: true };
+
+    return { isChecked: false, isIndeterminate: false };
+  }, [selectedSecrets, secrets]);
+
+  const toggleSelectAllRows = () => {
+    const newChecks = { ...selectedSecrets };
+
+    secrets?.forEach((secret) => {
+      if (allRowsSelectedOnPage.isChecked) {
+        delete newChecks[secret.id];
+      } else {
+        newChecks[secret.id] = secret;
+      }
+    });
+
+    selectedSecretActions.set(newChecks);
+  };
+
   if (isDetailsLoading) {
     return <ContentLoader text={LOADER_TEXT} />;
   }
@@ -300,169 +331,193 @@ export const SecretMainPage = () => {
   };
 
   return (
-    <StoreProvider>
-      <div className="container mx-auto flex flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-        <SecretV2MigrationSection />
-        <div className="relative right-6 -top-2 mb-2 ml-6">
-          <NavHeader
-            pageName={t("dashboard.title")}
-            currentEnv={environment}
-            userAvailableEnvs={currentWorkspace?.environments}
-            isFolderMode
+    <div className="container mx-auto flex flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <SecretV2MigrationSection />
+      <div className="relative right-6 -top-2 mb-2 ml-6">
+        <NavHeader
+          pageName={t("dashboard.title")}
+          currentEnv={environment}
+          userAvailableEnvs={currentWorkspace?.environments}
+          isFolderMode
+          secretPath={secretPath}
+          isProjectRelated
+          onEnvChange={handleEnvChange}
+          isProtectedBranch={isProtectedBranch}
+          protectionPolicyName={boardPolicy?.name}
+        />
+      </div>
+      {!isRollbackMode ? (
+        <>
+          <ActionBar
+            environment={environment}
+            workspaceId={workspaceId}
+            projectSlug={projectSlug}
             secretPath={secretPath}
-            isProjectRelated
-            onEnvChange={handleEnvChange}
-            isProtectedBranch={isProtectedBranch}
-            protectionPolicyName={boardPolicy?.name}
+            isVisible={isVisible}
+            filter={filter}
+            tags={tags}
+            onVisibilityToggle={handleToggleVisibility}
+            onSearchChange={handleSearchChange}
+            onToggleTagFilter={handleTagToggle}
+            snapshotCount={snapshotCount || 0}
+            isSnapshotCountLoading={isSnapshotCountLoading}
+            onToggleRowType={handleToggleRowType}
+            onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
           />
-        </div>
-        {!isRollbackMode ? (
-          <>
-            <ActionBar
-              secrets={secrets}
-              environment={environment}
-              workspaceId={workspaceId}
-              projectSlug={projectSlug}
-              secretPath={secretPath}
-              isVisible={isVisible}
-              filter={filter}
-              tags={tags}
-              onVisibilityToggle={handleToggleVisibility}
-              onSearchChange={handleSearchChange}
-              onToggleTagFilter={handleTagToggle}
-              snapshotCount={snapshotCount || 0}
-              isSnapshotCountLoading={isSnapshotCountLoading}
-              onToggleRowType={handleToggleRowType}
-              onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
-            />
-            <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
-              <div className="flex flex-col" id="dashboard">
-                {isNotEmpty && (
+          <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
+            <div className="flex flex-col" id="dashboard">
+              {isNotEmpty && (
+                <div
+                  className={twMerge(
+                    "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
+                  )}
+                >
                   <div
-                    className={twMerge(
-                      "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
-                    )}
+                    className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
+                    role="button"
+                    tabIndex={0}
+                    onClick={handleSortToggle}
+                    onKeyDown={(evt) => {
+                      if (evt.key === "Enter") handleSortToggle();
+                    }}
                   >
-                    <div style={{ width: "2.8rem" }} className="flex-shrink-0 px-4 py-3" />
-                    <div
-                      className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
-                      role="button"
-                      tabIndex={0}
-                      onClick={handleSortToggle}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") handleSortToggle();
-                      }}
+                    <Tooltip
+                      className="max-w-[20rem] whitespace-nowrap"
+                      content={
+                        totalCount > 0
+                          ? `${
+                              !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
+                            } all secrets on page`
+                          : ""
+                      }
                     >
-                      Key
-                      <FontAwesomeIcon
-                        icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
-                        className="ml-2"
-                      />
-                    </div>
-                    <div className="flex-grow px-4 py-2">Value</div>
+                      <div>
+                        <Checkbox
+                          isDisabled={totalCount === 0}
+                          id="checkbox-select-all-rows"
+                          onClick={(e) => e.stopPropagation()}
+                          isChecked={allRowsSelectedOnPage.isChecked}
+                          isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
+                          onCheckedChange={toggleSelectAllRows}
+                        />
+                      </div>
+                    </Tooltip>
+                    <div className="mx-2 h-4 w-[1px] bg-mineshaft-400" />
+                    Key
+                    <FontAwesomeIcon
+                      icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
+                      className="ml-2"
+                    />
                   </div>
-                )}
-                {canReadSecret && imports?.length && (
-                  <SecretImportListView
-                    searchTerm={debouncedSearchFilter}
-                    secretImports={imports}
-                    isFetching={isDetailsFetching}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    importedSecrets={importedSecrets}
-                  />
-                )}
-                {folders?.length && (
-                  <FolderListView
-                    folders={folders}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    onNavigateToFolder={handleResetFilter}
-                  />
-                )}
-                {canReadSecret && dynamicSecrets?.length && (
-                  <DynamicSecretListView
-                    environment={environment}
-                    projectSlug={projectSlug}
-                    secretPath={secretPath}
-                    dynamicSecrets={dynamicSecrets}
-                  />
-                )}
-                {canReadSecret && secrets?.length && (
-                  <SecretListView
-                    secrets={secrets}
-                    tags={tags}
-                    isVisible={isVisible}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    isProtectedBranch={isProtectedBranch}
-                  />
-                )}
-                {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
-              </div>
+                  <div className="flex-grow px-4 py-2">Value</div>
+                </div>
+              )}
+              {canReadSecret && imports?.length && (
+                <SecretImportListView
+                  searchTerm={debouncedSearchFilter}
+                  secretImports={imports}
+                  isFetching={isDetailsFetching}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  importedSecrets={importedSecrets}
+                />
+              )}
+              {folders?.length && (
+                <FolderListView
+                  folders={folders}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  onNavigateToFolder={handleResetFilter}
+                />
+              )}
+              {canReadSecret && dynamicSecrets?.length && (
+                <DynamicSecretListView
+                  environment={environment}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  dynamicSecrets={dynamicSecrets}
+                />
+              )}
+              {canReadSecret && secrets?.length && (
+                <SecretListView
+                  secrets={secrets}
+                  tags={tags}
+                  isVisible={isVisible}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  isProtectedBranch={isProtectedBranch}
+                />
+              )}
+              {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
             </div>
-            {!isDetailsLoading && totalCount > 0 && (
-              <Pagination
-                startAdornment={
-                  <SecretTableResourceCount
-                    dynamicSecretCount={totalDynamicSecretCount}
-                    importCount={totalImportCount}
-                    secretCount={totalSecretCount}
-                    folderCount={totalFolderCount}
-                  />
-                }
-                className="rounded-b-md border-t border-solid border-t-mineshaft-600"
-                count={totalCount}
-                page={page}
-                perPage={perPage}
-                onChangePage={(newPage) => setPage(newPage)}
-                onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-              />
-            )}
-            <CreateSecretForm
-              environment={environment}
-              workspaceId={workspaceId}
-              secretPath={secretPath}
-              autoCapitalize={currentWorkspace?.autoCapitalization}
-              isProtectedBranch={isProtectedBranch}
+          </div>
+          {!isDetailsLoading && totalCount > 0 && (
+            <Pagination
+              startAdornment={
+                <SecretTableResourceCount
+                  dynamicSecretCount={totalDynamicSecretCount}
+                  importCount={totalImportCount}
+                  secretCount={totalSecretCount}
+                  folderCount={totalFolderCount}
+                />
+              }
+              className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={(newPage) => setPage(newPage)}
+              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
             />
-            <SecretDropzone
-              secrets={secrets}
-              environment={environment}
-              workspaceId={workspaceId}
-              secretPath={secretPath}
-              isSmaller={isNotEmpty}
-              environments={currentWorkspace?.environments}
-              isProtectedBranch={isProtectedBranch}
-            />
-            <PitDrawer
-              secretSnaphots={snapshotList}
-              snapshotId={snapshotId}
-              isDrawerOpen={popUp.snapshots.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
-              hasNextPage={hasNextSnapshotListPage}
-              fetchNextPage={fetchNextSnapshotList}
-              onSelectSnapshot={handleSelectSnapshot}
-              isFetchingNextPage={isFetchingNextSnapshotList}
-            />
-          </>
-        ) : (
-          <SnapshotView
-            snapshotId={snapshotId || ""}
+          )}
+          <CreateSecretForm
             environment={environment}
             workspaceId={workspaceId}
             secretPath={secretPath}
-            secrets={secrets}
-            folders={folders}
-            snapshotCount={snapshotCount}
-            onGoBack={handleResetSnapshot}
-            onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
+            autoCapitalize={currentWorkspace?.autoCapitalization}
+            isProtectedBranch={isProtectedBranch}
           />
-        )}
-      </div>
-    </StoreProvider>
+          <SecretDropzone
+            secrets={secrets}
+            environment={environment}
+            workspaceId={workspaceId}
+            secretPath={secretPath}
+            isSmaller={isNotEmpty}
+            environments={currentWorkspace?.environments}
+            isProtectedBranch={isProtectedBranch}
+          />
+          <PitDrawer
+            secretSnaphots={snapshotList}
+            snapshotId={snapshotId}
+            isDrawerOpen={popUp.snapshots.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
+            hasNextPage={hasNextSnapshotListPage}
+            fetchNextPage={fetchNextSnapshotList}
+            onSelectSnapshot={handleSelectSnapshot}
+            isFetchingNextPage={isFetchingNextSnapshotList}
+          />
+        </>
+      ) : (
+        <SnapshotView
+          snapshotId={snapshotId || ""}
+          environment={environment}
+          workspaceId={workspaceId}
+          secretPath={secretPath}
+          secrets={secrets}
+          folders={folders}
+          snapshotCount={snapshotCount}
+          onGoBack={handleResetSnapshot}
+          onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
+        />
+      )}
+    </div>
   );
 };
+
+export const SecretMainPage = () => (
+  <StoreProvider>
+    <SecretMainPageContent />
+  </StoreProvider>
+);

@@ -2,29 +2,33 @@ import { createContext, ReactNode, useContext, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { createStore, StateCreator, StoreApi, useStore } from "zustand";
 
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+
 // akhilmhdh: Don't remove this file if ur thinking why use zustand just for selected selects state
 // This is first step and the whole secret crud will be moved to this global page scope state
 // this will allow more stuff like undo grouping stuffs etc
 type SelectedSecretState = {
-  selectedSecret: Record<string, boolean>;
+  selectedSecret: Record<string, SecretV3RawSanitized>;
   action: {
-    toggle: (id: string) => void;
+    toggle: (secret: SecretV3RawSanitized) => void;
     reset: () => void;
+    set: (secrets: Record<string, SecretV3RawSanitized>) => void;
   };
 };
 const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
   selectedSecret: {},
   action: {
-    toggle: (id) =>
+    toggle: (secret) =>
       set((state) => {
-        const isChecked = Boolean(state.selectedSecret?.[id]);
+        const isChecked = Boolean(state.selectedSecret?.[secret.id]);
         const newChecks = { ...state.selectedSecret };
         // remove selection if its present else add it
-        if (isChecked) delete newChecks[id];
-        else newChecks[id] = true;
+        if (isChecked) delete newChecks[secret.id];
+        else newChecks[secret.id] = secret;
         return { selectedSecret: newChecks };
       }),
-    reset: () => set({ selectedSecret: {} })
+    reset: () => set({ selectedSecret: {} }),
+    set: (secrets) => set({ selectedSecret: secrets })
   }
 });
 
