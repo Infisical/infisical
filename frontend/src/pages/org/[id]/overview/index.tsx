@@ -1095,6 +1095,7 @@ const OrganizationPage = () => {
                               onChange(e);
                             }}
                             className="mb-12 w-full bg-mineshaft-600"
+                            position="popper"
                           >
                             <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
                               Default Infisical KMS
