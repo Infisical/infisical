@@ -29,10 +29,10 @@ export const SecretReferenceNode = ({
         />
       </FormControl>
     ) : (
-      <div className="py-2 text-sm">
+      <div className="bg-bunker-700 py-2 text-sm">
         <div>
           {node.key}
-          <Tooltip content={node.value}>
+          <Tooltip className="break-words" content={node.value}>
             <span
               className={twMerge(
                 "ml-2 rounded border border-gray-400 px-1 text-xs text-gray-400",
@@ -79,11 +79,11 @@ export const SecretReferenceNode = ({
             </div>
           </div>
         </div>
-        <div className="w-full border-b border-gray-800 py-1" />
+        <div className="w-full border-b border-mineshaft-500 py-1" />
       </div>
     )}
     {node.children.length > 0 && (
-      <div className="border-l border-gray-600 pl-6 transition-all hover:border-primary-600">
+      <div className="border-l border-gray-600 bg-bunker-700 pl-6 transition-all hover:border-gray-400">
         {node.children.map((el, index) => (
           <SecretReferenceNode node={el} key={`node-${node.key}-${index + 1}`} />
         ))}
@@ -124,7 +124,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secret }: Props) 
           containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
         />
       </FormControl>
-      <div className="max-h-96 overflow-auto">
+      <div className="max-h-96 overflow-auto rounded">
         {tree && <SecretReferenceNode node={tree} isRoot />}
       </div>
     </div>
