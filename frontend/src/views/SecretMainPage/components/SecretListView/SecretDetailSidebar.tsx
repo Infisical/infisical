@@ -7,6 +7,7 @@ import {
   faCircleDot,
   faClock,
   faPlus,
+  faRoad,
   faShare,
   faTag
 } from "@fortawesome/free-solid-svg-icons";
@@ -28,6 +29,9 @@ import {
   FormControl,
   IconButton,
   Input,
+  Modal,
+  ModalContent,
+  ModalTrigger,
   Switch,
   Tag,
   TextArea,
@@ -41,6 +45,7 @@ import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { SecretReferenceTree } from "./SecretReferenceDetails";
 
 type Props = {
   isOpen?: boolean;
@@ -448,9 +453,38 @@ export const SecretDetailSidebar = ({
                   )}
                 />
               </div>
-              <div className="ml-1 flex items-center space-x-2">
+              <div className="ml-1 flex items-center space-x-4">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Edit}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <Modal>
+                      <ModalTrigger asChild>
+                        <Button
+                          variant="outline_bg"
+                          className="w-full px-2 py-1"
+                          leftIcon={<FontAwesomeIcon icon={faRoad} />}
+                          isDisabled={!isAllowed}
+                        >
+                          Reference tree
+                        </Button>
+                      </ModalTrigger>
+                      <ModalContent
+                        title="Secret Reference Tree"
+                        subTitle="Shows the actual value and reference tree"
+                      >
+                        <SecretReferenceTree
+                          secretPath={secretPath}
+                          environment={environment}
+                          secret={secret}
+                        />
+                      </ModalContent>
+                    </Modal>
+                  )}
+                </ProjectPermissionCan>
                 <Button
-                  className="px-2 py-1"
+                  className="w-full px-2 py-1"
                   variant="outline_bg"
                   leftIcon={<FontAwesomeIcon icon={faShare} />}
                   onClick={() => {

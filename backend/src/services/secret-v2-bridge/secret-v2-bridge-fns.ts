@@ -371,6 +371,13 @@ const formatMultiValueEnv = (val?: string) => {
   return `"${val.replace(/\n/g, "\\n")}"`;
 };
 
+type TSecretReferenceTraceNode = {
+  key: string;
+  value?: string;
+  environment: string;
+  secretPath: string;
+  children: TSecretReferenceTraceNode[];
+};
 type TInterpolateSecretArg = {
   projectId: string;
   decryptSecretValue: (encryptedValue?: Buffer | null) => string | undefined;
@@ -412,14 +419,21 @@ export const expandSecretReferencesFactory = ({
     return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
   };
 
-  const recursivelyExpandSecret = async (dto: { value?: string; secretPath: string; environment: string }) => {
-    if (!dto.value) return "";
+  const recursivelyExpandSecret = async (dto: {
+    value?: string;
+    secretPath: string;
+    environment: string;
+    shouldStackTrace?: boolean;
+  }) => {
+    const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
 
-    const stack = [{ ...dto, depth: 0 }];
+    if (!dto.value) return { expandedValue: "", stackTrace };
+    const stack = [{ ...dto, depth: 0, trace: stackTrace }];
     let expandedValue = dto.value;
 
     while (stack.length) {
-      const { value, secretPath, environment, depth } = stack.pop()!;
+      const { value, secretPath, environment, depth, trace } = stack.pop()!;
+
       // eslint-disable-next-line no-continue
       if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
       const refs = value?.match(INTERPOLATION_SYNTAX_REG);
@@ -431,6 +445,11 @@ export const expandSecretReferencesFactory = ({
 
           // eslint-disable-next-line no-continue
           if (!entities.length) continue;
+
+          let referredSecretPath = "";
+          let referredSecretKey = "";
+          let referredSecretEnvironmentSlug = "";
+          let referredSecretValue = "";
 
           if (entities.length === 1) {
             const [secretKey] = entities;
@@ -444,17 +463,11 @@ export const expandSecretReferencesFactory = ({
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
             secretCache[cacheKey][secretKey] = referredValue;
-            if (INTERPOLATION_SYNTAX_REG.test(referredValue.value)) {
-              stack.push({
-                value: referredValue.value,
-                secretPath,
-                environment,
-                depth: depth + 1
-              });
-            }
-            if (referredValue) {
-              expandedValue = expandedValue.replaceAll(interpolationSyntax, referredValue.value);
-            }
+
+            referredSecretValue = referredValue.value;
+            referredSecretKey = secretKey;
+            referredSecretPath = secretPath;
+            referredSecretEnvironmentSlug = environment;
           } else {
             const secretReferenceEnvironment = entities[0];
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
@@ -469,24 +482,42 @@ export const expandSecretReferencesFactory = ({
 
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             secretCache[cacheKey][secretReferenceKey] = referedValue;
-            if (INTERPOLATION_SYNTAX_REG.test(referedValue.value)) {
-              stack.push({
-                value: referedValue.value,
-                secretPath: secretReferencePath,
-                environment: secretReferenceEnvironment,
-                depth: depth + 1
-              });
-            }
 
-            if (referedValue) {
-              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue.value);
+            referredSecretValue = referedValue.value;
+            referredSecretKey = secretReferenceKey;
+            referredSecretPath = secretReferencePath;
+            referredSecretEnvironmentSlug = secretReferenceEnvironment;
+          }
+
+          const node = {
+            value: referredSecretValue,
+            secretPath: referredSecretPath,
+            environment: referredSecretEnvironmentSlug,
+            depth: depth + 1,
+            trace
+          };
+
+          const shouldExpandMore = INTERPOLATION_SYNTAX_REG.test(referredSecretValue);
+          if (dto.shouldStackTrace) {
+            const stackTraceNode = { ...node, children: [], key: referredSecretKey, trace: null };
+            trace?.children.push(stackTraceNode);
+            // if stack trace this would be child node
+            if (shouldExpandMore) {
+              stack.push({ ...node, trace: stackTraceNode });
             }
+          } else if (shouldExpandMore) {
+            // if no stack trace is needed we just keep going with root node
+            stack.push(node);
+          }
+
+          if (referredSecretValue) {
+            expandedValue = expandedValue.replaceAll(interpolationSyntax, referredSecretValue);
           }
         }
       }
     }
 
-    return expandedValue;
+    return { expandedValue, stackTrace };
   };
 
   const expandSecret = async (inputSecret: {
@@ -500,10 +531,21 @@ export const expandSecretReferencesFactory = ({
     const shouldExpand = Boolean(inputSecret.value?.match(INTERPOLATION_SYNTAX_REG));
     if (!shouldExpand) return inputSecret.value;
 
-    const expandedSecretValue = await recursivelyExpandSecret(inputSecret);
-    return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedSecretValue) : expandedSecretValue;
+    const { expandedValue } = await recursivelyExpandSecret(inputSecret);
+
+    return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedValue) : expandedValue;
   };
-  return expandSecret;
+
+  const getExpandedSecretStackTrace = async (inputSecret: {
+    value?: string;
+    secretPath: string;
+    environment: string;
+  }) => {
+    const { stackTrace } = await recursivelyExpandSecret({ ...inputSecret, shouldStackTrace: true });
+    return stackTrace;
+  };
+
+  return { expandSecretReferences: expandSecret, getExpandedSecretStackTrace };
 };
 
 export const reshapeBridgeSecret = (
