@@ -1,5 +1,5 @@
 const LINE =
-  /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
+  /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
 
 /**
  * Return text that is the buffer parsed
@@ -30,7 +30,7 @@ export function parseDotEnv(src: ArrayBuffer) {
         let item: [string, string, string[]] | [] = [];
 
         // eslint-disable-next-line no-cond-assign
-        while ((match = LINE.exec(line)) !== null) {
+        while ((match = LINE.exec(line.trim())) !== null) {
           const key = match[1];
 
           // Default undefined or null to empty string
