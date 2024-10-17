@@ -43,7 +43,7 @@ import {
   fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
+  getAllSecretReferences as getAllSecretReferencesV2Bridge
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
@@ -523,11 +523,11 @@ export const secretApprovalRequestServiceFactory = ({
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: el.key,
                 references: el.encryptedValue
-                  ? getAllNestedSecretReferencesV2Bridge(
+                  ? getAllSecretReferencesV2Bridge(
                       secretManagerDecryptor({
                         cipherTextBlob: el.encryptedValue
                       }).toString()
-                    )
+                    ).nestedReferences
                   : [],
                 type: SecretType.Shared
               })),
@@ -547,11 +547,11 @@ export const secretApprovalRequestServiceFactory = ({
                     ? {
                         encryptedValue: el.encryptedValue as Buffer,
                         references: el.encryptedValue
-                          ? getAllNestedSecretReferencesV2Bridge(
+                          ? getAllSecretReferencesV2Bridge(
                               secretManagerDecryptor({
                                 cipherTextBlob: el.encryptedValue
                               }).toString()
-                            )
+                            ).nestedReferences
                           : []
                       }
                     : {};
@@ -1125,10 +1125,6 @@ export const secretApprovalRequestServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1292,6 +1288,23 @@ export const secretApprovalRequestServiceFactory = ({
     const tagIds = unique(Object.values(commitTagIds).flat());
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
     if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+    const tagsGroupById = groupBy(tags, (i) => i.id);
+
+    commits.forEach((commit) => {
+      let action = ProjectPermissionActions.Create;
+      if (commit.op === SecretOperations.Update) action = ProjectPermissionActions.Edit;
+      if (commit.op === SecretOperations.Delete) action = ProjectPermissionActions.Delete;
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        action,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName: commit.key,
+          secretTags: commitTagIds?.[commit.key]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
+        })
+      );
+    });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
       const doc = await secretApprovalRequestDAL.create(

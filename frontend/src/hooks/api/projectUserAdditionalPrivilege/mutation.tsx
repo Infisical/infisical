@@ -1,4 +1,3 @@
-import { packRules } from "@casl/ability/extra";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -16,10 +15,7 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
 
   return useMutation<{ privilege: TProjectUserPrivilege }, {}, TCreateProjectUserPrivilegeDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/additional-privilege/users/permanent", {
-        ...dto,
-        permissions: packRules(dto.permissions)
-      });
+      const { data } = await apiRequest.post("/api/v1/additional-privilege/users/permanent", dto);
       return data.privilege;
     },
     onSuccess: (_, { projectMembershipId }) => {
@@ -35,7 +31,7 @@ export const useUpdateProjectUserAdditionalPrivilege = () => {
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch(
         `/api/v1/additional-privilege/users/${dto.privilegeId}`,
-        { ...dto, permissions: dto.permissions ? packRules(dto.permissions) : undefined }
+        dto
       );
       return data.privilege;
     },
