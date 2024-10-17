@@ -1976,7 +1976,7 @@ export const secretV2BridgeServiceFactory = ({
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : "";
 
-    const { getExpandedSecretStackTrace, expandSecretReferences } = expandSecretReferencesFactory({
+    const { getExpandedSecretStackTrace } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
       secretDAL,
@@ -1988,17 +1988,13 @@ export const secretV2BridgeServiceFactory = ({
         )
     });
 
-    const tree = await getExpandedSecretStackTrace({
+    const { expandedValue, stackTrace } = await getExpandedSecretStackTrace({
       environment,
       secretPath,
       value: secretValue
     });
-    const value = await expandSecretReferences({
-      environment,
-      secretPath,
-      value: secretValue
-    });
-    return { tree, value };
+
+    return { tree: stackTrace, value: expandedValue };
   };
 
   return {

@@ -65,6 +65,8 @@ type Props = {
   handleSecretShare: (value: string) => void;
 };
 
+const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
+
 export const SecretDetailSidebar = ({
   isOpen,
   onToggle,
@@ -173,6 +175,8 @@ export const SecretDetailSidebar = ({
 
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
+
+  const hasReferences = secret?.value?.match(INTERPOLATION_SYNTAX_REG);
 
   return (
     <>
@@ -460,16 +464,21 @@ export const SecretDetailSidebar = ({
                 >
                   {(isAllowed) => (
                     <Modal>
-                      <ModalTrigger asChild>
-                        <Button
-                          variant="outline_bg"
-                          className="w-full px-2 py-1"
-                          leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
-                          isDisabled={!isAllowed}
-                        >
-                          Reference Tree
-                        </Button>
-                      </ModalTrigger>
+                      <Tooltip
+                        className="text-center"
+                        content={hasReferences ? "" : "Secret does not contain references"}
+                      >
+                        <ModalTrigger asChild>
+                          <Button
+                            variant="outline_bg"
+                            className="w-full px-2 py-1"
+                            leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
+                            isDisabled={!isAllowed || !hasReferences}
+                          >
+                            Reference Tree
+                          </Button>
+                        </ModalTrigger>
+                      </Tooltip>
                       <ModalContent
                         title="Secret Reference Tree"
                         subTitle="Visual breakdown of secrets referenced by this secret."

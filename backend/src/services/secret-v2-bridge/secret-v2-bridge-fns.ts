@@ -541,8 +541,8 @@ export const expandSecretReferencesFactory = ({
     secretPath: string;
     environment: string;
   }) => {
-    const { stackTrace } = await recursivelyExpandSecret({ ...inputSecret, shouldStackTrace: true });
-    return stackTrace;
+    const { stackTrace, expandedValue } = await recursivelyExpandSecret({ ...inputSecret, shouldStackTrace: true });
+    return { stackTrace, expandedValue };
   };
 
   return { expandSecretReferences: expandSecret, getExpandedSecretStackTrace };
