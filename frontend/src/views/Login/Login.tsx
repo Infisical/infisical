@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { isLoggedIn } from "@app/reactQuery";
 
-import { InitialStep, MFAStep, SSOStep } from "./components";
+import { InitialStep, SSOStep } from "./components";
 import { useNavigateToSelectOrganization } from "./Login.utils";
 
 export const Login = () => {
@@ -44,15 +44,6 @@ export const Login = () => {
             setEmail={setEmail}
             password={password}
             setPassword={setPassword}
-          />
-        );
-      case 1:
-        return (
-          <MFAStep
-            email={email}
-            password={password}
-            providerAuthToken={undefined}
-            callbackPort={queryParams.get("callback_port")}
           />
         );
       case 2:

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import jwt_decode from "jwt-decode";
 
-import { MFAStep, PasswordStep } from "./components";
+import { PasswordStep } from "./components";
 
 type Props = {
   providerAuthToken: string;
@@ -32,10 +32,6 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
             setPassword={setPassword}
             setStep={setStep}
           />
-        );
-      case 2:
-        return (
-          <MFAStep providerAuthToken={providerAuthToken} email={username} password={password} />
         );
       default:
         return <div />;

@@ -11,9 +11,11 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
+import { Mfa } from "@app/views/Login/Mfa";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -54,9 +56,11 @@ export const UserInfoSSOStep = ({
   const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
   const [attributionSource, setAttributionSource] = useState("");
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   useEffect(() => {
     const randomPassword = crypto.randomBytes(32).toString("hex");
@@ -172,22 +176,37 @@ export const UserInfoSSOStep = ({
               const userOrgs = await fetchOrganizations();
               const orgId = userOrgs[0]?.id;
 
-              await selectOrganization({
-                organizationId: orgId
-              });
+              const completeSignupFlow = async () => {
+                try {
+                  const { isMfaEnabled, token } = await selectOrganization({
+                    organizationId: orgId
+                  });
 
-              // only create example project if not joining existing org
-              if (!providerOrganizationName) {
-                const project = await ProjectService.initProject({
-                  projectName: "Example Project"
-                });
+                  if (isMfaEnabled) {
+                    SecurityClient.setMfaToken(token);
+                    toggleShowMfa.on();
+                    setMfaSuccessCallback(() => completeSignupFlow);
+                    return;
+                  }
 
-                localStorage.setItem("projectData.id", project.id);
-              }
+                  // only create example project if not joining existing org
+                  if (!providerOrganizationName) {
+                    const project = await ProjectService.initProject({
+                      projectName: "Example Project"
+                    });
 
-              localStorage.setItem("orgData.id", orgId);
+                    localStorage.setItem("projectData.id", project.id);
+                  }
 
-              setStep(2);
+                  localStorage.setItem("orgData.id", orgId);
+                  setStep(2);
+                } catch (error) {
+                  setIsLoading(false);
+                  console.error(error);
+                }
+              };
+
+              await completeSignupFlow();
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -205,6 +224,17 @@ export const UserInfoSSOStep = ({
       signupErrorCheck();
     }
   }, [providerOrganizationName, password]);
+
+  if (shouldShowMfa) {
+    return (
+      <Mfa
+        hideLogo
+        email={username}
+        successCallback={mfaSuccessCallback}
+        closeMfa={() => toggleShowMfa.off()}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">

@@ -14,11 +14,13 @@ import { CAPTCHA_SITE_KEY } from "@app/components/utilities/config";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
+import { useToggle } from "@app/hooks";
 import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyPrivateKey } from "@app/hooks/api/users/queries";
 
 import { navigateUserToOrg, useNavigateToSelectOrganization } from "../../Login.utils";
+import { Mfa } from "../../Mfa";
 
 type Props = {
   providerAuthToken: string;
@@ -40,6 +42,8 @@ export const PasswordStep = ({
   const router = useRouter();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const { mutateAsync: oauthTokenExchange } = useOauthTokenExchange();
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
 
@@ -56,16 +60,7 @@ export const PasswordStep = ({
       });
 
       // attemptCliLogin
-      if (oauthLogin.mfaEnabled) {
-        SecurityClient.setMfaToken(oauthLogin.token);
-        // case: login requires MFA step
-        setStep(2);
-        setIsLoading(false);
-        return;
-      }
       const cliUrl = `http://127.0.0.1:${callbackPort}/`;
-
-      // case: MFA is not enabled
 
       // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
@@ -77,31 +72,43 @@ export const PasswordStep = ({
 
       // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
       if (organizationId) {
-        const { token: newJwtToken } = await selectOrganization({ organizationId });
-        if (callbackPort) {
-          console.log("organization id was present. new JWT token to be used in CLI:", newJwtToken);
-          const instance = axios.create();
-          const payload = {
-            privateKey,
-            email,
-            JTWToken: newJwtToken
-          };
-          await instance.post(cliUrl, payload).catch(() => {
-            // if error happens to communicate we set the token with an expiry in sessino storage
-            // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
-            sessionStorage.setItem(
-              SessionStorageKeys.CLI_TERMINAL_TOKEN,
-              JSON.stringify({
-                expiry: formatISO(addSeconds(new Date(), 30)),
-                data: window.btoa(JSON.stringify(payload))
-              })
-            );
-          });
-          router.push("/cli-redirect");
-          return;
-        }
+        const finishWithOrgWorkflow = async () => {
+          const { token, isMfaEnabled } = await selectOrganization({ organizationId });
 
-        await navigateUserToOrg(router, organizationId);
+          if (isMfaEnabled) {
+            SecurityClient.setMfaToken(token);
+            toggleShowMfa.on();
+            setMfaSuccessCallback(() => finishWithOrgWorkflow);
+            return;
+          }
+
+          if (callbackPort) {
+            console.log("organization id was present. new JWT token to be used in CLI:", token);
+            const instance = axios.create();
+            const payload = {
+              privateKey,
+              email,
+              JTWToken: token
+            };
+            await instance.post(cliUrl, payload).catch(() => {
+              // if error happens to communicate we set the token with an expiry in sessino storage
+              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+              sessionStorage.setItem(
+                SessionStorageKeys.CLI_TERMINAL_TOKEN,
+                JSON.stringify({
+                  expiry: formatISO(addSeconds(new Date(), 30)),
+                  data: window.btoa(JSON.stringify(payload))
+                })
+              );
+            });
+            router.push("/cli-redirect");
+            return;
+          }
+
+          await navigateUserToOrg(router, organizationId);
+        };
+
+        await finishWithOrgWorkflow();
       }
       // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
       // if the user has no orgs, navigate to the create org page
@@ -172,32 +179,41 @@ export const PasswordStep = ({
 
           // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
           if (organizationId) {
-            const { token: newJwtToken } = await selectOrganization({ organizationId });
+            const finishWithOrgWorkflow = async () => {
+              const { token, isMfaEnabled } = await selectOrganization({ organizationId });
 
-            console.log(
-              "organization id was present. new JWT token to be used in CLI:",
-              newJwtToken
-            );
+              if (isMfaEnabled) {
+                SecurityClient.setMfaToken(token);
+                toggleShowMfa.on();
+                setMfaSuccessCallback(() => finishWithOrgWorkflow);
+                return;
+              }
 
-            const instance = axios.create();
-            const payload = {
-              ...isCliLoginSuccessful.loginResponse,
-              JTWToken: newJwtToken
+              console.log("organization id was present. new JWT token to be used in CLI:", token);
+
+              const instance = axios.create();
+              const payload = {
+                ...isCliLoginSuccessful.loginResponse,
+                JTWToken: token
+              };
+              await instance.post(cliUrl, payload).catch(() => {
+                // if error happens to communicate we set the token with an expiry in sessino storage
+                // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
+                sessionStorage.setItem(
+                  SessionStorageKeys.CLI_TERMINAL_TOKEN,
+                  JSON.stringify({
+                    expiry: formatISO(addSeconds(new Date(), 30)),
+                    data: window.btoa(JSON.stringify(payload))
+                  })
+                );
+              });
+              router.push("/cli-redirect");
             };
-            await instance.post(cliUrl, payload).catch(() => {
-              // if error happens to communicate we set the token with an expiry in sessino storage
-              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
-              sessionStorage.setItem(
-                SessionStorageKeys.CLI_TERMINAL_TOKEN,
-                JSON.stringify({
-                  expiry: formatISO(addSeconds(new Date(), 30)),
-                  data: window.btoa(JSON.stringify(payload))
-                })
-              );
-            });
-            router.push("/cli-redirect");
+
+            await finishWithOrgWorkflow();
             return;
           }
+
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
           // if the user has no orgs, navigate to the create org page
           const userOrgs = await fetchOrganizations();
@@ -283,6 +299,18 @@ export const PasswordStep = ({
     }
     setCaptchaToken("");
   };
+
+  if (shouldShowMfa) {
+    return (
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+        <Mfa
+          email={email}
+          successCallback={mfaSuccessCallback}
+          closeMfa={() => toggleShowMfa.off()}
+        />
+      </div>
+    );
+  }
 
   if (hasExchangedPrivateKey) {
     return (

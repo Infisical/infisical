@@ -46,7 +46,9 @@ export default function LoginPage() {
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   const queryParams = new URLSearchParams(window.location.search);
+  const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
+  const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
@@ -179,6 +181,12 @@ export default function LoginPage() {
     }
   }, [organizations.isLoading, organizations.data]);
 
+  useEffect(() => {
+    if (defaultSelectedOrg) {
+      handleSelectOrganization(defaultSelectedOrg);
+    }
+  }, [defaultSelectedOrg]);
+
   if (userLoading || !user) {
     return <LoadingScreen />;
   }
@@ -193,7 +201,11 @@ export default function LoginPage() {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
       {shouldShowMfa ? (
-        <Mfa successCallback={mfaSuccessCallback} closeMfa={() => toggleShowMfa.off()} />
+        <Mfa
+          email={user.email as string}
+          successCallback={mfaSuccessCallback}
+          closeMfa={() => toggleShowMfa.off()}
+        />
       ) : (
         <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
           <Link href="/">

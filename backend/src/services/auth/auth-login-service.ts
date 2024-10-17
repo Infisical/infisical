@@ -354,7 +354,7 @@ export const authLoginServiceFactory = ({
     }
 
     // send multi factor auth token if they it enabled
-    if (user.isMfaEnabled && user.email && !decodedToken.isMfaVerified) {
+    if ((selectedOrg.enforceMfa || user.isMfaEnabled) && user.email && !decodedToken.isMfaVerified) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
       const mfaToken = jwt.sign(

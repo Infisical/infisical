@@ -8,7 +8,6 @@ import { t } from "i18next";
 import Error from "@app/components/basic/Error";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
-import { useUser } from "@app/context";
 import { useSendMfaToken } from "@app/hooks/api";
 import { verifyMfaToken } from "@app/hooks/api/auth/queries";
 
@@ -35,27 +34,24 @@ const codeInputProps = {
 type Props = {
   successCallback: () => void;
   closeMfa: () => void;
+  hideLogo?: boolean;
+  email: string;
 };
 
-export const Mfa = ({ successCallback, closeMfa }: Props) => {
+export const Mfa = ({ successCallback, closeMfa, hideLogo, email }: Props) => {
   const [mfaCode, setMfaCode] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
-  const { user } = useUser();
 
   const sendMfaToken = useSendMfaToken();
 
   const verifyMfa = async () => {
-    if (!user.email) {
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { token } = await verifyMfaToken({
-        email: user.email,
+        email,
         mfaCode
       });
 
@@ -84,13 +80,9 @@ export const Mfa = ({ successCallback, closeMfa }: Props) => {
   };
 
   const handleResendMfaCode = async () => {
-    if (!user?.email) {
-      return;
-    }
-
     try {
       setIsLoadingResend(true);
-      await sendMfaToken.mutateAsync({ email: user.email });
+      await sendMfaToken.mutateAsync({ email });
       setIsLoadingResend(false);
     } catch (err) {
       console.error(err);
@@ -100,13 +92,15 @@ export const Mfa = ({ successCallback, closeMfa }: Props) => {
 
   return (
     <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
-      <Link href="/">
-        <div className="mb-4 flex justify-center">
-          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-        </div>
-      </Link>
+      {!hideLogo && (
+        <Link href="/">
+          <div className="mb-4 flex justify-center">
+            <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+          </div>
+        </Link>
+      )}
       <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-      <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{user.email}</p>
+      <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email}</p>
       <div className="mx-auto hidden w-max min-w-[20rem] md:block">
         <ReactCodeInput
           name=""
