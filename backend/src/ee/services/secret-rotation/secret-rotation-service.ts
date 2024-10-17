@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ProjectVersion } from "@app/db/schemas";
+import { ProjectVersion, TableName } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
@@ -99,13 +99,14 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
+
     const project = await projectDAL.findById(projectId);
     const shouldUseBridge = project.version === ProjectVersion.V3;
 
     if (shouldUseBridge) {
       const selectedSecrets = await secretV2BridgeDAL.find({
         folderId: folder.id,
-        $in: { id: Object.values(outputs) }
+        $in: { [`${TableName.SecretV2}.id` as "id"]: Object.values(outputs) }
       });
       if (selectedSecrets.length !== Object.values(outputs).length)
         throw new NotFoundError({ message: "Secrets not found" });

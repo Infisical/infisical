@@ -84,12 +84,12 @@ export const secretImportServiceFactory = ({
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
     // check if user has permission to import from target path
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment: data.environment,
         secretPath: data.path
@@ -191,7 +191,7 @@ export const secretImportServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -277,7 +277,7 @@ export const secretImportServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -342,8 +342,8 @@ export const secretImportServiceFactory = ({
 
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -366,7 +366,7 @@ export const secretImportServiceFactory = ({
 
     // check if user has permission to import from target path
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
         environment: secretImportDoc.importEnv.slug,
         secretPath: secretImportDoc.importPath
@@ -414,7 +414,7 @@ export const secretImportServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -446,7 +446,7 @@ export const secretImportServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -489,7 +489,7 @@ export const secretImportServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
+      subject(ProjectPermissionSub.SecretImports, {
         environment: folder.environment.envSlug,
         secretPath: folderWithPath.path
       })
@@ -532,20 +532,19 @@ export const secretImportServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
     const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
-
-    const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
+    const allowedImports = secretImports.filter((el) =>
       permission.can(
         ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.Secrets, {
-          environment: importEnv.slug,
-          secretPath: importPath
+          environment: el.importEnv.slug,
+          secretPath: el.importPath
         })
       )
     );
@@ -570,23 +569,13 @@ export const secretImportServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
     const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
-
-    const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: importEnv.slug,
-          secretPath: importPath
-        })
-      )
-    );
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -595,11 +584,21 @@ export const secretImportServiceFactory = ({
         projectId
       });
       const importedSecrets = await fnSecretsV2FromImports({
-        allowedImports,
+        secretImports,
         folderDAL,
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+          permission.can(
+            ProjectPermissionActions.Read,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            })
+          )
       });
       return importedSecrets;
     }
@@ -610,7 +609,21 @@ export const secretImportServiceFactory = ({
         name: "bot_not_found_error"
       });
 
-    const importedSecrets = await fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
+    const allowedImports = secretImports.filter((el) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: el.importEnv.slug,
+          secretPath: el.importPath
+        })
+      )
+    );
+    const importedSecrets = await fnSecretsFromImports({
+      allowedImports,
+      folderDAL,
+      secretDAL,
+      secretImportDAL
+    });
     return importedSecrets.map((el) => ({
       ...el,
       secrets: el.secrets.map((encryptedSecret) =>

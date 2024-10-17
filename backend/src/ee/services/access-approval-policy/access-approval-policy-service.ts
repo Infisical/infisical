@@ -11,7 +11,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
-import { isApproversValid } from "./access-approval-policy-fns";
 import {
   ApproverType,
   TCreateAccessApprovalPolicy,
@@ -131,22 +130,6 @@ export const accessApprovalPolicyServiceFactory = ({
       .filter((user) => user.isPartOfGroup)
       .map((user) => user.id);
     verifyAllApprovers.push(...verifyGroupApprovers);
-
-    const approversValid = await isApproversValid({
-      projectId: project.id,
-      orgId: actorOrgId,
-      envSlug: environment,
-      secretPath,
-      actorAuthMethod,
-      permissionService,
-      userIds: verifyAllApprovers
-    });
-
-    if (!approversValid) {
-      throw new BadRequestError({
-        message: "One or more approvers doesn't have access to be specified secret path"
-      });
-    }
 
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.create(
@@ -289,22 +272,6 @@ export const accessApprovalPolicyServiceFactory = ({
           userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
         }
 
-        const approversValid = await isApproversValid({
-          projectId: accessApprovalPolicy.projectId,
-          orgId: actorOrgId,
-          envSlug: accessApprovalPolicy.environment.slug,
-          secretPath: doc.secretPath!,
-          actorAuthMethod,
-          permissionService,
-          userIds: userApproverIds
-        });
-
-        if (!approversValid) {
-          throw new BadRequestError({
-            message: "One or more approvers doesn't have access to be specified secret path"
-          });
-        }
-
         await accessApprovalPolicyApproverDAL.insertMany(
           userApproverIds.map((userId) => ({
             approverUserId: userId,
@@ -315,41 +282,6 @@ export const accessApprovalPolicyServiceFactory = ({
       }
 
       if (groupApprovers) {
-        const usersPromises: Promise<
-          {
-            id: string;
-            email: string | null | undefined;
-            username: string;
-            firstName: string | null | undefined;
-            lastName: string | null | undefined;
-            isPartOfGroup: boolean;
-          }[]
-        >[] = [];
-
-        for (const groupId of groupApprovers) {
-          usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
-        }
-        const verifyGroupApprovers = (await Promise.all(usersPromises))
-          .flat()
-          .filter((user) => user.isPartOfGroup)
-          .map((user) => user.id);
-
-        const approversValid = await isApproversValid({
-          projectId: accessApprovalPolicy.projectId,
-          orgId: actorOrgId,
-          envSlug: accessApprovalPolicy.environment.slug,
-          secretPath: doc.secretPath!,
-          actorAuthMethod,
-          permissionService,
-          userIds: verifyGroupApprovers
-        });
-
-        if (!approversValid) {
-          throw new BadRequestError({
-            message: "One or more approvers doesn't have access to be specified secret path"
-          });
-        }
-
         await accessApprovalPolicyApproverDAL.insertMany(
           groupApprovers.map((groupId) => ({
             approverGroupId: groupId,

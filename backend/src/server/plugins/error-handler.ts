@@ -61,7 +61,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res.status(HttpStatusCodes.Forbidden).send({
         statusCode: HttpStatusCodes.Forbidden,
         error: "PermissionDenied",
-        message: `You are not allowed to ${error.action} on ${error.subjectType}`
+        message: `You are not allowed to ${error.action} on ${error.subjectType} - ${JSON.stringify(error.subject)}`
       });
     } else if (error instanceof ForbiddenRequestError) {
       void res.status(HttpStatusCodes.Forbidden).send({

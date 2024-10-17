@@ -7,6 +7,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionDynamicSecretActions,
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
@@ -28,8 +29,12 @@ const CmekPolicyActionSchema = z.object({
   decrypt: z.boolean().optional()
 });
 
-const SecretFolderPolicyActionSchema = z.object({
-  read: z.boolean().optional()
+const DynamicSecretPolicyActionSchema = z.object({
+  [ProjectPermissionDynamicSecretActions.ReadRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.EditRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.CreateRootCredential]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.Lease]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -42,11 +47,29 @@ const WorkspacePolicyActionSchema = z.object({
   delete: z.boolean().optional()
 });
 
-const ConditionSchema = z.object({
-  operator: z.string(),
-  lhs: z.string(),
-  rhs: z.string().min(1)
-});
+const ConditionSchema = z
+  .object({
+    operator: z.string(),
+    lhs: z.string(),
+    rhs: z.string().min(1)
+  })
+  .array()
+  .optional()
+  .default([])
+  .refine(
+    (el) => {
+      const lhsOperatorSet = new Set<string>();
+      for (let i = 0; i < el.length; i += 1) {
+        const { lhs, operator } = el[i];
+        if (lhsOperatorSet.has(`${lhs}-${operator}`)) {
+          return false;
+        }
+        lhsOperatorSet.add(`${lhs}-${operator}`);
+      }
+      return true;
+    },
+    { message: "Duplicate operator found for a condition" }
+  );
 
 export const formSchema = z.object({
   name: z.string().trim(),
@@ -59,27 +82,29 @@ export const formSchema = z.object({
   permissions: z
     .object({
       [ProjectPermissionSub.Secrets]: GeneralPolicyActionSchema.extend({
-        conditions: ConditionSchema.array()
-          .optional()
-          .default([])
-          .refine(
-            (el) => {
-              const lhsOperatorSet = new Set<string>();
-              for (let i = 0; i < el.length; i += 1) {
-                const { lhs, operator } = el[i];
-                if (lhsOperatorSet.has(`${lhs}-${operator}`)) {
-                  return false;
-                }
-                lhsOperatorSet.add(`${lhs}-${operator}`);
-              }
-              return true;
-            },
-            { message: "Duplicate operator found for a condition" }
-          )
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.SecretFolders]: SecretFolderPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.SecretImports]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.DynamicSecrets]: DynamicSecretPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Member]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Identity]: GeneralPolicyActionSchema.array().default([]),
@@ -98,7 +123,7 @@ export const formSchema = z.object({
       [ProjectPermissionSub.CertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretApproval]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Workspace]: WorkspacePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Tags]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRotation]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
@@ -110,8 +135,22 @@ export const formSchema = z.object({
 
 export type TFormSchema = z.infer<typeof formSchema>;
 
+type TConditionalFields =
+  | ProjectPermissionSub.Secrets
+  | ProjectPermissionSub.SecretFolders
+  | ProjectPermissionSub.SecretImports
+  | ProjectPermissionSub.DynamicSecrets;
+
+export const isConditionalSubjects = (
+  subject: ProjectPermissionSub
+): subject is TConditionalFields =>
+  subject === (ProjectPermissionSub.Secrets as const) ||
+  subject === ProjectPermissionSub.DynamicSecrets ||
+  subject === ProjectPermissionSub.SecretImports ||
+  subject === ProjectPermissionSub.SecretFolders;
+
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
-  const formConditions: z.infer<typeof ConditionSchema>[] = [];
+  const formConditions: z.infer<typeof ConditionSchema> = [];
   Object.entries(caslConditions).forEach(([type, condition]) => {
     if (typeof condition === "string") {
       formConditions.push({
@@ -138,12 +177,15 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Partial<TFormSchema["permissions"]> = {};
 
   permissions.forEach((permission) => {
-    const { subject: caslSub, action, conditions } = permission;
+    const { subject: caslSub, action, conditions, inverted } = permission;
     const subject = (typeof caslSub === "string" ? caslSub : caslSub[0]) as ProjectPermissionSub;
 
     if (
       [
         ProjectPermissionSub.Secrets,
+        ProjectPermissionSub.DynamicSecrets,
+        ProjectPermissionSub.SecretFolders,
+        ProjectPermissionSub.SecretImports,
         ProjectPermissionSub.Member,
         ProjectPermissionSub.Groups,
         ProjectPermissionSub.Identity,
@@ -166,37 +208,67 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Kms
       ].includes(subject)
     ) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-      const canEdit = action.includes(ProjectPermissionActions.Edit);
-      const canDelete = action.includes(ProjectPermissionActions.Delete);
-      const canCreate = action.includes(ProjectPermissionActions.Create);
-
       // from above statement we are sure it won't be undefined
-      if (subject === ProjectPermissionSub.Secrets) {
+      if (isConditionalSubjects(subject)) {
         if (!formVal[subject]) formVal[subject] = [];
-        formVal[subject]!.push({
-          read: canRead,
-          create: canCreate,
-          edit: canEdit,
-          delete: canDelete,
-          conditions: conditions ? convertCaslConditionToFormOperator(conditions) : []
-        });
+
+        if (subject === ProjectPermissionSub.DynamicSecrets) {
+          const canRead = action.includes(ProjectPermissionDynamicSecretActions.ReadRootCredential);
+          const canEdit = action.includes(ProjectPermissionDynamicSecretActions.EditRootCredential);
+          const canDelete = action.includes(
+            ProjectPermissionDynamicSecretActions.DeleteRootCredential
+          );
+          const canCreate = action.includes(
+            ProjectPermissionDynamicSecretActions.CreateRootCredential
+          );
+          const canLease = action.includes(ProjectPermissionDynamicSecretActions.Lease);
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionDynamicSecretActions.ReadRootCredential]: canRead,
+            [ProjectPermissionDynamicSecretActions.CreateRootCredential]: canCreate,
+            [ProjectPermissionDynamicSecretActions.EditRootCredential]: canEdit,
+            [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: canDelete,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted,
+            [ProjectPermissionDynamicSecretActions.Lease]: canLease
+          });
+        } else {
+          // for other subjects
+          const canRead = action.includes(ProjectPermissionActions.Read);
+          const canEdit = action.includes(ProjectPermissionActions.Edit);
+          const canDelete = action.includes(ProjectPermissionActions.Delete);
+          const canCreate = action.includes(ProjectPermissionActions.Create);
+          formVal[subject]!.push({
+            read: canRead,
+            create: canCreate,
+            edit: canEdit,
+            delete: canDelete,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+        }
       } else {
         // deduplicate multiple rules for other policies
         // because they don't have condition it doesn't make sense for multiple rules
+        const canRead = action.includes(ProjectPermissionActions.Read);
+        const canEdit = action.includes(ProjectPermissionActions.Edit);
+        const canDelete = action.includes(ProjectPermissionActions.Delete);
+        const canCreate = action.includes(ProjectPermissionActions.Create);
+
         if (!formVal[subject]) formVal[subject] = [{}];
         if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
         if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
         if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
         if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
       }
-    } else if (subject === ProjectPermissionSub.Workspace) {
+    } else if (subject === ProjectPermissionSub.Project) {
       const canEdit = action.includes(ProjectPermissionActions.Edit);
       const canDelete = action.includes(ProjectPermissionActions.Delete);
       if (!formVal[subject]) formVal[subject] = [{}];
 
       // from above statement we are sure it won't be undefined
-      if (canEdit) formVal[subject as ProjectPermissionSub.Workspace]![0].edit = true;
+      if (canEdit) formVal[subject as ProjectPermissionSub.Project]![0].edit = true;
       if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
     } else if (subject === ProjectPermissionSub.SecretRollback) {
       const canRead = action.includes(ProjectPermissionActions.Read);
@@ -206,12 +278,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       // from above statement we are sure it won't be undefined
       if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
-    } else if (subject === ProjectPermissionSub.SecretFolders) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
     } else if (subject === ProjectPermissionSub.Cmek) {
       const canRead = action.includes(ProjectPermissionCmekActions.Read);
       const canEdit = action.includes(ProjectPermissionCmekActions.Edit);
@@ -264,7 +330,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
     rules.forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
-        (el) => actions?.[el as keyof typeof actions] && el !== "conditions"
+        (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
       const caslConditions =
         "conditions" in actions
@@ -274,6 +340,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
       permissions.push({
         action: caslActions,
         subject,
+        inverted: (actions as { inverted?: boolean })?.inverted,
         conditions: caslConditions
       });
     });
@@ -288,7 +355,7 @@ export type TProjectPermissionObject = {
       label: string;
       value: keyof Omit<
         NonNullable<NonNullable<TFormSchema["permissions"]>[K]>[number],
-        "conditions"
+        "conditions" | "inverted"
       >;
     }[];
   };
@@ -306,7 +373,42 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretFolders]: {
     title: "Secret Folders",
-    actions: [{ label: "Read Only", value: "read" }]
+    actions: [
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.SecretImports]: {
+    title: "Secret Imports",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
+  [ProjectPermissionSub.DynamicSecrets]: {
+    title: "Dynamic Secrets",
+    actions: [
+      {
+        label: "Read root credentials",
+        value: ProjectPermissionDynamicSecretActions.ReadRootCredential
+      },
+      {
+        label: "Create root credentials",
+        value: ProjectPermissionDynamicSecretActions.CreateRootCredential
+      },
+      {
+        label: "Modify root credentials",
+        value: ProjectPermissionDynamicSecretActions.EditRootCredential
+      },
+      {
+        label: "Remove root credentials",
+        value: ProjectPermissionDynamicSecretActions.DeleteRootCredential
+      },
+      { label: "Manage Leases", value: ProjectPermissionDynamicSecretActions.Lease }
+    ]
   },
   [ProjectPermissionSub.Cmek]: {
     title: "KMS",
@@ -332,7 +434,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete" }
     ]
   },
-  [ProjectPermissionSub.Workspace]: {
+  [ProjectPermissionSub.Project]: {
     title: "Project",
     actions: [
       { label: "Update project details", value: "edit" },

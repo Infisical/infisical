@@ -17,7 +17,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
-import { isApproversValid } from "../access-approval-policy/access-approval-policy-fns";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -78,7 +77,6 @@ export const accessApprovalRequestServiceFactory = ({
   permissionService,
   accessApprovalRequestDAL,
   accessApprovalRequestReviewerDAL,
-  projectMembershipDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
   additionalPrivilegeDAL,
@@ -321,22 +319,6 @@ export const accessApprovalRequestServiceFactory = ({
       !policy.approvers.find((approver) => approver.userId === actorId) // The request isn't performed by an assigned approver
     ) {
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
-    }
-
-    const reviewerProjectMembership = await projectMembershipDAL.findById(membership.id);
-
-    const approversValid = await isApproversValid({
-      projectId: accessApprovalRequest.projectId,
-      orgId: actorOrgId,
-      envSlug: accessApprovalRequest.environment,
-      secretPath: accessApprovalRequest.policy.secretPath!,
-      actorAuthMethod,
-      permissionService,
-      userIds: [reviewerProjectMembership.userId]
-    });
-
-    if (!approversValid) {
-      throw new ForbiddenRequestError({ message: "You don't have access to approve this request" });
     }
 
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });

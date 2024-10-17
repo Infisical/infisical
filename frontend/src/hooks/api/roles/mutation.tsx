@@ -22,7 +22,7 @@ export const useCreateProjectRole = () => {
     mutationFn: async ({ projectSlug, ...dto }: TCreateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.post(`/api/v1/workspace/${projectSlug}/roles`, dto);
+      } = await apiRequest.post(`/api/v2/workspace/${projectSlug}/roles`, dto);
       return role;
     },
     onSuccess: (_, { projectSlug }) => {
@@ -38,7 +38,7 @@ export const useUpdateProjectRole = () => {
     mutationFn: async ({ id, projectSlug, ...dto }: TUpdateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.patch(`/api/v1/workspace/${projectSlug}/roles/${id}`, dto);
+      } = await apiRequest.patch(`/api/v2/workspace/${projectSlug}/roles/${id}`, dto);
       return role;
     },
     onSuccess: (_, { projectSlug }) => {
@@ -53,7 +53,7 @@ export const useDeleteProjectRole = () => {
     mutationFn: async ({ projectSlug, id }: TDeleteProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.delete(`/api/v1/workspace/${projectSlug}/roles/${id}`);
+      } = await apiRequest.delete(`/api/v2/workspace/${projectSlug}/roles/${id}`);
       return role;
     },
     onSuccess: (_, { projectSlug }) => {

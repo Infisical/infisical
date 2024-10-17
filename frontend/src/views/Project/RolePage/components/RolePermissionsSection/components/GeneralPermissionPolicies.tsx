@@ -1,14 +1,24 @@
 import { cloneElement } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { faChevronDown, faChevronRight, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faChevronRight,
+  faInfoCircle,
+  faPlus,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, Checkbox, Tag } from "@app/components/v2";
+import { Button, Checkbox, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema, TProjectPermissionObject } from "../ProjectRoleModifySection.utils";
+import {
+  isConditionalSubjects,
+  TFormSchema,
+  TProjectPermissionObject
+} from "../ProjectRoleModifySection.utils";
 
 type Props<T extends ProjectPermissionSub> = {
   title: string;
@@ -18,7 +28,7 @@ type Props<T extends ProjectPermissionSub> = {
   isDisabled?: boolean;
 };
 
-export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema["permissions"]>>({
+export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchema["permissions"]>>({
   subject,
   actions,
   children,
@@ -63,6 +73,44 @@ export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema
         <div key={`select-${subject}-type`} className="flex flex-col space-y-4 bg-bunker-800 p-6">
           {items.fields.map((el, rootIndex) => (
             <div key={el.id} className="bg-mineshaft-800 p-5 first:rounded-t-md last:rounded-b-md">
+              {isConditionalSubjects(subject) && (
+                <div className="mt-4 mb-6 flex w-full items-center text-gray-300">
+                  <div className="w-1/4">Permission</div>
+                  <div className="mr-4 w-1/4">
+                    <Controller
+                      defaultValue={false as any}
+                      name={`permissions.${subject}.${rootIndex}.inverted`}
+                      render={({ field }) => (
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(val) => field.onChange(val === "true")}
+                          containerClassName="w-full"
+                          className="w-full"
+                        >
+                          <SelectItem value="false">Allow</SelectItem>
+                          <SelectItem value="true">Forbid</SelectItem>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <Tooltip
+                      asChild
+                      content={
+                        <>
+                          <p>
+                            Whether to allow or forbid the selected actions when the following
+                            conditions (if any) are met.
+                          </p>
+                          <p className="mt-2">Forbid rules must come after allow rules.</p>
+                        </>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-gray-400" />
+                    </Tooltip>
+                  </div>
+                </div>
+              )}
               <div className="flex text-gray-300">
                 <div className="w-1/4">Actions</div>
                 <div className="flex flex-grow flex-wrap justify-start gap-8">
@@ -98,10 +146,10 @@ export const GeneralPermissionOptions = <T extends keyof NonNullable<TFormSchema
               <div
                 className={twMerge(
                   "mt-4 flex justify-start space-x-4",
-                  subject === ProjectPermissionSub.Secrets && "justify-end"
+                  isConditionalSubjects(subject) && "justify-end"
                 )}
               >
-                {!isDisabled && subject === ProjectPermissionSub.Secrets && (
+                {!isDisabled && isConditionalSubjects(subject) && (
                   <Button
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     variant="star"
