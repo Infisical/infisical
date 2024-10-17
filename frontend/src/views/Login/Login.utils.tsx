@@ -1,7 +1,6 @@
 import { NextRouter, useRouter } from "next/router";
 
 import { useServerConfig } from "@app/context";
-import { useSelectOrganization } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { userKeys } from "@app/hooks/api/users";
 import { queryClient } from "@app/reactQuery";
@@ -31,23 +30,18 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
 
 export const useNavigateToSelectOrganization = () => {
   const { config } = useServerConfig();
-  const selectOrganization = useSelectOrganization();
   const router = useRouter();
 
   const navigate = async (cliCallbackPort?: string) => {
+    let redirectTo = "/login/select-organization?";
     if (config.defaultAuthOrgId) {
-      await selectOrganization.mutateAsync({
-        organizationId: config.defaultAuthOrgId
-      });
-
-      await navigateUserToOrg(router, config.defaultAuthOrgId);
+      redirectTo += `org_id=${config.defaultAuthOrgId}&`;
+    } else {
+      queryClient.invalidateQueries(userKeys.getUser);
     }
 
-    queryClient.invalidateQueries(userKeys.getUser);
-    let redirectTo = "/login/select-organization";
-
     if (cliCallbackPort) {
-      redirectTo += `?callback_port=${cliCallbackPort}`;
+      redirectTo += `callback_port=${cliCallbackPort}`;
     }
 
     router.push(redirectTo, undefined, { shallow: true });

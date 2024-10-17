@@ -99,13 +99,15 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     organizationId,
-    authMethod
+    authMethod,
+    isMfaVerified
   }: {
     user: TUsers;
     ip: string;
     userAgent: string;
     organizationId?: string;
     authMethod: AuthMethod;
+    isMfaVerified?: boolean;
   }) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
@@ -123,7 +125,8 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
-        organizationId
+        organizationId,
+        isMfaVerified
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
@@ -136,7 +139,8 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
-        organizationId
+        organizationId,
+        isMfaVerified
       },
       cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
@@ -298,30 +302,6 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    // send multi factor auth token if they it enabled
-    if (userEnc.isMfaEnabled && userEnc.email) {
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-
-      const mfaToken = jwt.sign(
-        {
-          authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId
-        },
-        cfg.AUTH_SECRET,
-        {
-          expiresIn: cfg.JWT_MFA_LIFETIME
-        }
-      );
-
-      await sendUserMfaCode({
-        userId: userEnc.userId,
-        email: userEnc.email
-      });
-
-      return { isMfaEnabled: true, token: mfaToken } as const;
-    }
-
     const token = await generateUserTokens({
       user: {
         ...userEnc,
@@ -333,7 +313,7 @@ export const authLoginServiceFactory = ({
       organizationId
     });
 
-    return { token, isMfaEnabled: false, user: userEnc } as const;
+    return { token, user: userEnc } as const;
   };
 
   const selectOrganization = async ({
@@ -373,15 +353,43 @@ export const authLoginServiceFactory = ({
       });
     }
 
+    // send multi factor auth token if they it enabled
+    if ((selectedOrg.enforceMfa || user.isMfaEnabled) && user.email && !decodedToken.isMfaVerified) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const mfaToken = jwt.sign(
+        {
+          authMethod: decodedToken.authMethod,
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: user.id
+        },
+        cfg.AUTH_SECRET,
+        {
+          expiresIn: cfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      await sendUserMfaCode({
+        userId: user.id,
+        email: user.email
+      });
+
+      return { isMfaEnabled: true, mfa: mfaToken } as const;
+    }
+
     const tokens = await generateUserTokens({
       authMethod: decodedToken.authMethod,
       user,
       userAgent,
       ip: ipAddress,
-      organizationId
+      organizationId,
+      isMfaVerified: decodedToken.isMfaVerified
     });
 
-    return tokens;
+    return {
+      ...tokens,
+      isMfaEnabled: false
+    };
   };
 
   /*
@@ -504,7 +512,8 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       organizationId: orgId,
-      authMethod: decodedToken.authMethod
+      authMethod: decodedToken.authMethod,
+      isMfaVerified: true
     });
 
     return { token, user: userEnc };
@@ -629,7 +638,6 @@ export const authLoginServiceFactory = ({
   const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
     const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
-    const appCfg = getConfig();
     const { authMethod, userName } = decodedProviderToken;
     if (!userName) throw new BadRequestError({ message: "Missing user name" });
     const organizationId =
@@ -644,29 +652,6 @@ export const authLoginServiceFactory = ({
     if (!userEnc) throw new BadRequestError({ message: "Invalid token" });
     if (!userEnc.serverEncryptedPrivateKey)
       throw new BadRequestError({ message: "Key handoff incomplete. Please try logging in again." });
-    // send multi factor auth token if they it enabled
-    if (userEnc.isMfaEnabled && userEnc.email) {
-      enforceUserLockStatus(Boolean(userEnc.isLocked), userEnc.temporaryLockDateEnd);
-
-      const mfaToken = jwt.sign(
-        {
-          authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId
-        },
-        appCfg.AUTH_SECRET,
-        {
-          expiresIn: appCfg.JWT_MFA_LIFETIME
-        }
-      );
-
-      await sendUserMfaCode({
-        userId: userEnc.userId,
-        email: userEnc.email
-      });
-
-      return { isMfaEnabled: true, token: mfaToken } as const;
-    }
 
     const token = await generateUserTokens({
       user: { ...userEnc, id: userEnc.userId },

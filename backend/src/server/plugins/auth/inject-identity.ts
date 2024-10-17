@@ -18,6 +18,7 @@ export type TAuthMode =
       user: TUsers;
       orgId: string;
       authMethod: AuthMethod;
+      isMfaVerified?: boolean;
     }
   | {
       authMode: AuthMode.API_KEY;
@@ -121,7 +122,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           tokenVersionId,
           actor,
           orgId: orgId as string,
-          authMethod: token.authMethod
+          authMethod: token.authMethod,
+          isMfaVerified: token.isMfaVerified
         };
         break;
       }
