@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 import { z } from "zod";
 
+import { OrgPermissionSubjects } from "@app/context";
 import { TPermission } from "@app/hooks/api/roles/types";
 
 const generalPermissionSchema = z
@@ -46,7 +47,8 @@ export const formSchema = z.object({
       ldap: generalPermissionSchema,
       billing: generalPermissionSchema,
       identity: generalPermissionSchema,
-      "organization-admin-console": adminConsolePermissionSchmea
+      "organization-admin-console": adminConsolePermissionSchmea,
+      [OrgPermissionSubjects.Kms]: generalPermissionSchema
     })
     .optional()
 });
