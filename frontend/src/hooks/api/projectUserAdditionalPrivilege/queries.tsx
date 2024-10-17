@@ -1,3 +1,4 @@
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -17,7 +18,10 @@ const fetchProjectUserPrivilegeDetails = async (privilegeId: string) => {
   } = await apiRequest.get<{
     privilege: Omit<TProjectUserPrivilege, "permissions"> & { permissions: unknown };
   }>(`/api/v1/additional-privilege/users/${privilegeId}`);
-  return privilege;
+  return {
+    ...privilege,
+    permissions: unpackRules(privilege.permissions as PackRule<TProjectPermission>[])
+  };
 };
 
 export const useGetProjectUserPrivilegeDetails = (privilegeId: string) => {
@@ -40,7 +44,7 @@ export const useListProjectUserPrivileges = (projectMembershipId: string) => {
       }>("/api/v1/additional-privilege/users", { params: { projectMembershipId } });
       return privileges.map((el) => ({
         ...el,
-        permissions: el.permissions as TProjectPermission[]
+        permissions: unpackRules(el.permissions as PackRule<TProjectPermission>[])
       }));
     }
   });

@@ -10,15 +10,13 @@ import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 
-import { GeneralPermissionConditions } from "./components/GeneralPermissionConditions";
-import { GeneralPermissionPolicies } from "./components/GeneralPermissionPolicies";
+import { GeneralPermissionOptions } from "./components/GeneralPermissionOptions";
 import { NewPermissionRule } from "./components/NewPermissionRule";
 import { SecretPermissionConditions } from "./components/SecretPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
   formSchema,
-  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   rolePermission2Form,
   TFormSchema
@@ -27,17 +25,6 @@ import {
 type Props = {
   roleSlug: string;
   isDisabled?: boolean;
-};
-
-const renderConditionalComponents = (subject: ProjectPermissionSub, isDisabled?: boolean) => {
-  if (subject === ProjectPermissionSub.Secrets)
-    return <SecretPermissionConditions isDisabled={isDisabled} />;
-
-  if (isConditionalSubjects(subject)) {
-    return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
-  }
-
-  return undefined;
 };
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
@@ -143,15 +130,17 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
         <div className="py-4">
           {!isLoading && <PermissionEmptyState />}
           {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-            <GeneralPermissionPolicies
+            <GeneralPermissionOptions
               subject={subject}
               actions={PROJECT_PERMISSION_OBJECT[subject].actions}
               title={PROJECT_PERMISSION_OBJECT[subject].title}
               key={`project-permission-${subject}`}
               isDisabled={isDisabled}
             >
-              {renderConditionalComponents(subject, isDisabled)}
-            </GeneralPermissionPolicies>
+              {subject === ProjectPermissionSub.Secrets ? (
+                <SecretPermissionConditions isDisabled={isDisabled} />
+              ) : undefined}
+            </GeneralPermissionOptions>
           ))}
         </div>
       </FormProvider>

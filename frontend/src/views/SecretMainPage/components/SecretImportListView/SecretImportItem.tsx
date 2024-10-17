@@ -67,7 +67,7 @@ export const SecretImportItem = ({
   isReplicationExpand,
   importedSecrets = [],
   searchTerm = "",
-  secretPath = "/",
+  secretPath,
   environment,
   secretImport,
   onExpandReplicateSecrets: onExpandReplicate
@@ -209,7 +209,7 @@ export const SecretImportItem = ({
           {isReplication && (
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.SecretImports, { environment, secretPath })}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
               renderTooltip
               allowedLabel="Resync replicated secrets"
             >
@@ -235,10 +235,7 @@ export const SecretImportItem = ({
         <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
-            a={subject(ProjectPermissionSub.SecretImports, {
-              environment,
-              secretPath: secretPath || "/"
-            })}
+            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             renderTooltip
             allowedLabel="Change order"
           >
@@ -259,7 +256,7 @@ export const SecretImportItem = ({
           </ProjectPermissionCan>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.SecretImports, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             renderTooltip
             allowedLabel="Delete"
           >

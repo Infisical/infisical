@@ -12,7 +12,6 @@ import { PermissionDeniedBanner } from "@app/components/permissions";
 import { ContentLoader, Pagination } from "@app/components/v2";
 import {
   ProjectPermissionActions,
-  ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
   useProjectPermission,
   useWorkspace
@@ -38,7 +37,7 @@ import { ActionBar } from "./components/ActionBar";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
-import { SecretListView, SecretNoAccessListView } from "./components/SecretListView";
+import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
 import { StoreProvider } from "./SecretMainPage.store";
 import { Filter, RowType } from "./SecretMainPage.types";
@@ -80,24 +79,8 @@ export const SecretMainPage = () => {
   const secretPath = (router.query.secretPath as string) || "/";
   const canReadSecret = permission.can(
     ProjectPermissionActions.Read,
-    subject(ProjectPermissionSub.Secrets, {
-      environment,
-      secretPath,
-      secretName: "*",
-      secretTags: ["*"]
-    })
+    subject(ProjectPermissionSub.Secrets, { environment, secretPath })
   );
-
-  const canReadSecretImports = permission.can(
-    ProjectPermissionActions.Read,
-    subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
-  );
-
-  const canReadDynamicSecret = permission.can(
-    ProjectPermissionDynamicSecretActions.ReadRootCredential,
-    subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })
-  );
-
   const canDoReadRollback = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -106,18 +89,30 @@ export const SecretMainPage = () => {
   const defaultFilterState = {
     tags: {},
     searchFilter: (router.query.searchFilter as string) || "",
-    // these should always be on by default for the UI, they will be disabled for the query below based off permissions
     include: {
       [RowType.Folder]: true,
-      [RowType.Import]: true,
-      [RowType.DynamicSecret]: true,
-      [RowType.Secret]: true
+      [RowType.Import]: canReadSecret,
+      [RowType.DynamicSecret]: canReadSecret,
+      [RowType.Secret]: canReadSecret
     }
   };
 
   const [filter, setFilter] = useState<Filter>(defaultFilterState);
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
   const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
+
+  // change filters if permissions change at different paths/env
+  useEffect(() => {
+    setFilter((prev) => ({
+      ...prev,
+      include: {
+        [RowType.Folder]: true,
+        [RowType.Import]: canReadSecret,
+        [RowType.DynamicSecret]: canReadSecret,
+        [RowType.Secret]: canReadSecret
+      }
+    }));
+  }, [canReadSecret]);
 
   useEffect(() => {
     if (
@@ -146,9 +141,9 @@ export const SecretMainPage = () => {
     orderBy,
     search: debouncedSearchFilter,
     orderDirection,
-    includeImports: canReadSecretImports && filter.include.import,
+    includeImports: canReadSecret && filter.include.import,
     includeFolders: filter.include.folder,
-    includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
+    includeDynamicSecrets: canReadSecret && filter.include.dynamic,
     includeSecrets: canReadSecret && filter.include.secret,
     tags: filter.tags
   });
@@ -210,20 +205,8 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const noAccessSecretCount = Math.max(
-    (page * perPage > totalCount ? totalCount % perPage : perPage) -
-      (imports?.length || 0) -
-      (folders?.length || 0) -
-      (secrets?.length || 0) -
-      (dynamicSecrets?.length || 0),
-    0
-  );
   const isNotEmpty = Boolean(
-    secrets?.length ||
-      folders?.length ||
-      imports?.length ||
-      dynamicSecrets?.length ||
-      noAccessSecretCount
+    secrets?.length || folders?.length || imports?.length || dynamicSecrets?.length
   );
 
   const handleSortToggle = () =>
@@ -315,6 +298,7 @@ export const SecretMainPage = () => {
     setFilter(defaultFilterState);
     setDebouncedSearchFilter("");
   };
+
   return (
     <StoreProvider>
       <div className="container mx-auto flex flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -378,7 +362,7 @@ export const SecretMainPage = () => {
                     <div className="flex-grow px-4 py-2">Value</div>
                   </div>
                 )}
-                {canReadSecretImports && Boolean(imports?.length) && (
+                {canReadSecret && imports?.length && (
                   <SecretImportListView
                     searchTerm={debouncedSearchFilter}
                     secretImports={imports}
@@ -389,7 +373,7 @@ export const SecretMainPage = () => {
                     importedSecrets={importedSecrets}
                   />
                 )}
-                {Boolean(folders?.length) && (
+                {folders?.length && (
                   <FolderListView
                     folders={folders}
                     environment={environment}
@@ -398,7 +382,7 @@ export const SecretMainPage = () => {
                     onNavigateToFolder={handleResetFilter}
                   />
                 )}
-                {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
+                {canReadSecret && dynamicSecrets?.length && (
                   <DynamicSecretListView
                     environment={environment}
                     projectSlug={projectSlug}
@@ -406,7 +390,7 @@ export const SecretMainPage = () => {
                     dynamicSecrets={dynamicSecrets}
                   />
                 )}
-                {canReadSecret && Boolean(secrets?.length) && (
+                {canReadSecret && secrets?.length && (
                   <SecretListView
                     secrets={secrets}
                     tags={tags}
@@ -417,11 +401,7 @@ export const SecretMainPage = () => {
                     isProtectedBranch={isProtectedBranch}
                   />
                 )}
-                {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
-                {!canReadSecret &&
-                  !canReadDynamicSecret &&
-                  !canReadSecretImports &&
-                  folders?.length === 0 && <PermissionDeniedBanner />}
+                {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
               </div>
             </div>
             {!isDetailsLoading && totalCount > 0 && (

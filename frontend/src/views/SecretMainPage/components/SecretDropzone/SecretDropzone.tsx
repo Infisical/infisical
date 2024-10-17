@@ -250,12 +250,7 @@ export const SecretDropzone = ({
             </div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName: "*",
-                secretTags: ["*"]
-              })}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             >
               {(isAllowed) => (
                 <input
@@ -292,12 +287,7 @@ export const SecretDropzone = ({
               {!isSmaller && (
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName: "*",
-                    secretTags: ["*"]
-                  })}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                 >
                   {(isAllowed) => (
                     <Button

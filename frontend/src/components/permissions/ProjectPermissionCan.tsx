@@ -1,25 +1,23 @@
 import { FunctionComponent, ReactNode } from "react";
-import { AbilityTuple, MongoAbility } from "@casl/ability";
-import { Can } from "@casl/react";
+import { BoundCanProps, Can } from "@casl/react";
 
-import { ProjectPermissionSet, useProjectPermission } from "@app/context/ProjectPermissionContext";
+import { TProjectPermission, useProjectPermission } from "@app/context/ProjectPermissionContext";
 
-import { Tooltip } from "../v2/Tooltip";
+import { Tooltip } from "../v2";
 
-type Props<T extends AbilityTuple> = {
+type Props = {
   label?: ReactNode;
   // this prop is used when there exist already a tooltip as helper text for users
   // so when permission is allowed same tooltip will be reused  to show helpertext
   renderTooltip?: boolean;
   allowedLabel?: string;
-  children: ReactNode | ((isAllowed: boolean, ability: T) => ReactNode);
-  passThrough?: boolean;
-  I: T[0];
-  a: T[1];
-  ability?: MongoAbility<T>;
-};
+  // BUG(akhilmhdh): As a workaround for now i put any but this should be TProjectPermission
+  // For some reason when i put TProjectPermission in a wrapper component it just wont work causes a weird  ts error
+  // tried a lot combinations
+  // REF: https://github.com/stalniy/casl/blob/ac081a34f56366a7eaaed05d21689d27041ef005/packages/casl-react/src/factory.ts#L15
+} & BoundCanProps<any>;
 
-export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>> = ({
+export const ProjectPermissionCan: FunctionComponent<Props> = ({
   label = "Access restricted",
   children,
   passThrough = true,
@@ -33,7 +31,9 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
       {(isAllowed, ability) => {
         // akhilmhdh: This is set as type due to error in casl react type.
         const finalChild =
-          typeof children === "function" ? children(isAllowed, ability as any) : children;
+          typeof children === "function"
+            ? children(isAllowed, ability as TProjectPermission)
+            : children;
 
         if (!isAllowed && passThrough) {
           return <Tooltip content={label}>{finalChild}</Tooltip>;

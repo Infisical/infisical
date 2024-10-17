@@ -84,41 +84,26 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: secret
   });
-
   const { permission } = useProjectPermission();
+  const cannotEditSecret = permission.cannot(
+    ProjectPermissionActions.Edit,
+    subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+  );
+  const isReadOnly =
+    permission.can(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    ) && cannotEditSecret;
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "tags"
   });
-
-  const secretKey = secret?.key || "";
   const selectedTags = watch("tags", []) || [];
   const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
     (prev, curr) => ({ ...prev, [curr.id]: true }),
     {}
   );
-  const selectTagSlugs = selectedTags.map((i) => i.slug);
-
-  const cannotEditSecret = permission.cannot(
-    ProjectPermissionActions.Edit,
-    subject(ProjectPermissionSub.Secrets, {
-      environment,
-      secretPath,
-      secretName: secretKey,
-      secretTags: selectTagSlugs
-    })
-  );
-  const isReadOnly =
-    permission.can(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath,
-        secretName: secretKey,
-        secretTags: selectTagSlugs
-      })
-    ) && cannotEditSecret;
 
   const overrideAction = watch("overrideAction");
   const isOverridden =
@@ -209,12 +194,7 @@ export const SecretDetailSidebar = ({
               </FormControl>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
-                a={subject(ProjectPermissionSub.Secrets, {
-                  environment,
-                  secretPath,
-                  secretName: secretKey,
-                  secretTags: selectTagSlugs
-                })}
+                a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
               >
                 {(isAllowed) => (
                   <Controller
@@ -241,12 +221,7 @@ export const SecretDetailSidebar = ({
               <div className="mb-2 border-b border-mineshaft-600 pb-4">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName: secretKey,
-                    secretTags: selectTagSlugs
-                  })}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                 >
                   {(isAllowed) => (
                     <Switch
@@ -302,12 +277,7 @@ export const SecretDetailSidebar = ({
                   <DropdownMenu>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, {
-                        environment,
-                        secretPath,
-                        secretName: secretKey,
-                        secretTags: selectTagSlugs
-                      })}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                     >
                       {(isAllowed) => (
                         <DropdownMenuTrigger asChild>
@@ -397,7 +367,6 @@ export const SecretDetailSidebar = ({
                       variant="outline_bg"
                       leftIcon={<FontAwesomeIcon icon={faClock} />}
                       onClick={() => setCreateReminderFormOpen.on()}
-                      isDisabled={cannotEditSecret}
                     >
                       Create Reminder
                     </Button>
@@ -419,12 +388,7 @@ export const SecretDetailSidebar = ({
                   render={({ field: { value, onChange, onBlur } }) => (
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, {
-                        environment,
-                        secretPath,
-                        secretName: secretKey,
-                        secretTags: selectTagSlugs
-                      })}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                     >
                       {(isAllowed) => (
                         <Switch
@@ -486,12 +450,7 @@ export const SecretDetailSidebar = ({
                 <div className="flex items-center space-x-4">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName: secretKey,
-                      secretTags: selectTagSlugs
-                    })}
+                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                   >
                     {(isAllowed) => (
                       <Button
@@ -506,12 +465,7 @@ export const SecretDetailSidebar = ({
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName: secretKey,
-                      secretTags: selectTagSlugs
-                    })}
+                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                   >
                     {(isAllowed) => (
                       <Button colorSchema="danger" isDisabled={!isAllowed} onClick={onDeleteSecret}>

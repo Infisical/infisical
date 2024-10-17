@@ -318,7 +318,10 @@ export const EncryptionTab = () => {
               />
             )}
           </ProjectPermissionCan>
-          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={ProjectPermissionSub.Workspace}
+          >
             {(isAllowed) => (
               <Button
                 colorSchema="secondary"

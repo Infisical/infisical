@@ -1,29 +1,31 @@
 import { ComponentType } from "react";
-import { AbilityTuple } from "@casl/ability";
+import { Abilities, AbilityTuple, Generics, SubjectType } from "@casl/ability";
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { useProjectPermission } from "@app/context";
-import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
+import { TProjectPermission, useProjectPermission } from "@app/context";
 
-type Props<T extends AbilityTuple> = {
-  className?: string;
-  containerClassName?: string;
-  action: T[0];
-  subject: T[1];
-};
+type Props<T extends Abilities> = (T extends AbilityTuple
+  ? {
+      action: T[0];
+      subject: Extract<T[1], SubjectType>;
+    }
+  : {
+      action: string;
+      subject: string;
+    }) & { className?: string; containerClassName?: string };
 
-export const withProjectPermission = <T extends {}>(
-  Component: ComponentType<Omit<Props<ProjectPermissionSet>, "action" | "subject"> & T>,
-  { action, subject, className, containerClassName }: Props<ProjectPermissionSet>
+export const withProjectPermission = <T extends {}, J extends TProjectPermission>(
+  Component: ComponentType<T>,
+  { action, subject, className, containerClassName }: Props<Generics<J>["abilities"]>
 ) => {
-  const HOC = (hocProps: Omit<Props<ProjectPermissionSet>, "action" | "subject"> & T) => {
+  const HOC = (hocProps: T) => {
     const { permission } = useProjectPermission();
 
     // akhilmhdh: Set as any due to casl/react ts type bug
     // REASON: casl due to its type checking can't seem to union even if union intersection is applied
-    if (permission.cannot(action as any, subject as any)) {
+    if (permission.cannot(action as any, subject)) {
       return (
         <div
           className={twMerge(

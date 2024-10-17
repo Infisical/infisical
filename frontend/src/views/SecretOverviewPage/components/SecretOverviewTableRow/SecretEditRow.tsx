@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback,useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -7,7 +7,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
+import { DeleteActionModal,IconButton, Tooltip } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -63,8 +63,8 @@ export const SecretEditRow = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const toggleModal = useCallback(() => {
-    setIsModalOpen((prev) => !prev);
-  }, []);
+    setIsModalOpen((prev) => !prev)
+  }, [])
 
   const handleFormReset = () => {
     reset();
@@ -114,6 +114,7 @@ export const SecretEditRow = ({
 
   return (
     <div className="group flex w-full cursor-text items-center space-x-2">
+
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -150,13 +151,8 @@ export const SecretEditRow = ({
         {isDirty ? (
           <>
             <ProjectPermissionCan
-              I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
+              I={ProjectPermissionActions.Create}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             >
               {(isAllowed) => (
                 <div>
@@ -205,12 +201,7 @@ export const SecretEditRow = ({
             </div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
+              a={ProjectPermissionSub.Secrets}
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">

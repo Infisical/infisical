@@ -30,10 +30,9 @@ export const shouldUseSecretV2Bridge = (version: number) => version === 3;
  * //   { environment: 'prod', secretPath: '/anotherFolder' }
  * // ]
  */
-export const getAllSecretReferences = (maybeSecretReference: string) => {
+export const getAllNestedSecretReferences = (maybeSecretReference: string) => {
   const references = Array.from(maybeSecretReference.matchAll(INTERPOLATION_SYNTAX_REG), (m) => m[1]);
-
-  const nestedReferences = references
+  return references
     .filter((el) => el.includes("."))
     .map((el) => {
       const [environment, ...secretPathList] = el.split(".");
@@ -43,8 +42,6 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
         secretKey: secretPathList[secretPathList.length - 1]
       };
     });
-  const localReferences = references.filter((el) => !el.includes("."));
-  return { nestedReferences, localReferences };
 };
 
 // these functions are special functions shared by a couple of resources
@@ -328,13 +325,16 @@ type TRecursivelyFetchSecretsFromFoldersArg = {
   projectId: string;
   environment: string;
   currentPath: string;
+  hasAccess: (environment: string, secretPath: string) => boolean;
 };
 
 export const recursivelyGetSecretPaths = async ({
   folderDAL,
   projectEnvDAL,
   projectId,
-  environment
+  environment,
+  currentPath,
+  hasAccess
 }: TRecursivelyFetchSecretsFromFoldersArg) => {
   const env = await projectEnvDAL.findOne({
     projectId,
@@ -360,7 +360,12 @@ export const recursivelyGetSecretPaths = async ({
     folderId: p.folderId
   }));
 
-  return paths;
+  // Filter out paths that the user does not have permission to access, and paths that are not in the current path
+  const allowedPaths = paths.filter(
+    (folder) => hasAccess(environment, folder.path) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
+  );
+
+  return allowedPaths;
 };
 // used to convert multi line ones to quotes ones with \n
 const formatMultiValueEnv = (val?: string) => {
@@ -374,7 +379,7 @@ type TInterpolateSecretArg = {
   decryptSecretValue: (encryptedValue?: Buffer | null) => string | undefined;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
-  canExpandValue: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
+  canExpandValue: (environment: string, secretPath: string) => boolean;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
@@ -385,29 +390,29 @@ export const expandSecretReferencesFactory = ({
   folderDAL,
   canExpandValue
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
+  const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
   const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
 
     if (secretCache?.[cacheKey]) {
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+      return secretCache[cacheKey][secretKey] || "";
     }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) return { value: "", tags: [] };
+    if (!folder) return "";
     const secrets = await secretDAL.findByFolderId(folder.id);
 
-    const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
+    const decryptedSecret = secrets.reduce<Record<string, string>>((prev, secret) => {
       // eslint-disable-next-line no-param-reassign
-      prev[secret.key] = { value: decryptSecret(secret.encryptedValue) || "", tags: secret.tags?.map((el) => el.slug) };
+      prev[secret.key] = decryptSecret(secret.encryptedValue) || "";
       return prev;
     }, {});
 
     secretCache[cacheKey] = decryptedSecret;
 
-    return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+    return secretCache[cacheKey][secretKey] || "";
   };
 
   const recursivelyExpandSecret = async (dto: { value?: string; secretPath: string; environment: string }) => {
@@ -433,43 +438,43 @@ export const expandSecretReferencesFactory = ({
           if (entities.length === 1) {
             const [secretKey] = entities;
 
-            // eslint-disable-next-line no-continue,no-await-in-loop
-            const referredValue = await fetchSecret(environment, secretPath, secretKey);
-            if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
+            if (!canExpandValue(environment, secretPath))
               throw new ForbiddenRequestError({
                 message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to.`
               });
 
+            // eslint-disable-next-line no-continue,no-await-in-loop
+            const referedValue = await fetchSecret(environment, secretPath, secretKey);
             const cacheKey = getCacheUniqueKey(environment, secretPath);
-            secretCache[cacheKey][secretKey] = referredValue;
-            if (INTERPOLATION_SYNTAX_REG.test(referredValue.value)) {
+            secretCache[cacheKey][secretKey] = referedValue;
+            if (INTERPOLATION_SYNTAX_REG.test(referedValue)) {
               stack.push({
-                value: referredValue.value,
+                value: referedValue,
                 secretPath,
                 environment,
                 depth: depth + 1
               });
             }
-            if (referredValue) {
-              expandedValue = expandedValue.replaceAll(interpolationSyntax, referredValue.value);
+            if (referedValue) {
+              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
             }
           } else {
             const secretReferenceEnvironment = entities[0];
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
             const secretReferenceKey = entities[entities.length - 1];
 
-            // eslint-disable-next-line no-await-in-loop
-            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
+            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath))
               throw new ForbiddenRequestError({
                 message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to.`
               });
 
+            // eslint-disable-next-line no-await-in-loop
+            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             secretCache[cacheKey][secretReferenceKey] = referedValue;
-            if (INTERPOLATION_SYNTAX_REG.test(referedValue.value)) {
+            if (INTERPOLATION_SYNTAX_REG.test(referedValue)) {
               stack.push({
-                value: referedValue.value,
+                value: referedValue,
                 secretPath: secretReferencePath,
                 environment: secretReferenceEnvironment,
                 depth: depth + 1
@@ -477,7 +482,7 @@ export const expandSecretReferencesFactory = ({
             }
 
             if (referedValue) {
-              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue.value);
+              expandedValue = expandedValue.replaceAll(interpolationSyntax, referedValue);
             }
           }
         }

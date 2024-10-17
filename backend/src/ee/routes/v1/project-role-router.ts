@@ -3,10 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
-import {
-  backfillPermissionV1SchemaToV2Schema,
-  ProjectPermissionV1Schema
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSchema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -46,7 +43,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.CREATE.description),
-        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
+        permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.CREATE.permissions)
       }),
       response: {
         200: z.object({
@@ -64,7 +61,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         projectSlug: req.params.projectSlug,
         data: {
           ...req.body,
-          permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions)))
+          permissions: JSON.stringify(packRules(req.body.permissions))
         }
       });
       return { role };
@@ -106,7 +103,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           }),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
         description: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.description),
-        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
+        permissions: ProjectPermissionSchema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {
         200: z.object({
@@ -125,9 +122,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: req.params.roleId,
         data: {
           ...req.body,
-          permissions: req.body.permissions
-            ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions)))
-            : undefined
+          permissions: req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined
         }
       });
       return { role };

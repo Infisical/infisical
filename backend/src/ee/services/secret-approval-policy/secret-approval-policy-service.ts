@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import picomatch from "picomatch";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -344,8 +344,17 @@ export const secretApprovalPolicyServiceFactory = ({
     environment,
     secretPath
   }: TGetBoardSapDTO) => {
-    await permissionService.getProjectPermission(actor, actorId, projectId, actorAuthMethod, actorOrgId);
-
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { secretPath, environment })
+    );
     return getSecretApprovalPolicy(projectId, environment, secretPath);
   };
 

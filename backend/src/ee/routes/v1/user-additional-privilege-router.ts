@@ -1,16 +1,13 @@
-import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
 
 import { ProjectUserAdditionalPrivilegeSchema } from "@app/db/schemas";
-import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ProjectSpecificPrivilegePermissionSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
@@ -34,9 +31,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           })
           .optional()
           .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: ProjectSpecificPrivilegePermissionSchema.describe(
-          PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions
-        )
+        permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions)
       }),
       response: {
         200: z.object({
@@ -54,17 +49,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : slugify(alphaNumericNanoId(12)),
         isTemporary: false,
-        permissions: JSON.stringify(
-          packRules(
-            backfillPermissionV1SchemaToV2Schema(
-              req.body.permissions.actions.map((action) => ({
-                action,
-                subject: req.body.permissions.subject,
-                conditions: req.body.permissions.conditions
-              }))
-            )
-          )
-        )
+        permissions: JSON.stringify(req.body.permissions)
       });
       return { privilege };
     }
@@ -90,9 +75,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           })
           .optional()
           .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
-        permissions: ProjectSpecificPrivilegePermissionSchema.describe(
-          PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions
-        ),
+        permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions),
         temporaryMode: z
           .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
           .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
@@ -121,17 +104,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         ...req.body,
         slug: req.body.slug ? slugify(req.body.slug) : `privilege-${slugify(alphaNumericNanoId(12))}`,
         isTemporary: true,
-        permissions: JSON.stringify(
-          packRules(
-            backfillPermissionV1SchemaToV2Schema(
-              req.body.permissions.actions.map((action) => ({
-                action,
-                subject: req.body.permissions.subject,
-                conditions: req.body.permissions.conditions
-              }))
-            )
-          )
-        )
+        permissions: JSON.stringify(req.body.permissions)
       });
       return { privilege };
     }
@@ -158,9 +131,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
               message: "Slug must be a valid slug"
             })
             .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.slug),
-          permissions: ProjectSpecificPrivilegePermissionSchema.describe(
-            PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions
-          ).optional(),
+          permissions: z.any().array().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions),
           isTemporary: z.boolean().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
           temporaryMode: z
             .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
@@ -189,19 +160,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        permissions: req.body.permissions
-          ? JSON.stringify(
-              packRules(
-                backfillPermissionV1SchemaToV2Schema(
-                  req.body.permissions.actions.map((action) => ({
-                    action,
-                    subject: req.body.permissions!.subject,
-                    conditions: req.body.permissions!.conditions
-                  }))
-                )
-              )
-            )
-          : undefined,
+        permissions: req.body.permissions ? JSON.stringify(req.body.permissions) : undefined,
         privilegeId: req.params.privilegeId
       });
       return { privilege };

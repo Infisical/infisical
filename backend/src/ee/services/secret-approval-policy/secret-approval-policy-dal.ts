@@ -14,7 +14,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
 
   const secretApprovalPolicyFindQuery = (
     tx: Knex,
-    filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>,
+    filter: TFindFilter<TSecretApprovalPolicies>,
     customFilter?: {
       sapId?: string;
     }

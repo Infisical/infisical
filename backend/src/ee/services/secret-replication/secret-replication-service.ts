@@ -28,7 +28,8 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllSecretReferences
+  getAllNestedSecretReferences,
+  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
@@ -252,12 +253,11 @@ export const secretReplicationServiceFactory = ({
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
       const sourceSecretImports = await secretImportDAL.find({ folderId: folder.id });
       const sourceImportedSecrets = await fnSecretsV2FromImports({
-        secretImports: sourceSecretImports,
+        allowedImports: sourceSecretImports,
         secretDAL: secretV2BridgeDAL,
         folderDAL,
         secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        hasSecretAccess: () => true
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({
@@ -416,7 +416,7 @@ export const secretReplicationServiceFactory = ({
                         encryptedValue: doc.encryptedValue,
                         encryptedComment: doc.encryptedComment,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
-                        references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
+                        references: doc.secretValue ? getAllNestedSecretReferencesV2Bridge(doc.secretValue) : []
                       };
                     })
                   });
@@ -442,7 +442,7 @@ export const secretReplicationServiceFactory = ({
                           encryptedValue: doc.encryptedValue as Buffer,
                           encryptedComment: doc.encryptedComment,
                           skipMultilineEncoding: doc.skipMultilineEncoding,
-                          references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
+                          references: doc.secretValue ? getAllNestedSecretReferencesV2Bridge(doc.secretValue) : []
                         }
                       };
                     })
@@ -687,7 +687,7 @@ export const secretReplicationServiceFactory = ({
                       secretCommentTag: doc.secretCommentTag,
                       secretCommentCiphertext: doc.secretCommentCiphertext,
                       skipMultilineEncoding: doc.skipMultilineEncoding,
-                      references: getAllSecretReferences(doc.secretValue).nestedReferences
+                      references: getAllNestedSecretReferences(doc.secretValue)
                     };
                   })
                 });
@@ -723,7 +723,7 @@ export const secretReplicationServiceFactory = ({
                         secretCommentTag: doc.secretCommentTag,
                         secretCommentCiphertext: doc.secretCommentCiphertext,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
-                        references: getAllSecretReferences(doc.secretValue).nestedReferences
+                        references: getAllNestedSecretReferences(doc.secretValue)
                       }
                     };
                   })
