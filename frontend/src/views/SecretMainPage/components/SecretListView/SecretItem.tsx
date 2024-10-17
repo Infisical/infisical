@@ -56,7 +56,7 @@ type Props = {
   onDetailViewSecret: (sec: SecretV3RawSanitized) => void;
   isVisible?: boolean;
   isSelected?: boolean;
-  onToggleSecretSelect: (id: string) => void;
+  onToggleSecretSelect: (secret: SecretV3RawSanitized) => void;
   tags: WsTag[];
   onCreateTag: () => void;
   environment: string;
@@ -218,7 +218,7 @@ export const SecretItem = memo(
                 <Checkbox
                   id={`checkbox-${secret.id}`}
                   isChecked={isSelected}
-                  onCheckedChange={() => onToggleSecretSelect(secret.id)}
+                  onCheckedChange={() => onToggleSecretSelect(secret)}
                   className={twMerge("ml-3 hidden group-hover:flex", isSelected && "flex")}
                 />
                 <FontAwesomeSymbol

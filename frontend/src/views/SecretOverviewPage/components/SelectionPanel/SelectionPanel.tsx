@@ -27,31 +27,23 @@ export enum EntryType {
 
 type Props = {
   secretPath: string;
-  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
-  getFolderByNameAndEnv: (name: string, env: string) => TSecretFolder | undefined;
   resetSelectedEntries: () => void;
   selectedEntries: {
-    [EntryType.FOLDER]: Record<string, boolean>;
-    [EntryType.SECRET]: Record<string, boolean>;
+    [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
+    [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
   };
 };
 
-export const SelectionPanel = ({
-  getFolderByNameAndEnv,
-  getSecretByKey,
-  secretPath,
-  resetSelectedEntries,
-  selectedEntries
-}: Props) => {
+export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntries }: Props) => {
   const { permission } = useProjectPermission();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries"
   ] as const);
 
-  const selectedFolderCount = Object.keys(selectedEntries.folder).length
-  const selectedKeysCount = Object.keys(selectedEntries.secret).length
-  const selectedCount = selectedFolderCount + selectedKeysCount
+  const selectedFolderCount = Object.keys(selectedEntries.folder).length;
+  const selectedKeysCount = Object.keys(selectedEntries.secret).length;
+  const selectedCount = selectedFolderCount + selectedKeysCount;
 
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
@@ -77,7 +69,7 @@ export const SelectionPanel = ({
       return "Do you want to delete the selected secrets across environments?";
     }
     return "Do you want to delete the selected folders across environments?";
-  }
+  };
 
   const handleBulkDelete = async () => {
     let processedEntries = 0;
@@ -94,8 +86,8 @@ export const SelectionPanel = ({
       }
 
       await Promise.all(
-        Object.keys(selectedEntries.folder).map(async (folderName) => {
-          const folder = getFolderByNameAndEnv(folderName, env.slug);
+        Object.values(selectedEntries.folder).map(async (folderRecord) => {
+          const folder = folderRecord[env.slug];
           if (folder) {
             processedEntries += 1;
             await deleteFolder({
@@ -108,9 +100,9 @@ export const SelectionPanel = ({
         })
       );
 
-      const secretsToDelete = Object.keys(selectedEntries.secret).reduce(
-        (accum: TDeleteSecretBatchDTO["secrets"], secretName) => {
-          const entry = getSecretByKey(env.slug, secretName);
+      const secretsToDelete = Object.values(selectedEntries.secret).reduce(
+        (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
+          const entry = secretRecord[env.slug];
           if (entry) {
             return [
               ...accum,

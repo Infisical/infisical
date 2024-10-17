@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { twMerge } from "tailwind-merge";
@@ -15,6 +15,7 @@ export type CheckboxProps = Omit<
   isRequired?: boolean;
   checkIndicatorBg?: string | undefined;
   isError?: boolean;
+  isIndeterminate?: boolean;
 };
 
 export const Checkbox = ({
@@ -26,6 +27,7 @@ export const Checkbox = ({
   isRequired,
   checkIndicatorBg,
   isError,
+  isIndeterminate,
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
@@ -45,7 +47,11 @@ export const Checkbox = ({
         id={id}
       >
         <CheckboxPrimitive.Indicator className={`${checkIndicatorBg || "text-bunker-800"}`}>
-          <FontAwesomeIcon icon={faCheck} size="sm" />
+          {isIndeterminate ? (
+            <FontAwesomeIcon icon={faMinus} size="sm" />
+          ) : (
+            <FontAwesomeIcon icon={faCheck} size="sm" />
+          )}
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       <label
