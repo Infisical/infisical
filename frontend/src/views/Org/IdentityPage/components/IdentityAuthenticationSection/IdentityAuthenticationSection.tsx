@@ -70,7 +70,6 @@ export const IdentityAuthenticationSection = ({
                     handlePopUpOpen("identityAuthMethod", {
                       identityId,
                       name: data.identity.name,
-                      // authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
                       allAuthMethods: data.identity.authMethods
                     })
                   }

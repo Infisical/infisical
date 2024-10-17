@@ -11,7 +11,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -30,7 +29,6 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
-  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -41,7 +39,6 @@ export const identityGcpAuthServiceFactory = ({
   identityGcpAuthDAL,
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
-  // identityDAL,
   permissionService,
   licenseService
 }: TIdentityGcpAuthServiceFactoryDep) => {
@@ -368,7 +365,6 @@ export const identityGcpAuthServiceFactory = ({
 
     const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
       const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
-      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityGcpAuth;

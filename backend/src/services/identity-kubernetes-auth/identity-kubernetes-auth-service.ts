@@ -22,7 +22,6 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -44,7 +43,6 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "findById">;
-  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -56,7 +54,6 @@ export const identityKubernetesAuthServiceFactory = ({
   identityKubernetesAuthDAL,
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
-  // identityDAL,
   orgBotDAL,
   permissionService,
   licenseService
@@ -625,7 +622,6 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
-      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityKubernetesAuth;

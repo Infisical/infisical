@@ -137,7 +137,6 @@ export const useUpdateIdentityUniversalAuth = () => {
   return useMutation<IdentityUniversalAuth, {}, UpdateIdentityUniversalAuthDTO>({
     mutationFn: async ({
       identityId,
-
       clientSecretTrustedIps,
       accessTokenTTL,
       accessTokenMaxTTL,

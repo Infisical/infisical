@@ -14,7 +14,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -36,7 +35,6 @@ type TIdentityUaServiceFactoryDep = {
   identityUaClientSecretDAL: TIdentityUaClientSecretDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
-  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -48,7 +46,6 @@ export const identityUaServiceFactory = ({
   identityUaClientSecretDAL,
   identityAccessTokenDAL,
   identityOrgMembershipDAL,
-  // identityDAL,
   permissionService,
   licenseService
 }: TIdentityUaServiceFactoryDep) => {
@@ -377,7 +374,6 @@ export const identityUaServiceFactory = ({
 
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
-      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityUniversalAuth;

@@ -11,7 +11,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -32,7 +31,6 @@ type TIdentityTokenAuthServiceFactoryDep = {
     TIdentityTokenAuthDALFactory,
     "transaction" | "create" | "findOne" | "updateById" | "delete"
   >;
-  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<
     TIdentityAccessTokenDALFactory,
@@ -260,7 +258,6 @@ export const identityTokenAuthServiceFactory = ({
         authMethod: IdentityAuthMethod.TOKEN_AUTH
       });
 
-      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedTokenAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityTokenAuth;

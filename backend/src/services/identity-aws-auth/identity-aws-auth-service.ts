@@ -13,7 +13,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -33,7 +32,6 @@ type TIdentityAwsAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -44,7 +42,6 @@ export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityAwsAuthDAL,
   identityOrgMembershipDAL,
-  // identityDAL,
   licenseService,
   permissionService
 }: TIdentityAwsAuthServiceFactoryDep) => {
@@ -232,8 +229,8 @@ export const identityAwsAuthServiceFactory = ({
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
-      throw new BadRequestError({
-        message: "Failed to update AWS Auth"
+      throw new NotFoundError({
+        message: "The identity does not have AWS Auth attached"
       });
     }
 
@@ -349,7 +346,6 @@ export const identityAwsAuthServiceFactory = ({
 
     const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
       const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
-      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityAwsAuth;

@@ -216,13 +216,12 @@ export const IdentityPage = withPermission(
                           handlePopUpOpen("identityAuthMethod", {
                             identityId,
                             name: data.identity.name,
-                            authMethod: selectedAuthMethod,
                             allAuthMethods: data.identity.authMethods
                           });
                         }}
                         disabled={!isAllowed}
                       >
-                        {`${data.identity.authMethods?.[0] ? "Edit" : "Configure"} Auth Method`}
+                        Add new auth method
                       </DropdownMenuItem>
                     )}
                   </OrgPermissionCan>
