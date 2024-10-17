@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { faChevronLeft, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,12 +20,15 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import {
+  IdentityAuthMethod,
   useDeleteIdentity,
   useGetIdentityById,
   useRevokeIdentityTokenAuthToken,
-  useRevokeIdentityUniversalAuthClientSecret} from "@app/hooks/api";
+  useRevokeIdentityUniversalAuthClientSecret
+} from "@app/hooks/api";
+import { Identity } from "@app/hooks/api/identities/types";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from"@app/views/Org/Types";
+import { TabSections } from "@app/views/Org/Types";
 
 import { IdentityAuthMethodModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityModal } from "../MembersPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
@@ -48,6 +52,10 @@ export const IdentityPage = withPermission(
     const { mutateAsync: deleteIdentity } = useDeleteIdentity();
     const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
     const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
+
+    const [selectedAuthMethod, setSelectedAuthMethod] = useState<
+      Identity["authMethods"][number] | null
+    >(null);
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
@@ -124,7 +132,7 @@ export const IdentityPage = withPermission(
 
     const onDeleteClientSecretSubmit = async ({ clientSecretId }: { clientSecretId: string }) => {
       try {
-        if (!data?.identity.id) return;
+        if (!data?.identity.id || selectedAuthMethod !== IdentityAuthMethod.UNIVERSAL_AUTH) return;
 
         await revokeClientSecret({
           identityId: data?.identity.id,
@@ -208,12 +216,13 @@ export const IdentityPage = withPermission(
                           handlePopUpOpen("identityAuthMethod", {
                             identityId,
                             name: data.identity.name,
-                            authMethod: data.identity.authMethod
+                            authMethod: selectedAuthMethod,
+                            allAuthMethods: data.identity.authMethods
                           });
                         }}
                         disabled={!isAllowed}
                       >
-                        {`${data.identity.authMethod ? "Edit" : "Configure"} Auth Method`}
+                        {`${data.identity.authMethods?.[0] ? "Edit" : "Configure"} Auth Method`}
                       </DropdownMenuItem>
                     )}
                   </OrgPermissionCan>
@@ -247,6 +256,8 @@ export const IdentityPage = withPermission(
               <div className="mr-4 w-96">
                 <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
                 <IdentityAuthenticationSection
+                  selectedAuthMethod={selectedAuthMethod}
+                  setSelectedAuthMethod={setSelectedAuthMethod}
                   identityId={identityId}
                   handlePopUpOpen={handlePopUpOpen}
                 />

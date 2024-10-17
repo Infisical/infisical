@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -17,54 +17,27 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.IdentityAccessToken)
         .where(filter)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
-        .leftJoin(TableName.IdentityUaClientSecret, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.Univeral])).andOn(
-            `${TableName.IdentityAccessToken}.identityUAClientSecretId`,
-            `${TableName.IdentityUaClientSecret}.id`
-          );
-        })
-        .leftJoin(TableName.IdentityUniversalAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.Univeral])).andOn(
-            `${TableName.IdentityUaClientSecret}.identityUAId`,
-            `${TableName.IdentityUniversalAuth}.id`
-          );
-        })
-        .leftJoin(TableName.IdentityGcpAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.GCP_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityGcpAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityAwsAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.AWS_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityAwsAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityAzureAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.AZURE_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityAzureAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityKubernetesAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.KUBERNETES_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityKubernetesAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityOidcAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.OIDC_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityOidcAuth}.identityId`
-          );
-        })
-        .leftJoin(TableName.IdentityTokenAuth, (qb) => {
-          qb.on(`${TableName.Identity}.authMethod`, db.raw("?", [IdentityAuthMethod.TOKEN_AUTH])).andOn(
-            `${TableName.Identity}.id`,
-            `${TableName.IdentityTokenAuth}.identityId`
-          );
-        })
+        .leftJoin(
+          TableName.IdentityUaClientSecret,
+          `${TableName.IdentityAccessToken}.identityUAClientSecretId`,
+          `${TableName.IdentityUaClientSecret}.id`
+        )
+        .leftJoin(
+          TableName.IdentityUniversalAuth,
+          `${TableName.IdentityUaClientSecret}.identityUAId`,
+          `${TableName.IdentityUniversalAuth}.id`
+        )
+        .leftJoin(TableName.IdentityGcpAuth, `${TableName.Identity}.id`, `${TableName.IdentityGcpAuth}.identityId`)
+        .leftJoin(TableName.IdentityAwsAuth, `${TableName.Identity}.id`, `${TableName.IdentityAwsAuth}.identityId`)
+        .leftJoin(TableName.IdentityAzureAuth, `${TableName.Identity}.id`, `${TableName.IdentityAzureAuth}.identityId`)
+        .leftJoin(
+          TableName.IdentityKubernetesAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`)
+        .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`)
+
         .select(selectAllTableCols(TableName.IdentityAccessToken))
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
@@ -82,14 +55,13 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
 
       return {
         ...doc,
-        accessTokenTrustedIps:
-          doc.accessTokenTrustedIpsUa ||
-          doc.accessTokenTrustedIpsGcp ||
-          doc.accessTokenTrustedIpsAws ||
-          doc.accessTokenTrustedIpsAzure ||
-          doc.accessTokenTrustedIpsK8s ||
-          doc.accessTokenTrustedIpsOidc ||
-          doc.accessTokenTrustedIpsToken
+        trustedIpsUniversalAuth: doc.accessTokenTrustedIpsUa,
+        trustedIpsGcpAuth: doc.accessTokenTrustedIpsGcp,
+        trustedIpsAwsAuth: doc.accessTokenTrustedIpsAws,
+        trustedIpsAzureAuth: doc.accessTokenTrustedIpsAzure,
+        trustedIpsKubernetesAuth: doc.accessTokenTrustedIpsK8s,
+        trustedIpsOidcAuth: doc.accessTokenTrustedIpsOidc,
+        trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });

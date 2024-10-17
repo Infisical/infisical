@@ -13,7 +13,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
+// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -33,7 +33,7 @@ type TIdentityAwsAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  identityDAL: Pick<TIdentityDALFactory, "updateById">;
+  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -44,7 +44,7 @@ export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityAwsAuthDAL,
   identityOrgMembershipDAL,
-  identityDAL,
+  // identityDAL,
   licenseService,
   permissionService
 }: TIdentityAwsAuthServiceFactoryDep) => {
@@ -113,7 +113,8 @@ export const identityAwsAuthServiceFactory = ({
           accessTokenTTL: identityAwsAuth.accessTokenTTL,
           accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
           accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
+          authMethod: IdentityAuthMethod.AWS_AUTH
         },
         tx
       );
@@ -155,10 +156,12 @@ export const identityAwsAuthServiceFactory = ({
   }: TAttachAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.authMethod)
+
+    if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add AWS Auth to already configured identity"
       });
+    }
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
@@ -206,13 +209,6 @@ export const identityAwsAuthServiceFactory = ({
         },
         tx
       );
-      await identityDAL.updateById(
-        identityMembershipOrg.identityId,
-        {
-          authMethod: IdentityAuthMethod.AWS_AUTH
-        },
-        tx
-      );
       return doc;
     });
     return { ...identityAwsAuth, orgId: identityMembershipOrg.orgId };
@@ -234,10 +230,12 @@ export const identityAwsAuthServiceFactory = ({
   }: TUpdateAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
       throw new BadRequestError({
         message: "Failed to update AWS Auth"
       });
+    }
 
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
 
@@ -293,10 +291,12 @@ export const identityAwsAuthServiceFactory = ({
   const getAwsAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have AWS Auth attached"
       });
+    }
 
     const awsIdentityAuth = await identityAwsAuthDAL.findOne({ identityId });
 
@@ -320,10 +320,11 @@ export const identityAwsAuthServiceFactory = ({
   }: TRevokeAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have aws auth"
       });
+    }
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -348,7 +349,7 @@ export const identityAwsAuthServiceFactory = ({
 
     const revokedIdentityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
       const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
-      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityAwsAuth;

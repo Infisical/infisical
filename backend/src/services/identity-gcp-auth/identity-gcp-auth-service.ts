@@ -11,7 +11,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
+// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -30,7 +30,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
-  identityDAL: Pick<TIdentityDALFactory, "updateById">;
+  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -41,7 +41,7 @@ export const identityGcpAuthServiceFactory = ({
   identityGcpAuthDAL,
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
-  identityDAL,
+  // identityDAL,
   permissionService,
   licenseService
 }: TIdentityGcpAuthServiceFactoryDep) => {
@@ -125,7 +125,8 @@ export const identityGcpAuthServiceFactory = ({
           accessTokenTTL: identityGcpAuth.accessTokenTTL,
           accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
           accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
+          authMethod: IdentityAuthMethod.GCP_AUTH
         },
         tx
       );
@@ -168,10 +169,12 @@ export const identityGcpAuthServiceFactory = ({
   }: TAttachGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.authMethod)
+
+    if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add GCP Auth to already configured identity"
       });
+    }
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
@@ -219,13 +222,6 @@ export const identityGcpAuthServiceFactory = ({
         },
         tx
       );
-      await identityDAL.updateById(
-        identityMembershipOrg.identityId,
-        {
-          authMethod: IdentityAuthMethod.GCP_AUTH
-        },
-        tx
-      );
       return doc;
     });
     return { ...identityGcpAuth, orgId: identityMembershipOrg.orgId };
@@ -248,10 +244,12 @@ export const identityGcpAuthServiceFactory = ({
   }: TUpdateGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
         message: "Failed to update GCP Auth"
       });
+    }
 
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
 
@@ -311,10 +309,12 @@ export const identityGcpAuthServiceFactory = ({
   const getGcpAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have GCP Auth attached"
       });
+    }
 
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
 
@@ -339,10 +339,12 @@ export const identityGcpAuthServiceFactory = ({
   }: TRevokeGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have gcp auth"
       });
+    }
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -366,7 +368,7 @@ export const identityGcpAuthServiceFactory = ({
 
     const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
       const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
-      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityGcpAuth;

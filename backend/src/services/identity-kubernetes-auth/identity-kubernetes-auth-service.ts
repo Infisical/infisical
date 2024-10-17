@@ -22,7 +22,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { TOrgBotDALFactory } from "@app/services/org/org-bot-dal";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
+// import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -44,7 +44,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "updateById">;
+  // identityDAL: Pick<TIdentityDALFactory, "updateById">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -56,7 +56,7 @@ export const identityKubernetesAuthServiceFactory = ({
   identityKubernetesAuthDAL,
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
-  identityDAL,
+  // identityDAL,
   orgBotDAL,
   permissionService,
   licenseService
@@ -215,7 +215,8 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
           accessTokenMaxTTL: identityKubernetesAuth.accessTokenMaxTTL,
           accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityKubernetesAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityKubernetesAuth.accessTokenNumUsesLimit,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH
         },
         tx
       );
@@ -260,10 +261,12 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TAttachKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.authMethod)
+
+    if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add Kubernetes Auth to already configured identity"
       });
+    }
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
@@ -372,13 +375,6 @@ export const identityKubernetesAuthServiceFactory = ({
         },
         tx
       );
-      await identityDAL.updateById(
-        identityMembershipOrg.identityId,
-        {
-          authMethod: IdentityAuthMethod.KUBERNETES_AUTH
-        },
-        tx
-      );
       return doc;
     });
 
@@ -404,10 +400,12 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TUpdateKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "Failed to update Kubernetes Auth"
       });
+    }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
 
@@ -532,11 +530,12 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TGetKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Kubernetes Auth attached"
       });
-
+    }
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
 
     const { permission } = await permissionService.getOrgPermission(
@@ -597,10 +596,12 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TRevokeKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have kubernetes auth"
       });
+    }
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -624,7 +625,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
-      await identityDAL.updateById(identityId, { authMethod: null }, tx);
+      // await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
     return revokedIdentityKubernetesAuth;
