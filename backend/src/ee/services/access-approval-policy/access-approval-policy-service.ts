@@ -110,24 +110,14 @@ export const accessApprovalPolicyServiceFactory = ({
       approverUserIds = approverUserIds.concat(approverUsers.map((user) => user.id));
     }
 
-    const usersPromises: Promise<
-      {
-        id: string;
-        email: string | null | undefined;
-        username: string;
-        firstName: string | null | undefined;
-        lastName: string | null | undefined;
-        isPartOfGroup: boolean;
-      }[]
-    >[] = [];
+    const usersPromises: ReturnType<typeof groupDAL.findAllGroupPossibleMembers>[] = [];
     const verifyAllApprovers = [...approverUserIds];
 
     for (const groupId of groupApprovers) {
-      usersPromises.push(
-        groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }).then((group) => group.members)
-      );
+      usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
     }
     const verifyGroupApprovers = (await Promise.all(usersPromises))
+      .map((group) => group.members)
       .flat()
       .filter((user) => user.isPartOfGroup)
       .map((user) => user.id);
