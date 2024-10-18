@@ -115,7 +115,10 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
     formState: { isSubmitting },
     handleSubmit
   } = useForm<FormData>({
-    resolver: zodResolver(createTagSchema)
+    resolver: zodResolver(createTagSchema),
+    defaultValues: {
+      color: secretTagsColors[0].hex
+    }
   });
 
   const { currentWorkspace } = useWorkspace();
