@@ -294,8 +294,9 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 	if _, ok := resourceVariablesMap[string(infisicalSecret.UID)]; !ok {
 
 		client := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
-			SiteUrl:   api.API_HOST_URL,
-			UserAgent: api.USER_AGENT_NAME,
+			SilentMode: true,
+			SiteUrl:    api.API_HOST_URL,
+			UserAgent:  api.USER_AGENT_NAME,
 		})
 
 		resourceVariablesMap[string(infisicalSecret.UID)] = ResourceVariables{
