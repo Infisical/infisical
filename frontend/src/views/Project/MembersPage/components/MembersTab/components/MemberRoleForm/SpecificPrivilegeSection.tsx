@@ -184,20 +184,20 @@ export const SpecificPrivilegeSecretForm = ({
         { action: ProjectPermissionActions.Delete, allowed: data.delete },
         { action: ProjectPermissionActions.Edit, allowed: data.edit }
       ];
-      const conditions: Record<string, any> = { environment: data.environmentSlug };
+      const conditions: { environment: string; secretPath?: { $glob: string } } = {
+        environment: data.environmentSlug
+      };
       if (data.secretPath) {
         conditions.secretPath = { $glob: removeTrailingSlash(data.secretPath) };
       }
       await updateUserPrivilege.mutateAsync({
         privilegeId: privilege.id,
         ...data.temporaryAccess,
-        permissions: actions
-          .filter(({ allowed }) => allowed)
-          .map(({ action }) => ({
-            action,
-            subject: [ProjectPermissionSub.Secrets],
-            conditions
-          })),
+        permissions: {
+          subject: ProjectPermissionSub.Secrets,
+          conditions,
+          actions: actions.filter((i) => i.allowed).map((i) => i.action)
+        },
         projectMembershipId: privilege.projectMembershipId
       });
       createNotification({
@@ -642,15 +642,13 @@ export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
     if (createUserPrivilege.isLoading) return;
     try {
       await createUserPrivilege.mutateAsync({
-        permissions: [
-          {
-            action: ProjectPermissionActions.Read,
-            subject: [ProjectPermissionSub.Secrets],
-            conditions: {
-              environment: currentWorkspace?.environments?.[0].slug
-            }
+        permissions: {
+          actions: [ProjectPermissionActions.Read],
+          subject: ProjectPermissionSub.Secrets,
+          conditions: {
+            environment: currentWorkspace?.environments?.[0].slug || ""
           }
-        ],
+        },
         projectMembershipId: membershipId
       });
       createNotification({

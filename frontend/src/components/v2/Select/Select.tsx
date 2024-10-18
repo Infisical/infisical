@@ -12,6 +12,7 @@ type Props = {
   placeholder?: string;
   className?: string;
   dropdownContainerClassName?: string;
+  containerClassName?: string;
   isLoading?: boolean;
   position?: "item-aligned" | "popper";
   isDisabled?: boolean;
@@ -31,12 +32,13 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       isDisabled,
       dropdownContainerClassName,
       position,
+      containerClassName,
       ...props
     },
     ref
   ): JSX.Element => {
     return (
-      <div className="flex items-center space-x-2">
+      <div className={twMerge("flex items-center space-x-2", containerClassName)}>
         <SelectPrimitive.Root
           {...props}
           onValueChange={(value) => {
