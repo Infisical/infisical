@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -107,17 +107,9 @@ export const SecretOverviewPage = () => {
   const { t } = useTranslation();
 
   const router = useRouter();
-  // this is to set expandable table width
-  // coz when overflow the table goes to the right
-  const parentTableRef = useRef<HTMLTableElement>(null);
-  const [expandableTableWidth, setExpandableTableWidth] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
-
-  useEffect(() => {
-    if (parentTableRef.current) {
-      setExpandableTableWidth(parentTableRef.current.clientWidth);
-    }
-  }, [parentTableRef.current]);
 
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const isProjectV3 = currentWorkspace?.version === ProjectVersion.V3;
@@ -162,19 +154,13 @@ export const SecretOverviewPage = () => {
   }, []);
 
   useEffect(() => {
-    const handleParentTableWidthResize = () => {
-      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
-    };
-
     const onRouteChangeStart = () => {
       resetSelectedEntries();
     };
 
     router.events.on("routeChangeStart", onRouteChangeStart);
 
-    window.addEventListener("resize", handleParentTableWidthResize);
     return () => {
-      window.removeEventListener("resize", handleParentTableWidthResize);
       router.events.off("routeChangeStart", onRouteChangeStart);
     };
   }, []);
@@ -864,8 +850,11 @@ export const SecretOverviewPage = () => {
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
         />
-        <div className="thin-scrollbar mt-4" ref={parentTableRef}>
-          <TableContainer className="rounded-b-none">
+        <div className="thin-scrollbar mt-4">
+          <TableContainer
+            onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
+            className="thin-scrollbar"
+          >
             <Table>
               <THead>
                 <Tr className="sticky top-0 z-20 border-0">
@@ -1052,7 +1041,7 @@ export const SecretOverviewPage = () => {
                         environments={visibleEnvs}
                         secretKey={key}
                         getSecretByKey={getSecretByKey}
-                        expandableColWidth={expandableTableWidth}
+                        scrollOffset={debouncedScrollOffset}
                       />
                     ))}
                   </>
