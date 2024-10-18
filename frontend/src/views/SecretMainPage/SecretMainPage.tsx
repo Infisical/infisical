@@ -16,7 +16,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { useDebounce, usePagination, usePopUp } from "@app/hooks";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetImportedSecretsSingleEnv,
   useGetSecretApprovalPolicyOfABoard,
@@ -160,10 +160,11 @@ export const SecretMainPage = () => {
     totalCount = 0
   } = data ?? {};
 
-  useEffect(() => {
-    // reset page if no longer valid
-    if (totalCount <= offset) setPage(1);
-  }, [totalCount]);
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({

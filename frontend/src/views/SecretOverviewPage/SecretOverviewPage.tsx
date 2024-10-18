@@ -54,7 +54,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { useDebounce, usePagination, usePopUp } from "@app/hooks";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretV3,
@@ -242,10 +242,11 @@ export const SecretOverviewPage = () => {
     totalCount = 0
   } = overview ?? {};
 
-  useEffect(() => {
-    // reset page if no longer valid
-    if (totalCount <= offset) setPage(1);
-  }, [totalCount]);
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   const { folderNames, getFolderByNameAndEnv, isFolderPresentInEnv } = useFolderOverview(folders);
 
