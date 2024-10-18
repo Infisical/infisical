@@ -391,7 +391,7 @@ const SecretMainPageContent = () => {
                           : ""
                       }
                     >
-                      <div>
+                      <div className="mr-6 ml-1">
                         <Checkbox
                           isDisabled={totalCount === 0}
                           id="checkbox-select-all-rows"
@@ -402,7 +402,6 @@ const SecretMainPageContent = () => {
                         />
                       </div>
                     </Tooltip>
-                    <div className="mx-2 h-4 w-[1px] bg-mineshaft-400" />
                     Key
                     <FontAwesomeIcon
                       icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}

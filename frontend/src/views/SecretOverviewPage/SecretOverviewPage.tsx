@@ -881,7 +881,7 @@ export const SecretOverviewPage = () => {
                             : ""
                         }
                       >
-                        <div>
+                        <div className="mr-4 ml-2">
                           <Checkbox
                             isDisabled={totalCount === 0}
                             id="checkbox-select-all-rows"
@@ -891,7 +891,6 @@ export const SecretOverviewPage = () => {
                           />
                         </div>
                       </Tooltip>
-                      <div className="mx-2 h-4 w-[1px] bg-mineshaft-400" />
                       Name
                       <IconButton
                         variant="plain"

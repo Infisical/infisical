@@ -165,7 +165,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="ml-4 flex-grow px-2 text-sm">{selectedCount} Selected</div>
+          <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
           {shouldShowDelete && (
             <Button
               variant="outline_bg"

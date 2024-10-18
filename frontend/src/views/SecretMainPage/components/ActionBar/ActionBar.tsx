@@ -551,7 +551,7 @@ export const ActionBar = ({
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="ml-4 flex-grow px-2 text-sm">
+          <div className="ml-2 flex-grow px-2 text-sm">
             {Object.keys(selectedSecrets).length} Selected
           </div>
           <ProjectPermissionCan
