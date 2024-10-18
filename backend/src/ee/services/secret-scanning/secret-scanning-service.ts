@@ -90,7 +90,7 @@ export const secretScanningServiceFactory = ({
     const {
       data: { repositories }
     } = await octokit.apps.listReposAccessibleToInstallation();
-    if (!appCfg.DISABLE_SECRET_SCANNING) {
+    if (appCfg.SECRET_SCANNING_ORG_WHITELIST?.includes(actorOrgId)) {
       await Promise.all(
         repositories.map(({ id, full_name }) =>
           secretScanningQueue.startFullRepoScan({
@@ -164,7 +164,7 @@ export const secretScanningServiceFactory = ({
     });
     if (!installationLink) return;
 
-    if (!appCfg.DISABLE_SECRET_SCANNING) {
+    if (appCfg.SECRET_SCANNING_ORG_WHITELIST?.includes(installationLink.orgId)) {
       await secretScanningQueue.startPushEventScan({
         commits,
         pusher: { name: pusher.name, email: pusher.email },
