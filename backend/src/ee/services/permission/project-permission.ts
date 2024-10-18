@@ -768,10 +768,14 @@ export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof Projec
     subject: ProjectPermissionSub.SecretImports as const
   }));
 
-  const secretFolderPolicies = secretSubjects.map(({ subject, ...el }) => ({
-    ...el,
-    subject: ProjectPermissionSub.SecretFolders
-  }));
+  const secretFolderPolicies = secretSubjects
+    .map(({ subject, ...el }) => ({
+      ...el,
+      // read permission is not needed anymore
+      action: el.action.filter((caslAction) => caslAction !== ProjectPermissionActions.Read),
+      subject: ProjectPermissionSub.SecretFolders
+    }))
+    .filter((el) => el.action?.length > 0);
 
   const dynamicSecretPolicies = secretSubjects.map(({ subject, ...el }) => {
     const action = el.action.map((e) => {

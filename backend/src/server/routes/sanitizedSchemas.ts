@@ -157,6 +157,17 @@ export const SanitizedRoleSchema = ProjectRolesSchema.extend({
   permissions: UnpackedPermissionSchema.array()
 });
 
+export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array().transform((el) =>
+    el.filter(
+      (i) =>
+        ![ProjectPermissionSub.DynamicSecrets, ProjectPermissionSub.SecretImports].includes(
+          (i?.subject as ProjectPermissionSub) || ""
+        )
+    )
+  )
+});
+
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   inputIV: true,
   inputTag: true,

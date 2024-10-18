@@ -10,7 +10,7 @@ import {
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
@@ -50,7 +50,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -110,7 +110,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -153,7 +153,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -219,7 +219,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
