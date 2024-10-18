@@ -7,6 +7,7 @@ import {
   faCircleDot,
   faClock,
   faPlus,
+  faProjectDiagram,
   faShare,
   faTag
 } from "@fortawesome/free-solid-svg-icons";
@@ -28,6 +29,9 @@ import {
   FormControl,
   IconButton,
   Input,
+  Modal,
+  ModalContent,
+  ModalTrigger,
   Switch,
   Tag,
   TextArea,
@@ -41,6 +45,7 @@ import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { CreateReminderForm } from "./CreateReminderForm";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { SecretReferenceTree } from "./SecretReferenceDetails";
 
 type Props = {
   isOpen?: boolean;
@@ -59,6 +64,8 @@ type Props = {
   onCreateTag: () => void;
   handleSecretShare: (value: string) => void;
 };
+
+const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
 
 export const SecretDetailSidebar = ({
   isOpen,
@@ -153,6 +160,8 @@ export const SecretDetailSidebar = ({
 
   const secretReminderRepeatDays = watch("reminderRepeatDays");
   const secretReminderNote = watch("reminderNote");
+
+  const hasReferences = secret?.value?.match(INTERPOLATION_SYNTAX_REG);
 
   return (
     <>
@@ -412,9 +421,43 @@ export const SecretDetailSidebar = ({
                   )}
                 />
               </div>
-              <div className="ml-1 flex items-center space-x-2">
+              <div className="ml-1 flex items-center space-x-4">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Edit}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <Modal>
+                      <Tooltip
+                        className="text-center"
+                        content={hasReferences ? "" : "Secret does not contain references"}
+                      >
+                        <ModalTrigger asChild>
+                          <Button
+                            variant="outline_bg"
+                            className="w-full px-2 py-1"
+                            leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
+                            isDisabled={!isAllowed || !hasReferences}
+                          >
+                            Reference Tree
+                          </Button>
+                        </ModalTrigger>
+                      </Tooltip>
+                      <ModalContent
+                        title="Secret Reference Tree"
+                        subTitle="Visual breakdown of secrets referenced by this secret."
+                      >
+                        <SecretReferenceTree
+                          secretPath={secretPath}
+                          environment={environment}
+                          secret={secret}
+                        />
+                      </ModalContent>
+                    </Modal>
+                  )}
+                </ProjectPermissionCan>
                 <Button
-                  className="px-2 py-1"
+                  className="w-full px-2 py-1"
                   variant="outline_bg"
                   leftIcon={<FontAwesomeIcon icon={faShare} />}
                   onClick={() => {
