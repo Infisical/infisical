@@ -270,7 +270,7 @@ export const IdentityKubernetesAuthForm = ({
               label="Allowed Namespaces"
               isError={Boolean(error)}
               errorText={error?.message}
-              tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any namespaces."
+              tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
             >
               <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
             </FormControl>
