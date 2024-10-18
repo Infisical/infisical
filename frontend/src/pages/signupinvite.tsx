@@ -23,6 +23,7 @@ import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKe
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
+import { useToggle } from "@app/hooks";
 import {
   completeAccountSignupInvite,
   useSelectOrganization,
@@ -57,6 +58,8 @@ export default function SignupInvite() {
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
@@ -180,11 +183,24 @@ export default function SignupInvite() {
 
               if (!orgId) throw new Error("You are not part of any organization");
 
-              await selectOrganization({ organizationId: orgId });
+              const completeSignupFlow = async () => {
+                const { token: mfaToken, isMfaEnabled } = await selectOrganization({
+                  organizationId: orgId
+                });
 
-              localStorage.setItem("orgData.id", orgId);
+                if (isMfaEnabled) {
+                  SecurityClient.setMfaToken(mfaToken);
+                  toggleShowMfa.on();
+                  setMfaSuccessCallback(() => completeSignupFlow);
+                  return;
+                }
 
-              setStep(3);
+                localStorage.setItem("orgData.id", orgId);
+
+                setStep(3);
+              };
+
+              await completeSignupFlow();
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -222,11 +238,24 @@ export default function SignupInvite() {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
                 } else {
-                  await selectOrganization({ organizationId });
+                  const redirectExistingUser = async () => {
+                    const { token: mfaToken, isMfaEnabled } = await selectOrganization({
+                      organizationId
+                    });
 
-                  // user will be redirected to dashboard
-                  // if not logged in gets kicked out to login
-                  await navigateUserToOrg(router, organizationId);
+                    if (isMfaEnabled) {
+                      SecurityClient.setMfaToken(mfaToken);
+                      toggleShowMfa.on();
+                      setMfaSuccessCallback(() => redirectExistingUser);
+                      return;
+                    }
+
+                    // user will be redirected to dashboard
+                    // if not logged in gets kicked out to login
+                    await navigateUserToOrg(router, organizationId);
+                  };
+
+                  await redirectExistingUser();
                 }
               }
             } catch (err) {

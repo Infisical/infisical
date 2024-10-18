@@ -16,6 +16,7 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { LDAPModal } from "./LDAPModal";
 import { OIDCModal } from "./OIDCModal";
 import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
+import { OrgGenericAuthSection } from "./OrgGenericAuthSection";
 import { OrgLDAPSection } from "./OrgLDAPSection";
 import { OrgOIDCSection } from "./OrgOIDCSection";
 import { OrgScimSection } from "./OrgSCIMSection";
@@ -161,6 +162,7 @@ export const OrgAuthTab = withPermission(
 
     return (
       <>
+        <OrgGenericAuthSection />
         {shouldShowCreateIdentityProviderView ? (
           createIdentityProviderView
         ) : (

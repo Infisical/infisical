@@ -64,6 +64,7 @@ export type TUpdateOrgDTO = {
     authEnforced: boolean;
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
+    enforceMfa: boolean;
   }>;
 } & TOrgPermission;
 

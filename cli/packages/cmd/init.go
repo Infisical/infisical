@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -75,6 +76,42 @@ var initCmd = &cobra.Command{
 		selectedOrganization := organizations[index]
 
 		tokenResponse, err := api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+		if tokenResponse.MfaEnabled {
+			i := 1
+			for i < 6 {
+				mfaVerifyCode := askForMFACode()
+	
+				httpClient := resty.New()
+				httpClient.SetAuthToken(tokenResponse.Token)
+				verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
+					Email:    userCreds.UserCredentials.Email,
+					MFAToken: mfaVerifyCode,
+				})
+				if requestError != nil {
+					util.HandleError(err)
+					break
+				} else if mfaErrorResponse != nil {
+					if mfaErrorResponse.Context.Code == "mfa_invalid" {
+						msg := fmt.Sprintf("Incorrect, verification code. You have %v attempts left", 5-i)
+						fmt.Println(msg)
+						if i == 5 {
+							util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
+							break
+						}
+					}
+	
+					if mfaErrorResponse.Context.Code == "mfa_expired" {
+						util.PrintErrorMessageAndExit("Your 2FA verification code has expired, please try logging in again")
+						break
+					}
+					i++
+				} else {
+					httpClient.SetAuthToken(verifyMFAresponse.Token)
+					tokenResponse, err = api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+					break
+				}
+			}
+		}
 
 		if err != nil {
 			util.HandleError(err, "Unable to select organization")
