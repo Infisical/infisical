@@ -18,7 +18,7 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
-import { SecretType,SecretV3RawSanitized } from "@app/hooks/api/types";
+import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { SecretActionType } from "@app/views/SecretMainPage/components/SecretListView/SecretListView.utils";
 
 type Props = {
@@ -42,15 +42,16 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
 
   const isReadOnly = environments.some((env) => {
     const environment = env.slug;
+    const secretDetails = getSecretByKey(environment, secretKey);
+    const secretPermissionSubject = subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: secretKey,
+      secretTags: (secretDetails?.tags || []).map((i) => i.slug)
+    });
     const isSecretInEnvReadOnly =
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      ) &&
-      permission.cannot(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
+      permission.can(ProjectPermissionActions.Read, secretPermissionSubject) &&
+      permission.cannot(ProjectPermissionActions.Edit, secretPermissionSubject);
     if (isSecretInEnvReadOnly) {
       return true;
     }

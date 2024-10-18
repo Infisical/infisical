@@ -18,7 +18,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteDynamicSecret } from "@app/hooks/api";
 import {
@@ -132,17 +132,27 @@ export const DynamicSecretListView = ({
                 )}
               </div>
               <div className="flex items-center space-x-2 px-4 py-2">
-                <Button
-                  size="xs"
-                  className="m-0 py-0.5 px-2 opacity-0 group-hover:opacity-100"
-                  isDisabled={isRevoking}
-                  onClick={(evt) => {
-                    evt.stopPropagation();
-                    handlePopUpOpen("createDynamicSecretLease", secret);
-                  }}
+                <ProjectPermissionCan
+                  I={ProjectPermissionDynamicSecretActions.Lease}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
+                  renderTooltip
+                  allowedLabel="Edit"
                 >
-                  Generate
-                </Button>
+                  {(isAllowed) => (
+                    <Button
+                      size="xs"
+                      className="m-0 py-0.5 px-2 opacity-0 group-hover:opacity-100"
+                      isDisabled={isRevoking || !isAllowed}
+                      onClick={(evt) => {
+                        evt.stopPropagation();
+                        handlePopUpOpen("createDynamicSecretLease", secret);
+                      }}
+                    >
+                      Generate
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+
                 {secret.status === DynamicSecretStatus.FailedDeletion && (
                   <Tooltip content="This action will remove the secret from internal storage, but it will remain in external systems. Use this option only after you've confirmed that your external leases are handled.">
                     <Button
@@ -165,8 +175,8 @@ export const DynamicSecretListView = ({
               </div>
               <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
                 <ProjectPermissionCan
-                  I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  I={ProjectPermissionDynamicSecretActions.EditRootCredential}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
                   renderTooltip
                   allowedLabel="Edit"
                 >
@@ -187,8 +197,8 @@ export const DynamicSecretListView = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
-                  I={ProjectPermissionActions.Delete}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  I={ProjectPermissionDynamicSecretActions.DeleteRootCredential}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath })}
                   renderTooltip
                   allowedLabel="Delete"
                 >

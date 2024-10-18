@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
 import { DatabaseError } from "../errors";
+import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
 export * from "./connection";
 export * from "./join";
@@ -20,9 +21,10 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
 export type TFindFilter<R extends object = object> = Partial<R> & {
   $in?: Partial<{ [k in keyof R]: R[k][] }>;
   $search?: Partial<{ [k in keyof R]: R[k] }>;
+  $complex?: TKnexDynamicOperator<R>;
 };
 export const buildFindFilter =
-  <R extends object = object>({ $in, $search, ...filter }: TFindFilter<R>) =>
+  <R extends object = object>({ $in, $search, $complex, ...filter }: TFindFilter<R>) =>
   (bd: Knex.QueryBuilder<R, R>) => {
     void bd.where(filter);
     if ($in) {
@@ -38,6 +40,9 @@ export const buildFindFilter =
           void bd.whereILike(key as never, val as never);
         }
       });
+    }
+    if ($complex) {
+      return buildDynamicKnexQuery(bd, $complex);
     }
     return bd;
   };

@@ -7,6 +7,8 @@ import picomatch from "picomatch";
 import { apiRequest } from "@app/config/request";
 import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/types";
+import { groupBy } from "@app/lib/fn/array";
+import { omit } from "@app/lib/fn/object";
 
 import { OrgUser, TProjectMembership } from "../users/types";
 import {
@@ -49,7 +51,7 @@ export const roleQueryKeys = {
 
 export const getProjectRoles = async (projectId: string) => {
   const { data } = await apiRequest.get<{ roles: Array<Omit<TProjectRole, "permissions">> }>(
-    `/api/v1/workspace/${projectId}/roles`
+    `/api/v2/workspace/${projectId}/roles`
   );
   return data.roles;
 };
@@ -66,7 +68,7 @@ export const useGetProjectRoleBySlug = (projectSlug: string, roleSlug: string) =
     queryKey: roleQueryKeys.getProjectRoleBySlug(projectSlug, roleSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ role: TProjectRole }>(
-        `/api/v1/workspace/${projectSlug}/roles/slug/${roleSlug}`
+        `/api/v2/workspace/${projectSlug}/roles/slug/${roleSlug}`
       );
       return data.role;
     },
@@ -134,7 +136,7 @@ const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermiss
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
       membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
     };
-  }>(`/api/v1/workspace/${workspaceId}/permissions`, {});
+  }>(`/api/v2/workspace/${workspaceId}/permissions`, {});
 
   return data.data;
 };
@@ -146,8 +148,32 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
     enabled: Boolean(workspaceId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
-      const ability = createMongoAbility<ProjectPermissionSet>(rule, { conditionsMatcher });
+      const negatedRules = groupBy(
+        rule.filter((i) => i.inverted && i.conditions),
+        (i) => `${i.subject}-${JSON.stringify(i.conditions)}`
+      );
+      const ability = createMongoAbility<ProjectPermissionSet>(rule, {
+        // this allows in frontend to skip some rules using *
+        conditionsMatcher: (rules) => {
+          return (entity) => {
+            // skip validation if its negated rules
+            const isNegatedRule =
+              // eslint-disable-next-line no-underscore-dangle
+              negatedRules?.[`${entity.__caslSubjectType__}-${JSON.stringify(rules)}`];
+            if (isNegatedRule) {
+              const baseMatcher = conditionsMatcher(rules);
+              return baseMatcher(entity);
+            }
 
+            const rulesStrippedOfWildcard = omit(
+              rules,
+              Object.keys(entity).filter((el) => entity[el]?.includes("*"))
+            );
+            const baseMatcher = conditionsMatcher(rulesStrippedOfWildcard);
+            return baseMatcher(entity);
+          };
+        }
+      });
       const membership = {
         ...data.membership,
         roles: data.membership.roles.map(({ role }) => role)

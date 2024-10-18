@@ -2407,17 +2407,26 @@ export const secretServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment: sourceEnvironment, secretPath: sourceSecretPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: sourceEnvironment,
+        secretPath: sourceSecretPath
+      })
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment: destinationEnvironment, secretPath: destinationSecretPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: destinationEnvironment,
+        secretPath: destinationSecretPath
+      })
     );
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment: destinationEnvironment, secretPath: destinationSecretPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: destinationEnvironment,
+        secretPath: destinationSecretPath
+      })
     );
 
     const { botKey } = await projectBotService.getBotKey(project.id);

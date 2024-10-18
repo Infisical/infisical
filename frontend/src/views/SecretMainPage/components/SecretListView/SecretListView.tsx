@@ -16,7 +16,6 @@ import { WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
-import { Filter } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
@@ -30,16 +29,6 @@ type Props = {
   isVisible?: boolean;
   isProtectedBranch?: boolean;
 };
-
-export const filterSecrets = (secrets: SecretV3RawSanitized[], filter: Filter) =>
-  secrets.filter(({ key, value, tags }) => {
-    const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
-    const searchTerm = filter.searchFilter.toLowerCase();
-    return (
-      (!isTagFilterActive || tags?.some(({ id }) => filter.tags?.[id])) &&
-      (key.toLowerCase().includes(searchTerm) || value?.toLowerCase().includes(searchTerm))
-    );
-  });
 
 export const SecretListView = ({
   secrets = [],

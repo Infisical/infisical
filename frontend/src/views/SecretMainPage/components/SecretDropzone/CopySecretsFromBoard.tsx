@@ -142,7 +142,12 @@ export const CopySecretsFromBoard = ({
         <div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
           >
             {(isAllowed) => (
               <Button
