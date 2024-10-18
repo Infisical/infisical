@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { GitAppOrgSchema, SecretScanningGitRisksSchema } from "@app/db/schemas";
 import { SecretScanningRiskStatus } from "@app/ee/services/secret-scanning/secret-scanning-types";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -23,6 +25,13 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const appCfg = getConfig();
+      if (!appCfg.SECRET_SCANNING_ORG_WHITELIST?.includes(req.auth.orgId)) {
+        throw new BadRequestError({
+          message: "Secret scanning is temporarily unavailable."
+        });
+      }
+
       const session = await server.services.secretScanning.createInstallationSession({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -30,6 +39,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId,
         orgId: req.body.organizationId
       });
+
       return session;
     }
   });

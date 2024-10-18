@@ -72,7 +72,8 @@ const SecretScanning = withPermission(
             </div>
             {config.isSecretScanningDisabled && (
               <NoticeBanner title="Secret scanning is in maintenance" className="mb-4">
-                We are working on improving the performance of secret scanning due to increased usage.
+                We are working on improving the performance of secret scanning due to increased
+                usage.
               </NoticeBanner>
             )}
             <div className="relative mb-6 flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
@@ -116,7 +117,7 @@ const SecretScanning = withPermission(
                         colorSchema="primary"
                         onClick={generateNewIntegrationSession}
                         className="h-min py-2"
-                        isDisabled={!isAllowed || config.isSecretScanningDisabled}
+                        isDisabled={!isAllowed}
                       >
                         Integrate with GitHub
                       </Button>
