@@ -93,7 +93,7 @@ export const identityServiceFactory = ({
           tx
         );
       }
-      return newIdentity;
+      return { ...newIdentity, authMethods: [] };
     });
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
 

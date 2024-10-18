@@ -1,11 +1,24 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TIdentityOrgMemberships, TOrgRoles } from "@app/db/schemas";
+import {
+  TableName,
+  TIdentityAwsAuths,
+  TIdentityAzureAuths,
+  TIdentityGcpAuths,
+  TIdentityKubernetesAuths,
+  TIdentityOidcAuths,
+  TIdentityOrgMemberships,
+  TIdentityTokenAuths,
+  TIdentityUniversalAuths,
+  TOrgRoles
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { OrgIdentityOrderBy, TListOrgIdentitiesByOrgIdDTO } from "@app/services/identity/identity-types";
+
+import { buildAuthMethods } from "./identity-fns";
 
 export type TIdentityOrgDALFactory = ReturnType<typeof identityOrgDALFactory>;
 
@@ -15,14 +28,73 @@ export const identityOrgDALFactory = (db: TDbClient) => {
   const findOne = async (filter: Partial<TIdentityOrgMemberships>, tx?: Knex) => {
     try {
       const [data] = await (tx || db.replicaNode())(TableName.IdentityOrgMembership)
-        .where(filter)
+        .where((queryBuilder) => {
+          Object.entries(filter).forEach(([key, value]) => {
+            void queryBuilder.where(`${TableName.IdentityOrgMembership}.${key}`, value);
+          });
+        })
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
-        .select(selectAllTableCols(TableName.IdentityOrgMembership))
-        .select(db.ref("name").withSchema(TableName.Identity))
-        .select(db.ref("authMethod").withSchema(TableName.Identity));
+
+        .leftJoin<TIdentityUniversalAuths>(
+          TableName.IdentityUniversalAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityUniversalAuth}.identityId`
+        )
+        .leftJoin<TIdentityGcpAuths>(
+          TableName.IdentityGcpAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityGcpAuth}.identityId`
+        )
+        .leftJoin<TIdentityAwsAuths>(
+          TableName.IdentityAwsAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityAwsAuth}.identityId`
+        )
+        .leftJoin<TIdentityKubernetesAuths>(
+          TableName.IdentityKubernetesAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin<TIdentityOidcAuths>(
+          TableName.IdentityOidcAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityOidcAuth}.identityId`
+        )
+        .leftJoin<TIdentityAzureAuths>(
+          TableName.IdentityAzureAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityAzureAuth}.identityId`
+        )
+        .leftJoin<TIdentityTokenAuths>(
+          TableName.IdentityTokenAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityTokenAuth}.identityId`
+        )
+
+        .select(
+          selectAllTableCols(TableName.IdentityOrgMembership),
+
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
+          db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
+          db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
+
+          db.ref("name").withSchema(TableName.Identity)
+        );
+
       if (data) {
-        const { name, authMethod } = data;
-        return { ...data, identity: { id: data.identityId, name, authMethod } };
+        const { name } = data;
+        return {
+          ...data,
+          identity: {
+            id: data.identityId,
+            name,
+            authMethods: buildAuthMethods(data)
+          }
+        };
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "FindOne" });
@@ -51,8 +123,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
-          db.ref("name").withSchema(TableName.Identity).as("identityName"),
-          db.ref("authMethod").withSchema(TableName.Identity).as("identityAuthMethod")
+          db.ref("name").withSchema(TableName.Identity).as("identityName")
         )
         .where(filter)
         .as("paginatedIdentity");
@@ -70,11 +141,49 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())
         .from<TSubquery[number], TSubquery>(paginatedIdentity)
         .leftJoin<TOrgRoles>(TableName.OrgRoles, `paginatedIdentity.roleId`, `${TableName.OrgRoles}.id`)
+
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`paginatedIdentity.identityId`, `${TableName.IdentityMetadata}.identityId`)
             .andOn(`paginatedIdentity.orgId`, `${TableName.IdentityMetadata}.orgId`);
         })
+
+        .leftJoin<TIdentityUniversalAuths>(
+          TableName.IdentityUniversalAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityUniversalAuth}.identityId`
+        )
+        .leftJoin<TIdentityGcpAuths>(
+          TableName.IdentityGcpAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityGcpAuth}.identityId`
+        )
+        .leftJoin<TIdentityAwsAuths>(
+          TableName.IdentityAwsAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityAwsAuth}.identityId`
+        )
+        .leftJoin<TIdentityKubernetesAuths>(
+          TableName.IdentityKubernetesAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin<TIdentityOidcAuths>(
+          TableName.IdentityOidcAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityOidcAuth}.identityId`
+        )
+        .leftJoin<TIdentityAzureAuths>(
+          TableName.IdentityAzureAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityAzureAuth}.identityId`
+        )
+        .leftJoin<TIdentityTokenAuths>(
+          TableName.IdentityTokenAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityTokenAuth}.identityId`
+        )
+
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
           db.ref("role").withSchema("paginatedIdentity"),
@@ -82,9 +191,16 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema("paginatedIdentity"),
           db.ref("createdAt").withSchema("paginatedIdentity"),
           db.ref("updatedAt").withSchema("paginatedIdentity"),
-          db.ref("identityId").withSchema("paginatedIdentity"),
+          db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
           db.ref("identityName").withSchema("paginatedIdentity"),
-          db.ref("identityAuthMethod").withSchema("paginatedIdentity")
+
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
+          db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
+          db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
@@ -114,11 +230,17 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           crName,
           identityId,
           identityName,
-          identityAuthMethod,
           role,
           roleId,
           id,
           orgId,
+          uaId,
+          awsId,
+          gcpId,
+          kubernetesId,
+          oidcId,
+          azureId,
+          tokenId,
           createdAt,
           updatedAt
         }) => ({
@@ -126,6 +248,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           roleId,
           identityId,
           id,
+
           orgId,
           createdAt,
           updatedAt,
@@ -141,7 +264,15 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
-            authMethod: identityAuthMethod as string
+            authMethods: buildAuthMethods({
+              uaId,
+              awsId,
+              gcpId,
+              kubernetesId,
+              oidcId,
+              azureId,
+              tokenId
+            })
           }
         }),
         childrenMapper: [

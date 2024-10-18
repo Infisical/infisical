@@ -1,11 +1,23 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TIdentities } from "@app/db/schemas";
+import {
+  TableName,
+  TIdentities,
+  TIdentityAwsAuths,
+  TIdentityAzureAuths,
+  TIdentityGcpAuths,
+  TIdentityKubernetesAuths,
+  TIdentityOidcAuths,
+  TIdentityTokenAuths,
+  TIdentityUniversalAuths
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { ProjectIdentityOrderBy, TListProjectIdentityDTO } from "@app/services/identity-project/identity-project-types";
+
+import { buildAuthMethods } from "../identity/identity-fns";
 
 export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
@@ -33,11 +45,48 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembership}.id`,
           `${TableName.IdentityProjectAdditionalPrivilege}.projectMembershipId`
         )
+
+        .leftJoin(
+          TableName.IdentityUniversalAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityUniversalAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityGcpAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityGcpAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityAwsAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityAwsAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityKubernetesAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityOidcAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityOidcAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityAzureAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityAzureAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityTokenAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityTokenAuth}.identityId`
+        )
+
         .select(
           db.ref("id").withSchema(TableName.IdentityProjectMembership),
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership),
           db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership),
-          db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity),
+
           db.ref("id").as("identityId").withSchema(TableName.Identity),
           db.ref("name").as("identityName").withSchema(TableName.Identity),
           db.ref("id").withSchema(TableName.IdentityProjectMembership),
@@ -52,12 +101,33 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessStartTime").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("projectId").withSchema(TableName.IdentityProjectMembership),
-          db.ref("name").as("projectName").withSchema(TableName.Project)
+          db.ref("name").as("projectName").withSchema(TableName.Project),
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
+          db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
+          db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth)
         );
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ identityName, identityAuthMethod, id, createdAt, updatedAt, projectId, projectName }) => ({
+        parentMapper: ({
+          identityName,
+          uaId,
+          awsId,
+          gcpId,
+          kubernetesId,
+          oidcId,
+          azureId,
+          tokenId,
+          id,
+          createdAt,
+          updatedAt,
+          projectId,
+          projectName
+        }) => ({
           id,
           identityId,
           createdAt,
@@ -65,7 +135,15 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
-            authMethod: identityAuthMethod
+            authMethods: buildAuthMethods({
+              uaId,
+              awsId,
+              gcpId,
+              kubernetesId,
+              oidcId,
+              azureId,
+              tokenId
+            })
           },
           project: {
             id: projectId,
@@ -168,6 +246,43 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.IdentityProjectMembership}.id`,
           `${TableName.IdentityProjectAdditionalPrivilege}.projectMembershipId`
         )
+
+        .leftJoin<TIdentityUniversalAuths>(
+          TableName.IdentityUniversalAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityUniversalAuth}.identityId`
+        )
+        .leftJoin<TIdentityGcpAuths>(
+          TableName.IdentityGcpAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityGcpAuth}.identityId`
+        )
+        .leftJoin<TIdentityAwsAuths>(
+          TableName.IdentityAwsAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityAwsAuth}.identityId`
+        )
+        .leftJoin<TIdentityKubernetesAuths>(
+          TableName.IdentityKubernetesAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityKubernetesAuth}.identityId`
+        )
+        .leftJoin<TIdentityOidcAuths>(
+          TableName.IdentityOidcAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityOidcAuth}.identityId`
+        )
+        .leftJoin<TIdentityAzureAuths>(
+          TableName.IdentityAzureAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityAzureAuth}.identityId`
+        )
+        .leftJoin<TIdentityTokenAuths>(
+          TableName.IdentityTokenAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityTokenAuth}.identityId`
+        )
+
         .select(
           db.ref("id").withSchema(TableName.IdentityProjectMembership),
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership),
@@ -186,7 +301,14 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("temporaryRange").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryAccessStartTime").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("name").as("projectName").withSchema(TableName.Project)
+          db.ref("name").as("projectName").withSchema(TableName.Project),
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
+          db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
+          db.ref("id").as("oidcId").withSchema(TableName.IdentityOidcAuth),
+          db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
+          db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth)
         );
 
       // TODO: scott - joins seem to reorder identities so need to order again, for the sake of urgency will optimize at a later point
@@ -204,7 +326,21 @@ export const identityProjectDALFactory = (db: TDbClient) => {
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ identityId, identityName, identityAuthMethod, id, createdAt, updatedAt, projectName }) => ({
+        parentMapper: ({
+          identityId,
+          identityName,
+          uaId,
+          awsId,
+          gcpId,
+          kubernetesId,
+          oidcId,
+          azureId,
+          tokenId,
+          id,
+          createdAt,
+          updatedAt,
+          projectName
+        }) => ({
           id,
           identityId,
           createdAt,
@@ -212,7 +348,15 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
-            authMethod: identityAuthMethod
+            authMethods: buildAuthMethods({
+              uaId,
+              awsId,
+              gcpId,
+              kubernetesId,
+              oidcId,
+              azureId,
+              tokenId
+            })
           },
           project: {
             id: projectId,
