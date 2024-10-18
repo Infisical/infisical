@@ -67,11 +67,11 @@ export const SecretOverviewTableRow = ({
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
         <Td
-          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${
-            isFormExpanded && "border-t-2 border-mineshaft-500"
+          className={`sticky left-0 z-10 border-r bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${
+            isFormExpanded ? "border-t-2 border-mineshaft-500" : "border-mineshaft-600"
           }`}
         >
-          <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
+          <div className="h-full w-full border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
               <div className="text-bunker-300">
                 <Checkbox
