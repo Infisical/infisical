@@ -188,7 +188,7 @@
           ]
         },
         {
-          "group": "Admin Panel",
+          "group": "Admin Consoles",
           "pages": [
             "documentation/platform/admin-panel/overview",
             "documentation/platform/admin-panel/server-admin",

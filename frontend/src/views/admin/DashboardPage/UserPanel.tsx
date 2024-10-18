@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   DeleteActionModal,
   EmptyState,
@@ -69,12 +70,19 @@ const UserPanelTable = ({
               {isLoading && <TableSkeleton columns={4} innerKey="users" />}
               {!isLoading &&
                 data?.pages?.map((users) =>
-                  users.map(({ username, email, firstName, lastName, id }) => {
+                  users.map(({ username, email, firstName, lastName, id, superAdmin }) => {
                     const name = firstName || lastName ? `${firstName} ${lastName}` : "-";
 
                     return (
                       <Tr key={`user-${id}`} className="w-full">
-                        <Td className="w-5/12">{name}</Td>
+                        <Td className="w-5/12">
+                          {name}
+                          {superAdmin && (
+                            <Badge variant="primary" className="ml-2">
+                              Server Admin
+                            </Badge>
+                          )}
+                        </Td>
                         <Td className="w-5/12">{email}</Td>
                         <Td>
                           {userId !== id && (

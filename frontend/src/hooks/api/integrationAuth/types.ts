@@ -9,6 +9,10 @@ export type IntegrationAuth = {
   keyEncoding: string;
   url?: string;
   teamId?: string;
+  metadata: {
+    installationName?: string;
+    installationId?: string;
+  };
 };
 
 export type App = {
@@ -83,4 +87,9 @@ export type NorthflankSecretGroup = {
 export type TeamCityBuildConfig = {
   name: string;
   buildConfigId: string;
+};
+
+export type TDuplicateIntegrationAuthDTO = {
+  integrationAuthId: string;
+  projectId: string;
 };

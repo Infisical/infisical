@@ -216,7 +216,9 @@ var loginCmd = &cobra.Command{
 			}
 			//override domain
 			domainQuery := true
-			if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+			if config.INFISICAL_URL_MANUAL_OVERRIDE != "" &&
+				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL) &&
+				config.INFISICAL_URL_MANUAL_OVERRIDE != fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL) {
 				overrideDomain, err := DomainOverridePrompt()
 				if err != nil {
 					util.HandleError(err)
@@ -526,16 +528,17 @@ func askForDomain() error {
 
 	// query user to choose between Infisical cloud or self hosting
 	const (
-		INFISICAL_CLOUD = "Infisical Cloud"
-		SELF_HOSTING    = "Self Hosting"
-		ADD_NEW_DOMAIN  = "Add a new domain"
+		INFISICAL_CLOUD_US = "Infisical Cloud (US Region)"
+		INFISICAL_CLOUD_EU = "Infisical Cloud (EU Region)"
+		SELF_HOSTING       = "Self Hosting"
+		ADD_NEW_DOMAIN     = "Add a new domain"
 	)
 
-	options := []string{INFISICAL_CLOUD, SELF_HOSTING}
+	options := []string{INFISICAL_CLOUD_US, INFISICAL_CLOUD_EU, SELF_HOSTING}
 	optionsPrompt := promptui.Select{
 		Label: "Select your hosting option",
 		Items: options,
-		Size:  2,
+		Size:  3,
 	}
 
 	_, selectedHostingOption, err := optionsPrompt.Run()
@@ -543,10 +546,15 @@ func askForDomain() error {
 		return err
 	}
 
-	if selectedHostingOption == INFISICAL_CLOUD {
-		//cloud option
-		config.INFISICAL_URL = fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_URL)
-		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", util.INFISICAL_DEFAULT_URL)
+	if selectedHostingOption == INFISICAL_CLOUD_US {
+		// US cloud option
+		config.INFISICAL_URL = fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_US_URL)
+		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", util.INFISICAL_DEFAULT_US_URL)
+		return nil
+	} else if selectedHostingOption == INFISICAL_CLOUD_EU {
+		// EU cloud option
+		config.INFISICAL_URL = fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_EU_URL)
+		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", util.INFISICAL_DEFAULT_EU_URL)
 		return nil
 	}
 

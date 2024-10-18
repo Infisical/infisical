@@ -777,11 +777,13 @@ export const useAuthorizeIntegration = () => {
       workspaceId,
       code,
       integration,
+      installationId,
       url
     }: {
       workspaceId: string;
       code: string;
       integration: string;
+      installationId?: string;
       url?: string;
     }) => {
       const {
@@ -790,6 +792,7 @@ export const useAuthorizeIntegration = () => {
         workspaceId,
         code,
         integration,
+        installationId,
         url
       });
 

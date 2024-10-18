@@ -1,70 +1,69 @@
 ---
-title: "Server Admin Panel"
-description: "Manage your Infisical server from the Server Admin Panel."
+title: "Server Admin Console"
+description: "Configure and manage server related features"
 ---
 
-The Server Admin Panel provides a user interface for Infisical server administrators to configure various parameters as needed. This includes configuring rate limits, managing allowed signups, and more.
+The Server Admin Console provides **server administrators** with the ability to
+customize settings and manage users for their entire Infisical instance.
 
-## Accessing the Server Admin Panel
+<Note>
+    The first user to setup an account on your Infisical instance is designated as the server administrator by default.
+</Note>
 
-The first user who created the account in Infisical is designated as the server administrator. You can access the admin panel by navigating as follows:
+## Accessing the Server Admin Console
 
-![Access Server Admin Panel](/images/platform/admin-panels/access-server-admin-panel.png)
 
-1. Click on the profile icon in the left sidebar.
-2. From the dropdown menu, select `Server Admin Panel`.
+On the sidebar, tap on your initials to access the settings dropdown and press the **Server Admin Console** option.
 
-## General Section
+![Access Server Admin Console](/images/platform/admin-panels/access-server-admin-panel.png)
+
+## General Tab
+Configure general settings for your instance.
 
 ![General Settings](/images/platform/admin-panels/admin-panel-general.png)
 
+
 ### Allow User Signups
 
-This setting controls whether users can sign up for your Infisical instance. The options are:
-
-1. **Anyone**: Any user with access to your instance can sign up.
-2. **Disabled**: No one will be able to sign up.
+User signups are enabled by default, allowing **Anyone** with access to your instance to sign up. This can alternatively be **Disabled** to prevent any users from signing up.
 
 ### Restrict Signup Domain
 
-This setting allows only users with specific email domains (such as your organization's domain) to sign up.
+Signup can be restricted to users matching one or more email domains, such as your organization's domain, to control who has access to your instance.
 
 ### Default Organization
 
-Use this setting if you want all users accessing your Infisical instance to log in through your configured SAML/LDAP provider. This prevents users from manually entering their organization slug during authentication and redirects them to the SAML/LDAP authentication page.
+If you're using SAML/LDAP for only one organization on your instance, you can specify a default organization to use at login to skip requiring users to manually enter the organization slug.
 
 ### Trust Emails
 
-By default, Infisical does not trust emails logged in via SAML/LDAP/OIDC due to the potential for email spoofing. Users must verify their email addresses before proceeding. You can disable this validation if you are running an Infisical instance within your organization and trust incoming emails from your members.
+By default, users signing up through SAML/LDAP/OIDC will still need to verify their email address to prevent email spoofing. This requirement can be skipped by enabling the switch to trust logins through the respective method.
 
-## Authentication Section
+
+## Authentication Tab
+
+From this tab, you can configure which login methods are enabled for your instance.
 
 ![Authentication Settings](/images/platform/admin-panels/admin-panel-auths.png)
 
-This section allows you to configure various login and signup methods for your instance.
 
-## Rate Limit Section
+## Rate Limit Tab
+
+This tab allows you to set various rate limits for your Infisical instance. You do not need to redeploy when making changes to rate limits as these will be propagated automatically.
 
 ![Rate Limit Settings](/images/platform/admin-panels/admin-panel-rate-limits.png)
 
-Configure the rate limits for your Infisical instance across various endpoints. You do not need to redeploy when making changes to rate limits; they will be automatically synchronized to all instances.
 
-<Info>
+<Note>
   Note that rate limit configuration is a paid feature. Please contact sales@infisical.com to purchase a license for its use.
-</Info>
+</Note>
 
-## User Management Section
+## User Management Tab
+
+From this tab, you can view all the users who have signed up for your instance. You can search for users using the search bar and remove them from your instance by pressing the **X** button on their respective row.
 
 ![User Management](/images/platform/admin-panels/admin-panel-users.png)
 
-The User Management section lists all users who have signed up for your instance. You can search for users using the search bar. 
-
-To delete a user from Infisical:
-
-1. Search for the user.
-2. Click the cross button next to the user.
-3. Confirm the warning popup.
-
-<Info>
-  Note that user management configuration is a paid feature. Please contact sales@infisical.com to purchase a license for its use.
-</Info>
+<Note>
+    Note that rate limit configuration is a paid feature. Please contact sales@infisical.com to purchase a license for its use.
+</Note>

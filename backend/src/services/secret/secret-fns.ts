@@ -152,7 +152,7 @@ export const recursivelyGetSecretPaths = ({
     });
 
     if (!env) {
-      throw new Error(`'${environment}' environment not found in project with ID ${projectId}`);
+      throw new NotFoundError({ message: `'${environment}' environment not found in project with ID ${projectId}` });
     }
 
     // Fetch all folders in env once with a single query
