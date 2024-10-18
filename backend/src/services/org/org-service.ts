@@ -270,10 +270,25 @@ export const orgServiceFactory = ({
     orgId,
     data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug, enforceMfa }
   }: TUpdateOrgDTO) => {
+    const appCfg = getConfig();
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     const plan = await licenseService.getPlan(orgId);
+
+    if (enforceMfa !== undefined) {
+      if (!plan.enforceMfa) {
+        throw new BadRequestError({
+          message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
+        });
+      }
+
+      if (!appCfg.isSmtpConfigured) {
+        throw new BadRequestError({
+          message: "Failed to enforce user MFA due to missing instance SMTP configuration."
+        });
+      }
+    }
 
     if (authEnforced !== undefined) {
       if (!plan?.samlSSO || !plan.oidcSSO)

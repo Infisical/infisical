@@ -15,9 +15,13 @@ import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin"
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
-import { useUser } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useGetOrganizations, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
+import {
+  useGetOrganizations,
+  useGetUser,
+  useLogoutUser,
+  useSelectOrganization
+} from "@app/hooks/api";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -40,9 +44,9 @@ export default function LoginPage() {
 
   const organizations = useGetOrganizations();
   const selectOrg = useSelectOrganization();
-
-  const { user, isLoading: userLoading } = useUser();
+  const { data: user, isLoading: userLoading } = useGetUser();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   const queryParams = new URLSearchParams(window.location.search);
@@ -104,7 +108,7 @@ export default function LoginPage() {
         let error: string | null = null;
 
         if (!privateKey) error = "Private key not found";
-        if (!user.email) error = "User email not found";
+        if (!user?.email) error = "User email not found";
         if (!token) error = "No token found";
 
         if (error) {
@@ -117,7 +121,7 @@ export default function LoginPage() {
 
         const payload = {
           JTWToken: token,
-          email: user.email,
+          email: user?.email,
           privateKey
         } as IsCliLoginSuccessful["loginResponse"];
 
