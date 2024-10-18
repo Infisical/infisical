@@ -798,11 +798,13 @@ export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof Projec
     };
   });
 
-  return formattedData.concat(
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore-error this is valid ts
-    secretImportPolicies,
-    dynamicSecretPolicies,
-    hasReadOnlyFolder.length ? [] : secretFolderPolicies
-  );
+  return formattedData
+    .filter((i) => i.subject !== ProjectPermissionSub.SecretFolders)
+    .concat(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore-error this is valid ts
+      secretImportPolicies,
+      dynamicSecretPolicies,
+      hasReadOnlyFolder.length ? [] : secretFolderPolicies
+    );
 };
