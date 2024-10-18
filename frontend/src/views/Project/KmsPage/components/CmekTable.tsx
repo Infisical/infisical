@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import Link from "next/link";
 import {
   faArrowDown,
@@ -51,7 +50,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePagination, usePopUp } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
 import { CmekOrderBy, TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -108,10 +107,11 @@ export const CmekTable = () => {
   });
 
   const { keys = [], totalCount = 0 } = data ?? {};
-  useEffect(() => {
-    // reset page if no longer valid
-    if (totalCount <= offset) setPage(1);
-  }, [totalCount]);
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upsertKey",

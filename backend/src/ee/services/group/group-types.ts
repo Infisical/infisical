@@ -38,6 +38,7 @@ export type TListGroupUsersDTO = {
   offset: number;
   limit: number;
   username?: string;
+  search?: string;
 } & TGenericPermission;
 
 export type TAddUserToGroupDTO = {

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import Link from "next/link";
 import {
   faArrowDown,
@@ -44,7 +43,7 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { usePagination } from "@app/hooks";
+import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
@@ -99,10 +98,11 @@ export const IdentityTab = withProjectPermission(
 
     const { totalCount = 0 } = data ?? {};
 
-    useEffect(() => {
-      // reset page if no longer valid
-      if (totalCount <= offset) setPage(1);
-    }, [totalCount]);
+    useResetPageHelper({
+      totalCount,
+      offset,
+      setPage
+    });
 
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
 

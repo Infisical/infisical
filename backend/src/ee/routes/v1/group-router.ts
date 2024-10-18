@@ -165,7 +165,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0).describe(GROUPS.LIST_USERS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
-        username: z.string().optional().describe(GROUPS.LIST_USERS.username)
+        username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
+        search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search)
       }),
       response: {
         200: z.object({

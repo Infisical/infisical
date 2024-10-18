@@ -834,10 +834,12 @@ export const scimServiceFactory = ({
       });
     }
 
-    const users = await groupDAL.findAllGroupPossibleMembers({
-      orgId: group.orgId,
-      groupId: group.id
-    });
+    const users = await groupDAL
+      .findAllGroupPossibleMembers({
+        orgId: group.orgId,
+        groupId: group.id
+      })
+      .then((g) => g.members);
 
     const orgMemberships = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,

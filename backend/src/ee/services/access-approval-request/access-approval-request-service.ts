@@ -147,10 +147,12 @@ export const accessApprovalRequestServiceFactory = ({
     const groupUsers = (
       await Promise.all(
         approverGroupIds.map((groupApproverId) =>
-          groupDAL.findAllGroupPossibleMembers({
-            orgId: actorOrgId,
-            groupId: groupApproverId
-          })
+          groupDAL
+            .findAllGroupPossibleMembers({
+              orgId: actorOrgId,
+              groupId: groupApproverId
+            })
+            .then((group) => group.members)
         )
       )
     ).flat();

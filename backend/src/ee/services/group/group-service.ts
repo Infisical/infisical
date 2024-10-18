@@ -221,7 +221,8 @@ export const groupServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    search
   }: TListGroupUsersDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -244,17 +245,16 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const users = await groupDAL.findAllGroupPossibleMembers({
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
       orgId: group.orgId,
       groupId: group.id,
       offset,
       limit,
-      username
+      username,
+      search
     });
 
-    const count = await orgDAL.countAllOrgMembers(group.orgId);
-
-    return { users, totalCount: count };
+    return { users: members, totalCount };
   };
 
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
