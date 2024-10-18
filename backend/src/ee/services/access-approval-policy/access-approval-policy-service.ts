@@ -123,7 +123,9 @@ export const accessApprovalPolicyServiceFactory = ({
     const verifyAllApprovers = [...approverUserIds];
 
     for (const groupId of groupApprovers) {
-      usersPromises.push(groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }));
+      usersPromises.push(
+        groupDAL.findAllGroupPossibleMembers({ orgId: actorOrgId, groupId, offset: 0 }).then((group) => group.members)
+      );
     }
     const verifyGroupApprovers = (await Promise.all(usersPromises))
       .flat()

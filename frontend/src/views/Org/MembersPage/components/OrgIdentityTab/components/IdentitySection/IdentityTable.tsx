@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useRouter } from "next/router";
 import {
   faArrowDown,
@@ -34,7 +33,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { usePagination } from "@app/hooks";
+import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
@@ -87,10 +86,11 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   );
 
   const { totalCount = 0 } = data ?? {};
-  useEffect(() => {
-    // reset page if no longer valid
-    if (totalCount <= offset) setPage(1);
-  }, [totalCount]);
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   const { data: roles } = useGetOrgRoles(organizationId);
 
