@@ -60,3 +60,19 @@ jobs:
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+      - name: 📦 Build poc backend and export to Docker
+        uses: depot/build-push-action@v1
+        with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          push: true
+          context: .
+          tags: |
+            infisical/infisical-poc:latest-postgres
+            infisical/infisical-poc:${{ steps.commit.outputs.short }}
+            infisical/infisical-poc:${{ steps.extract_version.outputs.version }}
+          platforms: linux/amd64,linux/arm64
+          file: Dockerfile.poc
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
