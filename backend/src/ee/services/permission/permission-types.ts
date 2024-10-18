@@ -11,8 +11,8 @@ export enum PermissionConditionOperators {
 }
 
 export const PermissionConditionSchema = {
-  [PermissionConditionOperators.$IN]: z.string().min(1).array(),
-  [PermissionConditionOperators.$ALL]: z.string().min(1).array(),
+  [PermissionConditionOperators.$IN]: z.string().trim().min(1).array(),
+  [PermissionConditionOperators.$ALL]: z.string().trim().min(1).array(),
   [PermissionConditionOperators.$REGEX]: z
     .string()
     .min(1)

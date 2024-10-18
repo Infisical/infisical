@@ -12,6 +12,9 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
   totalCount: number;
+  totalUniqueSecretsInPage: number;
+  totalUniqueDynamicSecretsInPage: number;
+  totalUniqueFoldersInPage: number;
 };
 
 export type DashboardProjectSecretsDetailsResponse = {

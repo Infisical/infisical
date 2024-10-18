@@ -19,7 +19,7 @@ import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { fnSecretBulkInsert, getAllNestedSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { fnSecretBulkInsert, getAllSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import type { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
@@ -242,7 +242,7 @@ export const importDataIntoInfisicalFn = async ({
           }
           await fnSecretBulkInsert({
             inputSecrets: secretBatch.map((el) => {
-              const references = getAllNestedSecretReferences(el.secretValue);
+              const references = getAllSecretReferences(el.secretValue).nestedReferences;
 
               return {
                 version: 1,

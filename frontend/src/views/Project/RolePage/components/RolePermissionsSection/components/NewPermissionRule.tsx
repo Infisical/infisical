@@ -15,6 +15,7 @@ import { ProjectPermissionSub } from "@app/context";
 
 import {
   formSchema,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   TFormSchema
 } from "../ProjectRoleModifySection.utils";
@@ -89,7 +90,7 @@ export const NewPermissionRule = ({ onClose }: Props) => {
         <Button
           onClick={form.handleSubmit((el) => {
             const rootPolicyValue = rootForm.getValues("permissions")?.[el.type];
-            if (rootPolicyValue && selectedSubject === ProjectPermissionSub.Secrets) {
+            if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
               rootForm.setValue(
                 `permissions.${el.type}`,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

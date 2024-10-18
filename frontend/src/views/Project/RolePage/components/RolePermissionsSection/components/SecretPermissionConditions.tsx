@@ -1,27 +1,34 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPlus, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  Select,
+  SelectItem,
+  Tooltip
+} from "@app/components/v2";
 import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
 
 import { TFormSchema } from "../ProjectRoleModifySection.utils";
+import {
+  getConditionOperatorHelperInfo,
+  renderOperatorSelectItems
+} from "./PermissionConditionHelpers";
 
 type Props = {
   position?: number;
   isDisabled?: boolean;
 };
 
-const getValueLabel = (type: string) => {
-  if (type === "environment") return "Environment slug";
-  if (type === "secretPath") return "Folder path";
-  return "";
-};
-
 export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) => {
   const {
     control,
     watch,
+    setValue,
     formState: { errors }
   } = useFormContext<TFormSchema>();
   const items = useFieldArray({
@@ -30,10 +37,18 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
   });
 
   return (
-    <div className="mt-6 border-t  border-t-gray-800 bg-mineshaft-800  pt-2">
+    <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
+      <p className="mt-2 text-gray-300">Conditions</p>
+      <p className="mb-2 text-sm text-mineshaft-400">
+        When this policy should apply (always if no conditions are added).
+      </p>
       <div className="mt-2 flex flex-col space-y-2">
         {items.fields.map((el, index) => {
-          const lhs = watch(`permissions.secrets.${position}.conditions.${index}.lhs`);
+          const condition = watch(`permissions.secrets.${position}.conditions.${index}`) as {
+            lhs: string;
+            rhs: string;
+            operator: string;
+          };
           return (
             <div
               key={el.id}
@@ -52,17 +67,25 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                       <Select
                         defaultValue={field.value}
                         {...field}
-                        onValueChange={(e) => field.onChange(e)}
+                        onValueChange={(e) => {
+                          setValue(
+                            `permissions.secrets.${position}.conditions.${index}.operator`,
+                            PermissionConditionOperators.$IN as never
+                          );
+                          field.onChange(e);
+                        }}
                         className="w-full"
                       >
                         <SelectItem value="environment">Environment Slug</SelectItem>
                         <SelectItem value="secretPath">Secret Path</SelectItem>
+                        <SelectItem value="secretName">Secret Name</SelectItem>
+                        <SelectItem value="secretTags">Secret Tags</SelectItem>
                       </Select>
                     </FormControl>
                   )}
                 />
               </div>
-              <div className="w-36">
+              <div className="flex w-36 items-center space-x-2">
                 <Controller
                   control={control}
                   name={`permissions.secrets.${position}.conditions.${index}.operator`}
@@ -78,16 +101,22 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                         onValueChange={(e) => field.onChange(e)}
                         className="w-full"
                       >
-                        <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$GLOB}>
-                          Glob Match
-                        </SelectItem>
-                        <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
+                        {renderOperatorSelectItems(condition.lhs)}
                       </Select>
                     </FormControl>
                   )}
                 />
+                <div>
+                  <Tooltip
+                    asChild
+                    content={getConditionOperatorHelperInfo(
+                      condition?.operator as PermissionConditionOperators
+                    )}
+                    className="max-w-xs"
+                  >
+                    <FontAwesomeIcon icon={faInfoCircle} size="xs" className="text-gray-400" />
+                  </Tooltip>
+                </div>
               </div>
               <div className="flex-grow">
                 <Controller
@@ -99,7 +128,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
                       errorText={error?.message}
                       className="mb-0 flex-grow"
                     >
-                      <Input {...field} placeholder={getValueLabel(lhs)} />
+                      <Input {...field} />
                     </FormControl>
                   )}
                 />
@@ -124,7 +153,6 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
           <span>{errors?.permissions?.secrets?.[position]?.conditions?.message}</span>
         </div>
       )}
-      <div>{}</div>
       <div>
         <Button
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
@@ -140,7 +168,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
             })
           }
         >
-          New Condition
+          Add Condition
         </Button>
       </div>
     </div>

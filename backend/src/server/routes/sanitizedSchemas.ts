@@ -9,8 +9,9 @@ import {
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { UnpackedPermissionSchema } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+
+import { UnpackedPermissionSchema } from "./santizedSchemas/permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -154,6 +155,17 @@ export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivile
 
 export const SanitizedRoleSchema = ProjectRolesSchema.extend({
   permissions: UnpackedPermissionSchema.array()
+});
+
+export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array().transform((el) =>
+    el.filter(
+      (i) =>
+        ![ProjectPermissionSub.DynamicSecrets, ProjectPermissionSub.SecretImports].includes(
+          (i?.subject as ProjectPermissionSub) || ""
+        )
+    )
+  )
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
