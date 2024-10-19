@@ -156,7 +156,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     }
 
     const user = await userDAL.findById(session.userId);
-    if (!user || !user.isAccepted) throw new NotFoundError({ message: "User not found" });
+    if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
     if (token.organizationId) {
       const orgMembership = await orgMembershipDAL.findOne({

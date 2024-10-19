@@ -5,7 +5,7 @@ import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 
 const RESERVED_ORG_ROLE_SLUGS = Object.values(OrgMembershipRole).filter((role) => role !== "custom");
 
-export const isCustomOrgRole = (roleSlug: string) => !RESERVED_ORG_ROLE_SLUGS.includes(roleSlug as OrgMembershipRole);
+export const isCustomOrgRole = (roleSlug: string) => !RESERVED_ORG_ROLE_SLUGS.find((r) => r === roleSlug);
 
 // this is only for updating an org
 export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
@@ -27,7 +27,12 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
       });
 
     const customRole = await orgRoleDAL.findOne({ slug: membershipRoleSlug, orgId });
-    if (!customRole) throw new NotFoundError({ name: "UpdateOrg", message: "Organization role not found" });
+    if (!customRole) {
+      throw new NotFoundError({
+        name: "UpdateOrg",
+        message: `Organization role with slug '${membershipRoleSlug}' not found`
+      });
+    }
 
     // use ID for default role
     return customRole.id;

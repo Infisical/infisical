@@ -94,7 +94,11 @@ export const secretRotationServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) throw new NotFoundError({ message: "Secret path not found" });
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Secret path with path '${secretPath}' not found in environment with slug '${environment}'`
+      });
+    }
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -108,14 +112,14 @@ export const secretRotationServiceFactory = ({
         $in: { id: Object.values(outputs) }
       });
       if (selectedSecrets.length !== Object.values(outputs).length)
-        throw new NotFoundError({ message: "Secrets not found" });
+        throw new NotFoundError({ message: `Secrets not found in folder with ID '${folder.id}'` });
     } else {
       const selectedSecrets = await secretDAL.find({
         folderId: folder.id,
         $in: { id: Object.values(outputs) }
       });
       if (selectedSecrets.length !== Object.values(outputs).length)
-        throw new NotFoundError({ message: "Secrets not found" });
+        throw new NotFoundError({ message: `Secrets not found in folder with ID '${folder.id}'` });
     }
 
     const plan = await licenseService.getPlan(project.orgId);
@@ -125,7 +129,7 @@ export const secretRotationServiceFactory = ({
       });
 
     const selectedTemplate = rotationTemplates.find(({ name }) => name === provider);
-    if (!selectedTemplate) throw new NotFoundError({ message: "Provider not found" });
+    if (!selectedTemplate) throw new NotFoundError({ message: `Provider with name '${provider}' not found` });
     const formattedInputs: Record<string, unknown> = {};
     Object.entries(inputs).forEach(([key, value]) => {
       const { type } = selectedTemplate.template.inputs.properties[key];
@@ -198,7 +202,7 @@ export const secretRotationServiceFactory = ({
       return docs;
     }
 
-    if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
+    if (!botKey) throw new NotFoundError({ message: `Project bot not found for project with ID '${projectId}'` });
     const docs = await secretRotationDAL.find({ projectId });
     return docs.map((el) => ({
       ...el,
@@ -220,7 +224,7 @@ export const secretRotationServiceFactory = ({
 
   const restartById = async ({ actor, actorId, actorOrgId, actorAuthMethod, rotationId }: TRestartDTO) => {
     const doc = await secretRotationDAL.findById(rotationId);
-    if (!doc) throw new NotFoundError({ message: "Rotation not found" });
+    if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
     const project = await projectDAL.findById(doc.projectId);
     const plan = await licenseService.getPlan(project.orgId);
@@ -244,7 +248,7 @@ export const secretRotationServiceFactory = ({
 
   const deleteById = async ({ actor, actorId, actorOrgId, actorAuthMethod, rotationId }: TDeleteDTO) => {
     const doc = await secretRotationDAL.findById(rotationId);
-    if (!doc) throw new NotFoundError({ message: "Rotation not found" });
+    if (!doc) throw new NotFoundError({ message: `Rotation with ID '${rotationId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

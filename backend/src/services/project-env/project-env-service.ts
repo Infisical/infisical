@@ -153,8 +153,11 @@ export const projectEnvServiceFactory = ({
       }
 
       const oldEnv = await projectEnvDAL.findOne({ id, projectId });
-      if (!oldEnv) throw new NotFoundError({ message: "Environment not found", name: "UpdateEnvironment" });
-
+      if (!oldEnv) {
+        throw new NotFoundError({
+          message: `Environment with id '${id}' in project with ID '${projectId}' not found`
+        });
+      }
       if (slug) {
         const existingEnv = await projectEnvDAL.findOne({ slug, projectId });
         if (existingEnv && existingEnv.id !== id) {
@@ -216,7 +219,7 @@ export const projectEnvServiceFactory = ({
         const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
         if (!doc)
           throw new NotFoundError({
-            message: "Environment doesn't exist",
+            message: `Environment with id '${id}' in project with ID '${projectId}' not found`,
             name: "DeleteEnvironment"
           });
 
@@ -240,7 +243,7 @@ export const projectEnvServiceFactory = ({
 
     if (!environment) {
       throw new NotFoundError({
-        message: "Environment does not exist"
+        message: `Environment with ID '${id}' not found`
       });
     }
 

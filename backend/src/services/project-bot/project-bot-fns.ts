@@ -28,7 +28,7 @@ export const getBotKeyFnFactory = (
     const project = await projectDAL.findById(projectId);
     if (!project)
       throw new NotFoundError({
-        message: "Project not found during bot lookup. Are you sure you are using the correct project ID?"
+        message: `Project with ID '${projectId}' not found during bot lookup. Are you sure you are using the correct project ID?`
       });
 
     if (project.version === 3 && !shouldGetBotKey) {
@@ -39,8 +39,11 @@ export const getBotKeyFnFactory = (
     if (!bot || !bot.isActive || !bot.encryptedProjectKey || !bot.encryptedProjectKeyNonce) {
       // trying to set bot automatically
       const projectV1Keys = await projectBotDAL.findProjectUserWorkspaceKey(projectId);
-      if (!projectV1Keys) throw new NotFoundError({ message: "Bot not found. Please ask admin user to login" });
-
+      if (!projectV1Keys) {
+        throw new NotFoundError({
+          message: `Project bot not found for project with ID '${projectId}'. Please ask an administrator to log-in to the Infisical Console.`
+        });
+      }
       let userPrivateKey = "";
       if (
         projectV1Keys?.serverEncryptedPrivateKey &&

@@ -42,7 +42,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     ...dto
   }: TCreateUserPrivilegeDTO) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
-    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
+    if (!projectMembership)
+      throw new NotFoundError({ message: `Project membership with ID '${projectMembershipId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -94,14 +95,18 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     ...dto
   }: TUpdateUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
-    if (!userPrivilege) throw new NotFoundError({ message: "User additional privilege not found" });
+    if (!userPrivilege)
+      throw new NotFoundError({ message: `User additional privilege with ID '${privilegeId}' not found` });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
       projectId: userPrivilege.projectId
     });
 
-    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
+    if (!projectMembership)
+      throw new NotFoundError({
+        message: `Project membership for user with ID '${userPrivilege.userId}' not found in project with ID '${userPrivilege.projectId}'`
+      });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -147,13 +152,17 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
 
   const deleteById = async ({ actorId, actor, actorOrgId, actorAuthMethod, privilegeId }: TDeleteUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
-    if (!userPrivilege) throw new NotFoundError({ message: "User additional privilege not found" });
+    if (!userPrivilege)
+      throw new NotFoundError({ message: `User additional privilege with ID '${privilegeId}' not found` });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
       projectId: userPrivilege.projectId
     });
-    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
+    if (!projectMembership)
+      throw new NotFoundError({
+        message: `Project membership for user with ID '${userPrivilege.userId}' not found in project with ID '${userPrivilege.projectId}'`
+      });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -176,13 +185,17 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TGetUserPrivilegeDetailsDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
-    if (!userPrivilege) throw new NotFoundError({ message: "User additional privilege not found" });
+    if (!userPrivilege)
+      throw new NotFoundError({ message: `User additional privilege with ID '${privilegeId}' not found` });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
       projectId: userPrivilege.projectId
     });
-    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
+    if (!projectMembership)
+      throw new NotFoundError({
+        message: `Project membership for user with ID '${userPrivilege.userId}' not found in project with ID '${userPrivilege.projectId}'`
+      });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -204,7 +217,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TListUserPrivilegesDTO) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
-    if (!projectMembership) throw new NotFoundError({ message: "Project membership not found" });
+    if (!projectMembership)
+      throw new NotFoundError({ message: `Project membership with ID '${projectMembershipId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

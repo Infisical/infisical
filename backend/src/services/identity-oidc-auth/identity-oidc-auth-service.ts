@@ -68,12 +68,17 @@ export const identityOidcAuthServiceFactory = ({
       identityId: identityOidcAuth.identityId
     });
     if (!identityMembershipOrg) {
-      throw new NotFoundError({ message: "Identity organization membership not found" });
+      throw new NotFoundError({
+        message: `Identity organization membership for identity with ID '${identityOidcAuth.identityId}' not found`
+      });
     }
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new NotFoundError({ message: "Organization bot was not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID '${identityMembershipOrg.orgId}'`,
+        name: "OrgBotNotFound"
+      });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -221,7 +226,7 @@ export const identityOidcAuthServiceFactory = ({
   }: TAttachOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new NotFoundError({ message: "Failed to find identity" });
+      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
@@ -360,7 +365,7 @@ export const identityOidcAuthServiceFactory = ({
   }: TUpdateOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new NotFoundError({ message: "Failed to find identity" });
+      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
 
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
@@ -422,7 +427,10 @@ export const identityOidcAuthServiceFactory = ({
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID '${identityMembershipOrg.orgId}'`,
+        name: "OrgBotNotFound"
+      });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -460,7 +468,7 @@ export const identityOidcAuthServiceFactory = ({
   const getOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) {
-      throw new NotFoundError({ message: "Failed to find identity" });
+      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
 
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
@@ -482,7 +490,10 @@ export const identityOidcAuthServiceFactory = ({
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
     if (!orgBot) {
-      throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
+        name: "OrgBotNotFound"
+      });
     }
 
     const key = infisicalSymmetricDecrypt({

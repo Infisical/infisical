@@ -55,7 +55,7 @@ export const userServiceFactory = ({
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (username: string) => {
     const user = await userDAL.findOne({ username });
-    if (!user) throw new NotFoundError({ name: "Failed to find user" });
+    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -78,7 +78,7 @@ export const userServiceFactory = ({
 
   const verifyEmailVerificationCode = async (username: string, code: string) => {
     const user = await userDAL.findOne({ username });
-    if (!user) throw new NotFoundError({ name: "Failed to find user" });
+    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
     if (user.isEmailVerified)
@@ -193,10 +193,10 @@ export const userServiceFactory = ({
 
   const updateAuthMethods = async (userId: string, authMethods: AuthMethod[]) => {
     const user = await userDAL.findById(userId);
-    if (!user) throw new NotFoundError({ message: "User not found" });
+    if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateAuthMethods" });
 
     if (user.authMethods?.includes(AuthMethod.LDAP) || authMethods.includes(AuthMethod.LDAP)) {
-      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "Update auth methods" });
+      throw new BadRequestError({ message: "LDAP auth method cannot be updated", name: "UpdateAuthMethods" });
     }
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
@@ -205,7 +205,7 @@ export const userServiceFactory = ({
 
   const getMe = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user) throw new NotFoundError({ message: "User not found" });
+    if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "GetMe" });
     return user;
   };
 
@@ -246,7 +246,7 @@ export const userServiceFactory = ({
   const getUserPrivateKey = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
-      throw new NotFoundError({ message: "Private key not found. Please login again" });
+      throw new NotFoundError({ message: `Private key for user with ID '${userId}' not found` });
     }
     const privateKey = infisicalSymmetricDecrypt({
       ciphertext: user.serverEncryptedPrivateKey,

@@ -129,7 +129,7 @@ export const projectMembershipServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
-    if (!membership) throw new NotFoundError({ message: `Project membership not found for user ${username}` });
+    if (!membership) throw new NotFoundError({ message: `Project membership not found for user '${username}'` });
     return membership;
   };
 
@@ -143,7 +143,7 @@ export const projectMembershipServiceFactory = ({
     sendEmails = true
   }: TAddUsersToWorkspaceDTO) => {
     const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -259,7 +259,7 @@ export const projectMembershipServiceFactory = ({
         })
       : [];
     if (customRoles.length !== customInputRoles.length) {
-      throw new NotFoundError({ message: "Custom project roles not found" });
+      throw new NotFoundError({ message: "One or more custom roles not found" });
     }
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
@@ -352,7 +352,7 @@ export const projectMembershipServiceFactory = ({
 
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found"
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
@@ -426,7 +426,7 @@ export const projectMembershipServiceFactory = ({
     }
 
     const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     if (project.version === ProjectVersion.V1) {
       throw new BadRequestError({
@@ -437,7 +437,7 @@ export const projectMembershipServiceFactory = ({
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
     if (!projectMembers?.length) {
-      throw new NotFoundError({ message: "Failed to find project members" });
+      throw new NotFoundError({ message: `Project members not found for project with ID '${projectId}'` });
     }
 
     if (projectMembers.length < 2) {

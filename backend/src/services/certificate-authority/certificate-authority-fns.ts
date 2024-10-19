@@ -113,10 +113,10 @@ export const getCaCredentials = async ({
   kmsService
 }: TGetCaCredentialsDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new NotFoundError({ message: "CA not found" });
+  if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
-  if (!caSecret) throw new NotFoundError({ message: "CA secret not found" });
+  if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -165,7 +165,7 @@ export const getCaCertChains = async ({
   kmsService
 }: TGetCaCertChainsDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new NotFoundError({ message: "CA not found" });
+  if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -256,7 +256,7 @@ export const rebuildCaCrl = async ({
   kmsService
 }: TRebuildCaCrlDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) throw new NotFoundError({ message: "CA not found" });
+  if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 

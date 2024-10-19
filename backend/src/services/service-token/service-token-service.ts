@@ -75,7 +75,8 @@ export const serviceTokenServiceFactory = ({
     // validates env
     const scopeEnvs = [...new Set(scopes.map(({ environment }) => environment))];
     const inputEnvs = await projectEnvDAL.findBySlugs(projectId, scopeEnvs);
-    if (inputEnvs.length !== scopeEnvs.length) throw new NotFoundError({ message: "Environment not found" });
+    if (inputEnvs.length !== scopeEnvs.length)
+      throw new NotFoundError({ message: `One or more selected environments not found` });
 
     const secret = crypto.randomBytes(16).toString("hex");
     const secretHash = await bcrypt.hash(secret, appCfg.SALT_ROUNDS);
@@ -106,7 +107,7 @@ export const serviceTokenServiceFactory = ({
 
   const deleteServiceToken = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteServiceTokenDTO) => {
     const serviceToken = await serviceTokenDAL.findById(id);
-    if (!serviceToken) throw new NotFoundError({ message: "Token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -122,13 +123,15 @@ export const serviceTokenServiceFactory = ({
   };
 
   const getServiceToken = async ({ actor, actorId }: TGetServiceTokenInfoDTO) => {
-    if (actor !== ActorType.SERVICE) throw new NotFoundError({ message: "Service token not found" });
+    if (actor !== ActorType.SERVICE)
+      throw new NotFoundError({ message: `Service token with ID '${actorId}' not found` });
 
     const serviceToken = await serviceTokenDAL.findById(actorId);
-    if (!serviceToken) throw new NotFoundError({ message: "Token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${actorId}' not found` });
 
     const serviceTokenUser = await userDAL.findById(serviceToken.createdBy);
-    if (!serviceTokenUser) throw new NotFoundError({ message: "Service token user not found" });
+    if (!serviceTokenUser)
+      throw new NotFoundError({ message: `Service token with ID ${serviceToken.id} has no associated creator` });
 
     return { serviceToken, user: serviceTokenUser };
   };
@@ -157,10 +160,10 @@ export const serviceTokenServiceFactory = ({
     const [, tokenIdentifier, tokenSecret] = <[string, string, string]>token.split(".", 3);
     const serviceToken = await serviceTokenDAL.findById(tokenIdentifier);
 
-    if (!serviceToken) throw new NotFoundError({ message: "Service token not found" });
+    if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${tokenIdentifier}' not found` });
     const project = await projectDAL.findById(serviceToken.projectId);
 
-    if (!project) throw new NotFoundError({ message: "Service token project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with ID '${serviceToken.projectId}' not found` });
 
     if (serviceToken.expiresAt && new Date(serviceToken.expiresAt) < new Date()) {
       await serviceTokenDAL.deleteById(serviceToken.id);

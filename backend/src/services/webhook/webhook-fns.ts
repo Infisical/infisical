@@ -172,7 +172,11 @@ export const fnTriggerWebhook = async ({
 
   await webhookDAL.transaction(async (tx) => {
     const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
-    if (!env) throw new NotFoundError({ message: "Environment not found" });
+    if (!env) {
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+      });
+    }
     if (successWebhooks.length) {
       await webhookDAL.update(
         { envId: env.id, $in: { id: successWebhooks } },

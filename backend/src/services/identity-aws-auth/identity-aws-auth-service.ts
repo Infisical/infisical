@@ -154,7 +154,7 @@ export const identityAwsAuthServiceFactory = ({
     actorOrgId
   }: TAttachAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add AWS Auth to already configured identity"
@@ -233,7 +233,7 @@ export const identityAwsAuthServiceFactory = ({
     actorOrgId
   }: TUpdateAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
         message: "Failed to update AWS Auth"
@@ -292,7 +292,7 @@ export const identityAwsAuthServiceFactory = ({
 
   const getAwsAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
         message: "The identity does not have AWS Auth attached"
@@ -319,7 +319,7 @@ export const identityAwsAuthServiceFactory = ({
     actorOrgId
   }: TRevokeAwsAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AWS_AUTH)
       throw new BadRequestError({
         message: "The identity does not have aws auth"

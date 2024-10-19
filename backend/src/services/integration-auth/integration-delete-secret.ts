@@ -314,7 +314,7 @@ export const deleteIntegrationSecrets = async ({
 
   if (!folder) {
     throw new NotFoundError({
-      message: "Folder not found."
+      message: `Folder with path '${integration.secretPath}' not found in environment with slug '${integration.environment.slug}'`
     });
   }
 
