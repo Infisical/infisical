@@ -2,6 +2,7 @@ import type { RateLimitOptions, RateLimitPluginOptions } from "@fastify/rate-lim
 import { Redis } from "ioredis";
 
 import { getConfig } from "@app/lib/config/env";
+import { RateLimitError } from "@app/lib/errors";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
@@ -10,6 +11,11 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
     : null;
 
   return {
+    errorResponseBuilder: (_, context) => {
+      throw new RateLimitError({
+        message: `Rate limit exceeded. Please try again in ${context.after}`
+      });
+    },
     timeWindow: 60 * 1000,
     max: 600,
     redis,

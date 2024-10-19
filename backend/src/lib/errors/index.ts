@@ -71,6 +71,13 @@ export class BadRequestError extends Error {
   }
 }
 
+export class RateLimitError extends Error {
+  constructor({ message }: { message?: string }) {
+    super(message || "Rate limit exceeded");
+    this.name = "RateLimitExceeded";
+  }
+}
+
 export class NotFoundError extends Error {
   name: string;
 
