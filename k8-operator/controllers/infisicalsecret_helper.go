@@ -293,14 +293,16 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 
 	if _, ok := resourceVariablesMap[string(infisicalSecret.UID)]; !ok {
 
-		client := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
-			SilentMode: true,
-			SiteUrl:    api.API_HOST_URL,
-			UserAgent:  api.USER_AGENT_NAME,
+		ctx, cancel := context.WithCancel(context.Background())
+
+		client := infisicalSdk.NewInfisicalClient(ctx, infisicalSdk.Config{
+			SiteUrl:   api.API_HOST_URL,
+			UserAgent: api.USER_AGENT_NAME,
 		})
 
 		resourceVariablesMap[string(infisicalSecret.UID)] = ResourceVariables{
 			infisicalClient: client,
+			cancelCtx:       cancel,
 			authDetails:     AuthenticationDetails{},
 		}
 
@@ -322,6 +324,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 
 	resourceVariables := r.GetResourceVariables(infisicalSecret)
 	infisicalClient := resourceVariables.infisicalClient
+	cancelCtx := resourceVariables.cancelCtx
 	authDetails := resourceVariables.authDetails
 	var err error
 
@@ -336,6 +339,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 
 		r.UpdateResourceVariables(infisicalSecret, ResourceVariables{
 			infisicalClient: infisicalClient,
+			cancelCtx:       cancelCtx,
 			authDetails:     authDetails,
 		})
 	}
