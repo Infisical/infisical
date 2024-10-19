@@ -150,7 +150,16 @@ export const ProjectSpecificPrivilegePermissionSchema = z.object({
 });
 
 export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.extend({
-  permissions: UnpackedPermissionSchema.array()
+  permissions: UnpackedPermissionSchema.array().transform((permissions) =>
+    permissions.filter(
+      (caslRule) =>
+        ![
+          ProjectPermissionSub.DynamicSecrets,
+          ProjectPermissionSub.SecretImports,
+          ProjectPermissionSub.SecretFolders
+        ].includes((caslRule?.subject as ProjectPermissionSub) || "")
+    )
+  )
 });
 
 export const SanitizedRoleSchema = ProjectRolesSchema.extend({
@@ -158,13 +167,24 @@ export const SanitizedRoleSchema = ProjectRolesSchema.extend({
 });
 
 export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
-  permissions: UnpackedPermissionSchema.array().transform((el) =>
-    el.filter(
-      (i) =>
-        ![ProjectPermissionSub.DynamicSecrets, ProjectPermissionSub.SecretImports].includes(
-          (i?.subject as ProjectPermissionSub) || ""
-        )
-    )
+  permissions: UnpackedPermissionSchema.array().transform((caslPermission) =>
+    // first map and remove other actions of folder permission
+    caslPermission
+      .map((caslRule) =>
+        caslRule.subject === ProjectPermissionSub.SecretFolders
+          ? {
+              ...caslRule,
+              action: caslRule.action.filter((caslAction) => caslAction === ProjectPermissionActions.Read)
+            }
+          : caslRule
+      )
+      // now filter out dynamic secret, secret import permission
+      .filter(
+        (caslRule) =>
+          ![ProjectPermissionSub.DynamicSecrets, ProjectPermissionSub.SecretImports].includes(
+            (caslRule?.subject as ProjectPermissionSub) || ""
+          ) && caslRule.action.length > 0
+      )
   )
 });
 
