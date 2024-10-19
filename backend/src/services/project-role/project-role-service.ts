@@ -17,7 +17,14 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "./project-role-dal";
 import { getPredefinedRoles } from "./project-role-fns";
-import { TCreateRoleDTO, TDeleteRoleDTO, TGetRoleBySlugDTO, TListRolesDTO, TUpdateRoleDTO } from "./project-role-types";
+import {
+  ProjectRoleServiceIdentifierType,
+  TCreateRoleDTO,
+  TDeleteRoleDTO,
+  TGetRoleDetailsDTO,
+  TListRolesDTO,
+  TUpdateRoleDTO
+} from "./project-role-types";
 
 type TProjectRoleServiceFactoryDep = {
   projectRoleDAL: TProjectRoleDALFactory;
@@ -41,10 +48,15 @@ export const projectRoleServiceFactory = ({
   projectUserMembershipRoleDAL,
   projectDAL
 }: TProjectRoleServiceFactoryDep) => {
-  const createRole = async ({ projectSlug, data, actor, actorId, actorAuthMethod, actorOrgId }: TCreateRoleDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-    const projectId = project.id;
+  const createRole = async ({ data, actor, actorId, actorAuthMethod, actorOrgId, filter }: TCreateRoleDTO) => {
+    let projectId = "";
+    if (filter.type === ProjectRoleServiceIdentifierType.SLUG) {
+      const project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
+      if (!project) throw new NotFoundError({ message: "Project not found" });
+      projectId = project.id;
+    } else {
+      projectId = filter.projectId;
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -69,14 +81,19 @@ export const projectRoleServiceFactory = ({
   const getRoleBySlug = async ({
     actor,
     actorId,
-    projectSlug,
     actorAuthMethod,
     actorOrgId,
-    roleSlug
-  }: TGetRoleBySlugDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-    const projectId = project.id;
+    roleSlug,
+    filter
+  }: TGetRoleDetailsDTO) => {
+    let projectId = "";
+    if (filter.type === ProjectRoleServiceIdentifierType.SLUG) {
+      const project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
+      if (!project) throw new NotFoundError({ message: "Project not found" });
+      projectId = project.id;
+    } else {
+      projectId = filter.projectId;
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -96,58 +113,41 @@ export const projectRoleServiceFactory = ({
     return { ...customRole, permissions: unpackPermissions(customRole.permissions) };
   };
 
-  const updateRole = async ({
-    roleId,
-    projectSlug,
-    actorOrgId,
-    actorAuthMethod,
-    actorId,
-    actor,
-    data
-  }: TUpdateRoleDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-    const projectId = project.id;
+  const updateRole = async ({ roleId, actorOrgId, actorAuthMethod, actorId, actor, data }: TUpdateRoleDTO) => {
+    const projectRole = await projectRoleDAL.findById(roleId);
+    if (!projectRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      projectId,
+      projectRole.projectId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
 
     if (data?.slug) {
-      const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
+      const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId: projectRole.projectId });
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Project role with the same slug already exists" });
     }
 
-    const [updatedRole] = await projectRoleDAL.update(
-      { id: roleId, projectId },
-      {
-        ...data,
-        permissions: data.permissions ? data.permissions : undefined
-      }
-    );
-    if (!updatedRole) {
-      throw new NotFoundError({
-        message: `Project role with ID '${roleId}' in project with ID '${projectId}' not found`
-      });
-    }
+    const updatedRole = await projectRoleDAL.updateById(projectRole.id, {
+      ...data,
+      permissions: data.permissions ? data.permissions : undefined
+    });
+    if (!updatedRole) throw new NotFoundError({ message: "Project role not found", name: "Update role" });
+
     return { ...updatedRole, permissions: unpackPermissions(updatedRole.permissions) };
   };
 
-  const deleteRole = async ({ actor, actorId, actorAuthMethod, actorOrgId, projectSlug, roleId }: TDeleteRoleDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-    const projectId = project.id;
-
+  const deleteRole = async ({ actor, actorId, actorAuthMethod, actorOrgId, roleId }: TDeleteRoleDTO) => {
+    const projectRole = await projectRoleDAL.findById(roleId);
+    if (!projectRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
-      projectId,
+      projectRole.projectId,
       actorAuthMethod,
       actorOrgId
     );
@@ -169,21 +169,21 @@ export const projectRoleServiceFactory = ({
       });
     }
 
-    const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
-    if (!deletedRole) {
-      throw new NotFoundError({
-        message: `Project role with ID '${roleId}' in project with ID '${projectId}' not found`,
-        name: "DeleteRole"
-      });
-    }
+    const deletedRole = await projectRoleDAL.deleteById(roleId);
+    if (!deletedRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
 
     return { ...deletedRole, permissions: unpackPermissions(deletedRole.permissions) };
   };
 
-  const listRoles = async ({ projectSlug, actorOrgId, actorAuthMethod, actorId, actor }: TListRolesDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new BadRequestError({ message: "Project not found" });
-    const projectId = project.id;
+  const listRoles = async ({ actorOrgId, actorAuthMethod, actorId, actor, filter }: TListRolesDTO) => {
+    let projectId = "";
+    if (filter.type === ProjectRoleServiceIdentifierType.SLUG) {
+      const project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
+      if (!project) throw new BadRequestError({ message: "Project not found" });
+      projectId = project.id;
+    } else {
+      projectId = filter.projectId;
+    }
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

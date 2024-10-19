@@ -136,7 +136,7 @@ const getUserProjectPermissions = async ({ workspaceId }: TGetUserProjectPermiss
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
       membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
     };
-  }>(`/api/v2/workspace/${workspaceId}/permissions`, {});
+  }>(`/api/v1/workspace/${workspaceId}/permissions`, {});
 
   return data.data;
 };

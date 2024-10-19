@@ -12,6 +12,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ProjectRoleServiceIdentifierType } from "@app/services/project-role/project-role-types";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -61,7 +62,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
+        filter: {
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
+        },
         data: {
           ...req.body,
           permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions)))
@@ -121,7 +125,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
         roleId: req.params.roleId,
         data: {
           ...req.body,
@@ -164,7 +167,6 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
         roleId: req.params.roleId
       });
       return { role };
@@ -200,7 +202,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug
+        filter: {
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
+        }
       });
       return { roles };
     }
@@ -230,7 +235,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        projectSlug: req.params.projectSlug,
+        filter: {
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
+        },
         roleSlug: req.params.slug
       });
       return { role };

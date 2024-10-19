@@ -1367,6 +1367,7 @@ export const PKI_COLLECTIONS = {
 export const PROJECT_ROLE = {
   CREATE: {
     projectSlug: "Slug of the project to create the role for.",
+    projectId: "Id of the project to create the role for.",
     slug: "The slug of the role.",
     name: "The name of the role.",
     description: "The description for the role.",
@@ -1374,6 +1375,7 @@ export const PROJECT_ROLE = {
   },
   UPDATE: {
     projectSlug: "Slug of the project to update the role for.",
+    projectId: "Id of the project to update the role for.",
     roleId: "The ID of the role to update",
     slug: "The slug of the role.",
     name: "The name of the role.",
@@ -1382,14 +1384,17 @@ export const PROJECT_ROLE = {
   },
   DELETE: {
     projectSlug: "Slug of the project to delete this role for.",
+    projectId: "Id of the project to delete the role for.",
     roleId: "The ID of the role to update"
   },
   GET_ROLE_BY_SLUG: {
     projectSlug: "The slug of the project.",
+    projectId: "The id of the project.",
     roleSlug: "The slug of the role to get details"
   },
   LIST: {
-    projectSlug: "The slug of the project to list the roles of."
+    projectSlug: "The slug of the project to list the roles of.",
+    projectId: "The id of the project."
   }
 };
 
