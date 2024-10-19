@@ -47,6 +47,8 @@ type NextAppProp = AppProps & {
 const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element => {
   const router = useRouter();
 
+  console.log("process.env", process.env)
+
   useEffect(() => {
     // Init for auto capturing
     const telemetry = new Telemetry().getInstance();

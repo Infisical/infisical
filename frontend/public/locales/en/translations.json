@@ -340,5 +340,10 @@
   "admin": {
     "signup-title": "Admin Sign Up",
     "dashboard": "Admin Dashboard"
+  },
+  "usersecrets": {
+    "title": "User secrets",
+    "og-title": "Manage your credentials here",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
   }
 }
