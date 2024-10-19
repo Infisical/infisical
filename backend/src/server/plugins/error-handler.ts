@@ -29,7 +29,7 @@ enum HttpStatusCodes {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
   GatewayTimeout = 504,
-  RateLimitExceeded = 429
+  TooManyRequests = 429
 }
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
@@ -72,8 +72,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name
       });
     } else if (error instanceof RateLimitError) {
-      void res.status(HttpStatusCodes.RateLimitExceeded).send({
-        statusCode: HttpStatusCodes.RateLimitExceeded,
+      void res.status(HttpStatusCodes.TooManyRequests).send({
+        statusCode: HttpStatusCodes.TooManyRequests,
         message: error.message,
         error: error.name
       });
