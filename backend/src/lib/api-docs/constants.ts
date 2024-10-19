@@ -971,6 +971,46 @@ export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
   }
 };
 
+export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
+  CREATE: {
+    identityId: "The ID of the identity to create.",
+    projectId: "The ID of the project of the identity in.",
+    slug: "The slug of the privilege to create.",
+    permission: "The permission for the privilege.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative",
+    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryAccessStartTime: "ISO time for which temporary access should begin."
+  },
+  UPDATE: {
+    id: "The id of the privilege of the identity.",
+    identityId: "The ID of the identity to update.",
+    slug: "The slug of the privilege to update.",
+    privilegePermission: "The permission for the privilege.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative",
+    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryAccessStartTime: "ISO time for which temporary access should begin."
+  },
+  DELETE: {
+    id: "the id of the privilege of the identity.",
+    identityId: "The ID of the identity to delete.",
+    slug: "The slug of the privilege to delete."
+  },
+  GET_BY_SLUG: {
+    projectSlug: "The slug of the project of the identity in.",
+    identityId: "The ID of the identity to list.",
+    slug: "The slug of the privilege."
+  },
+  GET_BY_ID: {
+    id: "The id of the privilege of the identity."
+  },
+  LIST: {
+    projectId: "The ID of the project of the identity in.",
+    identityId: "The ID of the identity to list."
+  }
+};
+
 export const INTEGRATION_AUTH = {
   GET: {
     integrationAuthId: "The id of integration authentication object."

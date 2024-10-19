@@ -1,3 +1,4 @@
+import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
@@ -8,4 +9,8 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/workspace" }
   );
+
+  await server.register(registerIdentityProjectAdditionalPrivilegeRouter, {
+    prefix: "/identity-project-additional-privilege"
+  });
 };

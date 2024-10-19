@@ -1,3 +1,5 @@
+import { MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import { z } from "zod";
 
 export const UnpackedPermissionSchema = z.object({
@@ -9,3 +11,6 @@ export const UnpackedPermissionSchema = z.object({
   conditions: z.unknown().optional(),
   inverted: z.boolean().optional()
 });
+
+export const unpackPermissions = (permissions: unknown) =>
+  UnpackedPermissionSchema.array().parse(unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility>>[]));

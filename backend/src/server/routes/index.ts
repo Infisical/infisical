@@ -33,6 +33,7 @@ import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
+import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
@@ -1076,6 +1077,14 @@ export const registerRoutes = async (
     permissionService,
     identityProjectDAL
   });
+
+  const identityProjectAdditionalPrivilegeV2Service = identityProjectAdditionalPrivilegeV2ServiceFactory({
+    projectDAL,
+    identityProjectAdditionalPrivilegeDAL,
+    permissionService,
+    identityProjectDAL
+  });
+
   const identityTokenAuthService = identityTokenAuthServiceFactory({
     identityTokenAuthDAL,
     identityDAL,
@@ -1325,6 +1334,7 @@ export const registerRoutes = async (
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
+    identityProjectAdditionalPrivilegeV2: identityProjectAdditionalPrivilegeV2Service,
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
