@@ -259,10 +259,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       userId: projectMembership.userId,
       projectId: projectMembership.projectId
     });
-    return userPrivileges.map((el) => ({
-      ...el,
-      permissions: unpackPermissions(el.permissions)
-    }));
+    return userPrivileges;
   };
 
   return {
