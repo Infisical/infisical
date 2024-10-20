@@ -17,6 +17,7 @@ export const AddUserSecretsModal = ({ popUp, handlePopUpToggle }: Props) => {
       isOpen={popUp?.createSharedSecret?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("createSharedSecret", isOpen);
+
       }}
     >
       <ModalContent
@@ -24,6 +25,10 @@ export const AddUserSecretsModal = ({ popUp, handlePopUpToggle }: Props) => {
         subTitle="Please provide the details for the new credential."
       >
         <AddUserSecretsForm
+          closeModal={() => {
+          handlePopUpToggle("createSharedSecret", false);
+          
+        }}
           // isPublic={false}
           // value={(popUp.createSharedSecret.data as { value?: string })?.value}
         />

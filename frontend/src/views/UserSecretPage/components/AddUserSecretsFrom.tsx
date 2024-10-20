@@ -44,7 +44,12 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
-export const AddUserSecretsForm = () => {
+
+type Props = {
+  closeModal:()=>void
+};
+
+export const AddUserSecretsForm = ({ closeModal}: Props) => {
   const [secretLink, setSecretLink] = useState("");
   const { currentOrg } = useOrganization();
   const { user } = useUser();
@@ -66,21 +71,22 @@ export const AddUserSecretsForm = () => {
   });
 
   const { mutateAsync: createUserCredentials } = useCreateUserCredentials()
-  const currentOrgId:string= currentOrg?.id
-  const userId:string = user?.id
+  const currentOrgId = currentOrg?.id || ''
+  const userId = user?.id || ''
 
   const credentialType = watch("credentialType");
 
   const onFormSubmit = async (data: FormData) => {
     try {
       await createUserCredentials({...data, 
-        organizationId:currentOrgId,
+        organizationId:currentOrgId ,
         userId});
 
       createNotification({
         text: "Successfully created a credential",
         type: "success"
       });
+      closeModal();
     } catch (error) {
       console.error(error);
       createNotification({
@@ -113,9 +119,25 @@ export const AddUserSecretsForm = () => {
           </FormControl>
         )}
       />
+       <Controller
+            control={control}
+            name="title"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Title"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                isRequired
+              >
+                <Input {...field} placeholder="Enter identity name" type="text" />
+              </FormControl>
+            )}
+          />
+
 
       {credentialType === "WEB_LOGIN" && (
         <>
+        
           <Controller
             control={control}
             name="username"
@@ -149,6 +171,7 @@ export const AddUserSecretsForm = () => {
 
       {credentialType === "CREDIT_CARD" && (
         <>
+
           <Controller
             control={control}
             name="cardNumber"
@@ -196,20 +219,6 @@ export const AddUserSecretsForm = () => {
 
       {credentialType === "SECURE_NOTE" && (
         <>
-          <Controller
-            control={control}
-            name="title"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Title"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="Enter Title" type="text" />
-              </FormControl>
-            )}
-          />
           <Controller
             control={control}
             name="content"
