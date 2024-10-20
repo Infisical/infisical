@@ -327,6 +327,9 @@ import {
   TUserGroupMembershipInsert,
   TUserGroupMembershipUpdate,
   TUsers,
+  TUserSecrets,
+  TUserSecretsInsert,
+  TUserSecretsUpdate,
   TUsersInsert,
   TUsersUpdate,
   TWebhooks,
@@ -818,5 +821,6 @@ declare module "knex/types/tables" {
       TExternalGroupOrgRoleMappingsInsert,
       TExternalGroupOrgRoleMappingsUpdate
     >;
+    [TableName.UserSecrets]: KnexOriginal.CompositeTableType<TUserSecrets, TUserSecretsInsert, TUserSecretsUpdate>;
   }
 }

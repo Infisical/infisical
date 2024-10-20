@@ -8,6 +8,8 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
+import { useCreateUserCredentials } from "@app/hooks/api"; // Replace with the correct path to your hook
+
 
 const credentialTypeOptions = [
   { label: "Web Login", value: "WEB_LOGIN" },
@@ -23,7 +25,11 @@ const schema = z.object({
   expiryDate: z.string().optional(),
   cvv: z.string().optional(),
   title: z.string().optional(),
-  content: z.string().optional()
+  content: z.string().optional(),
+  organizationId: z.string().optional(),
+  userId: z.string().optional(),
+  
+  // organizatinId:z.number().optional()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -37,7 +43,6 @@ export const AddUserSecretsForm = () => {
   const {
     control,
     watch,
-    reset,
     handleSubmit,
     formState: { isSubmitting }
   } = useForm<FormData>({
@@ -47,14 +52,20 @@ export const AddUserSecretsForm = () => {
     }
   });
 
+  const { mutateAsync: createUserCredentials } = useCreateUserCredentials()
+
+
   const credentialType = watch("credentialType");
 
   const onFormSubmit = async (data: FormData) => {
     try {
-      // Simulate form submission or API call here.
-      setSecretLink(`${window.location.origin}/shared/credential/${data.credentialType}`);
-      reset();
-      setCopyTextSecret("credential");
+
+
+      
+
+      await createUserCredentials({...data, 
+        organizationId:"43b84d0e-2c57-4f1c-8ef2-5f53f100bd0e",
+        userId:"43b84d0e-2c57-4f1c-8ef2-5f53f100bd0e"});
 
       createNotification({
         text: "Successfully created a credential",

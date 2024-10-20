@@ -29,6 +29,8 @@ const getZodPrimitiveType = (type: string) => {
       return "z.unknown()";
     case "timestamp with time zone":
       return "z.date()";
+    case "date": 
+      return "z.date()";
     case "integer":
       return "z.number()";
     case "bigint":

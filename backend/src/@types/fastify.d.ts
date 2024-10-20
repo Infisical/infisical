@@ -41,6 +41,7 @@ import { TCertificateTemplateServiceFactory } from "@app/services/certificate-te
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { TFeatureUsersSecretManagmentServiceFactory } from "@app/services/feature-users-secret-managment/feature-users-secret-managment-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
@@ -187,6 +188,7 @@ declare module "fastify" {
       cmek: TCmekServiceFactory;
       migration: TExternalMigrationServiceFactory;
       externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
+      userSecrets: TFeatureUsersSecretManagmentServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

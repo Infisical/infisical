@@ -1,30 +1,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { TUpdateCredentialRequest } from "./types";
+import { apiRequest } from "@app/config/request";
 
+import { userCredentialsKeys } from "./queries";
+import {
+  TCreateCredentialRequest,
+  TUserSecrets
+} from "./types"; // TUserSecrets replaces TCreatedSharedSecret as per schema
 
-
-export const useUpdateCredential = () => {
+export const useCreateUserCredentials = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (inputData: TUpdateCredentialRequest) => {
-      // Simulating a local storage save operation
-      const credentials = JSON.parse(localStorage.getItem("credentials") || "[]");
-
-      // Find the credential to update
-      const updatedCredentials = credentials.map((credential: any) =>
-        credential.id === inputData.id ? { ...credential, ...inputData } : credential
+    mutationFn: async (inputData: TCreateCredentialRequest) => {
+      console.log("inputData==",inputData)
+      const { data } = await apiRequest.post<TUserSecrets>(
+        "/api/v1/user-secrets/create",
+        inputData
       );
-
-      // Save updated credentials back to local storage
-      localStorage.setItem("credentials", JSON.stringify(updatedCredentials));
-
-      return updatedCredentials;
+      return data;
     },
-    onSuccess: () => {
-      // Invalidate queries related to credentials to refetch any updates
-      queryClient.invalidateQueries("credentials");
-    }
+    onSuccess: () => queryClient.invalidateQueries(userCredentialsKeys.allCredentials())
   });
 };

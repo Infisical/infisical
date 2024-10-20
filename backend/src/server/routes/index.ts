@@ -101,6 +101,8 @@ import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-gr
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { featureUsersSecretManagmentDALFactory } from "@app/services/feature-users-secret-managment/feature-users-secret-managment-dal";
+import { featureUsersSecretManagmentServiceFactory } from "@app/services/feature-users-secret-managment/feature-users-secret-managment-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -337,6 +339,8 @@ export const registerRoutes = async (
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
+
+  const userSecretsDAL = featureUsersSecretManagmentDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1246,6 +1250,10 @@ export const registerRoutes = async (
     externalGroupOrgRoleMappingDAL
   });
 
+  const userSecretManagementService = featureUsersSecretManagmentServiceFactory({
+    userSecretsDAL
+  });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1332,7 +1340,8 @@ export const registerRoutes = async (
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
     migration: migrationService,
-    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
+    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
+    userSecrets: userSecretManagementService
   });
 
   const cronJobs: CronJob[] = [];
