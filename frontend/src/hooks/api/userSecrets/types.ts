@@ -41,3 +41,8 @@ export type TUpdateCredentialRequest = {
   title?: string;
   content?: string;
 };
+
+
+export type TDeleteUserSecretRequest = {
+  sharedSecretId: string;
+};
