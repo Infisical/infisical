@@ -13,8 +13,8 @@ export const useCreateUserCredentials = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (inputData: TCreateCredentialRequest) => {
-      const { data } = await apiRequest.put<TUserSecrets>(
-       "/api/v1/user-secrets/create",
+      const { data } = await apiRequest.post<TUserSecrets>(
+       "/api/v1/user-secrets/create/",
         inputData
       );
       return data;

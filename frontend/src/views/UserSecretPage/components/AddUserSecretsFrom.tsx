@@ -24,16 +24,23 @@ const schema = z.object({
   credentialType: z.enum(["WEB_LOGIN", "CREDIT_CARD", "SECURE_NOTE"]),
   username: z.string().optional(),
   password: z.string().optional(),
-  cardNumber: z.string().optional(),
-  expiryDate: z.string().optional(),
-  cvv: z.string().optional(),
+  cardNumber: z.string().optional().refine((val) => !val || /^\d{16}$/.test(val), {
+    message: "Card number must be exactly 16 digits"
+  }),
+  expiryDate: z.string().optional().refine((val) => !val || /^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(val), {
+    message: "Expiry date must be in MM/YY format"
+  }),
+  cvv: z.string().optional().refine((val) => !val || val.length === 3, {
+    message: "CVV must be exactly 3 digits"
+  }),
   title: z.string().optional(),
   content: z.string().optional(),
   organizationId: z.string().optional(),
   userId: z.string().optional(),
-  
-  // organizatinId:z.number().optional()
 });
+
+
+
 
 export type FormData = z.infer<typeof schema>;
 
@@ -180,7 +187,7 @@ export const AddUserSecretsForm = () => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="Enter CVV" type="text" />
+                <Input {...field} placeholder="Enter CVV" type="password" />
               </FormControl>
             )}
           />
