@@ -7,9 +7,12 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  useOrganization,
+  useUser
+} from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useCreateUserCredentials } from "@app/hooks/api"; // Replace with the correct path to your hook
-
 
 const credentialTypeOptions = [
   { label: "Web Login", value: "WEB_LOGIN" },
@@ -36,6 +39,9 @@ export type FormData = z.infer<typeof schema>;
 
 export const AddUserSecretsForm = () => {
   const [secretLink, setSecretLink] = useState("");
+  const { currentOrg } = useOrganization();
+  const { user } = useUser();
+
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -53,19 +59,16 @@ export const AddUserSecretsForm = () => {
   });
 
   const { mutateAsync: createUserCredentials } = useCreateUserCredentials()
-
+  const currentOrgId:string= currentOrg?.id
+  const userId:string = user?.id
 
   const credentialType = watch("credentialType");
 
   const onFormSubmit = async (data: FormData) => {
     try {
-
-
-      
-
       await createUserCredentials({...data, 
-        organizationId:"43b84d0e-2c57-4f1c-8ef2-5f53f100bd0e",
-        userId:"43b84d0e-2c57-4f1c-8ef2-5f53f100bd0e"});
+        organizationId:currentOrgId,
+        userId});
 
       createNotification({
         text: "Successfully created a credential",

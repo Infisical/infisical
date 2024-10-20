@@ -41,7 +41,7 @@ export const EditUserSecretsForm = ({ initialData }: Props) => {
     initialState: "Copy to clipboard"
   });
 
-  const updateCredential = useUpdateCredential(); // API for updating
+  const updateCredential = useUpdateCredential(); 
 
   const {
     control,

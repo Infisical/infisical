@@ -1,19 +1,21 @@
-
-
 export type TUserSecrets = {
   id: string;
-  userId: string;
-  orgId: string;
+  user_id: string;
+  organization_id: string;
+  type: string;
+  username: string;
+  password: string;
+  card_number: string;
+  expiry_date: string;
+  cvv:string;
+  title: string;
+  content: string;
   createdAt: Date;
   updatedAt: Date;
-  name: string | null;
-  lastViewedAt?: Date;
-  expiresAt: Date;
-  expiresAfterViews: number | null;
-  encryptedValue: string;
-  iv: string;
-  tag: string;
-};
+
+}
+
+
 
 export type TCreateCredentialRequest = {
   userId: string;

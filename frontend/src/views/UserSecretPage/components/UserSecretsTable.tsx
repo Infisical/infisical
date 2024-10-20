@@ -12,24 +12,12 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useGetSharedSecrets } from "@app/hooks/api/secretSharing";
+import { useGetAllSecrets } from "@app/hooks/api/userSecrets/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { UserSecretsRow } from "./UserSecretsRow";
 
 
-// type Props = {
-//   handlePopUpOpen: (
-//     popUpName: keyof UsePopUpState<["deleteSharedSecretConfirmation"]>,
-//     {
-//       name,
-//       id
-//     }: {
-//       name: string;
-//       id: string;
-//     }
-//   ) => void;
-// };
 
 type UserSecretsTableProps = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["editCredentials", "deleteSharedSecretConfirmation"]>, data?: any) => void;
@@ -39,7 +27,7 @@ type UserSecretsTableProps = {
 export const UserSecretsTable = ({ handlePopUpOpen}:UserSecretsTableProps) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isLoading, data } = useGetSharedSecrets({
+  const { isLoading, data } = useGetAllSecrets({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -49,7 +37,7 @@ export const UserSecretsTable = ({ handlePopUpOpen}:UserSecretsTableProps) => {
         <THead>
           <Tr>
             {/* <Th className="w-5" /> */}
-            <Th>Name</Th>
+            <Th>Label</Th>
             <Th>Credential Type</Th>
             <Th>Created At</Th>
             <Th>Updated At</Th>

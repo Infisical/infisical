@@ -1251,7 +1251,10 @@ export const registerRoutes = async (
   });
 
   const userSecretManagementService = featureUsersSecretManagmentServiceFactory({
-    userSecretsDAL
+    userSecretsDAL,
+    permissionService,
+    orgDAL,
+    kmsService
   });
 
   await superAdminService.initServerCfg();

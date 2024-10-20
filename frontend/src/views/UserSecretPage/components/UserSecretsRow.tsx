@@ -3,13 +3,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { IconButton, Td, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge";
-import { TUserSecret } from "@app/hooks/api/userSecrets";
+import { TUserSecrets } from "@app/hooks/api/userSecrets";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 
 type UserSecretsRowProps = {
-  row: TUserSecret;
+  row: TUserSecrets;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["editCredentials", "deleteSharedSecretConfirmation"]>, data?: any) => void;
 }
 
@@ -22,11 +21,6 @@ export const UserSecretsRow = ({ row, handlePopUpOpen }: UserSecretsRowProps) =>
   };
 
 
-  let isExpired = false;
-
-  if (row.expiresAt !== null && new Date(row.expiresAt) < new Date()) {
-    isExpired = true;
-  }
 
   return (
     <>
@@ -35,14 +29,12 @@ export const UserSecretsRow = ({ row, handlePopUpOpen }: UserSecretsRowProps) =>
         // className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
         // onClick={() => setIsRowExpanded.toggle()}
       >
-        <Td>{row.name ? `${row.name}` : "-"}</Td>
+        <Td>{row.username ? `${row.username}` : "-"}</Td>
         <Td>
-          <Badge variant={isExpired ? "danger" : "success"}>
-            {isExpired ? "Expired" : "Active"}
-          </Badge>
+         {row.type}
         </Td>
         <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
-        <Td>{format(new Date(row.expiresAt), "yyyy-MM-dd - HH:mm a")}</Td>
+        <Td>{format(new Date(row.updatedAt), "yyyy-MM-dd - HH:mm a")}</Td>
         {/* <Td>{row.expiresAfterViews !== null ? row.expiresAfterViews : "-"}</Td> */}
         <Td>
   <div className="flex items-center justify-start space-x-2">
