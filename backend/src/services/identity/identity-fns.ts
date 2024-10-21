@@ -18,12 +18,12 @@ export const buildAuthMethods = ({
   tokenId?: string;
 }) => {
   return [
-    ...(uaId ? [IdentityAuthMethod.UNIVERSAL_AUTH] : []),
-    ...(gcpId ? [IdentityAuthMethod.GCP_AUTH] : []),
-    ...(awsId ? [IdentityAuthMethod.AWS_AUTH] : []),
-    ...(kubernetesId ? [IdentityAuthMethod.KUBERNETES_AUTH] : []),
-    ...(oidcId ? [IdentityAuthMethod.OIDC_AUTH] : []),
-    ...(azureId ? [IdentityAuthMethod.AZURE_AUTH] : []),
-    ...(tokenId ? [IdentityAuthMethod.TOKEN_AUTH] : [])
-  ].filter((authMethod) => authMethod);
+    ...[uaId ? IdentityAuthMethod.UNIVERSAL_AUTH : null],
+    ...[gcpId ? IdentityAuthMethod.GCP_AUTH : null],
+    ...[awsId ? IdentityAuthMethod.AWS_AUTH : null],
+    ...[kubernetesId ? IdentityAuthMethod.KUBERNETES_AUTH : null],
+    ...[oidcId ? IdentityAuthMethod.OIDC_AUTH : null],
+    ...[azureId ? IdentityAuthMethod.AZURE_AUTH : null],
+    ...[tokenId ? IdentityAuthMethod.TOKEN_AUTH : null]
+  ].filter((authMethod) => authMethod) as IdentityAuthMethod[];
 };
