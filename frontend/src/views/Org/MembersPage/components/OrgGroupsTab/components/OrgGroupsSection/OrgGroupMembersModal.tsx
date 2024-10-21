@@ -21,6 +21,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
 import { useAddUserToGroup, useListGroupUsers, useRemoveUserFromGroup } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -33,18 +34,28 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
+  const [debouncedSearch] = useDebounce(searchMemberFilter);
 
   const popUpData = popUp?.groupMembers?.data as {
     groupId: string;
     slug: string;
   };
 
+  const offset = (page - 1) * perPage;
   const { data, isLoading } = useListGroupUsers({
     id: popUpData?.groupId,
     groupSlug: popUpData?.slug,
-    offset: (page - 1) * perPage,
+    offset,
     limit: perPage,
-    username: searchMemberFilter
+    search: debouncedSearch
+  });
+
+  const { totalCount = 0 } = data ?? {};
+
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
   });
 
   const { mutateAsync: assignMutateAsync } = useAddUserToGroup();
@@ -140,9 +151,9 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                 })}
             </TBody>
           </Table>
-          {!isLoading && data?.totalCount !== undefined && (
+          {!isLoading && totalCount > 0 && (
             <Pagination
-              count={data.totalCount}
+              count={totalCount}
               page={page}
               perPage={perPage}
               onChangePage={(newPage) => setPage(newPage)}
@@ -150,7 +161,10 @@ export const OrgGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
             />
           )}
           {!isLoading && !data?.users?.length && (
-            <EmptyState title="No users found" icon={faUsers} />
+            <EmptyState
+              title={debouncedSearch ? "No users match search" : "No users found"}
+              icon={faUsers}
+            />
           )}
         </TableContainer>
       </ModalContent>
