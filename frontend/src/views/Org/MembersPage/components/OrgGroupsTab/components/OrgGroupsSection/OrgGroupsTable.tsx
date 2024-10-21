@@ -335,7 +335,12 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {groups?.length === 0 && <EmptyState title="No groups found" icon={faUsers} />}
+        {filteredGroups?.length === 0 && (
+          <EmptyState
+            title={groups?.length === 0 ? "No groups found" : "No groups match search"}
+            icon={faUsers}
+          />
+        )}
       </TableContainer>
     </div>
   );
