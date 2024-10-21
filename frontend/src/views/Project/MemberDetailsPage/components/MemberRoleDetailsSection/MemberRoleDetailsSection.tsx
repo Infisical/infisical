@@ -1,4 +1,5 @@
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
   IconButton,
@@ -11,20 +12,27 @@ import {
   TableSkeleton,
   EmptyState,
   TBody,
-  Tooltip
+  Tooltip,
+  Modal,
+  ModalContent,
+  Tag
 } from "@app/components/v2";
-import { useUser, useWorkspace } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import {
-  useDeleteProjectRole,
-  useGetWorkspaceUserDetails,
-  useUpdateUserWorkspaceRole
-} from "@app/hooks/api";
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useUser,
+  useWorkspace
+} from "@app/context";
+import { formatProjectRoleName } from "@app/helpers/roles";
+import { usePopUp } from "@app/hooks";
+import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { faFolder, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useRouter } from "next/router";
+import { format, formatDistance } from "date-fns";
+import { twMerge } from "tailwind-merge";
+import { MemberRoleModify } from "./MemberRoleModify";
 
 type Props = {
   membershipDetails: TWorkspaceUser;
@@ -35,11 +43,11 @@ export const MemberRoleDetailsSection = ({
   membershipDetails,
   isMembershipDetailsLoading
 }: Props) => {
-  const router = useRouter();
   const { user } = useUser();
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "deleteRole"
+    "deleteRole",
+    "modifyRole"
   ] as const);
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
@@ -67,14 +75,26 @@ export const MemberRoleDetailsSection = ({
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Project Roles</h3>
         {userId !== membershipDetails?.user?.id && membershipDetails?.status !== "invited" && (
-          <IconButton
-            ariaLabel="copy icon"
-            variant="plain"
-            className="group relative"
-            onClick={() => {}}
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={ProjectPermissionSub.Member}
+            renderTooltip
+            allowedLabel="Edit role"
           >
-            <FontAwesomeIcon icon={faPlus} />
-          </IconButton>
+            {(isAllowed) => (
+              <IconButton
+                ariaLabel="copy icon"
+                variant="plain"
+                className="group relative"
+                onClick={() => {
+                  handlePopUpOpen("modifyRole");
+                }}
+                isDisabled={!isAllowed}
+              >
+                <FontAwesomeIcon icon={faPencil} />
+              </IconButton>
+            )}
+          </ProjectPermissionCan>
         )}
       </div>
       <div className="py-4">
@@ -93,33 +113,76 @@ export const MemberRoleDetailsSection = ({
               )}
               {!isMembershipDetailsLoading &&
                 membershipDetails?.roles?.map((roleDetails) => {
+                  const isTemporary = roleDetails?.isTemporary;
+                  const isExpired =
+                    roleDetails.isTemporary &&
+                    new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
+
+                  let text = "Permanent";
+                  let toolTipText = "Non expiry access";
+                  if (roleDetails.isTemporary) {
+                    if (isExpired) {
+                      text = "Access Expired";
+                      toolTipText = "Timed Access Expired";
+                    } else {
+                      text = formatDistance(
+                        new Date(roleDetails.temporaryAccessEndTime || ""),
+                        new Date()
+                      );
+                      toolTipText = `Until ${format(
+                        new Date(roleDetails.temporaryAccessEndTime || ""),
+                        "yyyy-MM-dd hh:mm:ss aaa"
+                      )}`;
+                    }
+                  }
+
                   return (
                     <Tr className="group h-10" key={`user-project-membership-${roleDetails?.id}`}>
-                      <Td>
+                      <Td className="capitalize">
                         {roleDetails.role === "custom"
                           ? roleDetails.customRoleName
-                          : roleDetails.role}
+                          : formatProjectRoleName(roleDetails.role)}
                       </Td>
-                      <Td>{!roleDetails.isTemporary ? "permanent" : "temporary"}</Td>
+                      <Td>
+                        <Tooltip asChild={false} content={toolTipText}>
+                          <Tag
+                            className={twMerge(
+                              "capitalize",
+                              isTemporary && "text-primary",
+                              isExpired && "text-red-600"
+                            )}
+                          >
+                            {text}
+                          </Tag>
+                        </Tooltip>
+                      </Td>
                       <Td>
                         <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                          <Tooltip content="Remove">
-                            <IconButton
-                              colorSchema="danger"
-                              ariaLabel="copy icon"
-                              variant="plain"
-                              className="group relative"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("deleteRole", {
-                                  id: roleDetails?.id,
-                                  slug: roleDetails?.customRoleSlug || roleDetails?.role
-                                });
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          </Tooltip>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Member}
+                            renderTooltip
+                            allowedLabel="Remove role"
+                          >
+                            {(isAllowed) => (
+                              <IconButton
+                                colorSchema="danger"
+                                ariaLabel="copy icon"
+                                variant="plain"
+                                className="group relative"
+                                isDisabled={!isAllowed}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteRole", {
+                                    id: roleDetails?.id,
+                                    slug: roleDetails?.customRoleName || roleDetails?.role
+                                  });
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faTrash} />
+                              </IconButton>
+                            )}
+                          </ProjectPermissionCan>
                         </div>
                       </Td>
                     </Tr>
@@ -139,6 +202,14 @@ export const MemberRoleDetailsSection = ({
         onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
         onDeleteApproved={() => handleRoleDelete()}
       />
+      <Modal
+        isOpen={popUp.modifyRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
+      >
+        <ModalContent title="Roles" subTitle="Select one of the pre-defined or custom roles.">
+          <MemberRoleModify projectMember={membershipDetails} onOpenUpgradeModal={() => {}} />
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

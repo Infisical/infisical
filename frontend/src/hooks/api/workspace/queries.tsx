@@ -420,8 +420,11 @@ export const useUpdateUserWorkspaceRole = () => {
       );
       return membership;
     },
-    onSuccess: (_, { workspaceId }) => {
+    onSuccess: (_, { workspaceId, membershipId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
+      queryClient.invalidateQueries(
+        workspaceKeys.getWorkspaceUserDetails(workspaceId, membershipId)
+      );
     }
   });
 };

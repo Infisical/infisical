@@ -40,7 +40,7 @@ export const MemberDetailsPage = withProjectPermission(
               <h3 className="text-lg font-semibold text-mineshaft-100">Project User Management</h3>
               <div>
                 <Button colorSchema="danger" variant="outline_bg" size="xs">
-                  Remove
+                  Remove User
                 </Button>
               </div>
             </div>
