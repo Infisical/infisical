@@ -41,8 +41,11 @@ export const useUpdateProjectRole = () => {
       } = await apiRequest.patch(`/api/v2/workspace/${projectId}/roles/${id}`, dto);
       return role;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { projectId, slug }) => {
       queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
+      if (slug) {
+        queryClient.invalidateQueries(roleQueryKeys.getProjectRoleBySlug(projectId, slug));
+      }
     }
   });
 };

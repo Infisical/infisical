@@ -48,7 +48,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
   const projectId = currentWorkspace?.id || "";
   const { data: role, isLoading } = useGetProjectRoleBySlug(
-    currentWorkspace?.slug ?? "",
+    currentWorkspace?.id ?? "",
     roleSlug as string
   );
 

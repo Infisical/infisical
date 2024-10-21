@@ -74,7 +74,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:projectSlug/roles/:roleId",
+    url: "/:projectId/roles/:roleId",
     config: {
       rateLimit: writeLimit
     },

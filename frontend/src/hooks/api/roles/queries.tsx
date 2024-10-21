@@ -39,8 +39,8 @@ const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export const roleQueryKeys = {
   getProjectRoles: (projectId: string) => ["roles", { projectSlug: projectId }] as const,
-  getProjectRoleBySlug: (projectSlug: string, roleSlug: string) =>
-    ["roles", { projectSlug, roleSlug }] as const,
+  getProjectRoleBySlug: (projectId: string, roleSlug: string) =>
+    ["roles", { projectId, roleSlug }] as const,
   getOrgRoles: (orgId: string) => ["org-roles", { orgId }] as const,
   getOrgRole: (orgId: string, roleId: string) => [{ orgId, roleId }, "org-role"] as const,
   getUserOrgPermissions: ({ orgId }: TGetUserOrgPermissionsDTO) =>
