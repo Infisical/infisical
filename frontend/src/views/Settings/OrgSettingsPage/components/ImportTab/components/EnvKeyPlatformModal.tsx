@@ -13,17 +13,13 @@ type Props = {
   onClose: () => void;
 };
 
-const formSchema = z.object({
-  encryptionKey: z.string().min(1),
-  encryptedJson: z.object({
-    nonce: z.string().min(1),
-    data: z.string().min(1)
-  })
-});
-
-type TFormData = z.infer<typeof formSchema>;
-
 export const EnvKeyPlatformModal = ({ onClose }: Props) => {
+  const formSchema = z.object({
+    encryptionKey: z.string().min(1),
+    file: z.instanceof(File)
+  });
+  type TFormData = z.infer<typeof formSchema>;
+
   const fileUploadRef = useRef<HTMLInputElement>(null);
 
   const { mutateAsync: importEnvKey } = useImportEnvKey();
@@ -40,8 +36,8 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
   });
 
   const onSubmit = async (data: TFormData) => {
-    if (!data.encryptedJson) {
-      setError("encryptedJson", {
+    if (!data.file) {
+      setError("file", {
         type: "required",
         message: "File is required"
       });
@@ -50,12 +46,13 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
 
     try {
       await importEnvKey({
-        encryptedJson: data.encryptedJson,
+        file: data.file,
         decryptionKey: data.encryptionKey
       });
       createNotification({
-        text: "Data imported successfully.",
-        type: "success"
+        title: "Import started",
+        text: "Your data is being imported. You will receive an email when the import is complete or if the import fails. This may take up to 10 minutes.",
+        type: "info"
       });
 
       onClose();
@@ -70,7 +67,6 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
   };
 
   const onImportFileDrop = (file?: File) => {
-    const reader = new FileReader();
     if (!file) {
       createNotification({
         text: "No file selected.",
@@ -78,40 +74,8 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
       });
       return;
     }
-    reader.onload = (event) => {
-      if (!event?.target?.result) return;
 
-      const droppedFile = event.target.result.toString();
-      const formattedData: Record<string, string> = JSON.parse(droppedFile);
-      if (
-        Object.keys(formattedData).includes("nonce") &&
-        Object.keys(formattedData).includes("data")
-      ) {
-        const data = {
-          nonce: formattedData.nonce,
-          data: formattedData.data
-        };
-        setValue("encryptedJson", data, { shouldDirty: true, shouldValidate: true });
-      } else {
-        setValue(
-          "encryptedJson",
-          {
-            nonce: "",
-            data: ""
-          },
-          { shouldDirty: true, shouldValidate: true }
-        );
-
-        if (fileUploadRef.current) {
-          fileUploadRef.current.value = "";
-        }
-        createNotification({
-          text: "Improper file format, please upload the EnvKey export.",
-          type: "error"
-        });
-      }
-    };
-    reader.readAsText(file);
+    setValue("file", file, { shouldDirty: true, shouldValidate: true });
   };
 
   return (

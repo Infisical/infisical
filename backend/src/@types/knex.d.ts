@@ -337,6 +337,11 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TExternalGroupOrgRoleMappings,
+  TExternalGroupOrgRoleMappingsInsert,
+  TExternalGroupOrgRoleMappingsUpdate
+} from "@app/db/schemas/external-group-org-role-mappings";
+import {
   TSecretV2TagJunction,
   TSecretV2TagJunctionInsert,
   TSecretV2TagJunctionUpdate
@@ -807,6 +812,11 @@ declare module "knex/types/tables" {
       TWorkflowIntegrations,
       TWorkflowIntegrationsInsert,
       TWorkflowIntegrationsUpdate
+    >;
+    [TableName.ExternalGroupOrgRoleMapping]: KnexOriginal.CompositeTableType<
+      TExternalGroupOrgRoleMappings,
+      TExternalGroupOrgRoleMappingsInsert,
+      TExternalGroupOrgRoleMappingsUpdate
     >;
   }
 }

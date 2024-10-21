@@ -1,4 +1,4 @@
-import { compile } from "handlebars";
+import handlebars from "handlebars";
 import ldapjs from "ldapjs";
 import ldif from "ldif";
 import { customAlphabet } from "nanoid";
@@ -40,7 +40,7 @@ const generateLDIF = ({
     EncodedPassword: encodePassword(password)
   };
 
-  const renderTemplate = compile(ldifTemplate);
+  const renderTemplate = handlebars.compile(ldifTemplate);
   const renderedLdif = renderTemplate(data);
 
   return renderedLdif;

@@ -9,6 +9,7 @@
 
 import {
   CreateSecretCommand,
+  DeleteSecretCommand,
   DescribeSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
@@ -18,6 +19,7 @@ import {
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
@@ -35,6 +37,7 @@ import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
+import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
 import { TIntegrationsWithEnvironment } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
@@ -727,7 +730,7 @@ const syncSecretsAWSParameterStore = async ({
           awsParameterStoreSecretsObj[key].KeyId !== metadata.kmsKeyId;
 
         // we ensure that the KMS key configured in the integration is applied for ALL parameters on AWS
-        if (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value) {
+        if (secrets[key].value && (shouldUpdateKms || awsParameterStoreSecretsObj[key].Value !== secrets[key].value)) {
           await ssm
             .putParameter({
               Name: `${integration.path}${key}`,
@@ -788,7 +791,7 @@ const syncSecretsAWSParameterStore = async ({
         logger.info(
           `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=2]`
         );
-        if (!(key in secrets)) {
+        if (!(key in secrets) || !secrets[key].value) {
           logger.info(
             `getIntegrationSecrets: inside of shouldDisableDelete AWS SSM [projectId=${projectId}] [environment=${integration.environment.slug}]  [secretPath=${integration.secretPath}] [step=3]`
           );
@@ -899,12 +902,21 @@ const syncSecretsAWSSecretManager = async ({
       }
 
       if (!isEqual(secretToCompare, secretValue)) {
-        await secretsManager.send(
-          new UpdateSecretCommand({
-            SecretId: secretId,
-            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
-          })
-        );
+        if (secretValue) {
+          await secretsManager.send(
+            new UpdateSecretCommand({
+              SecretId: secretId,
+              SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue)
+            })
+          );
+          // delete it
+        } else {
+          await secretsManager.send(
+            new DeleteSecretCommand({
+              SecretId: secretId
+            })
+          );
+        }
       }
 
       const secretAWSTag = metadata.secretAWSTag as { key: string; value: string }[] | undefined;
@@ -989,16 +1001,21 @@ const syncSecretsAWSSecretManager = async ({
     } catch (err) {
       // case 1: when AWS manager can't find the specified secret
       if (err instanceof ResourceNotFoundException && secretsManager) {
-        await secretsManager.send(
-          new CreateSecretCommand({
-            Name: secretId,
-            SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
-            ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
-            Tags: metadata.secretAWSTag
-              ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({ Key: tag.key, Value: tag.value }))
-              : []
-          })
-        );
+        if (secretValue) {
+          await secretsManager.send(
+            new CreateSecretCommand({
+              Name: secretId,
+              SecretString: typeof secretValue === "string" ? secretValue : JSON.stringify(secretValue),
+              ...(metadata.kmsKeyId && { KmsKeyId: metadata.kmsKeyId }),
+              Tags: metadata.secretAWSTag
+                ? metadata.secretAWSTag.map((tag: { key: string; value: string }) => ({
+                    Key: tag.key,
+                    Value: tag.value
+                  }))
+                : []
+            })
+          );
+        }
         // case 2: something unexpected went wrong, so we'll throw the error to reflect the error in the integration sync status
       } else {
         throw err;
@@ -1527,11 +1544,13 @@ const syncSecretsNetlify = async ({
  */
 const syncSecretsGitHub = async ({
   integration,
+  integrationAuth,
   secrets,
   accessToken,
   appendices
 }: {
   integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
   appendices?: { prefix: string; suffix: string };
@@ -1553,9 +1572,24 @@ const syncSecretsGitHub = async ({
     selected_repositories_url?: string | undefined;
   }
 
-  const octokit = new Octokit({
-    auth: accessToken
-  });
+  const authMetadata = IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {});
+  let octokit: Octokit;
+  const appCfg = getConfig();
+
+  if (authMetadata.installationId) {
+    octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+        privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+        installationId: authMetadata.installationId
+      }
+    });
+  } else {
+    octokit = new Octokit({
+      auth: accessToken
+    });
+  }
 
   enum GithubScope {
     Repo = "github-repo",
@@ -2080,6 +2114,80 @@ const syncSecretsCircleCI = async ({
             "Content-Type": "application/json"
           }
         });
+      }
+    })
+  );
+};
+
+/**
+ * Sync/push [secrets] to Databricks project
+ */
+const syncSecretsDatabricks = async ({
+  integration,
+  integrationAuth,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  const databricksApiUrl = `${integrationAuth.url}/api`;
+
+  // sync secrets to Databricks
+  await Promise.all(
+    Object.keys(secrets).map(async (key) =>
+      request.post(
+        `${databricksApiUrl}/2.0/secrets/put`,
+        {
+          scope: integration.app,
+          key,
+          string_value: secrets[key].value
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )
+    )
+  );
+
+  // get secrets from Databricks
+  const getSecretsRes = (
+    await request.get<{ secrets: { key: string; last_updated_timestamp: number }[] }>(
+      `${databricksApiUrl}/2.0/secrets/list`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        params: {
+          scope: integration.app
+        }
+      }
+    )
+  ).data.secrets;
+
+  // delete secrets from Databricks
+  await Promise.all(
+    getSecretsRes.map(async (sec) => {
+      if (!(sec.key in secrets)) {
+        return request.post(
+          `${databricksApiUrl}/2.0/secrets/delete`,
+          {
+            scope: integration.app,
+            key: sec.key
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
       }
     })
   );
@@ -3980,6 +4088,7 @@ export const syncIntegrationSecrets = async ({
     case Integrations.GITHUB:
       await syncSecretsGitHub({
         integration,
+        integrationAuth,
         secrets,
         accessToken,
         appendices
@@ -4017,6 +4126,14 @@ export const syncIntegrationSecrets = async ({
     case Integrations.CIRCLECI:
       await syncSecretsCircleCI({
         integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.DATABRICKS:
+      await syncSecretsDatabricks({
+        integration,
+        integrationAuth,
         secrets,
         accessToken
       });

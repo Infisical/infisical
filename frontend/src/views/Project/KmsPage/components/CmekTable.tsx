@@ -185,7 +185,7 @@ export const CmekTable = () => {
         <div className="mb-4 flex items-center justify-between">
           <p className="whitespace-nowrap text-xl font-semibold text-mineshaft-100">Keys</p>
           <div className="flex w-full justify-end pr-4">
-            <Link href="https://infisical.com/docs/documentation/platform/kms/infisical-kms">
+            <Link href="https://infisical.com/docs/documentation/platform/kms">
               <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
                 Documentation{" "}
                 <FontAwesomeIcon

@@ -30,6 +30,7 @@ type SingleEnvironmentVariable struct {
 	Value       string `json:"value"`
 	Type        string `json:"type"`
 	ID          string `json:"_id"`
+	SecretPath  string `json:"secretPath"`
 	Tags        []struct {
 		ID        string `json:"_id"`
 		Name      string `json:"name"`
@@ -103,6 +104,7 @@ type GetAllSecretsParameters struct {
 	SecretsPath              string
 	IncludeImport            bool
 	Recursive                bool
+	ExpandSecretReferences   bool
 }
 
 type InjectableEnvironmentResult struct {

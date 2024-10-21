@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   faCheckCircle,
@@ -24,6 +25,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
   useFetchServerStatus,
@@ -78,7 +80,20 @@ export const AddOrgMemberModal = ({
     watch,
     reset,
     formState: { isSubmitting }
-  } = useForm<TAddMemberForm>({ resolver: zodResolver(addMemberFormSchema) });
+  } = useForm<TAddMemberForm>({
+    resolver: zodResolver(addMemberFormSchema)
+  });
+
+  // set initial form role based off org default role
+  useEffect(() => {
+    if (organizationRoles) {
+      reset({
+        organizationRoleSlug: isCustomOrgRole(currentOrg?.defaultMembershipRole!)
+          ? organizationRoles?.find((role) => role.id === currentOrg?.defaultMembershipRole)?.slug!
+          : currentOrg?.defaultMembershipRole
+      });
+    }
+  }, [organizationRoles]);
 
   const selectedProjectIds = watch("projectIds", []);
 
@@ -207,7 +222,6 @@ export const AddOrgMemberModal = ({
                   <div>
                     <Select
                       className="w-full"
-                      defaultValue={DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG}
                       {...field}
                       onValueChange={(val) => field.onChange(val)}
                     >

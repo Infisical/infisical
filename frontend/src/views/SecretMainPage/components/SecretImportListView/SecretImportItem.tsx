@@ -158,17 +158,17 @@ export const SecretImportItem = ({
           }
         }}
       >
-        <div className="flex w-12 items-center px-4 py-2 text-green-700">
+        <div className="flex w-11 items-center py-2 pl-5 text-green-700">
           <FontAwesomeIcon icon={faFileImport} />
         </div>
-        <div className="flex flex-grow items-center px-4 py-2">
+        <div className="flex flex-grow items-center py-2 pl-4 pr-2">
           <EnvFolderIcon
             env={importEnv.slug || ""}
             secretPath={secretImport?.importPath || ""}
             // isReplication={isReplication}
           />
         </div>
-        <div className="flex items-center space-x-4 px-4 py-2">
+        <div className="flex items-center space-x-4 py-2 pr-4">
           {lastReplicated && (
             <Tooltip
               position="left"

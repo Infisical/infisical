@@ -26,18 +26,13 @@ export type TDeleteOrgMembershipDTO = {
 };
 
 export type TInviteUserToOrgDTO = {
-  actorId: string;
-  actor: ActorType;
-  orgId: string;
-  actorOrgId: string | undefined;
-  actorAuthMethod: ActorAuthMethod;
   inviteeEmails: string[];
   organizationRoleSlug: string;
   projects?: {
     id: string;
     projectRoleSlug?: string[];
   }[];
-};
+} & TOrgPermission;
 
 export type TVerifyUserToOrgDTO = {
   email: string;
@@ -63,7 +58,13 @@ export type TFindAllWorkspacesDTO = {
 };
 
 export type TUpdateOrgDTO = {
-  data: Partial<{ name: string; slug: string; authEnforced: boolean; scimEnabled: boolean }>;
+  data: Partial<{
+    name: string;
+    slug: string;
+    authEnforced: boolean;
+    scimEnabled: boolean;
+    defaultMembershipRoleSlug: string;
+  }>;
 } & TOrgPermission;
 
 export type TGetOrgGroupsDTO = TOrgPermission;

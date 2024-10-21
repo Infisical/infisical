@@ -17,6 +17,7 @@ import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/sn
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
@@ -37,10 +38,14 @@ import { syncIntegrationSecrets } from "../integration-auth/integration-sync-sec
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
+import { createProjectKey } from "../project/project-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -77,7 +82,8 @@ type TSecretQueueFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
   projectBotDAL: TProjectBotDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "create">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers" | "create">;
   smtpService: TSmtpService;
   orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
   secretVersionDAL: TSecretVersionDALFactory;
@@ -85,7 +91,7 @@ type TSecretQueueFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsService: TKmsServiceFactory;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
@@ -95,6 +101,8 @@ type TSecretQueueFactoryDep = {
   snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany" | "batchInsert">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  orgService: Pick<TOrgServiceFactory, "addGhostUser">;
+  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
 };
 
 export type TGetSecrets = {
@@ -111,6 +119,8 @@ type TIntegrationSecret = Record<
   string,
   { value: string; comment?: string; skipMultilineEncoding?: boolean | null | undefined }
 >;
+
+// TODO(akhilmhdh): split this into multiple queue
 export const secretQueueFactory = ({
   queueService,
   integrationDAL,
@@ -141,7 +151,10 @@ export const secretQueueFactory = ({
   snapshotSecretV2BridgeDAL,
   secretApprovalRequestDAL,
   keyStore,
-  auditLogService
+  auditLogService,
+  orgService,
+  projectUserMembershipRoleDAL,
+  projectKeyDAL
 }: TSecretQueueFactoryDep) => {
   const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
     const appCfg = getConfig();
@@ -1028,11 +1041,13 @@ export const secretQueueFactory = ({
     const {
       botKey,
       shouldUseSecretV2Bridge: isProjectUpgradedToV3,
-      project
+      project,
+      bot
     } = await projectBotService.getBotKey(projectId);
     if (isProjectUpgradedToV3 || project.upgradeStatus === ProjectUpgradeStatus.InProgress) {
       return;
     }
+
     if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
     await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
 
@@ -1044,6 +1059,57 @@ export const secretQueueFactory = ({
     const folders = await folderDAL.findByProjectId(projectId);
     // except secret version and snapshot migrate rest of everything first in a transaction
     await secretDAL.transaction(async (tx) => {
+      // if project v1 create the project ghost user
+      if (project.version === ProjectVersion.V1) {
+        const ghostUser = await orgService.addGhostUser(project.orgId, tx);
+        const projectMembership = await projectMembershipDAL.create(
+          {
+            userId: ghostUser.user.id,
+            projectId: project.id
+          },
+          tx
+        );
+        await projectUserMembershipRoleDAL.create(
+          { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
+          tx
+        );
+
+        const { key: encryptedProjectKey, iv: encryptedProjectKeyIv } = createProjectKey({
+          publicKey: ghostUser.keys.publicKey,
+          privateKey: ghostUser.keys.plainPrivateKey,
+          plainProjectKey: botKey
+        });
+
+        // 4. Save the project key for the ghost user.
+        await projectKeyDAL.create(
+          {
+            projectId: project.id,
+            receiverId: ghostUser.user.id,
+            encryptedKey: encryptedProjectKey,
+            nonce: encryptedProjectKeyIv,
+            senderId: ghostUser.user.id
+          },
+          tx
+        );
+        const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
+        await projectBotDAL.updateById(
+          bot.id,
+          {
+            tag,
+            iv,
+            encryptedProjectKey,
+            encryptedProjectKeyNonce: encryptedProjectKeyIv,
+            encryptedPrivateKey: ciphertext,
+            isActive: true,
+            publicKey: ghostUser.keys.publicKey,
+            senderId: ghostUser.user.id,
+            algorithm,
+            keyEncoding: encoding
+          },
+          tx
+        );
+      }
+
       for (const folder of folders) {
         const folderId = folder.id;
         /*

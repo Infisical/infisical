@@ -20,7 +20,7 @@ const ScimUserSchema = z.object({
       z.object({
         primary: z.boolean(),
         value: z.string().email(),
-        type: z.string().trim()
+        type: z.string().trim().default("work")
       })
     )
     .optional(),
@@ -210,8 +210,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           .array(
             z.object({
               primary: z.boolean(),
-              value: z.string().email(),
-              type: z.string().trim()
+              value: z.string().email()
             })
           )
           .optional(),
@@ -281,8 +280,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
           .array(
             z.object({
               primary: z.boolean(),
-              value: z.string().email(),
-              type: z.string().trim()
+              value: z.string().email()
             })
           )
           .optional(),
@@ -301,7 +299,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
             z.object({
               primary: z.boolean(),
               value: z.string().email(),
-              type: z.string().trim()
+              type: z.string().trim().default("work")
             })
           ),
           displayName: z.string().trim(),

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TIdentityOrgMemberships } from "@app/db/schemas";
+import { TableName, TIdentityOrgMemberships, TOrgRoles } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
@@ -42,30 +42,50 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const paginatedFetchIdentity = (tx || db.replicaNode())(TableName.Identity)
-        .as(TableName.Identity)
-        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
+      const paginatedIdentity = (tx || db.replicaNode())(TableName.Identity)
+        .join(
+          TableName.IdentityOrgMembership,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.Identity}.id`
+        )
+        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
+        .select(
+          selectAllTableCols(TableName.IdentityOrgMembership),
+          db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("authMethod").withSchema(TableName.Identity).as("identityAuthMethod")
+        )
+        .where(filter)
+        .as("paginatedIdentity");
 
       if (search?.length) {
-        void paginatedFetchIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
+        void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
       }
 
       if (limit) {
-        void paginatedFetchIdentity.offset(offset).limit(limit);
+        void paginatedIdentity.offset(offset).limit(limit);
       }
 
-      const query = (tx || db.replicaNode())(TableName.IdentityOrgMembership)
-        .where(filter)
-        .join<Awaited<typeof paginatedFetchIdentity>>(paginatedFetchIdentity, (queryBuilder) => {
-          queryBuilder.on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`);
-        })
-        .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
+      // akhilmhdh: refer this for pagination with multiple left queries
+      type TSubquery = Awaited<typeof paginatedIdentity>;
+      const query = (tx || db.replicaNode())
+        .from<TSubquery[number], TSubquery>(paginatedIdentity)
+        .leftJoin<TOrgRoles>(TableName.OrgRoles, `paginatedIdentity.roleId`, `${TableName.OrgRoles}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
-            .on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`${TableName.IdentityOrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+            .on(`paginatedIdentity.identityId`, `${TableName.IdentityMetadata}.identityId`)
+            .andOn(`paginatedIdentity.orgId`, `${TableName.IdentityMetadata}.orgId`);
         })
-        .select(selectAllTableCols(TableName.IdentityOrgMembership))
+        .select(
+          db.ref("id").withSchema("paginatedIdentity"),
+          db.ref("role").withSchema("paginatedIdentity"),
+          db.ref("roleId").withSchema("paginatedIdentity"),
+          db.ref("orgId").withSchema("paginatedIdentity"),
+          db.ref("createdAt").withSchema("paginatedIdentity"),
+          db.ref("updatedAt").withSchema("paginatedIdentity"),
+          db.ref("identityId").withSchema("paginatedIdentity"),
+          db.ref("identityName").withSchema("paginatedIdentity"),
+          db.ref("identityAuthMethod").withSchema("paginatedIdentity")
+        )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
         .select(db.ref("name").as("crName").withSchema(TableName.OrgRoles))
@@ -73,17 +93,14 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(db.ref("description").as("crDescription").withSchema(TableName.OrgRoles))
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.OrgRoles))
         .select(db.ref("permissions").as("crPermission").withSchema(TableName.OrgRoles))
-        .select(db.ref("id").as("identityId").withSchema(TableName.Identity))
-        .select(
-          db.ref("name").as("identityName").withSchema(TableName.Identity),
-          db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity)
-        )
         .select(
           db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
-        )
-        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection);
+        );
+      if (orderBy === OrgIdentityOrderBy.Name) {
+        void query.orderBy("identityName", orderDirection);
+      }
 
       const docs = await query;
       const formattedDocs = sqlNestRelationships({

@@ -24,6 +24,7 @@ import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fn
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
+  TGetSecretImportByIdDTO,
   TGetSecretImportsDTO,
   TGetSecretsFromImportDTO,
   TResyncSecretImportReplicationDTO,
@@ -455,6 +456,64 @@ export const secretImportServiceFactory = ({
     return secImports;
   };
 
+  const getImportById = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    id: importId
+  }: TGetSecretImportByIdDTO) => {
+    const importDoc = await secretImportDAL.findById(importId);
+
+    if (!importDoc) {
+      throw new NotFoundError({ message: "Secret import not found" });
+    }
+
+    // the folder to import into
+    const folder = await folderDAL.findById(importDoc.folderId);
+
+    if (!folder) throw new NotFoundError({ message: "Secret import folder not found" });
+
+    // the folder to import into, with path
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+
+    if (!folderWithPath) throw new NotFoundError({ message: "Folder path not found" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      folder.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: folder.environment.envSlug,
+        secretPath: folderWithPath.path
+      })
+    );
+
+    const importIntoEnv = await projectEnvDAL.findOne({
+      projectId: folder.projectId,
+      slug: folder.environment.envSlug
+    });
+
+    if (!importIntoEnv) throw new NotFoundError({ message: "Environment to import into not found" });
+
+    return {
+      ...importDoc,
+      projectId: folder.projectId,
+      secretPath: folderWithPath.path,
+      environment: {
+        id: importIntoEnv.id,
+        slug: importIntoEnv.slug,
+        name: importIntoEnv.name
+      }
+    };
+  };
+
   const getSecretsFromImports = async ({
     path: secretPath,
     environment,
@@ -565,6 +624,7 @@ export const secretImportServiceFactory = ({
     updateImport,
     deleteImport,
     getImports,
+    getImportById,
     getSecretsFromImports,
     getRawSecretsFromImports,
     resyncSecretImportReplication,

@@ -54,7 +54,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
-import { SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
+import { SecretType, WsTag } from "@app/hooks/api/types";
 
 import {
   PopUpNames,
@@ -69,8 +69,7 @@ import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
 
 type Props = {
-  secrets?: SecretV3RawSanitized[];
-  // swtich the secrets type as it gets decrypted after api call
+  // switch the secrets type as it gets decrypted after api call
   environment: string;
   // @depreciated will be moving all these details to zustand
   workspaceId: string;
@@ -89,7 +88,6 @@ type Props = {
 };
 
 export const ActionBar = ({
-  secrets = [],
   environment,
   workspaceId,
   projectSlug,
@@ -202,7 +200,7 @@ export const ActionBar = ({
   };
 
   const handleSecretBulkDelete = async () => {
-    const bulkDeletedSecrets = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
+    const bulkDeletedSecrets = Object.values(selectedSecrets);
     try {
       await deleteBatchSecretV3({
         secretPath,
@@ -235,7 +233,7 @@ export const ActionBar = ({
     shouldOverwrite: boolean;
   }) => {
     try {
-      const secretsToMove = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
+      const secretsToMove = Object.values(selectedSecrets);
       const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
         projectSlug,
         shouldOverwrite,
@@ -553,7 +551,7 @@ export const ActionBar = ({
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="ml-4 flex-grow px-2 text-sm">
+          <div className="ml-2 flex-grow px-2 text-sm">
             {Object.keys(selectedSecrets).length} Selected
           </div>
           <ProjectPermissionCan

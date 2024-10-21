@@ -123,6 +123,7 @@ export enum EventType {
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
   GET_SECRET_IMPORTS = "get-secret-imports",
+  GET_SECRET_IMPORT = "get-secret-import",
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
@@ -189,7 +190,9 @@ export enum EventType {
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   CMEK_ENCRYPT = "cmek-encrypt",
-  CMEK_DECRYPT = "cmek-decrypt"
+  CMEK_DECRYPT = "cmek-decrypt",
+  UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
+  GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping"
 }
 
 interface UserActorMetadata {
@@ -1011,6 +1014,14 @@ interface GetSecretImportsEvent {
   };
 }
 
+interface GetSecretImportEvent {
+  type: EventType.GET_SECRET_IMPORT;
+  metadata: {
+    secretImportId: string;
+    folderId: string;
+  };
+}
+
 interface CreateSecretImportEvent {
   type: EventType.CREATE_SECRET_IMPORT;
   metadata: {
@@ -1595,6 +1606,18 @@ interface CmekDecryptEvent {
   };
 }
 
+interface GetExternalGroupOrgRoleMappingsEvent {
+  type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
+  metadata?: Record<string, never>; // not needed, based off orgId
+}
+
+interface UpdateExternalGroupOrgRoleMappingsEvent {
+  type: EventType.UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
+  metadata: {
+    mappings: { groupName: string; roleSlug: string }[];
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1674,6 +1697,7 @@ export type Event =
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
   | GetSecretImportsEvent
+  | GetSecretImportEvent
   | CreateSecretImportEvent
   | UpdateSecretImportEvent
   | DeleteSecretImportEvent
@@ -1740,4 +1764,6 @@ export type Event =
   | DeleteCmekEvent
   | GetCmeksEvent
   | CmekEncryptEvent
-  | CmekDecryptEvent;
+  | CmekDecryptEvent
+  | GetExternalGroupOrgRoleMappingsEvent
+  | UpdateExternalGroupOrgRoleMappingsEvent;

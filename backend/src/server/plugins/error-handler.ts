@@ -7,8 +7,10 @@ import {
   BadRequestError,
   DatabaseError,
   ForbiddenRequestError,
+  GatewayTimeoutError,
   InternalServerError,
   NotFoundError,
+  RateLimitError,
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -25,7 +27,9 @@ enum HttpStatusCodes {
   Unauthorized = 401,
   Forbidden = 403,
   // eslint-disable-next-line @typescript-eslint/no-shadow
-  InternalServerError = 500
+  InternalServerError = 500,
+  GatewayTimeout = 504,
+  TooManyRequests = 429
 }
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
@@ -47,6 +51,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res
         .status(HttpStatusCodes.InternalServerError)
         .send({ statusCode: HttpStatusCodes.InternalServerError, message: "Something went wrong", error: error.name });
+    } else if (error instanceof GatewayTimeoutError) {
+      void res
+        .status(HttpStatusCodes.GatewayTimeout)
+        .send({ statusCode: HttpStatusCodes.GatewayTimeout, message: error.message, error: error.name });
     } else if (error instanceof ZodError) {
       void res
         .status(HttpStatusCodes.Unauthorized)
@@ -60,6 +68,12 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     } else if (error instanceof ForbiddenRequestError) {
       void res.status(HttpStatusCodes.Forbidden).send({
         statusCode: HttpStatusCodes.Forbidden,
+        message: error.message,
+        error: error.name
+      });
+    } else if (error instanceof RateLimitError) {
+      void res.status(HttpStatusCodes.TooManyRequests).send({
+        statusCode: HttpStatusCodes.TooManyRequests,
         message: error.message,
         error: error.name
       });
@@ -91,7 +105,11 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message
       });
     } else {
-      void res.send(error);
+      void res.status(HttpStatusCodes.InternalServerError).send({
+        statusCode: HttpStatusCodes.InternalServerError,
+        error: "InternalServerError",
+        message: "Something went wrong"
+      });
     }
   });
 });

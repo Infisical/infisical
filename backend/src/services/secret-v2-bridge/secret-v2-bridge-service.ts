@@ -193,14 +193,16 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      secretPath,
-      actorId,
-      actor,
-      projectId,
-      environmentSlug: folder.environment.slug
-    });
+    if (inputSecret.type === SecretType.Shared) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        secretPath,
+        actorId,
+        actor,
+        projectId,
+        environmentSlug: folder.environment.slug
+      });
+    }
 
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...secret[0],
@@ -349,14 +351,17 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath,
-      projectId,
-      environmentSlug: folder.environment.slug
-    });
+    if (inputSecret.type === SecretType.Shared) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        secretPath,
+        actorId,
+        actor,
+        projectId,
+        environmentSlug: folder.environment.slug
+      });
+    }
+
     return reshapeBridgeSecret(projectId, environment, secretPath, {
       ...updatedSecret[0],
       value: inputSecret.secretValue || "",
@@ -427,14 +432,16 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
-    await secretQueueService.syncSecrets({
-      actor,
-      actorId,
-      secretPath,
-      projectId,
-      environmentSlug: folder.environment.slug
-    });
+    if (inputSecret.type === SecretType.Shared) {
+      await snapshotService.performSnapshot(folderId);
+      await secretQueueService.syncSecrets({
+        secretPath,
+        actorId,
+        actor,
+        projectId,
+        environmentSlug: folder.environment.slug
+      });
+    }
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,

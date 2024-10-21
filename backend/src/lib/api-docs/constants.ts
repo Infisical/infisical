@@ -533,7 +533,8 @@ export const ENVIRONMENTS = {
   CREATE: {
     workspaceId: "The ID of the project to create the environment in.",
     name: "The name of the environment to create.",
-    slug: "The slug of the environment to create."
+    slug: "The slug of the environment to create.",
+    position: "The position of the environment. The lowest number will be displayed as the first environment."
   },
   UPDATE: {
     workspaceId: "The ID of the project to update the environment in.",
@@ -674,6 +675,9 @@ export const SECRET_IMPORTS = {
     workspaceId: "The ID of the project to list secret imports from.",
     environment: "The slug of the environment to list secret imports from.",
     path: "The path to list secret imports from."
+  },
+  GET: {
+    secretImportId: "The ID of the secret import to fetch."
   },
   CREATE: {
     environment: "The slug of the environment to import into.",

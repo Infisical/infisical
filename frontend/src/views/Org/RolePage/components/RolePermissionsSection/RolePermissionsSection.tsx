@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import {
   formRolePermission2API,
@@ -64,6 +64,10 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "SCIM",
     formName: "scim"
+  },
+  {
+    title: "External KMS",
+    formName: OrgPermissionSubjects.Kms
   }
 ] as const;
 

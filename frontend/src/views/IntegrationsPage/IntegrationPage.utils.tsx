@@ -60,7 +60,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
         break;
       case "github":
-        link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
+        link = `${window.location.origin}/integrations/github/auth-mode-selection`;
         break;
       case "gitlab":
         link = `${window.location.origin}/integrations/gitlab/authorize`;
@@ -73,6 +73,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         break;
       case "circleci":
         link = `${window.location.origin}/integrations/circleci/authorize`;
+        break;
+      case "databricks":
+        link = `${window.location.origin}/integrations/databricks/authorize`;
         break;
       case "laravel-forge":
         link = `${window.location.origin}/integrations/laravel-forge/authorize`;

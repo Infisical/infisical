@@ -1,8 +1,9 @@
-import { Knex } from "knex";
+// weird commonjs-related error in the CI requires us to do the import like this
+import knex from "knex";
 
 import { TDbClient } from "@app/db";
-import { AuditLogsSchema, TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { TableName } from "@app/db/schemas";
+import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
@@ -46,7 +47,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       eventType?: EventType[];
       eventMetadata?: Record<string, string>;
     },
-    tx?: Knex
+    tx?: knex.Knex
   ) => {
     if (!orgId && !projectId) {
       throw new Error("Either orgId or projectId must be provided");
@@ -55,11 +56,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
     try {
       // Find statements
       const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
-        .leftJoin(TableName.Project, `${TableName.AuditLog}.projectId`, `${TableName.Project}.id`)
         // eslint-disable-next-line func-names
         .where(function () {
           if (orgId) {
-            void this.where(`${TableName.Project}.orgId`, orgId).orWhere(`${TableName.AuditLog}.orgId`, orgId);
+            void this.where(`${TableName.AuditLog}.orgId`, orgId);
           } else if (projectId) {
             void this.where(`${TableName.AuditLog}.projectId`, projectId);
           }
@@ -72,23 +72,19 @@ export const auditLogDALFactory = (db: TDbClient) => {
       // Select statements
       void sqlQuery
         .select(selectAllTableCols(TableName.AuditLog))
-        .select(
-          db.ref("name").withSchema(TableName.Project).as("projectName"),
-          db.ref("slug").withSchema(TableName.Project).as("projectSlug")
-        )
         .limit(limit)
         .offset(offset)
         .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
 
       // Special case: Filter by actor ID
       if (actorId) {
-        void sqlQuery.whereRaw(`"actorMetadata"->>'userId' = ?`, [actorId]);
+        void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object('userId', ?::text)`, [actorId]);
       }
 
       // Special case: Filter by key/value pairs in eventMetadata field
       if (eventMetadata && Object.keys(eventMetadata).length) {
         Object.entries(eventMetadata).forEach(([key, value]) => {
-          void sqlQuery.whereRaw(`"eventMetadata"->>'${key}' = ?`, [value]);
+          void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object(?::text, ?::text)`, [key, value]);
         });
       }
 
@@ -109,30 +105,25 @@ export const auditLogDALFactory = (db: TDbClient) => {
       if (endDate) {
         void sqlQuery.where(`${TableName.AuditLog}.createdAt`, "<=", endDate);
       }
-      const docs = await sqlQuery;
 
-      return docs.map((doc) => {
-        // Our type system refuses to acknowledge that the project name and slug are present in the doc, due to the disjointed query structure above.
-        // This is a quick and dirty way to get around the types.
-        const projectDoc = doc as unknown as { projectName: string; projectSlug: string };
+      // we timeout long running queries to prevent DB resource issues (2 minutes)
+      const docs = await sqlQuery.timeout(1000 * 120);
 
-        return {
-          ...AuditLogsSchema.parse(doc),
-          ...(projectDoc?.projectSlug && {
-            project: {
-              name: projectDoc.projectName,
-              slug: projectDoc.projectSlug
-            }
-          })
-        };
-      });
+      return docs;
     } catch (error) {
+      if (error instanceof knex.KnexTimeoutError) {
+        throw new GatewayTimeoutError({
+          error,
+          message: "Failed to fetch audit logs due to timeout. Add more search filters."
+        });
+      }
+
       throw new DatabaseError({ error });
     }
   };
 
   // delete all audit log that have expired
-  const pruneAuditLog = async (tx?: Knex) => {
+  const pruneAuditLog = async (tx?: knex.Knex) => {
     const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
 
@@ -148,6 +139,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
           .where("expiresAt", "<", today)
           .select("id")
           .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
+
         // eslint-disable-next-line no-await-in-loop
         deletedAuditLogIds = await (tx || db)(TableName.AuditLog)
           .whereIn("id", findExpiredLogSubQuery)

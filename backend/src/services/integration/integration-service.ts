@@ -120,7 +120,13 @@ export const integrationServiceFactory = ({
       secretPath,
       projectId: integrationAuth.projectId
     });
-    return { integration, integrationAuth };
+    return {
+      integration: {
+        ...integration,
+        environment: folder.environment
+      },
+      integrationAuth
+    };
   };
 
   const updateIntegration = async ({
@@ -183,7 +189,10 @@ export const integrationServiceFactory = ({
       projectId: folder.projectId
     });
 
-    return updatedIntegration;
+    return {
+      ...updatedIntegration,
+      environment: folder.environment
+    };
   };
 
   const getIntegration = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
@@ -249,27 +258,7 @@ export const integrationServiceFactory = ({
       });
     }
 
-    const deletedIntegration = await integrationDAL.transaction(async (tx) => {
-      // delete integration
-      const deletedIntegrationResult = await integrationDAL.deleteById(id, tx);
-
-      // check if there are other integrations that share the same integration auth
-      const integrations = await integrationDAL.find(
-        {
-          integrationAuthId: integration.integrationAuthId
-        },
-        tx
-      );
-
-      if (integrations.length === 0) {
-        // no other integration shares the same integration auth
-        // -> delete the integration auth
-        await integrationAuthDAL.deleteById(integration.integrationAuthId, tx);
-      }
-
-      return deletedIntegrationResult;
-    });
-
+    const deletedIntegration = await integrationDAL.deleteById(id);
     return { ...integration, ...deletedIntegration };
   };
 

@@ -97,6 +97,9 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
+import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
+import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
@@ -214,16 +217,15 @@ import { registerV3Routes } from "./v3";
 export const registerRoutes = async (
   server: FastifyZodProvider,
   {
+    auditLogDb,
     db,
     smtp: smtpService,
     queue: queueService,
     keyStore
-  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
+  }: { auditLogDb?: Knex; db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
 ) => {
   const appCfg = getConfig();
-  if (!appCfg.DISABLE_SECRET_SCANNING) {
-    await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
-  }
+  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -283,7 +285,7 @@ export const registerRoutes = async (
   const identityOidcAuthDAL = identityOidcAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
 
-  const auditLogDAL = auditLogDALFactory(db);
+  const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
@@ -333,6 +335,8 @@ export const registerRoutes = async (
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
+
+  const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -440,7 +444,8 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectBotDAL,
     permissionService,
-    smtpService
+    smtpService,
+    externalGroupOrgRoleMappingDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -491,6 +496,9 @@ export const registerRoutes = async (
     authDAL,
     userDAL
   });
+
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
   const orgService = orgServiceFactory({
     userAliasDAL,
     identityMetadataDAL,
@@ -513,7 +521,8 @@ export const registerRoutes = async (
     userDAL,
     groupDAL,
     orgBotDAL,
-    oidcConfigDAL
+    oidcConfigDAL,
+    projectBotService
   });
   const signupService = authSignupServiceFactory({
     tokenService,
@@ -531,7 +540,12 @@ export const registerRoutes = async (
     orgService,
     licenseService
   });
-  const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDAL });
+  const orgRoleService = orgRoleServiceFactory({
+    permissionService,
+    orgRoleDAL,
+    orgDAL,
+    externalGroupOrgRoleMappingDAL
+  });
   const superAdminService = superAdminServiceFactory({
     userDAL,
     authService: loginService,
@@ -572,7 +586,6 @@ export const registerRoutes = async (
     secretScanningDAL,
     secretScanningQueue
   });
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
 
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
@@ -836,7 +849,10 @@ export const registerRoutes = async (
     integrationAuthDAL,
     snapshotDAL,
     snapshotSecretV2BridgeDAL,
-    secretApprovalRequestDAL
+    secretApprovalRequestDAL,
+    projectKeyDAL,
+    projectUserMembershipRoleDAL,
+    orgService
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,
@@ -1201,12 +1217,33 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const migrationService = externalMigrationServiceFactory({
-    projectService,
-    orgService,
+  const externalMigrationQueue = externalMigrationQueueFactory({
     projectEnvService,
+    projectDAL,
+    projectService,
+    smtpService,
+    kmsService,
+    projectEnvDAL,
+    secretVersionDAL: secretVersionV2BridgeDAL,
+    secretTagDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+    folderDAL,
+    secretDAL: secretV2BridgeDAL,
+    queueService,
+    secretV2BridgeService
+  });
+
+  const migrationService = externalMigrationServiceFactory({
+    externalMigrationQueue,
+    userDAL,
+    permissionService
+  });
+
+  const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
     permissionService,
-    secretService
+    licenseService,
+    orgRoleDAL,
+    externalGroupOrgRoleMappingDAL
   });
 
   await superAdminService.initServerCfg();
@@ -1294,7 +1331,8 @@ export const registerRoutes = async (
     orgAdmin: orgAdminService,
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
-    migration: migrationService
+    migration: migrationService,
+    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
   });
 
   const cronJobs: CronJob[] = [];

@@ -109,7 +109,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             firstName: true,
             lastName: true,
             email: true,
-            id: true
+            id: true,
+            superAdmin: true
           }).array()
         })
       }

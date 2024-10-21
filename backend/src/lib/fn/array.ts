@@ -70,3 +70,14 @@ export const objectify = <T, Key extends string | number | symbol, Value = T>(
     {} as Record<Key, Value>
   );
 };
+
+/**
+ * Chunks an array into smaller arrays of the given size.
+ */
+export const chunkArray = <T>(array: T[], chunkSize: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize));
+  }
+  return chunks;
+};

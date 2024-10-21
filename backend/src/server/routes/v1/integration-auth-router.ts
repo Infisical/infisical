@@ -189,6 +189,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         workspaceId: z.string().trim(),
         code: z.string().trim(),
         integration: z.string().trim(),
+        installationId: z.string().trim().optional(),
         url: z.string().trim().url().optional()
       }),
       response: {
@@ -449,6 +450,40 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       if (!orgs) throw new Error("No organization found.");
 
       return { orgs };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:integrationAuthId/duplicate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      body: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          integrationAuth: integrationAuthPubSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.duplicateIntegrationAuth({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        id: req.params.integrationAuthId,
+        projectId: req.body.projectId
+      });
+
+      return { integrationAuth };
     }
   });
 

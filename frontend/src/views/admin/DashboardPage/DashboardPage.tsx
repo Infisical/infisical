@@ -125,7 +125,7 @@ export const AdminDashboardPage = () => {
     <div className="container mx-auto max-w-7xl px-4 pb-12 text-white dark:[color-scheme:dark]">
       <div className="mx-auto mb-6 w-full max-w-7xl pt-6">
         <div className="mb-8 flex flex-col items-start justify-between text-xl">
-          <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
+          <h1 className="text-3xl font-semibold">Server Admin Console</h1>
           <p className="text-base text-bunker-300">Manage your instance level configurations.</p>
         </div>
       </div>

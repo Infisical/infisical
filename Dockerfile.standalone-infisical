@@ -95,6 +95,10 @@ RUN mkdir frontend-build
 # Production stage
 FROM base AS production
 RUN apk add --upgrade --no-cache ca-certificates
+RUN apk add --no-cache bash curl && curl -1sLf \
+  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+  && apk add infisical=0.31.1 && apk add --no-cache git
+
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 non-root-user
 

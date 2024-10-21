@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -25,6 +25,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -67,7 +68,7 @@ import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { SecretType, TSecretFolder } from "@app/hooks/api/types";
+import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 import { SecretOverviewDynamicSecretRow } from "@app/views/SecretOverviewPage/components/SecretOverviewDynamicSecretRow";
@@ -106,17 +107,9 @@ export const SecretOverviewPage = () => {
   const { t } = useTranslation();
 
   const router = useRouter();
-  // this is to set expandable table width
-  // coz when overflow the table goes to the right
-  const parentTableRef = useRef<HTMLTableElement>(null);
-  const [expandableTableWidth, setExpandableTableWidth] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
-
-  useEffect(() => {
-    if (parentTableRef.current) {
-      setExpandableTableWidth(parentTableRef.current.clientWidth);
-    }
-  }, [parentTableRef.current]);
 
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const isProjectV3 = currentWorkspace?.version === ProjectVersion.V3;
@@ -133,8 +126,9 @@ export const SecretOverviewPage = () => {
   >(new Map());
 
   const [selectedEntries, setSelectedEntries] = useState<{
-    [EntryType.FOLDER]: Record<string, boolean>;
-    [EntryType.SECRET]: Record<string, boolean>;
+    // selectedEntries[name/key][envSlug][resource]
+    [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
+    [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
   }>({
     [EntryType.FOLDER]: {},
     [EntryType.SECRET]: {}
@@ -152,23 +146,6 @@ export const SecretOverviewPage = () => {
     orderBy
   } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name);
 
-  const toggleSelectedEntry = useCallback(
-    (type: EntryType, key: string) => {
-      const isChecked = Boolean(selectedEntries[type]?.[key]);
-      const newChecks = { ...selectedEntries };
-
-      // remove selection if its present else add it
-      if (isChecked) {
-        delete newChecks[type][key];
-      } else {
-        newChecks[type][key] = true;
-      }
-
-      setSelectedEntries(newChecks);
-    },
-    [selectedEntries]
-  );
-
   const resetSelectedEntries = useCallback(() => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
@@ -177,19 +154,13 @@ export const SecretOverviewPage = () => {
   }, []);
 
   useEffect(() => {
-    const handleParentTableWidthResize = () => {
-      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
-    };
-
     const onRouteChangeStart = () => {
       resetSelectedEntries();
     };
 
     router.events.on("routeChangeStart", onRouteChangeStart);
 
-    window.addEventListener("resize", handleParentTableWidthResize);
     return () => {
-      window.removeEventListener("resize", handleParentTableWidthResize);
       router.events.off("routeChangeStart", onRouteChangeStart);
     };
   }, []);
@@ -551,6 +522,83 @@ export const SecretOverviewPage = () => {
     []
   );
 
+  const allRowsSelectedOnPage = useMemo(() => {
+    if (
+      (!secrets?.length ||
+        secrets?.every((secret) => selectedEntries[EntryType.SECRET][secret.key])) &&
+      (!folders?.length ||
+        folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name]))
+    )
+      return { isChecked: true, isIndeterminate: false };
+
+    if (
+      secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
+      folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name])
+    )
+      return { isChecked: true, isIndeterminate: true };
+
+    return { isChecked: false, isIndeterminate: false };
+  }, [selectedEntries, secrets, folders]);
+
+  const toggleSelectedEntry = useCallback(
+    (type: EntryType, key: string) => {
+      const isChecked = Boolean(selectedEntries[type]?.[key]);
+      const newChecks = { ...selectedEntries };
+
+      // remove selection if its present else add it
+      if (isChecked) {
+        delete newChecks[type][key];
+      } else {
+        newChecks[type][key] = {};
+        userAvailableEnvs.forEach((env) => {
+          const resource =
+            type === EntryType.SECRET
+              ? getSecretByKey(env.slug, key)
+              : getFolderByNameAndEnv(key, env.slug);
+
+          if (resource) newChecks[type][key][env.slug] = resource;
+        });
+      }
+
+      setSelectedEntries(newChecks);
+    },
+    [selectedEntries, getFolderByNameAndEnv, getSecretByKey]
+  );
+
+  const toggleSelectAllRows = () => {
+    const newChecks = { ...selectedEntries };
+
+    userAvailableEnvs.forEach((env) => {
+      secrets?.forEach((secret) => {
+        if (allRowsSelectedOnPage.isChecked) {
+          delete newChecks[EntryType.SECRET][secret.key];
+        } else {
+          if (!newChecks[EntryType.SECRET][secret.key])
+            newChecks[EntryType.SECRET][secret.key] = {};
+
+          const resource = getSecretByKey(env.slug, secret.key);
+
+          if (resource) newChecks[EntryType.SECRET][secret.key][env.slug] = resource;
+        }
+      });
+
+      folders?.forEach((folder) => {
+        if (allRowsSelectedOnPage.isChecked) {
+          delete newChecks[EntryType.FOLDER][folder.name];
+        } else {
+          if (!newChecks[EntryType.FOLDER][folder.name])
+            newChecks[EntryType.FOLDER][folder.name] = {};
+
+          const resource = getFolderByNameAndEnv(folder.name, env.slug);
+
+          if (resource) newChecks[EntryType.FOLDER][folder.name][env.slug] = resource;
+        }
+      });
+    });
+
+    setSelectedEntries(newChecks);
+  };
+
   if (isWorkspaceLoading || (isProjectV3 && isOverviewLoading)) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -799,18 +847,39 @@ export const SecretOverviewPage = () => {
         </div>
         <SelectionPanel
           secretPath={secretPath}
-          getSecretByKey={getSecretByKey}
-          getFolderByNameAndEnv={getFolderByNameAndEnv}
           selectedEntries={selectedEntries}
           resetSelectedEntries={resetSelectedEntries}
         />
-        <div className="thin-scrollbar mt-4" ref={parentTableRef}>
-          <TableContainer>
+        <div className="thin-scrollbar mt-4">
+          <TableContainer
+            onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
+            className="thin-scrollbar"
+          >
             <Table>
               <THead>
                 <Tr className="sticky top-0 z-20 border-0">
                   <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                    <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
+                    <div className="flex items-center border-b border-r border-mineshaft-600 pr-5 pl-3 pt-3.5 pb-3">
+                      <Tooltip
+                        className="max-w-[20rem] whitespace-nowrap capitalize"
+                        content={
+                          totalCount > 0
+                            ? `${
+                                !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
+                              } all folders and secrets on page`
+                            : ""
+                        }
+                      >
+                        <div className="mr-4 ml-2">
+                          <Checkbox
+                            isDisabled={totalCount === 0}
+                            id="checkbox-select-all-rows"
+                            isChecked={allRowsSelectedOnPage.isChecked}
+                            isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
+                            onCheckedChange={toggleSelectAllRows}
+                          />
+                        </div>
+                      </Tooltip>
                       Name
                       <IconButton
                         variant="plain"
@@ -938,7 +1007,7 @@ export const SecretOverviewPage = () => {
                       <SecretOverviewFolderRow
                         folderName={folderName}
                         isFolderPresentInEnv={isFolderPresentInEnv}
-                        isSelected={selectedEntries.folder[folderName]}
+                        isSelected={Boolean(selectedEntries.folder[folderName])}
                         onToggleFolderSelect={() =>
                           toggleSelectedEntry(EntryType.FOLDER, folderName)
                         }
@@ -960,7 +1029,7 @@ export const SecretOverviewPage = () => {
                     ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
-                        isSelected={selectedEntries.secret[key]}
+                        isSelected={Boolean(selectedEntries.secret[key])}
                         onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
                         secretPath={secretPath}
                         getImportedSecretByKey={getImportedSecretByKey}
@@ -972,7 +1041,7 @@ export const SecretOverviewPage = () => {
                         environments={visibleEnvs}
                         secretKey={key}
                         getSecretByKey={getSecretByKey}
-                        expandableColWidth={expandableTableWidth}
+                        scrollOffset={debouncedScrollOffset}
                       />
                     ))}
                   </>
@@ -1003,24 +1072,24 @@ export const SecretOverviewPage = () => {
                 </Tr>
               </TFoot>
             </Table>
-            {!isOverviewLoading && totalCount > 0 && (
-              <Pagination
-                startAdornment={
-                  <SecretTableResourceCount
-                    dynamicSecretCount={totalDynamicSecretCount}
-                    secretCount={totalSecretCount}
-                    folderCount={totalFolderCount}
-                  />
-                }
-                className="border-t border-solid border-t-mineshaft-600"
-                count={totalCount}
-                page={page}
-                perPage={perPage}
-                onChangePage={(newPage) => setPage(newPage)}
-                onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-              />
-            )}
           </TableContainer>
+          {!isOverviewLoading && totalCount > 0 && (
+            <Pagination
+              startAdornment={
+                <SecretTableResourceCount
+                  dynamicSecretCount={totalDynamicSecretCount}
+                  secretCount={totalSecretCount}
+                  folderCount={totalFolderCount}
+                />
+              }
+              className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={(newPage) => setPage(newPage)}
+              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+            />
+          )}
         </div>
       </div>
       <CreateSecretForm

@@ -106,14 +106,19 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("superAdmin").withSchema(TableName.Users),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
-        .where({ isGhost: false }); // MAKE SURE USER IS NOT A GHOST USER
+        .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
+        .orderBy("firstName")
+        .orderBy("lastName");
 
-      return members.map(({ email, isEmailVerified, username, firstName, lastName, userId, publicKey, ...data }) => ({
-        ...data,
-        user: { email, isEmailVerified, username, firstName, lastName, id: userId, publicKey }
-      }));
+      return members.map(
+        ({ email, isEmailVerified, username, firstName, lastName, userId, publicKey, superAdmin, ...data }) => ({
+          ...data,
+          user: { email, isEmailVerified, username, firstName, lastName, id: userId, publicKey, superAdmin }
+        })
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org members" });
     }
@@ -370,6 +375,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("scimEnabled").withSchema(TableName.Organization),
+          db.ref("defaultMembershipRole").withSchema(TableName.Organization),
           db.ref("externalId").withSchema(TableName.UserAliases)
         )
         .where({ isGhost: false });

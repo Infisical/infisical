@@ -157,7 +157,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
                         {user?.superAdmin && (
                           <Link href="/admin" legacyBehavior>
                             <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                              Admin Panel
+                              Server Admin Console
                             </DropdownMenuItem>
                           </Link>
                         )}

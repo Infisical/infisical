@@ -1,5 +1,7 @@
 import { useInfiniteQuery, UseInfiniteQueryOptions, useQuery } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
+import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
 import { Actor, AuditLog, TGetAuditLogsFilter } from "./types";
@@ -28,27 +30,37 @@ export const useGetAuditLogs = (
   return useInfiniteQuery({
     queryKey: auditLogKeys.getAuditLogs(projectId, filters),
     queryFn: async ({ pageParam }) => {
-      const { data } = await apiRequest.get<{ auditLogs: AuditLog[] }>(
-        "/api/v1/organization/audit-logs",
-        {
-          params: {
-            ...filters,
-            offset: pageParam,
-            startDate: filters?.startDate?.toISOString(),
-            endDate: filters?.endDate?.toISOString(),
-            ...(filters.eventMetadata && Object.keys(filters.eventMetadata).length
-              ? {
-                  eventMetadata: Object.entries(filters.eventMetadata)
-                    .map(([key, value]) => `${key}=${value}`)
-                    .join(",")
-                }
-              : {}),
-            ...(filters.eventType?.length ? { eventType: filters.eventType.join(",") } : {}),
-            ...(projectId ? { projectId } : {})
+      try {
+        const { data } = await apiRequest.get<{ auditLogs: AuditLog[] }>(
+          "/api/v1/organization/audit-logs",
+          {
+            params: {
+              ...filters,
+              offset: pageParam,
+              startDate: filters?.startDate?.toISOString(),
+              endDate: filters?.endDate?.toISOString(),
+              ...(filters.eventMetadata && Object.keys(filters.eventMetadata).length
+                ? {
+                    eventMetadata: Object.entries(filters.eventMetadata)
+                      .map(([key, value]) => `${key}=${value}`)
+                      .join(",")
+                  }
+                : {}),
+              ...(filters.eventType?.length ? { eventType: filters.eventType.join(",") } : {}),
+              ...(projectId ? { projectId } : {})
+            }
           }
+        );
+        return data.auditLogs;
+      } catch (error) {
+        if (error instanceof AxiosError) {
+          createNotification({
+            type: "error",
+            text: error.response?.data.message
+          });
         }
-      );
-      return data.auditLogs;
+        return [];
+      }
     },
     getNextPageParam: (lastPage, pages) =>
       lastPage.length !== 0 ? pages.length * filters.limit : undefined,

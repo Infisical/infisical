@@ -1,6 +1,6 @@
 import { ProbotOctokit } from "probot";
 
-import { OrgMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -61,7 +61,7 @@ export const secretScanningQueueFactory = ({
   const getOrgAdminEmails = async (organizationId: string) => {
     // get emails of admins
     const adminsOfWork = await orgMemberDAL.findMembership({
-      orgId: organizationId,
+      [`${TableName.Organization}.id` as string]: organizationId,
       role: OrgMembershipRole.Admin
     });
     return adminsOfWork.filter((userObject) => userObject.email).map((userObject) => userObject.email as string);

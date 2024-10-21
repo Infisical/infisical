@@ -34,6 +34,12 @@ const envSchema = z
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
     ),
+    AUDIT_LOGS_DB_CONNECTION_URI: zpStr(
+      z.string().describe("Postgres database connection string for Audit logs").optional()
+    ),
+    AUDIT_LOGS_DB_ROOT_CERT: zpStr(
+      z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
+    ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
@@ -111,9 +117,16 @@ const envSchema = z
     // gcp secret manager
     CLIENT_ID_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
     CLIENT_SECRET_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
-    // github
+    // github oauth
     CLIENT_ID_GITHUB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITHUB: zpStr(z.string().optional()),
+    // github app
+    CLIENT_ID_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_PRIVATE_KEY_GITHUB_APP: zpStr(z.string().optional()),
+    CLIENT_APP_ID_GITHUB_APP: z.coerce.number().optional(),
+    CLIENT_SLUG_GITHUB_APP: zpStr(z.string().optional()),
+
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
@@ -129,6 +142,7 @@ const envSchema = z
     SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
+    SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     // LICENSE
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
@@ -164,7 +178,8 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
-    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG
+    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
+    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
 
 let envCfg: Readonly<z.infer<typeof envSchema>>;

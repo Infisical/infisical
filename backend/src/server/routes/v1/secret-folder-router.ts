@@ -365,7 +365,15 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          folder: SecretFoldersSchema
+          folder: SecretFoldersSchema.extend({
+            environment: z.object({
+              envId: z.string(),
+              envName: z.string(),
+              envSlug: z.string()
+            }),
+            path: z.string(),
+            projectId: z.string()
+          })
         })
       }
     },

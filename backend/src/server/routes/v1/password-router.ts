@@ -65,7 +65,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       const appCfg = getConfig();
       await server.services.password.changePassword({ ...req.body, userId: req.permission.id });
 
-      void res.cookie("jid", appCfg.COOKIE_SECRET_SIGN_KEY, {
+      void res.cookie("jid", "", {
         httpOnly: true,
         path: "/",
         sameSite: "strict",

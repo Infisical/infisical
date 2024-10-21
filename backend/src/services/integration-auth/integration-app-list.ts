@@ -1,9 +1,13 @@
 /* eslint-disable no-await-in-loop */
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 
+import { TIntegrationAuths } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 
+import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
 
 // akhilmhdh: check this part later. Copied from old base
@@ -230,7 +234,13 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of repositories for Github integration
  */
-const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
+const getAppsGithub = async ({
+  accessToken,
+  authMetadata
+}: {
+  accessToken: string;
+  authMetadata?: TIntegrationAuthMetadata;
+}) => {
   interface GitHubApp {
     id: string;
     name: string;
@@ -240,6 +250,29 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
     owner: {
       login: string;
     };
+  }
+
+  if (authMetadata?.installationId) {
+    const appCfg = getConfig();
+    const octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: appCfg.CLIENT_APP_ID_GITHUB_APP,
+        privateKey: appCfg.CLIENT_PRIVATE_KEY_GITHUB_APP,
+        installationId: authMetadata.installationId
+      }
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const repos = await octokit.paginate("GET /installation/repositories", {
+      per_page: 100
+    });
+
+    return repos.map((a) => ({
+      appId: String(a.id),
+      name: a.name,
+      owner: a.owner.login
+    }));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
@@ -453,6 +486,31 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   }));
 
   return apps;
+};
+
+/**
+ * Return list of projects for Databricks integration
+ */
+const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; accessToken: string }) => {
+  const databricksApiUrl = `${url}/api`;
+
+  const res = await request.get<{ scopes: { name: string; backend_type: string }[] }>(
+    `${databricksApiUrl}/2.0/secrets/scopes/list`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    }
+  );
+
+  const scopes =
+    res.data?.scopes?.map((a) => ({
+      name: a.name, // name maps to unique scope name in Databricks
+      backend_type: a.backend_type
+    })) ?? [];
+
+  return scopes;
 };
 
 const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
@@ -1031,6 +1089,7 @@ const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: strin
 
 export const getApps = async ({
   integration,
+  integrationAuth,
   accessToken,
   accessId,
   teamId,
@@ -1041,6 +1100,7 @@ export const getApps = async ({
   integration: string;
   accessToken: string;
   accessId?: string;
+  integrationAuth: TIntegrationAuths;
   teamId?: string | null;
   azureDevOpsOrgName?: string | null;
   workspaceSlug?: string;
@@ -1074,7 +1134,8 @@ export const getApps = async ({
 
     case Integrations.GITHUB:
       return getAppsGithub({
-        accessToken
+        accessToken,
+        authMetadata: IntegrationAuthMetadataSchema.parse(integrationAuth.metadata || {})
       });
 
     case Integrations.GITLAB:
@@ -1101,6 +1162,12 @@ export const getApps = async ({
 
     case Integrations.CIRCLECI:
       return getAppsCircleCI({
+        accessToken
+      });
+
+    case Integrations.DATABRICKS:
+      return getAppsDatabricks({
+        url,
         accessToken
       });
 

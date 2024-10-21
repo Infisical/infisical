@@ -135,9 +135,7 @@ Lean about Infisical's code scanning feature [here](https://infisical.com/docs/c
 
 This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
 
-If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo):
-
-<a href="[https://infisical.cal.com/vlad/infisical-demo](https://infisical.cal.com/vlad/infisical-demo)"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
+If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo).
 
 ## Security
 
@@ -163,4 +161,3 @@ Not sure where to get started? You can:
 - [Twitter](https://twitter.com/infisical) for fast news
 - [YouTube](https://www.youtube.com/@infisical_os) for videos on secret management
 - [Blog](https://infisical.com/blog) for secret management insights, articles, tutorials, and updates
-- [Roadmap](https://www.notion.so/infisical/be2d2585a6694e40889b03aef96ea36b?v=5b19a8127d1a4060b54769567a8785fa) for planned features

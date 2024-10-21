@@ -313,6 +313,64 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    url: "/:secretImportId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get single secret import",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretImportId: z.string().trim().describe(SECRET_IMPORTS.GET.secretImportId)
+      }),
+      response: {
+        200: z.object({
+          secretImport: SecretImportsSchema.omit({ importEnv: true }).extend({
+            environment: z.object({
+              id: z.string(),
+              name: z.string(),
+              slug: z.string()
+            }),
+            projectId: z.string(),
+            importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
+            secretPath: z.string()
+          })
+        })
+      }
+    },
+
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const secretImport = await server.services.secretImport.getImportById({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.secretImportId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: secretImport.projectId,
+        event: {
+          type: EventType.GET_SECRET_IMPORT,
+          metadata: {
+            secretImportId: secretImport.id,
+            folderId: secretImport.folderId
+          }
+        }
+      });
+
+      return { secretImport };
+    }
+  });
+
+  server.route({
     url: "/secrets",
     method: "GET",
     config: {

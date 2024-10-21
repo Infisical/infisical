@@ -3,6 +3,7 @@ import { TProjectPermission } from "@app/lib/types";
 export type TCreateEnvDTO = {
   name: string;
   slug: string;
+  position?: number;
 } & TProjectPermission;
 
 export type TUpdateEnvDTO = {
@@ -23,4 +24,4 @@ export type TReorderEnvDTO = {
 
 export type TGetEnvDTO = {
   id: string;
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;

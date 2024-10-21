@@ -11,6 +11,8 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { ActorAuthMethod } from "../auth/auth-type";
 import { TOrgRoleDALFactory } from "./org-role-dal";
@@ -18,11 +20,18 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 type TOrgRoleServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;
   permissionService: TPermissionServiceFactory;
+  orgDAL: TOrgDALFactory;
+  externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
 };
 
 export type TOrgRoleServiceFactory = ReturnType<typeof orgRoleServiceFactory>;
 
-export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRoleServiceFactoryDep) => {
+export const orgRoleServiceFactory = ({
+  orgRoleDAL,
+  orgDAL,
+  permissionService,
+  externalGroupOrgRoleMappingDAL
+}: TOrgRoleServiceFactoryDep) => {
   const createRole = async (
     userId: string,
     orgId: string,
@@ -129,6 +138,30 @@ export const orgRoleServiceFactory = ({ orgRoleDAL, permissionService }: TOrgRol
   ) => {
     const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org)
+      throw new NotFoundError({
+        message: "Failed to find organization"
+      });
+
+    if (org.defaultMembershipRole === roleId)
+      throw new BadRequestError({
+        message: "Cannot delete default org membership role. Please re-assign and try again."
+      });
+
+    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne({
+      orgId,
+      roleId
+    });
+
+    if (externalGroupMapping)
+      throw new BadRequestError({
+        message:
+          "Cannot delete role assigned to external group organization role mapping. Please re-assign external mapping and try again."
+      });
+
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deletedRole) throw new NotFoundError({ message: "Organization role not found", name: "Update role" });
 

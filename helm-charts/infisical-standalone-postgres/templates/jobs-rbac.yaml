@@ -2,6 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: k8s-wait-for-infisical-schema-migration
+  namespace: {{ .Release.Namespace }}
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
@@ -10,11 +11,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: default
+  name: infisical-database-schema-migration
+  namespace: {{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
-    name: default 
-    namespace: {{ .Release.Namespace }}
+    name: {{ .Values.infisical.databaseSchemaMigrationJob.serviceAccountName | default "default" }}
+    namespace: {{ .Values.infisical.databaseSchemaMigrationJob.serviceAccountNamespace | default .Release.Namespace }}
 roleRef:
   kind: Role
   name: k8s-wait-for-infisical-schema-migration

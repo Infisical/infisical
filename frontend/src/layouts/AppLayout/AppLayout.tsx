@@ -230,6 +230,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           (!orgs?.map((org) => org.id)?.includes(router.query.id as string) &&
             !router.asPath.includes("project") &&
             !router.asPath.includes("personal") &&
+            !router.asPath.includes("secret-scanning") &&
             !router.asPath.includes("integration")))
       ) {
         router.push(`/org/${currentOrg?.id}/overview`);
@@ -487,7 +488,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         {user?.superAdmin && (
                           <Link href="/admin" legacyBehavior>
                             <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
-                              Server Admin Panel
+                              Server Admin Console
                             </DropdownMenuItem>
                           </Link>
                         )}
@@ -749,7 +750,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {(window.location.origin.includes("https://app.infisical.com") || window.location.origin.includes("https://eu.infisical.com") ||
+                      {(window.location.origin.includes("https://app.infisical.com") ||
+                        window.location.origin.includes("https://eu.infisical.com") ||
                         window.location.origin.includes("https://gamma.infisical.com")) && (
                         <Link href={`/org/${currentOrg?.id}/billing`} passHref>
                           <a>
