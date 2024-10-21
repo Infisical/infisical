@@ -64,7 +64,7 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId
   }: TAttachTokenAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add Token Auth to already configured identity"
@@ -136,7 +136,7 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId
   }: TUpdateTokenAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
       throw new BadRequestError({
         message: "Failed to update Token Auth"
@@ -196,7 +196,7 @@ export const identityTokenAuthServiceFactory = ({
 
   const getTokenAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetTokenAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Token Auth attached"
@@ -224,7 +224,7 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId
   }: TRevokeTokenAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Token Auth"
@@ -269,7 +269,7 @@ export const identityTokenAuthServiceFactory = ({
     name
   }: TCreateTokenAuthTokenDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Token Auth"
@@ -343,7 +343,7 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId
   }: TGetTokenAuthTokensDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Token Auth"
@@ -376,9 +376,11 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId
   }: TUpdateTokenAuthTokenDTO) => {
     const foundToken = await identityAccessTokenDAL.findById(tokenId);
-    if (!foundToken) throw new NotFoundError({ message: "Failed to find token" });
+    if (!foundToken) throw new NotFoundError({ message: `Token with ID ${tokenId} not found` });
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: foundToken.identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) {
+      throw new NotFoundError({ message: `Failed to find identity with ID ${foundToken.identityId}` });
+    }
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.TOKEN_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Token Auth"
@@ -431,7 +433,7 @@ export const identityTokenAuthServiceFactory = ({
     });
     if (!identityAccessToken)
       throw new NotFoundError({
-        message: "Failed to find token"
+        message: `Token with ID ${tokenId} not found or already revoked`
       });
 
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({
@@ -439,7 +441,7 @@ export const identityTokenAuthServiceFactory = ({
     });
 
     if (!identityOrgMembership) {
-      throw new NotFoundError({ message: "No identity organization membership found" });
+      throw new NotFoundError({ message: `Failed to find identity with ID ${identityAccessToken.identityId}` });
     }
 
     const { permission } = await permissionService.getOrgPermission(

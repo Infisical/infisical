@@ -43,7 +43,7 @@ export const projectRoleServiceFactory = ({
 }: TProjectRoleServiceFactoryDep) => {
   const createRole = async ({ projectSlug, data, actor, actorId, actorAuthMethod, actorOrgId }: TCreateRoleDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -75,7 +75,7 @@ export const projectRoleServiceFactory = ({
     roleSlug
   }: TGetRoleBySlugDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -92,7 +92,7 @@ export const projectRoleServiceFactory = ({
     }
 
     const customRole = await projectRoleDAL.findOne({ slug: roleSlug, projectId });
-    if (!customRole) throw new NotFoundError({ message: "Project role not found" });
+    if (!customRole) throw new NotFoundError({ message: `Project role with slug '${roleSlug}' not found` });
     return { ...customRole, permissions: unpackPermissions(customRole.permissions) };
   };
 
@@ -106,7 +106,7 @@ export const projectRoleServiceFactory = ({
     data
   }: TUpdateRoleDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -131,13 +131,17 @@ export const projectRoleServiceFactory = ({
         permissions: data.permissions ? data.permissions : undefined
       }
     );
-    if (!updatedRole) throw new NotFoundError({ message: "Project role not found", name: "Update role" });
+    if (!updatedRole) {
+      throw new NotFoundError({
+        message: `Project role with ID '${roleId}' in project with ID '${projectId}' not found`
+      });
+    }
     return { ...updatedRole, permissions: unpackPermissions(updatedRole.permissions) };
   };
 
   const deleteRole = async ({ actor, actorId, actorAuthMethod, actorOrgId, projectSlug, roleId }: TDeleteRoleDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission(
@@ -166,7 +170,12 @@ export const projectRoleServiceFactory = ({
     }
 
     const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
-    if (!deletedRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
+    if (!deletedRole) {
+      throw new NotFoundError({
+        message: `Project role with ID '${roleId}' in project with ID '${projectId}' not found`,
+        name: "DeleteRole"
+      });
+    }
 
     return { ...deletedRole, permissions: unpackPermissions(deletedRole.permissions) };
   };

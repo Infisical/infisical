@@ -110,7 +110,7 @@ export const slackServiceFactory = ({
 
     if (!slackIntegration) {
       throw new NotFoundError({
-        message: "Slack integration not found"
+        message: `Slack integration with ID ${id} not found`
       });
     }
 
@@ -260,7 +260,7 @@ export const slackServiceFactory = ({
 
     if (!slackIntegration) {
       throw new NotFoundError({
-        message: "Slack integration not found"
+        message: `Slack integration with ID ${id} not found`
       });
     }
 
@@ -347,7 +347,7 @@ export const slackServiceFactory = ({
     const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
-        message: "Slack integration not found."
+        message: `Slack integration with ID ${id} not found`
       });
     }
 
@@ -385,7 +385,7 @@ export const slackServiceFactory = ({
     const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
-        message: "Slack integration not found"
+        message: `Slack integration with ID ${id} not found`
       });
     }
 
@@ -428,7 +428,7 @@ export const slackServiceFactory = ({
     const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!slackIntegration) {
       throw new NotFoundError({
-        message: "Slack integration not found"
+        message: `Slack integration with ID ${id} not found`
       });
     }
 

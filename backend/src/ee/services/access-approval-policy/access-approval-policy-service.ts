@@ -58,7 +58,7 @@ export const accessApprovalPolicyServiceFactory = ({
     enforcementLevel
   }: TCreateAccessApprovalPolicy) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // If there is a group approver people might be added to the group later to meet the approvers quota
     const groupApprovers = approvers
@@ -89,7 +89,7 @@ export const accessApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
-    if (!env) throw new NotFoundError({ message: "Environment not found" });
+    if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
@@ -194,7 +194,7 @@ export const accessApprovalPolicyServiceFactory = ({
     projectSlug
   }: TListAccessApprovalPoliciesDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone in the project should be able to get the policies.
     /* const { permission } = */ await permissionService.getProjectPermission(
@@ -245,7 +245,9 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
     }
 
-    if (!accessApprovalPolicy) throw new NotFoundError({ message: "Secret approval policy not found" });
+    if (!accessApprovalPolicy) {
+      throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
+    }
     const { permission } = await permissionService.getProjectPermission(
       actor,
       actorId,
@@ -382,7 +384,7 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId
   }: TDeleteAccessApprovalPolicy) => {
     const policy = await accessApprovalPolicyDAL.findById(policyId);
-    if (!policy) throw new NotFoundError({ message: "Secret approval policy not found" });
+    if (!policy) throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -410,7 +412,7 @@ export const accessApprovalPolicyServiceFactory = ({
   }: TGetAccessPolicyCountByEnvironmentDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
 
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,
@@ -424,10 +426,10 @@ export const accessApprovalPolicyServiceFactory = ({
     }
 
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
-    if (!environment) throw new NotFoundError({ message: "Environment not found" });
+    if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
     const policies = await accessApprovalPolicyDAL.find({ envId: environment.id, projectId: project.id });
-    if (!policies) throw new NotFoundError({ message: "No policies found" });
+    if (!policies) throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
 
     return { count: policies.length };
   };
@@ -443,7 +445,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
     if (!policy) {
       throw new NotFoundError({
-        message: "Cannot find access approval policy"
+        message: `Cannot find access approval policy with ID ${policyId}`
       });
     }
 

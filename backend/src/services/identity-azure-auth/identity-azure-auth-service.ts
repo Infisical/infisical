@@ -125,7 +125,7 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId
   }: TAttachAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add Azure Auth to already configured identity"
@@ -203,7 +203,7 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId
   }: TUpdateAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
       throw new BadRequestError({
         message: "Failed to update Azure Auth"
@@ -265,7 +265,7 @@ export const identityAzureAuthServiceFactory = ({
 
   const getAzureAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Azure Auth attached"
@@ -293,7 +293,7 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId
   }: TRevokeAzureAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.AZURE_AUTH)
       throw new BadRequestError({
         message: "The identity does not have azure auth"

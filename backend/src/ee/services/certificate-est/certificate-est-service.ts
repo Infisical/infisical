@@ -211,7 +211,7 @@ export const certificateEstServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.findById(certificateTemplateId);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found"
+        message: `Certificate template with ID '${certificateTemplateId}' not found`
       });
     }
 
@@ -236,7 +236,7 @@ export const certificateEstServiceFactory = ({
     const ca = await certificateAuthorityDAL.findById(certTemplate.caId);
     if (!ca) {
       throw new NotFoundError({
-        message: "Certificate Authority not found"
+        message: `Certificate Authority with ID '${certTemplate.caId}' not found`
       });
     }
 

@@ -138,7 +138,7 @@ export const orgServiceFactory = ({
   ) => {
     await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
     const org = await orgDAL.findOrgById(orgId);
-    if (!org) throw new NotFoundError({ message: "Organization not found" });
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
   };
   /*
@@ -298,7 +298,7 @@ export const orgServiceFactory = ({
 
       if (!samlCfg && !oidcCfg)
         throw new NotFoundError({
-          message: "No enforceable SSO config found"
+          message: `SAML or OIDC configuration for organization with ID '${orgId}' not found`
         });
     }
 
@@ -319,7 +319,7 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole
     });
-    if (!org) throw new NotFoundError({ message: "Organization not found" });
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
   };
   /*
@@ -433,7 +433,8 @@ export const orgServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
     const foundMembership = await orgMembershipDAL.findById(membershipId);
-    if (!foundMembership) throw new NotFoundError({ message: "Failed to find organization membership" });
+    if (!foundMembership)
+      throw new NotFoundError({ message: `Organization membership with ID ${membershipId} not found` });
     if (foundMembership.orgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
     if (foundMembership.userId === userId)
@@ -629,8 +630,12 @@ export const orgServiceFactory = ({
           const orgRole = isCustomOrgRole ? OrgMembershipRole.Custom : organizationRoleSlug;
           if (isCustomOrgRole) {
             const customRole = await orgRoleDAL.findOne({ slug: organizationRoleSlug, orgId });
-            if (!customRole)
-              throw new NotFoundError({ name: "InviteUser", message: "Custom organization role not found" });
+            if (!customRole) {
+              throw new NotFoundError({
+                name: "InviteUser",
+                message: `Custom organization role with slug '${orgRole}' not found`
+              });
+            }
             roleId = customRole.id;
           }
 
@@ -788,7 +793,7 @@ export const orgServiceFactory = ({
         if (!bot) {
           throw new NotFoundError({
             name: "InviteUser",
-            message: "Failed to find project bot"
+            message: `Failed to find project bot for project with ID '${projectId}'`
           });
         }
 
@@ -796,7 +801,7 @@ export const orgServiceFactory = ({
         if (!ghostUserLatestKey) {
           throw new NotFoundError({
             name: "InviteUser",
-            message: "Failed to find project owner's latest key"
+            message: `Failed to find project owner's latest key for project with ID '${projectId}'`
           });
         }
 
@@ -985,7 +990,7 @@ export const orgServiceFactory = ({
 
     const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
     if (!membership) {
-      throw new NotFoundError({ message: "Organization membership not found" });
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
     }
     if (membership.orgId !== orgId) {
       throw new ForbiddenRequestError({ message: "Membership does not belong to organization" });
@@ -1031,7 +1036,7 @@ export const orgServiceFactory = ({
 
     const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
     if (!membership) {
-      throw new NotFoundError({ message: "Organization membership not found" });
+      throw new NotFoundError({ message: `Organization membership with ID '${orgMembershipId}' not found` });
     }
     if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
 

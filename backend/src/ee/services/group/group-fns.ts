@@ -74,7 +74,7 @@ const addAcceptedUsersToGroup = async ({
 
       if (!ghostUser) {
         throw new NotFoundError({
-          message: "Failed to find project owner"
+          message: `Failed to find project owner of project with ID '${projectId}'`
         });
       }
 
@@ -82,7 +82,7 @@ const addAcceptedUsersToGroup = async ({
 
       if (!ghostUserLatestKey) {
         throw new NotFoundError({
-          message: "Failed to find project owner's latest key"
+          message: `Failed to find project owner's latest key in project with ID '${projectId}'`
         });
       }
 
@@ -90,7 +90,7 @@ const addAcceptedUsersToGroup = async ({
 
       if (!bot) {
         throw new NotFoundError({
-          message: "Failed to find project bot"
+          message: `Failed to find project bot in project with ID '${projectId}'`
         });
       }
 

@@ -80,7 +80,7 @@ export const pkiCollectionServiceFactory = ({
     actorOrgId
   }: TGetPkiCollectionByIdDTO) => {
     const pkiCollection = await pkiCollectionDAL.findById(collectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -104,7 +104,7 @@ export const pkiCollectionServiceFactory = ({
     actorOrgId
   }: TUpdatePkiCollectionDTO) => {
     let pkiCollection = await pkiCollectionDAL.findById(collectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -131,7 +131,7 @@ export const pkiCollectionServiceFactory = ({
     actorOrgId
   }: TDeletePkiCollectionDTO) => {
     let pkiCollection = await pkiCollectionDAL.findById(collectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -160,7 +160,7 @@ export const pkiCollectionServiceFactory = ({
     actorOrgId
   }: TGetPkiCollectionItems) => {
     const pkiCollection = await pkiCollectionDAL.findById(collectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -203,7 +203,7 @@ export const pkiCollectionServiceFactory = ({
     itemId
   }: TAddItemToPkiCollectionDTO) => {
     const pkiCollection = await pkiCollectionDAL.findById(collectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -235,7 +235,7 @@ export const pkiCollectionServiceFactory = ({
           projectId: pkiCollection.projectId
         });
 
-        if (!ca) throw new NotFoundError({ message: "CA not found" });
+        if (!ca) throw new NotFoundError({ message: `CA with ID '${itemId}' not found` });
 
         pkiCollectionItem = await pkiCollectionItemDAL.create({
           pkiCollectionId: collectionId,
@@ -261,7 +261,7 @@ export const pkiCollectionServiceFactory = ({
           },
           id: itemId
         });
-        if (!certificate) throw new NotFoundError({ message: "Certificate not found" });
+        if (!certificate) throw new NotFoundError({ message: `Certificate with ID '${itemId}' not found` });
 
         pkiCollectionItem = await pkiCollectionItemDAL.create({
           pkiCollectionId: collectionId,
@@ -289,14 +289,14 @@ export const pkiCollectionServiceFactory = ({
     itemId
   }: TRemoveItemFromPkiCollectionDTO) => {
     const pkiCollection = await pkiCollectionDAL.findById(collectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${collectionId}' not found` });
 
     let pkiCollectionItem = await pkiCollectionItemDAL.findOne({
       pkiCollectionId: collectionId,
       id: itemId
     });
 
-    if (!pkiCollectionItem) throw new NotFoundError({ message: "PKI collection item not found" });
+    if (!pkiCollectionItem) throw new NotFoundError({ message: `PKI collection item with ID '${itemId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

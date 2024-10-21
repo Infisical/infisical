@@ -152,7 +152,9 @@ export const recursivelyGetSecretPaths = ({
     });
 
     if (!env) {
-      throw new NotFoundError({ message: `'${environment}' environment not found in project with ID ${projectId}` });
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+      });
     }
 
     // Fetch all folders in env once with a single query
@@ -758,7 +760,7 @@ export const createManySecretsRawFnFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
-        message: "Folder not found for the given environment slug & secret path",
+        message: `Folder with path '${secretPath}' not found in environment with slug '${environment}'`,
         name: "Create secret"
       });
     const folderId = folder.id;
@@ -798,7 +800,7 @@ export const createManySecretsRawFnFactory = ({
       // get all tags
       const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
       const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-      if (tags.length !== tagIds.length) throw new NotFoundError({ message: "Tag not found" });
+      if (tags.length !== tagIds.length) throw new NotFoundError({ message: "One or more tags not found" });
 
       const newSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkInsert({
@@ -834,7 +836,7 @@ export const createManySecretsRawFnFactory = ({
 
     if (!botKey)
       throw new NotFoundError({
-        message: "Project bot not found. Please upgrade your project.",
+        message: `Project bot not found for project with ID '${projectId}'. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
     const inputSecrets = secrets.map((secret) => {
@@ -865,7 +867,7 @@ export const createManySecretsRawFnFactory = ({
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tags.length !== tagIds.length) throw new NotFoundError({ message: "Tag not found" });
+    if (tags.length !== tagIds.length) throw new NotFoundError({ message: "One or more tags not found" });
 
     const newSecrets = await secretDAL.transaction(async (tx) =>
       fnSecretBulkInsert({
@@ -918,8 +920,8 @@ export const updateManySecretsRawFnFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
-        message: "Folder not found for the given environment slug & secret path",
-        name: "Update secret"
+        message: `Folder with path '${secretPath}' not found in environment with slug '${environment}'`,
+        name: "UpdateSecret"
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
@@ -977,7 +979,7 @@ export const updateManySecretsRawFnFactory = ({
 
       const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
       const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-      if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+      if (tagIds.length !== tags.length) throw new NotFoundError({ message: "One or more tags not found" });
 
       const updatedSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkUpdate({
@@ -999,7 +1001,7 @@ export const updateManySecretsRawFnFactory = ({
 
     if (!botKey)
       throw new NotFoundError({
-        message: "Project bot not found. Please upgrade your project.",
+        message: `Project bot not found for project with ID '${projectId}'. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
@@ -1046,7 +1048,7 @@ export const updateManySecretsRawFnFactory = ({
 
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
-    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
+    if (tagIds.length !== tags.length) throw new NotFoundError({ message: "One or more tags not found" });
 
     // now find any secret that needs to update its name
     // same process as above

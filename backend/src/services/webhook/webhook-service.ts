@@ -54,7 +54,10 @@ export const webhookServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
-    if (!env) throw new NotFoundError({ message: "Environment not found" });
+    if (!env)
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+      });
 
     const insertDoc: TWebhooksInsert = {
       url: "", // deprecated - we are moving away from plaintext URLs
@@ -88,7 +91,7 @@ export const webhookServiceFactory = ({
 
   const updateWebhook = async ({ actorId, actor, actorOrgId, actorAuthMethod, id, isDisabled }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new NotFoundError({ message: "Webhook not found" });
+    if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -105,7 +108,7 @@ export const webhookServiceFactory = ({
 
   const deleteWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new NotFoundError({ message: "Webhook not found" });
+    if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -122,7 +125,7 @@ export const webhookServiceFactory = ({
 
   const testWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TTestWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
-    if (!webhook) throw new NotFoundError({ message: "Webhook not found" });
+    if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

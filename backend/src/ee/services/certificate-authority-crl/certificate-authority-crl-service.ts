@@ -34,7 +34,7 @@ export const certificateAuthorityCrlServiceFactory = ({
    */
   const getCrlById = async (crlId: TGetCrlById) => {
     const caCrl = await certificateAuthorityCrlDAL.findById(crlId);
-    if (!caCrl) throw new NotFoundError({ message: "CRL not found" });
+    if (!caCrl) throw new NotFoundError({ message: `CRL with ID '${crlId}' not found` });
 
     const ca = await certificateAuthorityDAL.findById(caCrl.caId);
 
@@ -64,7 +64,7 @@ export const certificateAuthorityCrlServiceFactory = ({
    */
   const getCaCrls = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCrlsDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

@@ -145,7 +145,7 @@ export const externalKmsServiceFactory = ({
     const kmsName = name ? slugify(name) : undefined;
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
     let sanitizedProviderInput = "";
     const { encryptor: orgDataKeyEncryptor, decryptor: orgDataKeyDecryptor } =
@@ -220,7 +220,7 @@ export const externalKmsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
     const externalKms = await externalKmsDAL.transaction(async (tx) => {
       const kms = await kmsDAL.deleteById(kmsDoc.id, tx);
@@ -258,7 +258,7 @@ export const externalKmsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -298,7 +298,7 @@ export const externalKmsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
-    if (!externalKmsDoc) throw new NotFoundError({ message: "External kms not found" });
+    if (!externalKmsDoc) throw new NotFoundError({ message: `External KMS with ID '${kmsDoc.id}' not found` });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

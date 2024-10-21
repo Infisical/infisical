@@ -1048,7 +1048,7 @@ export const secretQueueFactory = ({
       return;
     }
 
-    if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
+    if (!botKey) throw new NotFoundError({ message: `Project bot not found for project ${projectId}` });
     await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({

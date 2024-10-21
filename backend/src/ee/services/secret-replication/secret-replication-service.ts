@@ -295,7 +295,10 @@ export const secretReplicationServiceFactory = ({
             const [destinationFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [
               destinationSecretImport.folderId
             ]);
-            if (!destinationFolder) throw new NotFoundError({ message: "Imported folder not found" });
+            if (!destinationFolder)
+              throw new NotFoundError({
+                message: `Imported folder with ID '${destinationSecretImport.folderId}' not found in project with ID ${projectId}`
+              });
 
             let destinationReplicationFolder = await folderDAL.findOne({
               parentId: destinationFolder.id,
@@ -506,7 +509,7 @@ export const secretReplicationServiceFactory = ({
       return;
     }
 
-    if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
+    if (!botKey) throw new NotFoundError({ message: `Bot key not found for project with ID ${projectId}` });
     // these are the secrets to be added in replicated folders
     const sourceLocalSecrets = await secretDAL.find({ folderId: folder.id, type: SecretType.Shared });
     const sourceSecretImports = await secretImportDAL.find({ folderId: folder.id });
@@ -545,7 +548,11 @@ export const secretReplicationServiceFactory = ({
           const [destinationFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [
             destinationSecretImport.folderId
           ]);
-          if (!destinationFolder) throw new NotFoundError({ message: "Imported folder not found" });
+          if (!destinationFolder) {
+            throw new NotFoundError({
+              message: `Imported folder with ID '${destinationSecretImport.folderId}' not found in project with ID ${projectId}`
+            });
+          }
 
           let destinationReplicationFolder = await folderDAL.findOne({
             parentId: destinationFolder.id,

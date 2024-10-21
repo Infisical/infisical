@@ -99,7 +99,7 @@ export const accessApprovalRequestServiceFactory = ({
   }: TCreateAccessApprovalRequestDTO) => {
     const cfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
     const { membership } = await permissionService.getProjectPermission(
@@ -121,13 +121,17 @@ export const accessApprovalRequestServiceFactory = ({
     const { envSlug, secretPath, accessTypes } = verifyRequestedPermissions({ permissions: requestedPermissions });
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
 
-    if (!environment) throw new NotFoundError({ message: "Environment not found" });
+    if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
     const policy = await accessApprovalPolicyDAL.findOne({
       envId: environment.id,
       secretPath
     });
-    if (!policy) throw new NotFoundError({ message: "No policy matching criteria was found." });
+    if (!policy) {
+      throw new NotFoundError({
+        message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
+      });
+    }
 
     const approverIds: string[] = [];
     const approverGroupIds: string[] = [];
@@ -266,7 +270,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorAuthMethod
   }: TListApprovalRequestsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,
@@ -302,7 +306,9 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId
   }: TReviewAccessRequestDTO) => {
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
-    if (!accessApprovalRequest) throw new NotFoundError({ message: "Secret approval request not found" });
+    if (!accessApprovalRequest) {
+      throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
+    }
 
     const { policy } = accessApprovalRequest;
     const { membership, hasRole } = await permissionService.getProjectPermission(
@@ -423,7 +429,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const getCount = async ({ projectSlug, actor, actorAuthMethod, actorId, actorOrgId }: TGetAccessRequestCountDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const { membership } = await permissionService.getProjectPermission(
       actor,

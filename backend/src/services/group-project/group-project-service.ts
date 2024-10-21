@@ -169,7 +169,7 @@ export const groupProjectServiceFactory = ({
 
         if (!ghostUser) {
           throw new NotFoundError({
-            message: "Failed to find project owner"
+            message: `Failed to find project owner of project with name ${project.name}`
           });
         }
 
@@ -177,7 +177,7 @@ export const groupProjectServiceFactory = ({
 
         if (!ghostUserLatestKey) {
           throw new NotFoundError({
-            message: "Failed to find project owner's latest key"
+            message: `Failed to find project owner's latest key in project with name ${project.name}`
           });
         }
 
@@ -185,7 +185,7 @@ export const groupProjectServiceFactory = ({
 
         if (!bot) {
           throw new NotFoundError({
-            message: "Failed to find project bot"
+            message: `Failed to find project bot in project with name ${project.name}`
           });
         }
 
@@ -425,7 +425,7 @@ export const groupProjectServiceFactory = ({
 
     if (!groupMembership) {
       throw new NotFoundError({
-        message: "Cannot find group membership"
+        message: `Group membership with ID ${groupId} not found in project with ID ${projectId}`
       });
     }
 

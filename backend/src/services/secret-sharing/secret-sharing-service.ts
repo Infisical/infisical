@@ -199,7 +199,7 @@ export const secretSharingServiceFactory = ({
 
     if (!sharedSecret)
       throw new NotFoundError({
-        message: "Shared secret not found"
+        message: `Shared secret with ID '${sharedSecretId}' not found`
       });
 
     const { accessType, expiresAt, expiresAfterViews } = sharedSecret;

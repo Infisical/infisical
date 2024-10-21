@@ -191,7 +191,11 @@ export const samlConfigServiceFactory = ({
 
     const updateQuery: TSamlConfigsUpdate = { authProvider, isActive, lastUsed: null };
     const orgBot = await orgBotDAL.findOne({ orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot)
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID '${orgId}'`,
+        name: "OrgBotNotFound"
+      });
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -257,7 +261,7 @@ export const samlConfigServiceFactory = ({
 
       ssoConfig = await samlConfigDAL.findById(id);
     }
-    if (!ssoConfig) throw new NotFoundError({ message: "Failed to find organization SSO data" });
+    if (!ssoConfig) throw new NotFoundError({ message: `Failed to find SSO data` });
 
     // when dto is type id means it's internally used
     if (dto.type === "org") {
@@ -283,7 +287,11 @@ export const samlConfigServiceFactory = ({
     } = ssoConfig;
 
     const orgBot = await orgBotDAL.findOne({ orgId: ssoConfig.orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot)
+      throw new NotFoundError({
+        message: `Organization bot not found in organization with ID '${ssoConfig.orgId}'`,
+        name: "OrgBotNotFound"
+      });
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -355,7 +363,7 @@ export const samlConfigServiceFactory = ({
     });
 
     const organization = await orgDAL.findOrgById(orgId);
-    if (!organization) throw new NotFoundError({ message: "Organization not found" });
+    if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     let user: TUsers;
     if (userAlias) {

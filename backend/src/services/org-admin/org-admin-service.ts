@@ -90,7 +90,7 @@ export const orgAdminServiceFactory = ({
     );
 
     const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     if (project.version === ProjectVersion.V1) {
       throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
@@ -120,21 +120,21 @@ export const orgAdminServiceFactory = ({
     const ghostUser = await projectDAL.findProjectGhostUser(projectId);
     if (!ghostUser) {
       throw new NotFoundError({
-        message: "Failed to find project owner"
+        message: `Project owner of project with ID '${projectId}' not found`
       });
     }
 
     const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId);
     if (!ghostUserLatestKey) {
       throw new NotFoundError({
-        message: "Failed to find project owner's latest key"
+        message: `Project owner's latest key of project with ID '${projectId}' not found`
       });
     }
 
     const bot = await projectBotDAL.findOne({ projectId });
     if (!bot) {
       throw new NotFoundError({
-        message: "Failed to find project bot"
+        message: `Project bot for project with ID '${projectId}' not found`
       });
     }
 
@@ -146,7 +146,8 @@ export const orgAdminServiceFactory = ({
     });
 
     const userEncryptionKey = await userDAL.findUserEncKeyByUserId(actorId);
-    if (!userEncryptionKey) throw new NotFoundError({ message: "User encryption key not found" });
+    if (!userEncryptionKey)
+      throw new NotFoundError({ message: `User encryption key for user with ID '${actorId}' not found` });
     const [newWsMember] = assignWorkspaceKeysToMembers({
       decryptKey: ghostUserLatestKey,
       userPrivateKey: botPrivateKey,

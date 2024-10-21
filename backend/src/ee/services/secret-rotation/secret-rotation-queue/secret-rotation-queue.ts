@@ -332,7 +332,10 @@ export const secretRotationQueueFactory = ({
           );
         });
       } else {
-        if (!botKey) throw new NotFoundError({ message: "Project bot not found" });
+        if (!botKey)
+          throw new NotFoundError({
+            message: `Project bot not found for project with ID '${secretRotation.projectId}'`
+          });
         const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
           secretId,
           value: encryptSymmetric128BitHexKeyUTF8(
@@ -372,7 +375,9 @@ export const secretRotationQueueFactory = ({
           );
           await secretVersionDAL.insertMany(
             updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => {
-              if (!el.secretBlindIndex) throw new NotFoundError({ message: "Secret blind index not found" });
+              if (!el.secretBlindIndex) {
+                throw new NotFoundError({ message: `Secret blind index not found on secret with ID '${id}` });
+              }
               return {
                 ...el,
                 secretId: id,

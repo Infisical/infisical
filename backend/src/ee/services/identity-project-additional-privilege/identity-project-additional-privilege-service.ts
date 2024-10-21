@@ -65,7 +65,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     ...dto
   }: TCreateIdentityPrivilegeDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
@@ -137,7 +137,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TUpdateIdentityPrivilegeDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
@@ -167,7 +167,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       slug,
       projectMembershipId: identityProjectMembership.id
     });
-    if (!identityPrivilege) throw new NotFoundError({ message: "Identity additional privilege not found" });
+    if (!identityPrivilege) {
+      throw new NotFoundError({
+        message: `Identity additional privilege with slug '${slug}' not found for the specified identity with ID '${identityProjectMembership.identityId}'`
+      });
+    }
     if (data?.slug) {
       const existingSlug = await identityProjectAdditionalPrivilegeDAL.findOne({
         slug: data.slug,
@@ -218,7 +222,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TDeleteIdentityPrivilegeDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
@@ -248,7 +252,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       slug,
       projectMembershipId: identityProjectMembership.id
     });
-    if (!identityPrivilege) throw new NotFoundError({ message: "Identity additional privilege not found" });
+    if (!identityPrivilege) {
+      throw new NotFoundError({
+        message: `Identity additional privilege with slug '${slug}' not found for the specified identity with ID '${identityProjectMembership.identityId}'`
+      });
+    }
 
     const deletedPrivilege = await identityProjectAdditionalPrivilegeDAL.deleteById(identityPrivilege.id);
     return {
@@ -268,7 +276,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod
   }: TGetIdentityPrivilegeDetailsDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
@@ -287,8 +295,11 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       slug,
       projectMembershipId: identityProjectMembership.id
     });
-    if (!identityPrivilege) throw new NotFoundError({ message: "Identity additional privilege not found" });
-
+    if (!identityPrivilege) {
+      throw new NotFoundError({
+        message: `Identity additional privilege with slug '${slug}' not found for the specified identity with ID '${identityProjectMembership.identityId}'`
+      });
+    }
     return {
       ...identityPrivilege,
       permissions: unpackPermissions(identityPrivilege.permissions)
@@ -304,7 +315,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     projectSlug
   }: TListIdentityPrivilegesDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 
     const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });

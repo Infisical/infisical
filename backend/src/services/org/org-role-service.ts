@@ -100,7 +100,7 @@ export const orgRoleServiceFactory = ({
       }
       default: {
         const role = await orgRoleDAL.findOne({ id: roleId, orgId });
-        if (!role) throw new NotFoundError({ message: "Organization role not found" });
+        if (!role) throw new NotFoundError({ message: `Organization role with ID '${roleId}' not found` });
         return role;
       }
     }
@@ -125,7 +125,7 @@ export const orgRoleServiceFactory = ({
       { id: roleId, orgId },
       { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
     );
-    if (!updatedRole) throw new NotFoundError({ message: "Organization role not found" });
+    if (!updatedRole) throw new NotFoundError({ message: `Organization role with ID '${roleId}' not found` });
     return updatedRole;
   };
 
@@ -143,7 +143,7 @@ export const orgRoleServiceFactory = ({
 
     if (!org)
       throw new NotFoundError({
-        message: "Failed to find organization"
+        message: `Organization with ID '${orgId}' not found`
       });
 
     if (org.defaultMembershipRole === roleId)
@@ -163,7 +163,8 @@ export const orgRoleServiceFactory = ({
       });
 
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
-    if (!deletedRole) throw new NotFoundError({ message: "Organization role not found", name: "Update role" });
+    if (!deletedRole)
+      throw new NotFoundError({ message: `Organization role with ID '${roleId}' not found`, name: "UpdateRole" });
 
     return deletedRole;
   };
