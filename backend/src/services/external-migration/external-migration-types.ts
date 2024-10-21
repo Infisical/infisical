@@ -3,7 +3,8 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 export type InfisicalImportData = {
   projects: Array<{ name: string; id: string }>;
   environments: Array<{ name: string; id: string; projectId: string }>;
-  secrets: Array<{ name: string; id: string; environmentId: string; value: string }>;
+  folders: Array<{ id: string; name: string; environmentId: string; parentFolderId?: string }>;
+  secrets: Array<{ id: string; name: string; environmentId: string; value: string; folderId?: string }>;
 };
 
 export type TImportEnvKeyDataCreate = {
@@ -28,62 +29,63 @@ export type TEnvKeyExportJSON = {
   org: {
     id: string;
     name: string;
-    settings: {
-      auth: {
-        inviteExpirationMs: number;
-        deviceGrantExpirationMs: number;
-        tokenExpirationMs: number;
-      };
-      crypto: {
-        requiresPassphrase: boolean;
-        requiresLockout: boolean;
-      };
-      envs: {
-        autoCaps: boolean;
-        autoCommitLocals: boolean;
-      };
-    };
+    // settings, which we dont care about
   };
+
+  // Apps are projects
   apps: {
     id: string;
     name: string;
-    settings: Record<string, unknown>;
   }[];
-  defaultOrgRoles: {
+  // Blocks are basically global projects that can be imported in other projects
+  blocks: {
     id: string;
-    defaultName: string;
+    name: string;
   }[];
-  defaultAppRoles: {
-    id: string;
-    defaultName: string;
+
+  appBlocks: {
+    appId: string;
+    blockId: string;
+    orderIndex: number;
   }[];
+
   defaultEnvironmentRoles: {
     id: string;
     defaultName: string;
-    settings: {
-      autoCommit: boolean;
-    };
   }[];
+
+  nonDefaultEnvironmentRoles: {
+    id: string;
+    name: string;
+  }[];
+
   baseEnvironments: {
     id: string;
     envParentId: string;
     environmentRoleId: string;
-    settings: Record<string, unknown>;
   }[];
-  orgUsers: {
+
+  // Branches for both blocks and apps
+  subEnvironments: {
     id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    provider: string;
-    orgRoleId: string;
-    uid: string;
+    envParentId: string;
+    environmentRoleId: string;
+    parentEnvironmentId: string;
+    subName: string;
   }[];
+
   envs: Record<
     string,
     {
-      variables: Record<string, { val: string }>;
-      inherits: Record<string, unknown>;
+      variables: Record<
+        string,
+        {
+          val?: string;
+          inheritsEnvironmentId?: string;
+        }
+      >;
+
+      inherits: Record<string, string[]>;
     }
   >;
 };

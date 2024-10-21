@@ -4,7 +4,7 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
-import { SecretType } from "@app/db/schemas";
+import { SecretType, TSecretFolders } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -35,7 +35,7 @@ export type TImportDataIntoInfisicalDTO = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "create">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "create">;
 
-  folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "create" | "findBySecretPath" | "findById">;
   projectService: Pick<TProjectServiceFactory, "createProject">;
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
@@ -67,6 +67,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
   const infisicalImportData: InfisicalImportData = {
     projects: [],
     environments: [],
+    folders: [],
     secrets: []
   };
 
@@ -80,25 +81,96 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
     envTemplates.set(env.id, env.defaultName);
   }
 
-  // environments
-  for (const env of parsedJson.baseEnvironments) {
-    infisicalImportData.environments.push({
-      id: env.id,
-      name: envTemplates.get(env.environmentRoleId)!,
-      projectId: env.envParentId
-    });
+  // custom base environments
+  for (const env of parsedJson.nonDefaultEnvironmentRoles) {
+    envTemplates.set(env.id, env.name);
   }
 
-  // secrets
+  // environments
+  for (const env of parsedJson.baseEnvironments) {
+    const app = parsedJson.apps.find((a) => a.id === env.envParentId);
+
+    // If we find the app from the envParentId, we know this is a root-level environment.
+    if (app) {
+      infisicalImportData.environments.push({
+        id: env.id,
+        name: envTemplates.get(env.environmentRoleId)!,
+        projectId: app.id
+      });
+    } else {
+      // const parentBlock = parsedJson.blocks.find((b) => b.id === env.envParentId);
+      // // If this is found, then we know this is a sub-environment. The `parentEnvironment` is the sub environment.
+      // const subEnvironment = parsedJson.subEnvironments.find(
+      //   (s) => s.parentEnvironmentId === env.id && parsedJson.apps.find((a) => a.id === s.envParentId)
+      // );
+      // if (subEnvironment) {
+      //   infisicalImportData.folders.push({
+      //     name: subEnvironment.subName,
+      //     parentFolderId: subEnvironment.parentEnvironmentId,
+      //     environmentId: env.id,
+      //     id: subEnvironment.id
+      //   });
+      // } else if (parentBlock) {
+      //   // TODO(daniel): Find a way to get the secrets from the parent block, so we can later insert it
+      // }
+    }
+  }
+
+  for (const subEnv of parsedJson.subEnvironments) {
+    // this will only find the app if the subEnv is a branch, not a block.
+    const app = parsedJson.apps.find((a) => a.id === subEnv.envParentId);
+
+    const parentEnvironment = infisicalImportData.environments.find((e) => e.id === subEnv.parentEnvironmentId);
+
+    if (app) {
+      infisicalImportData.folders.push({
+        name: subEnv.subName,
+        parentFolderId: subEnv.parentEnvironmentId,
+        environmentId: parentEnvironment!.id,
+        id: subEnv.id
+      });
+    }
+  }
+
+  // secrets with/without inheritance
   for (const env of Object.keys(parsedJson.envs)) {
     if (!env.includes("|")) {
       const envData = parsedJson.envs[env];
       for (const secret of Object.keys(envData.variables)) {
+        const selectedSecret = envData.variables[secret];
+
+        if (selectedSecret.inheritsEnvironmentId) {
+          const findRootInheritedSecret = (currentSecret: { val?: string; inheritsEnvironmentId?: string }) => {
+            if (currentSecret.inheritsEnvironmentId) {
+              const inheritedSecret = parsedJson.envs[currentSecret.inheritsEnvironmentId].variables[secret];
+              if (inheritedSecret) {
+                // eslint-disable-next-line no-param-reassign
+                currentSecret.val = inheritedSecret.val;
+              }
+
+              findRootInheritedSecret(inheritedSecret);
+            }
+            return currentSecret;
+          };
+
+          const sec = findRootInheritedSecret(selectedSecret);
+
+          infisicalImportData.secrets.push({
+            id: randomUUID(),
+            name: secret,
+            environmentId: env,
+            value: sec.val || "???"
+          });
+
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         infisicalImportData.secrets.push({
           id: randomUUID(),
           name: secret,
           environmentId: env,
-          value: envData.variables[secret].val
+          value: selectedSecret.val || "???_???"
         });
       }
     }
@@ -125,7 +197,17 @@ export const importDataIntoInfisicalFn = async ({
   }
 
   const originalToNewProjectId = new Map<string, string>();
-  const originalToNewEnvironmentId = new Map<string, string>();
+  const originalToNewEnvironmentId = new Map<
+    string,
+    { envId: string; envSlug: string; rootFolderId: string; projectId: string }
+  >();
+  const originalToNewFolderId = new Map<
+    string,
+    {
+      folderId: string;
+      projectId: string;
+    }
+  >();
   const projectsNotImported: string[] = [];
 
   await projectDAL.transaction(async (tx) => {
@@ -170,11 +252,45 @@ export const importDataIntoInfisicalFn = async ({
 
         const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
         const doc = await projectEnvDAL.create({ slug, name: environment.name, projectId, position: lastPos + 1 }, tx);
-        await folderDAL.create({ name: "root", parentId: null, envId: doc.id, version: 1 }, tx);
+        const folder = await folderDAL.create({ name: "root", parentId: null, envId: doc.id, version: 1 }, tx);
 
-        originalToNewEnvironmentId.set(environment.id, doc.slug);
+        originalToNewEnvironmentId.set(environment.id, {
+          envSlug: doc.slug,
+          envId: doc.id,
+          rootFolderId: folder.id,
+          projectId
+        });
       }
     }
+
+    if (data.folders) {
+      for await (const folder of data.folders) {
+        const parentEnv = originalToNewEnvironmentId.get(folder.parentFolderId as string);
+
+        if (!parentEnv) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const newFolder = await folderDAL.create(
+          {
+            name: folder.name,
+            envId: parentEnv.envId,
+            parentId: parentEnv.rootFolderId
+          },
+          tx
+        );
+
+        originalToNewFolderId.set(folder.id, {
+          folderId: newFolder.id,
+          projectId: parentEnv.projectId
+        });
+      }
+    }
+
+    console.log("data.folders", data.folders);
+
+    console.log("data.secrets", data.secrets);
 
     if (data.secrets && data.secrets.length > 0) {
       const mappedToEnvironmentId = new Map<
@@ -186,7 +302,7 @@ export const importDataIntoInfisicalFn = async ({
       >();
 
       for (const secret of data.secrets) {
-        if (!originalToNewEnvironmentId.get(secret.environmentId)) {
+        if (!originalToNewEnvironmentId.get(secret.environmentId) && !originalToNewFolderId.get(secret.environmentId)) {
           // eslint-disable-next-line no-continue
           continue;
         }
@@ -202,33 +318,68 @@ export const importDataIntoInfisicalFn = async ({
 
       // for each of the mappedEnvironmentId
       for await (const [envId, secrets] of mappedToEnvironmentId) {
-        const environment = data.environments.find((env) => env.id === envId);
-        const projectId = originalToNewProjectId.get(environment?.projectId as string)!;
+        console.log(`envId ${envId} secrets:`, secrets);
 
-        if (!projectId) {
-          throw new BadRequestError({ message: `Failed to import secret, project not found` });
+        const environment = data.environments.find((env) => env.id === envId);
+        const foundFolder = originalToNewFolderId.get(envId);
+
+        console.log(`FOUND FOLDER BY ENV.ID ${envId}`, foundFolder);
+
+        let selectedFolder: TSecretFolders | undefined;
+        let selectedProjectId: string | undefined;
+        if (foundFolder) {
+          console.log("RUNNING FOLDER HANDLER");
+
+          selectedFolder = await folderDAL.findById(foundFolder.folderId, tx);
+          selectedProjectId = foundFolder.projectId;
+        } else if (environment) {
+          console.log("RUNNING ENVIRONMENT HANDLER");
+          const projectId = originalToNewProjectId.get(environment.projectId)!;
+
+          if (!projectId) {
+            throw new BadRequestError({ message: `Failed to import secret, project not found` });
+          }
+
+          const env = originalToNewEnvironmentId.get(envId)!;
+          const folder = await folderDAL.findBySecretPath(projectId, env.envSlug, "/", tx);
+
+          if (!folder) {
+            throw new NotFoundError({
+              message: `Folder not found for the given environment slug (${env.envSlug}) & secret path (/)`,
+              name: "Create secret"
+            });
+          }
+
+          selectedFolder = folder;
+          selectedProjectId = projectId;
+        }
+
+        if (!selectedFolder) {
+          throw new NotFoundError({
+            message: `Folder not found for the given environment slug & secret path`,
+            name: "CreateSecret"
+          });
+        }
+
+        if (!selectedProjectId) {
+          throw new NotFoundError({
+            message: `Project not found for the given environment slug & secret path`,
+            name: "CreateSecret"
+          });
         }
 
         const { encryptor: secretManagerEncrypt } = await kmsService.createCipherPairWithDataKey(
           {
             type: KmsDataKey.SecretManager,
-            projectId
+            projectId: selectedProjectId
           },
           tx
         );
 
-        const envSlug = originalToNewEnvironmentId.get(envId)!;
-        const folder = await folderDAL.findBySecretPath(projectId, envSlug, "/", tx);
-        if (!folder)
-          throw new NotFoundError({
-            message: `Folder not found for the given environment slug (${envSlug}) & secret path (/)`,
-            name: "Create secret"
-          });
-
         const secretBatches = chunkArray(secrets, 2500);
         for await (const secretBatch of secretBatches) {
           const secretsByKeys = await secretDAL.findBySecretKeys(
-            folder.id,
+            selectedFolder.id,
             secretBatch.map((el) => ({
               key: el.secretKey,
               type: SecretType.Shared
@@ -254,7 +405,7 @@ export const importDataIntoInfisicalFn = async ({
                 type: SecretType.Shared
               };
             }),
-            folderId: folder.id,
+            folderId: selectedFolder.id,
             secretDAL,
             secretVersionDAL,
             secretTagDAL,
