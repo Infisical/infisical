@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import {
   faClock,
   faEdit,
@@ -7,7 +8,6 @@ import {
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useRouter } from "next/router";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";

@@ -1,22 +1,26 @@
+import { faFolder, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format, formatDistance } from "date-fns";
+import { twMerge } from "tailwind-merge";
+
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
-  IconButton,
-  TableContainer,
-  Td,
-  Table,
-  Tr,
-  Th,
-  THead,
-  TableSkeleton,
   EmptyState,
-  TBody,
-  Tooltip,
+  IconButton,
   Modal,
   ModalContent,
-  Tag
-} from "@app/components/v2";
+  Table,
+  TableContainer,
+  TableSkeleton,
+  Tag,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tooltip,
+  Tr} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -28,10 +32,7 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { faFolder, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format, formatDistance } from "date-fns";
-import { twMerge } from "tailwind-merge";
+
 import { MemberRoleModify } from "./MemberRoleModify";
 
 type Props = {
@@ -44,6 +45,7 @@ export const MemberRoleDetailsSection = ({
   isMembershipDetailsLoading
 }: Props) => {
   const { user } = useUser();
+  const userId = user?.id;
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
@@ -51,7 +53,7 @@ export const MemberRoleDetailsSection = ({
   ] as const);
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
-  const userId = user?.id;
+  const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
@@ -71,10 +73,10 @@ export const MemberRoleDetailsSection = ({
   };
 
   return (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Project Roles</h3>
-        {userId !== membershipDetails?.user?.id && membershipDetails?.status !== "invited" && (
+        {!isOwnProjectMembershipDetails && membershipDetails?.status !== "invited" && (
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={ProjectPermissionSub.Member}
@@ -170,7 +172,7 @@ export const MemberRoleDetailsSection = ({
                                 ariaLabel="copy icon"
                                 variant="plain"
                                 className="group relative"
-                                isDisabled={!isAllowed}
+                                isDisabled={!isAllowed || isOwnProjectMembershipDetails}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteRole", {
@@ -191,7 +193,7 @@ export const MemberRoleDetailsSection = ({
             </TBody>
           </Table>
           {!isMembershipDetailsLoading && !membershipDetails?.roles?.length && (
-            <EmptyState title="This user has not been assigned to any projects" icon={faFolder} />
+            <EmptyState title="This user has no roles" icon={faFolder} />
           )}
         </TableContainer>
       </div>

@@ -145,7 +145,11 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       const temporaryAccessStartTime = dto?.temporaryAccessStartTime || userPrivilege?.temporaryAccessStartTime;
       const temporaryRange = dto?.temporaryRange || userPrivilege?.temporaryRange;
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
-        ...dto,
+        slug: dto.slug,
+        permissions: dto.permissions,
+        isTemporary: dto.isTemporary,
+        temporaryRange: dto.temporaryRange,
+        temporaryMode: dto.temporaryMode,
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
@@ -157,7 +161,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     }
 
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
-      ...dto,
+      slug: dto.slug,
+      permissions: dto.permissions,
       isTemporary: false,
       temporaryAccessStartTime: null,
       temporaryAccessEndTime: null,

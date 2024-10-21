@@ -17,9 +17,9 @@ import { SecretPermissionConditions } from "./components/SecretPermissionConditi
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
-  formSchema,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
+  projectRoleFormSchema,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
@@ -29,7 +29,10 @@ type Props = {
   isDisabled?: boolean;
 };
 
-const renderConditionalComponents = (subject: ProjectPermissionSub, isDisabled?: boolean) => {
+export const renderConditionalComponents = (
+  subject: ProjectPermissionSub,
+  isDisabled?: boolean
+) => {
   if (subject === ProjectPermissionSub.Secrets)
     return <SecretPermissionConditions isDisabled={isDisabled} />;
 
@@ -43,7 +46,7 @@ const renderConditionalComponents = (subject: ProjectPermissionSub, isDisabled?:
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
-  const projectSlug = currentWorkspace?.slug || "";
+  const projectId = currentWorkspace?.id || "";
   const { data: role, isLoading } = useGetProjectRoleBySlug(
     currentWorkspace?.slug ?? "",
     roleSlug as string
@@ -51,7 +54,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const form = useForm<TFormSchema>({
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(projectRoleFormSchema)
   });
 
   const {
@@ -64,14 +67,13 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const onSubmit = async (el: TFormSchema) => {
     try {
-      if (!projectSlug || !role?.id) return;
+      if (!projectId || !role?.id) return;
       await updateRole({
         id: role?.id as string,
-        projectSlug,
+        projectId,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });
-
       createNotification({ type: "success", text: "Successfully updated role" });
     } catch (err) {
       console.log(err);

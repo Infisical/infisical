@@ -15,8 +15,8 @@ const fetchProjectUserPrivilegeDetails = async (privilegeId: string) => {
   const {
     data: { privilege }
   } = await apiRequest.get<{
-    privilege: Omit<TProjectUserPrivilege, "permissions"> & { permissions: unknown };
-  }>(`/api/v1/additional-privilege/users/${privilegeId}`);
+    privilege: Omit<TProjectUserPrivilege, "permissions"> & { permissions: TProjectPermission[] };
+  }>(`/api/v1/user-project-additional-privilege/${privilegeId}`);
   return privilege;
 };
 
@@ -37,7 +37,7 @@ export const useListProjectUserPrivileges = (projectMembershipId: string) => {
         data: { privileges }
       } = await apiRequest.get<{
         privileges: Array<Omit<TProjectUserPrivilege, "permissions"> & { permissions: unknown }>;
-      }>("/api/v1/additional-privilege/users", { params: { projectMembershipId } });
+      }>("/api/v1/user-project-additional-privilege", { params: { projectMembershipId } });
       return privileges.map((el) => ({
         ...el,
         permissions: el.permissions as TProjectPermission[]

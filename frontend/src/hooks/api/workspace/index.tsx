@@ -23,6 +23,7 @@ export {
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
   useGetWorkspaceSlackConfig,
+  useGetWorkspaceUserDetails,
   useGetWorkspaceUsers,
   useListWorkspaceCas,
   useListWorkspaceCertificates,
@@ -36,7 +37,5 @@ export {
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject,
-  useGetWorkspaceUserDetails
-} from "./queries";
+  useUpgradeProject} from "./queries";
 export { workspaceKeys } from "./query-keys";

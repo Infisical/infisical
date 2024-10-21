@@ -9,7 +9,7 @@ import { type VariantProps, cva } from "cva";
 import { twMerge } from "tailwind-merge";
 
 const alertVariants = cva(
-  "w-full bg-mineshaft-800 rounded-lg border px-4 py-3 text-sm flex items-center gap-x-4",
+  "w-full bg-mineshaft-800 rounded-lg border border-bunker-400 px-4 py-3 text-sm flex items-center gap-x-4",
   {
     variants: {
       variant: {

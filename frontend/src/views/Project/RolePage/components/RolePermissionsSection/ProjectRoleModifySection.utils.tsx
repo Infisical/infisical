@@ -71,7 +71,7 @@ const ConditionSchema = z
     { message: "Duplicate operator found for a condition" }
   );
 
-export const formSchema = z.object({
+export const projectRoleFormSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
   slug: z
@@ -133,7 +133,7 @@ export const formSchema = z.object({
     .optional()
 });
 
-export type TFormSchema = z.infer<typeof formSchema>;
+export type TFormSchema = z.infer<typeof projectRoleFormSchema>;
 
 type TConditionalFields =
   | ProjectPermissionSub.Secrets

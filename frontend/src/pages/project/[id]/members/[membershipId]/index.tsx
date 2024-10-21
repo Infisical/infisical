@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
+
 import { MemberDetailsPage } from "@app/views/Project/MemberDetailsPage";
 
 export default function Page() {

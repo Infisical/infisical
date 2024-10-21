@@ -15,7 +15,7 @@ export const useCreateProjectUserAdditionalPrivilege = () => {
 
   return useMutation<{ privilege: TProjectUserPrivilege }, {}, TCreateProjectUserPrivilegeDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/additional-privilege/users/permanent", dto);
+      const { data } = await apiRequest.post("/api/v1/user-project-additional-privilege", dto);
       return data.privilege;
     },
     onSuccess: (_, { projectMembershipId }) => {
@@ -30,7 +30,7 @@ export const useUpdateProjectUserAdditionalPrivilege = () => {
   return useMutation<{ privilege: TProjectUserPrivilege }, {}, TUpdateProjectUserPrivlegeDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch(
-        `/api/v1/additional-privilege/users/${dto.privilegeId}`,
+        `/api/v1/user-project-additional-privilege/${dto.privilegeId}`,
         dto
       );
       return data.privilege;
@@ -47,7 +47,7 @@ export const useDeleteProjectUserAdditionalPrivilege = () => {
   return useMutation<{ privilege: TProjectUserPrivilege }, {}, TDeleteProjectUserPrivilegeDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete(
-        `/api/v1/additional-privilege/users/${dto.privilegeId}`
+        `/api/v1/user-project-additional-privilege/${dto.privilegeId}`
       );
       return data.privilege;
     },

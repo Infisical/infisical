@@ -1,11 +1,15 @@
-import { Button } from "@app/components/v2";
+import { useRouter } from "next/router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
+
+import { ProjectPermissionCan } from "@app/components/permissions";
+import { Button, EmptyState, Spinner } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { useGetWorkspaceUserDetails } from "@app/hooks/api";
-import { faChevronLeft, faUser } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
-import { useRouter } from "next/router";
+
+import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
 import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
 
 export const MemberDetailsPage = withProjectPermission(
@@ -18,6 +22,14 @@ export const MemberDetailsPage = withProjectPermission(
 
     const { data: membershipDetails, isLoading: isMembershipDetailsLoading } =
       useGetWorkspaceUserDetails(workspaceId, membershipId);
+
+    if (isMembershipDetailsLoading) {
+      return (
+        <div className="flex w-full items-center justify-center p-24">
+          <Spinner />
+        </div>
+      );
+    }
 
     return (
       <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 p-6 text-white">
@@ -34,36 +46,66 @@ export const MemberDetailsPage = withProjectPermission(
             Project Access Control
           </Button>
         </div>
-        <div className="mb-4">
-          <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <div className="mb-4 flex items-center justify-between ">
-              <h3 className="text-lg font-semibold text-mineshaft-100">Project User Management</h3>
-              <div>
-                <Button colorSchema="danger" variant="outline_bg" size="xs">
-                  Remove User
-                </Button>
+        {membershipDetails ? (
+          <>
+            <div className="mb-4">
+              <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+                <div className="mb-4 flex items-center justify-between ">
+                  <h3 className="text-xl font-semibold text-mineshaft-100">Project User Access</h3>
+                  <div>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={ProjectPermissionSub.Member}
+                      renderTooltip
+                      allowedLabel="Edit role"
+                    >
+                      {(isAllowed) => (
+                        <Button
+                          colorSchema="danger"
+                          variant="outline_bg"
+                          size="xs"
+                          isDisabled={!isAllowed}
+                        >
+                          Remove User
+                        </Button>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
+                </div>
+                <div className="flex gap-12">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400">Name</span>
+                    {membershipDetails && (
+                      <p className="text-lg capitalize">
+                        {membershipDetails.user.firstName || membershipDetails.user.lastName
+                          ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`
+                          : "-"}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400">Email</span>
+                    {membershipDetails && (
+                      <p className="text-lg">{membershipDetails?.user?.email}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-gray-400">
+                  Joined on{" "}
+                  {membershipDetails?.createdAt &&
+                    format(new Date(membershipDetails?.createdAt || ""), "yyyy-MM-dd")}
+                </div>
               </div>
             </div>
-            <div className="">
-              {membershipDetails && (
-                <p className="capitalize">
-                  {membershipDetails.user.firstName || membershipDetails.user.lastName
-                    ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`
-                    : "-"}
-                </p>
-              )}
-              <div className="mt-2 text-sm text-gray-400">
-                Joined on{" "}
-                {membershipDetails?.createdAt &&
-                  format(new Date(membershipDetails?.createdAt || ""), "yyyy-MM-dd")}
-              </div>
-            </div>
-          </div>
-        </div>
-        <MemberRoleDetailsSection
-          membershipDetails={membershipDetails}
-          isMembershipDetailsLoading={isMembershipDetailsLoading}
-        />
+            <MemberRoleDetailsSection
+              membershipDetails={membershipDetails}
+              isMembershipDetailsLoading={isMembershipDetailsLoading}
+            />
+            <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+          </>
+        ) : (
+          <EmptyState title="Error: Unable to find the user." className="py-12" />
+        )}
       </div>
     );
   },

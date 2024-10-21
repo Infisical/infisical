@@ -63,16 +63,16 @@ export const useGetProjectRoles = (projectId: string) =>
     enabled: Boolean(projectId)
   });
 
-export const useGetProjectRoleBySlug = (projectSlug: string, roleSlug: string) =>
+export const useGetProjectRoleBySlug = (projectId: string, roleSlug: string) =>
   useQuery({
-    queryKey: roleQueryKeys.getProjectRoleBySlug(projectSlug, roleSlug),
+    queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, roleSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ role: TProjectRole }>(
-        `/api/v2/workspace/${projectSlug}/roles/slug/${roleSlug}`
+        `/api/v2/workspace/${projectId}/roles/slug/${roleSlug}`
       );
       return data.role;
     },
-    enabled: Boolean(projectSlug && roleSlug)
+    enabled: Boolean(projectId && roleSlug)
   });
 
 const getOrgRoles = async (orgId: string) => {
