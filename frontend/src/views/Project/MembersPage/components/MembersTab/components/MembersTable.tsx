@@ -7,6 +7,7 @@ import {
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -65,6 +66,7 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
 
   const { currentWorkspace } = useWorkspace();
   const { user } = useUser();
+  const router = useRouter();
 
   const userId = user?.id || "";
   const workspaceId = currentWorkspace?.id || "";
@@ -111,7 +113,18 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
                 const email = u?.email || inviteEmail;
 
                 return (
-                  <Tr key={`membership-${membershipId}`} className="group w-full">
+                  <Tr
+                    key={`membership-${membershipId}`}
+                    className="group w-full  cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(evt) => {
+                      if (evt.key === "Enter") {
+                        router.push(`/project/${workspaceId}/members/${membershipId}`);
+                      }
+                    }}
+                    onClick={() => router.push(`/project/${workspaceId}/members/${membershipId}`)}
+                  >
                     <Td>{name}</Td>
                     <Td>{email}</Td>
                     <Td>
@@ -202,9 +215,11 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
                               size="sm"
                               variant="plain"
                               ariaLabel="update-role"
-                              onClick={() =>
-                                handlePopUpOpen("updateRole", { ...projectMember, index })
-                              }
+                              onClick={(evt) => {
+                                evt.preventDefault();
+                                evt.stopPropagation();
+                                handlePopUpOpen("updateRole", { ...projectMember, index });
+                              }}
                             >
                               <FontAwesomeIcon icon={faEdit} />
                             </IconButton>
@@ -226,9 +241,11 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
                                 ariaLabel="update"
                                 className="ml-4"
                                 isDisabled={userId === u?.id || !isAllowed}
-                                onClick={() =>
-                                  handlePopUpOpen("removeMember", { username: u.username })
-                                }
+                                onClick={(evt) => {
+                                  evt.preventDefault();
+                                  evt.stopPropagation();
+                                  handlePopUpOpen("removeMember", { username: u.username });
+                                }}
                               >
                                 <FontAwesomeIcon icon={faTrash} />
                               </IconButton>

@@ -15,6 +15,8 @@ export const workspaceKeys = {
   getWorkspaceAuditLogs: (workspaceId: string) =>
     [{ workspaceId }, "workspace-audit-logs"] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,
+  getWorkspaceUserDetails: (workspaceId: string, membershipId: string) =>
+    [{ workspaceId, membershipId }, "workspace-user-details"] as const,
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-identity-memberships"] as const,
   // allows invalidation using above key without knowing params

@@ -38,7 +38,7 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
 const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export const roleQueryKeys = {
-  getProjectRoles: (projectSlug: string) => ["roles", { projectSlug }] as const,
+  getProjectRoles: (projectId: string) => ["roles", { projectSlug: projectId }] as const,
   getProjectRoleBySlug: (projectSlug: string, roleSlug: string) =>
     ["roles", { projectSlug, roleSlug }] as const,
   getOrgRoles: (orgId: string) => ["org-roles", { orgId }] as const,
@@ -56,11 +56,11 @@ export const getProjectRoles = async (projectId: string) => {
   return data.roles;
 };
 
-export const useGetProjectRoles = (projectSlug: string) =>
+export const useGetProjectRoles = (projectId: string) =>
   useQuery({
-    queryKey: roleQueryKeys.getProjectRoles(projectSlug),
-    queryFn: () => getProjectRoles(projectSlug),
-    enabled: Boolean(projectSlug)
+    queryKey: roleQueryKeys.getProjectRoles(projectId),
+    queryFn: () => getProjectRoles(projectId),
+    enabled: Boolean(projectId)
   });
 
 export const useGetProjectRoleBySlug = (projectSlug: string, roleSlug: string) =>

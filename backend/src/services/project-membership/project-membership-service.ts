@@ -27,6 +27,7 @@ import {
   TAddUsersToWorkspaceDTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
+  TGetProjectMembershipByIdDTO,
   TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
   TLeaveProjectDTO,
@@ -130,6 +131,28 @@ export const projectMembershipServiceFactory = ({
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
     if (!membership) throw new NotFoundError({ message: `Project membership not found for user '${username}'` });
+    return membership;
+  };
+
+  const getProjectMembershipById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    id
+  }: TGetProjectMembershipByIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { id });
+    if (!membership) throw new NotFoundError({ message: `Project membership not found for user ${id}` });
     return membership;
   };
 
@@ -487,6 +510,7 @@ export const projectMembershipServiceFactory = ({
     deleteProjectMemberships,
     deleteProjectMembership, // TODO: Remove this
     addUsersToProject,
-    leaveProject
+    leaveProject,
+    getProjectMembershipById
   };
 };

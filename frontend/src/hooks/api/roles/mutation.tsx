@@ -19,14 +19,14 @@ export const useCreateProjectRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TProjectRole, {}, TCreateProjectRoleDTO>({
-    mutationFn: async ({ projectSlug, ...dto }: TCreateProjectRoleDTO) => {
+    mutationFn: async ({ projectId, ...dto }: TCreateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.post(`/api/v2/workspace/${projectSlug}/roles`, dto);
+      } = await apiRequest.post(`/api/v2/workspace/${projectId}/roles`, dto);
       return role;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectSlug));
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
     }
   });
 };
@@ -35,14 +35,14 @@ export const useUpdateProjectRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TProjectRole, {}, TUpdateProjectRoleDTO>({
-    mutationFn: async ({ id, projectSlug, ...dto }: TUpdateProjectRoleDTO) => {
+    mutationFn: async ({ id, projectId, ...dto }: TUpdateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.patch(`/api/v2/workspace/${projectSlug}/roles/${id}`, dto);
+      } = await apiRequest.patch(`/api/v2/workspace/${projectId}/roles/${id}`, dto);
       return role;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectSlug));
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
     }
   });
 };
@@ -50,14 +50,14 @@ export const useUpdateProjectRole = () => {
 export const useDeleteProjectRole = () => {
   const queryClient = useQueryClient();
   return useMutation<TProjectRole, {}, TDeleteProjectRoleDTO>({
-    mutationFn: async ({ projectSlug, id }: TDeleteProjectRoleDTO) => {
+    mutationFn: async ({ projectId, id }: TDeleteProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.delete(`/api/v2/workspace/${projectSlug}/roles/${id}`);
+      } = await apiRequest.delete(`/api/v2/workspace/${projectId}/roles/${id}`);
       return role;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectSlug));
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries(roleQueryKeys.getProjectRoles(projectId));
     }
   });
 };

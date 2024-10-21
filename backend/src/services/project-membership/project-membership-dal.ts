@@ -11,7 +11,10 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
   const projectMemberOrm = ormify(db, TableName.ProjectMembership);
 
   // special query
-  const findAllProjectMembers = async (projectId: string, filter: { usernames?: string[]; username?: string } = {}) => {
+  const findAllProjectMembers = async (
+    projectId: string,
+    filter: { usernames?: string[]; username?: string; id?: string } = {}
+  ) => {
     try {
       const docs = await db
         .replicaNode()(TableName.ProjectMembership)
@@ -24,6 +27,9 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           }
           if (filter.username) {
             void qb.where("username", filter.username);
+          }
+          if (filter.id) {
+            void qb.where(`${TableName.ProjectMembership}.id`, filter.id);
           }
         })
         .join<TUserEncryptionKeys>(
@@ -43,6 +49,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema(TableName.ProjectMembership),
+          db.ref("createdAt").withSchema(TableName.ProjectMembership),
           db.ref("isGhost").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
@@ -66,7 +73,18 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, userId, projectName }) => ({
+        parentMapper: ({
+          email,
+          firstName,
+          username,
+          lastName,
+          publicKey,
+          isGhost,
+          id,
+          userId,
+          projectName,
+          createdAt
+        }) => ({
           id,
           userId,
           projectId,
@@ -74,7 +92,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           project: {
             id: projectId,
             name: projectName
-          }
+          },
+          createdAt
         }),
         key: "id",
         childrenMapper: [

@@ -42,7 +42,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const organizationId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
 
   const { data: identityMembershipOrgsData } = useGetIdentityMembershipOrgs({
     organizationId,
@@ -59,7 +58,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     data: roles,
     isLoading: isRolesLoading,
     isFetched: isRolesFetched
-  } = useGetProjectRoles(projectSlug);
+  } = useGetProjectRoles(workspaceId);
 
   const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
 

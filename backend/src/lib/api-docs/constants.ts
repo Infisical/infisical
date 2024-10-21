@@ -475,6 +475,7 @@ export const PROJECT_USERS = {
   },
   GET_USER_MEMBERSHIP: {
     workspaceId: "The ID of the project to get memberships from.",
+    membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
   },
   UPDATE_USER_MEMBERSHIP: {

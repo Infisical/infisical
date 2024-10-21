@@ -65,8 +65,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
-  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
+  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,

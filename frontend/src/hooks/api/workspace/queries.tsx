@@ -365,6 +365,21 @@ export const useGetWorkspaceUsers = (workspaceId: string, includeGroupMembers?: 
   });
 };
 
+export const useGetWorkspaceUserDetails = (workspaceId: string, membershipId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceUserDetails(workspaceId, membershipId),
+    queryFn: async () => {
+      const {
+        data: { membership }
+      } = await apiRequest.get<{ membership: TWorkspaceUser }>(
+        `/api/v1/workspace/${workspaceId}/memberships/${membershipId}`
+      );
+      return membership;
+    },
+    enabled: Boolean(workspaceId) && Boolean(membershipId)
+  });
+};
+
 export const useDeleteUserFromWorkspace = () => {
   const queryClient = useQueryClient();
 

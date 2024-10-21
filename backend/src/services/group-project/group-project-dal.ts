@@ -158,6 +158,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
       )
       .select(
         db.ref("id").withSchema(TableName.UserGroupMembership),
+        db.ref("createdAt").withSchema(TableName.UserGroupMembership),
         db.ref("isGhost").withSchema(TableName.Users),
         db.ref("username").withSchema(TableName.Users),
         db.ref("email").withSchema(TableName.Users),
@@ -181,7 +182,18 @@ export const groupProjectDALFactory = (db: TDbClient) => {
 
     const members = sqlNestRelationships({
       data: docs,
-      parentMapper: ({ email, firstName, username, lastName, publicKey, isGhost, id, userId, projectName }) => ({
+      parentMapper: ({
+        email,
+        firstName,
+        username,
+        lastName,
+        publicKey,
+        isGhost,
+        id,
+        userId,
+        projectName,
+        createdAt
+      }) => ({
         isGroupMember: true,
         id,
         userId,
@@ -190,7 +202,8 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           id: projectId,
           name: projectName
         },
-        user: { email, username, firstName, lastName, id: userId, publicKey, isGhost }
+        user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
+        createdAt
       }),
       key: "id",
       childrenMapper: [
