@@ -249,7 +249,7 @@ export const ldapConfigServiceFactory = ({
     const orgBot = await orgBotDAL.findOne({ orgId });
     if (!orgBot)
       throw new NotFoundError({
-        message: `Organization bot in organiation with ID '${orgId}' not found`,
+        message: `Organization bot in organization with ID '${orgId}' not found`,
         name: "OrgBotNotFound"
       });
     const key = infisicalSymmetricDecrypt({

@@ -181,7 +181,7 @@ export const permissionServiceFactory = ({
       const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!orgRole)
         throw new NotFoundError({
-          message: `Specified role ''${role} was not found in the organization with ID '${orgId}'`
+          message: `Specified role '${role}' was not found in the organization with ID '${orgId}'`
         });
       return {
         permission: buildOrgPermission([{ role: OrgMembershipRole.Custom, permissions: orgRole.permissions }]),

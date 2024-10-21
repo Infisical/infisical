@@ -193,7 +193,7 @@ export const samlConfigServiceFactory = ({
     const orgBot = await orgBotDAL.findOne({ orgId });
     if (!orgBot)
       throw new NotFoundError({
-        message: `Organization bot not found for organization with ID ${orgId}`,
+        message: `Organization bot not found for organization with ID '${orgId}'`,
         name: "OrgBotNotFound"
       });
     const key = infisicalSymmetricDecrypt({

@@ -381,7 +381,7 @@ export const secretApprovalPolicyServiceFactory = ({
 
     if (!sapPolicy) {
       throw new NotFoundError({
-        message: `Secret approval policy with ID ${sapId} not found`
+        message: `Secret approval policy with ID '${sapId}' not found`
       });
     }
 
