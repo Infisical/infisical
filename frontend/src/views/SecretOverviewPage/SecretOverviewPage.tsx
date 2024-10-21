@@ -524,6 +524,8 @@ export const SecretOverviewPage = () => {
   );
 
   const allRowsSelectedOnPage = useMemo(() => {
+    if (!secrets?.length && !folders?.length) return { isChecked: false, isIndeterminate: false };
+
     if (
       (!secrets?.length ||
         secrets?.every((secret) => selectedEntries[EntryType.SECRET][secret.key])) &&
