@@ -1,0 +1,1 @@
+export { IdentityDetailsPage } from "./IdentityDetailPage";

@@ -28,48 +28,42 @@ export type TIdentityProjectPrivilege = {
     }
 );
 
-export type TProjectSpecificPrivilegePermission = {
-  conditions: {
-    environment: string;
-    secretPath?: { $glob: string };
-  };
-  actions: string[];
-  subject: string;
-};
-
 export type TCreateIdentityProjectPrivilegeDTO = {
   identityId: string;
-  projectSlug: string;
+  projectId: string;
   slug?: string;
-  isTemporary?: boolean;
-  temporaryMode?: IdentityProjectAdditionalPrivilegeTemporaryMode;
-  temporaryRange?: string;
-  temporaryAccessStartTime?: string;
-  privilegePermission: TProjectSpecificPrivilegePermission;
+  type:
+    | {
+        isTemporary: true;
+        temporaryMode?: IdentityProjectAdditionalPrivilegeTemporaryMode;
+        temporaryRange?: string;
+        temporaryAccessStartTime?: string;
+      }
+    | {
+        isTemporary: false;
+      };
+  permissions: TProjectPermission[];
 };
 
 export type TUpdateIdentityProjectPrivlegeDTO = {
-  projectSlug: string;
+  projectId: string;
   identityId: string;
-  privilegeSlug: string;
-  privilegeDetails: Partial<
-    Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">
-  >;
-};
+  privilegeId: string;
+} & Partial<Omit<TCreateIdentityProjectPrivilegeDTO, "projectMembershipId" | "projectId">>;
 
 export type TDeleteIdentityProjectPrivilegeDTO = {
-  projectSlug: string;
+  projectId: string;
   identityId: string;
-  privilegeSlug: string;
+  privilegeId: string;
 };
 
 export type TListIdentityUserPrivileges = {
-  projectSlug: string;
+  projectId: string;
   identityId: string;
 };
 
 export type TGetIdentityProejctPrivilegeDetails = {
-  projectSlug: string;
+  projectId: string;
   identityId: string;
-  privilegeSlug: string;
+  privilegeId: string;
 };

@@ -1,5 +1,5 @@
 import { TOrgRole } from "../roles/types";
-import { Workspace } from "../workspace/types";
+import { ProjectUserMembershipTemporaryMode, Workspace } from "../workspace/types";
 import { IdentityAuthMethod } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -66,7 +66,7 @@ export type IdentityMembership = {
       | {
           isTemporary: true;
           temporaryRange: string;
-          temporaryMode: string;
+          temporaryMode: ProjectUserMembershipTemporaryMode;
           temporaryAccessEndTime: string;
           temporaryAccessStartTime: string;
         }

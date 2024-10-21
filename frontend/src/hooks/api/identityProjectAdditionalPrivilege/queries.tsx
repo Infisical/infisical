@@ -9,36 +9,36 @@ import {
 } from "./types";
 
 export const identitiyProjectPrivilegeKeys = {
-  details: ({ identityId, privilegeSlug, projectSlug }: TGetIdentityProjectPrivilegeDetails) =>
+  details: ({ identityId, privilegeId, projectId }: TGetIdentityProjectPrivilegeDetails) =>
     [
       "identity-user-privilege",
       {
         identityId,
-        projectSlug,
-        privilegeSlug
+        projectId,
+        privilegeId
       }
     ] as const,
-  list: ({ projectSlug, identityId }: TListIdentityProjectPrivileges) =>
-    ["identity-user-privileges", { identityId, projectSlug }] as const
+  list: ({ projectId, identityId }: TListIdentityProjectPrivileges) =>
+    ["identity-user-privileges", { identityId, projectId }] as const
 };
 
 export const useGetIdentityProjectPrivilegeDetails = ({
-  projectSlug,
+  projectId,
   identityId,
-  privilegeSlug
+  privilegeId
 }: TGetIdentityProjectPrivilegeDetails) => {
   return useQuery({
-    enabled: Boolean(projectSlug && identityId && privilegeSlug),
-    queryKey: identitiyProjectPrivilegeKeys.details({ projectSlug, privilegeSlug, identityId }),
+    enabled: Boolean(projectId && identityId && privilegeId),
+    queryKey: identitiyProjectPrivilegeKeys.details({ projectId, privilegeId, identityId }),
     queryFn: async () => {
       const {
         data: { privilege }
       } = await apiRequest.get<{
         privilege: TIdentityProjectPrivilege;
-      }>(`/api/v1/additional-privilege/identity/${privilegeSlug}`, {
+      }>(`/api/v2/identity-project-additional-privilege/${privilegeId}`, {
         params: {
           identityId,
-          projectSlug
+          projectId
         }
       });
       return privilege;
@@ -47,19 +47,19 @@ export const useGetIdentityProjectPrivilegeDetails = ({
 };
 
 export const useListIdentityProjectPrivileges = ({
-  projectSlug,
+  projectId,
   identityId
 }: TListIdentityProjectPrivileges) => {
   return useQuery({
-    enabled: Boolean(projectSlug && identityId),
-    queryKey: identitiyProjectPrivilegeKeys.list({ projectSlug, identityId }),
+    enabled: Boolean(projectId && identityId),
+    queryKey: identitiyProjectPrivilegeKeys.list({ projectId, identityId }),
     queryFn: async () => {
       const {
         data: { privileges }
       } = await apiRequest.get<{
         privileges: Array<TIdentityProjectPrivilege>;
-      }>("/api/v1/additional-privilege/identity", {
-        params: { identityId, projectSlug }
+      }>("/api/v2/identity-project-additional-privilege", {
+        params: { identityId, projectId }
       });
       return privileges;
     }

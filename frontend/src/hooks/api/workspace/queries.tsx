@@ -9,7 +9,7 @@ import { TCertificate } from "../certificates/types";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
 import { identitiesKeys } from "../identities/queries";
-import { TProjectIdentitiesList } from "../identities/types";
+import { IdentityMembership, TProjectIdentitiesList } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
@@ -477,6 +477,9 @@ export const useUpdateIdentityWorkspaceRole = () => {
     onSuccess: (_, { identityId, workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
       queryClient.invalidateQueries(identitiesKeys.getIdentityProjectMemberships(identityId));
+      queryClient.invalidateQueries(
+        workspaceKeys.getWorkspaceIdentityMembershipDetails(workspaceId, identityId)
+      );
     }
   });
 };
@@ -550,6 +553,21 @@ export const useGetWorkspaceIdentityMemberships = (
     },
     enabled: true,
     ...options
+  });
+};
+
+export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, identityId: string) => {
+  return useQuery({
+    enabled: Boolean(projectId && identityId),
+    queryKey: workspaceKeys.getWorkspaceIdentityMembershipDetails(projectId, identityId),
+    queryFn: async () => {
+      const {
+        data: { identityMembership }
+      } = await apiRequest.get<{ identityMembership: IdentityMembership }>(
+        `/api/v2/workspace/${projectId}/identity-memberships/${identityId}`
+      );
+      return identityMembership;
+    }
   });
 };
 

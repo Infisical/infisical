@@ -18,6 +18,7 @@ export {
   useGetUserWorkspaces,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
+  useGetWorkspaceIdentityMembershipDetails,
   useGetWorkspaceIdentityMemberships,
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
 import {
   faArrowDown,
   faArrowUp,
@@ -65,6 +66,7 @@ const formatRoleName = (role: string, customRoleName?: string) => {
 export const IdentityTab = withProjectPermission(
   () => {
     const { currentWorkspace } = useWorkspace();
+    const router = useRouter();
 
     const {
       offset,
@@ -239,7 +241,18 @@ export const IdentityTab = withProjectPermission(
                       createdAt
                     } = identityMember;
                     return (
-                      <Tr className="h-10" key={`st-v3-${id}`}>
+                      <Tr
+                        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                        key={`st-v3-${id}`}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(evt) => {
+                          if (evt.key === "Enter") {
+                            router.push(`/project/${workspaceId}/identities/${id}`);
+                          }
+                        }}
+                        onClick={() => router.push(`/project/${workspaceId}/identities/${id}`)}
+                      >
                         <Td>{name}</Td>
 
                         <Td>
@@ -340,9 +353,11 @@ export const IdentityTab = withProjectPermission(
                                 size="sm"
                                 variant="plain"
                                 ariaLabel="update-role"
-                                onClick={() =>
-                                  handlePopUpOpen("updateRole", { ...identityMember, index })
-                                }
+                                onClick={(evt) => {
+                                  evt.stopPropagation();
+                                  evt.preventDefault();
+                                  handlePopUpOpen("updateRole", { ...identityMember, index });
+                                }}
                               >
                                 <FontAwesomeIcon icon={faEdit} />
                               </IconButton>
@@ -357,7 +372,9 @@ export const IdentityTab = withProjectPermission(
                           >
                             {(isAllowed) => (
                               <IconButton
-                                onClick={() => {
+                                onClick={(evt) => {
+                                  evt.stopPropagation();
+                                  evt.preventDefault();
                                   handlePopUpOpen("deleteIdentity", {
                                     identityId: id,
                                     name

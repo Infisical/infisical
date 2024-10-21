@@ -115,7 +115,7 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
                 return (
                   <Tr
                     key={`membership-${membershipId}`}
-                    className="group w-full  cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    className="group w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     role="button"
                     tabIndex={0}
                     onKeyDown={(evt) => {

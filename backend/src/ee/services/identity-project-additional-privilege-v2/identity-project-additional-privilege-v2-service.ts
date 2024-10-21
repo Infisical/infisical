@@ -158,7 +158,11 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
       const temporaryAccessStartTime = data?.temporaryAccessStartTime || identityPrivilege?.temporaryAccessStartTime;
       const temporaryRange = data?.temporaryRange || identityPrivilege?.temporaryRange;
       const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.updateById(identityPrivilege.id, {
-        ...data,
+        slug: data.slug,
+        permissions: data.permissions,
+        isTemporary: data.isTemporary,
+        temporaryRange: data.temporaryRange,
+        temporaryMode: data.temporaryMode,
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
@@ -169,7 +173,8 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     }
 
     const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.updateById(identityPrivilege.id, {
-      ...data,
+      slug: data.slug,
+      permissions: data.permissions,
       isTemporary: false,
       temporaryAccessStartTime: null,
       temporaryAccessEndTime: null,

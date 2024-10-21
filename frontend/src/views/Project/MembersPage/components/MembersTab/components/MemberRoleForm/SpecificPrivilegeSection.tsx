@@ -6,7 +6,6 @@ import {
   faCheck,
   faClock,
   faLockOpen,
-  faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,7 +17,6 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Checkbox,
@@ -48,10 +46,7 @@ import { usePopUp } from "@app/hooks";
 import {
   TProjectUserPrivilege,
   useCreateAccessRequest,
-  useCreateProjectUserAdditionalPrivilege,
-  useDeleteProjectUserAdditionalPrivilege,
-  useListProjectUserPrivileges,
-  useUpdateProjectUserAdditionalPrivilege
+  useDeleteProjectUserAdditionalPrivilege
 } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
@@ -94,7 +89,6 @@ export const SpecificPrivilegeSecretForm = ({
   const isMemberEditDisabled =
     permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.Member) && !!privilege;
 
-  const updateUserPrivilege = useUpdateProjectUserAdditionalPrivilege();
   const deleteUserPrivilege = useDeleteProjectUserAdditionalPrivilege();
   const requestAccess = useCreateAccessRequest();
 
@@ -164,53 +158,6 @@ export const SpecificPrivilegeSecretForm = ({
   const isExpired =
     temporaryAccessField.isTemporary &&
     new Date() > new Date(temporaryAccessField.temporaryAccessEndTime || "");
-
-  const handleUpdatePrivilege = async (data: TSecretPermissionForm) => {
-    if (!privilege) {
-      createNotification({
-        type: "error",
-        text: "No privilege to update found.",
-        title: "Error"
-      });
-
-      return;
-    }
-
-    if (updateUserPrivilege.isLoading) return;
-    try {
-      const actions = [
-        { action: ProjectPermissionActions.Read, allowed: data.read },
-        { action: ProjectPermissionActions.Create, allowed: data.create },
-        { action: ProjectPermissionActions.Delete, allowed: data.delete },
-        { action: ProjectPermissionActions.Edit, allowed: data.edit }
-      ];
-      const conditions: { environment: string; secretPath?: { $glob: string } } = {
-        environment: data.environmentSlug
-      };
-      if (data.secretPath) {
-        conditions.secretPath = { $glob: removeTrailingSlash(data.secretPath) };
-      }
-      await updateUserPrivilege.mutateAsync({
-        privilegeId: privilege.id,
-        ...data.temporaryAccess,
-        permissions: {
-          subject: ProjectPermissionSub.Secrets,
-          conditions,
-          actions: actions.filter((i) => i.allowed).map((i) => i.action)
-        },
-        projectMembershipId: privilege.projectMembershipId
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully updated  privilege"
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: "Failed to update privilege"
-      });
-    }
-  };
 
   const handleDeletePrivilege = async () => {
     if (!privilege) {
@@ -296,11 +243,7 @@ export const SpecificPrivilegeSecretForm = ({
   };
 
   const handleSubmit = async (data: TSecretPermissionForm) => {
-    if (privilege) {
-      handleUpdatePrivilege(data);
-    } else {
-      handleRequestAccess(data);
-    }
+    handleRequestAccess(data);
   };
 
   const getAccessLabel = (exactTime = false) => {
@@ -624,81 +567,6 @@ export const SpecificPrivilegeSecretForm = ({
         onClose={() => handlePopUpClose("deletePrivilege")}
         onDeleteApproved={handleDeletePrivilege}
       />
-    </div>
-  );
-};
-
-type Props = {
-  membershipId: string;
-};
-
-export const SpecificPrivilegeSection = ({ membershipId }: Props) => {
-  const { data: userPrivileges, isLoading } = useListProjectUserPrivileges(membershipId);
-  const { currentWorkspace } = useWorkspace();
-
-  const createUserPrivilege = useCreateProjectUserAdditionalPrivilege();
-
-  const handleCreatePrivilege = async () => {
-    if (createUserPrivilege.isLoading) return;
-    try {
-      await createUserPrivilege.mutateAsync({
-        permissions: {
-          actions: [ProjectPermissionActions.Read],
-          subject: ProjectPermissionSub.Secrets,
-          conditions: {
-            environment: currentWorkspace?.environments?.[0].slug || ""
-          }
-        },
-        projectMembershipId: membershipId
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully created privilege"
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: "Failed to create privilege"
-      });
-    }
-  };
-
-  return (
-    <div className="mt-6 border-t border-t-mineshaft-600 pt-6">
-      <div className="flex items-center space-x-2 text-lg font-medium">
-        Additional Privileges
-        {isLoading && <Spinner size="xs" />}
-      </div>
-      <p className="mt-0.5 text-sm text-mineshaft-400">
-        Select individual privileges to associate with the user.
-      </p>
-      <div>
-        {userPrivileges
-          ?.filter(({ permissions }) =>
-            permissions?.[0]?.subject?.includes(ProjectPermissionSub.Secrets)
-          )
-          .sort((a, b) => a.id.localeCompare(b.id))
-          ?.map((privilege) => (
-            <SpecificPrivilegeSecretForm
-              privilege={privilege as TProjectUserPrivilege}
-              key={privilege?.id}
-            />
-          ))}
-      </div>
-      <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Member}>
-        {(isAllowed) => (
-          <Button
-            variant="outline_bg"
-            className="mt-4"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={handleCreatePrivilege}
-            isLoading={createUserPrivilege.isLoading}
-            isDisabled={!isAllowed}
-          >
-            Add additional privilege
-          </Button>
-        )}
-      </ProjectPermissionCan>
     </div>
   );
 };
