@@ -980,7 +980,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
     permission: "The permission for the privilege.",
     isTemporary: "Whether the privilege is temporary or permanent.",
     temporaryMode: "Type of temporary access given. Types: relative.",
-    temporaryRange: "The TTL for the temporary access given.",
+    temporaryRange: "The TTL for the temporary access given. Eg: 1m, 1h, 1d.",
     temporaryAccessStartTime: "The start time in ISO format when the temporary access should begin."
   },
   UPDATE: {
@@ -990,7 +990,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
     privilegePermission: "The permission for the privilege.",
     isTemporary: "Whether the privilege is temporary.",
     temporaryMode: "Type of temporary access given. Types: relative.",
-    temporaryRange: "The TTL for the temporary access given.",
+    temporaryRange: "The TTL for the temporary access given. Eg: 1m, 1h, 1d.",
     temporaryAccessStartTime: "The start time in ISO format when the temporary access should begin."
   },
   DELETE: {
