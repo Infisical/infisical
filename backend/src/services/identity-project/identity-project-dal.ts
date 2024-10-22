@@ -228,7 +228,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         })
         .where((qb) => {
           if (filter.identityId) {
-            void qb.where("identityId", filter.identityId);
+            void qb.where(`${TableName.IdentityProjectMembership}.identityId`, filter.identityId);
           }
         })
         .join(

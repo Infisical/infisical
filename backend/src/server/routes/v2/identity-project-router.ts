@@ -331,7 +331,9 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 temporaryAccessEndTime: z.date().nullable().optional()
               })
             ),
-            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
+            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              authMethods: z.array(z.string())
+            }),
             project: SanitizedProjectSchema.pick({ name: true, id: true })
           })
         })
