@@ -29,7 +29,6 @@ export const UserSecretsTable = () => {
       <Table>
         <THead>
           <Tr>
-            <Th className="w-5" />
             <Th>Name</Th>
             <Th>Type</Th>
             <Th>Created At</Th>

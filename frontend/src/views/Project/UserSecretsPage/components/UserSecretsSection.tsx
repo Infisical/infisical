@@ -6,6 +6,7 @@ import { Button } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 
 import { AddUserSecretModal } from "./AddUserSecretModal";
+import { UserSecretsTable } from "./UserSecretsTable";
 
 export const UserSecretsSection = () => {
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
@@ -32,6 +33,7 @@ export const UserSecretsSection = () => {
           New Secret
         </Button>
       </div>
+      <UserSecretsTable />
       <AddUserSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </div>
   );

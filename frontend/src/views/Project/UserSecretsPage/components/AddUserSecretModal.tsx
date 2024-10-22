@@ -20,7 +20,7 @@ export const AddUserSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent title="New Secret" subTitle="">
-        <UserSecretForm />
+        <UserSecretForm handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>
   );

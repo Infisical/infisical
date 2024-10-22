@@ -2,10 +2,18 @@ import React, { useState } from "react";
 
 import { Button } from "@app/components/v2";
 import { UserSecretType } from "@app/hooks/api/userSecrets/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { LoginSecretForm } from "./forms/LoginSecretForm";
 
-export const UserSecretForm: React.FC = () => {
+type Props = {
+  handlePopUpToggle: (
+    popUpName: keyof UsePopUpState<["createUserSecret"]>,
+    state?: boolean
+  ) => void;
+};
+
+export const UserSecretForm: React.FC<Props> = ({ handlePopUpToggle }) => {
   const [step, setStep] = useState(1);
   const [secretType, setSecretType] = useState<UserSecretType | null>(null);
 
@@ -17,7 +25,7 @@ export const UserSecretForm: React.FC = () => {
   const renderForm = (type: UserSecretType) => {
     switch (type) {
       case UserSecretType.Login:
-        return <LoginSecretForm />;
+        return <LoginSecretForm onSubmit={() => handlePopUpToggle("createUserSecret", false)} />;
       default:
         return null;
     }

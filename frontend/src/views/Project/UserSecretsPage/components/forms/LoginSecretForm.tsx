@@ -10,6 +10,7 @@ import { useCreateUserSecretV3 } from "@app/hooks/api/userSecrets/mutations";
 import { UserSecretType } from "@app/hooks/api/userSecrets/types";
 
 const formSchema = z.object({
+  secretKey: z.string().min(1),
   username: z.string().min(1),
   password: z.string().min(1),
   websites: z.array(z.string()).optional(),
@@ -20,6 +21,7 @@ type FormSchema = z.infer<typeof formSchema>;
 
 interface LoginSecretFormProps {
   initialData?: Partial<FormSchema>;
+  onSubmit: (data: FormSchema) => void;
 }
 
 export const LoginSecretForm: React.FC<LoginSecretFormProps> = ({ initialData }) => {
@@ -44,16 +46,28 @@ export const LoginSecretForm: React.FC<LoginSecretFormProps> = ({ initialData })
         websites: data.websites
       }),
       type: UserSecretType.Login,
-      secretKey: data.username,
+      secretKey: data.secretKey,
       secretComment: "",
       secretPath: "/",
       workspaceId,
       environment
     });
+    form.reset();
   };
 
   return (
     <form id="create-secret-form" className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+      <Controller
+        control={form.control}
+        name="secretKey"
+        render={({ field }) => (
+          <div className="space-y-1">
+            <FormLabel label="Key" />
+            <Input id="key" {...field} />
+          </div>
+        )}
+      />
+
       <Controller
         control={form.control}
         name="username"
