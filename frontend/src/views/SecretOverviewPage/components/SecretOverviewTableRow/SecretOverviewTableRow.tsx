@@ -153,7 +153,8 @@ export const SecretOverviewTableRow = ({
               className="ml-2 p-2"
               style={{
                 marginLeft: scrollOffset,
-                width: "calc(100vw - 290px)" // 290px accounts for sidebar and margin
+                width: "calc(100vw - 300px)", // 300px accounts for sidebar and margin
+                maxWidth: "calc(1536px - 50px)" // tw container max width minus padding for uw displays
               }}
             >
               <SecretRenameRow
