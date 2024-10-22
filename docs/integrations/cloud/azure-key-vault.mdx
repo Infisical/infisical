@@ -29,8 +29,15 @@ description: "How to sync secrets from Infisical to Azure Key Vault"
 
         ![integrations](../../images/integrations/azure-key-vault/integrations-azure-key-vault.png)
 
+        <Note>
+          The Azure Key Vault integration requires the following secrets permissions to be set on the user / service principal
+          for Infisical to sync secrets to Azure Key Vault: `secrets/list`, `secrets/get`, `secrets/set`, `secrets/recover`.
+
+          Any role with these permissions would work such as the **Key Vault Secrets Officer** role.
+        </Note>
       </Step>
     </Steps>
+
   </Tab>
   <Tab title="Self-Hosted Setup">
     Using the Azure KV integration on a self-hosted instance of Infisical requires configuring an application in Azure
@@ -43,28 +50,28 @@ description: "How to sync secrets from Infisical to Azure Key Vault"
         <Info>
           Azure Active Directory is now Microsoft Entra ID.
         </Info>
-        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-aad.png) 
-        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-new-app.png) 
+        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-aad.png)
+        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-new-app.png)
 
         Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/integrations/azure-key-vault/oauth2/callback`.
-        
-        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-new-app-form.png) 
+
+        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-new-app-form.png)
       </Step>
       <Step title="Add your application credentials to Infisical">
         Obtain the **Application (Client) ID** in Overview and generate a **Client Secret** in Certificate & secrets for your Azure application.
 
-        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-credentials-1.png) 
-        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-credentials-2.png) 
-        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-credentials-3.png) 
-        
+        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-credentials-1.png)
+        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-credentials-2.png)
+        ![integrations Azure KV config](../../images/integrations/azure-key-vault/integrations-azure-key-vault-config-credentials-3.png)
+
         Back in your Infisical instance, add two new environment variables for the credentials of your Azure application.
 
         - `CLIENT_ID_AZURE`: The **Application (Client) ID** of your Azure application.
         - `CLIENT_SECRET_AZURE`: The **Client Secret** of your Azure application.
-        
+
         Once added, restart your Infisical instance and use the Azure KV integration.
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
-
