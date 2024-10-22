@@ -35,7 +35,8 @@ const integrationSlugNameMapping: Mapping = {
   "gcp-secret-manager": "GCP Secret Manager",
   "hasura-cloud": "Hasura Cloud",
   rundeck: "Rundeck",
-  "azure-devops": "Azure DevOps"
+  "azure-devops": "Azure DevOps",
+  "azure-app-configuration": "Azure App Configuration"
 };
 
 const envMapping: Mapping = {

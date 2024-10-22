@@ -131,6 +131,35 @@ const exchangeCodeAzure = async ({ code }: { code: string }) => {
   };
 };
 
+const exchangeCodeAzureAppConfig = async ({ code }: { code: string }) => {
+  const accessExpiresAt = new Date();
+  const appCfg = getConfig();
+  if (!appCfg.CLIENT_ID_AZURE || !appCfg.CLIENT_SECRET_AZURE) {
+    throw new BadRequestError({ message: "Missing client id and client secret" });
+  }
+  const res = (
+    await request.post<ExchangeCodeAzureResponse>(
+      IntegrationUrls.AZURE_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        scope: "https://azconfig.io/.default openid offline_access",
+        client_id: appCfg.CLIENT_ID_AZURE,
+        client_secret: appCfg.CLIENT_SECRET_AZURE,
+        redirect_uri: `${appCfg.SITE_URL}/integrations/azure-app-configuration/oauth2/callback`
+      })
+    )
+  ).data;
+
+  accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + res.expires_in);
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt
+  };
+};
+
 const exchangeCodeHeroku = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
   const appCfg = getConfig();
@@ -432,6 +461,10 @@ export const exchangeCode = async ({
       });
     case Integrations.AZURE_KEY_VAULT:
       return exchangeCodeAzure({
+        code
+      });
+    case Integrations.AZURE_APP_CONFIGURATION:
+      return exchangeCodeAzureAppConfig({
         code
       });
     case Integrations.HEROKU:
@@ -746,6 +779,7 @@ export const exchangeRefresh = async (
   accessExpiresAt: Date;
 }> => {
   switch (integration) {
+    case Integrations.AZURE_APP_CONFIGURATION:
     case Integrations.AZURE_KEY_VAULT:
       return exchangeRefreshAzure({
         refreshToken
