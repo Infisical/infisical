@@ -241,9 +241,9 @@ export const identityUaServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.UNIVERSAL_AUTH)) {
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.UNIVERSAL_AUTH)) {
       throw new BadRequestError({
-        message: "Failed to update universal auth"
+        message: "The identity does not have universal auth"
       });
     }
 
