@@ -7,7 +7,8 @@ import {
   faSquareCheck,
   faSquareXmark,
   faTriangleExclamation,
-  faUserLock} from "@fortawesome/free-solid-svg-icons";
+  faUserLock
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -38,7 +39,7 @@ export const SecretApprovalRequestAction = ({
   isMergable,
   approvals,
   statusChangeByEmail,
-  workspaceId,  
+  workspaceId,
   enforcementLevel,
   canApprove
 }: Props) => {
@@ -112,16 +113,19 @@ export const SecretApprovalRequestAction = ({
               At least {approvals} approving review required
               {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
             </span>
-            {!canApprove && isSoftEnforcement && (
+            {isSoftEnforcement && !isMergable && (
               <div className="mt-2 flex flex-col space-y-2">
                 <Checkbox
                   onCheckedChange={(checked) => setByPassApproval(checked === true)}
                   isChecked={byPassApproval}
                   id="byPassApproval"
                   checkIndicatorBg="text-white"
-                  className={twMerge("mr-2", byPassApproval ? "bg-red hover:bg-red-600 border-red" : "")}
+                  className={twMerge(
+                    "mr-2",
+                    byPassApproval ? "border-red bg-red hover:bg-red-600" : ""
+                  )}
                 >
-                  <span className="text-red text-xs">
+                  <span className="text-xs text-red">
                     Merge without waiting for approval (bypass secret change policy)
                   </span>
                 </Checkbox>
@@ -159,8 +163,10 @@ export const SecretApprovalRequestAction = ({
               <Button
                 leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
                 isDisabled={
-                  (!isMergable && canApprove)
-                  || (!canApprove && isSoftEnforcement && (!byPassApproval || !isValidBypassReason(bypassReason)))
+                  !(
+                    (isMergable && canApprove) ||
+                    (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReason))
+                  )
                 }
                 isLoading={isMerging}
                 onClick={handleSecretApprovalRequestMerge}
