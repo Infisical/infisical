@@ -10,7 +10,7 @@ import { withProjectPermission } from "@app/hoc";
 import { useGetWorkspaceIdentityMembershipDetails } from "@app/hooks/api";
 
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
-import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSectiona";
+import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
 
 export const IdentityDetailsPage = withProjectPermission(
   () => {

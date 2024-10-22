@@ -122,7 +122,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
       });
       createNotification({ text: "Successfully updated roles", type: "success" });
     } catch (err) {
-      createNotification({ text: "Failed to update role", type: "error" });
+      createNotification({ text: "Failed to update roles", type: "error" });
     }
   };
 
@@ -177,7 +177,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                                 new Date(temporaryAccess.temporaryAccessEndTime || ""),
                                 "yyyy-MM-dd HH:mm:ss"
                               )}`
-                          : "Non expiry access"
+                          : "Non-Expiring Access"
                       }
                     >
                       <Button
@@ -212,7 +212,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                 >
                   <div className="flex flex-col space-y-4">
                     <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-                      Configure timed access
+                      Configure Timed Access
                     </div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
                     <Controller
@@ -283,7 +283,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                 variant="outline_bg"
                 className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                 ariaLabel="delete-role"
-                isDisabled={isIdentityEditDisabled}
+                isDisabled={isIdentityEditDisabled || selectedRoleList.fields.length === 1}
                 onClick={() => {
                   if (selectedRoleList.fields.length > 1) {
                     selectedRoleList.remove(index);
@@ -297,7 +297,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
         })}
       </div>
       <div className="mt-4 flex justify-between space-x-2">
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Member}>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Identity}>
           {(isAllowed) => (
             <Button
               variant="outline_bg"

@@ -68,7 +68,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
       handlePopUpClose("deletePrivilege");
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to delete role" });
+      createNotification({ type: "error", text: "Failed to delete privilege" });
     }
   };
 
@@ -113,7 +113,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Member}
                     renderTooltip
-                    allowedLabel="New privilege"
+                    allowedLabel="Add Privilege"
                   >
                     {(isAllowed) => (
                       <IconButton
@@ -151,7 +151,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                           new Date() > new Date(privilegeDetails.temporaryAccessEndTime || "");
 
                         let text = "Permanent";
-                        let toolTipText = "Non expiry access";
+                        let toolTipText = "Non-Expiring Access";
                         if (privilegeDetails.isTemporary) {
                           if (isExpired) {
                             text = "Access Expired";
@@ -201,7 +201,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                   I={ProjectPermissionActions.Edit}
                                   a={ProjectPermissionSub.Member}
                                   renderTooltip
-                                  allowedLabel="Remove role"
+                                  allowedLabel="Remove Role"
                                 >
                                   {(isAllowed) => (
                                     <IconButton

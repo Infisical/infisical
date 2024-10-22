@@ -56,7 +56,7 @@ export const IdentityRoleDetailsSection = ({
         identityId: identityMembershipDetails.identity.id,
         roles: updatedRole
       });
-      createNotification({ type: "success", text: "Successfully removed the role" });
+      createNotification({ type: "success", text: "Successfully removed role" });
       handlePopUpClose("deleteRole");
     } catch (err) {
       console.log(err);
@@ -111,7 +111,7 @@ export const IdentityRoleDetailsSection = ({
                     new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
 
                   let text = "Permanent";
-                  let toolTipText = "Non expiry access";
+                  let toolTipText = "Non-Expiring Access";
                   if (roleDetails.isTemporary) {
                     if (isExpired) {
                       text = "Access Expired";
@@ -154,7 +154,7 @@ export const IdentityRoleDetailsSection = ({
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Member}
                             renderTooltip
-                            allowedLabel="Remove role"
+                            allowedLabel="Remove Role"
                           >
                             {(isAllowed) => (
                               <IconButton
@@ -198,7 +198,10 @@ export const IdentityRoleDetailsSection = ({
         isOpen={popUp.modifyRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
       >
-        <ModalContent title="Roles" subTitle="Select one of the pre-defined or custom roles.">
+        <ModalContent
+          title="Roles"
+          subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
+        >
           <IdentityRoleModify identityProjectMembership={identityMembershipDetails} />
         </ModalContent>
       </Modal>

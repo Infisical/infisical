@@ -167,7 +167,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
       onGoBack();
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to update role" });
+      createNotification({ type: "error", text: "Failed to update privilege" });
     }
   };
 
@@ -177,7 +177,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     privilegeTemporaryAccess?.isTemporary &&
     new Date() > new Date(privilegeTemporaryAccess.temporaryAccessEndTime || "");
   let text = "Permanent";
-  let toolTipText = "Non expiry access";
+  let toolTipText = "Non-Expiring Access";
 
   if (isTemporary) {
     if (isExpired) {
@@ -206,7 +206,14 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
             <IconButton ariaLabel="go-back" variant="plain" onClick={onGoBack}>
               <FontAwesomeIcon icon={faChevronLeft} />
             </IconButton>
-            <h3 className="text-lg font-semibold text-mineshaft-100">Edit Additional Privilege</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-mineshaft-100">
+                Edit Additional Privileges
+              </h3>
+              <p className="text-sm text-mineshaft-400">
+                Additional privileges take precedence over roles when permissions conflict
+              </p>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             {isDirty && (
@@ -242,7 +249,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     isDisabled={isDisabled}
                   >
-                    New policy
+                    New Policy
                   </Button>
                 </ModalTrigger>
                 <ModalContent title="New Policy" subTitle="Policies grant additional permissions.">
@@ -297,7 +304,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                 >
                   <div className="flex flex-col space-y-4">
                     <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-                      Configure timed access
+                      Configure Timed Access
                     </div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
                     <Controller

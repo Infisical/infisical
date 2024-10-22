@@ -65,7 +65,7 @@ export const MemberRoleDetailsSection = ({
         roles: updatedRole,
         membershipId: membershipDetails.id
       });
-      createNotification({ type: "success", text: "Successfully removed the role" });
+      createNotification({ type: "success", text: "Successfully removed role" });
       handlePopUpClose("deleteRole");
     } catch (err) {
       console.log(err);
@@ -82,7 +82,7 @@ export const MemberRoleDetailsSection = ({
             I={ProjectPermissionActions.Edit}
             a={ProjectPermissionSub.Member}
             renderTooltip
-            allowedLabel="Edit role(s)"
+            allowedLabel="Edit Role(s)"
           >
             {(isAllowed) => (
               <IconButton
@@ -122,7 +122,7 @@ export const MemberRoleDetailsSection = ({
                     new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
 
                   let text = "Permanent";
-                  let toolTipText = "Non expiry access";
+                  let toolTipText = "Non-Expiring Access";
                   if (roleDetails.isTemporary) {
                     if (isExpired) {
                       text = "Access Expired";
@@ -165,7 +165,7 @@ export const MemberRoleDetailsSection = ({
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Member}
                             renderTooltip
-                            allowedLabel="Remove role"
+                            allowedLabel="Remove Role"
                           >
                             {(isAllowed) => (
                               <IconButton
@@ -209,7 +209,10 @@ export const MemberRoleDetailsSection = ({
         isOpen={popUp.modifyRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
       >
-        <ModalContent title="Roles" subTitle="Select one of the pre-defined or custom roles.">
+        <ModalContent
+          title="Roles"
+          subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
+        >
           <MemberRoleModify projectMember={membershipDetails} onOpenUpgradeModal={() => {}} />
         </ModalContent>
       </Modal>

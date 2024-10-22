@@ -61,7 +61,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
       handlePopUpClose("deletePrivilege");
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to delete role" });
+      createNotification({ type: "error", text: "Failed to delete privilege" });
     }
   };
 
@@ -105,7 +105,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.Identity}
                 renderTooltip
-                allowedLabel="New privilege"
+                allowedLabel="Add Privilege"
               >
                 {(isAllowed) => (
                   <IconButton
@@ -144,7 +144,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                           new Date() > new Date(privilegeDetails.temporaryAccessEndTime || "");
 
                         let text = "Permanent";
-                        let toolTipText = "Non expiry access";
+                        let toolTipText = "Non-Expiring Access";
                         if (privilegeDetails.isTemporary) {
                           if (isExpired) {
                             text = "Access Expired";
@@ -194,7 +194,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                                   I={ProjectPermissionActions.Edit}
                                   a={ProjectPermissionSub.Identity}
                                   renderTooltip
-                                  allowedLabel="Remove role"
+                                  allowedLabel="Remove Role"
                                 >
                                   {(isAllowed) => (
                                     <IconButton
@@ -227,7 +227,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                   </TBody>
                 </Table>
                 {!isLoading && !userProjectPrivileges?.length && (
-                  <EmptyState title="This user has no additional privileges" icon={faFolder} />
+                  <EmptyState title="This identity has no additional privileges" icon={faFolder} />
                 )}
               </TableContainer>
             </div>

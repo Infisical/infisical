@@ -175,7 +175,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     privilegeTemporaryAccess?.isTemporary &&
     new Date() > new Date(privilegeTemporaryAccess.temporaryAccessEndTime || "");
   let text = "Permanent";
-  let toolTipText = "Non expiry access";
+  let toolTipText = "Non-Expiring Access";
 
   if (isTemporary) {
     if (isExpired) {
@@ -240,7 +240,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     isDisabled={isDisabled}
                   >
-                    New policy
+                    New Policy
                   </Button>
                 </ModalTrigger>
                 <ModalContent title="New Policy" subTitle="Policies grant additional permissions.">
@@ -295,7 +295,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                 >
                   <div className="flex flex-col space-y-4">
                     <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-                      Configure timed access
+                      Configure Timed Access
                     </div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
                     <Controller
