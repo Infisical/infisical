@@ -27,6 +27,7 @@ export type TGetSecretsDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  isUserSecret: boolean;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -51,6 +52,7 @@ export type TCreateSecretDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  isUserSecret: boolean;
 };
 
 export type TUpdateSecretDTO = TProjectPermission & {
@@ -123,6 +125,7 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   limit?: number;
   offset?: number;
   secretId: string;
+  isUserSecret: boolean;
 };
 
 export type TSecretReference = { environment: string; secretPath: string; secretKey: string };

@@ -35,7 +35,8 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         limit: req.query.limit,
         offset: req.query.offset,
-        secretId: req.params.secretId
+        secretId: req.params.secretId,
+        isUserSecret: false
       });
       return { secretVersions };
     }

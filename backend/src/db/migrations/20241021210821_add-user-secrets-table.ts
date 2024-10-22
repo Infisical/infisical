@@ -8,13 +8,13 @@ export async function up(knex: Knex): Promise<void> {
 
   if (!hasIsUserSecret) {
     await knex.schema.alterTable(TableName.Secret, (t) => {
-      t.boolean("isUserSecret").defaultTo(false);
+      t.boolean("isUserSecret").defaultTo(false).notNullable();
     });
   }
 
   if (!hasIsUserSecretV2) {
     await knex.schema.alterTable(TableName.SecretV2, (t) => {
-      t.boolean("isUserSecret").defaultTo(false);
+      t.boolean("isUserSecret").defaultTo(false).notNullable();
     });
   }
 }

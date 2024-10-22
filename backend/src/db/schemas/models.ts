@@ -196,3 +196,7 @@ export enum IdentityAuthMethod {
   AZURE_AUTH = "azure-auth",
   OIDC_AUTH = "oidc-auth"
 }
+
+export enum UserSecretType {
+  Login = "Login"
+}

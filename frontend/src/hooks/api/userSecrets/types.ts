@@ -1,4 +1,4 @@
-import { TCreateSecretsV3DTO } from "../secrets/types";
+import { TCreateSecretsV3DTO, TGetProjectSecretsKey } from "../secrets/types";
 
 export enum UserSecretType {
   Login = "Login"
@@ -22,3 +22,7 @@ export type TCreateUserSecretsV3DTO = Omit<
 > & {
   type: UserSecretType;
 };
+
+export type TGetUserSecretsKey = Pick<TGetProjectSecretsKey, "workspaceId" | "environment">;
+
+export type TGetUserSecretsDTO = TGetUserSecretsKey;

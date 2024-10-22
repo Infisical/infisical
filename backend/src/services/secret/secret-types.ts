@@ -66,6 +66,7 @@ export type TCreateSecretDTO = {
   metadata?: {
     source?: string;
   };
+  isUserSecret: boolean;
 } & TProjectPermission;
 
 export type TUpdateSecretDTO = {
@@ -107,6 +108,7 @@ export type TGetSecretsDTO = {
   recursive?: boolean;
   limit?: number;
   offset?: number;
+  isUserSecret: boolean;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -185,6 +187,7 @@ export type TGetSecretsRawDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  isUserSecret: boolean;
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {
@@ -210,6 +213,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  isUserSecret: boolean;
 };
 
 export type TUpdateSecretRawDTO = TProjectPermission & {
@@ -285,6 +289,7 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   limit?: number;
   offset?: number;
   secretId: string;
+  isUserSecret: boolean;
 };
 
 export type TSecretReference = { environment: string; secretPath: string };

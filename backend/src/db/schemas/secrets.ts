@@ -5,14 +5,12 @@
 
 import { z } from "zod";
 
-
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretsSchema = z.object({
   id: z.string().uuid(),
   version: z.number().default(1),
-  type: z.string().default('shared'),
+  type: z.string().default("shared"),
   secretBlindIndex: z.string().nullable().optional(),
   secretKeyCiphertext: z.string(),
   secretKeyIV: z.string(),
@@ -26,14 +24,14 @@ export const SecretsSchema = z.object({
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
-  algorithm: z.string().default('aes-256-gcm'),
-  keyEncoding: z.string().default('utf8'),
+  algorithm: z.string().default("aes-256-gcm"),
+  keyEncoding: z.string().default("utf8"),
   metadata: z.unknown().nullable().optional(),
   userId: z.string().uuid().nullable().optional(),
   folderId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isUserSecret: z.boolean().default(false).nullable().optional()
+  isUserSecret: z.boolean().default(false)
 });
 
 export type TSecrets = z.infer<typeof SecretsSchema>;

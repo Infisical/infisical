@@ -12,7 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const SecretsV2Schema = z.object({
   id: z.string().uuid(),
   version: z.number().default(1),
-  type: z.string().default('shared'),
+  type: z.string().default("shared"),
   key: z.string(),
   encryptedValue: zodBuffer.nullable().optional(),
   encryptedComment: zodBuffer.nullable().optional(),
@@ -24,7 +24,7 @@ export const SecretsV2Schema = z.object({
   folderId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isUserSecret: z.boolean().default(false).nullable().optional()
+  isUserSecret: z.boolean().default(false)
 });
 
 export type TSecretsV2 = z.infer<typeof SecretsV2Schema>;

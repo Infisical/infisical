@@ -176,6 +176,7 @@ export const secretServiceFactory = ({
     environment,
     actorAuthMethod,
     projectId,
+    isUserSecret,
     ...inputSecret
   }: TCreateSecretDTO) => {
     const { permission } = await permissionService.getProjectPermission(
@@ -253,7 +254,8 @@ export const secretServiceFactory = ({
               ciphertext: inputSecret.secretValueCiphertext,
               iv: inputSecret.secretValueIV,
               tag: inputSecret.secretValueTag
-            })
+            }),
+            isUserSecret
           }
         ],
         secretDAL,
@@ -501,7 +503,8 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     includeImports,
-    recursive
+    recursive,
+    isUserSecret
   }: TGetSecretsDTO) => {
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -577,23 +580,27 @@ export const secretServiceFactory = ({
       });
 
       return {
-        secrets: secrets.map((secret) => ({
-          ...secret,
-          workspace: projectId,
-          environment,
-          secretPath: groupedPaths[secret.folderId][0].path
-        })),
+        secrets: secrets
+          .filter((secret) => secret.isUserSecret === isUserSecret)
+          .map((secret) => ({
+            ...secret,
+            workspace: projectId,
+            environment,
+            secretPath: groupedPaths[secret.folderId][0].path
+          })),
         imports: importedSecrets
       };
     }
 
     return {
-      secrets: secrets.map((secret) => ({
-        ...secret,
-        workspace: projectId,
-        environment,
-        secretPath: groupedPaths[secret.folderId][0].path
-      }))
+      secrets: secrets
+        .filter((secret) => secret.isUserSecret === isUserSecret)
+        .map((secret) => ({
+          ...secret,
+          workspace: projectId,
+          environment,
+          secretPath: groupedPaths[secret.folderId][0].path
+        }))
     };
   };
 
@@ -1087,6 +1094,7 @@ export const secretServiceFactory = ({
     expandSecretReferences,
     recursive,
     tagSlugs = [],
+    isUserSecret,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -1103,6 +1111,7 @@ export const secretServiceFactory = ({
         actorAuthMethod,
         includeImports,
         tagSlugs,
+        isUserSecret,
         ...paramsV2
       });
       return { secrets, imports };
@@ -1123,7 +1132,8 @@ export const secretServiceFactory = ({
       actorAuthMethod,
       path,
       includeImports,
-      recursive
+      recursive,
+      isUserSecret
     });
 
     const decryptedSecrets = secrets.map((el) => decryptSecretRaw(el, botKey));
@@ -1313,7 +1323,8 @@ export const secretServiceFactory = ({
     skipMultilineEncoding,
     tagIds,
     secretReminderNote,
-    secretReminderRepeatDays
+    secretReminderRepeatDays,
+    isUserSecret
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
@@ -1363,7 +1374,8 @@ export const secretServiceFactory = ({
         tagIds,
         secretReminderNote,
         skipMultilineEncoding,
-        secretReminderRepeatDays
+        secretReminderRepeatDays,
+        isUserSecret
       });
       return { secret, type: SecretProtectionType.Direct as const };
     }
@@ -1430,7 +1442,8 @@ export const secretServiceFactory = ({
       skipMultilineEncoding,
       secretReminderRepeatDays,
       secretReminderNote,
-      tags: tagIds
+      tags: tagIds,
+      isUserSecret
     });
 
     return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
@@ -2046,7 +2059,8 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     limit = 20,
     offset = 0,
-    secretId
+    secretId,
+    isUserSecret
   }: TGetSecretVersionsDTO) => {
     const secretVersionV2 = await secretV2BridgeService
       .getSecretVersions({
@@ -2056,7 +2070,8 @@ export const secretServiceFactory = ({
         actorAuthMethod,
         limit,
         offset,
-        secretId
+        secretId,
+        isUserSecret
       })
       .catch((err) => {
         if ((err as Error).message === "BadRequest: Failed to find secret") {
@@ -2088,7 +2103,8 @@ export const secretServiceFactory = ({
           ...el,
           workspace: folder.projectId,
           environment: folder.environment.envSlug,
-          secretPath: "/"
+          secretPath: "/",
+          isUserSecret
         },
         botKey
       )

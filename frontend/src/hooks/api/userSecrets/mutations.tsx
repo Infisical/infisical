@@ -5,7 +5,7 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
-import { secretKeys } from "./queries";
+import { userSecretKeys } from "./queries";
 import { TCreateUserSecretsV3DTO } from "./types";
 
 export const useCreateUserSecretV3 = ({
@@ -38,9 +38,7 @@ export const useCreateUserSecretV3 = ({
       queryClient.invalidateQueries(
         dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
       );
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
-      );
+      queryClient.invalidateQueries(userSecretKeys.getUserSecret({ workspaceId, environment }));
       queryClient.invalidateQueries(
         secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
       );

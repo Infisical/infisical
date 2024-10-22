@@ -181,7 +181,7 @@ export const registerUserSecretRouter = async (server: FastifyZodProvider) => {
         projectId: req.body.workspaceId,
         ...req.auditLogInfo,
         event: {
-          type: EventType.CREATE_SECRET,
+          type: EventType.CREATE_USER_SECRET,
           metadata: {
             environment: req.body.environment,
             secretPath: "/",

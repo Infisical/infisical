@@ -258,7 +258,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         path: secretPath,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
-        tagSlugs: req.query.tagSlugs
+        tagSlugs: req.query.tagSlugs,
+        isUserSecret: false
       });
 
       await server.services.auditLog.createAuditLog({
@@ -474,7 +475,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretComment: req.body.secretComment,
         tagIds: req.body.tagIds,
         secretReminderNote: req.body.secretReminderNote,
-        secretReminderRepeatDays: req.body.secretReminderRepeatDays
+        secretReminderRepeatDays: req.body.secretReminderRepeatDays,
+        isUserSecret: false
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
         return { approval: secretOperation.approval };
@@ -775,7 +777,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
         includeImports: req.query.include_imports,
-        recursive: req.query.recursive
+        recursive: req.query.recursive,
+        isUserSecret: false
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1038,7 +1041,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretCommentTag,
         secretCommentCiphertext,
         skipMultilineEncoding,
-        metadata
+        metadata,
+        isUserSecret: false
       });
 
       await server.services.auditLog.createAuditLog({

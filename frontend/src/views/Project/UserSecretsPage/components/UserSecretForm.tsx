@@ -44,10 +44,10 @@ export const UserSecretForm: React.FC = () => {
     );
   }
 
-  if (step === 2 && secretType === UserSecretType.Login) {
+  if (step === 2 && secretType) {
     return (
       <div className="space-y-4">
-        <h2>Login User Secret</h2>
+        <h2>Create {secretType} Secret</h2>
         {renderForm(secretType)}
         <div className="flex justify-end">
           <Button form="create-secret-form" type="submit">

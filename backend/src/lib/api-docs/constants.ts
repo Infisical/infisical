@@ -670,6 +670,25 @@ export const RAW_SECRETS = {
   }
 } as const;
 
+export const USER_SECRETS = {
+  LIST: {
+    workspaceId: "The ID of the project to list secrets from.",
+    workspaceSlug:
+      "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
+    environment: "The slug of the environment to list secrets from.",
+    secretPath: "The secret path to list secrets from."
+  },
+  CREATE: {
+    secretName: "The name of the secret to create.",
+    projectSlug: "The slug of the project to create the secret in.",
+    environment: "The slug of the environment to create the secret in.",
+    secretValue: "The value of the secret to create.",
+    type: "The type of the secret to create.",
+    workspaceId: "The ID of the project to create the secret in.",
+    secretComment: "Attach a comment to the secret."
+  }
+} as const;
+
 export const SECRET_IMPORTS = {
   LIST: {
     workspaceId: "The ID of the project to list secret imports from.",

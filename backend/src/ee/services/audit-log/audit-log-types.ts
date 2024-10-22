@@ -48,6 +48,7 @@ export enum EventType {
   GET_SECRET = "get-secret",
   REVEAL_SECRET = "reveal-secret",
   CREATE_SECRET = "create-secret",
+  CREATE_USER_SECRET = "create-user-secret",
   CREATE_SECRETS = "create-secrets",
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
@@ -264,6 +265,16 @@ interface GetSecretEvent {
 
 interface CreateSecretEvent {
   type: EventType.CREATE_SECRET;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    secretId: string;
+    secretKey: string;
+    secretVersion: number;
+  };
+}
+interface CreateUserSecretEvent extends Omit<CreateSecretEvent, "type"> {
+  type: EventType.CREATE_USER_SECRET;
   metadata: {
     environment: string;
     secretPath: string;
@@ -1622,6 +1633,7 @@ export type Event =
   | GetSecretsEvent
   | GetSecretEvent
   | CreateSecretEvent
+  | CreateUserSecretEvent
   | CreateSecretBatchEvent
   | UpdateSecretEvent
   | UpdateSecretBatchEvent

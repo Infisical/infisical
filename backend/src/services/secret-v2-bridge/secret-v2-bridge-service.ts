@@ -182,7 +182,8 @@ export const secretV2BridgeServiceFactory = ({
             key: secretName,
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             tagIds: inputSecret.tagIds,
-            references
+            references,
+            isUserSecret: inputSecret.isUserSecret
           }
         ],
         secretDAL,
@@ -1233,7 +1234,8 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     limit = 20,
     offset = 0,
-    secretId
+    secretId,
+    isUserSecret
   }: TGetSecretVersionsDTO) => {
     const secret = await secretDAL.findById(secretId);
     if (!secret) throw new NotFoundError({ message: "Failed to find secret" });
@@ -1257,6 +1259,7 @@ export const secretV2BridgeServiceFactory = ({
     return secretVersions.map((el) =>
       reshapeBridgeSecret(folder.projectId, folder.environment.envSlug, "/", {
         ...el,
+        isUserSecret,
         value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
         comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
       })
