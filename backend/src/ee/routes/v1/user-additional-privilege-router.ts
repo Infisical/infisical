@@ -211,7 +211,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     schema: {
       params: z.object({
-        privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.GET_BY_PRIVILEGEID.privilegeId)
+        privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.GET_BY_PRIVILEGE_ID.privilegeId)
       }),
       response: {
         200: z.object({
