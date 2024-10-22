@@ -44,7 +44,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
 
   const { mutateAsync: deletePrivilege } = useDeleteIdentityProjectAdditionalPrivilege();
 
-  const { data: userProjectPrivileges, isLoading } = useListIdentityProjectPrivileges({
+  const { data: identityProjectPrivileges, isLoading } = useListIdentityProjectPrivileges({
     identityId: identityMembershipDetails?.identity?.id,
     projectId: identityMembershipDetails?.project?.id
   });
@@ -137,7 +137,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                       <TableSkeleton columns={3} innerKey="user-project-identity-memberships" />
                     )}
                     {!isLoading &&
-                      userProjectPrivileges?.map((privilegeDetails) => {
+                      identityProjectPrivileges?.map((privilegeDetails) => {
                         const isTemporary = privilegeDetails?.isTemporary;
                         const isExpired =
                           privilegeDetails.isTemporary &&
@@ -226,7 +226,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                       })}
                   </TBody>
                 </Table>
-                {!isLoading && !userProjectPrivileges?.length && (
+                {!isLoading && !identityProjectPrivileges?.length && (
                   <EmptyState title="This identity has no additional privileges" icon={faFolder} />
                 )}
               </TableContainer>
