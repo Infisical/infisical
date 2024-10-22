@@ -32,8 +32,8 @@ const codeInputProps = {
 } as const;
 
 type Props = {
-  successCallback: () => void;
-  closeMfa: () => void;
+  successCallback: () => void | Promise<void>;
+  closeMfa?: () => void;
   hideLogo?: boolean;
   email: string;
 };
@@ -58,8 +58,10 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email }: Props) => {
       SecurityClient.setMfaToken("");
       SecurityClient.setToken(token);
 
-      successCallback();
-      closeMfa();
+      await successCallback();
+      if (closeMfa) {
+        closeMfa();
+      }
     } catch (error) {
       if (triesLeft) {
         setTriesLeft((left) => {

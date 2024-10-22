@@ -288,7 +288,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        mfaEnabled: false,
         encryptionVersion: data.user.encryptionVersion,
         token: data.token.access,
         publicKey: data.user.publicKey,

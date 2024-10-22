@@ -46,6 +46,7 @@ export default function LoginPage() {
   const selectOrg = useSelectOrganization();
   const { data: user, isLoading: userLoading } = useGetUser();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [isInitialOrgCheckLoading, setIsInitialOrgCheckLoading] = useState(true);
 
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
@@ -169,19 +170,22 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  // Case: User has no organizations.
-  // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
   useEffect(() => {
     if (organizations.isLoading || !organizations.data) return;
 
+    // Case: User has no organizations.
+    // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
     if (organizations.data.length === 0) {
       router.push("/org/none");
     } else if (organizations.data.length === 1) {
       if (callbackPort) {
         handleCliRedirect();
+        setIsInitialOrgCheckLoading(false);
       } else {
         handleSelectOrganization(organizations.data[0]);
       }
+    } else {
+      setIsInitialOrgCheckLoading(false);
     }
   }, [organizations.isLoading, organizations.data]);
 
@@ -191,7 +195,11 @@ export default function LoginPage() {
     }
   }, [defaultSelectedOrg]);
 
-  if (userLoading || !user) {
+  if (
+    userLoading ||
+    !user ||
+    ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
+  ) {
     return <LoadingScreen />;
   }
 
@@ -205,11 +213,7 @@ export default function LoginPage() {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
       {shouldShowMfa ? (
-        <Mfa
-          email={user.email as string}
-          successCallback={mfaSuccessCallback}
-          closeMfa={() => toggleShowMfa.off()}
-        />
+        <Mfa email={user.email as string} successCallback={mfaSuccessCallback} />
       ) : (
         <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
           <Link href="/">

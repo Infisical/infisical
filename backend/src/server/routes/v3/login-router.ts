@@ -95,7 +95,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          mfaEnabled: z.literal(false),
           encryptionVersion: z.number().default(1).nullable().optional(),
           protectedKey: z.string().nullable(),
           protectedKeyIV: z.string().nullable(),
@@ -131,7 +130,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        mfaEnabled: false,
         encryptionVersion: data.user.encryptionVersion,
         token: data.token.access,
         publicKey: data.user.publicKey,
