@@ -11,6 +11,8 @@ import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
 
 const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
+// akhilmhdh: JS regex with global save state in .test
+const INTERPOLATION_SYNTAX_REG_NON_GLOBAL = /\${([^}]+)}/;
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
@@ -497,7 +499,7 @@ export const expandSecretReferencesFactory = ({
             trace
           };
 
-          const shouldExpandMore = INTERPOLATION_SYNTAX_REG.test(referencedSecretValue);
+          const shouldExpandMore = INTERPOLATION_SYNTAX_REG_NON_GLOBAL.test(referencedSecretValue);
           if (dto.shouldStackTrace) {
             const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
             trace?.children.push(stackTraceNode);
