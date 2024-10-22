@@ -12,7 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const SecretVersionsV2Schema = z.object({
   id: z.string().uuid(),
   version: z.number().default(1),
-  type: z.string().default("shared"),
+  type: z.string().default('shared'),
   key: z.string(),
   encryptedValue: zodBuffer.nullable().optional(),
   encryptedComment: zodBuffer.nullable().optional(),

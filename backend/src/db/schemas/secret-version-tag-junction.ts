@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretVersionTagJunctionSchema = z.object({
@@ -15,6 +17,4 @@ export const SecretVersionTagJunctionSchema = z.object({
 
 export type TSecretVersionTagJunction = z.infer<typeof SecretVersionTagJunctionSchema>;
 export type TSecretVersionTagJunctionInsert = Omit<z.input<typeof SecretVersionTagJunctionSchema>, TImmutableDBKeys>;
-export type TSecretVersionTagJunctionUpdate = Partial<
-  Omit<z.input<typeof SecretVersionTagJunctionSchema>, TImmutableDBKeys>
->;
+export type TSecretVersionTagJunctionUpdate = Partial<Omit<z.input<typeof SecretVersionTagJunctionSchema>, TImmutableDBKeys>>;

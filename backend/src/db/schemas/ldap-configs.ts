@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const LdapConfigsSchema = z.object({
@@ -24,10 +26,10 @@ export const LdapConfigsSchema = z.object({
   caCertTag: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  groupSearchBase: z.string().default(""),
-  groupSearchFilter: z.string().default(""),
-  searchFilter: z.string().default(""),
-  uniqueUserAttribute: z.string().default("")
+  groupSearchBase: z.string().default(''),
+  groupSearchFilter: z.string().default(''),
+  searchFilter: z.string().default(''),
+  uniqueUserAttribute: z.string().default('')
 });
 
 export type TLdapConfigs = z.infer<typeof LdapConfigsSchema>;

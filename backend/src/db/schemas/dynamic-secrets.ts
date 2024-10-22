@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const DynamicSecretsSchema = z.object({
@@ -17,8 +19,8 @@ export const DynamicSecretsSchema = z.object({
   inputIV: z.string(),
   inputCiphertext: z.string(),
   inputTag: z.string(),
-  algorithm: z.string().default("aes-256-gcm"),
-  keyEncoding: z.string().default("utf8"),
+  algorithm: z.string().default('aes-256-gcm'),
+  keyEncoding: z.string().default('utf8'),
   folderId: z.string().uuid(),
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),

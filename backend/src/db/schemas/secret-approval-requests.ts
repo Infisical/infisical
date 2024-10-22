@@ -5,13 +5,15 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   policyId: z.string().uuid(),
   hasMerged: z.boolean().default(false),
-  status: z.string().default("open"),
+  status: z.string().default('open'),
   conflicts: z.unknown().nullable().optional(),
   slug: z.string(),
   folderId: z.string().uuid(),
@@ -25,6 +27,4 @@ export const SecretApprovalRequestsSchema = z.object({
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;
 export type TSecretApprovalRequestsInsert = Omit<z.input<typeof SecretApprovalRequestsSchema>, TImmutableDBKeys>;
-export type TSecretApprovalRequestsUpdate = Partial<
-  Omit<z.input<typeof SecretApprovalRequestsSchema>, TImmutableDBKeys>
->;
+export type TSecretApprovalRequestsUpdate = Partial<Omit<z.input<typeof SecretApprovalRequestsSchema>, TImmutableDBKeys>>;

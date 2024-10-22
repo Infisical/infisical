@@ -22,6 +22,4 @@ export const CertificateAuthorityCertsSchema = z.object({
 
 export type TCertificateAuthorityCerts = z.infer<typeof CertificateAuthorityCertsSchema>;
 export type TCertificateAuthorityCertsInsert = Omit<z.input<typeof CertificateAuthorityCertsSchema>, TImmutableDBKeys>;
-export type TCertificateAuthorityCertsUpdate = Partial<
-  Omit<z.input<typeof CertificateAuthorityCertsSchema>, TImmutableDBKeys>
->;
+export type TCertificateAuthorityCertsUpdate = Partial<Omit<z.input<typeof CertificateAuthorityCertsSchema>, TImmutableDBKeys>>;

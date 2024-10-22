@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const AccessApprovalPoliciesSchema = z.object({
@@ -15,11 +17,9 @@ export const AccessApprovalPoliciesSchema = z.object({
   envId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  enforcementLevel: z.string().default("hard")
+  enforcementLevel: z.string().default('hard')
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;
 export type TAccessApprovalPoliciesInsert = Omit<z.input<typeof AccessApprovalPoliciesSchema>, TImmutableDBKeys>;
-export type TAccessApprovalPoliciesUpdate = Partial<
-  Omit<z.input<typeof AccessApprovalPoliciesSchema>, TImmutableDBKeys>
->;
+export type TAccessApprovalPoliciesUpdate = Partial<Omit<z.input<typeof AccessApprovalPoliciesSchema>, TImmutableDBKeys>>;

@@ -28,10 +28,5 @@ export const SecretApprovalRequestsSecretsV2Schema = z.object({
 });
 
 export type TSecretApprovalRequestsSecretsV2 = z.infer<typeof SecretApprovalRequestsSecretsV2Schema>;
-export type TSecretApprovalRequestsSecretsV2Insert = Omit<
-  z.input<typeof SecretApprovalRequestsSecretsV2Schema>,
-  TImmutableDBKeys
->;
-export type TSecretApprovalRequestsSecretsV2Update = Partial<
-  Omit<z.input<typeof SecretApprovalRequestsSecretsV2Schema>, TImmutableDBKeys>
->;
+export type TSecretApprovalRequestsSecretsV2Insert = Omit<z.input<typeof SecretApprovalRequestsSecretsV2Schema>, TImmutableDBKeys>;
+export type TSecretApprovalRequestsSecretsV2Update = Partial<Omit<z.input<typeof SecretApprovalRequestsSecretsV2Schema>, TImmutableDBKeys>>;

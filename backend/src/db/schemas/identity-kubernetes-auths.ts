@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityKubernetesAuthsSchema = z.object({
@@ -30,6 +32,4 @@ export const IdentityKubernetesAuthsSchema = z.object({
 
 export type TIdentityKubernetesAuths = z.infer<typeof IdentityKubernetesAuthsSchema>;
 export type TIdentityKubernetesAuthsInsert = Omit<z.input<typeof IdentityKubernetesAuthsSchema>, TImmutableDBKeys>;
-export type TIdentityKubernetesAuthsUpdate = Partial<
-  Omit<z.input<typeof IdentityKubernetesAuthsSchema>, TImmutableDBKeys>
->;
+export type TIdentityKubernetesAuthsUpdate = Partial<Omit<z.input<typeof IdentityKubernetesAuthsSchema>, TImmutableDBKeys>>;

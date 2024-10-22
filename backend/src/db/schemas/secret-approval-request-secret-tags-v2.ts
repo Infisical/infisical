@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestSecretTagsV2Schema = z.object({
@@ -16,10 +18,5 @@ export const SecretApprovalRequestSecretTagsV2Schema = z.object({
 });
 
 export type TSecretApprovalRequestSecretTagsV2 = z.infer<typeof SecretApprovalRequestSecretTagsV2Schema>;
-export type TSecretApprovalRequestSecretTagsV2Insert = Omit<
-  z.input<typeof SecretApprovalRequestSecretTagsV2Schema>,
-  TImmutableDBKeys
->;
-export type TSecretApprovalRequestSecretTagsV2Update = Partial<
-  Omit<z.input<typeof SecretApprovalRequestSecretTagsV2Schema>, TImmutableDBKeys>
->;
+export type TSecretApprovalRequestSecretTagsV2Insert = Omit<z.input<typeof SecretApprovalRequestSecretTagsV2Schema>, TImmutableDBKeys>;
+export type TSecretApprovalRequestSecretTagsV2Update = Partial<Omit<z.input<typeof SecretApprovalRequestSecretTagsV2Schema>, TImmutableDBKeys>>;

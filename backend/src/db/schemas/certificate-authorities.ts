@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+
+
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateAuthoritiesSchema = z.object({
@@ -34,6 +36,4 @@ export const CertificateAuthoritiesSchema = z.object({
 
 export type TCertificateAuthorities = z.infer<typeof CertificateAuthoritiesSchema>;
 export type TCertificateAuthoritiesInsert = Omit<z.input<typeof CertificateAuthoritiesSchema>, TImmutableDBKeys>;
-export type TCertificateAuthoritiesUpdate = Partial<
-  Omit<z.input<typeof CertificateAuthoritiesSchema>, TImmutableDBKeys>
->;
+export type TCertificateAuthoritiesUpdate = Partial<Omit<z.input<typeof CertificateAuthoritiesSchema>, TImmutableDBKeys>>;

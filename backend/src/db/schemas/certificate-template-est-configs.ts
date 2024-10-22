@@ -20,10 +20,5 @@ export const CertificateTemplateEstConfigsSchema = z.object({
 });
 
 export type TCertificateTemplateEstConfigs = z.infer<typeof CertificateTemplateEstConfigsSchema>;
-export type TCertificateTemplateEstConfigsInsert = Omit<
-  z.input<typeof CertificateTemplateEstConfigsSchema>,
-  TImmutableDBKeys
->;
-export type TCertificateTemplateEstConfigsUpdate = Partial<
-  Omit<z.input<typeof CertificateTemplateEstConfigsSchema>, TImmutableDBKeys>
->;
+export type TCertificateTemplateEstConfigsInsert = Omit<z.input<typeof CertificateTemplateEstConfigsSchema>, TImmutableDBKeys>;
+export type TCertificateTemplateEstConfigsUpdate = Partial<Omit<z.input<typeof CertificateTemplateEstConfigsSchema>, TImmutableDBKeys>>;

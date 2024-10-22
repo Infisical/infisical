@@ -21,7 +21,7 @@ export const SecretSharingSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   expiresAfterViews: z.number().nullable().optional(),
-  accessType: z.string().default("anyone"),
+  accessType: z.string().default('anyone'),
   name: z.string().nullable().optional(),
   lastViewedAt: z.date().nullable().optional(),
   password: z.string().nullable().optional(),
