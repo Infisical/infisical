@@ -479,7 +479,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 	}
 	// Login is successful so ask user to choose organization
-	newJwtToken := GetJwtTokenWithOrganizationId(loginTwoResponse.Token)
+	newJwtToken := GetJwtTokenWithOrganizationId(loginTwoResponse.Token, email)
 
 	//updating usercredentials
 	userCredentialsToBeStored.Email = email
@@ -718,7 +718,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
 }
 
-func GetJwtTokenWithOrganizationId(oldJwtToken string) string {
+func GetJwtTokenWithOrganizationId(oldJwtToken string, email string) string {
 	log.Debug().Msg(fmt.Sprint("GetJwtTokenWithOrganizationId: ", "oldJwtToken", oldJwtToken))
 
 	httpClient := resty.New()
@@ -747,9 +747,49 @@ func GetJwtTokenWithOrganizationId(oldJwtToken string) string {
 	selectedOrganization := organizations[index]
 
 	selectedOrgRes, err := api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
-
 	if err != nil {
 		util.HandleError(err)
+	}
+
+	if selectedOrgRes.MfaEnabled {
+		i := 1
+		for i < 6 {
+			mfaVerifyCode := askForMFACode()
+
+			httpClient := resty.New()
+			httpClient.SetAuthToken(selectedOrgRes.Token)
+			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
+				Email:    email,
+				MFAToken: mfaVerifyCode,
+			})
+			if requestError != nil {
+				util.HandleError(err)
+				break
+			} else if mfaErrorResponse != nil {
+				if mfaErrorResponse.Context.Code == "mfa_invalid" {
+					msg := fmt.Sprintf("Incorrect, verification code. You have %v attempts left", 5-i)
+					fmt.Println(msg)
+					if i == 5 {
+						util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
+						break
+					}
+				}
+
+				if mfaErrorResponse.Context.Code == "mfa_expired" {
+					util.PrintErrorMessageAndExit("Your 2FA verification code has expired, please try logging in again")
+					break
+				}
+				i++
+			} else {
+				httpClient.SetAuthToken(verifyMFAresponse.Token)
+				selectedOrgRes, err = api.CallSelectOrganization(httpClient, api.SelectOrganizationRequest{OrganizationId: selectedOrganization.ID})
+				break
+			}
+		}
+	}
+
+	if err != nil {
+		util.HandleError(err, "Unable to select organization")
 	}
 
 	return selectedOrgRes.Token

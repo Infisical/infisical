@@ -65,7 +65,7 @@ export const selectOrganization = async (data: {
   organizationId: string;
   userAgent?: UserAgentType;
 }) => {
-  const { data: res } = await apiRequest.post<{ token: string }>(
+  const { data: res } = await apiRequest.post<{ token: string; isMfaEnabled: boolean }>(
     "/api/v3/auth/select-organization",
     data
   );
@@ -79,7 +79,7 @@ export const useSelectOrganization = () => {
       const data = await selectOrganization(details);
 
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
-      if (!details.userAgent) {
+      if (!details.userAgent && !data.isMfaEnabled) {
         SecurityClient.setToken(data.token);
         SecurityClient.setProviderAuthToken("");
       }

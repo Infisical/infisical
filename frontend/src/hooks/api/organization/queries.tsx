@@ -84,13 +84,22 @@ export const useCreateOrg = (options: { invalidate: boolean } = { invalidate: tr
 export const useUpdateOrg = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, UpdateOrgDTO>({
-    mutationFn: ({ name, authEnforced, scimEnabled, slug, orgId, defaultMembershipRoleSlug }) => {
+    mutationFn: ({
+      name,
+      authEnforced,
+      scimEnabled,
+      slug,
+      orgId,
+      defaultMembershipRoleSlug,
+      enforceMfa
+    }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
         authEnforced,
         scimEnabled,
         slug,
-        defaultMembershipRoleSlug
+        defaultMembershipRoleSlug,
+        enforceMfa
       });
     },
     onSuccess: () => {

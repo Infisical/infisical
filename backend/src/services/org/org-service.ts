@@ -268,12 +268,27 @@ export const orgServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     orgId,
-    data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug }
+    data: { name, slug, authEnforced, scimEnabled, defaultMembershipRoleSlug, enforceMfa }
   }: TUpdateOrgDTO) => {
+    const appCfg = getConfig();
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
     const plan = await licenseService.getPlan(orgId);
+
+    if (enforceMfa !== undefined) {
+      if (!plan.enforceMfa) {
+        throw new BadRequestError({
+          message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
+        });
+      }
+
+      if (!appCfg.isSmtpConfigured) {
+        throw new BadRequestError({
+          message: "Failed to enforce user MFA due to missing instance SMTP configuration."
+        });
+      }
+    }
 
     if (authEnforced !== undefined) {
       if (!plan?.samlSSO || !plan.oidcSSO)
@@ -317,7 +332,8 @@ export const orgServiceFactory = ({
       slug: slug ? slugify(slug) : undefined,
       authEnforced,
       scimEnabled,
-      defaultMembershipRole
+      defaultMembershipRole,
+      enforceMfa
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

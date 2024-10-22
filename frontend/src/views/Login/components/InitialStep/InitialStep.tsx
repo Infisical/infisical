@@ -85,13 +85,6 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         });
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
-          if (isCliLoginSuccessful.mfaEnabled) {
-            // case: login requires MFA step
-            setStep(1);
-            setIsLoading(false);
-            return;
-          }
-
           navigateToSelectOrganization(callbackPort!);
         } else {
           setLoginError(true);
@@ -109,17 +102,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
 
         if (isLoginSuccessful && isLoginSuccessful.success) {
           // case: login was successful
-
-          if (isLoginSuccessful.mfaEnabled) {
-            // case: login requires MFA step
-            setStep(1);
-            setIsLoading(false);
-            return;
-          }
-
           navigateToSelectOrganization();
-
-          // case: login does not require MFA step
           createNotification({
             text: "Successfully logged in",
             type: "success"

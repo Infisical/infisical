@@ -5,7 +5,7 @@
 /* eslint-disable no-var */
 /* eslint-disable func-names */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
@@ -35,6 +35,7 @@ import * as yup from "yup";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Accordion,
   AccordionContent,
@@ -64,7 +65,7 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   fetchOrgUsers,
   useAddUserToWsNonE2EE,
@@ -82,6 +83,7 @@ import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
+import { Mfa } from "@app/views/Login/Mfa";
 import { CreateOrgModal } from "@app/views/Org/components";
 
 import { WishForm } from "./components/WishForm/WishForm";
@@ -136,6 +138,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg?.id!);
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+  const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
   const workspacesWithFaveProp = useMemo(
     () =>
@@ -206,9 +210,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
   };
 
   const changeOrg = async (orgId: string) => {
-    await selectOrganization({
+    const { token, isMfaEnabled } = await selectOrganization({
       organizationId: orgId
     });
+
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      toggleShowMfa.on();
+      setMfaSuccessCallback(() => () => changeOrg(orgId));
+      return;
+    }
 
     await navigateUserToOrg(router, orgId);
   };
@@ -334,6 +345,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
       });
     }
   };
+
+  if (shouldShowMfa) {
+    return (
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+        <Mfa
+          email={user.email as string}
+          successCallback={mfaSuccessCallback}
+          closeMfa={() => toggleShowMfa.off()}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
