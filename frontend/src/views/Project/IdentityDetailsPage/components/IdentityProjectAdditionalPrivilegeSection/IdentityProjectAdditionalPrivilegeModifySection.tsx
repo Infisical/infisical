@@ -206,14 +206,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
             <IconButton ariaLabel="go-back" variant="plain" onClick={onGoBack}>
               <FontAwesomeIcon icon={faChevronLeft} />
             </IconButton>
-            <div>
-              <h3 className="text-lg font-semibold text-mineshaft-100">
-                Edit Additional Privileges
-              </h3>
-              <p className="text-sm text-mineshaft-400">
-                Additional privileges take precedence over roles when permissions conflict
-              </p>
-            </div>
+            <h3 className="text-lg font-semibold text-mineshaft-100">Back</h3>
           </div>
           <div className="flex items-center space-x-4">
             {isDirty && (
