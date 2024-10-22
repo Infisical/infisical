@@ -2,7 +2,7 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type InfisicalImportData = {
   projects: Array<{ name: string; id: string }>;
-  environments: Array<{ name: string; id: string; projectId: string }>;
+  environments: Array<{ name: string; id: string; projectId: string; envParentId?: string }>;
   folders: Array<{ id: string; name: string; environmentId: string; parentFolderId?: string }>;
   secrets: Array<{ id: string; name: string; environmentId: string; value: string; folderId?: string }>;
 };

@@ -88,89 +88,225 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
 
   // environments
   for (const env of parsedJson.baseEnvironments) {
-    const app = parsedJson.apps.find((a) => a.id === env.envParentId);
+    const appId = parsedJson.apps.find((a) => a.id === env.envParentId)?.id;
 
     // If we find the app from the envParentId, we know this is a root-level environment.
-    if (app) {
+    if (appId) {
       infisicalImportData.environments.push({
         id: env.id,
         name: envTemplates.get(env.environmentRoleId)!,
-        projectId: app.id
-      });
-    } else {
-      // const parentBlock = parsedJson.blocks.find((b) => b.id === env.envParentId);
-      // // If this is found, then we know this is a sub-environment. The `parentEnvironment` is the sub environment.
-      // const subEnvironment = parsedJson.subEnvironments.find(
-      //   (s) => s.parentEnvironmentId === env.id && parsedJson.apps.find((a) => a.id === s.envParentId)
-      // );
-      // if (subEnvironment) {
-      //   infisicalImportData.folders.push({
-      //     name: subEnvironment.subName,
-      //     parentFolderId: subEnvironment.parentEnvironmentId,
-      //     environmentId: env.id,
-      //     id: subEnvironment.id
-      //   });
-      // } else if (parentBlock) {
-      //   // TODO(daniel): Find a way to get the secrets from the parent block, so we can later insert it
-      // }
-    }
-  }
-
-  for (const subEnv of parsedJson.subEnvironments) {
-    // this will only find the app if the subEnv is a branch, not a block.
-    const app = parsedJson.apps.find((a) => a.id === subEnv.envParentId);
-
-    const parentEnvironment = infisicalImportData.environments.find((e) => e.id === subEnv.parentEnvironmentId);
-
-    if (app) {
-      infisicalImportData.folders.push({
-        name: subEnv.subName,
-        parentFolderId: subEnv.parentEnvironmentId,
-        environmentId: parentEnvironment!.id,
-        id: subEnv.id
+        projectId: appId
       });
     }
   }
 
-  // secrets with/without inheritance
-  for (const env of Object.keys(parsedJson.envs)) {
-    if (!env.includes("|")) {
-      const envData = parsedJson.envs[env];
-      for (const secret of Object.keys(envData.variables)) {
-        const selectedSecret = envData.variables[secret];
+  const findRootInheritedSecret = (
+    secret: { val?: string; inheritsEnvironmentId?: string },
+    secretName: string,
+    envs: typeof parsedJson.envs
+  ): { val?: string } => {
+    if (!secret.inheritsEnvironmentId) return secret;
+    const inheritedEnv = envs[secret.inheritsEnvironmentId];
+    if (!inheritedEnv) return secret;
+    return findRootInheritedSecret(inheritedEnv.variables[secretName], secretName, envs);
+  };
 
-        if (selectedSecret.inheritsEnvironmentId) {
-          const findRootInheritedSecret = (currentSecret: { val?: string; inheritsEnvironmentId?: string }) => {
-            if (currentSecret.inheritsEnvironmentId) {
-              const inheritedSecret = parsedJson.envs[currentSecret.inheritsEnvironmentId].variables[secret];
-              if (inheritedSecret) {
-                // eslint-disable-next-line no-param-reassign
-                currentSecret.val = inheritedSecret.val;
-              }
+  const processBranches = () => {
+    for (const subEnv of parsedJson.subEnvironments) {
+      const app = parsedJson.apps.find((a) => a.id === subEnv.envParentId);
+      const block = parsedJson.blocks.find((b) => b.id === subEnv.envParentId);
 
-              findRootInheritedSecret(inheritedSecret);
-            }
-            return currentSecret;
-          };
+      if (app) {
+        // Handle regular app branches
+        const branchEnvironment = infisicalImportData.environments.find((e) => e.id === subEnv.parentEnvironmentId);
 
-          const sec = findRootInheritedSecret(selectedSecret);
+        infisicalImportData.folders.push({
+          name: subEnv.subName,
+          parentFolderId: subEnv.parentEnvironmentId,
+          environmentId: branchEnvironment!.id,
+          id: subEnv.id
+        });
+      }
 
-          infisicalImportData.secrets.push({
-            id: randomUUID(),
-            name: secret,
-            environmentId: env,
-            value: sec.val || "???"
-          });
+      if (block) {
+        // Handle block branches
+        // 1. Find all apps that use this block
+        const appsUsingBlock = parsedJson.appBlocks.filter((ab) => ab.blockId === block.id).map((ab) => ab.appId);
+
+        for (const appId of appsUsingBlock) {
+          // 2. Find the matching environment in the app based on the environment role
+          const blockBaseEnv = parsedJson.baseEnvironments.find((be) => be.id === subEnv.parentEnvironmentId);
 
           // eslint-disable-next-line no-continue
-          continue;
-        }
+          if (!blockBaseEnv) continue;
 
+          const matchingAppEnv = parsedJson.baseEnvironments.find(
+            (be) => be.envParentId === appId && be.environmentRoleId === blockBaseEnv.environmentRoleId
+          );
+
+          // eslint-disable-next-line no-continue
+          if (!matchingAppEnv) continue;
+
+          // 3. Create a folder in the matching app environment
+          infisicalImportData.folders.push({
+            name: subEnv.subName,
+            parentFolderId: matchingAppEnv.id,
+            environmentId: matchingAppEnv.id,
+            id: `${subEnv.id}-${appId}` // Create unique ID for each app's copy of the branch
+          });
+
+          // 4. Process secrets in the block branch for this app
+          const branchSecrets = parsedJson.envs[subEnv.id]?.variables || {};
+          for (const [secretName, secretData] of Object.entries(branchSecrets)) {
+            if (secretData.inheritsEnvironmentId) {
+              const resolvedSecret = findRootInheritedSecret(secretData, secretName, parsedJson.envs);
+              infisicalImportData.secrets.push({
+                id: randomUUID(),
+                name: secretName,
+                environmentId: matchingAppEnv.id,
+                value: resolvedSecret.val || "",
+                folderId: `${subEnv.id}-${appId}`
+              });
+            } else {
+              infisicalImportData.secrets.push({
+                id: randomUUID(),
+                name: secretName,
+                environmentId: matchingAppEnv.id,
+                value: secretData.val || "",
+                folderId: `${subEnv.id}-${appId}`
+              });
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const processBlocksForApp = (appIds: string[]) => {
+    for (const appId of appIds) {
+      const blocksInApp = parsedJson.appBlocks.filter((ab) => ab.appId === appId);
+      logger.info(
+        {
+          blocksInApp
+        },
+        "[processBlocksForApp]: Processing blocks for app"
+      );
+
+      for (const appBlock of blocksInApp) {
+        // 1. find all base environments for this block
+        const blockBaseEnvironments = parsedJson.baseEnvironments.filter((env) => env.envParentId === appBlock.blockId);
+        logger.info(
+          {
+            blockBaseEnvironments
+          },
+          "[processBlocksForApp]: Processing block base environments"
+        );
+
+        for (const blockBaseEnvironment of blockBaseEnvironments) {
+          // 2. find the corresponding environment that is not from the block
+          const matchingEnv = parsedJson.baseEnvironments.find(
+            (be) =>
+              be.environmentRoleId === blockBaseEnvironment.environmentRoleId && be.envParentId !== appBlock.blockId
+          );
+
+          if (!matchingEnv) {
+            throw new Error(`Could not find environment for block ${appBlock.blockId}`);
+          }
+
+          // 3. find all the secrets for this environment block
+          const blockSecrets = parsedJson.envs[blockBaseEnvironment.id].variables;
+
+          logger.info(
+            {
+              blockSecretsLength: Object.keys(blockSecrets).length
+            },
+            "[processBlocksForApp]: Processing block secrets"
+          );
+
+          // 4. process each secret
+          for (const secret of Object.keys(blockSecrets)) {
+            const selectedSecret = blockSecrets[secret];
+
+            if (selectedSecret.inheritsEnvironmentId) {
+              const resolvedSecret = findRootInheritedSecret(selectedSecret, secret, parsedJson.envs);
+              infisicalImportData.secrets.push({
+                id: randomUUID(),
+                name: secret,
+                environmentId: matchingEnv.id,
+                value: resolvedSecret.val || ""
+              });
+            } else {
+              infisicalImportData.secrets.push({
+                id: randomUUID(),
+                name: secret,
+                environmentId: matchingEnv.id,
+                value: selectedSecret.val || ""
+              });
+            }
+          }
+        }
+      }
+    }
+  };
+
+  processBranches();
+  processBlocksForApp(infisicalImportData.projects.map((app) => app.id));
+
+  for (const env of Object.keys(parsedJson.envs)) {
+    // Skip user-specific environments
+    // eslint-disable-next-line no-continue
+    if (env.includes("|")) continue;
+
+    const envData = parsedJson.envs[env];
+    const baseEnv = parsedJson.baseEnvironments.find((be) => be.id === env);
+    const subEnv = parsedJson.subEnvironments.find((se) => se.id === env);
+
+    // Skip if we can't find either a base environment or sub-environment
+    if (!baseEnv && !subEnv) {
+      logger.info(
+        {
+          envId: env
+        },
+        "[parseEnvKeyDataFn]: Could not find base or sub environment for env, skipping"
+      );
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    // If this is a base environment of a block, skip it (handled by processBlocksForApp)
+    if (baseEnv) {
+      const isBlock = parsedJson.appBlocks.some((block) => block.blockId === baseEnv.envParentId);
+      if (isBlock) {
+        logger.info(
+          {
+            envId: env,
+            baseEnv
+          },
+          "[parseEnvKeyDataFn]: Skipping block environment (handled separately)"
+        );
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+    }
+
+    // Process each secret in this environment or branch
+    for (const [secretName, secretData] of Object.entries(envData.variables)) {
+      if (secretData.inheritsEnvironmentId) {
+        const resolvedSecret = findRootInheritedSecret(secretData, secretName, parsedJson.envs);
         infisicalImportData.secrets.push({
           id: randomUUID(),
-          name: secret,
-          environmentId: env,
-          value: selectedSecret.val || "???_???"
+          name: secretName,
+          environmentId: subEnv ? subEnv.parentEnvironmentId : env,
+          value: resolvedSecret.val || "",
+          ...(subEnv && { folderId: subEnv.id }) // Add folderId if this is a branch secret
+        });
+      } else {
+        infisicalImportData.secrets.push({
+          id: randomUUID(),
+          name: secretName,
+          environmentId: subEnv ? subEnv.parentEnvironmentId : env,
+          value: secretData.val || "",
+          ...(subEnv && { folderId: subEnv.id }) // Add folderId if this is a branch secret
         });
       }
     }
@@ -288,9 +424,10 @@ export const importDataIntoInfisicalFn = async ({
       }
     }
 
-    console.log("data.folders", data.folders);
-
-    console.log("data.secrets", data.secrets);
+    // Useful for debugging:
+    // console.log("data.secrets", data.secrets);
+    // console.log("data.folders", data.folders);
+    // console.log("data.environment", data.environments);
 
     if (data.secrets && data.secrets.length > 0) {
       const mappedToEnvironmentId = new Map<
@@ -298,49 +435,75 @@ export const importDataIntoInfisicalFn = async ({
         {
           secretKey: string;
           secretValue: string;
+          folderId?: string;
         }[]
       >();
 
       for (const secret of data.secrets) {
-        if (!originalToNewEnvironmentId.get(secret.environmentId) && !originalToNewFolderId.get(secret.environmentId)) {
+        const targetId = secret.folderId || secret.environmentId;
+
+        // Skip if we can't find either an environment or folder mapping for this secret
+        if (!originalToNewEnvironmentId.get(secret.environmentId) && !originalToNewFolderId.get(targetId)) {
           // eslint-disable-next-line no-continue
           continue;
         }
 
-        if (!mappedToEnvironmentId.has(secret.environmentId)) {
-          mappedToEnvironmentId.set(secret.environmentId, []);
+        if (!mappedToEnvironmentId.has(targetId)) {
+          mappedToEnvironmentId.set(targetId, []);
         }
-        mappedToEnvironmentId.get(secret.environmentId)!.push({
+        mappedToEnvironmentId.get(targetId)!.push({
           secretKey: secret.name,
-          secretValue: secret.value || ""
+          secretValue: secret.value || "",
+          folderId: secret.folderId
         });
       }
 
       // for each of the mappedEnvironmentId
-      for await (const [envId, secrets] of mappedToEnvironmentId) {
-        console.log(`envId ${envId} secrets:`, secrets);
-
-        const environment = data.environments.find((env) => env.id === envId);
-        const foundFolder = originalToNewFolderId.get(envId);
-
-        console.log(`FOUND FOLDER BY ENV.ID ${envId}`, foundFolder);
+      for await (const [targetId, secrets] of mappedToEnvironmentId) {
+        logger.info("[importDataIntoInfisicalFn]: Processing secrets for targetId", targetId);
 
         let selectedFolder: TSecretFolders | undefined;
         let selectedProjectId: string | undefined;
-        if (foundFolder) {
-          console.log("RUNNING FOLDER HANDLER");
 
+        // Case 1: Secret belongs to a folder / branch / branch of a block
+        const foundFolder = originalToNewFolderId.get(targetId);
+        if (foundFolder) {
+          logger.info("[importDataIntoInfisicalFn]: Processing secrets for folder");
           selectedFolder = await folderDAL.findById(foundFolder.folderId, tx);
           selectedProjectId = foundFolder.projectId;
-        } else if (environment) {
-          console.log("RUNNING ENVIRONMENT HANDLER");
+        } else {
+          logger.info("[importDataIntoInfisicalFn]: Processing secrets for normal environment");
+          const environment = data.environments.find((env) => env.id === targetId);
+          if (!environment) {
+            logger.info(
+              {
+                targetId
+              },
+              "[importDataIntoInfisicalFn]: Could not find environment for secret"
+            );
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
           const projectId = originalToNewProjectId.get(environment.projectId)!;
 
           if (!projectId) {
             throw new BadRequestError({ message: `Failed to import secret, project not found` });
           }
 
-          const env = originalToNewEnvironmentId.get(envId)!;
+          const env = originalToNewEnvironmentId.get(targetId);
+          if (!env) {
+            logger.info(
+              {
+                targetId
+              },
+              "[importDataIntoInfisicalFn]: Could not find environment for secret"
+            );
+
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
           const folder = await folderDAL.findBySecretPath(projectId, env.envSlug, "/", tx);
 
           if (!folder) {
