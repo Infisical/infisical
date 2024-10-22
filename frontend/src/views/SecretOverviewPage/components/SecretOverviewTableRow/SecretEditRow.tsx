@@ -1,17 +1,34 @@
-import { useCallback,useState } from "react";
+import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faCopy,
+  faProjectDiagram,
+  faTrash,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal,IconButton, Tooltip } from "@app/components/v2";
+import {
+  DeleteActionModal,
+  IconButton,
+  Modal,
+  ModalContent,
+  ModalTrigger,
+  Tooltip
+} from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { SecretType } from "@app/hooks/api/types";
+import {
+  hasSecretReference,
+  SecretReferenceTree
+} from "@app/views/SecretMainPage/components/SecretReferenceDetails";
 
 type Props = {
   defaultValue?: string | null;
@@ -63,8 +80,8 @@ export const SecretEditRow = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const toggleModal = useCallback(() => {
-    setIsModalOpen((prev) => !prev)
-  }, [])
+    setIsModalOpen((prev) => !prev);
+  }, []);
 
   const handleFormReset = () => {
     reset();
@@ -114,7 +131,6 @@ export const SecretEditRow = ({
 
   return (
     <div className="group flex w-full cursor-text items-center space-x-2">
-
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -144,7 +160,7 @@ export const SecretEditRow = ({
       </div>
       <div
         className={twMerge(
-          "flex w-16 justify-center space-x-3 pl-2 transition-all",
+          "flex w-24 justify-center space-x-3 pl-2 transition-all",
           isImportedSecret && "pointer-events-none opacity-0"
         )}
       >
@@ -199,6 +215,47 @@ export const SecretEditRow = ({
                 </IconButton>
               </Tooltip>
             </div>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Read}
+              a={ProjectPermissionSub.Secrets}
+            >
+              {(isAllowed) => (
+                <div className="opacity-0 group-hover:opacity-100">
+                  <Modal>
+                    <ModalTrigger asChild>
+                      <div className="opacity-0 group-hover:opacity-100">
+                        <Tooltip
+                          content={
+                            hasSecretReference(defaultValue || "")
+                              ? "Secret Reference Tree"
+                              : "Secret does not contain references"
+                          }
+                        >
+                          <IconButton
+                            variant="plain"
+                            ariaLabel="reference-tree"
+                            className="h-full"
+                            isDisabled={!hasSecretReference(defaultValue || "") || !isAllowed}
+                          >
+                            <FontAwesomeIcon icon={faProjectDiagram} />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
+                    </ModalTrigger>
+                    <ModalContent
+                      title="Secret Reference Tree"
+                      subTitle="Visual breakdown of secrets referenced by this secret."
+                    >
+                      <SecretReferenceTree
+                        secretPath={secretPath}
+                        environment={environment}
+                        secretKey={secretName}
+                      />
+                    </ModalContent>
+                  </Modal>
+                </div>
+              )}
+            </ProjectPermissionCan>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
               a={ProjectPermissionSub.Secrets}
