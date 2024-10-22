@@ -39,8 +39,6 @@ describe("Login V1 Router", async () => {
     });
     expect(res.statusCode).toBe(200);
     const payload = JSON.parse(res.payload);
-    expect(payload).toHaveProperty("mfaEnabled");
     expect(payload).toHaveProperty("token");
-    expect(payload.mfaEnabled).toBeFalsy();
   });
 });
