@@ -5,7 +5,7 @@ import {
   faArrowUp,
   faArrowUpRightFromSquare,
   faClock,
-  faEdit,
+  faEllipsisV,
   faMagnifyingGlass,
   faPlus,
   faServer,
@@ -27,8 +27,6 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Pagination,
   Spinner,
   Table,
@@ -47,13 +45,11 @@ import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { IdentityMembership } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityModal } from "./components/IdentityModal";
-import { IdentityRoleForm } from "./components/IdentityRoleForm";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -111,8 +107,7 @@ export const IdentityTab = withProjectPermission(
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
       "deleteIdentity",
-      "upgradePlan",
-      "updateRole"
+      "upgradePlan"
     ] as const);
 
     const onRemoveIdentitySubmit = async (identityId: string) => {
@@ -234,7 +229,7 @@ export const IdentityTab = withProjectPermission(
                 {!isLoading &&
                   data &&
                   data.identityMemberships.length > 0 &&
-                  data.identityMemberships.map((identityMember, index) => {
+                  data.identityMemberships.map((identityMember) => {
                     const {
                       identity: { id, name },
                       roles,
@@ -242,7 +237,7 @@ export const IdentityTab = withProjectPermission(
                     } = identityMember;
                     return (
                       <Tr
-                        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                        className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                         key={`st-v3-${id}`}
                         role="button"
                         tabIndex={0}
@@ -348,24 +343,10 @@ export const IdentityTab = withProjectPermission(
                                 </HoverCardContent>
                               </HoverCard>
                             )}
-                            <Tooltip content="Edit permission">
-                              <IconButton
-                                size="sm"
-                                variant="plain"
-                                ariaLabel="update-role"
-                                onClick={(evt) => {
-                                  evt.stopPropagation();
-                                  evt.preventDefault();
-                                  handlePopUpOpen("updateRole", { ...identityMember, index });
-                                }}
-                              >
-                                <FontAwesomeIcon icon={faEdit} />
-                              </IconButton>
-                            </Tooltip>
                           </div>
                         </Td>
                         <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
-                        <Td className="flex justify-end">
+                        <Td className="flex justify-end space-x-2 opacity-0 duration-300 group-hover:opacity-100">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.Identity}
@@ -391,6 +372,9 @@ export const IdentityTab = withProjectPermission(
                               </IconButton>
                             )}
                           </ProjectPermissionCan>
+                          <IconButton ariaLabel="more-icon" variant="plain">
+                            <FontAwesomeIcon icon={faEllipsisV} />
+                          </IconButton>
                         </Td>
                       </Tr>
                     );
@@ -417,31 +401,6 @@ export const IdentityTab = withProjectPermission(
               />
             )}
           </TableContainer>
-          <Modal
-            isOpen={popUp.updateRole.isOpen}
-            onOpenChange={(state) => handlePopUpToggle("updateRole", state)}
-          >
-            <ModalContent
-              className="max-w-3xl"
-              title={`Manage Access for ${
-                (popUp.updateRole.data as IdentityMembership)?.identity?.name
-              }`}
-              subTitle={`
-                            Configure role-based access control by assigning machine identities a mix of roles and specific privileges. An identity will gain access to all actions within the roles assigned to it, not just the actions those roles share in common. You must choose at least one permanent role.
-                            `}
-            >
-              <IdentityRoleForm
-                onOpenUpgradeModal={(description) =>
-                  handlePopUpOpen("upgradePlan", { description })
-                }
-                identityProjectMember={
-                  data?.identityMemberships[
-                    (popUp.updateRole?.data as IdentityMembership & { index: number })?.index
-                  ] as IdentityMembership
-                }
-              />
-            </ModalContent>
-          </Modal>
           <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}

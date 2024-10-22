@@ -18,6 +18,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
   IconButton,
   Input,
   Modal,
@@ -93,6 +94,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   const { data: privilegeDetails, isLoading } = useGetProjectUserPrivilegeDetails(
     privilegeId || ""
   );
+
+  console.log(privilegeDetails);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,
@@ -131,9 +134,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
 
   const onSubmit = async (el: TFormSchema) => {
     const accessType = !el.temporaryAccess.isTemporary
-      ? { role: el.slug, isTemporary: false as const }
+      ? { isTemporary: false as const }
       : {
-          role: el.slug,
           isTemporary: true as const,
           temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
           temporaryRange: el.temporaryAccess.temporaryRange,
@@ -202,9 +204,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             <IconButton ariaLabel="go-back" variant="plain" onClick={onGoBack}>
               <FontAwesomeIcon icon={faChevronLeft} />
             </IconButton>
-            <h3 className="text-lg font-semibold text-mineshaft-100">
-              Modify Additional Privilege
-            </h3>
+            <h3 className="text-lg font-semibold text-mineshaft-100">Back</h3>
           </div>
           <div className="flex items-center space-x-4">
             {isDirty && (
@@ -268,6 +268,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
               <Popover>
                 <PopoverTrigger disabled={isMemberEditDisabled} asChild>
                   <div className="w-full max-w-md flex-grow">
+                    <FormLabel label="Access Type" />
                     <Tooltip content={toolTipText}>
                       <Button
                         variant="outline_bg"

@@ -69,7 +69,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         actorAuthMethod: req.permission.authMethod,
         projectMembershipId: req.body.projectMembershipId,
         ...req.body.type,
-        slug: req.body.slug || slugify(alphaNumericNanoId(8).toLowerCase()),
+        slug: req.body.slug || slugify(alphaNumericNanoId(8)),
         permissions: JSON.stringify(packRules(req.body.permissions))
       });
       return { privilege };

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import {
   faClock,
-  faEdit,
+  faEllipsisV,
   faMagnifyingGlass,
   faTrash,
   faUsers
@@ -18,8 +18,6 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Table,
   TableContainer,
   TableSkeleton,
@@ -39,10 +37,7 @@ import {
 } from "@app/context";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-
-import { MemberRoleForm } from "./MemberRoleForm";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 const formatRoleName = (role: string, customRoleName?: string) => {
@@ -53,15 +48,13 @@ const formatRoleName = (role: string, customRoleName?: string) => {
 };
 
 type Props = {
-  popUp: UsePopUpState<["updateRole"]>;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMember", "updateRole", "upgradePlan"]>,
+    popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
     data?: {}
   ) => void;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["updateRole"]>, state?: boolean) => void;
 };
 
-export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
+export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { currentWorkspace } = useWorkspace();
@@ -107,7 +100,7 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
           <TBody>
             {isMembersLoading && <TableSkeleton columns={4} innerKey="project-members" />}
             {!isMembersLoading &&
-              filterdUsers?.map((projectMember, index) => {
+              filterdUsers?.map((projectMember) => {
                 const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
                 const name = u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : "-";
                 const email = u?.email || inviteEmail;
@@ -209,27 +202,11 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
                             </HoverCardContent>
                           </HoverCard>
                         )}
-                        {userId !== u?.id && (
-                          <Tooltip content="Edit permission">
-                            <IconButton
-                              size="sm"
-                              variant="plain"
-                              ariaLabel="update-role"
-                              onClick={(evt) => {
-                                evt.preventDefault();
-                                evt.stopPropagation();
-                                handlePopUpOpen("updateRole", { ...projectMember, index });
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faEdit} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
                       </div>
                     </Td>
                     <Td>
                       {userId !== u?.id && (
-                        <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <div className="flex items-center space-x-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.Member}
@@ -251,6 +228,9 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
                               </IconButton>
                             )}
                           </ProjectPermissionCan>
+                          <IconButton ariaLabel="more-icon" variant="plain">
+                            <FontAwesomeIcon icon={faEllipsisV} />
+                          </IconButton>
                         </div>
                       )}
                     </Td>
@@ -263,27 +243,6 @@ export const MembersTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Prop
           <EmptyState title="No project members found" icon={faUsers} />
         )}
       </TableContainer>
-      <Modal
-        isOpen={popUp.updateRole.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("updateRole", state)}
-      >
-        <ModalContent
-          className="max-w-4xl"
-          title={`Manage Access for ${(popUp.updateRole.data as TWorkspaceUser)?.user?.email}`}
-          subTitle={`
-          Configure role-based access control by assigning Infisical users a mix of roles and specific privileges. A user will gain access to all actions within the roles assigned to them, not just the actions those roles share in common. You must choose at least one permanent role.
-          `}
-        >
-          <MemberRoleForm
-            onOpenUpgradeModal={(description) => handlePopUpOpen("upgradePlan", { description })}
-            projectMember={
-              filterdUsers?.[
-                (popUp.updateRole?.data as TWorkspaceUser & { index: number })?.index
-              ] as TWorkspaceUser
-            }
-          />
-        </ModalContent>
-      </Modal>
     </div>
   );
 };

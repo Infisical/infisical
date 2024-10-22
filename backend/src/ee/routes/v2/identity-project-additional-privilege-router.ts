@@ -77,7 +77,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectId: req.body.projectId,
         identityId: req.body.identityId,
         ...req.body.type,
-        slug: req.body.slug || slugify(alphaNumericNanoId(8).toLowerCase()),
+        slug: req.body.slug || slugify(alphaNumericNanoId(8)),
         permissions: JSON.stringify(packRules(req.body.permissions))
       });
       return { privilege };

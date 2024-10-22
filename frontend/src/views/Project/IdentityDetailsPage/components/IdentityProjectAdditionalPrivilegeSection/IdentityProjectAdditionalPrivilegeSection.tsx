@@ -1,4 +1,4 @@
-import { faFolder, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisV, faFolder, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
@@ -189,7 +189,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                               </Tooltip>
                             </Td>
                             <Td>
-                              <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                              <div className="flex space-x-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Edit}
                                   a={ProjectPermissionSub.Identity}
@@ -216,6 +216,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                                     </IconButton>
                                   )}
                                 </ProjectPermissionCan>
+                                <IconButton ariaLabel="more-icon" variant="plain">
+                                  <FontAwesomeIcon icon={faEllipsisV} />
+                                </IconButton>
                               </div>
                             </Td>
                           </Tr>

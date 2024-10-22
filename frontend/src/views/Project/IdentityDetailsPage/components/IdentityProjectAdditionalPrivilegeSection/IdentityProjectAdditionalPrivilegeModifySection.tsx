@@ -18,6 +18,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
   IconButton,
   Input,
   Modal,
@@ -133,9 +134,8 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
 
   const onSubmit = async (el: TFormSchema) => {
     const accessType = !el.temporaryAccess.isTemporary
-      ? { role: el.slug, isTemporary: false as const }
+      ? { isTemporary: false as const }
       : {
-          role: el.slug,
           isTemporary: true as const,
           temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative,
           temporaryRange: el.temporaryAccess.temporaryRange,
@@ -270,6 +270,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               <Popover>
                 <PopoverTrigger disabled={isIdentityEditDisabled} asChild>
                   <div className="w-full max-w-md flex-grow">
+                    <FormLabel label="Access Type" />
                     <Tooltip content={toolTipText}>
                       <Button
                         variant="outline_bg"
