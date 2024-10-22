@@ -64,7 +64,7 @@ export const certificateTemplateServiceFactory = ({
     const ca = await certificateAuthorityDAL.findById(caId);
     if (!ca) {
       throw new NotFoundError({
-        message: "CA not found"
+        message: `CA with ID ${caId} not found`
       });
     }
     const { permission } = await permissionService.getProjectPermission(
@@ -98,7 +98,7 @@ export const certificateTemplateServiceFactory = ({
       const certificateTemplate = await certificateTemplateDAL.getById(id, tx);
       if (!certificateTemplate) {
         throw new NotFoundError({
-          message: "Certificate template not found"
+          message: `Certificate template with ID ${id} not found`
         });
       }
 
@@ -124,7 +124,7 @@ export const certificateTemplateServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.getById(id);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found."
+        message: `Certificate template with ID ${id} not found`
       });
     }
 
@@ -169,7 +169,7 @@ export const certificateTemplateServiceFactory = ({
       const updatedTemplate = await certificateTemplateDAL.getById(id, tx);
       if (!updatedTemplate) {
         throw new NotFoundError({
-          message: "Certificate template not found"
+          message: `Certificate template with ID ${id} not found`
         });
       }
 
@@ -181,7 +181,7 @@ export const certificateTemplateServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.getById(id);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found."
+        message: `Certificate template with ID ${id} not found`
       });
     }
 
@@ -207,7 +207,7 @@ export const certificateTemplateServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.getById(id);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found."
+        message: `Certificate template with ID ${id} not found`
       });
     }
 
@@ -247,7 +247,7 @@ export const certificateTemplateServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found."
+        message: `Certificate template with ID ${certificateTemplateId} not found`
       });
     }
 
@@ -324,7 +324,7 @@ export const certificateTemplateServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found."
+        message: `Certificate template with ID ${certificateTemplateId} not found`
       });
     }
 
@@ -347,7 +347,7 @@ export const certificateTemplateServiceFactory = ({
 
     if (!originalCaEstConfig) {
       throw new NotFoundError({
-        message: "EST configuration not found"
+        message: `EST configuration with certificate template ID ${certificateTemplateId} not found`
       });
     }
 
@@ -403,7 +403,7 @@ export const certificateTemplateServiceFactory = ({
     const certTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
     if (!certTemplate) {
       throw new NotFoundError({
-        message: "Certificate template not found."
+        message: `Certificate template with ID ${certificateTemplateId} not found`
       });
     }
 
@@ -428,7 +428,7 @@ export const certificateTemplateServiceFactory = ({
 
     if (!estConfig) {
       throw new NotFoundError({
-        message: "EST configuration not found"
+        message: `EST configuration with certificate template ID ${certificateTemplateId} not found`
       });
     }
 

@@ -167,7 +167,7 @@ export const identityGcpAuthServiceFactory = ({
     actorOrgId
   }: TAttachGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add GCP Auth to already configured identity"
@@ -247,7 +247,7 @@ export const identityGcpAuthServiceFactory = ({
     actorOrgId
   }: TUpdateGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
         message: "Failed to update GCP Auth"
@@ -310,7 +310,7 @@ export const identityGcpAuthServiceFactory = ({
 
   const getGcpAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
         message: "The identity does not have GCP Auth attached"
@@ -338,7 +338,7 @@ export const identityGcpAuthServiceFactory = ({
     actorOrgId
   }: TRevokeGcpAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.GCP_AUTH)
       throw new BadRequestError({
         message: "The identity does not have gcp auth"

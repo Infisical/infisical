@@ -66,7 +66,7 @@ export const dynamicSecretServiceFactory = ({
     actorAuthMethod
   }: TCreateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
     const { permission } = await permissionService.getProjectPermission(
@@ -89,7 +89,9 @@ export const dynamicSecretServiceFactory = ({
     }
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
-    if (!folder) throw new NotFoundError({ message: "Folder not found" });
+    if (!folder) {
+      throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
+    }
 
     const existingDynamicSecret = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (existingDynamicSecret)
@@ -134,7 +136,7 @@ export const dynamicSecretServiceFactory = ({
     actorAuthMethod
   }: TUpdateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
 
@@ -158,11 +160,15 @@ export const dynamicSecretServiceFactory = ({
     }
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
-    if (!folder) throw new NotFoundError({ message: "Folder not found" });
+    if (!folder)
+      throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
     const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
-    if (!dynamicSecretCfg) throw new NotFoundError({ message: "Dynamic secret not found" });
-
+    if (!dynamicSecretCfg) {
+      throw new NotFoundError({
+        message: `Dynamic secret with name '${name}' in folder '${folder.path}' not found`
+      });
+    }
     if (newName) {
       const existingDynamicSecret = await dynamicSecretDAL.findOne({ name: newName, folderId: folder.id });
       if (existingDynamicSecret)
@@ -213,7 +219,7 @@ export const dynamicSecretServiceFactory = ({
     isForced
   }: TDeleteDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
 
@@ -230,10 +236,13 @@ export const dynamicSecretServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
-    if (!folder) throw new NotFoundError({ message: "Folder not found" });
+    if (!folder)
+      throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
     const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
-    if (!dynamicSecretCfg) throw new BadRequestError({ message: "Dynamic secret not found" });
+    if (!dynamicSecretCfg) {
+      throw new NotFoundError({ message: `Dynamic secret with name '${name}' in folder '${folder.path}' not found` });
+    }
 
     const leases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id });
     // when not forced we check with the external system to first remove the things
@@ -271,7 +280,7 @@ export const dynamicSecretServiceFactory = ({
     actor
   }: TDetailsDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
     const { permission } = await permissionService.getProjectPermission(
@@ -287,10 +296,13 @@ export const dynamicSecretServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
-    if (!folder) throw new NotFoundError({ message: "Folder not found" });
+    if (!folder)
+      throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
     const dynamicSecretCfg = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
-    if (!dynamicSecretCfg) throw new NotFoundError({ message: "Dynamic secret not found" });
+    if (!dynamicSecretCfg) {
+      throw new NotFoundError({ message: `Dynamic secret with name '${name} in folder '${path}' not found` });
+    }
     const decryptedStoredInput = JSON.parse(
       infisicalSymmetricDecrypt({
         keyEncoding: dynamicSecretCfg.keyEncoding as SecretKeyEncoding,
@@ -335,7 +347,11 @@ export const dynamicSecretServiceFactory = ({
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, path);
-    if (!folders.length) throw new NotFoundError({ message: "Folders not found" });
+    if (!folders.length) {
+      throw new NotFoundError({
+        message: `Folders with path '${path}' in environments with slugs '${environmentSlugs.join(", ")}' not found`
+      });
+    }
 
     const dynamicSecretCfg = await dynamicSecretDAL.find(
       { $in: { folderId: folders.map((folder) => folder.id) }, $search: search ? { name: `%${search}%` } : undefined },
@@ -369,7 +385,9 @@ export const dynamicSecretServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
-    if (!folder) throw new NotFoundError({ message: "Folder not found" });
+    if (!folder) {
+      throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
+    }
 
     const dynamicSecretCfg = await dynamicSecretDAL.find(
       { folderId: folder.id, $search: search ? { name: `%${search}%` } : undefined },
@@ -398,7 +416,7 @@ export const dynamicSecretServiceFactory = ({
     if (!projectId) {
       if (!projectSlug) throw new BadRequestError({ message: "Project ID or slug required" });
       const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new NotFoundError({ message: "Project not found" });
+      if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
 
@@ -415,7 +433,8 @@ export const dynamicSecretServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
-    if (!folder) throw new NotFoundError({ message: "Folder not found" });
+    if (!folder)
+      throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
     const dynamicSecretCfg = await dynamicSecretDAL.find(
       { folderId: folder.id, $search: search ? { name: `%${search}%` } : undefined },
@@ -459,7 +478,10 @@ export const dynamicSecretServiceFactory = ({
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, path);
-    if (!folders.length) throw new NotFoundError({ message: "Folders not found" });
+    if (!folders.length)
+      throw new NotFoundError({
+        message: `Folders with path '${path} in environments with slugs '${environmentSlugs.join(", ")}' not found`
+      });
 
     const dynamicSecretCfg = await dynamicSecretDAL.listDynamicSecretsByFolderIds({
       folderIds: folders.map((folder) => folder.id),

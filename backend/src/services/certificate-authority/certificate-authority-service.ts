@@ -122,7 +122,7 @@ export const certificateAuthorityServiceFactory = ({
     actorOrgId
   }: TCreateCaDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: "Project not found" });
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -290,7 +290,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const getCaById = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -321,7 +321,7 @@ export const certificateAuthorityServiceFactory = ({
     actorOrgId
   }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -346,7 +346,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const deleteCaById = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCaDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -371,7 +371,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const getCaCsr = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCsrDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -430,7 +430,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const renewCaCert = async ({ caId, notAfter, actorId, actorAuthMethod, actor, actorOrgId }: TRenewCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
@@ -702,7 +702,7 @@ export const certificateAuthorityServiceFactory = ({
 
   const getCaCerts = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertsDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -736,7 +736,7 @@ export const certificateAuthorityServiceFactory = ({
    */
   const getCaCert = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     if (!ca.activeCaCertId) throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -778,7 +778,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (!caCert) {
-      throw new NotFoundError({ message: "CA certificate not found" });
+      throw new NotFoundError({ message: `Ca certificate with ID '${caCertId}' not found for CA with ID '${caId}'` });
     }
 
     const ca = await certificateAuthorityDAL.findById(caId);
@@ -963,7 +963,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateChain
   }: TImportCertToCaDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -1115,7 +1115,7 @@ export const certificateAuthorityServiceFactory = ({
       certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
       if (!certificateTemplate) {
         throw new NotFoundError({
-          message: "Certificate template not found"
+          message: `Certificate template with ID '${certificateTemplateId}' not found`
         });
       }
 
@@ -1124,7 +1124,7 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (!ca) {
-      throw new NotFoundError({ message: "CA not found" });
+      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     }
 
     const { permission } = await permissionService.getProjectPermission(
@@ -1442,7 +1442,7 @@ export const certificateAuthorityServiceFactory = ({
       certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
       if (!certificateTemplate) {
         throw new NotFoundError({
-          message: "Certificate template not found"
+          message: `Certificate template with ID '${certificateTemplateId}' not found`
         });
       }
 
@@ -1451,7 +1451,7 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (!ca) {
-      throw new NotFoundError({ message: "CA not found" });
+      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     }
 
     if (!dto.isInternal) {
@@ -1484,7 +1484,7 @@ export const certificateAuthorityServiceFactory = ({
     // check PKI collection
     if (pkiCollectionId) {
       const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
-      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+      if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
 
@@ -1810,7 +1810,7 @@ export const certificateAuthorityServiceFactory = ({
     actorOrgId
   }: TGetCaCertificateTemplatesDTO) => {
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

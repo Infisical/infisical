@@ -91,7 +91,7 @@ export const projectBotServiceFactory = ({
       const bot = await projectBotDAL.findProjectByBotId(botId);
       return bot;
     } catch (e) {
-      throw new NotFoundError({ message: "Failed to find bot by ID" });
+      throw new NotFoundError({ message: `Project bot with ID '${botId}' not found` });
     }
   };
 
@@ -105,7 +105,7 @@ export const projectBotServiceFactory = ({
     isActive
   }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
-    if (!bot) throw new NotFoundError({ message: "Bot not found" });
+    if (!bot) throw new NotFoundError({ message: `Project bot with ID '${botId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -119,7 +119,7 @@ export const projectBotServiceFactory = ({
     const project = await projectBotDAL.findProjectByBotId(botId);
 
     if (!project) {
-      throw new NotFoundError({ message: "Failed to find project by bot ID" });
+      throw new NotFoundError({ message: `Project not found for bot with ID '${botId}'` });
     }
 
     if (project.version === ProjectVersion.V2) {
@@ -128,7 +128,9 @@ export const projectBotServiceFactory = ({
 
     if (isActive) {
       if (!botKey?.nonce || !botKey?.encryptedKey) {
-        throw new NotFoundError({ message: "Bot key not found, failed to set bot active" });
+        throw new NotFoundError({
+          message: `Bot key not found for bot in project with ID '${botId}'. Failed to set bot state to active.`
+        });
       }
       const doc = await projectBotDAL.updateById(botId, {
         isActive: true,
@@ -136,7 +138,8 @@ export const projectBotServiceFactory = ({
         encryptedProjectKeyNonce: botKey.nonce,
         senderId: actorId
       });
-      if (!doc) throw new BadRequestError({ message: "Failed to update bot active state" });
+      if (!doc)
+        throw new BadRequestError({ message: `Project bot with ID '${botId}' not found. Failed to update bot.` });
       return doc;
     }
 
@@ -145,7 +148,7 @@ export const projectBotServiceFactory = ({
       encryptedProjectKey: null,
       encryptedProjectKeyNonce: null
     });
-    if (!doc) throw new BadRequestError({ message: "Failed to update bot active state" });
+    if (!doc) throw new BadRequestError({ message: `Project bot with ID '${botId}' not found. Failed to update bot.` });
     return doc;
   };
 

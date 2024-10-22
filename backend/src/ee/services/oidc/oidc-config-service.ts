@@ -79,7 +79,7 @@ export const oidcConfigServiceFactory = ({
     const org = await orgDAL.findOne({ slug: dto.orgSlug });
     if (!org) {
       throw new NotFoundError({
-        message: "Organization not found",
+        message: `Organization with slug '${dto.orgSlug}' not found`,
         name: "OrgNotFound"
       });
     }
@@ -100,14 +100,17 @@ export const oidcConfigServiceFactory = ({
 
     if (!oidcCfg) {
       throw new NotFoundError({
-        message: "Failed to find organization OIDC configuration"
+        message: `OIDC configuration for organization with slug '${dto.orgSlug}' not found`
       });
     }
 
     // decrypt and return cfg
     const orgBot = await orgBotDAL.findOne({ orgId: oidcCfg.orgId });
     if (!orgBot) {
-      throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+      throw new NotFoundError({
+        message: `Organization bot for organization with ID '${oidcCfg.orgId}' not found`,
+        name: "OrgBotNotFound"
+      });
     }
 
     const key = infisicalSymmetricDecrypt({
@@ -174,7 +177,7 @@ export const oidcConfigServiceFactory = ({
     });
 
     const organization = await orgDAL.findOrgById(orgId);
-    if (!organization) throw new NotFoundError({ message: "Organization not found" });
+    if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     let user: TUsers;
     if (userAlias) {
@@ -366,7 +369,7 @@ export const oidcConfigServiceFactory = ({
 
     if (!org) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with slug '${orgSlug}' not found`
       });
     }
 
@@ -387,7 +390,11 @@ export const oidcConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
     const orgBot = await orgBotDAL.findOne({ orgId: org.id });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot)
+      throw new NotFoundError({
+        message: `Organization bot for organization with ID '${org.id}' not found`,
+        name: "OrgBotNotFound"
+      });
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -455,7 +462,7 @@ export const oidcConfigServiceFactory = ({
     });
     if (!org) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with slug '${orgSlug}' not found`
       });
     }
 
@@ -561,7 +568,7 @@ export const oidcConfigServiceFactory = ({
 
     if (!org) {
       throw new NotFoundError({
-        message: "Organization not found."
+        message: `Organization with slug '${orgSlug}' not found`
       });
     }
 

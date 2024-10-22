@@ -48,7 +48,7 @@ export const fetchProjectSecrets = async ({
 };
 
 export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
-  const personalSecrets: Record<string, { id: string; value?: string }> = {};
+  const personalSecrets: Record<string, { id: string; value?: string; env: string }> = {};
   const secrets: SecretV3RawSanitized[] = [];
   rawSecrets.forEach((el) => {
     const decryptedSecret: SecretV3RawSanitized = {
@@ -69,7 +69,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
     if (el.type === SecretType.Personal) {
       personalSecrets[decryptedSecret.key] = {
         id: el.id,
-        value: el.secretValue
+        value: el.secretValue,
+        env: el.environment
       };
     } else {
       secrets.push(decryptedSecret);
@@ -77,9 +78,10 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
   });
 
   secrets.forEach((sec) => {
-    if (personalSecrets?.[sec.key]) {
-      sec.idOverride = personalSecrets[sec.key].id;
-      sec.valueOverride = personalSecrets[sec.key].value;
+    const personalSecret = personalSecrets?.[sec.key];
+    if (personalSecret && personalSecret.env === sec.env) {
+      sec.idOverride = personalSecret.id;
+      sec.valueOverride = personalSecret.value;
       sec.overrideAction = "modified";
     }
   });

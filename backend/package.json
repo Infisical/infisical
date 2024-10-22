@@ -58,6 +58,7 @@
     "migration:latest": "npm run auditlog-migration:latest && knex --knexfile ./src/db/knexfile.ts --client pg migrate:latest",
     "migration:status": "npm run auditlog-migration:status && knex --knexfile ./src/db/knexfile.ts --client pg migrate:status",
     "migration:rollback": "npm run auditlog-migration:rollback && knex --knexfile ./src/db/knexfile.ts migrate:rollback",
+    "migrate:org": "tsx ./scripts/migrate-organization.ts",
     "seed:new": "tsx ./scripts/create-seed-file.ts",
     "seed": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run",
     "db:reset": "npm run migration:rollback -- --all && npm run migration:latest"

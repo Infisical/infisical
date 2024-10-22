@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { faEllipsis, faMagnifyingGlass, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { useMemo, useState } from "react";
+import {
+  faArrowDown,
+  faArrowUp,
+  faEllipsis,
+  faMagnifyingGlass,
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -11,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
+  IconButton,
   Input,
   Select,
   SelectItem,
@@ -24,7 +31,9 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -43,12 +52,21 @@ type Props = {
   ) => void;
 };
 
+enum GroupsOrderBy {
+  Name = "name",
+  Slug = "slug",
+  Role = "role"
+}
+
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   const [searchGroupsFilter, setSearchGroupsFilter] = useState("");
+  const [debouncedSearch] = useDebounce(searchGroupsFilter.trim());
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { isLoading, data: groups } = useGetOrganizationGroups(orgId);
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
+  const [orderBy, setOrderBy] = useState(GroupsOrderBy.Name);
+  const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
 
   const { data: roles } = useGetOrgRoles(orgId);
 
@@ -72,6 +90,43 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     }
   };
 
+  const filteredGroups = useMemo(() => {
+    const filtered = debouncedSearch
+      ? groups?.filter(
+          ({ name, slug }) =>
+            name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            slug.toLowerCase().includes(debouncedSearch.toLowerCase())
+        )
+      : groups;
+
+    const ordered = filtered?.sort((a, b) => {
+      switch (orderBy) {
+        case GroupsOrderBy.Role: {
+          const aValue = a.role === "custom" ? (a.customRole?.name as string) : a.role;
+          const bValue = b.role === "custom" ? (b.customRole?.name as string) : b.role;
+
+          return aValue.toLowerCase().localeCompare(bValue.toLowerCase());
+        }
+        default:
+          return a[orderBy].toLowerCase().localeCompare(b[orderBy].toLowerCase());
+      }
+    });
+
+    return orderDirection === OrderByDirection.ASC ? ordered : ordered?.reverse();
+  }, [debouncedSearch, groups, orderBy, orderDirection]);
+
+  const handleSort = (column: GroupsOrderBy) => {
+    if (column === orderBy) {
+      setOrderDirection((prev) =>
+        prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
+      );
+      return;
+    }
+
+    setOrderBy(column);
+    setOrderDirection(OrderByDirection.ASC);
+  };
+
   return (
     <div>
       <Input
@@ -84,16 +139,70 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Name</Th>
-              <Th>Slug</Th>
-              <Th>Role</Th>
+              <Th>
+                <div className="flex items-center">
+                  Name
+                  <IconButton
+                    variant="plain"
+                    className={`ml-2 ${orderBy === GroupsOrderBy.Name ? "" : "opacity-30"}`}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(GroupsOrderBy.Name)}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        orderDirection === OrderByDirection.DESC && orderBy === GroupsOrderBy.Name
+                          ? faArrowUp
+                          : faArrowDown
+                      }
+                    />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Slug
+                  <IconButton
+                    variant="plain"
+                    className={`ml-2 ${orderBy === GroupsOrderBy.Slug ? "" : "opacity-30"}`}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(GroupsOrderBy.Slug)}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        orderDirection === OrderByDirection.DESC && orderBy === GroupsOrderBy.Slug
+                          ? faArrowUp
+                          : faArrowDown
+                      }
+                    />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Role
+                  <IconButton
+                    variant="plain"
+                    className={`ml-2 ${orderBy === GroupsOrderBy.Role ? "" : "opacity-30"}`}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(GroupsOrderBy.Role)}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        orderDirection === OrderByDirection.DESC && orderBy === GroupsOrderBy.Role
+                          ? faArrowUp
+                          : faArrowDown
+                      }
+                    />
+                  </IconButton>
+                </div>
+              </Th>
               <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
             {isLoading && <TableSkeleton columns={4} innerKey="org-groups" />}
             {!isLoading &&
-              groups?.map(({ id, name, slug, role, customRole }) => {
+              filteredGroups?.map(({ id, name, slug, role, customRole }) => {
                 return (
                   <Tr className="h-10" key={`org-group-${id}`}>
                     <Td>{name}</Td>
@@ -226,7 +335,12 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
               })}
           </TBody>
         </Table>
-        {groups?.length === 0 && <EmptyState title="No groups found" icon={faUsers} />}
+        {filteredGroups?.length === 0 && (
+          <EmptyState
+            title={groups?.length === 0 ? "No groups found" : "No groups match search"}
+            icon={faUsers}
+          />
+        )}
       </TableContainer>
     </div>
   );

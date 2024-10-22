@@ -79,13 +79,15 @@ export const secretBlindIndexServiceFactory = ({
     }
 
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
-    if (!blindIndexCfg) throw new NotFoundError({ message: "Blind index not found", name: "CreateSecret" });
+    if (!blindIndexCfg)
+      throw new NotFoundError({ message: `Blind index for project with ID '${projectId}' not found` });
 
     const secrets = await secretBlindIndexDAL.findSecretsByProjectId(
       projectId,
       secretsToUpdate.map(({ secretId }) => secretId)
     );
-    if (secrets.length !== secretsToUpdate.length) throw new NotFoundError({ message: "Secret not found" });
+    if (secrets.length !== secretsToUpdate.length)
+      throw new NotFoundError({ message: "One or more secrets to update not found" });
 
     const operations = await Promise.all(
       secretsToUpdate.map(async ({ secretName, secretId: id }) => {

@@ -186,7 +186,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new NotFoundError({ message: "Project not found" });
+        throw new NotFoundError({ message: `Project with ID '${id}' not found` });
       }
 
       return project;
@@ -235,7 +235,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new NotFoundError({ message: "Project not found" });
+        throw new NotFoundError({ message: `Project with slug '${slug}' not found` });
       }
 
       return project;
@@ -295,7 +295,7 @@ export const projectDALFactory = (db: TDbClient) => {
       .first();
 
     if (!project) {
-      throw new NotFoundError({ message: "Project not found" });
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     }
 
     return {

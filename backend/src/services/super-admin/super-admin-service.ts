@@ -260,7 +260,7 @@ export const superAdminServiceFactory = ({
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
 
     if (!serverCfg) {
-      throw new NotFoundError({ name: "Admin config", message: "Admin config not found" });
+      throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
     }
 
     let clientId = "";

@@ -72,7 +72,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
       );
 
       if (existingSecretVersions.length !== data.length) {
-        throw new NotFoundError({ message: "Some of the secret versions do not exist" });
+        throw new NotFoundError({ message: "One or more secret versions not found" });
       }
 
       if (data.length === 0) return [];

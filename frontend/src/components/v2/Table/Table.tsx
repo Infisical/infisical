@@ -1,4 +1,4 @@
-import { HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
+import { DetailedHTMLProps, HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { Skeleton } from "../Skeleton";
@@ -7,12 +7,13 @@ export type TableContainerProps = {
   children: ReactNode;
   isRounded?: boolean;
   className?: string;
-};
+} & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 
 export const TableContainer = ({
   children,
   className,
-  isRounded = true
+  isRounded = true,
+  ...props
 }: TableContainerProps): JSX.Element => (
   <div
     className={twMerge(
@@ -20,6 +21,7 @@ export const TableContainer = ({
       isRounded && "rounded-lg",
       className
     )}
+    {...props}
   >
     {children}
   </div>

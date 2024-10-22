@@ -1259,6 +1259,6 @@ export const getApps = async ({
       });
 
     default:
-      throw new NotFoundError({ message: "integration not found" });
+      throw new NotFoundError({ message: `Integration '${integration}' not found` });
   }
 };

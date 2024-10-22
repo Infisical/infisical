@@ -327,7 +327,7 @@ export const projectServiceFactory = ({
         // If identity org membership not found, throw error
         if (!identityOrgMembership) {
           throw new NotFoundError({
-            message: `Failed to find identity with id ${actorId}`
+            message: `Failed to find identity with id '${actorId}'`
           });
         }
 
@@ -496,7 +496,7 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found"
+        message: `Project with slug '${workspaceSlug}' not found`
       });
     }
 
@@ -527,7 +527,7 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found."
+        message: `Project with slug '${workspaceSlug}' not found`
       });
     }
 
@@ -634,7 +634,7 @@ export const projectServiceFactory = ({
 
     if (!project) {
       throw new NotFoundError({
-        message: `Project with id ${projectId} not found`
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
@@ -933,7 +933,7 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found"
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
@@ -967,14 +967,21 @@ export const projectServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found"
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
     const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(slackIntegrationId);
+
     if (!slackIntegration) {
       throw new NotFoundError({
-        message: "Slack integration not found"
+        message: `Slack integration with ID '${slackIntegrationId}' not found`
+      });
+    }
+
+    if (slackIntegration.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: "Selected slack integration is not in the same organization"
       });
     }
 

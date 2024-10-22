@@ -76,7 +76,8 @@ export const integrationServiceFactory = ({
     targetEnvironmentId
   }: TCreateIntegrationDTO) => {
     const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
-    if (!integrationAuth) throw new NotFoundError({ message: "Integration auth not found" });
+    if (!integrationAuth)
+      throw new NotFoundError({ message: `Integration auth with ID '${integrationAuthId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -93,7 +94,11 @@ export const integrationServiceFactory = ({
     );
 
     const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
-    if (!folder) throw new NotFoundError({ message: "Folder path not found" });
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder with path '${secretPath}' not found in environment with slug'${sourceEnvironment}'`
+      });
+    }
 
     const integration = await integrationDAL.create({
       envId: folder.envId,
@@ -145,7 +150,7 @@ export const integrationServiceFactory = ({
     metadata
   }: TUpdateIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
-    if (!integration) throw new NotFoundError({ message: "Integration auth not found" });
+    if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -167,7 +172,11 @@ export const integrationServiceFactory = ({
     }
 
     const folder = await folderDAL.findBySecretPath(integration.projectId, newEnvironment, newSecretPath);
-    if (!folder) throw new NotFoundError({ message: "Folder path not found" });
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder with path '${newSecretPath}' not found in environment with slug '${newEnvironment}'`
+      });
+    }
 
     const updatedIntegration = await integrationDAL.updateById(id, {
       envId: folder.envId,
@@ -200,7 +209,7 @@ export const integrationServiceFactory = ({
 
     if (!integration) {
       throw new NotFoundError({
-        message: "Integration not found"
+        message: `Integration with ID '${id}' not found`
       });
     }
 
@@ -215,7 +224,7 @@ export const integrationServiceFactory = ({
 
     if (!integration) {
       throw new NotFoundError({
-        message: "Integration not found"
+        message: `Integration with ID '${id}' not found`
       });
     }
 
@@ -231,7 +240,7 @@ export const integrationServiceFactory = ({
     shouldDeleteIntegrationSecrets
   }: TDeleteIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
-    if (!integration) throw new NotFoundError({ message: "Integration auth not found" });
+    if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -285,7 +294,7 @@ export const integrationServiceFactory = ({
   const syncIntegration = async ({ id, actorId, actor, actorOrgId, actorAuthMethod }: TSyncIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) {
-      throw new NotFoundError({ message: "Integration not found" });
+      throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
     }
 
     const { permission } = await permissionService.getProjectPermission(

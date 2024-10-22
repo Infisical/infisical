@@ -142,6 +142,7 @@ const envSchema = z
     SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
+    SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     // LICENSE
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
@@ -177,7 +178,8 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
-    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG
+    samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
+    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
 
 let envCfg: Readonly<z.infer<typeof envSchema>>;

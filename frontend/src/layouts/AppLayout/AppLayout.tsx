@@ -241,6 +241,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           (!orgs?.map((org) => org.id)?.includes(router.query.id as string) &&
             !router.asPath.includes("project") &&
             !router.asPath.includes("personal") &&
+            !router.asPath.includes("secret-scanning") &&
             !router.asPath.includes("integration")))
       ) {
         router.push(`/org/${currentOrg?.id}/overview`);

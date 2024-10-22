@@ -247,7 +247,11 @@ export const ldapConfigServiceFactory = ({
     };
 
     const orgBot = await orgBotDAL.findOne({ orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot)
+      throw new NotFoundError({
+        message: `Organization bot in organization with ID '${orgId}' not found`,
+        name: "OrgBotNotFound"
+      });
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -283,10 +287,19 @@ export const ldapConfigServiceFactory = ({
 
   const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }) => {
     const ldapConfig = await ldapConfigDAL.findOne(filter);
-    if (!ldapConfig) throw new NotFoundError({ message: "Failed to find organization LDAP data" });
+    if (!ldapConfig) {
+      throw new NotFoundError({
+        message: `Failed to find organization LDAP data in organization with ID '${filter.orgId}'`
+      });
+    }
 
     const orgBot = await orgBotDAL.findOne({ orgId: ldapConfig.orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot) {
+      throw new NotFoundError({
+        message: `Organization bot not found in organization with ID ${ldapConfig.orgId}`,
+        name: "OrgBotNotFound"
+      });
+    }
 
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
@@ -369,7 +382,7 @@ export const ldapConfigServiceFactory = ({
 
   const bootLdap = async (organizationSlug: string) => {
     const organization = await orgDAL.findOne({ slug: organizationSlug });
-    if (!organization) throw new NotFoundError({ message: "Organization not found" });
+    if (!organization) throw new NotFoundError({ message: `Organization with slug '${organizationSlug}' not found` });
 
     const ldapConfig = await getLdapCfg({
       orgId: organization.id,
@@ -426,7 +439,7 @@ export const ldapConfigServiceFactory = ({
     });
 
     const organization = await orgDAL.findOrgById(orgId);
-    if (!organization) throw new NotFoundError({ message: "Organization not found" });
+    if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     if (userAlias) {
       await userDAL.transaction(async (tx) => {
@@ -700,7 +713,11 @@ export const ldapConfigServiceFactory = ({
       orgId
     });
 
-    if (!ldapConfig) throw new NotFoundError({ message: "Failed to find organization LDAP data" });
+    if (!ldapConfig) {
+      throw new NotFoundError({
+        message: `Failed to find organization LDAP data with ID '${ldapConfigId}' in organization with ID ${orgId}`
+      });
+    }
 
     const groupMaps = await ldapGroupMapDAL.findLdapGroupMapsByLdapConfigId(ldapConfigId);
 
@@ -747,7 +764,11 @@ export const ldapConfigServiceFactory = ({
     }
 
     const group = await groupDAL.findOne({ slug: groupSlug, orgId });
-    if (!group) throw new NotFoundError({ message: "Failed to find group" });
+    if (!group) {
+      throw new NotFoundError({
+        message: `Failed to find group with slug '${groupSlug}' in organization with ID '${orgId}'`
+      });
+    }
 
     const groupMap = await ldapGroupMapDAL.create({
       ldapConfigId,
@@ -781,7 +802,11 @@ export const ldapConfigServiceFactory = ({
       orgId
     });
 
-    if (!ldapConfig) throw new NotFoundError({ message: "Failed to find organization LDAP data" });
+    if (!ldapConfig) {
+      throw new NotFoundError({
+        message: `Failed to find organization LDAP data with ID '${ldapConfigId}' in organization with ID ${orgId}`
+      });
+    }
 
     const [deletedGroupMap] = await ldapGroupMapDAL.delete({
       ldapConfigId: ldapConfig.id,

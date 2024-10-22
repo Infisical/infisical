@@ -23,7 +23,6 @@ type Props = {
   secretKey: string;
   secretPath: string;
   environments: { name: string; slug: string }[];
-  expandableColWidth: number;
   isSelected: boolean;
   onToggleSecretSelect: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
@@ -41,6 +40,7 @@ type Props = {
     env: string,
     secretName: string
   ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
+  scrollOffset: number;
 };
 
 export const SecretOverviewTableRow = ({
@@ -53,9 +53,7 @@ export const SecretOverviewTableRow = ({
   onSecretDelete,
   isImportedSecretPresentInEnv,
   getImportedSecretByKey,
-  // temporary until below todo is resolved
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  expandableColWidth,
+  scrollOffset,
   onToggleSecretSelect,
   isSelected
 }: Props) => {
@@ -152,11 +150,12 @@ export const SecretOverviewTableRow = ({
             }`}
           >
             <div
-              className="ml-2 w-[99%] p-2"
-              // TODO: scott expandableColWidth sometimes 0 due to parent ref not mounting, opting for relative width until resolved
-              // style={{
-              //   width: `calc(${expandableColWidth} - 1rem)`
-              // }}
+              className="ml-2 p-2"
+              style={{
+                marginLeft: scrollOffset,
+                width: "calc(100vw - 300px)", // 300px accounts for sidebar and margin
+                maxWidth: "calc(1536px - 50px)" // tw container max width minus padding for uw displays
+              }}
             >
               <SecretRenameRow
                 secretKey={secretKey}

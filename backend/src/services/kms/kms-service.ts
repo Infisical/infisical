@@ -164,7 +164,7 @@ export const kmsServiceFactory = ({
     let org = await orgDAL.findById(orgId, trx);
 
     if (!org) {
-      throw new NotFoundError({ message: "Org not found" });
+      throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
     if (!org.kmsDefaultKeyId) {
@@ -247,7 +247,7 @@ export const kmsServiceFactory = ({
 
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
-      throw new NotFoundError({ message: "KMS ID not found" });
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
 
     if (kmsDoc.externalKms) {
@@ -315,7 +315,7 @@ export const kmsServiceFactory = ({
   const encryptWithKmsKey = async ({ kmsId }: Omit<TEncryptWithKmsDTO, "plainText">, tx?: Knex) => {
     const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
-      throw new NotFoundError({ message: "KMS ID not found" });
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
 
     if (kmsDoc.externalKms) {
@@ -382,7 +382,7 @@ export const kmsServiceFactory = ({
     let org = await orgDAL.findById(orgId, trx);
 
     if (!org) {
-      throw new NotFoundError({ message: "Org not found" });
+      throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
     if (!org.kmsEncryptedDataKey) {
@@ -460,7 +460,7 @@ export const kmsServiceFactory = ({
   const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
     let project = await projectDAL.findById(projectId, trx);
     if (!project) {
-      throw new NotFoundError({ message: "Project not found" });
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     }
 
     if (!project.kmsSecretManagerKeyId) {
@@ -650,12 +650,12 @@ export const kmsServiceFactory = ({
       const project = await projectDAL.findById(projectId);
       if (!project) {
         throw new NotFoundError({
-          message: "Project not found."
+          message: `Project with ID '${projectId}' not found`
         });
       }
       const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
       if (!kmsDoc) {
-        throw new NotFoundError({ message: "KMS ID not found." });
+        throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
       }
 
       if (kmsDoc.orgId !== project.orgId) {
@@ -702,7 +702,7 @@ export const kmsServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found"
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
@@ -730,7 +730,7 @@ export const kmsServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
-        message: "Project not found"
+        message: `Project with ID '${projectId}' not found`
       });
     }
 
@@ -785,7 +785,7 @@ export const kmsServiceFactory = ({
 
     if (!kms.id) {
       throw new NotFoundError({
-        message: "KMS not found"
+        message: `KMS with ID '${kmsKeyId}' not found`
       });
     }
     const { id, name, orgId, isExternal } = kms;

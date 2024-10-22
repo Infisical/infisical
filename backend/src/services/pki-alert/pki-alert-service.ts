@@ -84,7 +84,7 @@ export const pkiAlertServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
 
     const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
-    if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+    if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
     if (pkiCollection.projectId !== projectId)
       throw new ForbiddenRequestError({ message: "PKI collection does not belong to the specified project." });
 
@@ -100,7 +100,7 @@ export const pkiAlertServiceFactory = ({
 
   const getPkiAlertById = async ({ alertId, actorId, actorAuthMethod, actor, actorOrgId }: TGetAlertByIdDTO) => {
     const alert = await pkiAlertDAL.findById(alertId);
-    if (!alert) throw new NotFoundError({ message: "Alert not found" });
+    if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -126,7 +126,7 @@ export const pkiAlertServiceFactory = ({
     actorOrgId
   }: TUpdateAlertDTO) => {
     let alert = await pkiAlertDAL.findById(alertId);
-    if (!alert) throw new NotFoundError({ message: "Alert not found" });
+    if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -140,7 +140,7 @@ export const pkiAlertServiceFactory = ({
 
     if (pkiCollectionId) {
       const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
-      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+      if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
       if (pkiCollection.projectId !== alert.projectId) {
         throw new ForbiddenRequestError({ message: "PKI collection does not belong to the specified project." });
       }
@@ -158,7 +158,7 @@ export const pkiAlertServiceFactory = ({
 
   const deletePkiAlert = async ({ alertId, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteAlertDTO) => {
     let alert = await pkiAlertDAL.findById(alertId);
-    if (!alert) throw new NotFoundError({ message: "Alert not found" });
+    if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

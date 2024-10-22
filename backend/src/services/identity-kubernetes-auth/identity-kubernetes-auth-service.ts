@@ -72,10 +72,19 @@ export const identityKubernetesAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
       identityId: identityKubernetesAuth.identityId
     });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Identity organization membership not found" });
+    if (!identityMembershipOrg) {
+      throw new NotFoundError({
+        message: `Identity organization membership for identity with ID '${identityKubernetesAuth.identityId}' not found`
+      });
+    }
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot) {
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
+        name: "OrgBotNotFound"
+      });
+    }
 
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
@@ -250,7 +259,7 @@ export const identityKubernetesAuthServiceFactory = ({
     actorOrgId
   }: TAttachKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
         message: "Failed to add Kubernetes Auth to already configured identity"
@@ -394,7 +403,7 @@ export const identityKubernetesAuthServiceFactory = ({
     actorOrgId
   }: TUpdateKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
       throw new BadRequestError({
         message: "Failed to update Kubernetes Auth"
@@ -451,8 +460,12 @@ export const identityKubernetesAuthServiceFactory = ({
     };
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Org bot not found", name: "OrgBotNotFound" });
-
+    if (!orgBot) {
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
+        name: "OrgBotNotFound"
+      });
+    }
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -518,7 +531,7 @@ export const identityKubernetesAuthServiceFactory = ({
     actorOrgId
   }: TGetKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
       throw new BadRequestError({
         message: "The identity does not have Kubernetes Auth attached"
@@ -536,7 +549,11 @@ export const identityKubernetesAuthServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
 
     const orgBot = await orgBotDAL.findOne({ orgId: identityMembershipOrg.orgId });
-    if (!orgBot) throw new NotFoundError({ message: "Organization bot not found", name: "OrgBotNotFound" });
+    if (!orgBot)
+      throw new NotFoundError({
+        message: `Organization bot not found for organization with ID ${identityMembershipOrg.orgId}`,
+        name: "OrgBotNotFound"
+      });
 
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
@@ -579,7 +596,7 @@ export const identityKubernetesAuthServiceFactory = ({
     actorOrgId
   }: TRevokeKubernetesAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) throw new NotFoundError({ message: "Failed to find identity" });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.KUBERNETES_AUTH)
       throw new BadRequestError({
         message: "The identity does not have kubernetes auth"

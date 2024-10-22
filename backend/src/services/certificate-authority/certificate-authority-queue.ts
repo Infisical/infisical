@@ -76,7 +76,7 @@ export const certificateAuthorityQueueFactory = ({
     logger.info(`secretReminderQueue.process: [secretDocument=${caId}]`);
 
     const ca = await certificateAuthorityDAL.findById(caId);
-    if (!ca) throw new NotFoundError({ message: "CA not found" });
+    if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 

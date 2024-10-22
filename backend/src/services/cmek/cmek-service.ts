@@ -46,7 +46,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: FastifyRequest["permission"]) => {
     const key = await kmsDAL.findById(keyId);
 
-    if (!key) throw new NotFoundError({ message: "Key not found" });
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
@@ -68,7 +68,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   const deleteCmekById = async (keyId: string, actor: FastifyRequest["permission"]) => {
     const key = await kmsDAL.findById(keyId);
 
-    if (!key) throw new NotFoundError({ message: "Key not found" });
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
@@ -109,7 +109,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: FastifyRequest["permission"]) => {
     const key = await kmsDAL.findById(keyId);
 
-    if (!key) throw new NotFoundError({ message: "Key not found" });
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
@@ -135,7 +135,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: FastifyRequest["permission"]) => {
     const key = await kmsDAL.findById(keyId);
 
-    if (!key) throw new NotFoundError({ message: "Key not found" });
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 

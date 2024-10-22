@@ -75,7 +75,7 @@ export const getProjectKmsCertificateKeyId = async ({
   const keyId = await projectDAL.transaction(async (tx) => {
     const project = await projectDAL.findOne({ id: projectId }, tx);
     if (!project) {
-      throw new NotFoundError({ message: "Project not found" });
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     }
 
     if (!project.kmsCertificateKeyId) {

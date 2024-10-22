@@ -130,7 +130,7 @@ export const auditLogStreamServiceFactory = ({
       });
 
     const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new NotFoundError({ message: "Audit log stream not found" });
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -182,7 +182,7 @@ export const auditLogStreamServiceFactory = ({
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
     const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new NotFoundError({ message: "Audit log stream not found" });
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -194,7 +194,7 @@ export const auditLogStreamServiceFactory = ({
 
   const getById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TGetDetailsAuditLogStreamDTO) => {
     const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new NotFoundError({ message: "Audit log stream not found" });
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
     const { orgId } = logStream;
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);

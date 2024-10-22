@@ -145,7 +145,7 @@ export const licenseServiceFactory = ({
         if (cachedPlan) return JSON.parse(cachedPlan) as TFeatureSet;
 
         const org = await orgDAL.findOrgById(orgId);
-        if (!org) throw new NotFoundError({ message: "Organization not found" });
+        if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
@@ -204,7 +204,7 @@ export const licenseServiceFactory = ({
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
     if (instanceType === InstanceType.Cloud) {
       const org = await orgDAL.findOrgById(orgId);
-      if (!org) throw new NotFoundError({ message: "Organization not found" });
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
       const quantity = await licenseDAL.countOfOrgMembers(orgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
@@ -267,7 +267,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -341,7 +341,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const { data } = await licenseServerCloudApi.request.get(
@@ -358,7 +358,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const { data } = await licenseServerCloudApi.request.get(
@@ -374,7 +374,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -399,7 +399,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const { data } = await licenseServerCloudApi.request.patch(
@@ -419,7 +419,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -446,7 +446,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const {
@@ -475,7 +475,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -492,7 +492,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
     const {
@@ -510,7 +510,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -531,7 +531,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -548,7 +548,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
@@ -565,7 +565,7 @@ export const licenseServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new NotFoundError({
-        message: "Organization not found"
+        message: `Organization with ID '${orgId}' not found`
       });
     }
 
