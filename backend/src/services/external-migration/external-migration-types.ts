@@ -29,7 +29,6 @@ export type TEnvKeyExportJSON = {
   org: {
     id: string;
     name: string;
-    // settings, which we dont care about
   };
 
   // Apps are projects
