@@ -19,7 +19,6 @@ import {
   Button,
   FormControl,
   FormLabel,
-  IconButton,
   Input,
   Modal,
   ModalContent,
@@ -200,12 +199,14 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     >
       <FormProvider {...form}>
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <div className="flex space-x-2">
-            <IconButton ariaLabel="go-back" variant="plain" onClick={onGoBack}>
-              <FontAwesomeIcon icon={faChevronLeft} />
-            </IconButton>
-            <h3 className="text-lg font-semibold text-mineshaft-100">Back</h3>
-          </div>
+          <Button
+            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
+            className="text-lg font-semibold text-mineshaft-100"
+            variant="link"
+            onClick={onGoBack}
+          >
+            Back
+          </Button>
           <div className="flex items-center space-x-4">
             {isDirty && (
               <Button
@@ -250,8 +251,11 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             </div>
           </div>
         </div>
-        <div className="mt-2 border-b border-gray-800 p-4 first:rounded-t-md last:rounded-b-md">
-          <div className="mb-2 text-lg">Overview</div>
+        <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
+          <div className="text-lg">Overview</div>
+          <p className="mb-4 text-sm text-mineshaft-300">
+            Additional privileges take precedence over roles when permissions conflict
+          </p>
           <div className=" flex items-end space-x-6">
             <div className="w-full max-w-md">
               <Controller
