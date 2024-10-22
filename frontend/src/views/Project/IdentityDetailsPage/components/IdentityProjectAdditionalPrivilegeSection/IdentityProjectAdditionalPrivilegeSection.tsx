@@ -98,7 +98,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
           >
             <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
               <h3 className="text-lg font-semibold text-mineshaft-100">
-                Project Additional Privilege
+                Project Additional Privileges
               </h3>
 
               <ProjectPermissionCan
@@ -174,7 +174,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                             }}
                             onClick={() => handlePopUpOpen("modifyPrivilege", privilegeDetails)}
                           >
-                            <Td className="capitalize">{privilegeDetails.slug}</Td>
+                            <Td>{privilegeDetails.slug}</Td>
                             <Td>
                               <Tooltip asChild={false} content={toolTipText}>
                                 <Tag

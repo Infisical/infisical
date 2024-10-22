@@ -72,7 +72,7 @@ export const IdentityRoleDetailsSection = ({
           I={ProjectPermissionActions.Edit}
           a={ProjectPermissionSub.Identity}
           renderTooltip
-          allowedLabel="Edit role"
+          allowedLabel="Edit Role(s)"
         >
           {(isAllowed) => (
             <IconButton

@@ -163,7 +163,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
       onGoBack();
     } catch (err) {
       console.log(err);
-      createNotification({ type: "error", text: "Failed to update role" });
+      createNotification({ type: "error", text: "Failed to update privilege" });
     }
   };
 

@@ -20,7 +20,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
-      description: "Create an additional privilege for identity.",
+      description: "Add an additional privilege for identity.",
       security: [
         {
           bearerAuth: []
@@ -91,7 +91,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
-      description: "Update a specific privilege of an identity.",
+      description: "Update a specific identity privilege.",
       security: [
         {
           bearerAuth: []
@@ -167,7 +167,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: writeLimit
     },
     schema: {
-      description: "Delete a specific privilege of an identity.",
+      description: "Delete the specified identity privilege.",
       security: [
         {
           bearerAuth: []
@@ -202,7 +202,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
-      description: "Retrieve details of a specific privilege by privilege id.",
+      description: "Retrieve details of a specific privilege by id.",
       security: [
         {
           bearerAuth: []
@@ -237,7 +237,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
-      description: "Retrieve details of a specific privilege by privilege slug.",
+      description: "Retrieve details of a specific privilege by slug.",
       security: [
         {
           bearerAuth: []
@@ -277,7 +277,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       rateLimit: readLimit
     },
     schema: {
-      description: "List of a specific privilege of an identity in a project.",
+      description: "List privileges for the specified identity by project.",
       security: [
         {
           bearerAuth: []

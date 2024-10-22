@@ -1,6 +1,6 @@
 import { faFolder, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format,formatDistance } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
@@ -19,7 +19,8 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -104,7 +105,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           >
             <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
               <h3 className="text-lg font-semibold text-mineshaft-100">
-                Project Additional Privilege
+                Project Additional Privileges
               </h3>
               {userId !== membershipDetails?.user?.id &&
                 membershipDetails?.status !== "invited" && (
@@ -180,7 +181,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                             }}
                             onClick={() => handlePopUpOpen("modifyPrivilege", privilegeDetails)}
                           >
-                            <Td className="capitalize">{privilegeDetails.slug}</Td>
+                            <Td>{privilegeDetails.slug}</Td>
                             <Td>
                               <Tooltip asChild={false} content={toolTipText}>
                                 <Tag

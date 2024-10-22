@@ -38,7 +38,7 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
 const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export const roleQueryKeys = {
-  getProjectRoles: (projectId: string) => ["roles", { projectSlug: projectId }] as const,
+  getProjectRoles: (projectId: string) => ["roles", { projectId }] as const,
   getProjectRoleBySlug: (projectId: string, roleSlug: string) =>
     ["roles", { projectId, roleSlug }] as const,
   getOrgRoles: (orgId: string) => ["org-roles", { orgId }] as const,

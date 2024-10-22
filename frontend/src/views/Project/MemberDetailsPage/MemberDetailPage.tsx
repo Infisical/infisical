@@ -54,10 +54,10 @@ export const MemberDetailsPage = withProjectPermission(
                   <h3 className="text-xl font-semibold text-mineshaft-100">Project User Access</h3>
                   <div>
                     <ProjectPermissionCan
-                      I={ProjectPermissionActions.Edit}
+                      I={ProjectPermissionActions.Delete}
                       a={ProjectPermissionSub.Member}
                       renderTooltip
-                      allowedLabel="Edit role"
+                      allowedLabel="Remove from project"
                     >
                       {(isAllowed) => (
                         <Button

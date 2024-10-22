@@ -56,10 +56,10 @@ export const IdentityDetailsPage = withProjectPermission(
                   </h3>
                   <div>
                     <ProjectPermissionCan
-                      I={ProjectPermissionActions.Edit}
+                      I={ProjectPermissionActions.Delete}
                       a={ProjectPermissionSub.Identity}
                       renderTooltip
-                      allowedLabel="Edit role"
+                      allowedLabel="Remove from project"
                     >
                       {(isAllowed) => (
                         <Button

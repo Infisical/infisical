@@ -20,7 +20,8 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -81,7 +82,7 @@ export const MemberRoleDetailsSection = ({
             I={ProjectPermissionActions.Edit}
             a={ProjectPermissionSub.Member}
             renderTooltip
-            allowedLabel="Edit role"
+            allowedLabel="Edit role(s)"
           >
             {(isAllowed) => (
               <IconButton

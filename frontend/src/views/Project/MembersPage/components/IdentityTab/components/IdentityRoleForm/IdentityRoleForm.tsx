@@ -19,16 +19,19 @@ export const IdentityRoleForm = ({ identityProjectMember, onOpenUpgradeModal }: 
         identityProjectMember={identityProjectMember}
         onOpenUpgradeModal={onOpenUpgradeModal}
       />
-      <Alert className="mt-4">
+      <Alert
+        title="Additional privileges have been moved and now offer full permission customization."
+        className="mt-4 border-primary/50 bg-primary/10"
+      >
         <AlertDescription>
-          Additional privileges now offer full permissions and have been moved to a new screen.
-          <br />
           <Link
-            href={`/project/${currentWorkspace?.id || ""}/identitiesq/${
+            href={`/project/${currentWorkspace?.id || ""}/identities/${
               identityProjectMember?.identity?.id
             }`}
           >
-            <span className="cursor-pointer text-primary">Click here to access them.</span>
+            <span className="cursor-pointer text-primary underline underline-offset-2">
+              Click here to access them now
+            </span>
           </Link>
         </AlertDescription>
       </Alert>

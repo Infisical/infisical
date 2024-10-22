@@ -206,9 +206,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
             <IconButton ariaLabel="go-back" variant="plain" onClick={onGoBack}>
               <FontAwesomeIcon icon={faChevronLeft} />
             </IconButton>
-            <h3 className="text-lg font-semibold text-mineshaft-100">
-              Modify Additional Privilege
-            </h3>
+            <h3 className="text-lg font-semibold text-mineshaft-100">Edit Additional Privilege</h3>
           </div>
           <div className="flex items-center space-x-4">
             {isDirty && (
