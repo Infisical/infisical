@@ -133,7 +133,7 @@ export const identityTokenAuthServiceFactory = ({
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
       throw new BadRequestError({
-        message: "Failed to update Token Auth"
+        message: "The identity does not have token auth"
       });
     }
 
