@@ -287,7 +287,8 @@ export const LdapInputForm = ({
                           const ldifFields = [
                             "provider.creationLdif",
                             "provider.revocationLdif",
-                            "provider.rollbackLdif"
+                            "provider.rollbackLdif",
+                            "provider.rotationLdif"
                           ] as const;
 
                           ldifFields.forEach((f) => {
