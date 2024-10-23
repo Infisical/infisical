@@ -420,6 +420,8 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   ...GeneralPermissionSchema
 ]);
 
+export type TProjectPermissionV2Schema = z.infer<typeof ProjectPermissionV2Schema>;
+
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
@@ -757,8 +759,11 @@ export const isAtLeastAsPrivilegedWorkspace = (
 };
 /* eslint-enable */
 
-export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof ProjectPermissionV1Schema>[]) => {
-  const formattedData = UnpackedPermissionSchema.array().parse(data);
+export const backfillPermissionV1SchemaToV2Schema = (
+  data: z.infer<typeof ProjectPermissionV1Schema>[],
+  dontRemoveReadFolderPermission?: boolean
+) => {
+  let formattedData = UnpackedPermissionSchema.array().parse(data);
   const secretSubjects = formattedData.filter((el) => el.subject === ProjectPermissionSub.Secrets);
 
   // this means the folder permission as readonly is set
@@ -802,13 +807,15 @@ export const backfillPermissionV1SchemaToV2Schema = (data: z.infer<typeof Projec
     };
   });
 
-  return formattedData
-    .filter((i) => i.subject !== ProjectPermissionSub.SecretFolders)
-    .concat(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore-error this is valid ts
-      secretImportPolicies,
-      dynamicSecretPolicies,
-      hasReadOnlyFolder.length ? [] : secretFolderPolicies
-    );
+  if (!dontRemoveReadFolderPermission) {
+    formattedData = formattedData.filter((i) => i.subject !== ProjectPermissionSub.SecretFolders);
+  }
+
+  return formattedData.concat(
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore-error this is valid ts
+    secretImportPolicies,
+    dynamicSecretPolicies,
+    hasReadOnlyFolder.length ? [] : secretFolderPolicies
+  );
 };

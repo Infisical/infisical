@@ -1,4 +1,3 @@
-import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
@@ -70,7 +69,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         projectMembershipId: req.body.projectMembershipId,
         ...req.body.type,
         slug: req.body.slug || slugify(alphaNumericNanoId(8)),
-        permissions: JSON.stringify(packRules(req.body.permissions))
+        permissions: req.body.permissions
       });
       return { privilege };
     }
@@ -137,7 +136,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         permissions: req.body.permissions
           ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore-error this is valid ts
-            JSON.stringify(packRules(req.body.permissions))
+            req.body.permissions
           : undefined,
         privilegeId: req.params.privilegeId
       });

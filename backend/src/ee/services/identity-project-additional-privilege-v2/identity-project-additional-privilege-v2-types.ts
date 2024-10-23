@@ -1,11 +1,13 @@
 import { TProjectPermission } from "@app/lib/types";
 
+import { TProjectPermissionV2Schema } from "../permission/project-permission";
+
 export enum IdentityProjectAdditionalPrivilegeTemporaryMode {
   Relative = "relative"
 }
 
 export type TCreateIdentityPrivilegeDTO = {
-  permissions: unknown;
+  permissions: TProjectPermissionV2Schema[];
   identityId: string;
   projectId: string;
   slug: string;
@@ -24,7 +26,7 @@ export type TCreateIdentityPrivilegeDTO = {
 
 export type TUpdateIdentityPrivilegeByIdDTO = { id: string } & Omit<TProjectPermission, "projectId"> & {
     data: Partial<{
-      permissions: unknown;
+      permissions: TProjectPermissionV2Schema[];
       slug: string;
       isTemporary: boolean;
       temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative;

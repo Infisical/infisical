@@ -1,4 +1,3 @@
-import { packRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import ms from "ms";
 import { z } from "zod";
@@ -82,7 +81,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         isTemporary: false,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore-error this is valid ts
-        permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(permission)))
+        permissions: backfillPermissionV1SchemaToV2Schema(permission)
       });
       return { privilege };
     }
@@ -164,7 +163,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         isTemporary: true,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore-error this is valid ts
-        permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(permission)))
+        permissions: backfillPermissionV1SchemaToV2Schema(permission)
       });
       return { privilege };
     }
@@ -249,10 +248,12 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         projectSlug: req.body.projectSlug,
         data: {
           ...updatedInfo,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore-error this is valid ts
           permissions: permission
             ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore-error this is valid ts
-              JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(permission)))
+              backfillPermissionV1SchemaToV2Schema(permission)
             : undefined
         }
       });

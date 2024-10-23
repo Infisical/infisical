@@ -68,9 +68,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         },
         data: {
           ...req.body,
-          permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions)))
+          permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         }
       });
+
       return { role };
     }
   });
@@ -129,7 +130,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         data: {
           ...req.body,
           permissions: req.body.permissions
-            ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions)))
+            ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
             : undefined
         }
       });
@@ -241,6 +242,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         },
         roleSlug: req.params.slug
       });
+
       return { role };
     }
   });

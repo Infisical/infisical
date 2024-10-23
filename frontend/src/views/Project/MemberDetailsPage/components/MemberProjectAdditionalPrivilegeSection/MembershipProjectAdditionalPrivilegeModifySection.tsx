@@ -94,7 +94,6 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
     privilegeId || ""
   );
 
-  console.log(privilegeDetails);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,

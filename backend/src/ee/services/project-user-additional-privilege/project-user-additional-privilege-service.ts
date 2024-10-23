@@ -1,5 +1,5 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
+import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
@@ -62,14 +62,18 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
-    const { permission: entityPermission } = await permissionService.getProjectPermission(
+    const { permission: targetUserPermission } = await permissionService.getProjectPermission(
       ActorType.USER,
       projectMembership.userId,
       projectMembership.projectId,
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, entityPermission);
+
+    // we need to validate that the privilege given is not higher than the assigning users permission
+    // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
+    targetUserPermission.update(targetUserPermission.rules.concat(customPermission));
+    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetUserPermission);
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
@@ -81,12 +85,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     if (existingSlug)
       throw new BadRequestError({ message: `Additional privilege with provided slug ${slug} already exists` });
 
+    const packedPermission = JSON.stringify(packRules(customPermission));
     if (!dto.isTemporary) {
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
         userId: projectMembership.userId,
         projectId: projectMembership.projectId,
         slug,
-        permissions: customPermission
+        permissions: packedPermission
       });
       return {
         ...additionalPrivilege,
@@ -99,7 +104,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       userId: projectMembership.userId,
       slug,
-      permissions: customPermission,
+      permissions: packedPermission,
       isTemporary: true,
       temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
       temporaryRange: dto.temporaryRange,
@@ -142,14 +147,18 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
-    const { permission: entityPermission } = await permissionService.getProjectPermission(
+    const { permission: targetUserPermission } = await permissionService.getProjectPermission(
       ActorType.USER,
       projectMembership.userId,
       projectMembership.projectId,
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, entityPermission);
+
+    // we need to validate that the privilege given is not higher than the assigning users permission
+    // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
+    targetUserPermission.update(targetUserPermission.rules.concat(dto.permissions || []));
+    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetUserPermission);
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
@@ -164,12 +173,14 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     }
 
     const isTemporary = typeof dto?.isTemporary !== "undefined" ? dto.isTemporary : userPrivilege.isTemporary;
+
+    const packedPermission = dto.permissions && JSON.stringify(packRules(dto.permissions));
     if (isTemporary) {
       const temporaryAccessStartTime = dto?.temporaryAccessStartTime || userPrivilege?.temporaryAccessStartTime;
       const temporaryRange = dto?.temporaryRange || userPrivilege?.temporaryRange;
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
         slug: dto.slug,
-        permissions: dto.permissions,
+        permissions: packedPermission,
         isTemporary: dto.isTemporary,
         temporaryRange: dto.temporaryRange,
         temporaryMode: dto.temporaryMode,
@@ -185,7 +196,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
 
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
       slug: dto.slug,
-      permissions: dto.permissions,
+      permissions: packedPermission,
       isTemporary: false,
       temporaryAccessStartTime: null,
       temporaryAccessEndTime: null,

@@ -179,6 +179,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   permissions.forEach((permission) => {
     const { subject: caslSub, action, conditions, inverted } = permission;
     const subject = (typeof caslSub === "string" ? caslSub : caslSub[0]) as ProjectPermissionSub;
+    if (!action.length) return;
 
     if (
       [
