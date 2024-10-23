@@ -78,10 +78,16 @@ export const RegionSelect = () => {
     router.push(`https://${value}.infisical.com/${router.pathname}`);
   };
 
-  const [subdomain, domain] = window.location.host.split(".");
+  const shouldDisplay =
+    window.location.origin.includes("https://app.infisical.com") ||
+    window.location.origin.includes("https://us.infisical.com") ||
+    window.location.origin.includes("https://eu.infisical.com") ||
+    window.location.origin.includes("http://localhost:8080");
 
   // only display region select for cloud
-  if (!domain?.match(/infisical/)) return null;
+  if (!shouldDisplay) return null;
+
+  const [subdomain] = window.location.host.split(".");
 
   // default to US if not eu
   const currentRegion = subdomain === Region.EU ? regions[1] : regions[0];
