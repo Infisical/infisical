@@ -131,9 +131,9 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
       if (block) {
         // Handle block branches
         // 1. Find all apps that use this block
-        const appsUsingBlock = parsedJson.appBlocks.filter((ab) => ab.blockId === block.id).map((ab) => ab.appId);
+        const appsUsingBlock = parsedJson.appBlocks.filter((ab) => ab.blockId === block.id);
 
-        for (const appId of appsUsingBlock) {
+        for (const { appId, orderIndex } of appsUsingBlock) {
           // 2. Find the matching environment in the app based on the environment role
           const blockBaseEnv = parsedJson.baseEnvironments.find((be) => be.id === subEnv.parentEnvironmentId);
 
@@ -160,20 +160,71 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
           for (const [secretName, secretData] of Object.entries(branchSecrets)) {
             if (secretData.inheritsEnvironmentId) {
               const resolvedSecret = findRootInheritedSecret(secretData, secretName, parsedJson.envs);
+
+              // If the secret already exists in the environment, we need to check the orderIndex of the appBlock. The appBlock with the highest orderIndex should take precedence.
+              const preExistingSecretIndex = infisicalImportData.secrets.findIndex(
+                (s) => s.name === secretName && s.environmentId === matchingAppEnv.id
+              );
+
+              if (preExistingSecretIndex !== -1) {
+                const preExistingSecret = infisicalImportData.secrets[preExistingSecretIndex];
+
+                if (
+                  preExistingSecret.appBlockOrderIndex !== undefined &&
+                  orderIndex > preExistingSecret.appBlockOrderIndex
+                ) {
+                  // if the existing secret has a lower orderIndex, we should replace it
+                  infisicalImportData.secrets[preExistingSecretIndex] = {
+                    ...preExistingSecret,
+                    value: resolvedSecret.val || "",
+                    appBlockOrderIndex: orderIndex
+                  };
+                }
+
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+
               infisicalImportData.secrets.push({
                 id: randomUUID(),
                 name: secretName,
                 environmentId: matchingAppEnv.id,
                 value: resolvedSecret.val || "",
-                folderId: `${subEnv.id}-${appId}`
+                folderId: `${subEnv.id}-${appId}`,
+                appBlockOrderIndex: orderIndex
               });
             } else {
+              // If the secret already exists in the environment, we need to check the orderIndex of the appBlock. The appBlock with the highest orderIndex should take precedence.
+              const preExistingSecretIndex = infisicalImportData.secrets.findIndex(
+                (s) => s.name === secretName && s.environmentId === matchingAppEnv.id
+              );
+
+              if (preExistingSecretIndex !== -1) {
+                const preExistingSecret = infisicalImportData.secrets[preExistingSecretIndex];
+
+                if (
+                  preExistingSecret.appBlockOrderIndex !== undefined &&
+                  orderIndex > preExistingSecret.appBlockOrderIndex
+                ) {
+                  // if the existing secret has a lower orderIndex, we should replace it
+                  infisicalImportData.secrets[preExistingSecretIndex] = {
+                    ...preExistingSecret,
+                    value: secretData.val || "",
+                    appBlockOrderIndex: orderIndex
+                  };
+                }
+
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+
               infisicalImportData.secrets.push({
                 id: randomUUID(),
                 name: secretName,
                 environmentId: matchingAppEnv.id,
                 value: secretData.val || "",
-                folderId: `${subEnv.id}-${appId}`
+                folderId: `${subEnv.id}-${appId}`,
+                appBlockOrderIndex: orderIndex
               });
             }
           }
@@ -229,18 +280,69 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
 
             if (selectedSecret.inheritsEnvironmentId) {
               const resolvedSecret = findRootInheritedSecret(selectedSecret, secret, parsedJson.envs);
+
+              // If the secret already exists in the environment, we need to check the orderIndex of the appBlock. The appBlock with the highest orderIndex should take precedence.
+              const preExistingSecretIndex = infisicalImportData.secrets.findIndex(
+                (s) => s.name === secret && s.environmentId === matchingEnv.id
+              );
+
+              if (preExistingSecretIndex !== -1) {
+                const preExistingSecret = infisicalImportData.secrets[preExistingSecretIndex];
+
+                if (
+                  preExistingSecret.appBlockOrderIndex !== undefined &&
+                  appBlock.orderIndex > preExistingSecret.appBlockOrderIndex
+                ) {
+                  // if the existing secret has a lower orderIndex, we should replace it
+                  infisicalImportData.secrets[preExistingSecretIndex] = {
+                    ...preExistingSecret,
+                    value: selectedSecret.val || "",
+                    appBlockOrderIndex: appBlock.orderIndex
+                  };
+                }
+
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+
               infisicalImportData.secrets.push({
                 id: randomUUID(),
                 name: secret,
                 environmentId: matchingEnv.id,
-                value: resolvedSecret.val || ""
+                value: resolvedSecret.val || "",
+                appBlockOrderIndex: appBlock.orderIndex
               });
             } else {
+              // If the secret already exists in the environment, we need to check the orderIndex of the appBlock. The appBlock with the highest orderIndex should take precedence.
+              const preExistingSecretIndex = infisicalImportData.secrets.findIndex(
+                (s) => s.name === secret && s.environmentId === matchingEnv.id
+              );
+
+              if (preExistingSecretIndex !== -1) {
+                const preExistingSecret = infisicalImportData.secrets[preExistingSecretIndex];
+
+                if (
+                  preExistingSecret.appBlockOrderIndex !== undefined &&
+                  appBlock.orderIndex > preExistingSecret.appBlockOrderIndex
+                ) {
+                  // if the existing secret has a lower orderIndex, we should replace it
+                  infisicalImportData.secrets[preExistingSecretIndex] = {
+                    ...preExistingSecret,
+                    value: selectedSecret.val || "",
+                    appBlockOrderIndex: appBlock.orderIndex
+                  };
+                }
+
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+
               infisicalImportData.secrets.push({
                 id: randomUUID(),
                 name: secret,
                 environmentId: matchingEnv.id,
-                value: selectedSecret.val || ""
+                value: selectedSecret.val || "",
+                appBlockOrderIndex: appBlock.orderIndex
               });
             }
           }
@@ -291,8 +393,30 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
 
     // Process each secret in this environment or branch
     for (const [secretName, secretData] of Object.entries(envData.variables)) {
+      const environmentId = subEnv ? subEnv.parentEnvironmentId : env;
+      const indexOfExistingSecret = infisicalImportData.secrets.findIndex(
+        (s) => s.name === secretName && s.environmentId === environmentId
+      );
+
       if (secretData.inheritsEnvironmentId) {
         const resolvedSecret = findRootInheritedSecret(secretData, secretName, parsedJson.envs);
+
+        // Check if there's already a secret with this name in the environment, if there is, we should override it. Because if there's already one, we know its coming from a block.
+        // Variables from the normal environment should take precedence over variables from the block.
+
+        if (indexOfExistingSecret !== -1) {
+          // if a existing secret is found, we should replace it directly
+          const newSecret: (typeof infisicalImportData.secrets)[number] = {
+            ...infisicalImportData.secrets[indexOfExistingSecret],
+            value: resolvedSecret.val || ""
+          };
+
+          infisicalImportData.secrets[indexOfExistingSecret] = newSecret;
+
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         infisicalImportData.secrets.push({
           id: randomUUID(),
           name: secretName,
@@ -301,6 +425,22 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
           ...(subEnv && { folderId: subEnv.id }) // Add folderId if this is a branch secret
         });
       } else {
+        // Check if there's already a secret with this name in the environment, if there is, we should override it. Because if there's already one, we know its coming from a block.
+        // Variables from the normal environment should take precedence over variables from the block.
+
+        if (indexOfExistingSecret !== -1) {
+          // if a existing secret is found, we should replace it directly
+          const newSecret: (typeof infisicalImportData.secrets)[number] = {
+            ...infisicalImportData.secrets[indexOfExistingSecret],
+            value: secretData.val || ""
+          };
+
+          infisicalImportData.secrets[indexOfExistingSecret] = newSecret;
+
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
         infisicalImportData.secrets.push({
           id: randomUUID(),
           name: secretName,
