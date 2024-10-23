@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<void> {
         ...el,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore-error this is valid ts
-        permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(unpackRules(el.permissions))))
+        permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(unpackRules(el.permissions), true)))
       }));
     if (updatedDocs.length) {
       for (let i = 0; i < updatedDocs.length; i += CHUNK_SIZE) {
