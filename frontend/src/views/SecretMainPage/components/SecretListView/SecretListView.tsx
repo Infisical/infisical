@@ -17,7 +17,7 @@ import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddSh
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter } from "../../SecretMainPage.types";
-import { SecretDetailSidebar } from "./SecretDetaiSidebar";
+import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
