@@ -95,7 +95,7 @@ export const IdentityRoleDetailsSection = ({
             <THead>
               <Tr>
                 <Th>Role</Th>
-                <Th>Type</Th>
+                <Th>Duration</Th>
                 <Th className="w-5" />
               </Tr>
             </THead>

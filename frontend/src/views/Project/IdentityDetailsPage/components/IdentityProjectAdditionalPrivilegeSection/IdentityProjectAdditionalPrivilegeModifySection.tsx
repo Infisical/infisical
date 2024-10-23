@@ -274,7 +274,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               <Popover>
                 <PopoverTrigger disabled={isIdentityEditDisabled} asChild>
                   <div className="w-full max-w-md flex-grow">
-                    <FormLabel label="Access Type" />
+                    <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button
                         variant="outline_bg"

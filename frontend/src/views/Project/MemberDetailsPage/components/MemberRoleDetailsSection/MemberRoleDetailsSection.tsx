@@ -39,11 +39,13 @@ import { MemberRoleModify } from "./MemberRoleModify";
 type Props = {
   membershipDetails: TWorkspaceUser;
   isMembershipDetailsLoading?: boolean;
+  onOpenUpgradeModal: () => void;
 };
 
 export const MemberRoleDetailsSection = ({
   membershipDetails,
-  isMembershipDetailsLoading
+  isMembershipDetailsLoading,
+  onOpenUpgradeModal
 }: Props) => {
   const { user } = useUser();
   const userId = user?.id;
@@ -106,7 +108,7 @@ export const MemberRoleDetailsSection = ({
             <THead>
               <Tr>
                 <Th>Role</Th>
-                <Th>Type</Th>
+                <Th>Duration</Th>
                 <Th className="w-5" />
               </Tr>
             </THead>
@@ -213,7 +215,7 @@ export const MemberRoleDetailsSection = ({
           title="Roles"
           subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
         >
-          <MemberRoleModify projectMember={membershipDetails} onOpenUpgradeModal={() => {}} />
+          <MemberRoleModify projectMember={membershipDetails}  onOpenUpgradeModal={onOpenUpgradeModal} />
         </ModalContent>
       </Modal>
     </div>

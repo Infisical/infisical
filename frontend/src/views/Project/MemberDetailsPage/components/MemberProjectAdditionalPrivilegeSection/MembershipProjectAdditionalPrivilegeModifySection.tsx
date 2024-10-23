@@ -272,7 +272,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
               <Popover>
                 <PopoverTrigger disabled={isMemberEditDisabled} asChild>
                   <div className="w-full max-w-md flex-grow">
-                    <FormLabel label="Access Type" />
+                    <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button
                         variant="outline_bg"

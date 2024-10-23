@@ -137,7 +137,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                   <THead>
                     <Tr>
                       <Th>Name</Th>
-                      <Th>Type</Th>
+                      <Th>Duration</Th>
                       <Th className="w-5" />
                     </Tr>
                   </THead>

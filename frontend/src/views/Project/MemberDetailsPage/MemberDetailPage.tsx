@@ -3,11 +3,24 @@ import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, EmptyState, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  Button,
+  DeleteActionModal,
+  EmptyState,
+  Spinner,
+  UpgradePlanModal
+} from "@app/components/v2";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useWorkspace
+} from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { useGetWorkspaceUserDetails } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks";
+import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
 import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
@@ -15,6 +28,7 @@ import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection"
 export const MemberDetailsPage = withProjectPermission(
   () => {
     const router = useRouter();
+    const { currentOrg } = useOrganization();
     const { currentWorkspace } = useWorkspace();
 
     const workspaceId = currentWorkspace?.id || "";
@@ -22,6 +36,38 @@ export const MemberDetailsPage = withProjectPermission(
 
     const { data: membershipDetails, isLoading: isMembershipDetailsLoading } =
       useGetWorkspaceUserDetails(workspaceId, membershipId);
+
+    const { mutateAsync: removeUserFromWorkspace, isLoading: isRemovingUserFromWorkspace } =
+      useDeleteUserFromWorkspace();
+
+    const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
+      "removeMember",
+      "upgradePlan"
+    ] as const);
+
+    const handleRemoveUser = async () => {
+      if (!currentOrg?.id || !currentWorkspace?.id || !membershipDetails?.user?.username) return;
+
+      try {
+        await removeUserFromWorkspace({
+          workspaceId: currentWorkspace.id,
+          usernames: [membershipDetails?.user?.username],
+          orgId: currentOrg.id
+        });
+        createNotification({
+          text: "Successfully removed user from project",
+          type: "success"
+        });
+        router.push(`/project/${currentWorkspace?.id}/members`);
+      } catch (error) {
+        console.error(error);
+        createNotification({
+          text: "Failed to remove user from the project",
+          type: "error"
+        });
+      }
+      handlePopUpClose("removeMember");
+    };
 
     if (isMembershipDetailsLoading) {
       return (
@@ -65,6 +111,8 @@ export const MemberDetailsPage = withProjectPermission(
                           variant="outline_bg"
                           size="xs"
                           isDisabled={!isAllowed}
+                          isLoading={isRemovingUserFromWorkspace}
+                          onClick={() => handlePopUpOpen("removeMember")}
                         >
                           Remove User
                         </Button>
@@ -100,8 +148,26 @@ export const MemberDetailsPage = withProjectPermission(
             <MemberRoleDetailsSection
               membershipDetails={membershipDetails}
               isMembershipDetailsLoading={isMembershipDetailsLoading}
+              onOpenUpgradeModal={() =>
+                handlePopUpOpen("upgradePlan", {
+                  description:
+                    "You can assign custom roles to members if you upgrade your Infisical plan."
+                })
+              }
             />
             <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+            <DeleteActionModal
+              isOpen={popUp.removeMember.isOpen}
+              deleteKey="remove"
+              title="Do you want to remove this user from the project?"
+              onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
+              onDeleteApproved={handleRemoveUser}
+            />
+            <UpgradePlanModal
+              isOpen={popUp.upgradePlan.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+              text={(popUp.upgradePlan?.data as { description: string })?.description}
+            />
           </>
         ) : (
           <EmptyState title="Error: Unable to find the user." className="py-12" />
