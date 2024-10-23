@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { Alert, Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
@@ -142,6 +142,10 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
             )}
           </div>
         </div>
+        <Alert
+          title="MAIDUL: Hey, Secrets now split."
+          className="mt-4 border-primary/50 bg-primary/10"
+        />
         <div className="py-4">
           {!isLoading && <PermissionEmptyState />}
           {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
