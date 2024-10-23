@@ -8,21 +8,47 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-const formSchema = z.object({
-  provider: z.object({
-    url: z.string().trim().min(1),
-    binddn: z.string().trim().min(1),
-    bindpass: z.string().trim().min(1),
-    ca: z.string().optional(),
+enum CredentialType {
+  Dynamic = "dynamic",
+  Static = "static"
+}
 
-    creationLdif: z.string().min(1),
-    revocationLdif: z.string().min(1),
-    rollbackLdif: z.string().optional()
-  }),
+const credentialTypes = [
+  {
+    label: "Dynamic",
+    value: CredentialType.Dynamic
+  },
+  {
+    label: "Static",
+    value: CredentialType.Static
+  }
+] as const;
+
+const formSchema = z.object({
+  provider: z.discriminatedUnion("credentialType", [
+    z.object({
+      url: z.string().trim().min(1),
+      binddn: z.string().trim().min(1),
+      bindpass: z.string().trim().min(1),
+      ca: z.string().optional(),
+      credentialType: z.literal(CredentialType.Dynamic),
+      creationLdif: z.string().min(1),
+      revocationLdif: z.string().min(1),
+      rollbackLdif: z.string().optional()
+    }),
+    z.object({
+      url: z.string().trim().min(1),
+      binddn: z.string().trim().min(1),
+      bindpass: z.string().trim().min(1),
+      ca: z.string().optional(),
+      credentialType: z.literal(CredentialType.Static),
+      rotationLdif: z.string().min(1)
+    })
+  ]),
 
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -67,6 +93,8 @@ export const LdapInputForm = ({
   const {
     control,
     formState: { isSubmitting },
+    setValue,
+    watch,
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
@@ -78,10 +106,13 @@ export const LdapInputForm = ({
         ca: "",
         creationLdif: "",
         revocationLdif: "",
-        rollbackLdif: ""
+        rollbackLdif: "",
+        credentialType: CredentialType.Dynamic
       }
     }
   });
+
+  const selectedCredentialType = watch("provider.credentialType");
 
   const createDynamicSecret = useCreateDynamicSecret();
 
@@ -240,45 +271,105 @@ export const LdapInputForm = ({
 
                 <Controller
                   control={control}
-                  name="provider.creationLdif"
+                  name="provider.credentialType"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Creation LDIF"
+                      label="Credential Type"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
+                      className="w-full"
                     >
-                      <TextArea {...field} />
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        className="w-full"
+                        onValueChange={(e) => {
+                          const ldifFields = [
+                            "provider.creationLdif",
+                            "provider.revocationLdif",
+                            "provider.rollbackLdif"
+                          ] as const;
+
+                          ldifFields.forEach((f) => {
+                            setValue(f, "");
+                          });
+
+                          field.onChange(e);
+                        }}
+                      >
+                        {credentialTypes.map((credentialType) => (
+                          <SelectItem
+                            value={credentialType.value}
+                            key={`credential-type-${credentialType.value}`}
+                          >
+                            {credentialType.label}
+                          </SelectItem>
+                        ))}
+                      </Select>
                     </FormControl>
                   )}
                 />
 
-                <Controller
-                  control={control}
-                  name="provider.revocationLdif"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Revocation LDIF"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <TextArea {...field} />
-                    </FormControl>
-                  )}
-                />
+                {selectedCredentialType === CredentialType.Dynamic && (
+                  <>
+                    <Controller
+                      control={control}
+                      name="provider.creationLdif"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Creation LDIF"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <TextArea {...field} />
+                        </FormControl>
+                      )}
+                    />
 
-                <Controller
-                  control={control}
-                  name="provider.rollbackLdif"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Rollback LDIF"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <TextArea {...field} />
-                    </FormControl>
-                  )}
-                />
+                    <Controller
+                      control={control}
+                      name="provider.revocationLdif"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Revocation LDIF"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <TextArea {...field} />
+                        </FormControl>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="provider.rollbackLdif"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Rollback LDIF"
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                        >
+                          <TextArea {...field} />
+                        </FormControl>
+                      )}
+                    />
+                  </>
+                )}
+                {selectedCredentialType === CredentialType.Static && (
+                  <Controller
+                    control={control}
+                    name="provider.rotationLdif"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Rotation LDIF"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <TextArea {...field} />
+                      </FormControl>
+                    )}
+                  />
+                )}
               </div>
             </div>
           </div>
