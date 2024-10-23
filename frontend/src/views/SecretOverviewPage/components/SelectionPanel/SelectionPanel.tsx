@@ -89,7 +89,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
         )
       ) {
         await Promise.all(
-          Object.keys(selectedEntries.folder).map(async (folderRecord) => {
+          Object.values(selectedEntries.folder).map(async (folderRecord) => {
             const folder = folderRecord[env.slug];
             if (folder) {
               processedEntries += 1;
@@ -104,7 +104,7 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
         );
       }
 
-      const secretsToDelete = Object.keys(selectedEntries.secret).reduce(
+      const secretsToDelete = Object.values(selectedEntries.secret).reduce(
         (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
           const entry = secretRecord[env.slug];
           const canDeleteSecret = permission.can(
