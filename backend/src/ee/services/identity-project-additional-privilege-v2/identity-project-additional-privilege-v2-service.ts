@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import ms from "ms";
 
+import { TableName } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { unpackPermissions } from "@app/server/routes/santizedSchemas/permission";
@@ -322,9 +323,12 @@ export const identityProjectAdditionalPrivilegeV2ServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
 
-    const identityPrivileges = await identityProjectAdditionalPrivilegeDAL.find({
-      projectMembershipId: identityProjectMembership.id
-    });
+    const identityPrivileges = await identityProjectAdditionalPrivilegeDAL.find(
+      {
+        projectMembershipId: identityProjectMembership.id
+      },
+      { sort: [[`${TableName.IdentityProjectAdditionalPrivilege}.slug` as "slug", "asc"]] }
+    );
     return identityPrivileges;
   };
 

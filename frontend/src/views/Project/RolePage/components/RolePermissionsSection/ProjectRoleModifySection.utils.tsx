@@ -234,36 +234,53 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             inverted,
             [ProjectPermissionDynamicSecretActions.Lease]: canLease
           });
-        } else {
-          // for other subjects
-          const canRead = action.includes(ProjectPermissionActions.Read);
-          const canEdit = action.includes(ProjectPermissionActions.Edit);
-          const canDelete = action.includes(ProjectPermissionActions.Delete);
-          const canCreate = action.includes(ProjectPermissionActions.Create);
-          formVal[subject]!.push({
-            read: canRead,
-            create: canCreate,
-            edit: canEdit,
-            delete: canDelete,
-            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-            inverted
-          });
+          return;
         }
-      } else {
-        // deduplicate multiple rules for other policies
-        // because they don't have condition it doesn't make sense for multiple rules
+        // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
         const canDelete = action.includes(ProjectPermissionActions.Delete);
         const canCreate = action.includes(ProjectPermissionActions.Create);
 
-        if (!formVal[subject]) formVal[subject] = [{}];
-        if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
-        if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
-        if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
-        if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
+        // remove this condition later
+        // keeping when old routes create permission with folder read
+        if (
+          subject === ProjectPermissionSub.SecretFolders &&
+          canRead &&
+          !canEdit &&
+          !canDelete &&
+          !canCreate
+        ) {
+          return;
+        }
+
+        formVal[subject]!.push({
+          read: canRead,
+          create: canCreate,
+          edit: canEdit,
+          delete: canDelete,
+          conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+          inverted
+        });
+        return;
       }
-    } else if (subject === ProjectPermissionSub.Project) {
+
+      // deduplicate multiple rules for other policies
+      // because they don't have condition it doesn't make sense for multiple rules
+      const canRead = action.includes(ProjectPermissionActions.Read);
+      const canEdit = action.includes(ProjectPermissionActions.Edit);
+      const canDelete = action.includes(ProjectPermissionActions.Delete);
+      const canCreate = action.includes(ProjectPermissionActions.Create);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+      if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
+      if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
+      if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
+      if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Project) {
       const canEdit = action.includes(ProjectPermissionActions.Edit);
       const canDelete = action.includes(ProjectPermissionActions.Delete);
       if (!formVal[subject]) formVal[subject] = [{}];
@@ -271,7 +288,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       // from above statement we are sure it won't be undefined
       if (canEdit) formVal[subject as ProjectPermissionSub.Project]![0].edit = true;
       if (canDelete) formVal[subject as ProjectPermissionSub.Member]![0].delete = true;
-    } else if (subject === ProjectPermissionSub.SecretRollback) {
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.SecretRollback) {
       const canRead = action.includes(ProjectPermissionActions.Read);
       const canCreate = action.includes(ProjectPermissionActions.Create);
       if (!formVal[subject]) formVal[subject] = [{}];
@@ -279,7 +299,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       // from above statement we are sure it won't be undefined
       if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
-    } else if (subject === ProjectPermissionSub.Cmek) {
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Cmek) {
       const canRead = action.includes(ProjectPermissionCmekActions.Read);
       const canEdit = action.includes(ProjectPermissionCmekActions.Edit);
       const canDelete = action.includes(ProjectPermissionCmekActions.Delete);

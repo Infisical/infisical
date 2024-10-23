@@ -2,6 +2,7 @@ import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
+import { TableName } from "@app/db/schemas";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
@@ -294,10 +295,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find({
-      userId: projectMembership.userId,
-      projectId: projectMembership.projectId
-    });
+    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find(
+      {
+        userId: projectMembership.userId,
+        projectId: projectMembership.projectId
+      },
+      { sort: [[`${TableName.ProjectUserAdditionalPrivilege}.slug` as "slug", "asc"]] }
+    );
     return userPrivileges;
   };
 

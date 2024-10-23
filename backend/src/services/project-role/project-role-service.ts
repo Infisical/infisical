@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -193,7 +193,10 @@ export const projectRoleServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
-    const customRoles = await projectRoleDAL.find({ projectId });
+    const customRoles = await projectRoleDAL.find(
+      { projectId },
+      { sort: [[`${TableName.ProjectRoles}.slug` as "slug", "asc"]] }
+    );
     const roles = [...getPredefinedRoles(projectId), ...(customRoles || [])];
 
     return roles;
