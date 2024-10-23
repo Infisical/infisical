@@ -371,7 +371,8 @@ export const integrationAuthServiceFactory = ({
     let accessId: string | undefined;
     // this means its not access token based
     if (
-      integrationAuth.integration === Integrations.AWS_SECRET_MANAGER &&
+      (integrationAuth.integration === Integrations.AWS_SECRET_MANAGER ||
+        integrationAuth.integration === Integrations.AWS_PARAMETER_STORE) &&
       (shouldUseSecretV2Bridge
         ? integrationAuth.encryptedAwsAssumeIamRoleArn
         : integrationAuth.awsAssumeIamRoleArnCipherText)

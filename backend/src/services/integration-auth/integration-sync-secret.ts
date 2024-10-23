@@ -555,24 +555,63 @@ const syncSecretsAWSParameterStore = async ({
   secrets,
   accessId,
   accessToken,
-  projectId
+  projectId,
+  awsAssumeRoleArn
 }: {
   integration: TIntegrations & { secretPath: string; environment: { slug: string } };
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  awsAssumeRoleArn: string | null;
   projectId?: string;
 }) => {
+  const appCfg = getConfig();
   let response: { isSynced: boolean; syncMessage: string } | null = null;
 
-  if (!accessId) {
-    throw new Error("AWS access ID is required");
+  if (!accessId && !awsAssumeRoleArn) {
+    throw new Error("AWS access ID/AWS Assume Role is required");
   }
+
+  let accessKeyId = "";
+  let secretAccessKey = "";
+  let sessionToken;
+  if (awsAssumeRoleArn) {
+    const client = new STSClient({
+      region: integration.region as string,
+      credentials:
+        appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
+          ? {
+              accessKeyId: appCfg.CLIENT_ID_AWS_INTEGRATION,
+              secretAccessKey: appCfg.CLIENT_SECRET_AWS_INTEGRATION
+            }
+          : undefined
+    });
+    const command = new AssumeRoleCommand({
+      RoleArn: awsAssumeRoleArn,
+      RoleSessionName: `infisical-parameter-store-${randomUUID()}`,
+      DurationSeconds: 900, // 15mins
+      ExternalId: projectId
+    });
+    const assumeRes = await client.send(command);
+
+    if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
+      throw new Error("Failed to assume role");
+    }
+
+    accessKeyId = assumeRes.Credentials?.AccessKeyId;
+    secretAccessKey = assumeRes.Credentials?.SecretAccessKey;
+    sessionToken = assumeRes.Credentials?.SessionToken;
+  } else {
+    accessKeyId = accessId as string;
+    secretAccessKey = accessToken;
+  }
+
   const config = new AWS.Config({
     region: integration.region as string,
     credentials: {
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
     }
   });
 
@@ -4047,6 +4086,7 @@ export const syncIntegrationSecrets = async ({
         secrets,
         accessId,
         accessToken,
+        awsAssumeRoleArn,
         projectId
       });
       break;
