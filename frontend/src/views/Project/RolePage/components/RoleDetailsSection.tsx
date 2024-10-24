@@ -19,7 +19,7 @@ export const RoleDetailsSection = ({ roleSlug, handlePopUpOpen }: Props) => {
   });
 
   const { currentWorkspace } = useWorkspace();
-  const { data } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
+  const { data } = useGetProjectRoleBySlug(currentWorkspace?.id ?? "", roleSlug as string);
 
   const isCustomRole = !["admin", "member", "viewer", "no-access"].includes(data?.slug ?? "");
 

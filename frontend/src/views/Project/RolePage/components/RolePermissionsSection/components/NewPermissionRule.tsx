@@ -14,8 +14,9 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 
 import {
-  formSchema,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
+  projectRoleFormSchema,
   TFormSchema
 } from "../ProjectRoleModifySection.utils";
 
@@ -31,7 +32,9 @@ export const NewPermissionRule = ({ onClose }: Props) => {
     permissions: NonNullable<TFormSchema["permissions"]>;
   }>({
     resolver: zodResolver(
-      formSchema.pick({ permissions: true }).extend({ type: z.nativeEnum(ProjectPermissionSub) })
+      projectRoleFormSchema
+        .pick({ permissions: true })
+        .extend({ type: z.nativeEnum(ProjectPermissionSub) })
     ),
     defaultValues: {
       type: ProjectPermissionSub.Secrets
@@ -89,7 +92,7 @@ export const NewPermissionRule = ({ onClose }: Props) => {
         <Button
           onClick={form.handleSubmit((el) => {
             const rootPolicyValue = rootForm.getValues("permissions")?.[el.type];
-            if (rootPolicyValue && selectedSubject === ProjectPermissionSub.Secrets) {
+            if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
               rootForm.setValue(
                 `permissions.${el.type}`,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

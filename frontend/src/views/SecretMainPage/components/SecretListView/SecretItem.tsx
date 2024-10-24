@@ -81,15 +81,6 @@ export const SecretItem = memo(
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
-    const isReadOnly =
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      ) &&
-      permission.cannot(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
 
     const {
       handleSubmit,
@@ -107,6 +98,8 @@ export const SecretItem = memo(
       resolver: zodResolver(formSchema)
     });
 
+    const secretName = watch("key");
+
     const secretReminderRepeatDays = watch("reminderRepeatDays");
     const secretReminderNote = watch("reminderNote");
 
@@ -118,10 +111,32 @@ export const SecretItem = memo(
       (prev, curr) => ({ ...prev, [curr.id]: true }),
       {}
     );
+    const selectedTagSlugs = selectedTags.map((i) => i.slug);
+
     const { fields, append, remove } = useFieldArray({
       control,
       name: "tags"
     });
+
+    const isReadOnly =
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName,
+          secretTags: selectedTagSlugs
+        })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName,
+          secretTags: selectedTagSlugs
+        })
+      );
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
     const [createReminderFormOpen, setCreateReminderFormOpen] = useToggle(false);
@@ -309,7 +324,12 @@ export const SecretItem = memo(
                   <DropdownMenu>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
                     >
                       {(isAllowed) => (
                         <DropdownMenuTrigger asChild disabled={!isAllowed}>
@@ -384,7 +404,12 @@ export const SecretItem = memo(
                   </DropdownMenu>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName,
+                      secretTags: selectedTagSlugs
+                    })}
                     renderTooltip
                     allowedLabel="Override"
                   >
@@ -440,7 +465,12 @@ export const SecretItem = memo(
                   <Popover>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}
-                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
                     >
                       {(isAllowed) => (
                         <PopoverTrigger asChild disabled={!isAllowed}>
@@ -519,7 +549,12 @@ export const SecretItem = memo(
                     </Tooltip>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Delete}
-                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
                       renderTooltip
                       allowedLabel="Delete"
                     >

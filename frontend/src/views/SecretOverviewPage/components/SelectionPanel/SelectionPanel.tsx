@@ -57,7 +57,12 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
   const shouldShowDelete = userAvailableEnvs.some((env) =>
     permission.can(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: env.slug,
+        secretPath,
+        secretName: "*",
+        secretTags: ["*"]
+      })
     )
   );
 
@@ -76,34 +81,43 @@ export const SelectionPanel = ({ secretPath, resetSelectedEntries, selectedEntri
 
     const promises = userAvailableEnvs.map(async (env) => {
       // additional check: ensure that bulk delete is only executed on envs that user has access to
+
       if (
-        permission.cannot(
+        permission.can(
           ProjectPermissionActions.Delete,
-          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+          subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
-        return;
+        await Promise.all(
+          Object.values(selectedEntries.folder).map(async (folderRecord) => {
+            const folder = folderRecord[env.slug];
+            if (folder) {
+              processedEntries += 1;
+              await deleteFolder({
+                folderId: folder?.id,
+                path: secretPath,
+                environment: env.slug,
+                projectId: workspaceId
+              });
+            }
+          })
+        );
       }
-
-      await Promise.all(
-        Object.values(selectedEntries.folder).map(async (folderRecord) => {
-          const folder = folderRecord[env.slug];
-          if (folder) {
-            processedEntries += 1;
-            await deleteFolder({
-              folderId: folder?.id,
-              path: secretPath,
-              environment: env.slug,
-              projectId: workspaceId
-            });
-          }
-        })
-      );
 
       const secretsToDelete = Object.values(selectedEntries.secret).reduce(
         (accum: TDeleteSecretBatchDTO["secrets"], secretRecord) => {
           const entry = secretRecord[env.slug];
-          if (entry) {
+          const canDeleteSecret = permission.can(
+            ProjectPermissionActions.Delete,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: env.slug,
+              secretPath,
+              secretName: entry.key,
+              secretTags: (entry?.tags || []).map((i) => i.slug)
+            })
+          );
+
+          if (entry && canDeleteSecret) {
             return [
               ...accum,
               {

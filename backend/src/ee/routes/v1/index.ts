@@ -81,9 +81,9 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
   await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
+  await server.register(registerUserAdditionalPrivilegeRouter, { prefix: "/user-project-additional-privilege" });
   await server.register(
     async (privilegeRouter) => {
-      await privilegeRouter.register(registerUserAdditionalPrivilegeRouter, { prefix: "/users" });
       await privilegeRouter.register(registerIdentityProjectAdditionalPrivilegeRouter, { prefix: "/identity" });
     },
     { prefix: "/additional-privilege" }

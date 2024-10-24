@@ -5,19 +5,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { Alert, Button, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 
-import { GeneralPermissionOptions } from "./components/GeneralPermissionOptions";
+import { GeneralPermissionConditions } from "./components/GeneralPermissionConditions";
+import { GeneralPermissionPolicies } from "./components/GeneralPermissionPolicies";
 import { NewPermissionRule } from "./components/NewPermissionRule";
 import { SecretPermissionConditions } from "./components/SecretPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import {
   formRolePermission2API,
-  formSchema,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
+  projectRoleFormSchema,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
@@ -27,18 +29,32 @@ type Props = {
   isDisabled?: boolean;
 };
 
+export const renderConditionalComponents = (
+  subject: ProjectPermissionSub,
+  isDisabled?: boolean
+) => {
+  if (subject === ProjectPermissionSub.Secrets)
+    return <SecretPermissionConditions isDisabled={isDisabled} />;
+
+  if (isConditionalSubjects(subject)) {
+    return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
+  }
+
+  return undefined;
+};
+
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { popUp, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
-  const projectSlug = currentWorkspace?.slug || "";
+  const projectId = currentWorkspace?.id || "";
   const { data: role, isLoading } = useGetProjectRoleBySlug(
-    currentWorkspace?.slug ?? "",
+    currentWorkspace?.id ?? "",
     roleSlug as string
   );
 
   const form = useForm<TFormSchema>({
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(projectRoleFormSchema)
   });
 
   const {
@@ -51,14 +67,13 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const onSubmit = async (el: TFormSchema) => {
     try {
-      if (!projectSlug || !role?.id) return;
+      if (!projectId || !role?.id) return;
       await updateRole({
         id: role?.id as string,
-        projectSlug,
+        projectId,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });
-
       createNotification({ type: "success", text: "Successfully updated role" });
     } catch (err) {
       console.log(err);
@@ -127,20 +142,22 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
             )}
           </div>
         </div>
+        <Alert
+          title="Infisical's permissions are now more granular. You can set separate permissions for folders, dynamic secrets, and imports. No changes required for existing APIs and clients."
+          className="mt-4 border-primary/50 bg-primary/10"
+        />
         <div className="py-4">
           {!isLoading && <PermissionEmptyState />}
           {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-            <GeneralPermissionOptions
+            <GeneralPermissionPolicies
               subject={subject}
               actions={PROJECT_PERMISSION_OBJECT[subject].actions}
               title={PROJECT_PERMISSION_OBJECT[subject].title}
               key={`project-permission-${subject}`}
               isDisabled={isDisabled}
             >
-              {subject === ProjectPermissionSub.Secrets ? (
-                <SecretPermissionConditions isDisabled={isDisabled} />
-              ) : undefined}
-            </GeneralPermissionOptions>
+              {renderConditionalComponents(subject, isDisabled)}
+            </GeneralPermissionPolicies>
           ))}
         </div>
       </FormProvider>

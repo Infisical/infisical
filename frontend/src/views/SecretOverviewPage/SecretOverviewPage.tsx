@@ -72,7 +72,10 @@ import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 import { SecretOverviewDynamicSecretRow } from "@app/views/SecretOverviewPage/components/SecretOverviewDynamicSecretRow";
-import { SecretOverviewTableRow } from "@app/views/SecretOverviewPage/components/SecretOverviewTableRow";
+import {
+  SecretNoAccessOverviewTableRow,
+  SecretOverviewTableRow
+} from "@app/views/SecretOverviewPage/components/SecretOverviewTableRow";
 import { SecretTableResourceCount } from "@app/views/SecretOverviewPage/components/SecretTableResourceCount";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -210,7 +213,10 @@ export const SecretOverviewPage = () => {
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
-    totalCount = 0
+    totalCount = 0,
+    totalUniqueFoldersInPage,
+    totalUniqueSecretsInPage,
+    totalUniqueDynamicSecretsInPage
   } = overview ?? {};
 
   useResetPageHelper({
@@ -275,7 +281,7 @@ export const SecretOverviewPage = () => {
       if (
         permission.can(
           ProjectPermissionActions.Edit,
-          subject(ProjectPermissionSub.Secrets, { environment: env.slug, secretPath })
+          subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
         const folder = getFolderByNameAndEnv(oldFolderName, env.slug);
@@ -478,20 +484,13 @@ export const SecretOverviewPage = () => {
       const pathSegment = secretPath.split("/").filter(Boolean);
       const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
       const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.rules.some((rule) =>
-        (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
-      )
-        ? permission.can(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.SecretFolders, {
-              environment: slug,
-              secretPath: parentPath
-            })
-          )
-        : permission.can(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath: parentPath })
-          );
+      const canCreateFolder = permission.can(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, {
+          environment: slug,
+          secretPath: parentPath
+        })
+      );
       if (folderName && parentPath && canCreateFolder) {
         await createFolder({
           projectId: workspaceId,
@@ -822,7 +821,7 @@ export const SecretOverviewPage = () => {
                       <div className="flex flex-col space-y-1 p-1.5">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Create}
-                          a={subject(ProjectPermissionSub.Secrets, { secretPath })}
+                          a={ProjectPermissionSub.SecretFolders}
                         >
                           {(isAllowed) => (
                             <Button
@@ -1047,6 +1046,16 @@ export const SecretOverviewPage = () => {
                         scrollOffset={debouncedScrollOffset}
                       />
                     ))}
+                    <SecretNoAccessOverviewTableRow
+                      environments={visibleEnvs}
+                      count={Math.max(
+                        (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                          (totalUniqueFoldersInPage || 0) -
+                          (totalUniqueDynamicSecretsInPage || 0) -
+                          (totalUniqueSecretsInPage || 0),
+                        0
+                      )}
+                    />
                   </>
                 )}
               </TBody>

@@ -216,9 +216,9 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
     resolver: zodResolver(formSchema)
   });
 
-  const projectSlug = currentWorkspace?.slug || "";
-
-  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
+  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(
+    currentWorkspace?.id ?? ""
+  );
   const userRolesGroupBySlug = groupBy(roles, ({ customRoleSlug, role }) => customRoleSlug || role);
 
   const updateGroupWorkspaceRole = useUpdateGroupWorkspaceRole();

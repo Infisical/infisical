@@ -9,8 +9,9 @@ import {
   SecretApprovalPoliciesSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { UnpackedPermissionSchema } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+
+import { UnpackedPermissionSchema } from "./santizedSchemas/permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
@@ -149,11 +150,42 @@ export const ProjectSpecificPrivilegePermissionSchema = z.object({
 });
 
 export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.extend({
-  permissions: UnpackedPermissionSchema.array()
+  permissions: UnpackedPermissionSchema.array().transform((permissions) =>
+    permissions.filter(
+      (caslRule) =>
+        ![
+          ProjectPermissionSub.DynamicSecrets,
+          ProjectPermissionSub.SecretImports,
+          ProjectPermissionSub.SecretFolders
+        ].includes((caslRule?.subject as ProjectPermissionSub) || "")
+    )
+  )
 });
 
 export const SanitizedRoleSchema = ProjectRolesSchema.extend({
   permissions: UnpackedPermissionSchema.array()
+});
+
+export const SanitizedRoleSchemaV1 = ProjectRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array().transform((caslPermission) =>
+    // first map and remove other actions of folder permission
+    caslPermission
+      .map((caslRule) =>
+        caslRule.subject === ProjectPermissionSub.SecretFolders
+          ? {
+              ...caslRule,
+              action: caslRule.action.filter((caslAction) => caslAction === ProjectPermissionActions.Read)
+            }
+          : caslRule
+      )
+      // now filter out dynamic secret, secret import permission
+      .filter(
+        (caslRule) =>
+          ![ProjectPermissionSub.DynamicSecrets, ProjectPermissionSub.SecretImports].includes(
+            (caslRule?.subject as ProjectPermissionSub) || ""
+          ) && caslRule.action.length > 0
+      )
+  )
 });
 
 export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({

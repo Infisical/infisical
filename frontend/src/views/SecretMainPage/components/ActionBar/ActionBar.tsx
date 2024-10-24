@@ -47,8 +47,8 @@ import {
 } from "@app/components/v2";
 import {
   ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
-  useProjectPermission,
   useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -122,12 +122,6 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
-
-  const { permission } = useProjectPermission();
-
-  const shouldCheckFolderPermission = permission.rules.some((rule) =>
-    (rule.subject as ProjectPermissionSub[]).includes(ProjectPermissionSub.SecretFolders)
-  );
 
   const handleFolderCreate = async (folderName: string) => {
     try {
@@ -436,7 +430,12 @@ export const ActionBar = ({
         <div className="flex items-center">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
           >
             {(isAllowed) => (
               <Button
@@ -467,12 +466,7 @@ export const ActionBar = ({
               <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(
-                    shouldCheckFolderPermission
-                      ? ProjectPermissionSub.SecretFolders
-                      : ProjectPermissionSub.Secrets,
-                    { environment, secretPath }
-                  )}
+                  a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -491,8 +485,13 @@ export const ActionBar = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
-                  I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  I={ProjectPermissionDynamicSecretActions.CreateRootCredential}
+                  a={subject(ProjectPermissionSub.DynamicSecrets, {
+                    environment,
+                    secretPath,
+                    secretName: "*",
+                    secretTags: ["*"]
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -516,7 +515,10 @@ export const ActionBar = ({
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.SecretImports, {
+                    environment,
+                    secretPath
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -556,7 +558,12 @@ export const ActionBar = ({
           </div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
             renderTooltip
             allowedLabel="Move"
           >
@@ -575,7 +582,12 @@ export const ActionBar = ({
           </ProjectPermissionCan>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: "*",
+              secretTags: ["*"]
+            })}
             renderTooltip
             allowedLabel="Delete"
           >

@@ -1,11 +1,16 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TableName } from "@app/db/schemas";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "./project-user-additional-privilege-dal";
 import {
   ProjectUserAdditionalPrivilegeTemporaryMode,
@@ -26,6 +31,11 @@ export type TProjectUserAdditionalPrivilegeServiceFactory = ReturnType<
   typeof projectUserAdditionalPrivilegeServiceFactory
 >;
 
+const unpackPermissions = (permissions: unknown) =>
+  UnpackedPermissionSchema.array().parse(
+    unpackRules((permissions || []) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+  );
+
 export const projectUserAdditionalPrivilegeServiceFactory = ({
   projectUserAdditionalPrivilegeDAL,
   projectMembershipDAL,
@@ -43,7 +53,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   }: TCreateUserPrivilegeDTO) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
     if (!projectMembership)
-      throw new NotFoundError({ message: `Project membership with ID '${projectMembershipId}' not found` });
+      throw new NotFoundError({ message: `Project membership with ID ${projectMembershipId} found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -53,22 +63,41 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    const { permission: targetUserPermission } = await permissionService.getProjectPermission(
+      ActorType.USER,
+      projectMembership.userId,
+      projectMembership.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    // we need to validate that the privilege given is not higher than the assigning users permission
+    // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
+    targetUserPermission.update(targetUserPermission.rules.concat(customPermission));
+    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetUserPermission);
+    if (!hasRequiredPriviledges)
+      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
     const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({
       slug,
       projectId: projectMembership.projectId,
       userId: projectMembership.userId
     });
-    if (existingSlug) throw new BadRequestError({ message: "Additional privilege of provided slug exist" });
+    if (existingSlug)
+      throw new BadRequestError({ message: `Additional privilege with provided slug ${slug} already exists` });
 
+    const packedPermission = JSON.stringify(packRules(customPermission));
     if (!dto.isTemporary) {
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.create({
         userId: projectMembership.userId,
         projectId: projectMembership.projectId,
         slug,
-        permissions: customPermission
+        permissions: packedPermission
       });
-      return additionalPrivilege;
+      return {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const relativeTempAllocatedTimeInMs = ms(dto.temporaryRange);
@@ -76,14 +105,17 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       projectId: projectMembership.projectId,
       userId: projectMembership.userId,
       slug,
-      permissions: customPermission,
+      permissions: packedPermission,
       isTemporary: true,
       temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
       temporaryRange: dto.temporaryRange,
       temporaryAccessStartTime: new Date(dto.temporaryAccessStartTime),
       temporaryAccessEndTime: new Date(new Date(dto.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs)
     });
-    return additionalPrivilege;
+    return {
+      ...additionalPrivilege,
+      permissions: unpackPermissions(additionalPrivilege.permissions)
+    };
   };
 
   const updateById = async ({
@@ -96,7 +128,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   }: TUpdateUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege)
-      throw new NotFoundError({ message: `User additional privilege with ID '${privilegeId}' not found` });
+      throw new NotFoundError({ message: `User additional privilege with ID ${privilegeId} not found` });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
@@ -116,6 +148,20 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+    const { permission: targetUserPermission } = await permissionService.getProjectPermission(
+      ActorType.USER,
+      projectMembership.userId,
+      projectMembership.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    // we need to validate that the privilege given is not higher than the assigning users permission
+    // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
+    targetUserPermission.update(targetUserPermission.rules.concat(dto.permissions || []));
+    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetUserPermission);
+    if (!hasRequiredPriviledges)
+      throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
     if (dto?.slug) {
       const existingSlug = await projectUserAdditionalPrivilegeDAL.findOne({
@@ -124,36 +170,50 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         projectId: projectMembership.projectId
       });
       if (existingSlug && existingSlug.id !== userPrivilege.id)
-        throw new BadRequestError({ message: "Additional privilege of provided slug exist" });
+        throw new BadRequestError({ message: `Additional privilege with provided slug ${dto.slug} already exists` });
     }
 
     const isTemporary = typeof dto?.isTemporary !== "undefined" ? dto.isTemporary : userPrivilege.isTemporary;
+
+    const packedPermission = dto.permissions && JSON.stringify(packRules(dto.permissions));
     if (isTemporary) {
       const temporaryAccessStartTime = dto?.temporaryAccessStartTime || userPrivilege?.temporaryAccessStartTime;
       const temporaryRange = dto?.temporaryRange || userPrivilege?.temporaryRange;
       const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
-        ...dto,
+        slug: dto.slug,
+        permissions: packedPermission,
+        isTemporary: dto.isTemporary,
+        temporaryRange: dto.temporaryRange,
+        temporaryMode: dto.temporaryMode,
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
-      return additionalPrivilege;
+
+      return {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      };
     }
 
     const additionalPrivilege = await projectUserAdditionalPrivilegeDAL.updateById(userPrivilege.id, {
-      ...dto,
+      slug: dto.slug,
+      permissions: packedPermission,
       isTemporary: false,
       temporaryAccessStartTime: null,
       temporaryAccessEndTime: null,
       temporaryRange: null,
       temporaryMode: null
     });
-    return additionalPrivilege;
+    return {
+      ...additionalPrivilege,
+      permissions: unpackPermissions(additionalPrivilege.permissions)
+    };
   };
 
   const deleteById = async ({ actorId, actor, actorOrgId, actorAuthMethod, privilegeId }: TDeleteUserPrivilegeDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege)
-      throw new NotFoundError({ message: `User additional privilege with ID '${privilegeId}' not found` });
+      throw new NotFoundError({ message: `User additional privilege with ID ${privilegeId} not found` });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
@@ -174,7 +234,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
 
     const deletedPrivilege = await projectUserAdditionalPrivilegeDAL.deleteById(userPrivilege.id);
-    return deletedPrivilege;
+    return {
+      ...deletedPrivilege,
+      permissions: unpackPermissions(deletedPrivilege.permissions)
+    };
   };
 
   const getPrivilegeDetailsById = async ({
@@ -186,7 +249,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   }: TGetUserPrivilegeDetailsDTO) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege)
-      throw new NotFoundError({ message: `User additional privilege with ID '${privilegeId}' not found` });
+      throw new NotFoundError({ message: `User additional privilege with ID  ${privilegeId} not found` });
 
     const projectMembership = await projectMembershipDAL.findOne({
       userId: userPrivilege.userId,
@@ -206,7 +269,10 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    return userPrivilege;
+    return {
+      ...userPrivilege,
+      permissions: unpackPermissions(userPrivilege.permissions)
+    };
   };
 
   const listPrivileges = async ({
@@ -218,7 +284,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   }: TListUserPrivilegesDTO) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
     if (!projectMembership)
-      throw new NotFoundError({ message: `Project membership with ID '${projectMembershipId}' not found` });
+      throw new NotFoundError({ message: `Project membership with ID ${projectMembershipId} not found` });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -229,10 +295,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
 
-    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find({
-      userId: projectMembership.userId,
-      projectId: projectMembership.projectId
-    });
+    const userPrivileges = await projectUserAdditionalPrivilegeDAL.find(
+      {
+        userId: projectMembership.userId,
+        projectId: projectMembership.projectId
+      },
+      { sort: [[`${TableName.ProjectUserAdditionalPrivilege}.slug` as "slug", "asc"]] }
+    );
     return userPrivileges;
   };
 

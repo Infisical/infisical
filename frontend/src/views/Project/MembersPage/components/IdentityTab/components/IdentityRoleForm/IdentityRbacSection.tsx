@@ -65,8 +65,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
-  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
+  const { data: projectRoles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionActions.Edit,
@@ -301,7 +300,7 @@ export const IdentityRbacSection = ({ identityProjectMember, onOpenUpgradeModal 
                     variant="outline_bg"
                     className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                     ariaLabel="delete-role"
-                    isDisabled={isMemberEditDisabled}
+                    isDisabled={isMemberEditDisabled || selectedRoleList.fields.length === 1}
                     onClick={() => {
                       if (selectedRoleList.fields.length > 1) {
                         selectedRoleList.remove(index);

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
-import { useOrganization,useWorkspace } from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import {
   useAddIdentityToWorkspace,
   useGetIdentityProjectMemberships,
@@ -50,7 +50,7 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
   const projectId = watch("projectId");
   const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
   const { data: project } = useGetWorkspaceById(projectId);
-  const { data: roles } = useGetProjectRoles(project?.slug ?? "");
+  const { data: roles } = useGetProjectRoles(project?.id ?? "");
 
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();

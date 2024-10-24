@@ -5,31 +5,31 @@ export const GROUPS = {
     role: "The role of the group to create."
   },
   UPDATE: {
-    id: "The id of the group to update",
+    id: "The ID of the group to update.",
     name: "The new name of the group to update to.",
     slug: "The new slug of the group to update to.",
     role: "The new role of the group to update to."
   },
   DELETE: {
-    id: "The id of the group to delete",
-    slug: "The slug of the group to delete"
+    id: "The ID of the group to delete.",
+    slug: "The slug of the group to delete."
   },
   LIST_USERS: {
-    id: "The id of the group to list users for",
+    id: "The ID of the group to list users for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
     limit: "The number of users to return.",
     username: "The username to search for.",
     search: "The text string that user email or name will be filtered by."
   },
   ADD_USER: {
-    id: "The id of the group to add the user to.",
+    id: "The ID of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
   GET_BY_ID: {
-    id: "The id of the group to fetch"
+    id: "The ID of the group to fetch."
   },
   DELETE_USER: {
-    id: "The id of the group to remove the user from.",
+    id: "The ID of the group to remove the user from.",
     username: "The username of the user to remove from the group."
   }
 } as const;
@@ -119,7 +119,7 @@ export const AWS_AUTH = {
     identityId: "The ID of the identity to login.",
     iamHttpRequestMethod: "The HTTP request method used in the signed request.",
     iamRequestUrl:
-      "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/",
+      "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/.",
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
@@ -130,8 +130,8 @@ export const AWS_AUTH = {
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
       "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
-    accessTokenTTL: "The lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
@@ -142,8 +142,8 @@ export const AWS_AUTH = {
       "The new comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
       "The new comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
-    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     stsEndpoint: "The new endpoint URL for the AWS STS API.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
@@ -167,8 +167,8 @@ export const AZURE_AUTH = {
     allowedServicePrincipalIds:
       "The comma-separated list of Azure AD service principal IDs that are allowed to authenticate with Infisical.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
@@ -178,8 +178,8 @@ export const AZURE_AUTH = {
     allowedServicePrincipalIds:
       "The new comma-separated list of Azure AD service principal IDs that are allowed to authenticate with Infisical.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
@@ -203,8 +203,8 @@ export const GCP_AUTH = {
     allowedZones:
       "The comma-separated list of trusted zones that the GCE instances must belong to authenticate with Infisical.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
@@ -216,8 +216,8 @@ export const GCP_AUTH = {
     allowedZones:
       "The new comma-separated list of trusted zones that the GCE instances must belong to authenticate with Infisical.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
@@ -244,8 +244,8 @@ export const KUBERNETES_AUTH = {
     allowedAudience:
       "The optional audience claim that the service account JWT token must have to authenticate with Infisical.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
@@ -276,15 +276,15 @@ export const TOKEN_AUTH = {
   ATTACH: {
     identityId: "The ID of the identity to attach the configuration onto.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
     identityId: "The ID of the identity to update the auth method for.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
@@ -296,18 +296,18 @@ export const TOKEN_AUTH = {
   GET_TOKENS: {
     identityId: "The ID of the identity to list token metadata for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th token.",
-    limit: "The number of tokens to return"
+    limit: "The number of tokens to return."
   },
   CREATE_TOKEN: {
     identityId: "The ID of the identity to create the token for.",
-    name: "The name of the token to create"
+    name: "The name of the token to create."
   },
   UPDATE_TOKEN: {
-    tokenId: "The ID of the token to update metadata for",
-    name: "The name of the token to update to"
+    tokenId: "The ID of the token to update metadata for.",
+    name: "The name of the token to update to."
   },
   REVOKE_TOKEN: {
-    tokenId: "The ID of the token to revoke"
+    tokenId: "The ID of the token to revoke."
   }
 } as const;
 
@@ -324,8 +324,8 @@ export const OIDC_AUTH = {
     boundClaims: "The attributes that should be present in the JWT for it to be valid.",
     boundSubject: "The expected principal that is the subject of the JWT.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
@@ -337,8 +337,8 @@ export const OIDC_AUTH = {
     boundClaims: "The new attributes that should be present in the JWT for it to be valid.",
     boundSubject: "The new expected principal that is the subject of the JWT.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
-    accessTokenTTL: "The new lifetime for an acccess token in seconds.",
-    accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
@@ -475,6 +475,7 @@ export const PROJECT_USERS = {
   },
   GET_USER_MEMBERSHIP: {
     workspaceId: "The ID of the project to get memberships from.",
+    membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
   },
   UPDATE_USER_MEMBERSHIP: {
@@ -506,8 +507,8 @@ export const PROJECT_IDENTITIES = {
       isTemporary:
         "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
-      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
-      temporaryAccessStartTime: "Time to which the temporary access starts"
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m ,3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
     }
   },
   DELETE_IDENTITY_MEMBERSHIP: {
@@ -524,8 +525,8 @@ export const PROJECT_IDENTITIES = {
       isTemporary:
         "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
-      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s,2m,3h",
-      temporaryAccessStartTime: "Time to which the temporary access starts"
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
     }
   }
 };
@@ -562,7 +563,7 @@ export const FOLDERS = {
     directory: "The directory to list folders from. (Deprecated in favor of path)"
   },
   GET_BY_ID: {
-    folderId: "The id of the folder to get details."
+    folderId: "The ID of the folder to get details."
   },
   CREATE: {
     workspaceId: "The ID of the project to create the folder in.",
@@ -595,22 +596,22 @@ export const SECRETS = {
     secretPath: "The path of the secret to attach tags to.",
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located",
-    projectSlug: "The slug of the project where the secret is located",
+    projectSlug: "The slug of the project where the secret is located.",
     tagSlugs: "An array of existing tag slugs to attach to the secret."
   },
   DETACH_TAGS: {
     secretName: "The name of the secret to detach tags from.",
     secretPath: "The path of the secret to detach tags from.",
     type: "The type of the secret to attach tags to. (shared/personal)",
-    environment: "The slug of the environment where the secret is located",
-    projectSlug: "The slug of the project where the secret is located",
+    environment: "The slug of the environment where the secret is located.",
+    projectSlug: "The slug of the project where the secret is located.",
     tagSlugs: "An array of existing tag slugs to detach from the secret."
   }
 } as const;
 
 export const RAW_SECRETS = {
   LIST: {
-    expand: "Whether or not to expand secret references",
+    expand: "Whether or not to expand secret references.",
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
     workspaceId: "The ID of the project to list secrets from.",
@@ -619,7 +620,7 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     includeImports: "Weather to include imported secrets or not.",
-    tagSlugs: "The comma separated tag slugs to filter secrets"
+    tagSlugs: "The comma separated tag slugs to filter secrets."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -632,11 +633,11 @@ export const RAW_SECRETS = {
     type: "The type of the secret to create.",
     workspaceId: "The ID of the project to create the secret in.",
     tagIds: "The ID of the tags to be attached to the created secret.",
-    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days",
-    secretReminderNote: "Note to be attached in notification email"
+    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
+    secretReminderNote: "Note to be attached in notification email."
   },
   GET: {
-    expand: "Whether or not to expand secret references",
+    expand: "Whether or not to expand secret references.",
     secretName: "The name of the secret to get.",
     workspaceId: "The ID of the project to get the secret from.",
     workspaceSlug: "The slug of the project to get the secret from.",
@@ -650,16 +651,16 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to update.",
     secretComment: "Update comment to the secret.",
     environment: "The slug of the environment where the secret is located.",
-    secretPath: "The path of the secret to update",
+    secretPath: "The path of the secret to update.",
     secretValue: "The new value of the secret.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
     workspaceId: "The ID of the project to update the secret in.",
     tagIds: "The ID of the tags to be attached to the updated secret.",
-    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days",
-    secretReminderNote: "Note to be attached in notification email",
-    newSecretName: "The new name for the secret"
+    secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
+    secretReminderNote: "Note to be attached in notification email.",
+    newSecretName: "The new name for the secret."
   },
   DELETE: {
     secretName: "The name of the secret to delete.",
@@ -790,7 +791,7 @@ export const DYNAMIC_SECRETS = {
     environmentSlug: "The slug of the environment to update the dynamic secret in.",
     path: "The path to update the dynamic secret in.",
     name: "The name of the dynamic secret.",
-    inputs: "The new partial values for the configurated provider of the dynamic secret",
+    inputs: "The new partial values for the configured provider of the dynamic secret",
     defaultTTL: "The default TTL that will be applied for all the leases.",
     maxTTL: "The maximum limit a TTL can be leases or renewed.",
     newName: "The new name for the dynamic secret."
@@ -801,7 +802,7 @@ export const DYNAMIC_SECRETS = {
     path: "The path to delete the dynamic secret in.",
     name: "The name of the dynamic secret.",
     isForced:
-      "A boolean flag to delete the the dynamic secret from infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+      "A boolean flag to delete the the dynamic secret from Infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
   }
 } as const;
 
@@ -817,7 +818,7 @@ export const DYNAMIC_SECRET_LEASES = {
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     dynamicSecretName: "The name of the dynamic secret.",
-    ttl: "The lease lifetime ttl. If not provided the default TTL of dynamic secret will be used."
+    ttl: "The lease lifetime TTL. If not provided the default TTL of dynamic secret will be used."
   },
   RENEW: {
     projectSlug: "The slug of the project of the dynamic secret in.",
@@ -832,7 +833,7 @@ export const DYNAMIC_SECRET_LEASES = {
     path: "The path of the dynamic secret in.",
     leaseId: "The ID of the dynamic secret lease.",
     isForced:
-      "A boolean flag to delete the the dynamic secret from infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+      "A boolean flag to delete the the dynamic secret from Infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
   }
 } as const;
 export const SECRET_TAGS = {
@@ -841,11 +842,11 @@ export const SECRET_TAGS = {
   },
   GET_TAG_BY_ID: {
     projectId: "The ID of the project to get tags from.",
-    tagId: "The ID of the tag to get details"
+    tagId: "The ID of the tag to get details."
   },
   GET_TAG_BY_SLUG: {
     projectId: "The ID of the project to get tags from.",
-    tagSlug: "The slug of the tag to get details"
+    tagSlug: "The slug of the tag to get details."
   },
   CREATE: {
     projectId: "The ID of the project to create the tag in.",
@@ -855,7 +856,7 @@ export const SECRET_TAGS = {
   },
   UPDATE: {
     projectId: "The ID of the project to update the tag in.",
-    tagId: "The ID of the tag to get details",
+    tagId: "The ID of the tag to get details.",
     name: "The name of the tag to update.",
     slug: "The slug of the tag to update.",
     color: "The color of the tag to update."
@@ -889,8 +890,8 @@ The permission object for the privilege.
     privilegePermission: "The permission object for the privilege.",
     isPackPermission: "Whether the server should pack(compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
-    temporaryMode: "Type of temporary access given. Types: relative",
-    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "TTL for the temporary time. Eg: 1m, 1h, 1d.",
     temporaryAccessStartTime: "ISO time for which temporary access should begin."
   },
   UPDATE: {
@@ -915,8 +916,8 @@ The permission object for the privilege.
 `,
     privilegePermission: "The permission object for the privilege.",
     isTemporary: "Whether the privilege is temporary.",
-    temporaryMode: "Type of temporary access given. Types: relative",
-    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "TTL for the temporary time. Eg: 1m, 1h, 1d.",
     temporaryAccessStartTime: "ISO time for which temporary access should begin."
   },
   DELETE: {
@@ -932,62 +933,102 @@ The permission object for the privilege.
   LIST: {
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the identity to list.",
-    unpacked: "Whether the system should send the permissions as unpacked"
+    unpacked: "Whether the system should send the permissions as unpacked."
   }
 };
 
 export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
   CREATE: {
-    projectMembershipId: "Project membership id of user",
+    projectMembershipId: "Project membership ID of user.",
     slug: "The slug of the privilege to create.",
     permissions:
-      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
-    isPackPermission: "Whether the server should pack(compact) the permission object.",
+      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape.",
+    isPackPermission: "Whether the server should pack (compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
-    temporaryMode: "Type of temporary access given. Types: relative",
-    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "TTL for the temporary time. Eg: 1m, 1h, 1d.",
     temporaryAccessStartTime: "ISO time for which temporary access should begin."
   },
   UPDATE: {
-    privilegeId: "The id of privilege object",
+    privilegeId: "The ID of privilege object.",
     slug: "The slug of the privilege to create.",
     newSlug: "The new slug of the privilege to create.",
     permissions:
-      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape",
-    isPackPermission: "Whether the server should pack(compact) the permission object.",
+      "The permission object for the privilege. Refer https://casl.js.org/v6/en/guide/define-rules#the-shape-of-raw-rule to understand the shape.",
+    isPackPermission: "Whether the server should pack (compact) the permission object.",
     isTemporary: "Whether the privilege is temporary.",
-    temporaryMode: "Type of temporary access given. Types: relative",
-    temporaryRange: "TTL for the temporay time. Eg: 1m, 1h, 1d",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "TTL for the temporary time. Eg: 1m, 1h, 1d.",
     temporaryAccessStartTime: "ISO time for which temporary access should begin."
   },
   DELETE: {
-    privilegeId: "The id of privilege object"
+    privilegeId: "The ID of privilege object."
   },
-  GET_BY_PRIVILEGEID: {
-    privilegeId: "The id of privilege object"
+  GET_BY_PRIVILEGE_ID: {
+    privilegeId: "The ID of privilege object."
   },
   LIST: {
-    projectMembershipId: "Project membership id of user"
+    projectMembershipId: "Project membership ID of user."
+  }
+};
+
+export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
+  CREATE: {
+    identityId: "The ID of the identity to create the privilege for.",
+    projectId: "The ID of the project of the identity in.",
+    slug: "The slug of the privilege to create.",
+    permission: "The permission for the privilege.",
+    isTemporary: "Whether the privilege is temporary or permanent.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "The TTL for the temporary access given. Eg: 1m, 1h, 1d.",
+    temporaryAccessStartTime: "The start time in ISO format when the temporary access should begin."
+  },
+  UPDATE: {
+    id: "The ID of the identity privilege.",
+    identityId: "The ID of the identity to update.",
+    slug: "The slug of the privilege to update.",
+    privilegePermission: "The permission for the privilege.",
+    isTemporary: "Whether the privilege is temporary.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "The TTL for the temporary access given. Eg: 1m, 1h, 1d.",
+    temporaryAccessStartTime: "The start time in ISO format when the temporary access should begin."
+  },
+  DELETE: {
+    id: "The ID of the identity privilege.",
+    identityId: "The ID of the identity to delete.",
+    slug: "The slug of the privilege to delete."
+  },
+  GET_BY_SLUG: {
+    projectSlug: "The slug of the project of the identity in.",
+    identityId: "The ID of the identity to list.",
+    slug: "The slug of the privilege."
+  },
+  GET_BY_ID: {
+    id: "The ID of the identity privilege."
+  },
+  LIST: {
+    projectId: "The ID of the project that the identity is in.",
+    identityId: "The ID of the identity to list."
   }
 };
 
 export const INTEGRATION_AUTH = {
   GET: {
-    integrationAuthId: "The id of integration authentication object."
+    integrationAuthId: "The ID of integration authentication object."
   },
   DELETE: {
     integration: "The slug of the integration to be unauthorized.",
     projectId: "The ID of the project to delete the integration auth from."
   },
   DELETE_BY_ID: {
-    integrationAuthId: "The id of integration authentication object to delete."
+    integrationAuthId: "The ID of integration authentication object to delete."
   },
   CREATE_ACCESS_TOKEN: {
     workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
-    accessId: "The unique authorized access id of the external integration provider.",
+    accessId: "The unique authorized access ID of the external integration provider.",
     accessToken: "The unique authorized access token of the external integration provider.",
-    awsAssumeIamRoleArn: "The AWS IAM Role to be assumed by Infisical",
+    awsAssumeIamRoleArn: "The AWS IAM Role to be assumed by Infisical.",
     url: "",
     namespace: "",
     refreshToken: "The refresh token for integration authorization."
@@ -1006,16 +1047,16 @@ export const INTEGRATION = {
     targetEnvironment:
       "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
     targetEnvironmentId:
-      "The target environment id of the integration provider. Used in cloudflare pages, teamcity, gitlab integrations.",
+      "The target environment ID of the integration provider. Used in cloudflare pages, teamcity, gitlab integrations.",
     targetService:
-      "The service based grouping identifier of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
+      "The service based grouping identifier of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank.",
     targetServiceId:
-      "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank",
+      "The service based grouping identifier ID of the external provider. Used in Terraform cloud, Checkly, Railway and NorthFlank.",
     owner: "External integration providers service entity owner. Used in Github.",
-    url: "The self-hosted URL of the platform to integrate with",
-    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault",
+    url: "The self-hosted URL of the platform to integrate with.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault.",
     region: "AWS region to sync secrets to.",
-    scope: "Scope of the provider. Used by Github, Qovery",
+    scope: "Scope of the provider. Used by Github, Qovery.",
     metadata: {
       secretPrefix: "The prefix for the saved secret. Used by GCP.",
       secretSuffix: "The suffix for the saved secret. Used by GCP.",
@@ -1027,12 +1068,12 @@ export const INTEGRATION = {
       githubVisibility:
         "Define where the secrets from the Github Integration should be visible. Option 'selected' lets you directly define which repositories to sync secrets to.",
       githubVisibilityRepoIds:
-        "The repository IDs to sync secrets to when using the Github Integration. Only applicable when using Organization scope, and visibility is set to 'selected'",
+        "The repository IDs to sync secrets to when using the Github Integration. Only applicable when using Organization scope, and visibility is set to 'selected'.",
       kmsKeyId: "The ID of the encryption key from AWS KMS.",
       shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
       shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
       shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
-      shouldEnableDelete: "The flag to enable deletion of secrets"
+      shouldEnableDelete: "The flag to enable deletion of secrets."
     }
   },
   UPDATE: {
@@ -1051,7 +1092,7 @@ export const INTEGRATION = {
     integrationId: "The ID of the integration object."
   },
   SYNC: {
-    integrationId: "The ID of the integration object to manually sync"
+    integrationId: "The ID of the integration object to manually sync."
   }
 };
 
@@ -1059,7 +1100,7 @@ export const AUDIT_LOG_STREAMS = {
   CREATE: {
     url: "The HTTP URL to push logs to.",
     headers: {
-      desc: "The HTTP headers attached for the external prrovider requests.",
+      desc: "The HTTP headers attached for the external provider requests.",
       key: "The HTTP header key name.",
       value: "The HTTP header value."
     }
@@ -1068,7 +1109,7 @@ export const AUDIT_LOG_STREAMS = {
     id: "The ID of the audit log stream to update.",
     url: "The HTTP URL to push logs to.",
     headers: {
-      desc: "The HTTP headers attached for the external prrovider requests.",
+      desc: "The HTTP headers attached for the external provider requests.",
       key: "The HTTP header key name.",
       value: "The HTTP header value."
     }
@@ -1084,16 +1125,16 @@ export const AUDIT_LOG_STREAMS = {
 export const CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectSlug: "Slug of the project to create the CA in.",
-    type: "The type of CA to create",
-    friendlyName: "A friendly name for the CA",
-    organization: "The organization (O) for the CA",
-    ou: "The organization unit (OU) for the CA",
-    country: "The country name (C) for the CA",
-    province: "The state of province name for the CA",
-    locality: "The locality name for the CA",
-    commonName: "The common name (CN) for the CA",
-    notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    type: "The type of CA to create.",
+    friendlyName: "A friendly name for the CA.",
+    organization: "The organization (O) for the CA.",
+    ou: "The organization unit (OU) for the CA.",
+    country: "The country name (C) for the CA.",
+    province: "The state of province name for the CA.",
+    locality: "The locality name for the CA.",
+    commonName: "The common name (CN) for the CA.",
+    notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
     maxPathLength:
       "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
     keyAlgorithm:
@@ -1102,238 +1143,240 @@ export const CERTIFICATE_AUTHORITIES = {
       "Whether or not certificates for this CA can only be issued through certificate templates."
   },
   GET: {
-    caId: "The ID of the CA to get"
+    caId: "The ID of the CA to get."
   },
   UPDATE: {
-    caId: "The ID of the CA to update",
-    status: "The status of the CA to update to. This can be one of active or disabled",
+    caId: "The ID of the CA to update.",
+    status: "The status of the CA to update to. This can be one of active or disabled.",
     requireTemplateForIssuance:
       "Whether or not certificates for this CA can only be issued through certificate templates."
   },
   DELETE: {
-    caId: "The ID of the CA to delete"
+    caId: "The ID of the CA to delete."
   },
   GET_CSR: {
-    caId: "The ID of the CA to generate CSR from",
-    csr: "The generated CSR from the CA"
+    caId: "The ID of the CA to generate CSR from.",
+    csr: "The generated CSR from the CA."
   },
   RENEW_CA_CERT: {
-    caId: "The ID of the CA to renew the CA certificate for",
+    caId: "The ID of the CA to renew the CA certificate for.",
     type: "The type of behavior to use for the renewal operation. Currently Infisical is only able to renew a CA certificate with the same key pair.",
-    notAfter: "The expiry date and time for the renewed CA certificate in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    certificate: "The renewed CA certificate body",
-    certificateChain: "The certificate chain of the CA",
-    serialNumber: "The serial number of the renewed CA certificate"
+    notAfter: "The expiry date and time for the renewed CA certificate in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    certificate: "The renewed CA certificate body.",
+    certificateChain: "The certificate chain of the CA.",
+    serialNumber: "The serial number of the renewed CA certificate."
   },
   GET_CERT: {
-    caId: "The ID of the CA to get the certificate body and certificate chain from",
-    certificate: "The certificate body of the CA",
-    certificateChain: "The certificate chain of the CA",
-    serialNumber: "The serial number of the CA certificate"
+    caId: "The ID of the CA to get the certificate body and certificate chain from.",
+    certificate: "The certificate body of the CA.",
+    certificateChain: "The certificate chain of the CA.",
+    serialNumber: "The serial number of the CA certificate."
   },
   GET_CERT_BY_ID: {
-    caId: "The ID of the CA to get the CA certificate from",
-    caCertId: "The ID of the CA certificate to get"
+    caId: "The ID of the CA to get the CA certificate from.",
+    caCertId: "The ID of the CA certificate to get."
   },
   GET_CA_CERTS: {
-    caId: "The ID of the CA to get the CA certificates for",
-    certificate: "The certificate body of the CA certificate",
-    certificateChain: "The certificate chain of the CA certificate",
-    serialNumber: "The serial number of the CA certificate",
+    caId: "The ID of the CA to get the CA certificates for.",
+    certificate: "The certificate body of the CA certificate.",
+    certificateChain: "The certificate chain of the CA certificate.",
+    serialNumber: "The serial number of the CA certificate.",
     version: "The version of the CA certificate. The version is incremented for each CA renewal operation."
   },
   SIGN_INTERMEDIATE: {
-    caId: "The ID of the CA to sign the intermediate certificate with",
-    csr: "The pem-encoded CSR to sign with the CA",
-    notBefore: "The date and time when the intermediate CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    notAfter: "The date and time when the intermediate CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
+    caId: "The ID of the CA to sign the intermediate certificate with.",
+    csr: "The pem-encoded CSR to sign with the CA.",
+    notBefore: "The date and time when the intermediate CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    notAfter: "The date and time when the intermediate CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
     maxPathLength:
       "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
-    certificate: "The signed intermediate certificate",
-    certificateChain: "The certificate chain of the intermediate certificate",
-    issuingCaCertificate: "The certificate of the issuing CA",
-    serialNumber: "The serial number of the intermediate certificate"
+    certificate: "The signed intermediate certificate.",
+    certificateChain: "The certificate chain of the intermediate certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    serialNumber: "The serial number of the intermediate certificate."
   },
   IMPORT_CERT: {
-    caId: "The ID of the CA to import the certificate for",
-    certificate: "The certificate body to import",
-    certificateChain: "The certificate chain to import"
+    caId: "The ID of the CA to import the certificate for.",
+    certificate: "The certificate body to import.",
+    certificateChain: "The certificate chain to import."
   },
   ISSUE_CERT: {
-    caId: "The ID of the CA to issue the certificate from",
-    certificateTemplateId: "The ID of the certificate template to issue the certificate from",
-    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
-    friendlyName: "A friendly name for the certificate",
-    commonName: "The common name (CN) for the certificate",
+    caId: "The ID of the CA to issue the certificate from.",
+    certificateTemplateId: "The ID of the certificate template to issue the certificate from.",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+    friendlyName: "A friendly name for the certificate.",
+    commonName: "The common name (CN) for the certificate.",
     altNames:
       "A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses.",
     ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
-    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    certificate: "The issued certificate",
-    issuingCaCertificate: "The certificate of the issuing CA",
-    certificateChain: "The certificate chain of the issued certificate",
-    privateKey: "The private key of the issued certificate",
-    serialNumber: "The serial number of the issued certificate",
-    keyUsages: "The key usage extension of the certificate",
-    extendedKeyUsages: "The extended key usage extension of the certificate"
+    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    certificate: "The issued certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    privateKey: "The private key of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate.",
+    keyUsages: "The key usage extension of the certificate.",
+    extendedKeyUsages: "The extended key usage extension of the certificate."
   },
   SIGN_CERT: {
-    caId: "The ID of the CA to issue the certificate from",
-    pkiCollectionId: "The ID of the PKI collection to add the certificate to",
-    keyUsages: "The key usage extension of the certificate",
-    extendedKeyUsages: "The extended key usage extension of the certificate",
-    csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance",
-    friendlyName: "A friendly name for the certificate",
-    commonName: "The common name (CN) for the certificate",
+    caId: "The ID of the CA to issue the certificate from.",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+    keyUsages: "The key usage extension of the certificate.",
+    extendedKeyUsages: "The extended key usage extension of the certificate.",
+    csr: "The pem-encoded CSR to sign with the CA to be used for certificate issuance.",
+    friendlyName: "A friendly name for the certificate.",
+    commonName: "The common name (CN) for the certificate.",
     altNames:
       "A comma-delimited list of Subject Alternative Names (SANs) for the certificate; these can be host names or email addresses.",
     ttl: "The time to live for the certificate such as 1m, 1h, 1d, 1y, ...",
-    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format",
-    certificate: "The issued certificate",
-    issuingCaCertificate: "The certificate of the issuing CA",
-    certificateChain: "The certificate chain of the issued certificate",
-    serialNumber: "The serial number of the issued certificate"
+    notBefore: "The date and time when the certificate becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    notAfter: "The date and time when the certificate expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    certificate: "The issued certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate."
   },
   GET_CRLS: {
-    caId: "The ID of the CA to get the certificate revocation lists (CRLs) for",
-    id: "The ID of certificate revocation list (CRL)",
-    crl: "The certificate revocation list (CRL)"
+    caId: "The ID of the CA to get the certificate revocation lists (CRLs) for.",
+    id: "The ID of certificate revocation list (CRL).",
+    crl: "The certificate revocation list (CRL)."
   }
 };
 
 export const CERTIFICATES = {
   GET: {
-    serialNumber: "The serial number of the certificate to get"
+    serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
-    revokedAt: "The date and time when the certificate was revoked",
+    revokedAt: "The date and time when the certificate was revoked.",
     serialNumberRes: "The serial number of the revoked certificate."
   },
   DELETE: {
-    serialNumber: "The serial number of the certificate to delete"
+    serialNumber: "The serial number of the certificate to delete."
   },
   GET_CERT: {
-    serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for",
-    certificate: "The certificate body of the certificate",
-    certificateChain: "The certificate chain of the certificate",
-    serialNumberRes: "The serial number of the certificate"
+    serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for.",
+    certificate: "The certificate body of the certificate.",
+    certificateChain: "The certificate chain of the certificate.",
+    serialNumberRes: "The serial number of the certificate."
   }
 };
 
 export const CERTIFICATE_TEMPLATES = {
   CREATE: {
-    caId: "The ID of the certificate authority to associate the template with",
-    pkiCollectionId: "The ID of the PKI collection to bind to the template",
-    name: "The name of the template",
-    commonName: "The regular expression string to use for validating common names",
-    subjectAlternativeName: "The regular expression string to use for validating subject alternative names",
-    ttl: "The max TTL for the template",
-    keyUsages: "The key usage constraint or default value for when template is used during certificate issuance",
+    caId: "The ID of the certificate authority to associate the template with.",
+    pkiCollectionId: "The ID of the PKI collection to bind to the template.",
+    name: "The name of the template.",
+    commonName: "The regular expression string to use for validating common names.",
+    subjectAlternativeName: "The regular expression string to use for validating subject alternative names.",
+    ttl: "The max TTL for the template.",
+    keyUsages: "The key usage constraint or default value for when template is used during certificate issuance.",
     extendedKeyUsages:
-      "The extended key usage constraint or default value for when template is used during certificate issuance"
+      "The extended key usage constraint or default value for when template is used during certificate issuance."
   },
   GET: {
-    certificateTemplateId: "The ID of the certificate template to get"
+    certificateTemplateId: "The ID of the certificate template to get."
   },
   UPDATE: {
-    certificateTemplateId: "The ID of the certificate template to update",
-    caId: "The ID of the certificate authority to update the association with the template",
-    pkiCollectionId: "The ID of the PKI collection to update the binding to the template",
-    name: "The updated name of the template",
-    commonName: "The updated regular expression string for validating common names",
-    subjectAlternativeName: "The updated regular expression string for validating subject alternative names",
-    ttl: "The updated max TTL for the template",
+    certificateTemplateId: "The ID of the certificate template to update.",
+    caId: "The ID of the certificate authority to update the association with the template.",
+    pkiCollectionId: "The ID of the PKI collection to update the binding to the template.",
+    name: "The updated name of the template.",
+    commonName: "The updated regular expression string for validating common names.",
+    subjectAlternativeName: "The updated regular expression string for validating subject alternative names.",
+    ttl: "The updated max TTL for the template.",
     keyUsages:
-      "The updated key usage constraint or default value for when template is used during certificate issuance",
+      "The updated key usage constraint or default value for when template is used during certificate issuance.",
     extendedKeyUsages:
-      "The updated extended key usage constraint or default value for when template is used during certificate issuance"
+      "The updated extended key usage constraint or default value for when template is used during certificate issuance."
   },
   DELETE: {
-    certificateTemplateId: "The ID of the certificate template to delete"
+    certificateTemplateId: "The ID of the certificate template to delete."
   }
 };
 
 export const CA_CRLS = {
   GET: {
-    crlId: "The ID of the certificate revocation list (CRL) to get",
-    crl: "The certificate revocation list (CRL)"
+    crlId: "The ID of the certificate revocation list (CRL) to get.",
+    crl: "The certificate revocation list (CRL)."
   }
 };
 
 export const ALERTS = {
   CREATE: {
-    projectId: "The ID of the project to create the alert in",
-    pkiCollectionId: "The ID of the PKI collection to bind to the alert",
-    name: "The name of the alert",
-    alertBeforeDays: "The number of days before the certificate expires to trigger the alert",
-    emails: "The email addresses to send the alert email to"
+    projectId: "The ID of the project to create the alert in.",
+    pkiCollectionId: "The ID of the PKI collection to bind to the alert.",
+    name: "The name of the alert.",
+    alertBeforeDays: "The number of days before the certificate expires to trigger the alert.",
+    emails: "The email addresses to send the alert email to."
   },
   GET: {
-    alertId: "The ID of the alert to get"
+    alertId: "The ID of the alert to get."
   },
   UPDATE: {
-    alertId: "The ID of the alert to update",
-    name: "The name of the alert to update to",
-    alertBeforeDays: "The number of days before the certificate expires to trigger the alert to update to",
-    pkiCollectionId: "The ID of the PKI collection to bind to the alert to update to",
-    emails: "The email addresses to send the alert email to update to"
+    alertId: "The ID of the alert to update.",
+    name: "The name of the alert to update to.",
+    alertBeforeDays: "The number of days before the certificate expires to trigger the alert to update to.",
+    pkiCollectionId: "The ID of the PKI collection to bind to the alert to update to.",
+    emails: "The email addresses to send the alert email to update to."
   },
   DELETE: {
-    alertId: "The ID of the alert to delete"
+    alertId: "The ID of the alert to delete."
   }
 };
 
 export const PKI_COLLECTIONS = {
   CREATE: {
-    projectId: "The ID of the project to create the PKI collection in",
-    name: "The name of the PKI collection",
-    description: "A description for the PKI collection"
+    projectId: "The ID of the project to create the PKI collection in.",
+    name: "The name of the PKI collection.",
+    description: "A description for the PKI collection."
   },
   GET: {
-    collectionId: "The ID of the PKI collection to get"
+    collectionId: "The ID of the PKI collection to get."
   },
   UPDATE: {
-    collectionId: "The ID of the PKI collection to update",
-    name: "The name of the PKI collection to update to",
-    description: "The description for the PKI collection to update to"
+    collectionId: "The ID of the PKI collection to update.",
+    name: "The name of the PKI collection to update to.",
+    description: "The description for the PKI collection to update to."
   },
   DELETE: {
-    collectionId: "The ID of the PKI collection to delete"
+    collectionId: "The ID of the PKI collection to delete."
   },
   LIST_ITEMS: {
-    collectionId: "The ID of the PKI collection to list items from",
-    type: "The type of the PKI collection item to list",
-    offset: "The offset to start from",
-    limit: "The number of items to return"
+    collectionId: "The ID of the PKI collection to list items from.",
+    type: "The type of the PKI collection item to list.",
+    offset: "The offset to start from.",
+    limit: "The number of items to return."
   },
   ADD_ITEM: {
-    collectionId: "The ID of the PKI collection to add the item to",
-    type: "The type of the PKI collection item to add",
-    itemId: "The resource ID of the PKI collection item to add"
+    collectionId: "The ID of the PKI collection to add the item to.",
+    type: "The type of the PKI collection item to add.",
+    itemId: "The resource ID of the PKI collection item to add."
   },
   DELETE_ITEM: {
-    collectionId: "The ID of the PKI collection to delete the item from",
-    collectionItemId: "The ID of the PKI collection item to delete",
-    type: "The type of the deleted PKI collection item",
-    itemId: "The resource ID of the deleted PKI collection item"
+    collectionId: "The ID of the PKI collection to delete the item from.",
+    collectionItemId: "The ID of the PKI collection item to delete.",
+    type: "The type of the deleted PKI collection item.",
+    itemId: "The resource ID of the deleted PKI collection item."
   }
 };
 
 export const PROJECT_ROLE = {
   CREATE: {
     projectSlug: "Slug of the project to create the role for.",
+    projectId: "Id of the project to create the role for.",
     slug: "The slug of the role.",
     name: "The name of the role.",
     description: "The description for the role.",
     permissions: "The permissions assigned to the role."
   },
   UPDATE: {
-    projectSlug: "Slug of the project to update the role for.",
+    projectSlug: "The slug of the project to update the role for.",
+    projectId: "The ID of the project to update the role for.",
     roleId: "The ID of the role to update",
     slug: "The slug of the role.",
     name: "The name of the role.",
@@ -1341,15 +1384,18 @@ export const PROJECT_ROLE = {
     permissions: "The permissions assigned to the role."
   },
   DELETE: {
-    projectSlug: "Slug of the project to delete this role for.",
+    projectSlug: "The slug of the project to delete this role for.",
+    projectId: "The ID of the project to delete the role for.",
     roleId: "The ID of the role to update"
   },
   GET_ROLE_BY_SLUG: {
     projectSlug: "The slug of the project.",
-    roleSlug: "The slug of the role to get details"
+    projectId: "The ID of the project.",
+    roleSlug: "The slug of the role to get details."
   },
   LIST: {
-    projectSlug: "The slug of the project to list the roles of."
+    projectSlug: "The slug of the project to list the roles of.",
+    projectId: "The ID of the project."
   }
 };
 

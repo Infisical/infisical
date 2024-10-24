@@ -30,7 +30,7 @@ export const RolePage = withProjectPermission(
     const { currentWorkspace } = useWorkspace();
     const projectId = currentWorkspace?.id || "";
 
-    const { data } = useGetProjectRoleBySlug(currentWorkspace?.slug ?? "", roleSlug as string);
+    const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string);
 
     const { mutateAsync: deleteProjectRole } = useDeleteProjectRole();
 
@@ -44,7 +44,7 @@ export const RolePage = withProjectPermission(
         if (!currentWorkspace?.slug || !data?.id) return;
 
         await deleteProjectRole({
-          projectSlug: currentWorkspace.slug,
+          projectId,
           id: data.id
         });
 

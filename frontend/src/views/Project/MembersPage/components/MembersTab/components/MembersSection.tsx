@@ -25,8 +25,7 @@ export const MembersSection = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
     "removeMember",
-    "upgradePlan",
-    "updateRole"
+    "upgradePlan"
   ] as const);
 
   const handleRemoveUser = async () => {
@@ -72,11 +71,7 @@ export const MembersSection = () => {
           )}
         </ProjectPermissionCan>
       </div>
-      <MembersTable
-        popUp={popUp}
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
+      <MembersTable handlePopUpOpen={handlePopUpOpen} />
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}

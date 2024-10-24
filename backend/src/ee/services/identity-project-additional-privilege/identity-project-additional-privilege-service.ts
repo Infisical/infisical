@@ -1,10 +1,10 @@
 import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
+import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import ms from "ms";
-import { z } from "zod";
 
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -31,16 +31,6 @@ type TIdentityProjectAdditionalPrivilegeServiceFactoryDep = {
 export type TIdentityProjectAdditionalPrivilegeServiceFactory = ReturnType<
   typeof identityProjectAdditionalPrivilegeServiceFactory
 >;
-
-// TODO(akhilmhdh): move this to more centralized
-export const UnpackedPermissionSchema = z.object({
-  subject: z
-    .union([z.string().min(1), z.string().array()])
-    .transform((el) => (typeof el !== "string" ? el[0] : el))
-    .optional(),
-  action: z.union([z.string().min(1), z.string().array()]).transform((el) => (typeof el === "string" ? [el] : el)),
-  conditions: z.unknown().optional()
-});
 
 const unpackPermissions = (permissions: unknown) =>
   UnpackedPermissionSchema.array().parse(
@@ -80,14 +70,18 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
-    const { permission: identityRolePermission } = await permissionService.getProjectPermission(
+    const { permission: targetIdentityPermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityId,
       identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
+
+    // we need to validate that the privilege given is not higher than the assigning users permission
+    // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
+    targetIdentityPermission.update(targetIdentityPermission.rules.concat(customPermission));
+    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetIdentityPermission);
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
@@ -97,11 +91,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     if (existingSlug) throw new BadRequestError({ message: "Additional privilege of provided slug exist" });
 
+    const packedPermission = JSON.stringify(packRules(customPermission));
     if (!dto.isTemporary) {
       const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.create({
         projectMembershipId: identityProjectMembership.id,
         slug,
-        permissions: customPermission
+        permissions: packedPermission
       });
       return {
         ...additionalPrivilege,
@@ -113,7 +108,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.create({
       projectMembershipId: identityProjectMembership.id,
       slug,
-      permissions: customPermission,
+      permissions: packedPermission,
       isTemporary: true,
       temporaryMode: IdentityProjectAdditionalPrivilegeTemporaryMode.Relative,
       temporaryRange: dto.temporaryRange,
@@ -152,14 +147,19 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
-    const { permission: identityRolePermission } = await permissionService.getProjectPermission(
+
+    const { permission: targetIdentityPermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityProjectMembership.identityId,
       identityProjectMembership.projectId,
       actorAuthMethod,
       actorOrgId
     );
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, identityRolePermission);
+
+    // we need to validate that the privilege given is not higher than the assigning users permission
+    // @ts-expect-error this is expected error because of one being really accurate rule definition other being a bit more broader. Both are valid casl rules
+    targetIdentityPermission.update(targetIdentityPermission.rules.concat(data.permissions || []));
+    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, targetIdentityPermission);
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to update more privileged identity" });
 
@@ -182,23 +182,29 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     }
 
     const isTemporary = typeof data?.isTemporary !== "undefined" ? data.isTemporary : identityPrivilege.isTemporary;
+
+    const packedPermission = data.permissions ? JSON.stringify(packRules(data.permissions)) : undefined;
     if (isTemporary) {
       const temporaryAccessStartTime = data?.temporaryAccessStartTime || identityPrivilege?.temporaryAccessStartTime;
       const temporaryRange = data?.temporaryRange || identityPrivilege?.temporaryRange;
       const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.updateById(identityPrivilege.id, {
-        ...data,
+        slug: data.slug,
+        permissions: packedPermission,
+        isTemporary: data.isTemporary,
+        temporaryRange: data.temporaryRange,
+        temporaryMode: data.temporaryMode,
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
       return {
         ...additionalPrivilege,
-
         permissions: unpackPermissions(additionalPrivilege.permissions)
       };
     }
 
     const additionalPrivilege = await identityProjectAdditionalPrivilegeDAL.updateById(identityPrivilege.id, {
-      ...data,
+      slug: data.slug,
+      permissions: packedPermission,
       isTemporary: false,
       temporaryAccessStartTime: null,
       temporaryAccessEndTime: null,
@@ -207,7 +213,6 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return {
       ...additionalPrivilege,
-
       permissions: unpackPermissions(additionalPrivilege.permissions)
     };
   };
@@ -289,7 +294,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
 
     const identityPrivilege = await identityProjectAdditionalPrivilegeDAL.findOne({
       slug,
@@ -335,7 +340,6 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     });
     return identityPrivileges.map((el) => ({
       ...el,
-
       permissions: unpackPermissions(el.permissions)
     }));
   };

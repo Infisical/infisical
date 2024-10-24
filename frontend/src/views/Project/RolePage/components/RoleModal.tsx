@@ -10,7 +10,8 @@ import { useWorkspace } from "@app/context";
 import {
   useCreateProjectRole,
   useGetProjectRoleBySlug,
-  useUpdateProjectRole} from "@app/hooks/api";
+  useUpdateProjectRole
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -36,9 +37,9 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const { currentWorkspace } = useWorkspace();
-  const projectSlug = currentWorkspace?.slug || "";
+  const projectId = currentWorkspace?.id || "";
 
-  const { data: role } = useGetProjectRoleBySlug(projectSlug, popupData?.roleSlug ?? "");
+  const { data: role } = useGetProjectRoleBySlug(projectId, popupData?.roleSlug ?? "");
 
   const { mutateAsync: createProjectRole } = useCreateProjectRole();
   const { mutateAsync: updateProjectRole } = useUpdateProjectRole();
@@ -74,13 +75,13 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
     try {
-      if (!projectSlug) return;
+      if (!projectId) return;
 
       if (role) {
         // update
         await updateProjectRole({
           id: role.id,
-          projectSlug,
+          projectId,
           name,
           description,
           slug
@@ -90,7 +91,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
       } else {
         // create
         const newRole = await createProjectRole({
-          projectSlug,
+          projectId,
           name,
           description,
           slug,

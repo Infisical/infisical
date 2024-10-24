@@ -32,12 +32,11 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
   const orgId = currentOrg?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
 
   const { data: groups } = useGetOrganizationGroups(orgId);
   const { data: groupMemberships } = useListWorkspaceGroups(currentWorkspace?.id || "");
 
-  const { data: roles } = useGetProjectRoles(projectSlug);
+  const { data: roles } = useGetProjectRoles(currentWorkspace?.id || "");
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 

@@ -18,11 +18,13 @@ export {
   useGetUserWorkspaces,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
+  useGetWorkspaceIdentityMembershipDetails,
   useGetWorkspaceIdentityMemberships,
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
   useGetWorkspaceSlackConfig,
+  useGetWorkspaceUserDetails,
   useGetWorkspaceUsers,
   useListWorkspaceCas,
   useListWorkspaceCertificates,
@@ -36,6 +38,5 @@ export {
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject
-} from "./queries";
+  useUpgradeProject} from "./queries";
 export { workspaceKeys } from "./query-keys";

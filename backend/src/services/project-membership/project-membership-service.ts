@@ -7,6 +7,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
+import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -27,6 +28,7 @@ import {
   TAddUsersToWorkspaceDTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
+  TGetProjectMembershipByIdDTO,
   TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
   TLeaveProjectDTO,
@@ -35,7 +37,7 @@ import {
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
@@ -130,6 +132,28 @@ export const projectMembershipServiceFactory = ({
 
     const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
     if (!membership) throw new NotFoundError({ message: `Project membership not found for user '${username}'` });
+    return membership;
+  };
+
+  const getProjectMembershipById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    id
+  }: TGetProjectMembershipByIdDTO) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { id });
+    if (!membership) throw new NotFoundError({ message: `Project membership not found for user ${id}` });
     return membership;
   };
 
@@ -237,6 +261,21 @@ export const projectMembershipServiceFactory = ({
     const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
     if (membershipUser?.isGhost || membershipUser?.projectId !== projectId) {
       throw new ForbiddenRequestError({ message: "Forbidden member update" });
+    }
+
+    for await (const { role: requestedRoleChange } of roles) {
+      const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+        requestedRoleChange,
+        projectId
+      );
+
+      const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, rolePermission);
+
+      if (!hasRequiredPriviledges) {
+        throw new ForbiddenRequestError({
+          message: `Failed to change to a more privileged role ${requestedRoleChange}`
+        });
+      }
     }
 
     // validate custom roles input
@@ -487,6 +526,7 @@ export const projectMembershipServiceFactory = ({
     deleteProjectMemberships,
     deleteProjectMembership, // TODO: Remove this
     addUsersToProject,
-    leaveProject
+    leaveProject,
+    getProjectMembershipById
   };
 };

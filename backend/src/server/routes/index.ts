@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { registerV2EERoutes } from "@app/ee/routes/v2";
 import { accessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
@@ -32,6 +33,7 @@ import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
+import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
@@ -1075,6 +1077,14 @@ export const registerRoutes = async (
     permissionService,
     identityProjectDAL
   });
+
+  const identityProjectAdditionalPrivilegeV2Service = identityProjectAdditionalPrivilegeV2ServiceFactory({
+    projectDAL,
+    identityProjectAdditionalPrivilegeDAL,
+    permissionService,
+    identityProjectDAL
+  });
+
   const identityTokenAuthService = identityTokenAuthServiceFactory({
     identityTokenAuthDAL,
     identityDAL,
@@ -1324,6 +1334,7 @@ export const registerRoutes = async (
     telemetry: telemetryService,
     projectUserAdditionalPrivilege: projectUserAdditionalPrivilegeService,
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
+    identityProjectAdditionalPrivilegeV2: identityProjectAdditionalPrivilegeV2Service,
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
@@ -1422,7 +1433,13 @@ export const registerRoutes = async (
     },
     { prefix: "/api/v1" }
   );
-  await server.register(registerV2Routes, { prefix: "/api/v2" });
+  await server.register(
+    async (v2Server) => {
+      await v2Server.register(registerV2EERoutes);
+      await v2Server.register(registerV2Routes);
+    },
+    { prefix: "/api/v2" }
+  );
   await server.register(registerV3Routes, { prefix: "/api/v3" });
 
   server.addHook("onClose", async () => {

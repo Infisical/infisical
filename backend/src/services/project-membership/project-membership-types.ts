@@ -14,6 +14,10 @@ export type TGetProjectMembershipByUsernameDTO = {
   username: string;
 } & TProjectPermission;
 
+export type TGetProjectMembershipByIdDTO = {
+  id: string;
+} & TProjectPermission;
+
 export type TUpdateProjectMembershipDTO = {
   membershipId: string;
   roles: (

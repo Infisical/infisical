@@ -54,7 +54,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
-  const { data: roles } = useGetProjectRoles(currentWorkspace?.slug || "");
+  const { data: roles } = useGetProjectRoles(currentWorkspace?.id || "");
 
   const {
     control,

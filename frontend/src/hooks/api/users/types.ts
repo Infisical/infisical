@@ -1,4 +1,5 @@
 import { UserWsKeyPair } from "../keys/types";
+import { ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
 export enum AuthMethod {
   EMAIL = "email",
@@ -85,6 +86,7 @@ export type TWorkspaceUser = {
     id: string;
     publicKey: string;
   };
+  createdAt: string;
   projectId: string;
   isGroupMember: boolean;
   project: {
@@ -114,7 +116,7 @@ export type TWorkspaceUser = {
         customRoleSlug: string;
         isTemporary: true;
         temporaryRange: string;
-        temporaryMode: string;
+        temporaryMode: ProjectUserMembershipTemporaryMode;
         temporaryAccessEndTime: string;
         temporaryAccessStartTime: string;
       }

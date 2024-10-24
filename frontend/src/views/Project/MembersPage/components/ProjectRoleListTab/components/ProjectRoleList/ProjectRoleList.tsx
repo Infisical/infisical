@@ -34,10 +34,9 @@ export const ProjectRoleList = () => {
     "deleteRole"
   ] as const);
   const { currentWorkspace } = useWorkspace();
-  const projectSlug = currentWorkspace?.slug || "";
   const projectId = currentWorkspace?.id || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(projectSlug);
+  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(projectId);
 
   const { mutateAsync: deleteRole } = useDeleteProjectRole();
 
@@ -45,7 +44,7 @@ export const ProjectRoleList = () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     try {
       await deleteRole({
-        projectSlug,
+        projectId,
         id
       });
       createNotification({ type: "success", text: "Successfully removed the role" });

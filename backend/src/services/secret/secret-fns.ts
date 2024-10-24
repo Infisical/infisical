@@ -25,7 +25,7 @@ import { logger } from "@app/lib/logger";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllNestedSecretReferences as getAllNestedSecretReferencesV2Bridge
+  getAllSecretReferences
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -793,7 +793,7 @@ export const createManySecretsRawFnFactory = ({
             : null,
           skipMultilineEncoding: secret.skipMultilineEncoding,
           tags: secret.tags,
-          references: getAllNestedSecretReferencesV2Bridge(secret.secretValue)
+          references: getAllSecretReferences(secret.secretValue).nestedReferences
         };
       });
 
@@ -973,7 +973,7 @@ export const updateManySecretsRawFnFactory = ({
             : null,
           skipMultilineEncoding: secret.skipMultilineEncoding,
           tags: secret.tags,
-          references: getAllNestedSecretReferencesV2Bridge(secret.secretValue)
+          references: getAllSecretReferences(secret.secretValue).nestedReferences
         };
       });
 
