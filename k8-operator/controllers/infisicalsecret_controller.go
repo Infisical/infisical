@@ -39,6 +39,7 @@ type InfisicalSecretReconciler struct {
 
 type ResourceVariables struct {
 	infisicalClient infisicalSdk.InfisicalClientInterface
+	cancelCtx       context.CancelFunc
 	authDetails     AuthenticationDetails
 }
 
@@ -136,11 +137,17 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				delete(resourceVariablesMap, string(e.ObjectNew.GetUID()))
+				if rv, ok := resourceVariablesMap[string(e.ObjectNew.GetUID())]; ok {
+					rv.cancelCtx()
+					delete(resourceVariablesMap, string(e.ObjectNew.GetUID()))
+				}
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				delete(resourceVariablesMap, string(e.Object.GetUID()))
+				if rv, ok := resourceVariablesMap[string(e.Object.GetUID())]; ok {
+					rv.cancelCtx()
+					delete(resourceVariablesMap, string(e.Object.GetUID()))
+				}
 				return true
 			},
 		})).
