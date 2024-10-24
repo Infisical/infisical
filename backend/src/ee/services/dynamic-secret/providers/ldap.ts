@@ -7,7 +7,7 @@ import { z } from "zod";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { LdapSchema, TDynamicProviderFns } from "./models";
+import { LdapCredentialType, LdapSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -193,29 +193,76 @@ export const LdapProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await getClient(providerInputs);
 
-    const username = generateUsername();
-    const password = generatePassword();
-    const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
+    if (providerInputs.credentialType === LdapCredentialType.Static) {
+      const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
 
-    try {
-      const dnArray = await executeLdif(client, generatedLdif);
+      if (dnMatch) {
+        const username = dnMatch[1];
+        const password = generatePassword();
 
-      return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
-    } catch (err) {
-      if (providerInputs.rollbackLdif) {
-        const rollbackLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rollbackLdif });
-        await executeLdif(client, rollbackLdif);
+        const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rotationLdif });
+
+        try {
+          const dnArray = await executeLdif(client, generatedLdif);
+
+          return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
+        } catch (err) {
+          throw new BadRequestError({ message: (err as Error).message });
+        }
+      } else {
+        throw new BadRequestError({
+          message: "Invalid rotation LDIF, missing DN."
+        });
       }
-      throw new BadRequestError({ message: (err as Error).message });
+    } else {
+      const username = generateUsername();
+      const password = generatePassword();
+      const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
+
+      try {
+        const dnArray = await executeLdif(client, generatedLdif);
+
+        return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
+      } catch (err) {
+        if (providerInputs.rollbackLdif) {
+          const rollbackLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rollbackLdif });
+          await executeLdif(client, rollbackLdif);
+        }
+        throw new BadRequestError({ message: (err as Error).message });
+      }
     }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await getClient(providerInputs);
+    const client = await getClient(providerInputs);
+
+    if (providerInputs.credentialType === LdapCredentialType.Static) {
+      const dnMatch = providerInputs.rotationLdif.match(/^dn:\s*(.+)/m);
+
+      if (dnMatch) {
+        const username = dnMatch[1];
+        const password = generatePassword();
+
+        const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rotationLdif });
+
+        try {
+          const dnArray = await executeLdif(client, generatedLdif);
+
+          return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
+        } catch (err) {
+          throw new BadRequestError({ message: (err as Error).message });
+        }
+      } else {
+        throw new BadRequestError({
+          message: "Invalid rotation LDIF, missing DN."
+        });
+      }
+    }
+
     const revocationLdif = generateLDIF({ username: entityId, ldifTemplate: providerInputs.revocationLdif });
 
-    await executeLdif(connection, revocationLdif);
+    await executeLdif(client, revocationLdif);
 
     return { entityId };
   };

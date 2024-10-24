@@ -189,7 +189,7 @@ export type TDynamicSecretProvider =
         applicationId: string;
         clientSecret: string;
       };
-  }
+    }
   | {
       type: DynamicSecretProviders.Ldap;
       inputs: {
@@ -197,13 +197,13 @@ export type TDynamicSecretProvider =
         binddn: string;
         bindpass: string;
         ca?: string | undefined;
-        creationLdif: string;
-        revocationLdif: string;
+        credentialType: string;
+        creationLdif?: string;
+        revocationLdif?: string;
         rollbackLdif?: string;
+        rotationLdif?: string;
       };
     };
-  ;
-
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;
   provider: TDynamicSecretProvider;

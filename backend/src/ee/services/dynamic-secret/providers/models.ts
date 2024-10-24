@@ -12,6 +12,11 @@ export enum ElasticSearchAuthTypes {
   ApiKey = "api-key"
 }
 
+export enum LdapCredentialType {
+  Dynamic = "dynamic",
+  Static = "static"
+}
+
 export const DynamicSecretRedisDBSchema = z.object({
   host: z.string().trim().toLowerCase(),
   port: z.number(),
@@ -174,16 +179,26 @@ export const AzureEntraIDSchema = z.object({
   clientSecret: z.string().trim().min(1)
 });
 
-export const LdapSchema = z.object({
-  url: z.string().trim().min(1),
-  binddn: z.string().trim().min(1),
-  bindpass: z.string().trim().min(1),
-  ca: z.string().optional(),
-
-  creationLdif: z.string().min(1),
-  revocationLdif: z.string().min(1),
-  rollbackLdif: z.string().optional()
-});
+export const LdapSchema = z.union([
+  z.object({
+    url: z.string().trim().min(1),
+    binddn: z.string().trim().min(1),
+    bindpass: z.string().trim().min(1),
+    ca: z.string().optional(),
+    credentialType: z.literal(LdapCredentialType.Dynamic).optional().default(LdapCredentialType.Dynamic),
+    creationLdif: z.string().min(1),
+    revocationLdif: z.string().min(1),
+    rollbackLdif: z.string().optional()
+  }),
+  z.object({
+    url: z.string().trim().min(1),
+    binddn: z.string().trim().min(1),
+    bindpass: z.string().trim().min(1),
+    ca: z.string().optional(),
+    credentialType: z.literal(LdapCredentialType.Static),
+    rotationLdif: z.string().min(1)
+  })
+]);
 
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",

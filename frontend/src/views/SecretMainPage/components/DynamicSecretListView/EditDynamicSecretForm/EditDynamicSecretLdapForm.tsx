@@ -5,22 +5,47 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
+enum CredentialType {
+  Dynamic = "dynamic",
+  Static = "static"
+}
+
+const credentialTypes = [
+  {
+    label: "Dynamic",
+    value: CredentialType.Dynamic
+  },
+  {
+    label: "Static",
+    value: CredentialType.Static
+  }
+] as const;
+
 const formSchema = z.object({
-  inputs: z
-    .object({
+  inputs: z.discriminatedUnion("credentialType", [
+    z.object({
       url: z.string().trim().min(1),
       binddn: z.string().trim().min(1),
       bindpass: z.string().trim().min(1),
       ca: z.string().optional(),
+      credentialType: z.literal(CredentialType.Dynamic),
       creationLdif: z.string().min(1),
       revocationLdif: z.string().min(1),
       rollbackLdif: z.string().optional()
+    }),
+    z.object({
+      url: z.string().trim().min(1),
+      binddn: z.string().trim().min(1),
+      bindpass: z.string().trim().min(1),
+      ca: z.string().optional(),
+      credentialType: z.literal(CredentialType.Static),
+      rotationLdif: z.string().min(1)
     })
-    .partial(),
+  ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
     if (valMs < 60 * 1000)
@@ -67,7 +92,9 @@ export const EditDynamicSecretLdapForm = ({
   const {
     control,
     formState: { isSubmitting },
-    handleSubmit
+    handleSubmit,
+    watch,
+    setValue
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
@@ -81,6 +108,7 @@ export const EditDynamicSecretLdapForm = ({
   });
 
   const updateDynamicSecret = useUpdateDynamicSecret();
+  const selectedCredentialType = watch("inputs.credentialType");
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     // wait till previous request is finished
@@ -204,43 +232,103 @@ export const EditDynamicSecretLdapForm = ({
           />
           <Controller
             control={control}
-            name="inputs.creationLdif"
+            name="inputs.credentialType"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Creation LDIF"
-                isError={Boolean(error)}
+                label="Credential Type"
+                isError={Boolean(error?.message)}
                 errorText={error?.message}
+                className="w-full"
               >
-                <TextArea {...field} />
+                <Select
+                  defaultValue={field.value}
+                  {...field}
+                  className="w-full"
+                  onValueChange={(e) => {
+                    const ldifFields = [
+                      "inputs.creationLdif",
+                      "inputs.revocationLdif",
+                      "inputs.rollbackLdif",
+                      "inputs.rotationLdif"
+                    ] as const;
+
+                    ldifFields.forEach((f) => {
+                      setValue(f, "");
+                    });
+
+                    field.onChange(e);
+                  }}
+                >
+                  {credentialTypes.map((credentialType) => (
+                    <SelectItem
+                      value={credentialType.value}
+                      key={`credential-type-${credentialType.value}`}
+                    >
+                      {credentialType.label}
+                    </SelectItem>
+                  ))}
+                </Select>
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="inputs.revocationLdif"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Revocation LDIF"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <TextArea {...field} />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="inputs.rollbackLdif"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Rollback LDIF"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <TextArea {...field} />
-              </FormControl>
-            )}
-          />
+          {selectedCredentialType === CredentialType.Dynamic && (
+            <>
+              <Controller
+                control={control}
+                name="inputs.creationLdif"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Creation LDIF"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <TextArea {...field} />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="inputs.revocationLdif"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Revocation LDIF"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <TextArea {...field} />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="inputs.rollbackLdif"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Rollback LDIF"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <TextArea {...field} />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
+          {selectedCredentialType === CredentialType.Static && (
+            <Controller
+              control={control}
+              name="inputs.rotationLdif"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Rotation LDIF"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <TextArea {...field} />
+                </FormControl>
+              )}
+            />
+          )}
         </div>
         <div className="mt-4 flex items-center space-x-4">
           <Button type="submit" isLoading={isSubmitting}>
