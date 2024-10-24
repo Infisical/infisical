@@ -83,6 +83,11 @@ export const IntegrationsSection = ({
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={
+          ((popUp?.deleteConfirmation?.data as TIntegration)?.integration ===
+            "azure-app-configuration" &&
+            (popUp?.deleteConfirmation?.data as TIntegration)?.app
+              ?.split("//")[1]
+              ?.split(".")[0]) ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.app ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.owner ||
           (popUp?.deleteConfirmation?.data as TIntegration)?.path ||

@@ -1113,6 +1113,8 @@ export const getApps = async ({
       });
     case Integrations.AZURE_KEY_VAULT:
       return [];
+    case Integrations.AZURE_APP_CONFIGURATION:
+      return [];
     case Integrations.AWS_PARAMETER_STORE:
       return [];
     case Integrations.AWS_SECRET_MANAGER:

@@ -24,6 +24,7 @@ import { Octokit } from "@octokit/rest";
 import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
+import https from "https";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
 import { z } from "zod";
@@ -268,6 +269,180 @@ const syncSecretsGCPSecretManager = async ({
       );
     }
   }
+};
+
+const syncSecretsAzureAppConfig = async ({
+  integration,
+  secrets,
+  accessToken,
+  createManySecretsRawFn,
+  updateManySecretsRawFn,
+  integrationDAL
+}: {
+  integration: TIntegrations & {
+    projectId: string;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    secretPath: string;
+  };
+  secrets: Record<string, { value: string; comment?: string } | null>;
+  accessToken: string;
+  createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
+  integrationDAL: Pick<TIntegrationDALFactory, "updateById">;
+}) => {
+  interface AzureAppConfigKeyValue {
+    key: string;
+    value: string;
+  }
+
+  const getCompleteAzureAppConfigValues = async (url: string) => {
+    let result: AzureAppConfigKeyValue[] = [];
+    while (url) {
+      const res = await request.get(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        // we force IPV4 because docker setup fails with ipv6
+        httpsAgent: new https.Agent({
+          family: 4
+        })
+      });
+
+      result = result.concat(res.data.items);
+      url = res.data.nextLink;
+    }
+
+    return result;
+  };
+
+  const metadata = IntegrationMetadataSchema.parse(integration.metadata);
+  const azureAppConfigSecrets = (
+    await getCompleteAzureAppConfigValues(
+      `${integration.app}/kv?api-version=2023-11-01&key=${metadata.secretPrefix || ""}*`
+    )
+  ).reduce(
+    (accum, entry) => {
+      accum[entry.key] = entry.value;
+
+      return accum;
+    },
+    {} as Record<string, string>
+  );
+
+  const secretsToAdd: { [key: string]: string } = {};
+  const secretsToUpdate: { [key: string]: string } = {};
+
+  Object.keys(azureAppConfigSecrets).forEach((key) => {
+    if (!integration.lastUsed) {
+      // first time using integration
+      // -> apply initial sync behavior
+      switch (metadata.initialSyncBehavior) {
+        case IntegrationInitialSyncBehavior.OVERWRITE_TARGET: {
+          if (!(key in secrets)) {
+            secrets[key] = null;
+          }
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_TARGET: {
+          if (!(key in secrets)) {
+            secretsToAdd[key] = azureAppConfigSecrets[key];
+          } else if (secrets[key]?.value !== azureAppConfigSecrets[key]) {
+            secretsToUpdate[key] = azureAppConfigSecrets[key];
+          }
+          secrets[key] = {
+            value: azureAppConfigSecrets[key]
+          };
+          break;
+        }
+        case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
+          if (!(key in secrets)) {
+            secrets[key] = {
+              value: azureAppConfigSecrets[key]
+            };
+            secretsToAdd[key] = azureAppConfigSecrets[key];
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    } else if (!(key in secrets)) {
+      secrets[key] = null;
+    }
+  });
+
+  if (Object.keys(secretsToAdd).length) {
+    await createManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToAdd).map((key) => ({
+        secretName: key,
+        secretValue: secretsToAdd[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  if (Object.keys(secretsToUpdate).length) {
+    await updateManySecretsRawFn({
+      projectId: integration.projectId,
+      environment: integration.environment.slug,
+      path: integration.secretPath,
+      secrets: Object.keys(secretsToUpdate).map((key) => ({
+        secretName: key,
+        secretValue: secretsToUpdate[key],
+        type: SecretType.Shared,
+        secretComment: ""
+      }))
+    });
+  }
+
+  // create or update secrets on Azure App Config
+  for await (const key of Object.keys(secrets)) {
+    if (!(key in azureAppConfigSecrets) || secrets[key]?.value !== azureAppConfigSecrets[key]) {
+      await request.put(
+        `${integration.app}/kv/${key}?api-version=2023-11-01`,
+        {
+          value: secrets[key]?.value
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          },
+          // we force IPV4 because docker setup fails with ipv6
+          httpsAgent: new https.Agent({
+            family: 4
+          })
+        }
+      );
+    }
+  }
+
+  for await (const key of Object.keys(azureAppConfigSecrets)) {
+    if (!(key in secrets) || secrets[key] === null) {
+      // case: delete secret
+      await request.delete(`${integration.app}/kv/${key}?api-version=2023-11-01`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        // we force IPV4 because docker setup fails with ipv6
+        httpsAgent: new https.Agent({
+          family: 4
+        })
+      });
+    }
+  }
+
+  await integrationDAL.updateById(integration.id, {
+    lastUsed: new Date()
+  });
 };
 
 /**
@@ -4078,6 +4253,16 @@ export const syncIntegrationSecrets = async ({
         integration,
         secrets,
         accessToken
+      });
+      break;
+    case Integrations.AZURE_APP_CONFIGURATION:
+      await syncSecretsAzureAppConfig({
+        integration,
+        integrationDAL,
+        secrets,
+        accessToken,
+        createManySecretsRawFn,
+        updateManySecretsRawFn
       });
       break;
     case Integrations.AWS_PARAMETER_STORE:

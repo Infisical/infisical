@@ -33,7 +33,8 @@ export enum Integrations {
   NORTHFLANK = "northflank",
   HASURA_CLOUD = "hasura-cloud",
   RUNDECK = "rundeck",
-  AZURE_DEVOPS = "azure-devops"
+  AZURE_DEVOPS = "azure-devops",
+  AZURE_APP_CONFIGURATION = "azure-app-configuration"
 }
 
 export enum IntegrationType {
@@ -200,6 +201,15 @@ export const getIntegrationOptions = async () => {
     {
       name: "Azure Key Vault",
       slug: "azure-key-vault",
+      image: "Microsoft Azure.png",
+      isAvailable: true,
+      type: "oauth",
+      clientId: appCfg.CLIENT_ID_AZURE,
+      docsLink: ""
+    },
+    {
+      name: "Azure App Configuration",
+      slug: "azure-app-configuration",
       image: "Microsoft Azure.png",
       isAvailable: true,
       type: "oauth",
