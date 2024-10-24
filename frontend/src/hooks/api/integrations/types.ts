@@ -46,6 +46,7 @@ export type TIntegration = {
     secretSuffix?: string;
     secretPrefix?: string;
     syncBehavior?: IntegrationSyncBehavior;
+    initialSyncBehavior: IntegrationSyncBehavior;
     mappingBehavior?: IntegrationMappingBehavior;
     scope: string;
     org: string;

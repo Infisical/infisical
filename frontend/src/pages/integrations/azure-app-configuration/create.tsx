@@ -166,6 +166,7 @@ export default function AzureAppConfigurationCreateIntegration() {
               >
                 <Select
                   className="w-full border border-mineshaft-500"
+                  dropdownContainerClassName="max-w-full"
                   value={field.value}
                   onValueChange={(val) => {
                     field.onChange(val);
@@ -230,6 +231,7 @@ export default function AzureAppConfigurationCreateIntegration() {
                   defaultValue={field.value}
                   onValueChange={(e) => onChange(e)}
                   className="w-full border border-mineshaft-500"
+                  dropdownContainerClassName="max-w-full"
                 >
                   {initialSyncBehaviors.map((b) => {
                     return (

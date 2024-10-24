@@ -17,6 +17,7 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   secretSuffix: "Secret Suffix",
   secretPrefix: "Secret Prefix",
   syncBehavior: "Secrets Sync behavior",
+  initialSyncBehavior: "Initial Sync Behavior",
   mappingBehavior: "Secrets Mapping Behavior",
   scope: "Scope",
   org: "Organization",
