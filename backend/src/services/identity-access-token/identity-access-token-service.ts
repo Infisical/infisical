@@ -1,6 +1,6 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
@@ -164,10 +164,22 @@ export const identityAccessTokenServiceFactory = ({
         message: "Failed to authorize revoked access token, access token is revoked"
       });
 
-    if (ipAddress && identityAccessToken) {
+    const trustedIpsMap: Record<IdentityAuthMethod, unknown> = {
+      [IdentityAuthMethod.UNIVERSAL_AUTH]: identityAccessToken.trustedIpsUniversalAuth,
+      [IdentityAuthMethod.GCP_AUTH]: identityAccessToken.trustedIpsGcpAuth,
+      [IdentityAuthMethod.AWS_AUTH]: identityAccessToken.trustedIpsAwsAuth,
+      [IdentityAuthMethod.AZURE_AUTH]: identityAccessToken.trustedIpsAzureAuth,
+      [IdentityAuthMethod.KUBERNETES_AUTH]: identityAccessToken.trustedIpsKubernetesAuth,
+      [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
+      [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth
+    };
+
+    const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];
+
+    if (ipAddress) {
       checkIPAgainstBlocklist({
         ipAddress,
-        trustedIps: identityAccessToken?.accessTokenTrustedIps as TIp[]
+        trustedIps: trustedIps as TIp[]
       });
     }
 

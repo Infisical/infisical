@@ -1077,7 +1077,6 @@ export const registerRoutes = async (
   });
   const identityTokenAuthService = identityTokenAuthServiceFactory({
     identityTokenAuthDAL,
-    identityDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -1086,7 +1085,6 @@ export const registerRoutes = async (
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
     permissionService,
-    identityDAL,
     identityAccessTokenDAL,
     identityUaClientSecretDAL,
     identityUaDAL,
@@ -1096,7 +1094,6 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     orgBotDAL,
     permissionService,
     licenseService
@@ -1105,7 +1102,6 @@ export const registerRoutes = async (
     identityGcpAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     permissionService,
     licenseService
   });
@@ -1114,7 +1110,6 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     identityAwsAuthDAL,
     identityOrgMembershipDAL,
-    identityDAL,
     licenseService,
     permissionService
   });
@@ -1123,7 +1118,6 @@ export const registerRoutes = async (
     identityAzureAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     permissionService,
     licenseService
   });
@@ -1132,7 +1126,6 @@ export const registerRoutes = async (
     identityOidcAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     permissionService,
     licenseService,
     orgBotDAL
