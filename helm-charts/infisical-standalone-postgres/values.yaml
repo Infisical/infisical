@@ -21,6 +21,7 @@ infisical:
     imagePullSecrets: []
 
   affinity: {}
+  tolerations: []
   kubeSecretRef: "infisical-secrets"
 
   service:
