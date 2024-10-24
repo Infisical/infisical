@@ -4,6 +4,7 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -175,9 +176,10 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
-		infisicalClient := infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
-			SiteUrl:   config.INFISICAL_URL,
-			UserAgent: api.USER_AGENT,
+		infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
+			SiteUrl:          config.INFISICAL_URL,
+			UserAgent:        api.USER_AGENT,
+			AutoTokenRefresh: false,
 		})
 
 		loginMethod, err := cmd.Flags().GetString("method")

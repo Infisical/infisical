@@ -5,14 +5,13 @@ go 1.21
 require (
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/charmbracelet/lipgloss v0.9.1
-	github.com/chzyer/readline v1.5.1
 	github.com/creack/pty v1.1.21
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/fatih/semgroup v1.2.0
 	github.com/gitleaks/go-gitdiff v0.8.0
 	github.com/h2non/filetype v1.1.3
-	github.com/infisical/go-sdk v0.3.3
-	github.com/mattn/go-isatty v0.0.18
+	github.com/infisical/go-sdk v0.3.8
+	github.com/mattn/go-isatty v0.0.20
 	github.com/muesli/ansi v0.0.0-20221106050444-61f0cd9a192a
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/reflow v0.3.0
@@ -50,6 +49,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.12 // indirect
 	github.com/aws/smithy-go v1.20.2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
@@ -68,7 +68,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
-	github.com/mattn/go-colorable v0.1.9 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
@@ -107,7 +107,7 @@ require (
 )
 
 require (
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.17.0
 	github.com/go-resty/resty/v2 v2.13.1
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
