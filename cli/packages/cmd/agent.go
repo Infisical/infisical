@@ -525,9 +525,10 @@ func NewAgentManager(options NewAgentMangerOptions) *AgentManager {
 		newAccessTokenNotificationChan: options.NewAccessTokenNotificationChan,
 		exitAfterAuth:                  options.ExitAfterAuth,
 
-		infisicalClient: infisicalSdk.NewInfisicalClient(infisicalSdk.Config{
-			SiteUrl:   config.INFISICAL_URL,
-			UserAgent: api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
+		infisicalClient: infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
+			SiteUrl:          config.INFISICAL_URL,
+			UserAgent:        api.USER_AGENT, // ? Should we perhaps use a different user agent for the Agent for better analytics?
+			AutoTokenRefresh: false,
 		}),
 	}
 
