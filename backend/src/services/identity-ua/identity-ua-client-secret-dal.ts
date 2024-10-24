@@ -28,6 +28,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
   const removeExpiredClientSecrets = async (tx?: Knex) => {
     const BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
+    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
 
     let deletedClientSecret: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
@@ -53,7 +54,8 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
             void qb
               .where("clientSecretTTL", ">", 0)
               .andWhereRaw(
-                `"${TableName.IdentityUaClientSecret}"."createdAt" + make_interval(secs => "${TableName.IdentityUaClientSecret}"."clientSecretTTL") < NOW()`
+                `"${TableName.IdentityUaClientSecret}"."createdAt" + make_interval(secs => LEAST("${TableName.IdentityUaClientSecret}"."clientSecretTTL", ?)) < NOW()`,
+                [MAX_TTL]
               );
           })
           .select("id")

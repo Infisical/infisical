@@ -98,6 +98,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
 
   const removeExpiredTokens = async (tx?: Knex) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
+
+    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
+
     try {
       const docs = (tx || db)(TableName.IdentityAccessToken)
         .where({
@@ -120,7 +123,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
                   .whereNotNull("accessTokenLastRenewedAt")
                   // accessTokenLastRenewedAt + convert_integer_to_seconds(accessTokenTTL) < present_date
                   .andWhereRaw(
-                    `"${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt" + make_interval(secs => "${TableName.IdentityAccessToken}"."accessTokenTTL") < NOW()`
+                    `"${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt" + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
+                    [MAX_TTL]
                   );
               })
               .orWhere((qb3) => {
@@ -128,7 +132,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
                   .whereNull("accessTokenLastRenewedAt")
                   // created + convert_integer_to_seconds(accessTokenTTL) < present_date
                   .andWhereRaw(
-                    `"${TableName.IdentityAccessToken}"."createdAt" + make_interval(secs => "${TableName.IdentityAccessToken}"."accessTokenTTL") < NOW()`
+                    `"${TableName.IdentityAccessToken}"."createdAt" + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
+                    [MAX_TTL]
                   );
               });
           });
