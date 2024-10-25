@@ -278,3 +278,20 @@ export type TAttachSecretTagsDTO = {
   secretPath: string;
   type: SecretType;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TFindSecretsByFolderIdsFilter = {
+  limit?: number;
+  offset?: number;
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+  tagSlugs?: string[];
+  includeTagsInSearch?: boolean;
+};
+
+export type TGetSecretsRawByFolderMappingsDTO = {
+  projectId: string;
+  folderMappings: { folderId: string; path: string; environment: string }[];
+  userId: string;
+  filters: TFindSecretsByFolderIdsFilter;
+};

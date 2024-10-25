@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import { FastifyRequest } from "fastify";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -22,6 +23,7 @@ import {
   TDeleteDynamicSecretDTO,
   TDetailsDynamicSecretDTO,
   TGetDynamicSecretsCountDTO,
+  TListDynamicSecretsByFolderMappingsDTO,
   TListDynamicSecretsDTO,
   TListDynamicSecretsMultiEnvDTO,
   TUpdateDynamicSecretDTO
@@ -454,8 +456,44 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
+  const listDynamicSecretsByFolderIds = async (
+    { folderMappings, filters, projectId }: TListDynamicSecretsByFolderMappingsDTO,
+    actor: FastifyRequest["permission"]
+  ) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor.type,
+      actor.id,
+      projectId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    const userAccessibleFolderMappings = folderMappings.filter(({ path, environment }) =>
+      permission.can(
+        ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath: path })
+      )
+    );
+
+    const groupedFolderMappings = new Map(userAccessibleFolderMappings.map((path) => [path.folderId, path]));
+
+    const dynamicSecrets = await dynamicSecretDAL.listDynamicSecretsByFolderIds({
+      folderIds: userAccessibleFolderMappings.map(({ folderId }) => folderId),
+      ...filters
+    });
+
+    return dynamicSecrets.map((dynamicSecret) => {
+      const { environment, path } = groupedFolderMappings.get(dynamicSecret.folderId)!;
+      return {
+        ...dynamicSecret,
+        environment,
+        path
+      };
+    });
+  };
+
   // get dynamic secrets for multiple envs
-  const listDynamicSecretsByFolderIds = async ({
+  const listDynamicSecretsByEnvs = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -521,9 +559,10 @@ export const dynamicSecretServiceFactory = ({
     deleteByName,
     getDetails,
     listDynamicSecretsByEnv,
-    listDynamicSecretsByFolderIds,
+    listDynamicSecretsByEnvs,
     getDynamicSecretCount,
     getCountMultiEnv,
-    fetchAzureEntraIdUsers
+    fetchAzureEntraIdUsers,
+    listDynamicSecretsByFolderIds
   };
 };
