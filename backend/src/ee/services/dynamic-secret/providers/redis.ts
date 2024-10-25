@@ -3,11 +3,10 @@ import { Redis } from "ioredis";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { getDbConnectionHost } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = () => {
@@ -51,22 +50,8 @@ const executeTransactions = async (connection: Redis, commands: string[]): Promi
 
 export const RedisDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
-    const appCfg = getConfig();
-    const isCloud = Boolean(appCfg.LICENSE_SERVER_KEY); // quick and dirty way to check if its cloud or not
-    const dbHost = appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI);
-
     const providerInputs = await DynamicSecretRedisDBSchema.parseAsync(inputs);
-    if (
-      isCloud &&
-      // localhost
-      // internal ips
-      (providerInputs.host === "host.docker.internal" ||
-        providerInputs.host.match(/^10\.\d+\.\d+\.\d+/) ||
-        providerInputs.host.match(/^192\.168\.\d+\.\d+/))
-    )
-      throw new BadRequestError({ message: "Invalid db host" });
-    if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1" || dbHost === providerInputs.host)
-      throw new BadRequestError({ message: "Invalid db host" });
+    verifyHostInputValidity(providerInputs.host);
     return providerInputs;
   };
 
