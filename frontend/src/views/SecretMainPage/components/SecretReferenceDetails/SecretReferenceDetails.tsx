@@ -106,8 +106,8 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
           </ul>
         )}
       </div>
-      <div className="mt-2 text-sm text-gray-400">
-        Click on a secret key to view its corresponding sub references.
+      <div className="mt-2 text-sm text-mineshaft-400">
+        Click a secret key to view its sub-references.
       </div>
     </div>
   );

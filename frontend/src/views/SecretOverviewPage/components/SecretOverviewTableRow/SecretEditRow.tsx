@@ -248,7 +248,7 @@ export const SecretEditRow = ({
                       </div>
                     </ModalTrigger>
                     <ModalContent
-                      title="Secret Reference Tree"
+                      title="Secret Reference Details"
                       subTitle="Visual breakdown of secrets referenced by this secret."
                     >
                       <SecretReferenceTree

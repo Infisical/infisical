@@ -308,7 +308,12 @@ export const SecretItem = memo(
                 </Tooltip>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath, secretName, secretTags: selectedTagSlugs})}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName,
+                    secretTags: selectedTagSlugs
+                  })}
                 >
                   {(isAllowed) => (
                     <Modal>
@@ -335,7 +340,7 @@ export const SecretItem = memo(
                         </IconButton>
                       </ModalTrigger>
                       <ModalContent
-                        title="Secret Reference Tree"
+                        title="Secret Reference Details"
                         subTitle="Visual breakdown of secrets referenced by this secret."
                       >
                         <SecretReferenceTree

@@ -1972,6 +1972,16 @@ export const secretV2BridgeServiceFactory = ({
       type: SecretType.Shared
     });
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName,
+        secretTags: (secret?.tags || []).map((el) => el.slug)
+      })
+    );
+
     const secretValue = secret.encryptedValue
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : "";
@@ -1981,10 +1991,15 @@ export const secretV2BridgeServiceFactory = ({
       folderDAL,
       secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
-      canExpandValue: (expandEnvironment, expandSecretPath) =>
+      canExpandValue: (expandEnvironment, expandSecretPath, expandSecretName, expandSecretTags) =>
         permission.can(
           ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, { environment: expandEnvironment, secretPath: expandSecretPath })
+          subject(ProjectPermissionSub.Secrets, {
+            environment: expandEnvironment,
+            secretPath: expandSecretPath,
+            secretName: expandSecretName,
+            secretTags: expandSecretTags
+          })
         )
     });
 
