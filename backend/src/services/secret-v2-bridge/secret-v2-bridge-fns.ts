@@ -334,7 +334,8 @@ export const recursivelyGetSecretPaths = async ({
   folderDAL,
   projectEnvDAL,
   projectId,
-  environment
+  environment,
+  currentPath
 }: TRecursivelyFetchSecretsFromFoldersArg) => {
   const env = await projectEnvDAL.findOne({
     projectId,
@@ -362,7 +363,11 @@ export const recursivelyGetSecretPaths = async ({
     folderId: p.folderId
   }));
 
-  return paths;
+  const pathsInCurrentDirectory = paths.filter((folder) =>
+    folder.path.startsWith(currentPath === "/" ? "" : currentPath)
+  );
+
+  return pathsInCurrentDirectory;
 };
 // used to convert multi line ones to quotes ones with \n
 const formatMultiValueEnv = (val?: string) => {
