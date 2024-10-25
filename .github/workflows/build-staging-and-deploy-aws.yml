@@ -102,7 +102,7 @@ jobs:
           task-definition: ${{ steps.render-web-container.outputs.task-definition }}
           service: infisical-core-gamma-stage
           cluster: infisical-gamma-stage
-          wait-for-service-stability: true
+          wait-for-service-stability: false
 
   production-postgres-deployment:
     name: Deploy to production
