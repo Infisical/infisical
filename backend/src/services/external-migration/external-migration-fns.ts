@@ -105,7 +105,22 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
     secretName: string,
     envs: typeof parsedJson.envs
   ): { val?: string } => {
-    if (!secret.inheritsEnvironmentId) return secret;
+    if (!secret) {
+      return {
+        val: ""
+      };
+    }
+
+    // If we have a direct value, return it
+    if (secret.val !== undefined) {
+      return secret;
+    }
+
+    // If there's no inheritance, return the secret as is
+    if (!secret.inheritsEnvironmentId) {
+      return secret;
+    }
+
     const inheritedEnv = envs[secret.inheritsEnvironmentId];
     if (!inheritedEnv) return secret;
     return findRootInheritedSecret(inheritedEnv.variables[secretName], secretName, envs);
