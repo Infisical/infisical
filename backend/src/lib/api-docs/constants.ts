@@ -669,6 +669,12 @@ export const RAW_SECRETS = {
     type: "The type of the secret to delete.",
     projectSlug: "The slug of the project to delete the secret in.",
     workspaceId: "The ID of the project where the secret is located."
+  },
+  GET_REFERENCE_TREE: {
+    secretName: "The name of the secret to get the reference tree for.",
+    workspaceId: "The ID of the project where the secret is located.",
+    environment: "The slug of the environment where the the secret is located.",
+    secretPath: "The folder path where the secret is located."
   }
 } as const;
 

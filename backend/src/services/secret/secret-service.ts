@@ -38,6 +38,7 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
+import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   decryptSecretRaw,
@@ -1097,6 +1098,18 @@ export const secretServiceFactory = ({
     });
 
     return secrets;
+  };
+
+  const getSecretReferenceTree = async (dto: TGetSecretReferencesTreeDTO) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support secret reference tree",
+        name: "SecretReferenceTreeNotSupported"
+      });
+
+    return secretV2BridgeService.getSecretReferenceTree(dto);
   };
 
   const getSecretsRaw = async ({
@@ -2857,6 +2870,7 @@ export const secretServiceFactory = ({
     startSecretV2Migration,
     getSecretsCount,
     getSecretsCountMultiEnv,
-    getSecretsRawMultiEnv
+    getSecretsRawMultiEnv,
+    getSecretReferenceTree
   };
 };

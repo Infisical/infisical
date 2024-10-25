@@ -393,7 +393,7 @@ export const SecretDetailSidebar = ({
                 ) : (
                   <div className="mt-2 ml-1 flex items-center space-x-2">
                     <Button
-                      className="px-2 py-1"
+                      className="w-full px-2 py-1"
                       variant="outline_bg"
                       leftIcon={<FontAwesomeIcon icon={faClock} />}
                       onClick={() => setCreateReminderFormOpen.on()}
@@ -448,9 +448,9 @@ export const SecretDetailSidebar = ({
                   )}
                 />
               </div>
-              <div className="ml-1 flex items-center space-x-2">
+              <div className="ml-1 flex items-center space-x-4">
                 <Button
-                  className="px-2 py-1"
+                  className="w-full px-2 py-1"
                   variant="outline_bg"
                   leftIcon={<FontAwesomeIcon icon={faShare} />}
                   onClick={() => {
