@@ -9,10 +9,10 @@ import hdb from "hdb";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSapHanaSchema, TDynamicProviderFns } from "./models";
 
 const generatePassword = (size = 48) => {
@@ -26,23 +26,9 @@ const generateUsername = () => {
 
 export const SapHanaProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
-    const appCfg = getConfig();
     const providerInputs = await DynamicSecretSapHanaSchema.parseAsync(inputs);
 
-    if (
-      appCfg.isCloud &&
-      // localhost
-      // internal ips
-      (providerInputs.host === "host.docker.internal" ||
-        providerInputs.host.match(/^10\.\d+\.\d+\.\d+/) ||
-        providerInputs.host.match(/^192\.168\.\d+\.\d+/))
-    )
-      throw new BadRequestError({ message: "Invalid db host" });
-
-    if (providerInputs.host === "localhost" || providerInputs.host === "127.0.0.1") {
-      throw new BadRequestError({ message: "Invalid db host" });
-    }
-
+    verifyHostInputValidity(providerInputs.host);
     return providerInputs;
   };
 
