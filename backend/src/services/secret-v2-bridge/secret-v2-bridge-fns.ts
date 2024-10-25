@@ -448,7 +448,7 @@ export const expandSecretReferencesFactory = ({
           // eslint-disable-next-line no-continue
           if (!entities.length) continue;
 
-          let referrencedSecretPath = "";
+          let referencedSecretPath = "";
           let referencedSecretKey = "";
           let referencedSecretEnvironmentSlug = "";
           let referencedSecretValue = "";
@@ -468,7 +468,7 @@ export const expandSecretReferencesFactory = ({
 
             referencedSecretValue = referredValue.value;
             referencedSecretKey = secretKey;
-            referrencedSecretPath = secretPath;
+            referencedSecretPath = secretPath;
             referencedSecretEnvironmentSlug = environment;
           } else {
             const secretReferenceEnvironment = entities[0];
@@ -487,13 +487,13 @@ export const expandSecretReferencesFactory = ({
 
             referencedSecretValue = referedValue.value;
             referencedSecretKey = secretReferenceKey;
-            referrencedSecretPath = secretReferencePath;
+            referencedSecretPath = secretReferencePath;
             referencedSecretEnvironmentSlug = secretReferenceEnvironment;
           }
 
           const node = {
             value: referencedSecretValue,
-            secretPath: referrencedSecretPath,
+            secretPath: referencedSecretPath,
             environment: referencedSecretEnvironmentSlug,
             depth: depth + 1,
             trace

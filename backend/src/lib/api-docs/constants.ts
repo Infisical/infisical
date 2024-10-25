@@ -671,7 +671,7 @@ export const RAW_SECRETS = {
     workspaceId: "The ID of the project where the secret is located."
   },
   GET_REFERENCE_TREE: {
-    secretName: "The name of the secret to get the reference tree for.'.",
+    secretName: "The name of the secret to get the reference tree for.",
     workspaceId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
     secretPath: "The folder path where the secret is located."
