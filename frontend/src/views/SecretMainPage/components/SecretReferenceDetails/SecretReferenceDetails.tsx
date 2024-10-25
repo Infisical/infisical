@@ -1,10 +1,11 @@
-import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { faChevronRight, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as Collapsible from "@radix-ui/react-collapsible";
 import { twMerge } from "tailwind-merge";
 
 import { FormControl, FormLabel, SecretInput, Spinner, Tooltip } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { useToggle } from "@app/hooks";
 import { useGetSecretReferenceTree } from "@app/hooks/api";
 import { TSecretReferenceTraceNode } from "@app/hooks/api/types";
 
@@ -29,18 +30,26 @@ export const SecretReferenceNode = ({
   isRoot?: boolean;
   secretKey?: string;
 }) => {
-  const [isOpen, setIsOpen] = useToggle();
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = node.children.length > 0;
+
   return (
     <li>
-      <details
-        open={isOpen}
-        onToggle={(el) => {
-          el.preventDefault();
-          el.stopPropagation();
-          setIsOpen.toggle();
-        }}
-      >
-        <summary className={twMerge(node.children.length > 0 && !isOpen && "text-primary")}>
+      <Collapsible.Root open={isOpen} className="" onOpenChange={setIsOpen}>
+        <Collapsible.Trigger
+          className={twMerge(
+            hasChildren && " decoration-bunker-4ø00 underline-offset-4 data-[state=open]:underline",
+            "[&>svg]:data-[state=open]:rotate-[90deg] [&>svg]:data-[state=open]:text-yellow-500"
+          )}
+          disabled={!hasChildren}
+        >
+          {hasChildren && (
+            <FontAwesomeIcon
+              icon={faChevronRight}
+              className=" d mr-2 text-mineshaft-400 transition-transform duration-300 ease-linear"
+              aria-hidden
+            />
+          )}
           {isRoot
             ? secretKey
             : `${node.environment}${
@@ -48,20 +57,25 @@ export const SecretReferenceNode = ({
               }.${node.key}`}
           <Tooltip className="max-w-md break-words" content={node.value}>
             <span
-              className={twMerge("ml-1 px-1 text-xs text-gray-400", !node.value && "text-red-400")}
+              className={twMerge(
+                "ml-1 px-1 text-xs text-mineshaft-400",
+                !node.value && "text-red-400"
+              )}
             >
               <FontAwesomeIcon icon={node.value ? faEye : faEyeSlash} />
             </span>
           </Tooltip>
-        </summary>
-        {node.children.length > 0 && (
-          <ul>
-            {node.children.map((el, index) => (
-              <SecretReferenceNode node={el} key={`${el.key}-${index + 1}`} />
-            ))}
-          </ul>
-        )}
-      </details>
+        </Collapsible.Trigger>
+        <Collapsible.Content className={twMerge("mt-4", style.collapsibleContent)}>
+          {hasChildren && (
+            <ul>
+              {node.children.map((el, index) => (
+                <SecretReferenceNode node={el} key={`${el.key}-${index + 1}`} />
+              ))}
+            </ul>
+          )}
+        </Collapsible.Content>
+      </Collapsible.Root>
     </li>
   );
 };
@@ -95,11 +109,11 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
           key="value-overriden"
           isReadOnly
           value={secretValue}
-          containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
+          containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
         />
       </FormControl>
       <FormLabel className="mb-2" label="Reference Tree" />
-      <div className="relative max-h-96 overflow-auto rounded bg-bunker-700 py-2 pt-6 text-sm">
+      <div className="thin-scrollbar relative max-h-96 overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 py-6 text-sm text-mineshaft-200">
         {tree && (
           <ul className={style.tree}>
             <SecretReferenceNode node={tree} isRoot secretKey={secretKey} />
