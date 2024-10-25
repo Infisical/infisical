@@ -26,7 +26,8 @@ export enum DynamicSecretProviders {
   MongoDB = "mongo-db",
   RabbitMq = "rabbit-mq",
   AzureEntraId = "azure-entra-id",
-  Ldap = "ldap"
+  Ldap = "ldap",
+  SapHana = "sap-hana"
 }
 
 export enum SqlProviders {
@@ -189,7 +190,7 @@ export type TDynamicSecretProvider =
         applicationId: string;
         clientSecret: string;
       };
-  }
+    }
   | {
       type: DynamicSecretProviders.Ldap;
       inputs: {
@@ -201,9 +202,20 @@ export type TDynamicSecretProvider =
         revocationLdif: string;
         rollbackLdif?: string;
       };
+    }
+  | {
+      type: DynamicSecretProviders.SapHana;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+        ca?: string | undefined;
+      };
     };
-  ;
-
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;
   provider: TDynamicSecretProvider;

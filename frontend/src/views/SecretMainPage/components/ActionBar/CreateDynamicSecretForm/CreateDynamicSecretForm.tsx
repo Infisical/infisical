@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { DiRedis } from "react-icons/di";
-import { SiApachecassandra, SiElasticsearch, SiFiles, SiMicrosoftazure, SiMongodb, SiRabbitmq } from "react-icons/si";
+import {
+  SiApachecassandra,
+  SiElasticsearch,
+  SiFiles,
+  SiMicrosoftazure,
+  SiMongodb,
+  SiRabbitmq,
+  SiSap
+} from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,6 +27,7 @@ import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
 import { RabbitMqInputForm } from "./RabbitMqInputForm";
 import { RedisInputForm } from "./RedisInputForm";
+import { SapHanaInputForm } from "./SapHanaInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 
 type Props = {
@@ -83,12 +92,17 @@ const DYNAMIC_SECRET_LIST = [
   {
     icon: <SiMicrosoftazure size="1.5rem" />,
     provider: DynamicSecretProviders.AzureEntraId,
-    title: "Azure Entra ID",
+    title: "Azure Entra ID"
   },
   {
     icon: <SiFiles size="1.5rem" />,
     provider: DynamicSecretProviders.Ldap,
-    title: "LDAP",
+    title: "LDAP"
+  },
+  {
+    icon: <SiSap size="1.5rem" />,
+    provider: DynamicSecretProviders.SapHana,
+    title: "SAP HANA"
   }
 ];
 
@@ -329,8 +343,7 @@ export const CreateDynamicSecretForm = ({
                   environment={environment}
                 />
               </motion.div>
-            )
-          }
+            )}
           {wizardStep === WizardSteps.ProviderInputs &&
             selectedProvider === DynamicSecretProviders.Ldap && (
               <motion.div
@@ -348,9 +361,25 @@ export const CreateDynamicSecretForm = ({
                   environment={environment}
                 />
               </motion.div>
-            )
-          }
-
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.SapHana && (
+              <motion.div
+                key="dynamic-sap-hana-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <SapHanaInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
         </AnimatePresence>
       </ModalContent>
     </Modal>
