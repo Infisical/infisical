@@ -51,7 +51,12 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
       host: providerInputs.host,
       port: providerInputs.port,
       user: providerInputs.username,
-      password: providerInputs.password
+      password: providerInputs.password,
+      ...(providerInputs.ca
+        ? {
+            ca: providerInputs.ca
+          }
+        : {})
     });
 
     await new Promise((resolve, reject) => {
