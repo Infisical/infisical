@@ -29,7 +29,7 @@ export type EncryptedSecret = {
   tags: WsTag[];
 };
 
-// both personal and shared secret stitiched together for dashboard
+// both personal and shared secret stitched together for dashboard
 export type SecretV3RawSanitized = {
   id: string;
   version: number;
@@ -42,6 +42,7 @@ export type SecretV3RawSanitized = {
   createdAt: string;
   updatedAt: string;
   env: string;
+  path?: string;
   valueOverride?: string;
   idOverride?: string;
   overrideAction?: string;
@@ -57,6 +58,7 @@ export type SecretV3Raw = {
   version: number;
   type: string;
   secretKey: string;
+  secretPath: string;
   secretValue?: string;
   secretComment?: string;
   secretReminderNote?: string;

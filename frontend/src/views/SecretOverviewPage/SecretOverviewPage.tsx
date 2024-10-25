@@ -14,7 +14,6 @@ import {
   faFolderPlus,
   faKey,
   faList,
-  faMagnifyingGlass,
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -33,7 +32,6 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   Pagination,
@@ -61,6 +59,7 @@ import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
+  useGetWsTags,
   useUpdateSecretV3
 } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
@@ -76,6 +75,7 @@ import {
   SecretNoAccessOverviewTableRow,
   SecretOverviewTableRow
 } from "@app/views/SecretOverviewPage/components/SecretOverviewTableRow";
+import { SecretSearchInput } from "@app/views/SecretOverviewPage/components/SecretSearchInput";
 import { SecretTableResourceCount } from "@app/views/SecretOverviewPage/components/SecretTableResourceCount";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -231,6 +231,9 @@ export const SecretOverviewPage = () => {
     useDynamicSecretOverview(dynamicSecrets);
 
   const { secKeys, getSecretByKey, getEnvSecretKeyCount } = useSecretOverview(secrets);
+  const { data: tags } = useGetWsTags(
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
+  );
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -601,6 +604,20 @@ export const SecretOverviewPage = () => {
     setSelectedEntries(newChecks);
   };
 
+  useEffect(() => {
+    if (router.query.search) {
+      const { search, ...query } = router.query;
+      // temp workaround until we transition state to query params
+      router.push({
+        pathname: router.pathname,
+        query
+      });
+      setFilter(DEFAULT_FILTER_STATE);
+      setSearchFilter(router.query.search as string);
+      setDebouncedSearchFilter(router.query.search as string);
+    }
+  }, [router.query.search]);
+
   if (isWorkspaceLoading || (isProjectV3 && isOverviewLoading)) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -640,47 +657,49 @@ export const SecretOverviewPage = () => {
           <NavHeader pageName={t("dashboard.title")} isProjectRelated />
         </div>
         <div className="space-y-8">
-          <div className="mt-6">
-            <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
-            <p className="text-md text-bunker-300">
-              Inject your secrets using
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/cli/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Infisical CLI
-              </a>
-              ,
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/documentation/getting-started/api"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Infisical API
-              </a>
-              ,
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/sdks/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Infisical SDKs
-              </a>
-              , and
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/documentation/getting-started/introduction"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                more
-              </a>
-              .
-            </p>
+          <div className="flex w-full items-baseline justify-between">
+            <div className="mt-6">
+              <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
+              <p className="text-md text-bunker-300">
+                Inject your secrets using
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/cli/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Infisical CLI
+                </a>
+                ,
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/documentation/getting-started/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Infisical API
+                </a>
+                ,
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/sdks/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Infisical SDKs
+                </a>
+                , and
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/documentation/getting-started/introduction"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  more
+                </a>
+                .
+              </p>
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
@@ -780,20 +799,13 @@ export const SecretOverviewPage = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <div className="w-80">
-                <Input
-                  className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-                  placeholder="Search by secret/folder name..."
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  leftIcon={
-                    <FontAwesomeIcon
-                      icon={faMagnifyingGlass}
-                      className={searchFilter ? "text-primary" : ""}
-                    />
-                  }
-                />
-              </div>
+              <SecretSearchInput
+                value={searchFilter}
+                tags={tags}
+                onChange={setSearchFilter}
+                environments={userAvailableEnvs}
+                projectId={currentWorkspace?.id!}
+              />
               {userAvailableEnvs.length > 0 && (
                 <div>
                   <Button

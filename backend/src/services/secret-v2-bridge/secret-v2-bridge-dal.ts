@@ -14,6 +14,7 @@ import {
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
+import { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
 
@@ -339,14 +340,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     folderIds: string[],
     userId?: string,
     tx?: Knex,
-    filters?: {
-      limit?: number;
-      offset?: number;
-      orderBy?: SecretsOrderBy;
-      orderDirection?: OrderByDirection;
-      search?: string;
-      tagSlugs?: string[];
-    }
+    filters?: TFindSecretsByFolderIdsFilter
   ) => {
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
@@ -359,7 +353,9 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (filters?.search) {
-            void bd.whereILike("key", `%${filters?.search}%`);
+            if (filters?.includeTagsInSearch)
+              void bd.whereILike("key", `%${filters?.search}%`).orWhereILike("slug", `%${filters?.search}%`);
+            else void bd.whereILike("key", `%${filters?.search}%`);
           }
         })
         .where((bd) => {

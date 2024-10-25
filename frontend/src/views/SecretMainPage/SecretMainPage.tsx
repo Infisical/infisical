@@ -186,7 +186,9 @@ const SecretMainPageContent = () => {
   });
 
   // fetch tags
-  const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
+  const { data: tags } = useGetWsTags(
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
+  );
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
     workspaceId,
@@ -305,6 +307,32 @@ const SecretMainPageContent = () => {
     }
   }, [secretPath]);
 
+  useEffect(() => {
+    if (!router.query.search && !router.query.tags) return;
+
+    const queryTags = router.query.tags
+      ? (router.query.tags as string).split(",").filter((tag) => Boolean(tag.trim()))
+      : [];
+    const updatedTags: Record<string, boolean> = {};
+    queryTags.forEach((tag) => {
+      updatedTags[tag] = true;
+    });
+
+    setFilter((prev) => ({
+      ...prev,
+      ...defaultFilterState,
+      searchFilter: (router.query.search as string) ?? "",
+      tags: updatedTags
+    }));
+    setDebouncedSearchFilter(router.query.search as string);
+    // this is a temp workaround until we fully transition state to query params,
+    const { search, tags: qTags, ...query } = router.query;
+    router.push({
+      pathname: router.pathname,
+      query
+    });
+  }, [router.query.search, router.query.tags]);
+
   const selectedSecrets = useSelectedSecrets();
   const selectedSecretActions = useSelectedSecretActions();
 
@@ -366,7 +394,7 @@ const SecretMainPageContent = () => {
       {!isRollbackMode ? (
         <>
           <ActionBar
-            environment={environment}
+            environment={currentWorkspace?.environments.find((env) => env.slug === environment)!}
             workspaceId={workspaceId}
             projectSlug={projectSlug}
             secretPath={secretPath}
@@ -427,53 +455,53 @@ const SecretMainPageContent = () => {
                   </div>
                   <div className="flex-grow px-4 py-2">Value</div>
                 </div>
-                )}
-                {canReadSecretImports && Boolean(imports?.length) && (
-                  <SecretImportListView
-                    searchTerm={debouncedSearchFilter}
-                    secretImports={imports}
-                    isFetching={isDetailsFetching}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    importedSecrets={importedSecrets}
-                  />
-                )}
-                {Boolean(folders?.length) && (
-                  <FolderListView
-                    folders={folders}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    onNavigateToFolder={handleResetFilter}
-                  />
-                )}
-                {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
-                  <DynamicSecretListView
-                    environment={environment}
-                    projectSlug={projectSlug}
-                    secretPath={secretPath}
-                    dynamicSecrets={dynamicSecrets}
-                  />
-                )}
-                {canReadSecret && Boolean(secrets?.length) && (
-                  <SecretListView
-                    secrets={secrets}
-                    tags={tags}
-                    isVisible={isVisible}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    isProtectedBranch={isProtectedBranch}
-                  />
-                )}
-                {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
-                {!canReadSecret &&
-                  !canReadDynamicSecret &&
-                  !canReadSecretImports &&
-                  folders?.length === 0 && <PermissionDeniedBanner />}
-              </div>
+              )}
+              {canReadSecretImports && Boolean(imports?.length) && (
+                <SecretImportListView
+                  searchTerm={debouncedSearchFilter}
+                  secretImports={imports}
+                  isFetching={isDetailsFetching}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  importedSecrets={importedSecrets}
+                />
+              )}
+              {Boolean(folders?.length) && (
+                <FolderListView
+                  folders={folders}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  onNavigateToFolder={handleResetFilter}
+                />
+              )}
+              {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
+                <DynamicSecretListView
+                  environment={environment}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  dynamicSecrets={dynamicSecrets}
+                />
+              )}
+              {canReadSecret && Boolean(secrets?.length) && (
+                <SecretListView
+                  secrets={secrets}
+                  tags={tags}
+                  isVisible={isVisible}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  isProtectedBranch={isProtectedBranch}
+                />
+              )}
+              {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
+              {!canReadSecret &&
+                !canReadDynamicSecret &&
+                !canReadSecretImports &&
+                folders?.length === 0 && <PermissionDeniedBanner />}
             </div>
+          </div>
           {!isDetailsLoading && totalCount > 0 && (
             <Pagination
               startAdornment={

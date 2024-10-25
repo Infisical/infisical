@@ -15,7 +15,6 @@ import {
   faFolder,
   faFolderPlus,
   faKey,
-  faMagnifyingGlass,
   faMinusSquare,
   faPlus,
   faTrash
@@ -39,7 +38,6 @@ import {
   DropdownSubMenuContent,
   DropdownSubMenuTrigger,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   Tooltip,
@@ -54,7 +52,8 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
-import { SecretType, WsTag } from "@app/hooks/api/types";
+import { SecretType, WorkspaceEnv, WsTag } from "@app/hooks/api/types";
+import { SecretSearchInput } from "@app/views/SecretOverviewPage/components/SecretSearchInput";
 
 import {
   PopUpNames,
@@ -70,7 +69,7 @@ import { MoveSecretsModal } from "./MoveSecretsModal";
 
 type Props = {
   // switch the secrets type as it gets decrypted after api call
-  environment: string;
+  environment: WorkspaceEnv;
   // @depreciated will be moving all these details to zustand
   workspaceId: string;
   projectSlug: string;
@@ -128,7 +127,7 @@ export const ActionBar = ({
       await createFolder({
         name: folderName,
         path: secretPath,
-        environment,
+        environment: environment.slug,
         projectId: workspaceId
       });
       handlePopUpClose("addFolder");
@@ -150,7 +149,7 @@ export const ActionBar = ({
       workspaceId,
       expandSecretReferences: true,
       includeImports: true,
-      environment,
+      environment: environment.slug,
       secretPath
     });
     const secretsPicked = new Set<string>();
@@ -190,7 +189,7 @@ export const ActionBar = ({
       );
 
     const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
-    FileSaver.saveAs(blob, `${environment}.env`);
+    FileSaver.saveAs(blob, `${environment.slug}.env`);
   };
 
   const handleSecretBulkDelete = async () => {
@@ -199,7 +198,7 @@ export const ActionBar = ({
       await deleteBatchSecretV3({
         secretPath,
         workspaceId,
-        environment,
+        environment: environment.slug,
         secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
       });
       resetSelectedSecret();
@@ -231,7 +230,7 @@ export const ActionBar = ({
       const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
         projectSlug,
         shouldOverwrite,
-        sourceEnvironment: environment,
+        sourceEnvironment: environment.slug,
         sourceSecretPath: secretPath,
         destinationEnvironment,
         destinationSecretPath,
@@ -269,22 +268,15 @@ export const ActionBar = ({
   return (
     <>
       <div className="mt-4 flex items-center space-x-2">
-        <div className="w-2/5">
-          <Input
-            className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-            placeholder="Search by folder name, key name, comment..."
-            leftIcon={
-              <FontAwesomeIcon
-                className={filter.searchFilter ? "text-primary" : ""}
-                icon={faMagnifyingGlass}
-              />
-            }
-            value={filter.searchFilter}
-            onChange={(evt) => {
-              onSearchChange(evt.target.value);
-            }}
-          />
-        </div>
+        <SecretSearchInput
+          isSingleEnv
+          className="w-2/5"
+          value={filter.searchFilter}
+          onChange={onSearchChange}
+          environments={[environment]}
+          projectId={workspaceId}
+          tags={tags}
+        />
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -364,8 +356,10 @@ export const ActionBar = ({
                 >
                   Tags
                 </DropdownSubMenuTrigger>
-                <DropdownSubMenuContent className="rounded-l-none">
-                  <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
+                <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                    Apply Tags to Filter Secrets
+                  </DropdownMenuLabel>
                   {tags.map(({ id, slug, color }) => (
                     <DropdownMenuItem
                       onClick={(evt) => {
@@ -431,7 +425,7 @@ export const ActionBar = ({
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={subject(ProjectPermissionSub.Secrets, {
-              environment,
+              environment: environment.slug,
               secretPath,
               secretName: "*",
               secretTags: ["*"]
@@ -466,7 +460,10 @@ export const ActionBar = ({
               <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.SecretFolders, {
+                    environment: environment.slug,
+                    secretPath
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
@@ -487,7 +484,7 @@ export const ActionBar = ({
                 <ProjectPermissionCan
                   I={ProjectPermissionDynamicSecretActions.CreateRootCredential}
                   a={subject(ProjectPermissionSub.DynamicSecrets, {
-                    environment,
+                    environment: environment.slug,
                     secretPath,
                     secretName: "*",
                     secretTags: ["*"]
@@ -516,7 +513,7 @@ export const ActionBar = ({
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.SecretImports, {
-                    environment,
+                    environment: environment.slug,
                     secretPath
                   })}
                 >
@@ -559,7 +556,7 @@ export const ActionBar = ({
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
             a={subject(ProjectPermissionSub.Secrets, {
-              environment,
+              environment: environment.slug,
               secretPath,
               secretName: "*",
               secretTags: ["*"]
@@ -583,7 +580,7 @@ export const ActionBar = ({
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
             a={subject(ProjectPermissionSub.Secrets, {
-              environment,
+              environment: environment.slug,
               secretPath,
               secretName: "*",
               secretTags: ["*"]
@@ -609,7 +606,7 @@ export const ActionBar = ({
       </div>
       {/* all the side triggers from actions like modals etc */}
       <CreateSecretImportForm
-        environment={environment}
+        environment={environment.slug}
         workspaceId={workspaceId}
         secretPath={secretPath}
         onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
@@ -621,7 +618,7 @@ export const ActionBar = ({
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environment={environment}
+        environment={environment.slug}
         secretPath={secretPath}
       />
       <Modal

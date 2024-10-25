@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import { FastifyRequest } from "fastify";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
@@ -17,6 +18,7 @@ import {
   TDeleteFolderDTO,
   TGetFolderByIdDTO,
   TGetFolderDTO,
+  TGetFoldersDeepByEnvsDTO,
   TUpdateFolderDTO,
   TUpdateManyFoldersDTO
 } from "./secret-folder-types";
@@ -511,6 +513,30 @@ export const secretFolderServiceFactory = ({
     };
   };
 
+  const getFoldersDeepByEnvs = async (
+    { projectId, environments, secretPath }: TGetFoldersDeepByEnvsDTO,
+    actor: FastifyRequest["permission"]
+  ) => {
+    // folder list is allowed to be read by anyone
+    // permission to check does user have access
+    await permissionService.getProjectPermission(actor.type, actor.id, projectId, actor.authMethod, actor.orgId);
+
+    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+
+    if (!envs.length)
+      throw new NotFoundError({
+        message: `Environments '${environments.join(", ")}' not found`,
+        name: "GetFoldersDeep"
+      });
+
+    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!parentFolders.length) return [];
+
+    const folders = await folderDAL.findByEnvsDeep({ parentIds: parentFolders.map((parent) => parent.id) });
+
+    return folders;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -519,6 +545,7 @@ export const secretFolderServiceFactory = ({
     getFolders,
     getFolderById,
     getProjectFolderCount,
-    getFoldersMultiEnv
+    getFoldersMultiEnv,
+    getFoldersDeepByEnvs
   };
 };
