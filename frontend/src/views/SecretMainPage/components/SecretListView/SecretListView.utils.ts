@@ -11,7 +11,6 @@ import {
   faEllipsis,
   faKey,
   faLock,
-  faProjectDiagram,
   faShare,
   faTags
 } from "@fortawesome/free-solid-svg-icons";
@@ -74,8 +73,7 @@ export enum FontAwesomeSpriteName {
   CheckedCircle = "check-circle",
   ReplicatedSecretKey = "secret-replicated",
   ShareSecret = "share-secret",
-  KeyLock = "key-lock",
-  SecretReferenceTree = "secret-reference-tree"
+  KeyLock = "key-lock"
 }
 
 // this is an optimization technique
@@ -93,6 +91,5 @@ export const FontAwesomeSpriteSymbols = [
   { icon: faCheckCircle, symbol: FontAwesomeSpriteName.CheckedCircle },
   { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey },
   { icon: faShare, symbol: FontAwesomeSpriteName.ShareSecret },
-  { icon: faLock, symbol: FontAwesomeSpriteName.KeyLock },
-  { icon: faProjectDiagram, symbol: FontAwesomeSpriteName.SecretReferenceTree }
+  { icon: faLock, symbol: FontAwesomeSpriteName.KeyLock }
 ];
