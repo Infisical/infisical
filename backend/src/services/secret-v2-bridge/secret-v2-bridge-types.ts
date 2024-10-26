@@ -278,3 +278,10 @@ export type TAttachSecretTagsDTO = {
   secretPath: string;
   type: SecretType;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TGetSecretReferencesTreeDTO = {
+  projectId: string;
+  secretName: string;
+  environment: string;
+  secretPath: string;
+} & Omit<TProjectPermission, "projectId">;

@@ -16,7 +16,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { AddShareSecretModal } from "@app/views/ShareSecretPage/components/AddShareSecretModal";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
-import { SecretDetailSidebar } from "./SecretDetaiSidebar";
+import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
