@@ -7,12 +7,12 @@ permissions:
 
 jobs:
   infisical-tests:
-    name: Run tests before deployment
+    name: Integration tests
     # https://docs.github.com/en/actions/using-workflows/reusing-workflows#overview
     uses: ./.github/workflows/run-backend-tests.yml
     
   infisical-image:
-    name: Build backend image
+    name: Build
     runs-on: ubuntu-latest
     needs: [infisical-tests]
     steps:
@@ -161,7 +161,7 @@ jobs:
           wait-for-service-stability: true
 
   production-eu:
-      name: Europe production deploy
+      name: EU production deploy
       runs-on: ubuntu-latest
       needs: [production-us]
       environment:
