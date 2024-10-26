@@ -23,18 +23,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
-const SecretReferenceNode = z.object({
-  key: z.string(),
-  value: z.string().optional(),
-  environment: z.string(),
-  secretPath: z.string()
-});
-type TSecretReferenceNode = z.infer<typeof SecretReferenceNode> & { children: TSecretReferenceNode[] };
-
-const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReferenceNode.extend({
-  children: z.lazy(() => SecretReferenceNodeTree.array())
-});
-
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -2111,58 +2099,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
       return { secrets };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/raw/:secretName/secret-reference-tree",
-    config: {
-      rateLimit: secretsLimit
-    },
-    schema: {
-      description: "Get secret reference tree",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        secretName: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
-      }),
-      querystring: z.object({
-        workspaceId: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.workspaceId),
-        environment: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.environment),
-        secretPath: z
-          .string()
-          .trim()
-          .default("/")
-          .transform(removeTrailingSlash)
-          .describe(RAW_SECRETS.GET_REFERENCE_TREE.secretPath)
-      }),
-      response: {
-        200: z.object({
-          tree: SecretReferenceNodeTree,
-          value: z.string().optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { secretName } = req.params;
-      const { secretPath, environment, workspaceId } = req.query;
-      const { tree, value } = await server.services.secret.getSecretReferenceTree({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: workspaceId,
-        secretName,
-        secretPath,
-        environment
-      });
-
-      return { tree, value };
     }
   });
 

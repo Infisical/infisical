@@ -41,7 +41,6 @@ import {
   TDeleteManySecretDTO,
   TDeleteSecretDTO,
   TGetASecretDTO,
-  TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
@@ -816,7 +815,7 @@ export const secretV2BridgeServiceFactory = ({
         })
       );
 
-    const { expandSecretReferences } = expandSecretReferencesFactory({
+    const expandSecretReferences = expandSecretReferencesFactory({
       projectId,
       folderDAL,
       secretDAL,
@@ -966,7 +965,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    const { expandSecretReferences } = expandSecretReferencesFactory({
+    const expandSecretReferences = expandSecretReferencesFactory({
       projectId,
       folderDAL,
       secretDAL,
@@ -1033,7 +1032,6 @@ export const secretV2BridgeServiceFactory = ({
         value: secretValue,
         skipMultilineEncoding: secret.skipMultilineEncoding
       });
-
       secretValue = expandedSecretValue || "";
     }
 
@@ -1930,88 +1928,6 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
-  const getSecretReferenceTree = async ({
-    environment,
-    secretPath,
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    secretName,
-    actorAuthMethod
-  }: TGetSecretReferencesTreeDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
-      throw new NotFoundError({
-        message: "Folder not found for the given environment slug & secret path",
-        name: "Create secret"
-      });
-    const folderId = folder.id;
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const secret = await secretDAL.findOne({
-      folderId,
-      key: secretName,
-      type: SecretType.Shared
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath,
-        secretName,
-        secretTags: (secret?.tags || []).map((el) => el.slug)
-      })
-    );
-
-    const secretValue = secret.encryptedValue
-      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-      : "";
-
-    const { getExpandedSecretStackTrace } = expandSecretReferencesFactory({
-      projectId,
-      folderDAL,
-      secretDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
-      canExpandValue: (expandEnvironment, expandSecretPath, expandSecretName, expandSecretTags) =>
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretName,
-            secretTags: expandSecretTags
-          })
-        )
-    });
-
-    const { expandedValue, stackTrace } = await getExpandedSecretStackTrace({
-      environment,
-      secretPath,
-      value: secretValue
-    });
-
-    return { tree: stackTrace, value: expandedValue };
-  };
-
   return {
     createSecret,
     deleteSecret,
@@ -2026,7 +1942,6 @@ export const secretV2BridgeServiceFactory = ({
     moveSecrets,
     getSecretsCount,
     getSecretsCountMultiEnv,
-    getSecretsMultiEnv,
-    getSecretReferenceTree
+    getSecretsMultiEnv
   };
 };

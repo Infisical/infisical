@@ -137,27 +137,6 @@ html {
   );
 }
 
-.tree-line::before {
-  content: "";
-  position: absolute;
-  left: -16px;
-  top: 1px;
-  bottom: 0;
-  width: 1px;
-  height: 50%;
-  background-color: #cbd5e0;
-}
-
-.tree-line::after {
-  content: "";
-  position: absolute;
-  left: -16px;
-  top: 50%;
-  width: 12px;
-  height: 1px;
-  background-color: #cbd5e0;
-}
-
 .show-tags {
   transform: translateY(10px);
   transition: all 0.2s;

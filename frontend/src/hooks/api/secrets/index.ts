@@ -8,8 +8,4 @@ export {
   useUpdateSecretBatch,
   useUpdateSecretV3
 } from "./mutations";
-export {
-  useGetProjectSecrets,
-  useGetProjectSecretsAllEnv,
-  useGetSecretReferenceTree,
-  useGetSecretVersion} from "./queries";
+export { useGetProjectSecrets, useGetProjectSecretsAllEnv, useGetSecretVersion } from "./queries";
