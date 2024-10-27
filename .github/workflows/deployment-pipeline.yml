@@ -186,7 +186,7 @@ jobs:
         - name: Configure AWS Credentials 
           uses: aws-actions/configure-aws-credentials@v4
           with:
-            audience: sts.amazonaws.com
+            audience: sts.eu-central-1.amazonaws.com
             aws-region: eu-central-1
             role-to-assume: arn:aws:iam::345594589636:role/gha-make-prod-deployment
         - name: Save commit hashes for tag
