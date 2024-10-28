@@ -210,3 +210,18 @@ export type TMoveSecretsDTO = {
   secretIds: string[];
   shouldOverwrite: boolean;
 };
+
+export type TGetSecretReferenceTreeDTO = {
+  secretKey: string;
+  secretPath: string;
+  environmentSlug: string;
+  projectId: string;
+};
+
+export type TSecretReferenceTraceNode = {
+  key: string;
+  value?: string;
+  environment: string;
+  secretPath: string;
+  children: TSecretReferenceTraceNode[];
+};
