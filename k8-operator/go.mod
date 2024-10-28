@@ -3,7 +3,7 @@ module github.com/Infisical/infisical/k8-operator
 go 1.21
 
 require (
-	github.com/infisical/go-sdk v0.3.7
+	github.com/infisical/go-sdk v0.4.1
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	k8s.io/apimachinery v0.26.1
