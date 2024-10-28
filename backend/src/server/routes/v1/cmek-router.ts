@@ -293,10 +293,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Decrypt data with KMS key",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.ENCRYPT.keyId)
+        keyId: z.string().uuid().describe(KMS.DECRYPT.keyId)
       }),
       body: z.object({
-        ciphertext: base64Schema.describe(KMS.ENCRYPT.plaintext)
+        ciphertext: base64Schema.describe(KMS.DECRYPT.ciphertext)
       }),
       response: {
         200: z.object({
