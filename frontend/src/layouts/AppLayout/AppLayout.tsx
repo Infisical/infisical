@@ -82,6 +82,7 @@ import { Workspace } from "@app/hooks/api/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import { InsecureConnectionBanner } from "@app/layouts/AppLayout/components/InsecureConnectionBanner";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { Mfa } from "@app/views/Login/Mfa";
 import { CreateOrgModal } from "@app/views/Org/components";
@@ -361,6 +362,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
