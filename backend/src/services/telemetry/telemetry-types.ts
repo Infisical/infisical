@@ -13,7 +13,7 @@ export enum PostHogEventTypes {
   IntegrationCreated = "Integration Created",
   MachineIdentityCreated = "Machine Identity Created",
   UserOrgInvitation = "User Org Invitation",
-  TelemetryInstanceStats = "Self Hosted Instance Stats"
+  TelemetryInstanceStats = "Self-Hosted Instance Stats"
 }
 
 export type TSecretModifiedEvent = {

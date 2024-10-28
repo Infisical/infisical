@@ -129,7 +129,7 @@ export const licenseServiceFactory = ({
         }
       }
 
-      // this means this is self hosted oss version
+      // this means this is the self-hosted oss version
       // else it would reach catch statement
       isValidLicense = true;
     } catch (error) {
