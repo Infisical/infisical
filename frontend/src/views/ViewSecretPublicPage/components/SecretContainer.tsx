@@ -79,7 +79,7 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
         onClick={() => window.open("https://app.infisical.com/share-secret", "_blank")}
         rightIcon={<FontAwesomeIcon icon={faArrowRight} className="pl-2" />}
       >
-        Share your own secret
+        Share Your Own Secret
       </Button>
     </div>
   );
