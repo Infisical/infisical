@@ -85,18 +85,22 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         accessType
       });
 
-      setSecretLink(`${window.location.origin}/shared/secret/${id}`);
+      const link = `${window.location.origin}/shared/secret/${id}`;
+
+      setSecretLink(link);
       reset();
 
+      navigator.clipboard.writeText(link);
       setCopyTextSecret("secret");
+
       createNotification({
-        text: "Successfully created a shared secret",
+        text: "Shared secret link copied to clipboard.",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to create a shared secret",
+        text: "Failed to create a shared secret.",
         type: "error"
       });
     }
@@ -226,7 +230,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         isLoading={isSubmitting}
         isDisabled={isSubmitting}
       >
-        Create secret link
+        Create Secret Link
       </Button>
     </form>
   ) : (
@@ -253,7 +257,7 @@ export const ShareSecretForm = ({ isPublic, value }: Props) => {
         onClick={() => setSecretLink("")}
         rightIcon={<FontAwesomeIcon icon={faRedo} className="pl-2" />}
       >
-        Share another secret
+        Share Another Secret
       </Button>
     </>
   );
