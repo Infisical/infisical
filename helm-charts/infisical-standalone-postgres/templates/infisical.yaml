@@ -36,8 +36,8 @@ spec:
     {{- if $infisicalValues.autoDatabaseSchemaMigration }}
       initContainers:
       - name: "migration-init"
-        image: "ghcr.io/groundnuty/k8s-wait-for:no-root-v2.0"
-        imagePullPolicy: {{ $infisicalValues.image.pullPolicy }}
+        image: {{ $infisicalValues.databaseSchemaMigrationInitContainer.image }}
+        imagePullPolicy: {{ $infisicalValues.databaseSchemaMigrationInitContainer.imagePullPolicy }}
         args: 
         - "job"
         - "{{ .Release.Name }}-schema-migration-{{ .Release.Revision }}"
