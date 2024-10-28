@@ -107,6 +107,18 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
 	}
 
+	if infisicalSecretCR.Spec.TLS.CaRef.SecretName != "" {
+		api.API_CA_CERTIFICATE, err = r.GetInfisicalCaCertificateFromKubeSecret(ctx, infisicalSecretCR)
+		if err != nil {
+			fmt.Printf("unable to fetch CA certificate [err=%s]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+			return ctrl.Result{
+				RequeueAfter: requeueTime,
+			}, nil
+		}
+
+		fmt.Println("Using custom CA certificate...")
+	}
+
 	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
 
