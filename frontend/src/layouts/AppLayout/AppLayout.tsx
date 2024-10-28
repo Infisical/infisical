@@ -362,6 +362,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
@@ -1024,7 +1025,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
             onClose={() => handlePopUpToggle("createOrg", false)}
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
-            {!window.isSecureContext && <InsecureConnectionBanner />}
             {children}
           </main>
         </div>

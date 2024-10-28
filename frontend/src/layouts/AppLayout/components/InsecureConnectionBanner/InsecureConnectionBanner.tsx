@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faWarning, faX } from "@fortawesome/free-solid-svg-icons";
+import { faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { IconButton } from "@app/components/v2";
@@ -17,9 +17,9 @@ export const InsecureConnectionBanner = () => {
   if (isAcknowledged) return null;
 
   return (
-    <div className="sticky top-0 z-50 flex w-full items-start bg-red-700 py-1 px-2 font-inter text-sm text-mineshaft-200">
-      <FontAwesomeIcon className="mt-1" icon={faWarning} />
-      <span className="mx-1 mt-[0.04rem]">
+    <div className="flex w-screen items-start border-b border-red-900 bg-red-700 py-1 px-2 font-inter text-sm text-mineshaft-200">
+      <FontAwesomeIcon className="ml-3.5 mt-1" icon={faWarning} />
+      <span className="mx-1 ml-2 mt-[0.04rem]">
         Your connection to this Infisical instance is not secured via HTTPS. Some features may not
         behave as expected.
       </span>
@@ -30,7 +30,7 @@ export const InsecureConnectionBanner = () => {
         onClick={handleDismiss}
         ariaLabel="Dismiss banner"
       >
-        <FontAwesomeIcon icon={faX} />
+        <FontAwesomeIcon icon={faXmark} />
       </IconButton>
     </div>
   );
