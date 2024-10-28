@@ -82,6 +82,7 @@ import { Workspace } from "@app/hooks/api/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import { InsecureConnectionBanner } from "@app/layouts/AppLayout/components/InsecureConnectionBanner";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
 import { Mfa } from "@app/views/Login/Mfa";
 import { CreateOrgModal } from "@app/views/Org/components";
@@ -1023,6 +1024,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
             onClose={() => handlePopUpToggle("createOrg", false)}
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
+            {!window.isSecureContext && <InsecureConnectionBanner />}
             {children}
           </main>
         </div>
