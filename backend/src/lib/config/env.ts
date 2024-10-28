@@ -163,7 +163,38 @@ const envSchema = z
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
-    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true")
+    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
+
+    // HSM
+    HSM_LIB_PATH: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (process.env.NODE_ENV === "development") return "/usr/local/lib/softhsm/libsofthsm2.so";
+          return val;
+        })
+    ),
+    HSM_PIN: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (process.env.NODE_ENV === "development") return "1234";
+          return val;
+        })
+    ),
+    HSM_KEY_LABEL: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (process.env.NODE_ENV === "development") return "auth-app";
+          return val;
+        })
+    ),
+    HSM_SLOT: z.coerce.number().optional().default(0),
+    HSM_MECHANISM: zpStr(z.string().optional().default("AES_GCM"))
   })
   .transform((data) => ({
     ...data,
@@ -175,10 +206,18 @@ const envSchema = z
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
+
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    isHsmConfigured:
+      Boolean(data.HSM_LIB_PATH) &&
+      Boolean(data.HSM_PIN) &&
+      Boolean(data.HSM_KEY_LABEL) &&
+      Boolean(data.HSM_MECHANISM) &&
+      data.HSM_SLOT !== undefined,
+
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));

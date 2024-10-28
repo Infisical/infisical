@@ -9,6 +9,7 @@ import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
+import { initializePkcs11Module } from "./services/hsm/hsm-fns";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
 
 dotenv.config();
@@ -53,13 +54,17 @@ const run = async () => {
   const queue = queueServiceFactory(appCfg.REDIS_URL);
   const keyStore = keyStoreFactory(appCfg.REDIS_URL);
 
-  const server = await main({ db, auditLogDb, smtp, logger, queue, keyStore });
+  const pkcs11Module = initializePkcs11Module();
+  pkcs11Module.initialize();
+
+  const server = await main({ db, auditLogDb, hsmModule: pkcs11Module.getModule(), smtp, logger, queue, keyStore });
   const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
     await db.destroy();
+    pkcs11Module.finalize();
     process.exit(0);
   });
 
@@ -67,6 +72,7 @@ const run = async () => {
   process.on("SIGTERM", async () => {
     await server.close();
     await db.destroy();
+    pkcs11Module.finalize();
     process.exit(0);
   });
 

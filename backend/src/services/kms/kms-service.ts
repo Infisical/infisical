@@ -19,6 +19,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { getByteLengthForAlgorithm } from "@app/services/kms/kms-fns";
 
+import { THsmServiceFactory } from "../hsm/hsm-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
@@ -40,9 +41,10 @@ type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
-  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create">;
+  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
+  hsmService: THsmServiceFactory;
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
@@ -63,7 +65,8 @@ export const kmsServiceFactory = ({
   keyStore,
   internalKmsDAL,
   orgDAL,
-  projectDAL
+  projectDAL,
+  hsmService
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY = Buffer.alloc(0);
 
@@ -801,6 +804,7 @@ export const kmsServiceFactory = ({
     const isBase64 = !appCfg.ENCRYPTION_KEY;
     if (!encryptionKey) throw new Error("Root encryption key not found for KMS service.");
     const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
+    const hsmEnabled = await hsmService.isActive();
 
     const lock = await keyStore.acquireLock([`KMS_ROOT_CFG_LOCK`], 3000, { retryCount: 3 }).catch(() => null);
     if (!lock) {
@@ -817,8 +821,43 @@ export const kmsServiceFactory = ({
     if (kmsRootConfig) {
       if (lock) await lock.release();
       logger.info("KMS: Encrypted ROOT Key found from DB. Decrypting.");
-      const decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
-      // set the flag so that other instancen nodes can start
+
+      let decryptedRootKey: Buffer | null = null;
+      try {
+        decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
+        logger.info("KMS: Decrypted ROOT Key with platform key.");
+      } catch (err) {
+        // First we attempt to decrypt with regular root key. If it fails, we check if HSM is enabled, and if it is we attempt to decrypt with HSM.
+        if (hsmEnabled && kmsRootConfig.isEncryptedByHsm) {
+          decryptedRootKey = hsmService.decrypt(kmsRootConfig.encryptedRootKey);
+          logger.info("KMS: Decrypted ROOT Key with HSM.");
+        } else {
+          // If HSM is not enabled we assume it's a general error, and throw.
+          throw err;
+        }
+      }
+
+      if (!decryptedRootKey) {
+        logger.error(
+          { hsmEnabled, isEncryptedByHsm: kmsRootConfig.isEncryptedByHsm },
+          "KMS: Failed to decrypt ROOT Key"
+        );
+        throw new Error("Failed to decrypt ROOT Key");
+      }
+
+      // If the key is not encrypted with HSM, we re-encrypt it with HSM and update the key in the DB.
+      if (!kmsRootConfig.isEncryptedByHsm && hsmEnabled) {
+        const encryptedRootKey = hsmService.encrypt(decryptedRootKey);
+
+        if (!encryptedRootKey) {
+          logger.error("KMS: Failed to encrypt ROOT Key with HSM");
+          throw new Error("Failed to encrypt ROOT Key with HSM");
+        }
+
+        await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, { encryptedRootKey, isEncryptedByHsm: true });
+      }
+
+      // set the flag so that other instance nodes can start
       await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
       logger.info("KMS: Loading ROOT Key into Memory.");
       ROOT_ENCRYPTION_KEY = decryptedRootKey;
@@ -827,9 +866,23 @@ export const kmsServiceFactory = ({
 
     logger.info("KMS: Generating ROOT Key");
     const newRootKey = randomSecureBytes(32);
-    const encryptedRootKey = cipher.encrypt(newRootKey, encryptionKeyBuffer);
+
+    let encryptedRootKey: Buffer | null = null;
+    let isEncryptedByHsm = false;
+
+    if (hsmEnabled) {
+      encryptedRootKey = hsmService.encrypt(newRootKey);
+      isEncryptedByHsm = true;
+    } else {
+      encryptedRootKey = cipher.encrypt(newRootKey, encryptionKeyBuffer);
+    }
+
+    if (!encryptedRootKey) {
+      logger.error({ hsmEnabled }, "KMS: Failed to encrypt ROOT Key");
+    }
+
     // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    await kmsRootConfigDAL.create({ encryptedRootKey, id: KMS_ROOT_CONFIG_UUID });
+    await kmsRootConfigDAL.create({ encryptedRootKey, id: KMS_ROOT_CONFIG_UUID, isEncryptedByHsm });
 
     // set the flag so that other instancen nodes can start
     await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");

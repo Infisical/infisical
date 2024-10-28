@@ -17,6 +17,7 @@ import { Logger } from "pino";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
+import { HsmModule } from "@app/services/hsm/hsm-fns";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
@@ -36,10 +37,11 @@ type TMain = {
   logger?: Logger;
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
+  hsmModule: HsmModule;
 };
 
 // Run the server!
-export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
+export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
@@ -95,7 +97,7 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore }: TM
 
     await server.register(maintenanceMode);
 
-    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore });
+    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {
