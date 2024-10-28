@@ -22,11 +22,6 @@ To run Infisical in a highly available manner, give the [Docker Swarm guide](/se
     docker
     ```
 
-    Check for docker compose installation
-    ```bash
-    docker-compose 
-    ```
-
 ## Download docker compose file
 You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`.
 If your system doesn't have either of these, you can use a equivalent command that works with your machine.
@@ -74,7 +69,7 @@ View all available configurations [here](/self-hosting/configuration/envars).
 Run the command below to start Infisical and all related services. 
 
 ```bash
-docker-compose -f docker-compose.prod.yml up
+docker compose -f docker-compose.prod.yml up
 ```
 
 Your Infisical instance should now be running on port `80`. To access your instance, visit `http://localhost:80`.

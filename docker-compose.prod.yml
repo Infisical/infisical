@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   db-migration:
     container_name: infisical-db-migration

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   nginx:
     container_name: infisical-dev-nginx
