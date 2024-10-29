@@ -1,5 +1,6 @@
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tooltip } from "@app/components/v2";
@@ -30,7 +31,12 @@ export const OrgInviteLink = ({ invite }: Props) => {
         Invite for <span className="font-medium">{invite.email}</span>
       </p>
       <div className="flex flex-col gap-1 rounded-md bg-white/[0.04] p-2 text-base text-gray-400">
-        <p className="line-clamp-1 mr-4 overflow-hidden text-ellipsis whitespace-nowrap	">
+        <p
+          className={twMerge(
+            "line-clamp-1 mr-4",
+            window.isSecureContext ? "overflow-hidden text-ellipsis whitespace-nowrap" : "break-all"
+          )}
+        >
           {invite.link}
         </p>
         <Tooltip content={`Copy invitation link for ${invite.email}`}>

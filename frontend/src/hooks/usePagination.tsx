@@ -5,7 +5,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 export const usePagination = <T extends string>(initialOrderBy: T) => {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
+  const [perPage, setPerPage] = useState(100);
   const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
   const [orderBy, setOrderBy] = useState<T>(initialOrderBy);
   const [search, setSearch] = useState("");
