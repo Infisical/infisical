@@ -47,3 +47,13 @@ export type TGetFolderDTO = {
 export type TGetFolderByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TGetFoldersDeepByEnvsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+};
+
+export type TFindFoldersDeepByParentIdsDTO = {
+  parentIds: string[];
+};

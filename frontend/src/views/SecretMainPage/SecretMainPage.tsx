@@ -186,7 +186,9 @@ const SecretMainPageContent = () => {
   });
 
   // fetch tags
-  const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
+  const { data: tags } = useGetWsTags(
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
+  );
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
     workspaceId,
@@ -305,6 +307,32 @@ const SecretMainPageContent = () => {
     }
   }, [secretPath]);
 
+  useEffect(() => {
+    if (!router.query.search && !router.query.tags) return;
+
+    const queryTags = router.query.tags
+      ? (router.query.tags as string).split(",").filter((tag) => Boolean(tag.trim()))
+      : [];
+    const updatedTags: Record<string, boolean> = {};
+    queryTags.forEach((tag) => {
+      updatedTags[tag] = true;
+    });
+
+    setFilter((prev) => ({
+      ...prev,
+      ...defaultFilterState,
+      searchFilter: (router.query.search as string) ?? "",
+      tags: updatedTags
+    }));
+    setDebouncedSearchFilter(router.query.search as string);
+    // this is a temp workaround until we fully transition state to query params,
+    const { search, tags: qTags, ...query } = router.query;
+    router.push({
+      pathname: router.pathname,
+      query
+    });
+  }, [router.query.search, router.query.tags]);
+
   const selectedSecrets = useSelectedSecrets();
   const selectedSecretActions = useSelectedSecretActions();
 
@@ -389,8 +417,29 @@ const SecretMainPageContent = () => {
                     "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
                   )}
                 >
+                  <Tooltip
+                    className="max-w-[20rem] whitespace-nowrap"
+                    content={
+                      totalCount > 0
+                        ? `${
+                            !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
+                          } all secrets on page`
+                        : ""
+                    }
+                  >
+                    <div className="mr-[0.055rem] flex w-11 items-center justify-center pl-2.5">
+                      <Checkbox
+                        isDisabled={totalCount === 0}
+                        id="checkbox-select-all-rows"
+                        onClick={(e) => e.stopPropagation()}
+                        isChecked={allRowsSelectedOnPage.isChecked}
+                        isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
+                        onCheckedChange={toggleSelectAllRows}
+                      />
+                    </div>
+                  </Tooltip>
                   <div
-                    className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
+                    className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
                     role="button"
                     tabIndex={0}
                     onClick={handleSortToggle}
@@ -398,27 +447,6 @@ const SecretMainPageContent = () => {
                       if (evt.key === "Enter") handleSortToggle();
                     }}
                   >
-                    <Tooltip
-                      className="max-w-[20rem] whitespace-nowrap"
-                      content={
-                        totalCount > 0
-                          ? `${
-                              !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
-                            } all secrets on page`
-                          : ""
-                      }
-                    >
-                      <div className="mr-6 ml-1">
-                        <Checkbox
-                          isDisabled={totalCount === 0}
-                          id="checkbox-select-all-rows"
-                          onClick={(e) => e.stopPropagation()}
-                          isChecked={allRowsSelectedOnPage.isChecked}
-                          isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
-                          onCheckedChange={toggleSelectAllRows}
-                        />
-                      </div>
-                    </Tooltip>
                     Key
                     <FontAwesomeIcon
                       icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
@@ -427,53 +455,53 @@ const SecretMainPageContent = () => {
                   </div>
                   <div className="flex-grow px-4 py-2">Value</div>
                 </div>
-                )}
-                {canReadSecretImports && Boolean(imports?.length) && (
-                  <SecretImportListView
-                    searchTerm={debouncedSearchFilter}
-                    secretImports={imports}
-                    isFetching={isDetailsFetching}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    importedSecrets={importedSecrets}
-                  />
-                )}
-                {Boolean(folders?.length) && (
-                  <FolderListView
-                    folders={folders}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    onNavigateToFolder={handleResetFilter}
-                  />
-                )}
-                {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
-                  <DynamicSecretListView
-                    environment={environment}
-                    projectSlug={projectSlug}
-                    secretPath={secretPath}
-                    dynamicSecrets={dynamicSecrets}
-                  />
-                )}
-                {canReadSecret && Boolean(secrets?.length) && (
-                  <SecretListView
-                    secrets={secrets}
-                    tags={tags}
-                    isVisible={isVisible}
-                    environment={environment}
-                    workspaceId={workspaceId}
-                    secretPath={secretPath}
-                    isProtectedBranch={isProtectedBranch}
-                  />
-                )}
-                {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
-                {!canReadSecret &&
-                  !canReadDynamicSecret &&
-                  !canReadSecretImports &&
-                  folders?.length === 0 && <PermissionDeniedBanner />}
-              </div>
+              )}
+              {canReadSecretImports && Boolean(imports?.length) && (
+                <SecretImportListView
+                  searchTerm={debouncedSearchFilter}
+                  secretImports={imports}
+                  isFetching={isDetailsFetching}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  importedSecrets={importedSecrets}
+                />
+              )}
+              {Boolean(folders?.length) && (
+                <FolderListView
+                  folders={folders}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  onNavigateToFolder={handleResetFilter}
+                />
+              )}
+              {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
+                <DynamicSecretListView
+                  environment={environment}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  dynamicSecrets={dynamicSecrets}
+                />
+              )}
+              {canReadSecret && Boolean(secrets?.length) && (
+                <SecretListView
+                  secrets={secrets}
+                  tags={tags}
+                  isVisible={isVisible}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  isProtectedBranch={isProtectedBranch}
+                />
+              )}
+              {canReadSecret && <SecretNoAccessListView count={noAccessSecretCount} />}
+              {!canReadSecret &&
+                !canReadDynamicSecret &&
+                !canReadSecretImports &&
+                folders?.length === 0 && <PermissionDeniedBanner />}
             </div>
+          </div>
           {!isDetailsLoading && totalCount > 0 && (
             <Pagination
               startAdornment={

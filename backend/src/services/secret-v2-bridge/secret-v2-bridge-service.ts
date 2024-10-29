@@ -43,6 +43,7 @@ import {
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
+  TGetSecretsRawByFolderMappingsDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
   TSecretReference,
@@ -652,6 +653,56 @@ export const secretV2BridgeServiceFactory = ({
     return count;
   };
 
+  const getSecretsByFolderMappings = async (
+    { projectId, userId, filters, folderMappings }: TGetSecretsRawByFolderMappingsDTO,
+    projectPermission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"]
+  ) => {
+    const groupedFolderMappings = groupBy(folderMappings, (folderMapping) => folderMapping.folderId);
+
+    const secrets = await secretDAL.findByFolderIds(
+      folderMappings.map((folderMapping) => folderMapping.folderId),
+      userId,
+      undefined,
+      filters
+    );
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const decryptedSecrets = secrets
+      .filter((el) =>
+        projectPermission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: groupedFolderMappings[el.folderId][0].environment,
+            secretPath: groupedFolderMappings[el.folderId][0].path,
+            secretName: el.key,
+            secretTags: el.tags.map((i) => i.slug)
+          })
+        )
+      )
+      .map((secret) =>
+        reshapeBridgeSecret(
+          projectId,
+          groupedFolderMappings[secret.folderId][0].environment,
+          groupedFolderMappings[secret.folderId][0].path,
+          {
+            ...secret,
+            value: secret.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+              : "",
+            comment: secret.encryptedComment
+              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+              : ""
+          }
+        )
+      );
+
+    return decryptedSecrets;
+  };
+
   // get secrets for multiple envs
   const getSecretsMultiEnv = async ({
     actorId,
@@ -678,58 +729,27 @@ export const secretV2BridgeServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
     }
 
-    let paths: { folderId: string; path: string; environment: string }[] = [];
-
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
 
     if (!folders.length) {
       return [];
     }
 
-    paths = folders.map((folder) => ({ folderId: folder.id, path, environment: folder.environment.slug }));
+    const folderMappings = folders.map((folder) => ({
+      folderId: folder.id,
+      path,
+      environment: folder.environment.slug
+    }));
 
-    const groupedPaths = groupBy(paths, (p) => p.folderId);
-
-    const secrets = await secretDAL.findByFolderIds(
-      paths.map((p) => p.folderId),
-      actorId,
-      undefined,
-      params
+    const decryptedSecrets = await getSecretsByFolderMappings(
+      {
+        projectId,
+        folderMappings,
+        filters: params,
+        userId: actorId
+      },
+      permission
     );
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const decryptedSecrets = secrets
-      .filter((el) =>
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: groupedPaths[el.folderId][0].environment,
-            secretPath: groupedPaths[el.folderId][0].path,
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          })
-        )
-      )
-      .map((secret) =>
-        reshapeBridgeSecret(
-          projectId,
-          groupedPaths[secret.folderId][0].environment,
-          groupedPaths[secret.folderId][0].path,
-          {
-            ...secret,
-            value: secret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-              : "",
-            comment: secret.encryptedComment
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-              : ""
-          }
-        )
-      );
 
     return decryptedSecrets;
   };
@@ -2027,6 +2047,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsCount,
     getSecretsCountMultiEnv,
     getSecretsMultiEnv,
-    getSecretReferenceTree
+    getSecretReferenceTree,
+    getSecretsByFolderMappings
   };
 };

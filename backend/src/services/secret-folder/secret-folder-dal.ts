@@ -8,6 +8,8 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
+import { TFindFoldersDeepByParentIdsDTO } from "./secret-folder-types";
+
 export const validateFolderName = (folderName: string) => {
   const validNameRegex = /^[a-zA-Z0-9-_]+$/;
   return validNameRegex.test(folderName);
@@ -444,6 +446,48 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByEnvsDeep = async ({ parentIds }: TFindFoldersDeepByParentIdsDTO, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())
+        .withRecursive("parents", (qb) =>
+          qb
+            .select(
+              selectAllTableCols(TableName.SecretFolder),
+              db.raw("0 as depth"),
+              db.raw(`'/' as path`),
+              db.ref(`${TableName.Environment}.slug`).as("environment")
+            )
+            .from(TableName.SecretFolder)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .whereIn(`${TableName.SecretFolder}.id`, parentIds)
+            .union((un) => {
+              void un
+                .select(
+                  selectAllTableCols(TableName.SecretFolder),
+                  db.raw("parents.depth + 1 as depth"),
+                  db.raw(
+                    `CONCAT(
+                        CASE WHEN parents.path = '/' THEN '' ELSE parents.path END, 
+                        CASE WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' ELSE CONCAT('/', secret_folders.name) END
+                    )`
+                  ),
+                  db.ref("parents.environment")
+                )
+                .from(TableName.SecretFolder)
+                .join("parents", `${TableName.SecretFolder}.parentId`, "parents.id");
+            })
+        )
+        .select<(TSecretFolders & { path: string; depth: number; environment: string })[]>("*")
+        .from("parents")
+        .orderBy("depth")
+        .orderBy(`name`);
+
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByEnvsDeep" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -454,6 +498,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findSecretPathByFolderIds,
     findClosestFolder,
     findByProjectId,
-    findByMultiEnv
+    findByMultiEnv,
+    findByEnvsDeep
   };
 };

@@ -69,3 +69,23 @@ export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   includeImports?: boolean;
   tags: Record<string, boolean>;
 };
+
+export type TDashboardProjectSecretsQuickSearchResponse = {
+  folders: (TSecretFolder & { environment: string; path: string })[];
+  dynamicSecrets: (TDynamicSecret & { environment: string; path: string })[];
+  secrets: SecretV3Raw[];
+};
+
+export type TDashboardProjectSecretsQuickSearch = {
+  folders: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
+  secrets: Record<string, SecretV3RawSanitized[]>;
+  dynamicSecrets: Record<string, TDashboardProjectSecretsQuickSearchResponse["folders"]>;
+};
+
+export type TGetDashboardProjectSecretsQuickSearchDTO = {
+  projectId: string;
+  secretPath: string;
+  tags: Record<string, boolean>;
+  search: string;
+  environments: string[];
+};

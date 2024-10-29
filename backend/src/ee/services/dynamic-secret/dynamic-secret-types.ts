@@ -48,17 +48,27 @@ export type TDetailsDynamicSecretDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TListDynamicSecretsDTO = {
-  path: string;
-  environmentSlug: string;
-  projectSlug?: string;
-  projectId?: string;
+export type ListDynamicSecretsFilters = {
   offset?: number;
   limit?: number;
   orderBy?: SecretsOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
-} & Omit<TProjectPermission, "projectId">;
+};
+
+export type TListDynamicSecretsDTO = {
+  path: string;
+  environmentSlug: string;
+  projectSlug?: string;
+  projectId?: string;
+} & ListDynamicSecretsFilters &
+  Omit<TProjectPermission, "projectId">;
+
+export type TListDynamicSecretsByFolderMappingsDTO = {
+  projectId: string;
+  folderMappings: { folderId: string; path: string; environment: string }[];
+  filters: ListDynamicSecretsFilters;
+};
 
 export type TListDynamicSecretsMultiEnvDTO = Omit<
   TListDynamicSecretsDTO,

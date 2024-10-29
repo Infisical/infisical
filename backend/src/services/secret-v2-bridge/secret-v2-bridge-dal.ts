@@ -14,6 +14,7 @@ import {
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
+import { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
 
@@ -339,14 +340,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
     folderIds: string[],
     userId?: string,
     tx?: Knex,
-    filters?: {
-      limit?: number;
-      offset?: number;
-      orderBy?: SecretsOrderBy;
-      orderDirection?: OrderByDirection;
-      search?: string;
-      tagSlugs?: string[];
-    }
+    filters?: TFindSecretsByFolderIdsFilter
   ) => {
     try {
       // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
@@ -356,14 +350,20 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
       }
 
       const query = (tx || db.replicaNode())(TableName.SecretV2)
-        .whereIn("folderId", folderIds)
+        .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
           if (filters?.search) {
-            void bd.whereILike("key", `%${filters?.search}%`);
+            if (filters?.includeTagsInSearch) {
+              void bd
+                .whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`)
+                .orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+            } else {
+              void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+            }
           }
         })
         .where((bd) => {
-          void bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd.whereNull(`${TableName.SecretV2}.userId`).orWhere({ userId: userId || null });
         })
         .leftJoin(
           TableName.SecretV2JnTag,
@@ -385,7 +385,7 @@ export const secretV2BridgeDALFactory = (db: TDbClient) => {
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
-            void bd.whereIn("slug", slugs);
+            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
           }
         })
         .orderBy(

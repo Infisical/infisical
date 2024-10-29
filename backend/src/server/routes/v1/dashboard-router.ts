@@ -20,6 +20,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
+
 // handle querystring boolean values
 const booleanSchema = z
   .union([z.boolean(), z.string().trim()])
@@ -33,6 +35,35 @@ const booleanSchema = z
   })
   .optional()
   .default(true);
+
+const parseSecretPathSearch = (search?: string) => {
+  if (!search)
+    return {
+      searchName: "",
+      searchPath: ""
+    };
+
+  if (!search.includes("/"))
+    return {
+      searchName: search,
+      searchPath: ""
+    };
+
+  if (search === "/")
+    return {
+      searchName: "",
+      searchPath: "/"
+    };
+
+  const [searchName, ...searchPathSegments] = search.split("/").reverse();
+  let searchPath = removeTrailingSlash(searchPathSegments.reverse().join("/").toLowerCase());
+  if (!searchPath.startsWith("/")) searchPath = `/${searchPath}`;
+
+  return {
+    searchName,
+    searchPath
+  };
+};
 
 export const registerDashboardRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -134,7 +165,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>> | undefined;
       let dynamicSecrets:
-        | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByFolderIds>>
+        | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnvs>>
         | undefined;
 
       let totalFolderCount: number | undefined;
@@ -218,7 +249,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
-          dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds({
+          dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByEnvs({
             actor: req.permission.type,
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
@@ -630,6 +661,182 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         totalSecretCount,
         totalCount:
           (totalImportCount ?? 0) + (totalFolderCount ?? 0) + (totalDynamicSecretCount ?? 0) + (totalSecretCount ?? 0)
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets-deep-search",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environments: z.string().trim().transform(decodeURIComponent),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        search: z.string().trim().optional(),
+        tags: z.string().trim().transform(decodeURIComponent).optional()
+      }),
+      response: {
+        200: z.object({
+          folders: SecretFoldersSchema.extend({ path: z.string() }).array().optional(),
+          dynamicSecrets: SanitizedDynamicSecretSchema.extend({ path: z.string(), environment: z.string() })
+            .array()
+            .optional(),
+          secrets: secretRawSchema
+            .extend({
+              secretPath: z.string().optional(),
+              tags: SecretTagsSchema.pick({
+                id: true,
+                slug: true,
+                color: true
+              })
+                .extend({ name: z.string() })
+                .array()
+                .optional()
+            })
+            .array()
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretPath, projectId, search } = req.query;
+
+      const environments = req.query.environments.split(",").filter((env) => Boolean(env.trim()));
+      if (!environments.length) throw new BadRequestError({ message: "One or more environments required" });
+
+      const tags = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
+      if (!search && !tags.length) throw new BadRequestError({ message: "Search or tags required" });
+
+      const searchHasTags = Boolean(tags.length);
+
+      const allFolders = await server.services.folder.getFoldersDeepByEnvs(
+        {
+          projectId,
+          environments,
+          secretPath
+        },
+        req.permission
+      );
+
+      const { searchName, searchPath } = parseSecretPathSearch(search);
+
+      const folderMappings = allFolders.map((folder) => ({
+        folderId: folder.id,
+        path: folder.path,
+        environment: folder.environment
+      }));
+
+      const sharedFilters = {
+        search: searchName,
+        limit: MAX_DEEP_SEARCH_LIMIT,
+        orderBy: SecretsOrderBy.Name
+      };
+
+      const secrets = await server.services.secret.getSecretsRawByFolderMappings(
+        {
+          projectId,
+          folderMappings,
+          filters: {
+            ...sharedFilters,
+            tagSlugs: tags,
+            includeTagsInSearch: true
+          }
+        },
+        req.permission
+      );
+
+      const dynamicSecrets = searchHasTags
+        ? []
+        : await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
+            {
+              projectId,
+              folderMappings,
+              filters: sharedFilters
+            },
+            req.permission
+          );
+
+      for await (const environment of environments) {
+        const secretCountForEnv = secrets.filter((secret) => secret.environment === environment).length;
+
+        if (secretCountForEnv) {
+          await server.services.auditLog.createAuditLog({
+            projectId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.GET_SECRETS,
+              metadata: {
+                environment,
+                secretPath,
+                numberOfSecrets: secretCountForEnv
+              }
+            }
+          });
+
+          if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+            await server.services.telemetry.sendPostHogEvents({
+              event: PostHogEventTypes.SecretPulled,
+              distinctId: getTelemetryDistinctId(req),
+              properties: {
+                numberOfSecrets: secretCountForEnv,
+                workspaceId: projectId,
+                environment,
+                secretPath,
+                channel: getUserAgentType(req.headers["user-agent"]),
+                ...req.auditLogInfo
+              }
+            });
+          }
+        }
+      }
+
+      const sliceQuickSearch = <T>(array: T[]) => array.slice(0, 25);
+
+      return {
+        secrets: sliceQuickSearch(
+          searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets
+        ),
+        dynamicSecrets: sliceQuickSearch(
+          searchPath
+            ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
+            : dynamicSecrets
+        ),
+        folders: searchHasTags
+          ? []
+          : sliceQuickSearch(
+              allFolders.filter((folder) => {
+                const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
+                const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
+
+                if (searchPath) {
+                  if (searchPath === "/") {
+                    // only show root folders if no folder name search
+                    if (!searchName) return folderPath === searchPath;
+
+                    // start partial match on root folders
+                    return folderName.toLowerCase().startsWith(searchName.toLowerCase());
+                  }
+
+                  // support ending partial path match
+                  return (
+                    folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
+                  );
+                }
+
+                // no search path, "fuzzy" match all folders
+                return folderName.toLowerCase().includes(searchName.toLowerCase());
+              })
+            )
       };
     }
   });

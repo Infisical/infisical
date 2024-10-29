@@ -16,6 +16,7 @@ export type CheckboxProps = Omit<
   checkIndicatorBg?: string | undefined;
   isError?: boolean;
   isIndeterminate?: boolean;
+  containerClassName?: string;
 };
 
 export const Checkbox = ({
@@ -28,10 +29,11 @@ export const Checkbox = ({
   checkIndicatorBg,
   isError,
   isIndeterminate,
+  containerClassName,
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
-    <div className="flex items-center font-inter text-bunker-300">
+    <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
       <CheckboxPrimitive.Root
         className={twMerge(
           "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border border-mineshaft-400 bg-mineshaft-600 shadow transition-all hover:bg-mineshaft-500",

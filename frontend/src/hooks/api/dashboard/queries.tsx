@@ -10,12 +10,15 @@ import {
   DashboardProjectSecretsOverview,
   DashboardProjectSecretsOverviewResponse,
   DashboardSecretsOrderBy,
+  TDashboardProjectSecretsQuickSearch,
+  TDashboardProjectSecretsQuickSearchResponse,
   TGetDashboardProjectSecretsDetailsDTO,
-  TGetDashboardProjectSecretsOverviewDTO
+  TGetDashboardProjectSecretsOverviewDTO,
+  TGetDashboardProjectSecretsQuickSearchDTO
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
-import { unique } from "@app/lib/fn/array";
+import { groupBy, unique } from "@app/lib/fn/array";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -42,8 +45,18 @@ export const dashboardKeys = {
   }: TGetDashboardProjectSecretsDetailsDTO) =>
     [
       ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
-      environment,
       "secrets-details",
+      environment,
+      params
+    ] as const,
+  getProjectSecretsQuickSearch: ({
+    projectId,
+    secretPath,
+    ...params
+  }: TGetDashboardProjectSecretsQuickSearchDTO) =>
+    [
+      ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
+      "quick-search",
       params
     ] as const
 };
@@ -253,6 +266,104 @@ export const useGetProjectSecretsDetails = (
       }),
       []
     ),
+    keepPreviousData: true
+  });
+};
+
+export const fetchProjectSecretsQuickSearch = async ({
+  environments,
+  tags,
+  ...params
+}: TGetDashboardProjectSecretsQuickSearchDTO) => {
+  const { data } = await apiRequest.get<TDashboardProjectSecretsQuickSearchResponse>(
+    "/api/v1/dashboard/secrets-deep-search",
+    {
+      params: {
+        ...params,
+        environments: encodeURIComponent(environments.join(",")),
+        tags: encodeURIComponent(
+          Object.entries(tags)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .filter(([_, enabled]) => enabled)
+            .map(([tag]) => tag)
+            .join(",")
+        )
+      }
+    }
+  );
+
+  return data;
+};
+
+export const useGetProjectSecretsQuickSearch = (
+  {
+    projectId,
+    secretPath,
+    search = "",
+    environments,
+    tags
+  }: TGetDashboardProjectSecretsQuickSearchDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TDashboardProjectSecretsQuickSearchResponse,
+      unknown,
+      TDashboardProjectSecretsQuickSearch,
+      ReturnType<typeof dashboardKeys.getProjectSecretsQuickSearch>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    ...options,
+    enabled:
+      Boolean(search?.trim() || Object.values(tags).length) &&
+      (options?.enabled ?? true) &&
+      Boolean(environments.length),
+    queryKey: dashboardKeys.getProjectSecretsQuickSearch({
+      secretPath,
+      search,
+      projectId,
+      environments,
+      tags
+    }),
+    queryFn: () =>
+      fetchProjectSecretsQuickSearch({
+        secretPath,
+        search,
+        projectId,
+        environments,
+        tags
+      }),
+    onError: (error) => {
+      if (axios.isAxiosError(error)) {
+        const serverResponse = error.response?.data as { message: string };
+        createNotification({
+          title: "Error fetching secrets deep search",
+          type: "error",
+          text: serverResponse.message
+        });
+      }
+    },
+    select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
+      const { secrets, folders, dynamicSecrets } = data;
+
+      const groupedFolders = groupBy(folders, (folder) => folder.path);
+      const groupedSecrets = groupBy(
+        mergePersonalSecrets(secrets),
+        (secret) => `${secret.path === "/" ? "" : secret.path}/${secret.key}`
+      );
+      const groupedDynamicSecrets = groupBy(
+        dynamicSecrets,
+        (dynamicSecret) =>
+          `${dynamicSecret.path === "/" ? "" : dynamicSecret.path}/${dynamicSecret.name}`
+      );
+
+      return {
+        folders: groupedFolders,
+        secrets: groupedSecrets,
+        dynamicSecrets: groupedDynamicSecrets
+      };
+    }, []),
     keepPreviousData: true
   });
 };

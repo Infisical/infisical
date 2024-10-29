@@ -1,1 +1,5 @@
-export { useGetProjectSecretsDetails } from "./queries";
+export {
+  useGetProjectSecretsDetails,
+  useGetProjectSecretsOverview,
+  useGetProjectSecretsQuickSearch
+} from "./queries";

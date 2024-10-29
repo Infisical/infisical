@@ -9,7 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrderByDirection } from "@app/lib/types";
+import { OrderByDirection, ProjectServiceActor } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -22,6 +22,7 @@ import {
   TDeleteDynamicSecretDTO,
   TDetailsDynamicSecretDTO,
   TGetDynamicSecretsCountDTO,
+  TListDynamicSecretsByFolderMappingsDTO,
   TListDynamicSecretsDTO,
   TListDynamicSecretsMultiEnvDTO,
   TUpdateDynamicSecretDTO
@@ -454,8 +455,44 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
+  const listDynamicSecretsByFolderIds = async (
+    { folderMappings, filters, projectId }: TListDynamicSecretsByFolderMappingsDTO,
+    actor: ProjectServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor.type,
+      actor.id,
+      projectId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    const userAccessibleFolderMappings = folderMappings.filter(({ path, environment }) =>
+      permission.can(
+        ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath: path })
+      )
+    );
+
+    const groupedFolderMappings = new Map(userAccessibleFolderMappings.map((path) => [path.folderId, path]));
+
+    const dynamicSecrets = await dynamicSecretDAL.listDynamicSecretsByFolderIds({
+      folderIds: userAccessibleFolderMappings.map(({ folderId }) => folderId),
+      ...filters
+    });
+
+    return dynamicSecrets.map((dynamicSecret) => {
+      const { environment, path } = groupedFolderMappings.get(dynamicSecret.folderId)!;
+      return {
+        ...dynamicSecret,
+        environment,
+        path
+      };
+    });
+  };
+
   // get dynamic secrets for multiple envs
-  const listDynamicSecretsByFolderIds = async ({
+  const listDynamicSecretsByEnvs = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -521,9 +558,10 @@ export const dynamicSecretServiceFactory = ({
     deleteByName,
     getDetails,
     listDynamicSecretsByEnv,
-    listDynamicSecretsByFolderIds,
+    listDynamicSecretsByEnvs,
     getDynamicSecretCount,
     getCountMultiEnv,
-    fetchAzureEntraIdUsers
+    fetchAzureEntraIdUsers,
+    listDynamicSecretsByFolderIds
   };
 };
