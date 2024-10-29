@@ -1,6 +1,8 @@
 import { Logger } from "pino";
 import { z } from "zod";
 
+import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+
 import { removeTrailingSlash } from "../fn";
 import { zpStr } from "../zod";
 
@@ -165,6 +167,9 @@ const envSchema = z
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
 
+    // KMS ENCRYPTION
+    ROOT_KEY_ENCRYPTION_STRATEGY: z.nativeEnum(RootKeyEncryptionStrategy).default(RootKeyEncryptionStrategy.Basic),
+
     // HSM
     HSM_LIB_PATH: zpStr(
       z
@@ -198,6 +203,9 @@ const envSchema = z
   })
   .transform((data) => ({
     ...data,
+
+    // ROOT_KEY_ENCRYPTION_STRATEGY: "HSM",
+
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,

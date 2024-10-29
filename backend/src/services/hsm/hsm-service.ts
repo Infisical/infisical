@@ -152,7 +152,7 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
     }
   };
 
-  const isActive = async () => {
+  const isActive = () => {
     if (!module || !appCfg.isHsmConfigured || !sessionManager) {
       return false;
     }

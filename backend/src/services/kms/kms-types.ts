@@ -56,3 +56,8 @@ export type TUpdateProjectSecretManagerKmsKeyDTO = {
   projectId: string;
   kms: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string };
 };
+
+export enum RootKeyEncryptionStrategy {
+  Basic = "BASIC",
+  Hsm = "HSM"
+}

@@ -12,7 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const KmsRootConfigSchema = z.object({
   id: z.string().uuid(),
   encryptedRootKey: zodBuffer,
-  isEncryptedByHsm: z.boolean().default(false),
+  encryptionStrategy: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -2,7 +2,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { KmsKeysSchema } from "@app/db/schemas";
+import { KmsKeysSchema, TKmsRootConfig } from "@app/db/schemas";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
 import {
   ExternalKmsAwsSchema,
@@ -28,6 +28,7 @@ import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
   KmsType,
+  RootKeyEncryptionStrategy,
   TDecryptWithKeyDTO,
   TDecryptWithKmsDTO,
   TEncryptionWithKeyDTO,
@@ -613,6 +614,61 @@ export const kmsServiceFactory = ({
     }
   };
 
+  const $createBasicEncryptionKey = () => {
+    const appCfg = getConfig();
+
+    const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
+    const isBase64 = !appCfg.ENCRYPTION_KEY;
+    if (!encryptionKey)
+      throw new Error(
+        "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
+      );
+
+    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
+
+    return encryptionKeyBuffer;
+  };
+
+  const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
+    // case 1: root key is encrypted with HSM
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Hsm) {
+      if (!hsmService.isActive()) {
+        throw new Error("Unable to decrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
+      }
+
+      return hsmService.decrypt(kmsRootConfig.encryptedRootKey);
+    }
+
+    // case 2: root key is encrypted with basic encryption
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Basic) {
+      const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+      const encryptionKeyBuffer = $createBasicEncryptionKey();
+
+      return cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
+    }
+
+    throw new Error(`Invalid root key encryption strategy: ${kmsRootConfig.encryptionStrategy}`);
+  };
+
+  const $encryptRootKey = async (plainKeyBuffer: Buffer, strategy: RootKeyEncryptionStrategy) => {
+    if (strategy === RootKeyEncryptionStrategy.Hsm) {
+      if (!hsmService.isActive()) {
+        throw new Error("Unable to encrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
+      }
+      return hsmService.encrypt(plainKeyBuffer);
+    }
+
+    if (strategy === RootKeyEncryptionStrategy.Basic) {
+      const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+      const encryptionKeyBuffer = $createBasicEncryptionKey();
+
+      return cipher.encrypt(plainKeyBuffer, encryptionKeyBuffer);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    throw new Error(`Invalid root key encryption strategy: ${strategy}`);
+  };
+
   // by keeping the decrypted data key in inner scope
   // none of the entities outside can interact directly or expose the data key
   // NOTICE: If changing here update migrations/utils/kms
@@ -798,13 +854,7 @@ export const kmsServiceFactory = ({
   // akhilmhdh: a copy of this is made in migrations/utils/kms
   const startService = async () => {
     const appCfg = getConfig();
-    // This will switch to a seal process and HMS flow in future
-    const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
-    // if root key its base64 encoded
-    const isBase64 = !appCfg.ENCRYPTION_KEY;
-    if (!encryptionKey) throw new Error("Root encryption key not found for KMS service.");
-    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
-    const hsmEnabled = await hsmService.isActive();
+    const hsmEnabled = hsmService.isActive();
 
     const lock = await keyStore.acquireLock([`KMS_ROOT_CFG_LOCK`], 3000, { retryCount: 3 }).catch(() => null);
     if (!lock) {
@@ -817,44 +867,40 @@ export const kmsServiceFactory = ({
 
     // check if KMS root key was already generated and saved in DB
     const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+
+    // case 1: a root key already exists in the DB
     if (kmsRootConfig) {
       if (lock) await lock.release();
       logger.info("KMS: Encrypted ROOT Key found from DB. Decrypting.");
 
-      let decryptedRootKey: Buffer | null = null;
-      try {
-        decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
-        logger.info("KMS: Decrypted ROOT Key with platform key.");
-      } catch (err) {
-        // First we attempt to decrypt with regular root key. If it fails, we check if HSM is enabled, and if it is we attempt to decrypt with HSM.
-        if (hsmEnabled && kmsRootConfig.isEncryptedByHsm) {
-          decryptedRootKey = hsmService.decrypt(kmsRootConfig.encryptedRootKey);
-          logger.info("KMS: Decrypted ROOT Key with HSM.");
-        } else {
-          // If HSM is not enabled we assume it's a general error, and throw.
-          throw err;
-        }
-      }
+      const decryptedRootKey = await $decryptRootKey(kmsRootConfig).catch((err) => {
+        logger.error(err, `KMS: Failed to decrypt ROOT Key [strategy=${kmsRootConfig.encryptionStrategy}]`);
+        throw err;
+      });
 
-      if (!decryptedRootKey) {
-        logger.error(
-          { hsmEnabled, isEncryptedByHsm: kmsRootConfig.isEncryptedByHsm },
-          "KMS: Failed to decrypt ROOT Key"
+      const selectedEncryptionStrategy = appCfg.ROOT_KEY_ENCRYPTION_STRATEGY;
+
+      // case: the users selected encryption key strategy does not match the one in the DB
+      // in this case we need to re-encrypt the key with the selected strategy, and update the strategy and key in the DB
+      if (selectedEncryptionStrategy !== kmsRootConfig.encryptionStrategy) {
+        logger.info(
+          {
+            newStrategy: selectedEncryptionStrategy,
+            configuredStrategy: kmsRootConfig.encryptionStrategy
+          },
+          "KMS: Change in root encryption key strategy detected. Re-encrypting ROOT Key with selected strategy"
         );
-        throw new Error("Failed to decrypt ROOT Key");
-      }
-
-      // If the key is not encrypted with HSM, we re-encrypt it with HSM and update the key in the DB.
-      if (!kmsRootConfig.isEncryptedByHsm && hsmEnabled) {
-        const encryptedRootKey = hsmService.encrypt(decryptedRootKey);
+        const encryptedRootKey = await $encryptRootKey(decryptedRootKey, selectedEncryptionStrategy);
 
         if (!encryptedRootKey) {
-          logger.error("KMS: Failed to encrypt ROOT Key with HSM");
-          throw new Error("Failed to encrypt ROOT Key with HSM");
+          logger.error("KMS: Failed to re-encrypt ROOT Key with selected strategy");
+          throw new Error("Failed to re-encrypt ROOT Key with selected strategy");
         }
 
-        await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, { encryptedRootKey, isEncryptedByHsm: true });
+        await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
+          encryptedRootKey,
+          encryptionStrategy: selectedEncryptionStrategy
+        });
       }
 
       // set the flag so that other instance nodes can start
@@ -865,26 +911,22 @@ export const kmsServiceFactory = ({
     }
 
     logger.info("KMS: Generating ROOT Key");
+    const selectedEncryptionStrategy = appCfg.ROOT_KEY_ENCRYPTION_STRATEGY;
+
     const newRootKey = randomSecureBytes(32);
-
-    let encryptedRootKey: Buffer | null = null;
-    let isEncryptedByHsm = false;
-
-    if (hsmEnabled) {
-      encryptedRootKey = hsmService.encrypt(newRootKey);
-      isEncryptedByHsm = true;
-    } else {
-      encryptedRootKey = cipher.encrypt(newRootKey, encryptionKeyBuffer);
-    }
-
-    if (!encryptedRootKey) {
+    const encryptedRootKey = await $encryptRootKey(newRootKey, selectedEncryptionStrategy).catch((err) => {
       logger.error({ hsmEnabled }, "KMS: Failed to encrypt ROOT Key");
-    }
+      throw err;
+    });
 
-    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    await kmsRootConfigDAL.create({ encryptedRootKey, id: KMS_ROOT_CONFIG_UUID, isEncryptedByHsm });
+    await kmsRootConfigDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: KMS_ROOT_CONFIG_UUID,
+      encryptedRootKey,
+      encryptionStrategy: selectedEncryptionStrategy
+    });
 
-    // set the flag so that other instancen nodes can start
+    // set the flag so that other instance nodes can start
     await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
     logger.info("KMS: Saved and loaded ROOT Key into memory");
     if (lock) await lock.release();
