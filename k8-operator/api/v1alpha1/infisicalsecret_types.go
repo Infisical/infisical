@@ -149,6 +149,26 @@ type MangedKubeSecretConfig struct {
 	CreationPolicy string `json:"creationPolicy"`
 }
 
+type CaReference struct {
+	// The name of the Kubernetes Secret
+	// +kubebuilder:validation:Required
+	SecretName string `json:"secretName"`
+
+	// The namespace where the Kubernetes Secret is located
+	// +kubebuilder:validation:Required
+	SecretNamespace string `json:"secretNamespace"`
+
+	// +kubebuilder:validation:Required
+	// The name of the secret property with the CA certificate value
+	SecretKey string `json:"key"`
+}
+
+type TLSConfig struct {
+	// Reference to secret containing CA cert
+	// +kubebuilder:validation:Optional
+	CaRef CaReference `json:"caRef,omitempty"`
+}
+
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
@@ -166,6 +186,9 @@ type InfisicalSecretSpec struct {
 	// Infisical host to pull secrets from
 	// +kubebuilder:validation:Optional
 	HostAPI string `json:"hostAPI"`
+
+	// +kubebuilder:validation:Optional
+	TLS TLSConfig `json:"tls"`
 }
 
 // InfisicalSecretStatus defines the observed state of InfisicalSecret

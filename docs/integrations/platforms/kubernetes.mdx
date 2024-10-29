@@ -10,7 +10,9 @@ It uses an `InfisicalSecret` resource to specify authentication and storage meth
 The operator continuously updates secrets and can also reload dependent deployments automatically.
 
 <Note>
-  If you are already using the External Secrets operator, you can view the integration documentation for it [here](https://external-secrets.io/latest/provider/infisical/).
+  If you are already using the External Secrets operator, you can view the
+  integration documentation for it
+  [here](https://external-secrets.io/latest/provider/infisical/).
 </Note>
 
 ## Install Operator
@@ -31,7 +33,7 @@ The operator can be install via [Helm](https://helm.sh) or [kubectl](https://git
     To select a specific version, view the  application versions [here](https://hub.docker.com/r/infisical/kubernetes-operator/tags) and chart versions [here](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/secrets-operator/#versions)
 
     ```bash
-    helm install --generate-name infisical-helm-charts/secrets-operator 
+    helm install --generate-name infisical-helm-charts/secrets-operator
     ```
 
     ```bash
@@ -61,109 +63,106 @@ Once you apply the manifest, the operator will be installed in `infisical-operat
 Once you have installed the operator to your cluster, you'll need to create a `InfisicalSecret` custom resource definition (CRD).
 
 ```yaml example-infisical-secret-crd.yaml
-
 apiVersion: secrets.infisical.com/v1alpha1
 kind: InfisicalSecret
 metadata:
-    name: infisicalsecret-sample
-    labels:
-        label-to-be-passed-to-managed-secret: sample-value
-    annotations:
-        example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
+  name: infisicalsecret-sample
+  labels:
+    label-to-be-passed-to-managed-secret: sample-value
+  annotations:
+    example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
 spec:
-    hostAPI: https://app.infisical.com/api
-    resyncInterval: 10
-    authentication:
-        # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
-        # If you have multiple authentication methods defined, it may cause issues.
+  hostAPI: https://app.infisical.com/api
+  resyncInterval: 10
+  authentication:
+    # Make sure to only have 1 authentication method defined, serviceToken/universalAuth.
+    # If you have multiple authentication methods defined, it may cause issues.
 
-        # (Deprecated) Service Token Auth
-        serviceToken:
-            serviceTokenSecretReference:
-                secretName: service-token
-                secretNamespace: default
-            secretsScope:
-                envSlug: <env-slug>
-                secretsPath: <secrets-path>
-                recursive: true
-
-        # Universal Auth
-        universalAuth:
-            secretsScope:
-                projectSlug: new-ob-em
-                envSlug: dev # "dev", "staging", "prod", etc..
-                secretsPath: "/" # Root is "/"
-                recursive: true # Wether or not to use recursive mode (Fetches all secrets in an environment from a given secret path, and all folders inside the path) / defaults to false
-            credentialsRef:
-                secretName: universal-auth-credentials
-                secretNamespace: default
-
-        # Native Kubernetes Auth
-        kubernetesAuth:
-            identityId: <machine-identity-id>
-            serviceAccountRef:
-              name: <service-account-name>
-              namespace: <service-account-namespace>
-
-            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
-            secretsScope:
-                projectSlug: your-project-slug
-                envSlug: prod
-                secretsPath: "/path"
-                recursive: true
-
-        # AWS IAM Auth
-        awsIamAuth:
-            identityId: <your-machine-identity-id>
-
-            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
-            secretsScope:
-                projectSlug: your-project-slug
-                envSlug: prod
-                secretsPath: "/path"
-                recursive: true
-
-        # Azure Auth
-        azureAuth:
-            identityId: <your-machine-identity-id>
-            resource: https://management.azure.com/&client_id=CLIENT_ID # (Optional) This is the Azure resource that you want to access. For example, "https://management.azure.com/". If no value is provided, it will default to "https://management.azure.com/"
-
-            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
-            secretsScope:
-                projectSlug: your-project-slug
-                envSlug: prod
-                secretsPath: "/path"
-                recursive: true
-
-        # GCP ID Token Auth
-        gcpIdTokenAuth:
-            identityId: <your-machine-identity-id>
-
-            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
-            secretsScope:
-                projectSlug: your-project-slug
-                envSlug: prod
-                secretsPath: "/path"
-                recursive: true
-
-        # GCP IAM Auth
-        gcpIamAuth:
-            identityId: <your-machine-identity-id>
-
-            # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
-            secretsScope:
-                projectSlug: your-project-slug
-                envSlug: prod
-                secretsPath: "/path"
-                recursive: true
-
-    managedSecretReference:
-        secretName: managed-secret
+    # (Deprecated) Service Token Auth
+    serviceToken:
+      serviceTokenSecretReference:
+        secretName: service-token
         secretNamespace: default
-        creationPolicy: "Orphan" ## Owner | Orphan
-        # secretType: kubernetes.io/dockerconfigjson
+      secretsScope:
+        envSlug: <env-slug>
+        secretsPath: <secrets-path>
+        recursive: true
 
+    # Universal Auth
+    universalAuth:
+      secretsScope:
+        projectSlug: new-ob-em
+        envSlug: dev # "dev", "staging", "prod", etc..
+        secretsPath: "/" # Root is "/"
+        recursive: true # Wether or not to use recursive mode (Fetches all secrets in an environment from a given secret path, and all folders inside the path) / defaults to false
+      credentialsRef:
+        secretName: universal-auth-credentials
+        secretNamespace: default
 
+    # Native Kubernetes Auth
+    kubernetesAuth:
+      identityId: <machine-identity-id>
+      serviceAccountRef:
+        name: <service-account-name>
+        namespace: <service-account-namespace>
+
+      # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+      secretsScope:
+        projectSlug: your-project-slug
+        envSlug: prod
+        secretsPath: "/path"
+        recursive: true
+
+    # AWS IAM Auth
+    awsIamAuth:
+      identityId: <your-machine-identity-id>
+
+      # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+      secretsScope:
+        projectSlug: your-project-slug
+        envSlug: prod
+        secretsPath: "/path"
+        recursive: true
+
+    # Azure Auth
+    azureAuth:
+      identityId: <your-machine-identity-id>
+      resource: https://management.azure.com/&client_id=CLIENT_ID # (Optional) This is the Azure resource that you want to access. For example, "https://management.azure.com/". If no value is provided, it will default to "https://management.azure.com/"
+
+      # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+      secretsScope:
+        projectSlug: your-project-slug
+        envSlug: prod
+        secretsPath: "/path"
+        recursive: true
+
+    # GCP ID Token Auth
+    gcpIdTokenAuth:
+      identityId: <your-machine-identity-id>
+
+      # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+      secretsScope:
+        projectSlug: your-project-slug
+        envSlug: prod
+        secretsPath: "/path"
+        recursive: true
+
+    # GCP IAM Auth
+    gcpIamAuth:
+      identityId: <your-machine-identity-id>
+
+      # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
+      secretsScope:
+        projectSlug: your-project-slug
+        envSlug: prod
+        secretsPath: "/path"
+        recursive: true
+
+  managedSecretReference:
+    secretName: managed-secret
+    secretNamespace: default
+    creationPolicy: "Orphan" ## Owner | Orphan
+    # secretType: kubernetes.io/dockerconfigjson
 ```
 
 ### InfisicalSecret CRD properties
@@ -191,6 +190,31 @@ When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud.
   This property defines the time in seconds between each secret re-sync from
   Infisical. Shorter time between re-syncs will require higher rate limits only
   available on paid plans. Default re-sync interval is every 1 minute.
+</Accordion>
+
+<Accordion title="tls">
+  This block defines the TLS settings to use for connecting to the Infisical
+  instance.
+</Accordion>
+
+<Accordion title="tls.caRef">
+  This block defines the reference to the CA certificate to use for connecting
+  to the Infisical instance with SSL/TLS.
+</Accordion>
+
+<Accordion title="tls.caRef.secretName">
+  The name of the Kubernetes secret containing the CA certificate to use for
+  connecting to the Infisical instance with SSL/TLS.
+</Accordion>
+
+<Accordion title="tls.caRef.secretNamespace">
+  The namespace of the Kubernetes secret containing the CA certificate to use
+  for connecting to the Infisical instance with SSL/TLS.
+</Accordion>
+
+<Accordion title="tls.caRef.key">
+  The name of the key in the Kubernetes secret which contains the value of the
+  CA certificate to use for connecting to the Infisical instance with SSL/TLS.
 </Accordion>
 
 <Accordion title="authentication">
@@ -221,8 +245,6 @@ When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud.
     </Step>
 
   </Steps>
-
-
 
 <Info>
   Make sure to also populate the `secretsScope` field with the project slug
@@ -365,15 +387,15 @@ spec:
 
     </Step>
     <Step title="Add your identity ID & service account to your InfisicalSecret resource">
-      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource. 
-      In the `authentication.kubernetesAuth.identityId` field, add the identity ID of the machine identity you created. 
+      Once you have created your machine identity and added it to your project(s), you will need to add the identity ID to your InfisicalSecret resource.
+      In the `authentication.kubernetesAuth.identityId` field, add the identity ID of the machine identity you created.
       See the example below for more details.
     </Step>
     <Step title="Add your Kubernetes service account token to the InfisicalSecret resource">
-      Add the service account details from the previous steps under `authentication.kubernetesAuth.serviceAccountRef`. 
-      Here you will need to enter the name and namespace of the service account. 
+      Add the service account details from the previous steps under `authentication.kubernetesAuth.serviceAccountRef`.
+      Here you will need to enter the name and namespace of the service account.
       The example below shows a complete InfisicalSecret resource with all required fields defined.
-    </Step> 
+    </Step>
 
   </Steps>
 
@@ -538,8 +560,6 @@ spec:
 ```
 
 </Accordion>
-
-
 
 <Accordion title="authentication.gcpIamAuth">
   The GCP IAM machine identity authentication method is used to authenticate with Infisical. The identity ID is stored in a field in the InfisicalSecret resource. This authentication method can only be used both within and outside GCP environments.
@@ -877,6 +897,42 @@ spec:
 
 </Accordion>
 
+### Connecting to instances with private/self-signed certificate
+
+To connect to Infisical instances behind a private/self-signed certificate, you can configure the TLS settings in the `InfisicalSecret` CRD
+to point to a CA certificate stored in a Kubernetes secret resource.
+
+```yaml
+---
+spec:
+  hostAPI: https://app.infisical.com/api
+  resyncInterval: 10
+  tls:
+    caRef:
+      secretName: custom-ca-certificate
+      secretNamespace: default
+      key: ca.crt
+  authentication:
+---
+```
+
+The definition file of the Kubernetes secret for the CA certificate can be structured like the following:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: custom-ca-certificate
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIEZzCCA0+gAwIBAgIUDk9+HZcMHppiNy0TvoBg8/aMEqIwDQYJKoZIhvcNAQEL
+    ...
+    BQAwDTELMAkGA1UEChMCUEgwHhcNMjQxMDI1MTU0MjAzWhcNMjUxMDI1MjE0MjAz
+    -----END CERTIFICATE-----
+```
+
 ## Auto redeployment
 
 Deployments using managed secrets don't reload automatically on updates, so they may use outdated secrets unless manually redeployed.
@@ -889,6 +945,7 @@ To enable auto redeployment you simply have to add the following annotation to t
 ```yaml
 secrets.infisical.com/auto-reload: "true"
 ```
+
 <Accordion title="Deployment example with auto redeploy enabled">
 ```yaml
 apiVersion: apps/v1

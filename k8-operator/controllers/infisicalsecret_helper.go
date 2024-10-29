@@ -177,6 +177,27 @@ func (r *InfisicalSecretReconciler) GetInfisicalUniversalAuthFromKubeSecret(ctx 
 
 }
 
+func (r *InfisicalSecretReconciler) GetInfisicalCaCertificateFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (caCertificate string, err error) {
+
+	caCertificateFromKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
+		Namespace: infisicalSecret.Spec.TLS.CaRef.SecretNamespace,
+		Name:      infisicalSecret.Spec.TLS.CaRef.SecretName,
+	})
+
+	if k8Errors.IsNotFound(err) {
+		return "", fmt.Errorf("kubernetes secret containing custom CA certificate cannot be found. [err=%s]", err)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("something went wrong when fetching your CA certificate [err=%s]", err)
+	}
+
+	caCertificateFromSecret := string(caCertificateFromKubeSecret.Data[infisicalSecret.Spec.TLS.CaRef.SecretKey])
+
+	return caCertificateFromSecret, nil
+
+}
+
 // Fetches service account credentials from a Kubernetes secret specified in the infisicalSecret object, extracts the access key, public key, and private key from the secret, and returns them as a ServiceAccountCredentials object.
 // If any keys are missing or an error occurs, returns an empty object or an error object, respectively.
 func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (serviceAccountDetails model.ServiceAccountDetails, err error) {
@@ -296,8 +317,9 @@ func (r *InfisicalSecretReconciler) GetResourceVariables(infisicalSecret v1alpha
 		ctx, cancel := context.WithCancel(context.Background())
 
 		client := infisicalSdk.NewInfisicalClient(ctx, infisicalSdk.Config{
-			SiteUrl:   api.API_HOST_URL,
-			UserAgent: api.USER_AGENT_NAME,
+			SiteUrl:       api.API_HOST_URL,
+			CaCertificate: api.API_CA_CERTIFICATE,
+			UserAgent:     api.USER_AGENT_NAME,
 		})
 
 		resourceVariablesMap[string(infisicalSecret.UID)] = ResourceVariables{
