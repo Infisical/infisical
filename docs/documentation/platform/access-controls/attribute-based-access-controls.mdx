@@ -1,0 +1,65 @@
+---
+title: "Attribute-based Access Controls"
+description: "Learn how to use ABAC to manage permissions based on identity attributes."
+---
+
+Infisical's Attribute-based Access Controls (ABAC) allow for dynamic, attribute-driven permissions for both user and machine identities. 
+ABAC policies use metadata attributes—stored as key-value pairs on identities—to enforce fine-grained permissions that are context aware.
+
+In ABAC, access controls are defined using metadata attributes, such as location or department, which can be set directly on user or machine identities. 
+During policy execution, these attributes are evaluated, and determine whether said actor can gain access to requested resource. 
+
+## Project-level Permissions
+
+Attribute based access control is currently available for polices defined on projects. You can set ABAC permissions to control access to environments, folders, secrets, and secret tags. 
+
+### Setting Metadata on Identities
+
+<Tabs>
+  <Tab title="Manually configure metadata">
+    <Steps>
+        <Step title="Navigate to access control at the organizations setting and choose a identity (user or machine)">
+            <img src="images/platform/access-controls/add-metadata-step1.png" />
+        </Step>
+        <Step title="Click on the pencil to edit the selected identity">
+            <img src="images/platform/access-controls/add-metadata-step2.png" />
+        </Step>
+        <Step title="Add metadata via key and value">
+            <img src="images/platform/access-controls/add-metadata-step3.png" />
+        </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Automatically populate metadata">
+    For organizations using SAML for login, Infisical automatically maps metadata attributes from SAML assertions. 
+    This makes it easy to create policies that dynamically adapt based on the SAML user’s attributes.
+  </Tab>
+</Tabs>
+
+
+## Defining ABAC Policies
+
+<img src="images/platform/access-controls/example-abac-1.png" />
+
+ABAC policies make use of identity metadata to define dynamic permissions. 
+The following attributes are available within project permissions. Each attribute much begin `{{` and end with `}}`.
+
+- **User ID**: `{{ identity.id }}`
+- **Username**: `{{ identity.username }}`
+- **Metadata Attributes**: `{{ identity.metadata.<metadata-key-name> }}`
+
+During policy execution, these placeholders are first replaced by their actual values then the policy is executed.
+
+### Example Use Case
+
+#### Geography-based Access Control
+
+Suppose you want to restrict access to secrets within a folder access based on user geography. 
+You could assign a `geography` attribute to each user (e.g., `identity.metadata.geography`). 
+Then, you can structure your folders to align with this attribute and define permissions accordingly.
+
+For example, a policy might allow access only to folders matching the user's geographic attribute:
+```
+/appA/{{ identity.metadata.geography }}
+```
+With this structure, users can only access folders that correspond to their own geography attribute. 
+This means that if the users attribute changes due to relocation, no policy needs to be changed to gain access to the new folders.
