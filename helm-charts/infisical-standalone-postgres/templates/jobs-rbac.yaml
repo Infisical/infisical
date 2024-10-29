@@ -16,7 +16,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.infisical.databaseSchemaMigrationJob.serviceAccountName | default "default" }}
-    namespace: {{ .Values.infisical.databaseSchemaMigrationJob.serviceAccountNamespace | default .Release.Namespace }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
   name: k8s-wait-for-infisical-schema-migration

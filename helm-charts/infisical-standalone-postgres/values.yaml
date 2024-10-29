@@ -10,7 +10,6 @@ infisical:
       imagePullPolicy: IfNotPresent
 
   databaseSchemaMigrationJob:
-    serviceAccountNamespace: default
     serviceAccountName: default
        
   fullnameOverride: ""
@@ -39,11 +38,11 @@ infisical:
       cpu: 350m
 
 ingress:
-  enabled: false
+  enabled: true
   hostName: ""
   ingressClassName: nginx
   nginx:
-    enabled: false
+    enabled: true
   annotations: {}
   tls:
     []
