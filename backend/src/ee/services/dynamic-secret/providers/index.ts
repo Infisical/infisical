@@ -9,6 +9,7 @@ import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
 import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
+import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
 
 export const buildDynamicSecretProviders = () => ({
@@ -22,5 +23,6 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
   [DynamicSecretProviders.RabbitMq]: RabbitMqProvider(),
   [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider(),
-  [DynamicSecretProviders.Ldap]: LdapProvider()
+  [DynamicSecretProviders.Ldap]: LdapProvider(),
+  [DynamicSecretProviders.SapHana]: SapHanaProvider()
 });

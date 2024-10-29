@@ -14,6 +14,7 @@ import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasFo
 import { EditDynamicSecretMongoDBForm } from "./EditDynamicSecretMongoDBForm";
 import { EditDynamicSecretRabbitMqForm } from "./EditDynamicSecretRabbitMqForm";
 import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
+import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 
 type Props = {
@@ -230,16 +231,33 @@ export const EditDynamicSecretForm = ({
           initial={{ opacity: 0, translateX: 30 }}
           animate={{ opacity: 1, translateX: 0 }}
           exit={{ opacity: 0, translateX: -30 }}
-          >
-            <EditDynamicSecretLdapForm
-              onClose={onClose}
-              projectSlug={projectSlug}
-              secretPath={secretPath}
-              dynamicSecret={dynamicSecretDetails}
-              environment={environment}
-            />
-          </motion.div>
-        )}
+        >
+          <EditDynamicSecretLdapForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.SapHana && (
+        <motion.div
+          key="sap-hana-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretSapHanaForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

@@ -178,7 +178,8 @@
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db",
             "documentation/platform/dynamic-secrets/azure-entra-id",
-            "documentation/platform/dynamic-secrets/ldap"
+            "documentation/platform/dynamic-secrets/ldap",
+            "documentation/platform/dynamic-secrets/sap-hana"
           ]
         },
         {
