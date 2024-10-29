@@ -117,6 +117,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		fmt.Println("Using custom CA certificate...")
+	} else {
+		api.API_CA_CERTIFICATE = ""
 	}
 
 	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
