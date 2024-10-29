@@ -135,11 +135,11 @@
           "pages": [
             "documentation/platform/access-controls/overview",
             "documentation/platform/access-controls/role-based-access-controls",
+            "documentation/platform/access-controls/attribute-based-access-controls",
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-log-streams",
             "documentation/platform/groups"
           ]
         },
