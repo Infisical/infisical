@@ -20,10 +20,10 @@ The logs are formatted in JSON, requiring your logging provider to support JSON-
 <Steps>
     <Step title="Navigate to Organization Settings in your sidebar." />
     <Step title="Select Audit Log Streams Tab.">
-				![stream create](../../images/platform/audit-log-streams/stream-create.png)
+				![stream create](/images/platform/audit-log-streams/stream-create.png)
 		</Step>
 		<Step title="Click on Create">
-		 ![stream create](../../images/platform/audit-log-streams/stream-inputs.png)
+		 ![stream create](/images/platform/audit-log-streams/stream-inputs.png)
 
 		 Provide the following values
 		 <ParamField path="Endpoint URL" type="string" required>
@@ -44,11 +44,11 @@ Your Audit Logs are now ready to be streamed.
 
 <Steps>
     <Step title="Select Connect Source">
-				![better stack connect source](../../images/platform/audit-log-streams/betterstack-create-source.png)
+				![better stack connect source](/images/platform/audit-log-streams/betterstack-create-source.png)
 		</Step>
     <Step title="Provide a name and select platform"/>
    <Step title="Provide Audit Log Stream inputs">
-				![better stack connect](../../images/platform/audit-log-streams/betterstack-source-details.png)
+				![better stack connect](/images/platform/audit-log-streams/betterstack-source-details.png)
 
 				1. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
 				3. Create a new header with key **Authorization** and set the value as **Bearer \<source token from betterstack\>**.
@@ -59,21 +59,21 @@ Your Audit Logs are now ready to be streamed.
 
 <Steps>
     <Step title="Navigate to API Keys section">
-				![api key create](../../images/platform/audit-log-streams/datadog-api-sidebar.png)
+				![api key create](/images/platform/audit-log-streams/datadog-api-sidebar.png)
 		</Step>
     <Step title="Select New Key and provide a key name">
-				![api key form](../../images/platform/audit-log-streams/data-create-api-key.png)
-				![api key form](../../images/platform/audit-log-streams/data-dog-api-key.png)
+				![api key form](/images/platform/audit-log-streams/data-create-api-key.png)
+				![api key form](/images/platform/audit-log-streams/data-dog-api-key.png)
 		</Step>
    <Step title="Find your Datadog region specific logging endpoint.">
-				![datadog url](../../images/platform/audit-log-streams/datadog-logging-endpoint.png)
+				![datadog url](/images/platform/audit-log-streams/datadog-logging-endpoint.png)
 
 				1. Navigate to the [Datadog Send Logs API documentation](https://docs.datadoghq.com/api/latest/logs/?code-lang=curl&site=us5#send-logs).
 				2. Pick your Datadog account region.
 				3. Obtain your Datadog logging endpoint URL.
 	 </Step>
    <Step title="Provide audit log stream inputs">
-				![datadog api key details](../../images/platform/audit-log-streams/datadog-source-details.png)
+				![datadog api key details](/images/platform/audit-log-streams/datadog-source-details.png)
 
 				1. Copy the **logging endpoint** from Datadog to the **Endpoint URL** field.
 				2. Copy the **API Key** from previous step
