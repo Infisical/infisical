@@ -221,7 +221,10 @@ const renderOutputForm = (provider: DynamicSecretProviders, data: unknown) => {
     );
   }
 
-  if (provider === DynamicSecretProviders.SapHana) {
+  if (
+    provider === DynamicSecretProviders.SapHana ||
+    provider === DynamicSecretProviders.Snowflake
+  ) {
     const { DB_USERNAME, DB_PASSWORD } = data as {
       DB_USERNAME: string;
       DB_PASSWORD: string;

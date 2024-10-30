@@ -177,6 +177,16 @@ export const DynamicSecretSapHanaSchema = z.object({
   ca: z.string().optional()
 });
 
+export const DynamicSecretSnowflakeSchema = z.object({
+  accountId: z.string().trim().min(1),
+  orgId: z.string().trim().min(1),
+  username: z.string().trim().min(1),
+  password: z.string().trim().min(1),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  renewStatement: z.string().trim()
+});
+
 export const AzureEntraIDSchema = z.object({
   tenantId: z.string().trim().min(1),
   userId: z.string().trim().min(1),
@@ -208,7 +218,8 @@ export enum DynamicSecretProviders {
   RabbitMq = "rabbit-mq",
   AzureEntraID = "azure-entra-id",
   Ldap = "ldap",
-  SapHana = "sap-hana"
+  SapHana = "sap-hana",
+  Snowflake = "snowflake"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -223,7 +234,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema })
 ]);
 
 export type TDynamicProviderFns = {

@@ -27,7 +27,8 @@ export enum DynamicSecretProviders {
   RabbitMq = "rabbit-mq",
   AzureEntraId = "azure-entra-id",
   Ldap = "ldap",
-  SapHana = "sap-hana"
+  SapHana = "sap-hana",
+  Snowflake = "snowflake"
 }
 
 export enum SqlProviders {
@@ -214,6 +215,18 @@ export type TDynamicSecretProvider =
         revocationStatement: string;
         renewStatement?: string;
         ca?: string | undefined;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Snowflake;
+      inputs: {
+        orgId: string;
+        accountId: string;
+        username: string;
+        password: string;
+        // creationStatement: string;
+        // revocationStatement: string;
+        // renewStatement?: string;
       };
     };
 export type TCreateDynamicSecretDTO = {

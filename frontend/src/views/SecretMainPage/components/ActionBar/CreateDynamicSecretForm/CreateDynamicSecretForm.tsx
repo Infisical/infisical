@@ -7,7 +7,8 @@ import {
   SiMicrosoftazure,
   SiMongodb,
   SiRabbitmq,
-  SiSap
+  SiSap,
+  SiSnowflake
 } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
@@ -16,6 +17,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { SnowflakeInputForm } from "@app/views/SecretMainPage/components/ActionBar/CreateDynamicSecretForm/SnowflakeInputForm";
 
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
@@ -103,6 +105,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiSap size="1.5rem" />,
     provider: DynamicSecretProviders.SapHana,
     title: "SAP HANA"
+  },
+  {
+    icon: <SiSnowflake size="1.5rem" />,
+    provider: DynamicSecretProviders.Snowflake,
+    title: "Snowflake"
   }
 ];
 
@@ -372,6 +379,24 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <SapHanaInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Snowflake && (
+              <motion.div
+                key="dynamic-snowflake-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <SnowflakeInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}
