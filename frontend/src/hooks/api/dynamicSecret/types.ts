@@ -224,9 +224,9 @@ export type TDynamicSecretProvider =
         accountId: string;
         username: string;
         password: string;
-        // creationStatement: string;
-        // revocationStatement: string;
-        // renewStatement?: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement: string;
       };
     };
 export type TCreateDynamicSecretDTO = {
