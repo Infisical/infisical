@@ -118,7 +118,7 @@ export const SnowflakeInputForm = ({
             <div className="flex-grow">
               <Controller
                 control={control}
-                defaultValue="snowflake-secret" // TODO: remove
+                defaultValue=""
                 name="name"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
