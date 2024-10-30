@@ -682,48 +682,50 @@ export const SecretOverviewPage = () => {
               .
             </p>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col-reverse justify-between gap-4 lg:flex-row">
             <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
-            <div className="flex flex-row items-center justify-center space-x-2">
-              {userAvailableEnvs.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      ariaLabel="Environments"
-                      variant="plain"
-                      size="sm"
-                      className={twMerge(
-                        "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                        isTableFiltered && "border-primary/50 text-primary"
-                      )}
-                    >
-                      <Tooltip content="Choose visible environments" className="mb-2">
-                        <FontAwesomeIcon icon={faList} />
-                      </Tooltip>
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {userAvailableEnvs.map((availableEnv) => {
-                      const { id: envId, name } = availableEnv;
 
-                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
-                      return (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleEnvSelect(envId);
-                          }}
-                          key={envId}
-                          disabled={visibleEnvs?.length === 1}
-                          icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
-                          iconPos="right"
-                        >
-                          <div className="flex items-center">{name}</div>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    {/* <DropdownMenuItem className="px-1.5" asChild>
+            <div className="flex flex-row flex-wrap-reverse items-end justify-end gap-y-2 space-x-2">
+              <div className="flex space-x-2">
+                {userAvailableEnvs.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        ariaLabel="Environments"
+                        variant="plain"
+                        size="sm"
+                        className={twMerge(
+                          "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                          isTableFiltered && "border-primary/50 text-primary"
+                        )}
+                      >
+                        <Tooltip content="Choose visible environments" className="mb-2">
+                          <FontAwesomeIcon icon={faList} />
+                        </Tooltip>
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                      {userAvailableEnvs.map((availableEnv) => {
+                        const { id: envId, name } = availableEnv;
+
+                        const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                        return (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleEnvSelect(envId);
+                            }}
+                            key={envId}
+                            disabled={visibleEnvs?.length === 1}
+                            icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
+                            iconPos="right"
+                          >
+                            <div className="flex items-center">{name}</div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
                       className="w-full"
@@ -735,64 +737,65 @@ export const SecretOverviewPage = () => {
                       Create an environment
                     </Button>
                   </DropdownMenuItem> */}
-                    <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleToggleRowType(RowType.Folder);
-                      }}
-                      icon={filter[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
-                        <span>Folders</span>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleToggleRowType(RowType.DynamicSecret);
-                      }}
-                      icon={
-                        filter[RowType.DynamicSecret] && <FontAwesomeIcon icon={faCheckCircle} />
-                      }
-                      iconPos="right"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faFingerprint} className=" text-yellow-700" />
-                        <span>Dynamic Secrets</span>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleToggleRowType(RowType.Secret);
-                      }}
-                      icon={filter[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faKey} className=" text-bunker-300" />
-                        <span>Secrets</span>
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <div className="w-80">
-                <Input
-                  className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-                  placeholder="Search by secret/folder name..."
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  leftIcon={
-                    <FontAwesomeIcon
-                      icon={faMagnifyingGlass}
-                      className={searchFilter ? "text-primary" : ""}
-                    />
-                  }
-                />
+                      <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleToggleRowType(RowType.Folder);
+                        }}
+                        icon={filter[RowType.Folder] && <FontAwesomeIcon icon={faCheckCircle} />}
+                        iconPos="right"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
+                          <span>Folders</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleToggleRowType(RowType.DynamicSecret);
+                        }}
+                        icon={
+                          filter[RowType.DynamicSecret] && <FontAwesomeIcon icon={faCheckCircle} />
+                        }
+                        iconPos="right"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon icon={faFingerprint} className=" text-yellow-700" />
+                          <span>Dynamic Secrets</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleToggleRowType(RowType.Secret);
+                        }}
+                        icon={filter[RowType.Secret] && <FontAwesomeIcon icon={faCheckCircle} />}
+                        iconPos="right"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon icon={faKey} className=" text-bunker-300" />
+                          <span>Secrets</span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <div className="w-80">
+                  <Input
+                    className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+                    placeholder="Search by secret/folder name..."
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    leftIcon={
+                      <FontAwesomeIcon
+                        icon={faMagnifyingGlass}
+                        className={searchFilter ? "text-primary" : ""}
+                      />
+                    }
+                  />
+                </div>
               </div>
               {userAvailableEnvs.length > 0 && (
                 <div>
@@ -804,6 +807,7 @@ export const SecretOverviewPage = () => {
                   >
                     Add Secret
                   </Button>
+
                   <DropdownMenu
                     open={popUp.misc.isOpen}
                     onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
