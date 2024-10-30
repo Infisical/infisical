@@ -27,7 +27,8 @@ import {
   ModalContent,
   Spinner,
   Table,
-  TableContainer
+  TableContainer,
+  Tooltip
 } from "@app/components/v2";
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
@@ -116,20 +117,22 @@ const Content = ({
           }
         />
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              variant="outline_bg"
-              ariaLabel="Filter secrets by tag(s)"
-              className={twMerge(
-                "transition-all",
-                (Object.keys(filterTags).length ||
-                  Object.values(showFilter).some((show) => !show)) &&
-                  "border-primary/50 text-primary"
-              )}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
+          <Tooltip content="Search Filters">
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant="outline_bg"
+                ariaLabel="Filter secrets by tag(s)"
+                className={twMerge(
+                  "transition-all",
+                  (Object.keys(filterTags).length ||
+                    Object.values(showFilter).some((show) => !show)) &&
+                    "border-primary/50 text-primary"
+                )}
+              >
+                <FontAwesomeIcon icon={faFilter} />
+              </IconButton>
+            </DropdownMenuTrigger>
+          </Tooltip>
           <DropdownMenuContent align="end" className="p-0">
             <DropdownMenuLabel>Filter By</DropdownMenuLabel>
             <DropdownMenuItem
