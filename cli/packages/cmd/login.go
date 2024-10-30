@@ -236,7 +236,7 @@ var loginCmd = &cobra.Command{
 
 			}
 
-			//prompt user to select domain between Infisical cloud and self hosting
+			//prompt user to select domain between Infisical cloud and self-hosting
 			if domainQuery {
 				err = askForDomain()
 				if err != nil {
@@ -528,11 +528,11 @@ func DomainOverridePrompt() (bool, error) {
 
 func askForDomain() error {
 
-	// query user to choose between Infisical cloud or self hosting
+	// query user to choose between Infisical cloud or self-hosting
 	const (
 		INFISICAL_CLOUD_US = "Infisical Cloud (US Region)"
 		INFISICAL_CLOUD_EU = "Infisical Cloud (EU Region)"
-		SELF_HOSTING       = "Self Hosting"
+		SELF_HOSTING       = "Self-Hosting"
 		ADD_NEW_DOMAIN     = "Add a new domain"
 	)
 
@@ -609,7 +609,7 @@ func askForDomain() error {
 		return err
 	}
 
-	// Trimmed the '/' from the end of the self hosting url, and set the api & login url
+	// Trimmed the '/' from the end of the self-hosting url, and set the api & login url
 	domain = strings.TrimRight(domain, "/")
 	config.INFISICAL_URL = fmt.Sprintf("%s/api", domain)
 	config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", domain)

@@ -48,7 +48,7 @@ export const telemetryQueueServiceFactory = ({
     await keyStore.deleteItem(TELEMETRY_SECRET_OPERATIONS_KEY);
   });
 
-  // every day at midnight a telemetry job executes on self hosted
+  // every day at midnight a telemetry job executes on self-hosted instances
   // this sends some telemetry information like instance id secrets operated etc
   const startTelemetryCheck = async () => {
     // this is a fast way to check its cloud or not
