@@ -694,31 +694,35 @@ export const buildServiceTokenProjectPermission = (
   const canRead = permission.includes("read");
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
-    if (canWrite) {
-      // TODO: @Akhi
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-    }
-    if (canRead) {
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-    }
+    [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+      (subject) => {
+        if (canWrite) {
+          // TODO: @Akhi
+          // @ts-expect-error type
+          can(ProjectPermissionActions.Edit, subject, {
+            secretPath: { $glob: secretPath },
+            environment
+          });
+          // @ts-expect-error type
+          can(ProjectPermissionActions.Create, subject, {
+            secretPath: { $glob: secretPath },
+            environment
+          });
+          // @ts-expect-error type
+          can(ProjectPermissionActions.Delete, subject, {
+            secretPath: { $glob: secretPath },
+            environment
+          });
+        }
+        if (canRead) {
+          // @ts-expect-error type
+          can(ProjectPermissionActions.Read, subject, {
+            secretPath: { $glob: secretPath },
+            environment
+          });
+        }
+      }
+    );
   });
 
   return build({ conditionsMatcher });
