@@ -66,7 +66,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       createdAt: el.createdAt,
       updatedAt: el.updatedAt,
       version: el.version,
-      skipMultilineEncoding: el.skipMultilineEncoding
+      skipMultilineEncoding: el.skipMultilineEncoding,
+      path: el.secretPath
     };
 
     if (el.type === SecretType.Personal) {

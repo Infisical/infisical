@@ -15,7 +15,6 @@ import {
   faFolder,
   faFolderPlus,
   faKey,
-  faMagnifyingGlass,
   faMinusSquare,
   faPlus,
   faTrash
@@ -39,7 +38,6 @@ import {
   DropdownSubMenuContent,
   DropdownSubMenuTrigger,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   Tooltip,
@@ -49,12 +47,14 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
-  useSubscription
+  useSubscription,
+  useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch, useMoveSecrets } from "@app/hooks/api";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { SecretType, WsTag } from "@app/hooks/api/types";
+import { SecretSearchInput } from "@app/views/SecretOverviewPage/components/SecretSearchInput";
 
 import {
   PopUpNames,
@@ -122,6 +122,8 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+
+  const { currentWorkspace } = useWorkspace();
 
   const handleFolderCreate = async (folderName: string) => {
     try {
@@ -269,22 +271,15 @@ export const ActionBar = ({
   return (
     <>
       <div className="mt-4 flex items-center space-x-2">
-        <div className="w-2/5">
-          <Input
-            className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-            placeholder="Search by folder name, key name, comment..."
-            leftIcon={
-              <FontAwesomeIcon
-                className={filter.searchFilter ? "text-primary" : ""}
-                icon={faMagnifyingGlass}
-              />
-            }
-            value={filter.searchFilter}
-            onChange={(evt) => {
-              onSearchChange(evt.target.value);
-            }}
-          />
-        </div>
+        <SecretSearchInput
+          isSingleEnv
+          className="w-2/5"
+          value={filter.searchFilter}
+          onChange={onSearchChange}
+          environments={[currentWorkspace?.environments.find((env) => env.slug === environment)!]}
+          projectId={workspaceId}
+          tags={tags}
+        />
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -364,8 +359,10 @@ export const ActionBar = ({
                 >
                   Tags
                 </DropdownSubMenuTrigger>
-                <DropdownSubMenuContent className="rounded-l-none">
-                  <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
+                <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                    Apply Tags to Filter Secrets
+                  </DropdownMenuLabel>
                   {tags.map(({ id, slug, color }) => (
                     <DropdownMenuItem
                       onClick={(evt) => {
@@ -466,7 +463,10 @@ export const ActionBar = ({
               <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
+                  a={subject(ProjectPermissionSub.SecretFolders, {
+                    environment,
+                    secretPath
+                  })}
                 >
                   {(isAllowed) => (
                     <Button
