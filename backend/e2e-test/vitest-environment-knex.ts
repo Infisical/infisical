@@ -16,6 +16,7 @@ import { initDbConnection } from "@app/db";
 import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { Redis } from "ioredis";
+import { initializePkcs11Module } from "@app/services/hsm/hsm-fns";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -54,7 +55,12 @@ export default {
       const smtp = mockSmtpServer();
       const queue = queueServiceFactory(cfg.REDIS_URL);
       const keyStore = keyStoreFactory(cfg.REDIS_URL);
-      const server = await main({ db, smtp, logger, queue, keyStore });
+
+      const pkcs11Module = initializePkcs11Module();
+      pkcs11Module.initialize();
+
+      const server = await main({ db, smtp, logger, queue, keyStore, hsmModule: pkcs11Module.getModule() });
+
       // @ts-expect-error type
       globalThis.testServer = server;
       // @ts-expect-error type
