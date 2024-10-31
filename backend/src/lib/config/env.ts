@@ -176,7 +176,7 @@ const envSchema = z
         .string()
         .optional()
         .transform((val) => {
-          // if (process.env.NODE_ENV === "development") return "/usr/local/lib/softhsm/libsofthsm2.so";
+          if (process.env.NODE_ENV === "development") return "/usr/local/lib/softhsm/libsofthsm2.so";
           return val;
         })
     ),
