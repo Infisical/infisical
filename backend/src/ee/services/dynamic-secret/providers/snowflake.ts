@@ -134,6 +134,8 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   const renew = async (inputs: unknown, username: string, expireAt: number) => {
     const providerInputs = await validateProviderInputs(inputs);
 
+    if (!providerInputs.renewStatement) return;
+
     const client = await getClient(providerInputs);
 
     try {
