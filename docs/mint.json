@@ -113,7 +113,13 @@
             "documentation/platform/pki/alerting"
           ]
         },
-        "documentation/platform/kms",
+        {
+          "group": "Key Management (KMS)",
+          "pages": [
+            "documentation/platform/kms/overview",
+            "documentation/platform/kms/kubernetes-encryption"
+          ]
+        },
         {
           "group": "KMS Configuration",
           "pages": [

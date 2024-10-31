@@ -4,7 +4,9 @@ import {
   faArrowUp,
   faArrowUpRightFromSquare,
   faCancel,
+  faCheck,
   faCheckCircle,
+  faCopy,
   faEdit,
   faEllipsis,
   faInfoCircle,
@@ -50,7 +52,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
 import { CmekOrderBy, TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -111,6 +113,11 @@ export const CmekTable = () => {
     totalCount,
     offset,
     setPage
+  });
+
+  const [, isCopyingCiphertext, setCopyCipherText] = useTimedReset<string>({
+    initialState: "",
+    delay: 1000
   });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -220,7 +227,7 @@ export const CmekTable = () => {
           <Table>
             <THead>
               <Tr className="h-14">
-                <Th className="w-1/3">
+                <Th>
                   <div className="flex items-center">
                     Name
                     <IconButton
@@ -235,6 +242,7 @@ export const CmekTable = () => {
                     </IconButton>
                   </div>
                 </Th>
+                <Th>Key ID</Th>
                 <Th>Algorithm</Th>
                 <Th>Status</Th>
                 <Th>Version</Th>
@@ -242,7 +250,7 @@ export const CmekTable = () => {
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={4} innerKey="project-keys" />}
+              {isLoading && <TableSkeleton columns={5} innerKey="project-keys" />}
               {!isLoading &&
                 keys.length > 0 &&
                 keys.map((cmek) => {
@@ -250,9 +258,15 @@ export const CmekTable = () => {
                   const { variant, label } = getStatusBadgeProps(isDisabled);
 
                   return (
-                    <Tr className="group h-10 hover:bg-mineshaft-700" key={`st-v3-${id}`}>
+                    <Tr
+                      className="group h-10 hover:bg-mineshaft-700"
+                      key={`st-v3-${id}`}
+                      onMouseLeave={() => {
+                        setCopyCipherText("");
+                      }}
+                    >
                       <Td>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 ">
                           {name}
                           {description && (
                             <Tooltip content={description}>
@@ -262,6 +276,22 @@ export const CmekTable = () => {
                               />
                             </Tooltip>
                           )}
+                        </div>
+                      </Td>
+                      <Td>
+                        <div>
+                          <span> {id}</span>
+                          <IconButton
+                            ariaLabel="copy icon"
+                            colorSchema="secondary"
+                            className="group/copy duration:0 invisible relative ml-3 group-hover:visible"
+                            onClick={() => {
+                              navigator.clipboard.writeText(id);
+                              setCopyCipherText("Copied");
+                            }}
+                          >
+                            <FontAwesomeIcon icon={isCopyingCiphertext ? faCheck : faCopy} />
+                          </IconButton>
                         </div>
                       </Td>
                       <Td className="uppercase">{encryptionAlgorithm}</Td>
