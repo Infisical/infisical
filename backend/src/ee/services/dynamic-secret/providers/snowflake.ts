@@ -90,7 +90,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: creationStatement,
           complete(err) {
             if (err) {
-              return reject(err);
+              return reject(new BadRequestError({ name: "CreateLease", message: err.message }));
             }
 
             return resolve(true);
@@ -117,7 +117,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: revokeStatement,
           complete(err) {
             if (err) {
-              return reject(err);
+              return reject(new BadRequestError({ name: "RevokeLease", message: err.message }));
             }
 
             return resolve(true);
@@ -150,7 +150,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: renewStatement,
           complete(err) {
             if (err) {
-              return reject(err);
+              return reject(new BadRequestError({ name: "RenewLease", message: err.message }));
             }
 
             return resolve(true);
