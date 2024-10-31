@@ -572,6 +572,7 @@ export const registerRoutes = async (
     userDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
+    kmsRootConfigDAL,
     orgService,
     keyStore,
     licenseService,

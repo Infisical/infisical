@@ -10,7 +10,10 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
+import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
+import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
@@ -20,7 +23,15 @@ type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    | "encryptWithRootKey"
+    | "decryptWithRootKey"
+    | "exportRootEncryptionKeyParts"
+    | "importRootEncryptionKey"
+    | "updateEncryptionStrategy"
+  >;
+  kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
@@ -47,6 +58,7 @@ export const superAdminServiceFactory = ({
   authService,
   orgService,
   keyStore,
+  kmsRootConfigDAL,
   kmsService,
   licenseService
 }: TSuperAdminServiceFactoryDep) => {
@@ -148,6 +160,35 @@ export const superAdminServiceFactory = ({
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
 
     return updatedServerCfg;
+  };
+
+  const exportPlainKmsKey = async () => {
+    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+
+    if (!kmsRootConfig) {
+      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
+    }
+
+    if (kmsRootConfig.exported) {
+      throw new BadRequestError({ name: "KmsRootConfig", message: "KMS root configuration already exported" });
+    }
+
+    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, { exported: true });
+    return kmsService.exportRootEncryptionKeyParts();
+  };
+
+  const importPlainKmsKey = async (secretParts: string[]) => {
+    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+
+    if (!kmsRootConfig) {
+      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
+    }
+
+    if (!kmsRootConfig.exported) {
+      throw new BadRequestError({ name: "KmsRootConfig", message: "KMS root configuration was never exported" });
+    }
+
+    await kmsService.importRootEncryptionKey(secretParts);
   };
 
   const adminSignUp = async ({
@@ -288,12 +329,69 @@ export const superAdminServiceFactory = ({
     };
   };
 
+  const getConfiguredEncryptionStrategies = async () => {
+    const appCfg = getConfig();
+
+    const kmsRootCfg = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+
+    if (!kmsRootCfg) {
+      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
+    }
+
+    const selectedStrategy = kmsRootCfg.encryptionStrategy;
+    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy; name: string }[] = [];
+
+    if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
+      const basicStrategy = RootKeyEncryptionStrategy.Basic;
+
+      enabledStrategies.push({
+        name: "Regular Encryption",
+        enabled: selectedStrategy === basicStrategy,
+        strategy: basicStrategy
+      });
+    }
+    if (appCfg.isHsmConfigured) {
+      const hsmStrategy = RootKeyEncryptionStrategy.Hsm;
+
+      enabledStrategies.push({
+        name: "Hardware Security Module (HSM)",
+        enabled: selectedStrategy === hsmStrategy,
+        strategy: hsmStrategy
+      });
+    }
+
+    return {
+      strategies: enabledStrategies,
+      keyExported: kmsRootCfg.exported
+    };
+  };
+
+  const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    const configuredStrategies = await getConfiguredEncryptionStrategies();
+
+    const foundStrategy = configuredStrategies.strategies.find((s) => s.strategy === strategy);
+
+    if (!foundStrategy) {
+      throw new BadRequestError({ message: "Invalid encryption strategy" });
+    }
+
+    if (foundStrategy.enabled) {
+      throw new BadRequestError({ message: "The selected encryption strategy is already enabled" });
+    }
+
+    await kmsService.updateEncryptionStrategy(strategy);
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
     adminSignUp,
     getUsers,
     deleteUser,
-    getAdminSlackConfig
+    getAdminSlackConfig,
+    updateRootEncryptionStrategy,
+    getConfiguredEncryptionStrategies,
+    exportPlainKmsKey,
+    importPlainKmsKey
   };
 };

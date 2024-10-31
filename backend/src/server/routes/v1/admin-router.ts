@@ -7,6 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -192,6 +193,107 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         users
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/kms-export",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          secretParts: z.array(z.string())
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const keyParts = await server.services.superAdmin.exportPlainKmsKey();
+
+      return {
+        secretParts: keyParts
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/kms-import",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        secretParts: z.array(z.string())
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      await server.services.superAdmin.importPlainKmsKey(req.body.secretParts);
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/root-kms-config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          strategies: z
+            .object({
+              strategy: z.nativeEnum(RootKeyEncryptionStrategy),
+              name: z.string(),
+              enabled: z.boolean()
+            })
+            .array(),
+          keyExported: z.boolean()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+
+    handler: async () => {
+      const encryptionDetails = await server.services.superAdmin.getConfiguredEncryptionStrategies();
+      return encryptionDetails;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/encryption-strategies",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        strategy: z.nativeEnum(RootKeyEncryptionStrategy)
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      await server.services.superAdmin.updateRootEncryptionStrategy(req.body.strategy);
     }
   });
 

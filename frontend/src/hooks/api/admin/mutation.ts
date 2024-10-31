@@ -7,6 +7,7 @@ import { User } from "../users/types";
 import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   AdminSlackConfig,
+  RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
   TServerConfig,
   TUpdateAdminSlackConfigDTO
@@ -82,6 +83,39 @@ export const useUpdateAdminSlackConfig = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(adminQueryKeys.getAdminSlackConfig());
+    }
+  });
+};
+
+export const useUpdateServerEncryptionStrategy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (strategy: RootKeyEncryptionStrategy) => {
+      await apiRequest.post("/api/v1/admin/encryption-strategies", { strategy });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(adminQueryKeys.getServerEncryptionStrategies());
+    }
+  });
+};
+
+export const useExportServerDecryptionKey = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post<{ secretParts: string[] }>("/api/v1/admin/kms-export");
+      return data.secretParts;
+    }
+  });
+};
+
+export const useImportServerDecryptionKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (secretParts: string[]) => {
+      await apiRequest.post("/api/v1/admin/kms-import", { secretParts });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(adminQueryKeys.serverConfig());
     }
   });
 };

@@ -3,7 +3,12 @@ import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-que
 import { apiRequest } from "@app/config/request";
 
 import { User } from "../types";
-import { AdminGetUsersFilters, AdminSlackConfig, TServerConfig } from "./types";
+import {
+  AdminGetUsersFilters,
+  AdminSlackConfig,
+  TGetServerRootKmsEncryptionDetails,
+  TServerConfig
+} from "./types";
 
 export const adminStandaloneKeys = {
   getUsers: "get-users"
@@ -12,7 +17,8 @@ export const adminStandaloneKeys = {
 export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
-  getAdminSlackConfig: () => ["admin-slack-config"] as const
+  getAdminSlackConfig: () => ["admin-slack-config"] as const,
+  getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const
 };
 
 const fetchServerConfig = async () => {
@@ -61,8 +67,8 @@ export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
   });
 };
 
-export const useGetAdminSlackConfig = () =>
-  useQuery({
+export const useGetAdminSlackConfig = () => {
+  return useQuery({
     queryKey: adminQueryKeys.getAdminSlackConfig(),
     queryFn: async () => {
       const { data } = await apiRequest.get<AdminSlackConfig>(
@@ -72,3 +78,17 @@ export const useGetAdminSlackConfig = () =>
       return data;
     }
   });
+};
+
+export const useGetServerRootKmsEncryptionDetails = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getServerEncryptionStrategies(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetServerRootKmsEncryptionDetails>(
+        "/api/v1/admin/root-kms-config"
+      );
+
+      return data;
+    }
+  });
+};

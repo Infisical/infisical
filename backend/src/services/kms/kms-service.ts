@@ -11,13 +11,13 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { randomSecureBytes } from "@app/lib/crypto";
+import { randomSecureBytes, shamirsService } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { getByteLengthForAlgorithm } from "@app/services/kms/kms-fns";
+import { getByteLengthForAlgorithm, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 
 import { THsmServiceFactory } from "../hsm/hsm-service";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -49,8 +49,6 @@ type TKmsServiceFactoryDep = {
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
-
-const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 const KMS_ROOT_CREATION_WAIT_KEY = "wait_till_ready_kms_root_key";
 const KMS_ROOT_CREATION_WAIT_TIME = 10;
@@ -614,7 +612,7 @@ export const kmsServiceFactory = ({
     }
   };
 
-  const $createBasicEncryptionKey = () => {
+  const $getBasicEncryptionKey = () => {
     const appCfg = getConfig();
 
     const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
@@ -642,7 +640,7 @@ export const kmsServiceFactory = ({
     // case 2: root key is encrypted with basic encryption
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Basic) {
       const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-      const encryptionKeyBuffer = $createBasicEncryptionKey();
+      const encryptionKeyBuffer = $getBasicEncryptionKey();
 
       return cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
     }
@@ -660,13 +658,38 @@ export const kmsServiceFactory = ({
 
     if (strategy === RootKeyEncryptionStrategy.Basic) {
       const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
-      const encryptionKeyBuffer = $createBasicEncryptionKey();
+      const encryptionKeyBuffer = $getBasicEncryptionKey();
 
       return cipher.encrypt(plainKeyBuffer, encryptionKeyBuffer);
     }
 
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     throw new Error(`Invalid root key encryption strategy: ${strategy}`);
+  };
+
+  const exportRootEncryptionKeyParts = () => {
+    if (!ROOT_ENCRYPTION_KEY) {
+      throw new Error("Root encryption key not set");
+    }
+
+    const parts = shamirsService().share(ROOT_ENCRYPTION_KEY, 8, 4);
+
+    return parts;
+  };
+
+  const importRootEncryptionKey = async (parts: string[]) => {
+    const decryptedRootKey = shamirsService().combine(parts);
+
+    const encryptedRootKey = symmetricCipherService(SymmetricEncryption.AES_GCM_256).encrypt(
+      decryptedRootKey,
+      $getBasicEncryptionKey()
+    );
+
+    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
+      encryptedRootKey,
+      encryptionStrategy: RootKeyEncryptionStrategy.Basic
+    });
+    ROOT_ENCRYPTION_KEY = decryptedRootKey;
   };
 
   // by keeping the decrypted data key in inner scope
@@ -853,9 +876,6 @@ export const kmsServiceFactory = ({
 
   // akhilmhdh: a copy of this is made in migrations/utils/kms
   const startService = async () => {
-    const appCfg = getConfig();
-    const hsmEnabled = hsmService.isActive();
-
     const lock = await keyStore.acquireLock([`KMS_ROOT_CFG_LOCK`], 3000, { retryCount: 3 }).catch(() => null);
     if (!lock) {
       await keyStore.waitTillReady({
@@ -875,33 +895,10 @@ export const kmsServiceFactory = ({
 
       const decryptedRootKey = await $decryptRootKey(kmsRootConfig).catch((err) => {
         logger.error(err, `KMS: Failed to decrypt ROOT Key [strategy=${kmsRootConfig.encryptionStrategy}]`);
-        throw err;
+        // We do not want to throw on startup. If the HSM has issues, this will throw an error, causing the entire API to shut down.
+        // If the API shuts down, the user will have no way to do recovery by importing their backup decryption key and rolling back to basic encryption.
+        return Buffer.alloc(0);
       });
-
-      const selectedEncryptionStrategy = appCfg.ROOT_KEY_ENCRYPTION_STRATEGY;
-
-      // case: the users selected encryption key strategy does not match the one in the DB
-      // in this case we need to re-encrypt the key with the selected strategy, and update the strategy and key in the DB
-      if (selectedEncryptionStrategy !== kmsRootConfig.encryptionStrategy) {
-        logger.info(
-          {
-            newStrategy: selectedEncryptionStrategy,
-            configuredStrategy: kmsRootConfig.encryptionStrategy
-          },
-          "KMS: Change in root encryption key strategy detected. Re-encrypting ROOT Key with selected strategy"
-        );
-        const encryptedRootKey = await $encryptRootKey(decryptedRootKey, selectedEncryptionStrategy);
-
-        if (!encryptedRootKey) {
-          logger.error("KMS: Failed to re-encrypt ROOT Key with selected strategy");
-          throw new Error("Failed to re-encrypt ROOT Key with selected strategy");
-        }
-
-        await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
-          encryptedRootKey,
-          encryptionStrategy: selectedEncryptionStrategy
-        });
-      }
 
       // set the flag so that other instance nodes can start
       await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
@@ -910,12 +907,11 @@ export const kmsServiceFactory = ({
       return;
     }
 
-    logger.info("KMS: Generating ROOT Key");
-    const selectedEncryptionStrategy = appCfg.ROOT_KEY_ENCRYPTION_STRATEGY;
-
+    // case 2: no config is found, so we create a new root key with basic encryption
+    logger.info("KMS: Generating new ROOT Key");
     const newRootKey = randomSecureBytes(32);
-    const encryptedRootKey = await $encryptRootKey(newRootKey, selectedEncryptionStrategy).catch((err) => {
-      logger.error({ hsmEnabled }, "KMS: Failed to encrypt ROOT Key");
+    const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Basic).catch((err) => {
+      logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
       throw err;
     });
 
@@ -923,7 +919,7 @@ export const kmsServiceFactory = ({
       // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
       id: KMS_ROOT_CONFIG_UUID,
       encryptedRootKey,
-      encryptionStrategy: selectedEncryptionStrategy
+      encryptionStrategy: RootKeyEncryptionStrategy.Basic
     });
 
     // set the flag so that other instance nodes can start
@@ -931,6 +927,32 @@ export const kmsServiceFactory = ({
     logger.info("KMS: Saved and loaded ROOT Key into memory");
     if (lock) await lock.release();
     ROOT_ENCRYPTION_KEY = newRootKey;
+  };
+
+  const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+    if (!kmsRootConfig) {
+      throw new NotFoundError({ message: "KMS root config not found" });
+    }
+
+    if (kmsRootConfig.encryptionStrategy === strategy) {
+      return;
+    }
+
+    const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
+    const encryptedRootKey = await $encryptRootKey(decryptedRootKey, strategy);
+
+    if (!encryptedRootKey) {
+      logger.error("KMS: Failed to re-encrypt ROOT Key with selected strategy");
+      throw new Error("Failed to re-encrypt ROOT Key with selected strategy");
+    }
+
+    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
+      encryptedRootKey,
+      encryptionStrategy: strategy
+    });
+
+    ROOT_ENCRYPTION_KEY = decryptedRootKey;
   };
 
   return {
@@ -944,11 +966,14 @@ export const kmsServiceFactory = ({
     encryptWithRootKey,
     decryptWithRootKey,
     getOrgKmsKeyId,
+    updateEncryptionStrategy,
     getProjectSecretManagerKmsKeyId,
     updateProjectSecretManagerKmsKey,
     getProjectKeyBackup,
     loadProjectKeyBackup,
     getKmsById,
-    createCipherPairWithDataKey
+    createCipherPairWithDataKey,
+    exportRootEncryptionKeyParts,
+    importRootEncryptionKey
   };
 };

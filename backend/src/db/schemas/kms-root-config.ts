@@ -13,6 +13,7 @@ export const KmsRootConfigSchema = z.object({
   id: z.string().uuid(),
   encryptedRootKey: zodBuffer,
   encryptionStrategy: z.string(),
+  exported: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

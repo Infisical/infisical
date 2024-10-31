@@ -525,3 +525,40 @@ func CallUpdateRawSecretsV3(httpClient *resty.Client, request UpdateRawSecretByN
 
 	return nil
 }
+
+func CallExportKmsRootEncryptionKey(httpClient *resty.Client) (ExportKmsRootKeyResponse, error) {
+	var exportKmsKeyResponse ExportKmsRootKeyResponse
+	response, err := httpClient.
+		R().
+		SetResult(&exportKmsKeyResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/admin/kms-export", config.INFISICAL_URL))
+
+	if err != nil {
+		return ExportKmsRootKeyResponse{}, fmt.Errorf("CallSuperAdminExportKmsKey: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return ExportKmsRootKeyResponse{}, fmt.Errorf("CallSuperAdminExportKmsKey: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return exportKmsKeyResponse, nil
+}
+
+func CallImportKmsRootEncryptionKey(httpClient *resty.Client, request ImportKmsRootKeyRequest) error {
+	response, err := httpClient.
+		R().
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/admin/kms-import", config.INFISICAL_URL))
+
+	if err != nil {
+		return fmt.Errorf("CallSuperAdminImportKmsKey: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallSuperAdminImportKmsKey: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return nil
+}

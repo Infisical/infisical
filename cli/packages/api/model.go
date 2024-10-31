@@ -136,8 +136,8 @@ type GetOrganizationsResponse struct {
 }
 
 type SelectOrganizationResponse struct {
-	Token string `json:"token"`
-	MfaEnabled bool `json:"isMfaEnabled"`
+	Token      string `json:"token"`
+	MfaEnabled bool   `json:"isMfaEnabled"`
 }
 
 type SelectOrganizationRequest struct {
@@ -616,4 +616,12 @@ type GetRawSecretV3ByNameResponse struct {
 		SecretPath    string `json:"secretPath"`
 	} `json:"secret"`
 	ETag string
+}
+
+type ExportKmsRootKeyResponse struct {
+	SecretParts []string `json:"secretParts"`
+}
+
+type ImportKmsRootKeyRequest struct {
+	SecretParts []string `json:"secretParts"`
 }

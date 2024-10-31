@@ -176,7 +176,7 @@ const envSchema = z
         .string()
         .optional()
         .transform((val) => {
-          if (process.env.NODE_ENV === "development") return "/usr/local/lib/softhsm/libsofthsm2.so";
+          // if (process.env.NODE_ENV === "development") return "/usr/local/lib/softhsm/libsofthsm2.so";
           return val;
         })
     ),
@@ -201,6 +201,11 @@ const envSchema = z
     HSM_SLOT: z.coerce.number().optional().default(0),
     HSM_MECHANISM: zpStr(z.string().optional().default("AES_GCM"))
   })
+  // To ensure that basic encryption is always possible.
+  .refine(
+    (data) => data.ENCRYPTION_KEY != null || data.ROOT_ENCRYPTION_KEY != null,
+    "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
+  )
   .transform((data) => ({
     ...data,
 

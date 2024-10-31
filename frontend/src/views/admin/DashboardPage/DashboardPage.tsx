@@ -22,15 +22,21 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useServerConfig, useUser } from "@app/context";
-import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
+import {
+  useGetOrganizations,
+  useGetServerRootKmsEncryptionDetails,
+  useUpdateServerConfig
+} from "@app/hooks/api";
 
 import { AuthPanel } from "./AuthPanel";
+import { EncryptionPanel } from "./EncryptionPanel";
 import { IntegrationPanel } from "./IntegrationPanel";
 import { RateLimitPanel } from "./RateLimitPanel";
 import { UserPanel } from "./UserPanel";
 
 enum TabSections {
   Settings = "settings",
+  Encryption = "encryption",
   Auth = "auth",
   RateLimit = "rate-limit",
   Integrations = "integrations",
@@ -55,6 +61,7 @@ type TDashboardForm = z.infer<typeof formSchema>;
 export const AdminDashboardPage = () => {
   const router = useRouter();
   const data = useServerConfig();
+  const { data: serverRootKmsDetails } = useGetServerRootKmsEncryptionDetails();
   const { config } = data;
 
   const {
@@ -137,6 +144,7 @@ export const AdminDashboardPage = () => {
             <TabList>
               <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
+                {!!serverRootKmsDetails && <Tab value={TabSections.Encryption}>Encryption</Tab>}
                 <Tab value={TabSections.Auth}>Authentication</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                 <Tab value={TabSections.Integrations}>Integrations</Tab>
@@ -321,6 +329,11 @@ export const AdminDashboardPage = () => {
                 </Button>
               </form>
             </TabPanel>
+            {!!serverRootKmsDetails && (
+              <TabPanel value={TabSections.Encryption}>
+                <EncryptionPanel rootKmsDetails={serverRootKmsDetails} />
+              </TabPanel>
+            )}
             <TabPanel value={TabSections.Auth}>
               <AuthPanel />
             </TabPanel>

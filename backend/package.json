@@ -195,6 +195,7 @@
     "safe-regex": "^2.1.1",
     "scim-patch": "^0.8.3",
     "scim2-parse-filter": "^0.2.10",
+    "secrets.js-grempe": "^2.0.0",
     "sjcl": "^1.0.8",
     "smee-client": "^2.0.0",
     "snowflake-sdk": "^1.14.0",
