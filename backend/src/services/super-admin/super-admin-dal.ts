@@ -14,9 +14,31 @@ export const superAdminDALFactory = (db: TDbClient) => {
     const config = await (tx || db)(TableName.SuperAdmin)
       .where(`${TableName.SuperAdmin}.id`, id)
       .leftJoin(TableName.Organization, `${TableName.SuperAdmin}.defaultAuthOrgId`, `${TableName.Organization}.id`)
+      .leftJoin(TableName.SamlConfig, (qb) => {
+        qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+          `${TableName.SamlConfig}.isActive`,
+          "=",
+          db.raw("true")
+        );
+      })
+      .leftJoin(TableName.OidcConfig, (qb) => {
+        qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+          `${TableName.OidcConfig}.isActive`,
+          "=",
+          db.raw("true")
+        );
+      })
       .select(
         db.ref("*").withSchema(TableName.SuperAdmin) as unknown as keyof TSuperAdmin,
-        db.ref("slug").withSchema(TableName.Organization).as("defaultAuthOrgSlug")
+        db.ref("slug").withSchema(TableName.Organization).as("defaultAuthOrgSlug"),
+        db.ref("authEnforced").withSchema(TableName.Organization).as("defaultAuthOrgAuthEnforced"),
+        db.raw(`
+            CASE 
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN 'oidc'
+              ELSE NULL
+            END as "defaultAuthOrgAuthMethod"
+        `)
       )
       .first();
 
@@ -27,7 +49,11 @@ export const superAdminDALFactory = (db: TDbClient) => {
     return {
       ...config,
       defaultAuthOrgSlug: config?.defaultAuthOrgSlug || null
-    } as TSuperAdmin & { defaultAuthOrgSlug: string | null };
+    } as TSuperAdmin & {
+      defaultAuthOrgSlug: string | null;
+      defaultAuthOrgAuthEnforced?: boolean | null;
+      defaultAuthOrgAuthMethod?: string | null;
+    };
   };
 
   const updateById = async (id: string, data: TSuperAdminUpdate, tx?: Knex) => {

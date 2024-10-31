@@ -19,6 +19,8 @@ export type TServerConfig = {
   isSecretScanningDisabled: boolean;
   defaultAuthOrgSlug: string | null;
   defaultAuthOrgId: string | null;
+  defaultAuthOrgAuthMethod?: string | null;
+  defaultAuthOrgAuthEnforced?: boolean | null;
   enabledLoginMethods: LoginMethod[];
 };
 
