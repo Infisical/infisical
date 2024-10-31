@@ -38,10 +38,6 @@ export const RestoreRootKmsKeyModalContent = ({ handlePopUpToggle }: Props) => {
 
   const keyParts = useMemo(() => watch("keyParts"), []);
 
-  console.log("lol", watch("keyParts"));
-  console.log("isVal", isValid);
-  console.log("errors", errors);
-
   return (
     <ModalContent
       title="Export Root KMS Encryption Key"
