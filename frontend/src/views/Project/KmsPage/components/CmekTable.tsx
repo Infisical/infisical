@@ -4,7 +4,9 @@ import {
   faArrowUp,
   faArrowUpRightFromSquare,
   faCancel,
+  faCheck,
   faCheckCircle,
+  faCopy,
   faEdit,
   faEllipsis,
   faInfoCircle,
@@ -50,7 +52,7 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
 import { CmekOrderBy, TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -111,6 +113,11 @@ export const CmekTable = () => {
     totalCount,
     offset,
     setPage
+  });
+
+  const [, isCopyingCiphertext, setCopyCipherText] = useTimedReset<string>({
+    initialState: "",
+    delay: 1000
   });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -251,7 +258,13 @@ export const CmekTable = () => {
                   const { variant, label } = getStatusBadgeProps(isDisabled);
 
                   return (
-                    <Tr className="group h-10 hover:bg-mineshaft-700" key={`st-v3-${id}`}>
+                    <Tr
+                      className="group h-10 hover:bg-mineshaft-700"
+                      key={`st-v3-${id}`}
+                      onMouseLeave={() => {
+                        setCopyCipherText("");
+                      }}
+                    >
                       <Td>
                         <div className="flex items-center gap-2 ">
                           {name}
@@ -265,7 +278,22 @@ export const CmekTable = () => {
                           )}
                         </div>
                       </Td>
-                      <Td>{id}</Td>
+                      <Td>
+                        <div>
+                          <span> {id}</span>
+                          <IconButton
+                            ariaLabel="copy icon"
+                            colorSchema="secondary"
+                            className="group/copy duration:0 invisible relative ml-3 group-hover:visible"
+                            onClick={() => {
+                              navigator.clipboard.writeText(id);
+                              setCopyCipherText("Copied");
+                            }}
+                          >
+                            <FontAwesomeIcon icon={isCopyingCiphertext ? faCheck : faCopy} />
+                          </IconButton>
+                        </div>
+                      </Td>
                       <Td className="uppercase">{encryptionAlgorithm}</Td>
                       <Td>
                         <Badge variant={variant}>{label}</Badge>
