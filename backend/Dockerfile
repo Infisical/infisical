@@ -3,6 +3,17 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+RUN apk --update add \
+        alpine-sdk \
+        autoconf \
+        automake \
+        git \
+        libtool \
+        openssl-dev \
+        python3 \
+        make \
+        g++
+
 COPY package*.json ./
 RUN npm ci --only-production
 
@@ -11,12 +22,23 @@ RUN npm run build
 
 # Production stage
 FROM node:20-alpine
-
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
 
 COPY package*.json ./
+
+RUN apk --update add \
+        alpine-sdk \
+        autoconf \
+        automake \
+        git \
+        libtool \
+        openssl-dev \
+        python3 \
+        make \
+        g++
+
 RUN npm ci --only-production && npm cache clean --force
 
 COPY --from=build /app .
