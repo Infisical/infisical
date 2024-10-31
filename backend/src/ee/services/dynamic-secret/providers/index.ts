@@ -1,3 +1,5 @@
+import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
+
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
@@ -24,5 +26,6 @@ export const buildDynamicSecretProviders = () => ({
   [DynamicSecretProviders.RabbitMq]: RabbitMqProvider(),
   [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider(),
   [DynamicSecretProviders.Ldap]: LdapProvider(),
-  [DynamicSecretProviders.SapHana]: SapHanaProvider()
+  [DynamicSecretProviders.SapHana]: SapHanaProvider(),
+  [DynamicSecretProviders.Snowflake]: SnowflakeProvider()
 });

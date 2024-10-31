@@ -15,6 +15,7 @@ import { EditDynamicSecretMongoDBForm } from "./EditDynamicSecretMongoDBForm";
 import { EditDynamicSecretRabbitMqForm } from "./EditDynamicSecretRabbitMqForm";
 import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
 import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
+import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 
 type Props = {
@@ -250,6 +251,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretSapHanaForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Snowflake && (
+        <motion.div
+          key="snowflake-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretSnowflakeForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}
