@@ -220,7 +220,7 @@ export const CmekTable = () => {
           <Table>
             <THead>
               <Tr className="h-14">
-                <Th className="w-1/3">
+                <Th>
                   <div className="flex items-center">
                     Name
                     <IconButton
@@ -235,6 +235,7 @@ export const CmekTable = () => {
                     </IconButton>
                   </div>
                 </Th>
+                <Th>Key ID</Th>
                 <Th>Algorithm</Th>
                 <Th>Status</Th>
                 <Th>Version</Th>
@@ -242,7 +243,7 @@ export const CmekTable = () => {
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={4} innerKey="project-keys" />}
+              {isLoading && <TableSkeleton columns={5} innerKey="project-keys" />}
               {!isLoading &&
                 keys.length > 0 &&
                 keys.map((cmek) => {
@@ -252,7 +253,7 @@ export const CmekTable = () => {
                   return (
                     <Tr className="group h-10 hover:bg-mineshaft-700" key={`st-v3-${id}`}>
                       <Td>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 ">
                           {name}
                           {description && (
                             <Tooltip content={description}>
@@ -264,6 +265,7 @@ export const CmekTable = () => {
                           )}
                         </div>
                       </Td>
+                      <Td>{id}</Td>
                       <Td className="uppercase">{encryptionAlgorithm}</Td>
                       <Td>
                         <Badge variant={variant}>{label}</Badge>
