@@ -913,7 +913,7 @@ const OrganizationPage = () => {
               className="relative flex h-full w-full flex-col gap-2 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
             >
               <div className="mt-0 text-lg text-mineshaft-100">{feature.name}</div>
-              <div className="line-clamp overflwo-auto mb-4 mt-2 h-full text-[15px] font-light text-mineshaft-300">
+              <div className="line-clamp overflow-auto mb-4 mt-2 h-full text-[15px] font-light text-mineshaft-300">
                 {feature.description}
               </div>
               <div className="flex w-full flex-col items-start gap-2 xl:flex-row xl:items-center">
