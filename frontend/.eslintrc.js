@@ -95,6 +95,12 @@ module.exports = {
           ["^.+\\.?(css|scss)$"]
         ]
       }
+    ],
+    "react/no-unstable-nested-components": [
+      "error",
+      {
+        allowAsProps: true
+      }
     ]
   },
   ignorePatterns: ["next.config.js", "cypress/**/*.js", "cypress.config.js"],
