@@ -118,7 +118,7 @@ export const EditDynamicSecretSnowflakeForm = ({
     } catch (err) {
       createNotification({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
+        text: err instanceof Error ? err.message : "Failed to update dynamic secret"
       });
     }
   };
