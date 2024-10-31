@@ -182,9 +182,9 @@ export const DynamicSecretSnowflakeSchema = z.object({
   orgId: z.string().trim().min(1),
   username: z.string().trim().min(1),
   password: z.string().trim().min(1),
-  creationStatement: z.string().trim(),
-  revocationStatement: z.string().trim(),
-  renewStatement: z.string().trim()
+  creationStatement: z.string().trim().min(1),
+  revocationStatement: z.string().trim().min(1),
+  renewStatement: z.string().trim().optional()
 });
 
 export const AzureEntraIDSchema = z.object({

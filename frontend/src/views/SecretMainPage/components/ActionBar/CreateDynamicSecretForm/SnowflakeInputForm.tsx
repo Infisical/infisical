@@ -29,7 +29,7 @@ const formSchema = z.object({
     password: z.string().trim().min(1),
     creationStatement: z.string().trim().min(1),
     revocationStatement: z.string().trim().min(1),
-    renewStatement: z.string().trim().min(1)
+    renewStatement: z.string().trim().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -51,7 +51,11 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -105,7 +109,7 @@ export const SnowflakeInputForm = ({
     } catch (err) {
       createNotification({
         type: "error",
-        text: "Failed to create dynamic secret"
+        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
       });
     }
   };

@@ -3,6 +3,7 @@ import { customAlphabet } from "nanoid";
 import snowflake from "snowflake-sdk";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
@@ -41,15 +42,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
       application: "Infisical"
     });
 
-    await new Promise((resolve, reject) => {
-      client.connect((err) => {
-        if (err) {
-          return reject(err);
-        }
-
-        return resolve(true);
-      });
-    });
+    await client.connectAsync(noop);
 
     return client;
   };
@@ -58,9 +51,20 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await getClient(providerInputs);
 
-    const isValidConnection = await client.isValidAsync();
+    let isValidConnection: boolean;
 
-    client.destroy(noop);
+    try {
+      isValidConnection = await Promise.race([
+        client.isValidAsync(),
+        new Promise((resolve) => {
+          setTimeout(resolve, 10000);
+        }).then(() => {
+          throw new BadRequestError({ message: "Unable to establish connection - verify credentials" });
+        })
+      ]);
+    } finally {
+      client.destroy(noop);
+    }
 
     return isValidConnection;
   };
@@ -72,15 +76,15 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     const username = generateUsername();
     const password = generatePassword();
-    const expiration = getDaysToExpiry(new Date(expireAt));
-
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-      username,
-      password,
-      expiration
-    });
 
     try {
+      const expiration = getDaysToExpiry(new Date(expireAt));
+      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+        username,
+        password,
+        expiration
+      });
+
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: creationStatement,
@@ -105,9 +109,9 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     const client = await getClient(providerInputs);
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
-
     try {
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
+
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: revokeStatement,
@@ -132,14 +136,13 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     const client = await getClient(providerInputs);
 
-    const expiration = getDaysToExpiry(new Date(expireAt));
-
-    const renewStatement = handlebars.compile(providerInputs.renewStatement)({
-      username,
-      expiration
-    });
-
     try {
+      const expiration = getDaysToExpiry(new Date(expireAt));
+      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+        username,
+        expiration
+      });
+
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: renewStatement,
