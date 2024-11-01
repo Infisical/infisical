@@ -118,8 +118,8 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
 
   let sessionManager: HsmSessionManager | null = null;
 
-  const $findKey = (session: grapheneLib.Session) => {
-    // Find the existing AES key
+  const $findMasterKey = (session: grapheneLib.Session) => {
+    // Find the master key (root key)
     const template = {
       class: graphene.ObjectClass.SECRET_KEY,
       keyType: graphene.KeyType.AES,
@@ -129,15 +129,58 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
     const key = session.find(template).items(0);
 
     if (!key) {
-      throw new Error("Failed to encrypt data, AES key not found");
+      throw new Error("Failed to find master key");
     }
 
     return key;
   };
 
+  const $generateAndWrapKey = (session: grapheneLib.Session) => {
+    const masterKey = $findMasterKey(session);
+
+    // Generate a new session key for encryption
+    const sessionKey = session.generateKey(graphene.KeyGenMechanism.AES, {
+      class: graphene.ObjectClass.SECRET_KEY,
+      keyType: graphene.KeyType.AES,
+      token: false, // Session-only key
+      sensitive: true,
+      extractable: true, // Must be true to allow wrapping
+      encrypt: true,
+      decrypt: true,
+      valueLen: 32 // 256-bit key
+    } as grapheneLib.ITemplate);
+
+    // Wrap the session key with master key
+    const wrappingMech = { name: "AES_KEY_WRAP", params: null };
+    const wrappedKey = session.wrapKey(
+      wrappingMech,
+      new graphene.Key(masterKey).toType(),
+      new graphene.Key(sessionKey).toType()
+    );
+
+    return { wrappedKey, sessionKey };
+  };
+
+  const $unwrapKey = (session: grapheneLib.Session, wrappedKey: Buffer) => {
+    const masterKey = $findMasterKey(session);
+
+    // Absolute minimal template - let HSM set most attributes
+    const unwrapTemplate = {
+      class: graphene.ObjectClass.SECRET_KEY,
+      keyType: graphene.KeyType.AES
+    } as grapheneLib.ITemplate;
+
+    const unwrappingMech = {
+      name: "AES_KEY_WRAP",
+      params: null
+    } as grapheneLib.MechanismType;
+
+    return session.unwrapKey(unwrappingMech, new graphene.Key(masterKey).toType(), wrappedKey, unwrapTemplate);
+  };
+
   const $keyExists = (session: grapheneLib.Session): boolean => {
     try {
-      const key = $findKey(session);
+      const key = $findMasterKey(session);
       // items(0) will throw an error if no items are found
       // Return true only if we got a valid object with handle
       return key && typeof key.handle !== "undefined";
@@ -167,26 +210,24 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
     const session = sessionManager.getSession();
 
     try {
-      // Check if key already exists
-      if ($keyExists(session)) {
-        logger.info("Key already exists, skipping creation");
-      } else {
-        // Generate 256-bit AES key with persistent storage
+      // Check if master key exists, create if not
+      if (!$keyExists(session)) {
+        // Generate 256-bit AES master key with persistent storage
         session.generateKey(graphene.KeyGenMechanism.AES, {
           class: graphene.ObjectClass.SECRET_KEY,
-          token: true, // This ensures the key is stored persistently
+          token: true,
           valueLen: 256 / 8,
           keyType: graphene.KeyType.AES,
           label: appCfg.HSM_KEY_LABEL,
-          encrypt: true,
-          decrypt: true,
-          extractable: false, // Prevent key export
-          sensitive: true, // Mark as sensitive data
-          private: true // Require login to access
+          derive: true, // Enable key derivation
+          extractable: false,
+          sensitive: true,
+          private: true
         });
-        logger.info(`Key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
+        logger.info(`Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
       }
 
+      // Verify HSM supports required mechanisms
       const mechs = session.slot.getMechanisms();
       let gotAesGcmMechanism = false;
 
@@ -200,10 +241,10 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
       }
 
       if (!gotAesGcmMechanism) {
-        throw new Error("Failed to initialize HSM. AES GCM encryption mechanism not supported by the HSM");
+        throw new Error("HSM does not support AES_GCM mechanism");
       }
     } catch (error) {
-      logger.error(error, "Error creating HSM key");
+      logger.error(error, "Error initializing HSM service");
       throw error;
     }
   };
@@ -217,55 +258,55 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
       throw new Error("HSM Session manager is not initialized");
     }
     const session = sessionManager.getSession();
-    const key = $findKey(session);
 
-    // Generate IV
+    // Generate IV for encryption
     const iv = session.generateRandom(IV_LENGTH);
+
+    // Generate and wrap a new session key
+    const { wrappedKey, sessionKey } = $generateAndWrapKey(session);
+
     const alg = {
       name: appCfg.HSM_MECHANISM,
       params: new graphene.AesGcm240Params(iv)
     } as grapheneLib.IAlgorithm;
 
-    const cipher = session.createCipher(alg, new graphene.Key(key).toType());
+    const cipher = session.createCipher(alg, new graphene.Key(sessionKey).toType());
 
     // Calculate the output buffer size based on input length
     // GCM adds a 16-byte auth tag, so we need input length + 16
     const outputBuffer = Buffer.alloc(data.length + TAG_LENGTH);
     const encryptedData = cipher.once(data, outputBuffer);
 
-    // Combine IV + encrypted data into a single buffer
-    // Format: [IV (16 bytes)][Encrypted Data][Auth Tag (16 bytes)]
-    return Buffer.concat([iv, encryptedData]);
+    // Format: [Wrapped Key (40)][IV (16)][Encrypted Data + Tag]
+    return Buffer.concat([wrappedKey, iv, encryptedData]);
   }
 
   function decrypt(encryptedBlob: Buffer): Buffer {
-    if (!module) {
-      throw new Error("PKCS#11 module is not initialized");
-    }
+    const WRAPPED_KEY_LENGTH = 32 + 8; // AES-256 key + padding
 
-    if (!sessionManager) {
-      throw new Error("HSM Session manager is not initialized");
+    if (!module || !sessionManager) {
+      throw new Error("HSM service not initialized");
     }
 
     const session = sessionManager.getSession();
-    const key = $findKey(session);
 
-    // Extract IV, ciphertext, and tag from the blob
-    const iv = encryptedBlob.subarray(0, IV_LENGTH);
-    const ciphertext = encryptedBlob.subarray(IV_LENGTH, encryptedBlob.length);
+    // Extract wrapped key, IV, and ciphertext
+    const wrappedKey = encryptedBlob.subarray(0, WRAPPED_KEY_LENGTH);
+    const iv = encryptedBlob.subarray(WRAPPED_KEY_LENGTH, WRAPPED_KEY_LENGTH + IV_LENGTH);
+    const ciphertext = encryptedBlob.subarray(WRAPPED_KEY_LENGTH + IV_LENGTH);
+
+    // Unwrap the session key
+    const sessionKey = $unwrapKey(session, wrappedKey);
 
     const algo = {
       name: appCfg.HSM_MECHANISM,
-      params: new graphene.AesGcm240Params(iv) // Pass both IV and tag
+      params: new graphene.AesGcm240Params(iv)
     };
 
-    const decipher = session.createDecipher(algo, new graphene.Key(key).toType());
-
-    // Allocate buffer for decrypted data
+    const decipher = session.createDecipher(algo, new graphene.Key(sessionKey).toType());
     const outputBuffer = Buffer.alloc(ciphertext.length);
 
-    const decrypted = decipher.once(ciphertext, outputBuffer);
-    return decrypted;
+    return decipher.once(ciphertext, outputBuffer);
   }
   return {
     encrypt,
