@@ -272,10 +272,10 @@ export const secretSharingServiceFactory = ({
       ? await secretSharingDAL.findById(sharedSecretId)
       : await secretSharingDAL.findOne({ identifier: sharedSecretId });
 
-    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
-
     if (sharedSecret.orgId && sharedSecret.orgId !== orgId)
       throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
+
+    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
 
     return deletedSharedSecret;
   };
