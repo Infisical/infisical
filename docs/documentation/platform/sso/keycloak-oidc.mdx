@@ -95,11 +95,18 @@ description: "Learn how to configure Keycloak OIDC for Infisical SSO."
    </Step>
 </Steps>
 
+<Tip>
+    If you are only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite OIDC login.
+</Tip>
+
 <Note>
   If you're configuring OIDC SSO on a self-hosted instance of Infisical, make
   sure to set the `AUTH_SECRET` and `SITE_URL` environment variable for it to
-  work: - `AUTH_SECRET`: A secret key used for signing and verifying JWT. This
+  work:
+    <div class="height:1px;"/>
+    - `AUTH_SECRET`: A secret key used for signing and verifying JWT. This
   can be a random 32-byte base64 string generated with `openssl rand -base64
-  32`. - `SITE_URL`: The URL of your self-hosted instance of Infisical - should
-  be an absolute URL including the protocol (e.g. https://app.infisical.com)
+  32`.
+    <div class="height:1px;"/>
+    - `SITE_URL`: The absolute URL of your self-hosted instance of Infisical including the protocol (e.g. https://app.infisical.com)
 </Note>
