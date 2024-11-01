@@ -11,7 +11,8 @@ export enum AuthMethod {
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
   LDAP = "ldap",
-  OIDC = "oidc"
+  OIDC = "oidc",
+  SAML = "saml"
 }
 
 export type User = {

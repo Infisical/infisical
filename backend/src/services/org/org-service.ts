@@ -291,7 +291,7 @@ export const orgServiceFactory = ({
     }
 
     if (authEnforced !== undefined) {
-      if (!plan?.samlSSO || !plan.oidcSSO)
+      if (!plan?.samlSSO && !plan.oidcSSO)
         throw new BadRequestError({
           message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
         });

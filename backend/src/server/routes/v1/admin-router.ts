@@ -29,6 +29,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           }).extend({
             isMigrationModeOn: z.boolean(),
             defaultAuthOrgSlug: z.string().nullable(),
+            defaultAuthOrgAuthEnforced: z.boolean().nullish(),
+            defaultAuthOrgAuthMethod: z.string().nullish(),
             isSecretScanningDisabled: z.boolean()
           })
         })

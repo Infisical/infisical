@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -17,6 +17,7 @@ import { Button, IconButton, Input, Tooltip } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
+import { AuthMethod } from "@app/hooks/api/users/types";
 
 import { useNavigateToSelectOrganization } from "../../Login.utils";
 
@@ -51,17 +52,33 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     router.push(redirectUrl);
   };
 
+  const redirectToOidc = (orgSlug: string) => {
+    const callbackPort = queryParams.get("callback_port");
+    const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
+      callbackPort ? `&callbackPort=${callbackPort}` : ""
+    }`;
+    router.push(redirectUrl);
+  };
+
   useEffect(() => {
     if (serverDetails?.samlDefaultOrgSlug) redirectToSaml(serverDetails.samlDefaultOrgSlug);
   }, [serverDetails?.samlDefaultOrgSlug]);
 
-  const handleSaml = useCallback((step: number) => {
+  const handleSaml = () => {
     if (config.defaultAuthOrgSlug) {
       redirectToSaml(config.defaultAuthOrgSlug);
     } else {
-      setStep(step);
+      setStep(2);
     }
-  }, []);
+  };
+
+  const handleOidc = () => {
+    if (config.defaultAuthOrgSlug) {
+      redirectToOidc(config.defaultAuthOrgSlug);
+    } else {
+      setStep(3);
+    }
+  };
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -142,6 +159,46 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
     setIsLoading(false);
   };
 
+  if (config.defaultAuthOrgAuthEnforced && config.defaultAuthOrgAuthMethod) {
+    return (
+      <form
+        onSubmit={handleLogin}
+        className="mx-auto flex w-full flex-col items-center justify-center"
+      >
+        <h1 className="mb-8 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+          Login to Infisical
+        </h1>
+        <RegionSelect />
+        {config.defaultAuthOrgAuthMethod === AuthMethod.SAML && (
+          <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+            <Button
+              colorSchema="primary"
+              variant="outline_bg"
+              onClick={handleSaml}
+              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+              className="mx-0 h-10 w-full"
+            >
+              Continue with SAML
+            </Button>
+          </div>
+        )}
+        {config.defaultAuthOrgAuthMethod === AuthMethod.OIDC && (
+          <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+            <Button
+              colorSchema="primary"
+              variant="outline_bg"
+              onClick={handleOidc}
+              leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+              className="mx-0 h-10 w-full"
+            >
+              Continue with OIDC
+            </Button>
+          </div>
+        )}
+      </form>
+    );
+  }
+
   return (
     <form
       onSubmit={handleLogin}
@@ -156,9 +213,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           <Button
             colorSchema="primary"
             variant="outline_bg"
-            onClick={() => {
-              handleSaml(2);
-            }}
+            onClick={handleSaml}
             leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
             className="mx-0 h-10 w-full"
           >
@@ -171,9 +226,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           <Button
             colorSchema="primary"
             variant="outline_bg"
-            onClick={() => {
-              setStep(3);
-            }}
+            onClick={handleOidc}
             leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
             className="mx-0 h-10 w-full"
           >

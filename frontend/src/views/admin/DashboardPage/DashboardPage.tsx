@@ -212,8 +212,9 @@ export const AdminDashboardPage = () => {
                     Default organization
                   </div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
-                    Select the default organization you want to set for SAML/LDAP based logins. When
-                    selected, user logins will be automatically scoped to the selected organization.
+                    Select the default organization you want to set for SAML/LDAP/OIDC based logins.
+                    When selected, user logins will be automatically scoped to the selected
+                    organization.
                   </div>
                   <Controller
                     control={control}

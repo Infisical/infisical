@@ -29,7 +29,13 @@ type TSuperAdminServiceFactoryDep = {
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
 // eslint-disable-next-line
-export let getServerCfg: () => Promise<TSuperAdmin & { defaultAuthOrgSlug: string | null }>;
+export let getServerCfg: () => Promise<
+  TSuperAdmin & {
+    defaultAuthOrgSlug: string | null;
+    defaultAuthOrgAuthEnforced?: boolean | null;
+    defaultAuthOrgAuthMethod?: string | null;
+  }
+>;
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
