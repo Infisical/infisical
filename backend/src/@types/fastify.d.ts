@@ -82,6 +82,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { TUserSecretServiceFactory } from "@app/services/user-secret/user-secret-service";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -189,6 +190,7 @@ declare module "fastify" {
       cmek: TCmekServiceFactory;
       migration: TExternalMigrationServiceFactory;
       externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
+      userSecret: TUserSecretServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

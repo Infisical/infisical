@@ -215,6 +215,11 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { userSecretDALFactory } from "@app/services/user-secret/user-secret-dal";
+import { userSecretServiceFactory } from "@app/services/user-secret/user-secret-service";
+import { userSecretsWebLoginDALFactory } from "@app/services/user-secret/user-secrets-web-login-dal";
+import { userSecretCreditCardDALFactory } from "@app/services/user-secret/user-secret-credit-card-dal";
+import { userSecretSecureNoteDALFactory } from "@app/services/user-secret/user-secrets-secure-note-dal";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -325,6 +330,10 @@ export const registerRoutes = async (
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
+  const userSecretDAL = userSecretDALFactory(db);
+  const userSecretsWebLoginDAL = userSecretsWebLoginDALFactory(db);
+  const userSecretsCreditCardDAL = userSecretCreditCardDALFactory(db);
+  const userSecretsSecureNoteDAL = userSecretSecureNoteDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -947,6 +956,16 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const userSecretService = userSecretServiceFactory({
+    permissionService,
+    userSecretDAL,
+    orgDAL,
+    kmsService,
+    userSecretsWebLoginDAL,
+    userSecretsCreditCardDAL,
+    userSecretsSecureNoteDAL
+  });
+
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
@@ -1336,6 +1355,7 @@ export const registerRoutes = async (
     identityProjectAdditionalPrivilege: identityProjectAdditionalPrivilegeService,
     identityProjectAdditionalPrivilegeV2: identityProjectAdditionalPrivilegeV2Service,
     secretSharing: secretSharingService,
+    userSecret: userSecretService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
     cmek: cmekService,

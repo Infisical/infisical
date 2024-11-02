@@ -334,7 +334,13 @@ import {
   TWebhooksUpdate,
   TWorkflowIntegrations,
   TWorkflowIntegrationsInsert,
-  TWorkflowIntegrationsUpdate
+  TWorkflowIntegrationsUpdate,
+  TUserSecretsWebLogin,
+  TUserSecretsWebLoginInsert,
+  TUserSecretsWebLoginUpdate,
+  TUserSecrets,
+  TUserSecretsInsert,
+  TUserSecretsUpdate
 } from "@app/db/schemas";
 import {
   TExternalGroupOrgRoleMappings,
@@ -392,6 +398,22 @@ declare module "knex/types/tables" {
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
     >;
+    [TableName.UserSecretWebLogin]: KnexOriginal.CompositeTableType<
+      TUserSecretsWebLogin,
+      TUserSecretsWebLoginInsert,
+      TUserSecretsWebLoginUpdate
+    >;
+    [TableName.UserSecretCreditCard]: KnexOriginal.CompositeTableType<
+      TUserSecretsCreditCard,
+      TUserSecretsCreditCardInsert,
+      TUserSecretsCreditCardUpdate
+    >;
+    [TableName.UserSecretSecureNote]: KnexOriginal.CompositeTableType<
+      TUserSecretsSecureNote,
+      TUserSecretsSecureNoteInsert,
+      TUserSecretsSecureNoteUpdate
+    >;
+    [TableName.UserSecret]: KnexOriginal.CompositeTableType<TUserSecrets, TUserSecretsInsert, TUserSecretsUpdate>;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
       TCertificateTemplateEstConfigsInsert,

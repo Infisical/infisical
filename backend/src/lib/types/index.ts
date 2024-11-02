@@ -64,3 +64,9 @@ export type ProjectServiceActor = {
   authMethod: ActorAuthMethod;
   orgId: string;
 };
+
+export enum TUserSecretType {
+  WebLogin = "webLogin",
+  CreditCard = "creditCard",
+  SecureNote = "secureNote"
+}

@@ -774,6 +774,17 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             Secret Sharing
                           </MenuItem>
                         </a>
+                        
+                      </Link>
+                      <Link href={`/org/${currentOrg?.id}/user-secret`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/user-secret`}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            User Secrets
+                          </MenuItem>
+                        </a>
                       </Link>
                       {(window.location.origin.includes("https://app.infisical.com") ||
                         window.location.origin.includes("https://eu.infisical.com") ||

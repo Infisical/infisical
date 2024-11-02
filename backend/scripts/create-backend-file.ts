@@ -53,8 +53,12 @@ if (componentType === 1) {
 
   mkdirSync(dir);
 
+  const dalPath = path.join(dir, `${componentName}-dal.ts`);
+  const servicePath = path.join(dir, `${componentName}-service.ts`);
+  const typesPath = path.join(dir, `${componentName}-types.ts`);
+
   writeFileSync(
-    path.join(dir, `${componentName}-dal.ts`),
+    dalPath,
     `import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 
@@ -68,7 +72,7 @@ export const ${dalName} = (db: TDbClient) => {
   );
 
   writeFileSync(
-    path.join(dir, `${componentName}-service.ts`),
+    servicePath,
     `import { ${dalTypeName} } from "./${componentName}-dal";
 
 type ${serviceTypeName}Dep = {
@@ -82,7 +86,12 @@ export const ${serviceName} = ({ ${camelCase}DAL }: ${serviceTypeName}Dep) => {
 };
 `
   );
-  writeFileSync(path.join(dir, `${componentName}-types.ts`), "");
+  writeFileSync(typesPath, "");
+
+  console.log("\nCreated files:");
+  console.log(`- ${dalPath}`);
+  console.log(`- ${servicePath}`);
+  console.log(`- ${typesPath}`);
 } else if (componentType === 2) {
   const componentName = prompt("Enter service name: ");
   const componentPath = prompt("Path wrt service folder: ");
@@ -97,8 +106,10 @@ export const ${serviceName} = ({ ${camelCase}DAL }: ${serviceTypeName}Dep) => {
   const dalTypeName = `T${pascalCase}DALFactory`;
   const dalName = `${camelCase}DALFactory`;
 
+  const dalPath = path.join(__dirname, "../src/services", componentPath, `${componentName}-dal.ts`);
+
   writeFileSync(
-    path.join(__dirname, "../src/services", componentPath, `${componentName}-dal.ts`),
+    dalPath,
     `import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 
@@ -110,6 +121,9 @@ export const ${dalName} = (db: TDbClient) => {
 };
 `
   );
+
+  console.log("\nCreated file:");
+  console.log(`- ${dalPath}`);
 } else if (componentType === 3) {
   const name = prompt("Enter router name: ");
   const version = prompt("Version number: ");
@@ -143,4 +157,9 @@ export const register${pascalCase}Router = async (server: FastifyZodProvider) =>
 };
 `
   );
+
+  const routerPath = path.join(__dirname, `../src/server/routes/v${Number(version)}/${name}-router.ts`);
+
+  console.log("\nCreated file:");
+  console.log(`- ${routerPath}`);
 }
