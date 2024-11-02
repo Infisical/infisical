@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-const BATCH_SIZE = 10_000;
+const BATCH_SIZE = 30_000;
 
 export async function up(knex: Knex): Promise<void> {
   const hasAuthMethodColumnAccessToken = await knex.schema.hasColumn(TableName.IdentityAccessToken, "authMethod");
@@ -71,3 +71,6 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 }
+
+const config = {transaction: false};
+export { config };
