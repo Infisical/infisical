@@ -170,6 +170,12 @@ jobs:
         - uses: twingate/github-action@v1
           with:
             service-key: ${{ secrets.TWINGATE_SERVICE_KEY }}
+        - name: Configure AWS Credentials 
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            audience: sts.eu-central-1.amazonaws.com
+            aws-region: eu-central-1
+            role-to-assume: arn:aws:iam::345594589636:role/gha-make-prod-deployment
         - name: Checkout code
           uses: actions/checkout@v2
         - name: Setup Node.js environment
@@ -183,12 +189,6 @@ jobs:
             cd backend
             npm install
             npm run migration:latest
-        - name: Configure AWS Credentials 
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            audience: sts.eu-central-1.amazonaws.com
-            aws-region: eu-central-1
-            role-to-assume: arn:aws:iam::345594589636:role/gha-make-prod-deployment
         - name: Save commit hashes for tag
           id: commit
           uses: pr-mpt/actions-commit-hash@v2
