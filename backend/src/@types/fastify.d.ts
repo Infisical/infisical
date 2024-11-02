@@ -78,6 +78,7 @@ import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+// import { TUserSecretsServiceFactory } from "@app/services/user-secrets/user-secrets-service";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";

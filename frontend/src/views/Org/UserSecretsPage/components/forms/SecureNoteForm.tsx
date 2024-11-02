@@ -3,19 +3,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import { useCreateUserSecret, useUpdateUserSecret } from "@app/hooks/api/userSecrets/mutations";
+
+import { type FormProps } from "./types";
 
 const createSecureNoteSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  content: z.string().optional()
+  content: z.string().min(1, "Content is required"),
+  id: z.string().optional()
 });
 
 type FormSchema = z.infer<typeof createSecureNoteSchema>;
 
-type Props = {
-  defaultValues?: FormSchema;
-};
-
-export const SecureNoteForm = ({ defaultValues }: Props) => {
+export const SecureNoteForm = ({ userId, onSubmit, defaultValues }: FormProps<FormSchema>) => {
   const {
     register,
     handleSubmit,
@@ -28,9 +28,32 @@ export const SecureNoteForm = ({ defaultValues }: Props) => {
     }
   });
 
+  const createUserSecret = useCreateUserSecret();
+  const updateUserSecret = useUpdateUserSecret();
+
   return (
     <div className="flex flex-col">
-      <form onSubmit={handleSubmit((data) => console.log(data))}>
+      <form
+        onSubmit={handleSubmit(async (data) => {
+          if (data.id) {
+            await updateUserSecret.mutateAsync({
+              userId,
+              userSecretId: data.id,
+              userSecret: {
+                type: "secureNote",
+                ...data
+              }
+            });
+          } else {
+            await createUserSecret.mutateAsync({
+              userId,
+              userSecret: { type: "secureNote", ...data }
+            });
+          }
+
+          onSubmit();
+        })}
+      >
         <FormControl
           label="Title"
           isError={Boolean(errors?.name)}
@@ -44,6 +67,7 @@ export const SecureNoteForm = ({ defaultValues }: Props) => {
           label="Content"
           isError={Boolean(errors?.content)}
           errorText={errors?.content?.message}
+          isRequired
         >
           <TextArea {...register("content")} />
         </FormControl>

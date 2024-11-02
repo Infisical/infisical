@@ -202,6 +202,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+// import { userSecretsDALFactory } from "@app/services/user-secrets/user-secrets-dal";
+// import { userSecretsServiceFactory } from "@app/services/user-secrets/user-secrets-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -339,6 +341,8 @@ export const registerRoutes = async (
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
+
+  // const userSecretsDAL = userSecretsDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -1256,6 +1260,8 @@ export const registerRoutes = async (
     externalGroupOrgRoleMappingDAL
   });
 
+  // const userSecretsService = userSecretsServiceFactory({ userSecretsDAL, userDAL });
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1344,6 +1350,7 @@ export const registerRoutes = async (
     workflowIntegration: workflowIntegrationService,
     migration: migrationService,
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
+    // userSecrets: userSecretsService
   });
 
   const cronJobs: CronJob[] = [];

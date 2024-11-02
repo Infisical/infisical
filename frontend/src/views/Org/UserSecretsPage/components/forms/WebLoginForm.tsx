@@ -3,20 +3,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input } from "@app/components/v2";
+import { useCreateUserSecret, useUpdateUserSecret } from "@app/hooks/api/userSecrets/mutations";
+
+import { type FormProps } from "./types";
 
 const createWebLoginSchema = z.object({
   name: z.string().min(1, "Name is required"),
   username: z.string().optional(),
-  password: z.string().trim().min(1, "Password is required")
+  password: z.string().trim().min(1, "Password is required"),
+  id: z.string().optional()
 });
 
 type FormSchema = z.infer<typeof createWebLoginSchema>;
 
-type Props = {
-  defaultValues?: FormSchema;
-};
-
-export const WebLoginForm = ({ defaultValues }: Props) => {
+export const WebLoginForm = ({ userId, onSubmit, defaultValues }: FormProps<FormSchema>) => {
   const {
     register,
     handleSubmit,
@@ -30,9 +30,32 @@ export const WebLoginForm = ({ defaultValues }: Props) => {
     }
   });
 
+  const createUserSecret = useCreateUserSecret();
+  const updateUserSecret = useUpdateUserSecret();
+
   return (
     <div className="flex flex-col">
-      <form onSubmit={handleSubmit((data) => console.log(data))}>
+      <form
+        onSubmit={handleSubmit(async (data) => {
+          if (data.id) {
+            await updateUserSecret.mutateAsync({
+              userId,
+              userSecretId: data.id,
+              userSecret: {
+                type: "webLogin",
+                ...data
+              }
+            });
+          } else {
+            await createUserSecret.mutateAsync({
+              userId,
+              userSecret: { type: "webLogin", ...data }
+            });
+          }
+
+          onSubmit();
+        })}
+      >
         <FormControl
           label="Name"
           isError={Boolean(errors?.name)}
