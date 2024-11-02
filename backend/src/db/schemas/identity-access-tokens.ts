@@ -20,7 +20,8 @@ export const IdentityAccessTokensSchema = z.object({
   identityId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  name: z.string().nullable().optional()
+  name: z.string().nullable().optional(),
+  authMethod: z.string()
 });
 
 export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;

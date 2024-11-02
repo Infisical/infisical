@@ -22,7 +22,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -41,7 +40,6 @@ type TIdentityOidcAuthServiceFactoryDep = {
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create">;
-  identityDAL: Pick<TIdentityDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "transaction" | "create">;
@@ -52,7 +50,6 @@ export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuth
 export const identityOidcAuthServiceFactory = ({
   identityOidcAuthDAL,
   identityOrgMembershipDAL,
-  identityDAL,
   permissionService,
   licenseService,
   identityAccessTokenDAL,
@@ -61,7 +58,7 @@ export const identityOidcAuthServiceFactory = ({
   const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
     if (!identityOidcAuth) {
-      throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
+      throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
     }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
@@ -181,7 +178,8 @@ export const identityOidcAuthServiceFactory = ({
           accessTokenTTL: identityOidcAuth.accessTokenTTL,
           accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
           accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit,
+          authMethod: IdentityAuthMethod.OIDC_AUTH
         },
         tx
       );
@@ -228,10 +226,11 @@ export const identityOidcAuthServiceFactory = ({
     if (!identityMembershipOrg) {
       if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
-    if (identityMembershipOrg.identity.authMethod)
+    if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add OIDC Auth to already configured identity"
       });
+    }
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
@@ -334,13 +333,6 @@ export const identityOidcAuthServiceFactory = ({
         },
         tx
       );
-      await identityDAL.updateById(
-        identityMembershipOrg.identityId,
-        {
-          authMethod: IdentityAuthMethod.OIDC_AUTH
-        },
-        tx
-      );
       return doc;
     });
     return { ...identityOidcAuth, orgId: identityMembershipOrg.orgId, caCert };
@@ -364,11 +356,9 @@ export const identityOidcAuthServiceFactory = ({
     actorOrgId
   }: TUpdateOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) {
-      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    }
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({
         message: "Failed to update OIDC Auth"
       });
@@ -467,11 +457,9 @@ export const identityOidcAuthServiceFactory = ({
 
   const getOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetOidcAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) {
-      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    }
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have OIDC Auth attached"
       });
@@ -519,7 +507,7 @@ export const identityOidcAuthServiceFactory = ({
       throw new NotFoundError({ message: "Failed to find identity" });
     }
 
-    if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.OIDC_AUTH) {
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have OIDC auth"
       });
@@ -551,7 +539,6 @@ export const identityOidcAuthServiceFactory = ({
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
-      await identityDAL.updateById(identityId, { authMethod: null }, tx);
       return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.orgId };
     });
 

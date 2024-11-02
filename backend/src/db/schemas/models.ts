@@ -189,7 +189,7 @@ export enum ProjectUpgradeStatus {
 
 export enum IdentityAuthMethod {
   TOKEN_AUTH = "token-auth",
-  Univeral = "universal-auth",
+  UNIVERSAL_AUTH = "universal-auth",
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",

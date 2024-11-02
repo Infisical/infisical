@@ -37,7 +37,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          identity: IdentitiesSchema
+          identity: IdentitiesSchema.extend({
+            authMethods: z.array(z.string())
+          })
         })
       }
     },
@@ -216,7 +218,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              authMethods: z.array(z.string())
+            })
           })
         })
       }
@@ -261,7 +265,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true })
+            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              authMethods: z.array(z.string())
+            })
           }).array(),
           totalCount: z.number()
         })
@@ -319,7 +325,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true, authMethod: true }),
+              identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+                authMethods: z.array(z.string())
+              }),
               project: SanitizedProjectSchema.pick({ name: true, id: true })
             })
           )
