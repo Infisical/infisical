@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-const BATCH_SIZE = 10000;
+const BATCH_SIZE = 10_000;
 
 export async function up(knex: Knex): Promise<void> {
   const hasAuthMethodColumnAccessToken = await knex.schema.hasColumn(TableName.IdentityAccessToken, "authMethod");
@@ -12,25 +12,11 @@ export async function up(knex: Knex): Promise<void> {
       t.string("authMethod").nullable();
     });
 
-    // Get total count of records to process
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore because count is a string
-    const count = (await knex(TableName.IdentityAccessToken).count("id as count").first()) as { count: string };
+    let nullableAccessTokens = await knex(TableName.IdentityAccessToken).whereNull("authMethod").limit(BATCH_SIZE);
+    let totalUpdated = 0;
 
-    if (!count) {
-      throw new Error("Failed to find count of identity access tokens");
-    }
-
-    const totalRecords = parseInt(count.count, 10);
-    // Process in batches
-    for (let offset = 0; offset < totalRecords; offset += BATCH_SIZE) {
-      // ! Get the current access tokens to process
-      // eslint-disable-next-line no-await-in-loop
-      const batchIds = await knex(TableName.IdentityAccessToken)
-        .select("id")
-        .limit(BATCH_SIZE)
-        .offset(offset)
-        .pluck("id");
+    do {
+      const batchIds = nullableAccessTokens.map((token) => token.id);
 
       // ! Update the auth method column in batches for the current batch
       // eslint-disable-next-line no-await-in-loop
@@ -46,10 +32,12 @@ export async function up(knex: Knex): Promise<void> {
             .first()
         });
 
-      // Log progress
-      // eslint-disable-next-line no-console
-      console.log(`Processed ${Math.min(offset + BATCH_SIZE, totalRecords)} of ${totalRecords} records`);
-    }
+      // eslint-disable-next-line no-await-in-loop
+      nullableAccessTokens = await knex(TableName.IdentityAccessToken).whereNull("authMethod").limit(BATCH_SIZE);
+
+      totalUpdated += batchIds.length;
+      console.log(`Updated ${batchIds.length} access tokens in batch <> Total updated: ${totalUpdated}`);
+    } while (nullableAccessTokens.length > 0);
 
     // ! We delete all access tokens where the identity has no auth method set!
     // ! Which means un-configured identities that for some reason have access tokens, will have their access tokens deleted.
