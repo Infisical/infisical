@@ -13,6 +13,11 @@ const USER_ALREADY_LOGGED_IN_ERROR = "CKR_USER_ALREADY_LOGGED_IN";
 
 export type THsmServiceFactory = ReturnType<typeof hsmServiceFactory>;
 
+enum RequiredMechanisms {
+  AesGcm = "AES_GCM",
+  AesKeyWrap = "AES_KEY_WRAP"
+}
+
 class HsmSessionManager {
   private session: grapheneLib.Session | null = null;
 
@@ -195,61 +200,7 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
     }
   };
 
-  const isActive = () => {
-    if (!module || !appCfg.isHsmConfigured || !sessionManager) {
-      return false;
-    }
-
-    return appCfg.isHsmConfigured && module !== null;
-  };
-
-  const startService = () => {
-    if (!appCfg.isHsmConfigured || !module) return;
-
-    sessionManager = new HsmSessionManager(module, graphene);
-    const session = sessionManager.getSession();
-
-    try {
-      // Check if master key exists, create if not
-      if (!$keyExists(session)) {
-        // Generate 256-bit AES master key with persistent storage
-        session.generateKey(graphene.KeyGenMechanism.AES, {
-          class: graphene.ObjectClass.SECRET_KEY,
-          token: true,
-          valueLen: 256 / 8,
-          keyType: graphene.KeyType.AES,
-          label: appCfg.HSM_KEY_LABEL,
-          derive: true, // Enable key derivation
-          extractable: false,
-          sensitive: true,
-          private: true
-        });
-        logger.info(`Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
-      }
-
-      // Verify HSM supports required mechanisms
-      const mechs = session.slot.getMechanisms();
-      let gotAesGcmMechanism = false;
-
-      // eslint-disable-next-line no-plusplus
-      for (let i = 0; i < mechs.length; i++) {
-        const mech = mechs.items(i);
-        if (mech.name === "AES_GCM") {
-          gotAesGcmMechanism = true;
-          break;
-        }
-      }
-
-      if (!gotAesGcmMechanism) {
-        throw new Error("HSM does not support AES_GCM mechanism");
-      }
-    } catch (error) {
-      logger.error(error, "Error initializing HSM service");
-      throw error;
-    }
-  };
-
-  function encrypt(data: Buffer): Buffer {
+  const encrypt = (data: Buffer) => {
     if (!module) {
       throw new Error("PKCS#11 module is not initialized");
     }
@@ -279,9 +230,9 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
 
     // Format: [Wrapped Key (40)][IV (16)][Encrypted Data + Tag]
     return Buffer.concat([wrappedKey, iv, encryptedData]);
-  }
+  };
 
-  function decrypt(encryptedBlob: Buffer): Buffer {
+  const decrypt = (encryptedBlob: Buffer) => {
     const WRAPPED_KEY_LENGTH = 32 + 8; // AES-256 key + padding
 
     if (!module || !sessionManager) {
@@ -307,7 +258,118 @@ export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmSe
     const outputBuffer = Buffer.alloc(ciphertext.length);
 
     return decipher.once(ciphertext, outputBuffer);
-  }
+  };
+
+  // We test the core functionality of the PKCS#11 module that we are using throughout Infisical. This is to ensure that the user doesn't configure a faulty or unsupported HSM device.
+  const $testPkcs11Module = () => {
+    try {
+      if (!module || !sessionManager) {
+        throw new Error("HSM service not initialized");
+      }
+
+      const session = sessionManager.getSession();
+
+      let randomData: Buffer;
+      let encryptedData: Buffer;
+      let decryptedData: Buffer;
+
+      try {
+        randomData = session.generateRandom(256);
+      } catch (error) {
+        throw new Error(`Error generating random bytes: ${(error as Error).message || "Unknown error"}`);
+      }
+
+      try {
+        encryptedData = encrypt(Buffer.from(randomData));
+      } catch (error) {
+        throw new Error(`Error encrypting data: ${(error as Error).message || "Unknown error"}`);
+      }
+
+      try {
+        decryptedData = decrypt(encryptedData);
+      } catch (error) {
+        throw new Error(`Error decrypting data: ${(error as Error).message || "Unknown error"}`);
+      }
+
+      if (Buffer.from(randomData).toString("hex") !== Buffer.from(decryptedData).toString("hex")) {
+        throw new Error("Decrypted data does not match original data");
+      }
+      return true;
+    } catch (error) {
+      logger.error(error, "Error testing PKCS#11 module");
+      return false;
+    }
+  };
+
+  const isActive = () => {
+    if (!module || !appCfg.isHsmConfigured || !sessionManager) {
+      return false;
+    }
+
+    let pkcs11TestPassed = false;
+
+    try {
+      pkcs11TestPassed = $testPkcs11Module();
+    } catch (err) {
+      logger.error(err, "isActive: Error testing PKCS#11 module");
+    }
+
+    return appCfg.isHsmConfigured && module !== null && pkcs11TestPassed;
+  };
+
+  const startService = () => {
+    if (!appCfg.isHsmConfigured || !module) return;
+
+    sessionManager = new HsmSessionManager(module, graphene);
+    const session = sessionManager.getSession();
+
+    try {
+      // Check if master key exists, create if not
+      if (!$keyExists(session)) {
+        // Generate 256-bit AES master key with persistent storage
+        session.generateKey(graphene.KeyGenMechanism.AES, {
+          class: graphene.ObjectClass.SECRET_KEY,
+          token: true,
+          valueLen: 256 / 8,
+          keyType: graphene.KeyType.AES,
+          label: appCfg.HSM_KEY_LABEL,
+          derive: true, // Enable key derivation
+          extractable: false,
+          sensitive: true,
+          private: true
+        });
+        logger.info(`Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
+      }
+
+      // Verify HSM supports required mechanisms
+      const mechs = session.slot.getMechanisms();
+      const mechNames: string[] = [];
+
+      // eslint-disable-next-line no-plusplus
+      for (let i = 0; i < mechs.length; i++) {
+        mechNames.push(mechs.items(i).name);
+      }
+
+      const hasAesGcm = mechNames.includes(RequiredMechanisms.AesGcm);
+      const hasAesKeyWrap = mechNames.includes(RequiredMechanisms.AesKeyWrap);
+
+      if (!hasAesGcm) {
+        throw new Error(`Required mechanism ${RequiredMechanisms.AesGcm} not supported by HSM`);
+      }
+      if (!hasAesKeyWrap) {
+        throw new Error(`Required mechanism ${RequiredMechanisms.AesKeyWrap} not supported by HSM`);
+      }
+
+      // Run a test to verify module is working
+      if (!$testPkcs11Module()) {
+        throw new Error("PKCS#11 module test failed. Please ensure that the HSM is correctly configured.");
+      }
+    } catch (error) {
+      logger.error(error, "Error initializing HSM service");
+      throw error;
+    }
+  };
+
   return {
     encrypt,
     startService,
