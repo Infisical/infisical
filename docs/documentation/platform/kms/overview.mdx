@@ -8,6 +8,10 @@ description: "Learn how to manage and use cryptographic keys with Infisical."
 
 Infisical can be used as a Key Management System (KMS), referred to as Infisical KMS, to centralize management of keys to be used for cryptographic operations like encryption/decryption.
 
+By default your Infisical data such as projects and the data within them are encrypted at rest using Infisical's own KMS. This ensures that your data is secure and protected from unauthorized access.
+
+If you are on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/docs/documentation/platform/kms/encryption-strategies). 
+
 <Note>
   Keys managed in KMS are not extractable from the platform. Additionally, data
   is never stored when performing cryptographic operations.

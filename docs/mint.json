@@ -118,6 +118,7 @@
           "group": "Key Management (KMS)",
           "pages": [
             "documentation/platform/kms/overview",
+            "documentation/platform/kms/encryption-strategies",
             "documentation/platform/kms/kubernetes-encryption"
           ]
         },
