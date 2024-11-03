@@ -46,6 +46,7 @@ export type TFeatureSet = {
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   samlSSO: false;
+  hsm: false;
   oidcSSO: false;
   scim: false;
   ldap: false;

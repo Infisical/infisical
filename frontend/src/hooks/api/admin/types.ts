@@ -61,7 +61,6 @@ export type TGetServerRootKmsEncryptionDetails = {
     enabled: boolean;
     name: string;
   }[];
-  keyExported: boolean;
 };
 
 export enum RootKeyEncryptionStrategy {

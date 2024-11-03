@@ -11,7 +11,7 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { randomSecureBytes, shamirsService } from "@app/lib/crypto";
+import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricEncryption } from "@app/lib/crypto/cipher";
 import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -667,31 +667,6 @@ export const kmsServiceFactory = ({
     throw new Error(`Invalid root key encryption strategy: ${strategy}`);
   };
 
-  const exportRootEncryptionKeyParts = () => {
-    if (!ROOT_ENCRYPTION_KEY) {
-      throw new Error("Root encryption key not set");
-    }
-
-    const parts = shamirsService().share(ROOT_ENCRYPTION_KEY, 8, 4);
-
-    return parts;
-  };
-
-  const importRootEncryptionKey = async (parts: string[]) => {
-    const decryptedRootKey = shamirsService().combine(parts);
-
-    const encryptedRootKey = symmetricCipherService(SymmetricEncryption.AES_GCM_256).encrypt(
-      decryptedRootKey,
-      $getBasicEncryptionKey()
-    );
-
-    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
-      encryptedRootKey,
-      encryptionStrategy: RootKeyEncryptionStrategy.Basic
-    });
-    ROOT_ENCRYPTION_KEY = decryptedRootKey;
-  };
-
   // by keeping the decrypted data key in inner scope
   // none of the entities outside can interact directly or expose the data key
   // NOTICE: If changing here update migrations/utils/kms
@@ -972,8 +947,6 @@ export const kmsServiceFactory = ({
     getProjectKeyBackup,
     loadProjectKeyBackup,
     getKmsById,
-    createCipherPairWithDataKey,
-    exportRootEncryptionKeyParts,
-    importRootEncryptionKey
+    createCipherPairWithDataKey
   };
 };

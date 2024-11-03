@@ -617,11 +617,3 @@ type GetRawSecretV3ByNameResponse struct {
 	} `json:"secret"`
 	ETag string
 }
-
-type ExportKmsRootKeyResponse struct {
-	SecretParts []string `json:"secretParts"`
-}
-
-type ImportKmsRootKeyRequest struct {
-	SecretParts []string `json:"secretParts"`
-}

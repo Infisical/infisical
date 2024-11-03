@@ -18,6 +18,5 @@ export {
   decryptSecrets,
   decryptSecretVersions
 } from "./secret-encryption";
-export { shamirsService } from "./shamirs";
 export { verifyOfflineLicense } from "./signing";
 export { generateSrpServerKey, srpCheckClientProof } from "./srp";

@@ -98,24 +98,3 @@ export const useUpdateServerEncryptionStrategy = () => {
     }
   });
 };
-
-export const useExportServerDecryptionKey = () => {
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await apiRequest.post<{ secretParts: string[] }>("/api/v1/admin/kms-export");
-      return data.secretParts;
-    }
-  });
-};
-
-export const useImportServerDecryptionKey = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (secretParts: string[]) => {
-      await apiRequest.post("/api/v1/admin/kms-import", { secretParts });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(adminQueryKeys.serverConfig());
-    }
-  });
-};

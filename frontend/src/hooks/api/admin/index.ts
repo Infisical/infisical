@@ -1,8 +1,6 @@
 export {
   useAdminDeleteUser,
   useCreateAdminUser,
-  useExportServerDecryptionKey,
-  useImportServerDecryptionKey,
   useUpdateAdminSlackConfig,
   useUpdateServerConfig,
   useUpdateServerEncryptionStrategy

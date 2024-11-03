@@ -23,6 +23,7 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
+  hsm: boolean;
   oidcSSO: boolean;
   scim: boolean;
   ldap: boolean;

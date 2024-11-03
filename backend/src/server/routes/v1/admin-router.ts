@@ -197,54 +197,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
-    url: "/kms-export",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      response: {
-        200: z.object({
-          secretParts: z.array(z.string())
-        })
-      }
-    },
-    onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
-        verifySuperAdmin(req, res, done);
-      });
-    },
-    handler: async () => {
-      const keyParts = await server.services.superAdmin.exportPlainKmsKey();
-
-      return {
-        secretParts: keyParts
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/kms-import",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      body: z.object({
-        secretParts: z.array(z.string())
-      })
-    },
-    onRequest: (req, res, done) => {
-      verifyAuth([AuthMode.JWT])(req, res, () => {
-        verifySuperAdmin(req, res, done);
-      });
-    },
-    handler: async (req) => {
-      await server.services.superAdmin.importPlainKmsKey(req.body.secretParts);
-    }
-  });
-
-  server.route({
     method: "GET",
     url: "/root-kms-config",
     config: {
@@ -259,8 +211,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
               name: z.string(),
               enabled: z.boolean()
             })
-            .array(),
-          keyExported: z.boolean()
+            .array()
         })
       }
     },

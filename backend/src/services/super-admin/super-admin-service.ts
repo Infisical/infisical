@@ -23,14 +23,7 @@ type TSuperAdminServiceFactoryDep = {
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    | "encryptWithRootKey"
-    | "decryptWithRootKey"
-    | "exportRootEncryptionKeyParts"
-    | "importRootEncryptionKey"
-    | "updateEncryptionStrategy"
-  >;
+  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
@@ -160,35 +153,6 @@ export const superAdminServiceFactory = ({
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
 
     return updatedServerCfg;
-  };
-
-  const exportPlainKmsKey = async () => {
-    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-
-    if (!kmsRootConfig) {
-      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
-    }
-
-    if (kmsRootConfig.exported) {
-      throw new BadRequestError({ name: "KmsRootConfig", message: "KMS root configuration already exported" });
-    }
-
-    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, { exported: true });
-    return kmsService.exportRootEncryptionKeyParts();
-  };
-
-  const importPlainKmsKey = async (secretParts: string[]) => {
-    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-
-    if (!kmsRootConfig) {
-      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
-    }
-
-    if (!kmsRootConfig.exported) {
-      throw new BadRequestError({ name: "KmsRootConfig", message: "KMS root configuration was never exported" });
-    }
-
-    await kmsService.importRootEncryptionKey(secretParts);
   };
 
   const adminSignUp = async ({
@@ -361,12 +325,17 @@ export const superAdminServiceFactory = ({
     }
 
     return {
-      strategies: enabledStrategies,
-      keyExported: kmsRootCfg.exported
+      strategies: enabledStrategies
     };
   };
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    if (!licenseService.onPremFeatures.hsm) {
+      throw new BadRequestError({
+        message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
+      });
+    }
+
     const configuredStrategies = await getConfiguredEncryptionStrategies();
 
     const foundStrategy = configuredStrategies.strategies.find((s) => s.strategy === strategy);
@@ -390,8 +359,6 @@ export const superAdminServiceFactory = ({
     deleteUser,
     getAdminSlackConfig,
     updateRootEncryptionStrategy,
-    getConfiguredEncryptionStrategies,
-    exportPlainKmsKey,
-    importPlainKmsKey
+    getConfiguredEncryptionStrategies
   };
 };
