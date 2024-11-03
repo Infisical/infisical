@@ -29,7 +29,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   auditLogStreams: false,
   auditLogStreamLimit: 3,
   samlSSO: false,
-  hsm: true,
+  hsm: false,
   oidcSSO: false,
   scim: false,
   ldap: false,
