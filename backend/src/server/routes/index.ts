@@ -1278,11 +1278,13 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
-  //
+
   // setup the communication with license key server
   await licenseService.init();
 
-  hsmService.startService();
+  // Start HSM service if it's configured/enabled.
+  await hsmService.startService();
+
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
   await dailyExpiringPkiItemAlert.startSendingAlerts();

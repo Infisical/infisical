@@ -630,11 +630,13 @@ export const kmsServiceFactory = ({
   const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
     // case 1: root key is encrypted with HSM
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.HSM) {
-      if (!hsmService.isActive()) {
+      const hsmIsActive = await hsmService.isActive();
+      if (!hsmIsActive) {
         throw new Error("Unable to decrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
       }
 
-      return hsmService.decrypt(kmsRootConfig.encryptedRootKey);
+      const decryptedKey = await hsmService.decrypt(kmsRootConfig.encryptedRootKey);
+      return decryptedKey;
     }
 
     // case 2: root key is encrypted with software encryption
@@ -650,10 +652,12 @@ export const kmsServiceFactory = ({
 
   const $encryptRootKey = async (plainKeyBuffer: Buffer, strategy: RootKeyEncryptionStrategy) => {
     if (strategy === RootKeyEncryptionStrategy.HSM) {
-      if (!hsmService.isActive()) {
+      const hsmIsActive = await hsmService.isActive();
+      if (!hsmIsActive) {
         throw new Error("Unable to encrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
       }
-      return hsmService.encrypt(plainKeyBuffer);
+      const encrypted = await hsmService.encrypt(plainKeyBuffer);
+      return encrypted;
     }
 
     if (strategy === RootKeyEncryptionStrategy.Software) {
@@ -828,7 +832,6 @@ export const kmsServiceFactory = ({
         },
         tx
       );
-
       return kmsDAL.findByIdWithAssociatedKms(key.id, tx);
     });
 
@@ -866,12 +869,9 @@ export const kmsServiceFactory = ({
     // case 1: a root key already exists in the DB
     if (kmsRootConfig) {
       if (lock) await lock.release();
-      logger.info("KMS: Encrypted ROOT Key found from DB. Decrypting.");
+      logger.info(`KMS: Encrypted ROOT Key found from DB. Decrypting. [strategy=${kmsRootConfig.encryptionStrategy}]`);
 
-      const decryptedRootKey = await $decryptRootKey(kmsRootConfig).catch((err) => {
-        logger.error(err, `KMS: Failed to decrypt ROOT Key [strategy=${kmsRootConfig.encryptionStrategy}]`);
-        throw err;
-      });
+      const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
 
       // set the flag so that other instance nodes can start
       await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
