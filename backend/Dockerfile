@@ -3,13 +3,8 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Required for pkcs11js
 RUN apk --update add \
-        alpine-sdk \
-        autoconf \
-        automake \
-        git \
-        libtool \
-        openssl-dev \
         python3 \
         make \
         g++
@@ -29,12 +24,6 @@ ENV npm_config_cache /home/node/.npm
 COPY package*.json ./
 
 RUN apk --update add \
-        alpine-sdk \
-        autoconf \
-        automake \
-        git \
-        libtool \
-        openssl-dev \
         python3 \
         make \
         g++
