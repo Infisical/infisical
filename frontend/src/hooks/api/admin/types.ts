@@ -64,6 +64,6 @@ export type TGetServerRootKmsEncryptionDetails = {
 };
 
 export enum RootKeyEncryptionStrategy {
-  Basic = "BASIC",
-  Hsm = "HSM"
+  Software = "SOFTWARE",
+  HSM = "HSM"
 }

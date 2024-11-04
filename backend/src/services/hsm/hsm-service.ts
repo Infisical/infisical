@@ -3,20 +3,15 @@ import grapheneLib from "graphene-pk11";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { HsmModule } from "./hsm-fns";
+import { HsmModule, RequiredMechanisms } from "./hsm-types";
 
 type THsmServiceFactoryDep = {
-  pkcs11Module: HsmModule;
+  hsmModule: HsmModule;
 };
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const USER_ALREADY_LOGGED_IN_ERROR = "CKR_USER_ALREADY_LOGGED_IN";
 
 export type THsmServiceFactory = ReturnType<typeof hsmServiceFactory>;
-
-enum RequiredMechanisms {
-  AesGcm = "AES_GCM",
-  AesKeyWrap = "AES_KEY_WRAP"
-}
 
 class HsmSessionManager {
   private session: grapheneLib.Session | null = null;
@@ -114,7 +109,7 @@ class HsmSessionManager {
 }
 
 // eslint-disable-next-line no-empty-pattern
-export const hsmServiceFactory = ({ pkcs11Module: { module, graphene } }: THsmServiceFactoryDep) => {
+export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServiceFactoryDep) => {
   const appCfg = getConfig();
 
   // Constants for buffer structure

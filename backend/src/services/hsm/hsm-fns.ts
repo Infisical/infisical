@@ -3,12 +3,9 @@ import * as grapheneLib from "graphene-pk11";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-export type HsmModule = {
-  module: grapheneLib.Module | null;
-  graphene: typeof grapheneLib;
-};
+import { HsmModule } from "./hsm-types";
 
-export const initializePkcs11Module = () => {
+export const initializeHsmModule = () => {
   const appCfg = getConfig();
 
   let module: grapheneLib.Module | null = null;

@@ -629,7 +629,7 @@ export const kmsServiceFactory = ({
 
   const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
     // case 1: root key is encrypted with HSM
-    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Hsm) {
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.HSM) {
       if (!hsmService.isActive()) {
         throw new Error("Unable to decrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
       }
@@ -637,8 +637,8 @@ export const kmsServiceFactory = ({
       return hsmService.decrypt(kmsRootConfig.encryptedRootKey);
     }
 
-    // case 2: root key is encrypted with basic encryption
-    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Basic) {
+    // case 2: root key is encrypted with software encryption
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
       const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
       const encryptionKeyBuffer = $getBasicEncryptionKey();
 
@@ -649,14 +649,14 @@ export const kmsServiceFactory = ({
   };
 
   const $encryptRootKey = async (plainKeyBuffer: Buffer, strategy: RootKeyEncryptionStrategy) => {
-    if (strategy === RootKeyEncryptionStrategy.Hsm) {
+    if (strategy === RootKeyEncryptionStrategy.HSM) {
       if (!hsmService.isActive()) {
         throw new Error("Unable to encrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
       }
       return hsmService.encrypt(plainKeyBuffer);
     }
 
-    if (strategy === RootKeyEncryptionStrategy.Basic) {
+    if (strategy === RootKeyEncryptionStrategy.Software) {
       const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
       const encryptionKeyBuffer = $getBasicEncryptionKey();
 
@@ -870,9 +870,7 @@ export const kmsServiceFactory = ({
 
       const decryptedRootKey = await $decryptRootKey(kmsRootConfig).catch((err) => {
         logger.error(err, `KMS: Failed to decrypt ROOT Key [strategy=${kmsRootConfig.encryptionStrategy}]`);
-        // We do not want to throw on startup. If the HSM has issues, this will throw an error, causing the entire API to shut down.
-        // If the API shuts down, the user will have no way to do recovery by importing their backup decryption key and rolling back to basic encryption.
-        return Buffer.alloc(0);
+        throw err;
       });
 
       // set the flag so that other instance nodes can start
@@ -885,7 +883,7 @@ export const kmsServiceFactory = ({
     // case 2: no config is found, so we create a new root key with basic encryption
     logger.info("KMS: Generating new ROOT Key");
     const newRootKey = randomSecureBytes(32);
-    const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Basic).catch((err) => {
+    const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Software).catch((err) => {
       logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
       throw err;
     });
@@ -894,7 +892,7 @@ export const kmsServiceFactory = ({
       // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
       id: KMS_ROOT_CONFIG_UUID,
       encryptedRootKey,
-      encryptionStrategy: RootKeyEncryptionStrategy.Basic
+      encryptionStrategy: RootKeyEncryptionStrategy.Software
     });
 
     // set the flag so that other instance nodes can start

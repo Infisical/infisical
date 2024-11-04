@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasTimestampsCol = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "createdAt");
 
   await knex.schema.alterTable(TableName.KmsServerRootConfig, (t) => {
-    if (!hasEncryptionStrategy) t.string("encryptionStrategy").defaultTo("BASIC");
+    if (!hasEncryptionStrategy) t.string("encryptionStrategy").defaultTo("SOFTWARE");
     if (!hasTimestampsCol) t.timestamps(true, true, true);
   });
 }

@@ -17,7 +17,7 @@ import { Logger } from "pino";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
-import { HsmModule } from "@app/services/hsm/hsm-fns";
+import { HsmModule } from "@app/services/hsm/hsm-types";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";

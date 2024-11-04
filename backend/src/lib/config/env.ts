@@ -198,7 +198,7 @@ const envSchema = z
   })
   // To ensure that basic encryption is always possible.
   .refine(
-    (data) => data.ENCRYPTION_KEY != null || data.ROOT_ENCRYPTION_KEY != null,
+    (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
     "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
   )
   .transform((data) => ({

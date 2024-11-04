@@ -38,7 +38,7 @@ export const EncryptionPanel = ({ rootKmsDetails }: Props) => {
     values: {
       encryptionStrategy:
         rootKmsDetails?.strategies?.find((s) => s.enabled)?.strategy ??
-        RootKeyEncryptionStrategy.Basic
+        RootKeyEncryptionStrategy.Software
     }
   });
 

@@ -58,6 +58,6 @@ export type TUpdateProjectSecretManagerKmsKeyDTO = {
 };
 
 export enum RootKeyEncryptionStrategy {
-  Basic = "BASIC",
-  Hsm = "HSM"
+  Software = "SOFTWARE",
+  HSM = "HSM"
 }

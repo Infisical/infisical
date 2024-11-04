@@ -107,8 +107,8 @@ import { externalMigrationServiceFactory } from "@app/services/external-migratio
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
-import { HsmModule } from "@app/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/services/hsm/hsm-service";
+import { HsmModule } from "@app/services/hsm/hsm-types";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
@@ -363,7 +363,7 @@ export const registerRoutes = async (
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
 
   const hsmService = hsmServiceFactory({
-    pkcs11Module: hsmModule
+    hsmModule
   });
 
   const kmsService = kmsServiceFactory({

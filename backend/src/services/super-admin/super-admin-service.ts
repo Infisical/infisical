@@ -306,16 +306,16 @@ export const superAdminServiceFactory = ({
     const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy; name: string }[] = [];
 
     if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
-      const basicStrategy = RootKeyEncryptionStrategy.Basic;
+      const basicStrategy = RootKeyEncryptionStrategy.Software;
 
       enabledStrategies.push({
-        name: "Regular Encryption",
+        name: "Software-based Encryption",
         enabled: selectedStrategy === basicStrategy,
         strategy: basicStrategy
       });
     }
     if (appCfg.isHsmConfigured) {
-      const hsmStrategy = RootKeyEncryptionStrategy.Hsm;
+      const hsmStrategy = RootKeyEncryptionStrategy.HSM;
 
       enabledStrategies.push({
         name: "Hardware Security Module (HSM)",
