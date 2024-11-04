@@ -90,7 +90,6 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         tag: ""
       });
     } catch (error) {
-      console.log(error);
       throw new DatabaseError({
         error,
         name: "Soft Delete Shared Secret By Identifier"

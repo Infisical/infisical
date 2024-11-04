@@ -211,7 +211,6 @@ export const secretSharingServiceFactory = ({
 
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
     // or can be safely sent to the client.
-
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
       if (isUuidV4(sharedSecretId)) {
