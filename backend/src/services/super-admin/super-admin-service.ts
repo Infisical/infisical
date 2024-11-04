@@ -292,7 +292,7 @@ export const superAdminServiceFactory = ({
       clientSecret
     };
   };
-  //
+
   const getConfiguredEncryptionStrategies = async () => {
     const appCfg = getConfig();
 
