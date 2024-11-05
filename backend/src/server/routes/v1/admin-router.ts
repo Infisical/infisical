@@ -198,7 +198,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/root-kms-config",
+    url: "/encryption-strategies",
     config: {
       rateLimit: readLimit
     },
@@ -228,7 +228,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
+    method: "PATCH",
     url: "/encryption-strategies",
     config: {
       rateLimit: writeLimit

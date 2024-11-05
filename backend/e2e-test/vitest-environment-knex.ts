@@ -16,7 +16,7 @@ import { initDbConnection } from "@app/db";
 import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { Redis } from "ioredis";
-import { initializeHsmModule } from "@app/services/hsm/hsm-fns";
+import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {

@@ -88,7 +88,7 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServi
   const appCfg = getConfig();
 
   // Constants for buffer structure
-  const IV_LENGTH = 16;
+  const IV_LENGTH = 12;
   const TAG_LENGTH = 16;
 
   const $findMasterKey = (session: grapheneLib.Session) => {

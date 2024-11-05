@@ -91,7 +91,7 @@ export const useUpdateServerEncryptionStrategy = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (strategy: RootKeyEncryptionStrategy) => {
-      await apiRequest.post("/api/v1/admin/encryption-strategies", { strategy });
+      await apiRequest.patch("/api/v1/admin/encryption-strategies", { strategy });
     },
     onSuccess: () => {
       queryClient.invalidateQueries(adminQueryKeys.getServerEncryptionStrategies());

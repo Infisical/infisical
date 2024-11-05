@@ -9,6 +9,7 @@ import {
   KmsProviders,
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
@@ -19,7 +20,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { getByteLengthForAlgorithm, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 
-import { THsmServiceFactory } from "../hsm/hsm-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";

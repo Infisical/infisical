@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import path from "path";
 
+import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig, IS_PACKAGED } from "./lib/config/env";
@@ -9,7 +11,6 @@ import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
-import { initializeHsmModule } from "./services/hsm/hsm-fns";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
 
 dotenv.config();

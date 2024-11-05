@@ -85,7 +85,7 @@ export const useGetServerRootKmsEncryptionDetails = () => {
     queryKey: adminQueryKeys.getServerEncryptionStrategies(),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetServerRootKmsEncryptionDetails>(
-        "/api/v1/admin/root-kms-config"
+        "/api/v1/admin/encryption-strategies"
       );
 
       return data;
