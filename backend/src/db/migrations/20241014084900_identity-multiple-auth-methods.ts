@@ -72,5 +72,5 @@ export async function down(knex: Knex): Promise<void> {
   }
 }
 
-const config = {transaction: false};
+const config = { transaction: false };
 export { config };
