@@ -1,13 +1,18 @@
 import grapheneLib from "graphene-pk11";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { Lock } from "@app/lib/red-lock";
 
 import { HsmModule, RequiredMechanisms } from "./hsm-types";
 
 type THsmServiceFactoryDep = {
   hsmModule: HsmModule;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
 };
+
+const HSM_SESSION_WAIT_KEY = "wait_till_hsm_session_ready";
 
 const USER_ALREADY_LOGGED_IN_ERROR = "CKR_USER_ALREADY_LOGGED_IN";
 const WRAPPED_KEY_LENGTH = 32 + 8; // AES-256 key + padding
@@ -17,79 +22,98 @@ export type THsmServiceFactory = ReturnType<typeof hsmServiceFactory>;
 type SyncOrAsync<T> = T | Promise<T>;
 type SessionCallback<T> = (session: grapheneLib.Session) => SyncOrAsync<T>;
 
-export const withSession = async <T>(
-  { module, graphene }: HsmModule,
-  callbackWithSession: SessionCallback<T>
-): Promise<T> => {
-  const appCfg = getConfig();
-
-  let session: grapheneLib.Session | null = null;
-  try {
-    if (!module) {
-      throw new Error("PKCS#11 module is not initialized");
-    }
-
-    // Create new session
-    const slot = module.getSlots(appCfg.HSM_SLOT);
-    // eslint-disable-next-line no-bitwise
-    if (!(slot.flags & graphene.SlotFlag.TOKEN_PRESENT)) {
-      throw new Error("Slot is not initialized");
-    }
-
-    for (let i = 0; i < 10; i += 1) {
-      try {
-        // eslint-disable-next-line no-bitwise
-        session = slot.open(graphene.SessionFlag.RW_SESSION | graphene.SessionFlag.SERIAL_SESSION);
-        session.login(appCfg.HSM_PIN!);
-      } catch (error) {
-        if ((error as Error)?.message !== USER_ALREADY_LOGGED_IN_ERROR) {
-          throw error;
-        }
-        logger.warn("HSM session already logged in");
-        session = null;
-      }
-
-      if (session) {
-        break;
-      }
-
-      logger.warn("Waiting for session to be available...");
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => {
-        let sleepAmount = 1_500 * (i + 1);
-        if (sleepAmount > 5000) sleepAmount = 5000;
-
-        setTimeout(resolve, sleepAmount);
-      });
-    }
-
-    if (!session) {
-      throw new Error("Failed to open session");
-    }
-
-    // Execute the callback and await its result (works for both sync and async)
-    const result = await callbackWithSession(session);
-    return result;
-  } finally {
-    // Clean up session if it was created
-    if (session) {
-      try {
-        session.logout();
-        session.close();
-      } catch (error) {
-        logger.error("Error cleaning up HSM session:", error);
-      }
-    }
-  }
-};
-
 // eslint-disable-next-line no-empty-pattern
-export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServiceFactoryDep) => {
+export const hsmServiceFactory = ({ hsmModule: { module, graphene }, keyStore }: THsmServiceFactoryDep) => {
   const appCfg = getConfig();
 
   // Constants for buffer structure
   const IV_LENGTH = 12;
   const TAG_LENGTH = 16;
+
+  const $withSession = async <T>(callbackWithSession: SessionCallback<T>): Promise<T> => {
+    const RETRY_INTERVAL = 300; // 300ms between attempts
+    const MAX_TIMEOUT = 30_000; // 30 seconds maximum total time
+
+    let session: grapheneLib.Session | null = null;
+    let lock: Lock | null = null;
+
+    const removeSession = () => {
+      if (session) {
+        session.logout();
+        session.close();
+        session = null;
+      }
+    };
+
+    try {
+      if (!module) {
+        throw new Error("PKCS#11 module is not initialized");
+      }
+
+      // Create new session
+      const slot = module.getSlots(appCfg.HSM_SLOT);
+      // eslint-disable-next-line no-bitwise
+      if (!(slot.flags & graphene.SlotFlag.TOKEN_PRESENT)) {
+        throw new Error("Slot is not initialized");
+      }
+
+      lock = await keyStore.acquireLock(["HSM_SESSION_LOCK"], 10_000, { retryCount: 3 }).catch(() => null);
+
+      if (!lock) {
+        await keyStore.waitTillReady({
+          key: HSM_SESSION_WAIT_KEY,
+          keyCheckCb: (val) => val === "true",
+          waitingCb: () => logger.info("HSM Lock: Waiting for session to be available...")
+        });
+      }
+
+      const startTime = Date.now();
+      while (Date.now() - startTime < MAX_TIMEOUT) {
+        try {
+          // eslint-disable-next-line no-bitwise
+          session = slot.open(graphene.SessionFlag.RW_SESSION | graphene.SessionFlag.SERIAL_SESSION);
+          session.login(appCfg.HSM_PIN!);
+          // session.login("4311");
+          break;
+        } catch (error) {
+          if ((error as Error)?.message !== USER_ALREADY_LOGGED_IN_ERROR) {
+            throw error;
+          }
+          logger.warn("HSM session already logged in");
+        }
+
+        logger.warn(`HSM: No session available. Waiting for session to be available... [retry=${RETRY_INTERVAL}ms]`);
+
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, RETRY_INTERVAL);
+        });
+      }
+
+      if (!session) {
+        throw new Error("Failed to open session");
+      }
+
+      // Execute the callback and await its result (works for both sync and async)
+      const result = await callbackWithSession(session);
+
+      if (session) {
+        removeSession();
+        await keyStore.setItemWithExpiry(HSM_SESSION_WAIT_KEY, 10, "true");
+      }
+
+      return result;
+    } finally {
+      // Clean up session if it was created
+      try {
+        removeSession();
+      } catch (error) {
+        logger.error(error, "Error cleaning up HSM session:");
+      }
+
+      await lock?.release();
+    }
+  };
 
   const $findMasterKey = (session: grapheneLib.Session) => {
     // Find the master key (root key)
@@ -203,7 +227,7 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServi
       return $performEncryption(providedSession);
     }
 
-    const encrypted = await withSession({ module, graphene }, $performEncryption);
+    const encrypted = await $withSession($performEncryption);
 
     return encrypted;
   };
@@ -239,7 +263,7 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServi
     if (providedSession) {
       return $performDecryption(providedSession);
     }
-    const decrypted = await withSession({ module, graphene }, (newSession) => $performDecryption(newSession));
+    const decrypted = await $withSession($performDecryption);
 
     return decrypted;
   };
@@ -278,7 +302,7 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServi
     let pkcs11TestPassed = false;
 
     try {
-      pkcs11TestPassed = await withSession({ module, graphene }, $testPkcs11Module);
+      pkcs11TestPassed = await $withSession($testPkcs11Module);
     } catch (err) {
       logger.error(err, "isActive: Error testing PKCS#11 module");
     }
@@ -290,7 +314,7 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene } }: THsmServi
     if (!appCfg.isHsmConfigured || !module) return;
 
     try {
-      await withSession({ module, graphene }, async (session) => {
+      await $withSession(async (session) => {
         // Check if master key exists, create if not
         if (!$keyExists(session)) {
           // Generate 256-bit AES master key with persistent storage

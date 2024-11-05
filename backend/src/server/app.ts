@@ -47,7 +47,8 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
     connectionTimeout: 30 * 1000,
-    ignoreTrailingSlash: true
+    ignoreTrailingSlash: true,
+    pluginTimeout: 40_000
   }).withTypeProvider<ZodTypeProvider>();
 
   server.setValidatorCompiler(validatorCompiler);

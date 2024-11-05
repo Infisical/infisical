@@ -363,7 +363,8 @@ export const registerRoutes = async (
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
 
   const hsmService = hsmServiceFactory({
-    hsmModule
+    hsmModule,
+    keyStore
   });
 
   const kmsService = kmsServiceFactory({
