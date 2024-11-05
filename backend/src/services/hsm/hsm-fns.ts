@@ -15,7 +15,7 @@ export const initializeHsmModule = () => {
       return;
     }
 
-    module = grapheneLib.Module.load(appCfg.HSM_LIB_PATH!, "SoftHSM");
+    module = grapheneLib.Module.load(appCfg.HSM_LIB_PATH!, "InfisicalHSM");
     module.initialize();
     logger.info("PKCS#11 module initialized");
   };
