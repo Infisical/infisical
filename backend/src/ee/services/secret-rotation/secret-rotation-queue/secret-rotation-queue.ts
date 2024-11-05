@@ -116,6 +116,7 @@ export const secretRotationQueueFactory = ({
 
   queue.start(QueueName.SecretRotation, async (job) => {
     const { rotationId } = job.data;
+    const appCfg = getConfig();
     logger.info(`secretRotationQueue.process: [rotationDocument=${rotationId}]`);
     const secretRotation = await secretRotationDAL.findById(rotationId);
     const rotationProvider = rotationTemplates.find(({ name }) => name === secretRotation?.provider);
@@ -178,7 +179,7 @@ export const secretRotationQueueFactory = ({
         const options =
           provider.template.client === TDbProviderClients.MsSqlServer
             ? ({
-                encrypt: true,
+                encrypt: appCfg.ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT,
                 cryptoCredentialsDetails: ca ? { ca } : {}
               } as Record<string, unknown>)
             : undefined;
