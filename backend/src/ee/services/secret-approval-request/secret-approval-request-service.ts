@@ -267,7 +267,8 @@ export const secretApprovalRequestServiceFactory = ({
                 : "",
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
-                : ""
+                : "",
+              tags: el.secretVersion.tags
             }
           : undefined
       }));
@@ -571,7 +572,7 @@ export const secretApprovalRequestServiceFactory = ({
                     reminderNote: el.reminderNote,
                     skipMultilineEncoding: el.skipMultilineEncoding,
                     key: el.key,
-                    tagIds: el?.tags.map(({ id }) => id),
+                    tags: el?.tags.map(({ id }) => id),
                     ...encryptedValue
                   }
                 };
