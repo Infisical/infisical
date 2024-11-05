@@ -24,4 +24,5 @@ export type TSecretRotationDbFn = {
   query: string;
   variables: unknown[];
   ca?: string;
+  options?: Record<string, unknown>;
 };

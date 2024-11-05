@@ -2540,7 +2540,7 @@ const syncSecretsAzureDevops = async ({
 
   const { groupId, groupName } = await getEnvGroupId(integration.app, integration.appId, integration.environment.name);
 
-  const variables: Record<string, { value: string, isSecret: boolean }> = {};
+  const variables: Record<string, { value: string; isSecret: boolean }> = {};
   for (const key of Object.keys(secrets)) {
     variables[key] = { value: secrets[key].value, isSecret: true };
   }
