@@ -1,0 +1,139 @@
+---
+title: "Microsoft SQL Server"
+description: "Learn how to automatically rotate Microsoft SQL Server user passwords."
+---
+
+The Infisical SQL Server secret rotation allows you to automatically rotate your database users' passwords at a predefined interval.
+
+## Prerequisites
+
+1. Create two SQL Server logins and database users with the required permissions. We'll refer to them as `user-a` and `user-b`.
+2. Create another SQL Server login with permissions to alter logins for `user-a` and `user-b`. We'll refer to this as the `admin` login.
+
+Here's how to set up the prerequisites:
+
+```sql
+-- Create the logins (at server level)
+CREATE LOGIN [user-a] WITH PASSWORD = 'ComplexPassword1';
+CREATE LOGIN [user-b] WITH PASSWORD = 'ComplexPassword2';
+
+-- Create database users for the logins (in your specific database)
+USE [YourDatabase];
+CREATE USER [user-a] FOR LOGIN [user-a];
+CREATE USER [user-b] FOR LOGIN [user-b];
+
+-- Grant necessary permissions to the users
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [user-a];
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [user-b];
+
+-- Create admin login with permission to alter other logins
+CREATE LOGIN [admin] WITH PASSWORD = 'AdminComplexPassword';
+CREATE USER [admin] FOR LOGIN [admin];
+
+-- Grant permission to alter any login
+GRANT ALTER ANY LOGIN TO [admin];
+```
+
+To learn more about SQL Server's permission system, please visit this [documentation](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/getting-started-with-database-engine-permissions).
+
+## How it works
+
+1. Infisical connects to your database using the provided `admin` login credentials.
+2. A random value is generated and the password for `user-a` is updated with the new value.
+3. The new password is then tested by logging into the database.
+4. If test is successful, it's saved to the output secret mappings so that rest of the system gets the newly rotated value(s).
+5. The process is then repeated for `user-b` on the next rotation.
+6. The cycle repeats until secret rotation is deleted/stopped.
+
+## Rotation Configuration
+
+<Steps>
+  <Step title="Open Secret Rotation Page">
+	Head over to Secret Rotation configuration page of your project by clicking on `Secret Rotation` in the left side bar 
+  </Step>
+  <Step title="Click on Microsoft SQL Server card" />
+  <Step title="Provide the inputs">
+	<ParamField path="Admin Username" type="string" required>
+		SQL Server admin username
+	</ParamField>
+
+    <ParamField path="Admin password" type="string" required>
+    	SQL Server admin password
+    </ParamField>
+
+    <ParamField path="Host" type="string" required>
+    	SQL Server host url (e.g., your-server.database.windows.net)
+    </ParamField>
+
+    <ParamField path="Port" type="number" required>
+    	Database port number (default: 1433)
+    </ParamField>
+
+    <ParamField path="Database" type="string" required>
+    	Database name (default: master)
+    </ParamField>
+
+    <ParamField path="Username1" type="string" required>
+    	The first login name to rotate - `user-a`
+    </ParamField>
+
+    <ParamField path="Username2" type="string" required>
+    	The second login name to rotate - `user-b`
+    </ParamField>
+
+    <ParamField path="CA" type="string">
+    	Optional database certificate to connect with database
+    </ParamField>
+
+  </Step>
+  <Step title="Configure the output secret mapping">
+  	When a secret rotation is successful, the updated values needs to be saved to an existing key(s) in your project.
+
+    <ParamField path="Environment" type="string" required>
+    	The environment where the rotated credentials should be mapped to.
+    </ParamField>
+
+    <ParamField path="Secret Path" type="string" required>
+    	The secret path where the rotated credentials should be mapped to.
+    </ParamField>
+
+    <ParamField path="Interval" type="number" required>
+    	What interval should the credentials be rotated in days.
+    </ParamField>
+
+    <ParamField path="DB USERNAME" type="string" required>
+    	Select an existing secret key where the rotated database username value should be saved to.
+    </ParamField>
+
+    <ParamField path="DB PASSWORD" type="string" required>
+    	Select an existing select key where the rotated database password value should be saved to.
+    </ParamField>
+
+  </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+ <Accordion title="Why can't we delete the other user when rotating?">
+ 	When a system has multiple nodes by horizontal scaling, redeployment doesn't happen instantly.
+
+    This means that when the secrets are rotated, and the redeployment is triggered, the existing system will still be using the old credentials until the change rolls out.
+
+    To avoid causing failure for them, the old credentials are not removed. Instead, in the next rotation, the previous user's credentials are updated.
+
+ </Accordion>
+ <Accordion title="Why do you need an admin account?">
+    The admin account is used by Infisical to update the credentials for `user-a` and `user-b`.
+
+    You don't need to grant all permissions for your admin account but rather just the permission to alter logins (ALTER ANY LOGIN).
+
+ </Accordion>
+ <Accordion title="How does this work with Azure SQL Database?">
+   When using Azure SQL Database, you'll need to:
+   
+   1. Use the full server name as your host (e.g., your-server.database.windows.net)
+   2. Ensure your admin account is either the Azure SQL Server admin or an Azure AD account with appropriate permissions
+   3. Configure your Azure SQL Server firewall rules to allow connections from Infisical's IP addresses
+ </Accordion>
+</AccordionGroup>

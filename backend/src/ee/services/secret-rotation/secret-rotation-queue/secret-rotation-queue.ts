@@ -172,6 +172,16 @@ export const secretRotationQueueFactory = ({
         // set a random value for new password
         newCredential.internal.rotated_password = alphaNumericNanoId(32);
         const { admin_username: username, admin_password: password, host, database, port, ca } = newCredential.inputs;
+
+        const options = (
+          provider.template.client === TDbProviderClients.MsSqlServer
+            ? {
+                encrypt: true,
+                cryptoCredentialsDetails: ca ? { ca } : {}
+              }
+            : {}
+        ) as Record<string, unknown>;
+
         const dbFunctionArg = {
           username,
           password,
@@ -179,8 +189,10 @@ export const secretRotationQueueFactory = ({
           database,
           port,
           ca: ca as string,
-          client: provider.template.client === TDbProviderClients.MySql ? "mysql2" : provider.template.client
+          client: provider.template.client === TDbProviderClients.MySql ? "mysql2" : provider.template.client,
+          options
         } as TSecretRotationDbFn;
+
         // set function
         await secretRotationDbFn({
           ...dbFunctionArg,
@@ -189,12 +201,17 @@ export const secretRotationQueueFactory = ({
             username: newCredential.internal.username as string
           })
         });
+
         // test function
+        const testQuery =
+          provider.template.client === TDbProviderClients.MsSqlServer ? "SELECT GETDATE()" : "SELECT NOW()";
+
         await secretRotationDbFn({
           ...dbFunctionArg,
-          query: "SELECT NOW()",
+          query: testQuery,
           variables: []
         });
+
         newCredential.outputs.db_username = newCredential.internal.username;
         newCredential.outputs.db_password = newCredential.internal.rotated_password;
         // clean up

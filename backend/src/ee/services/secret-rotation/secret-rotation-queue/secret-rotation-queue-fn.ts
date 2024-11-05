@@ -85,7 +85,8 @@ export const secretRotationDbFn = async ({
   password,
   username,
   client,
-  variables
+  variables,
+  options
 }: TSecretRotationDbFn) => {
   const appCfg = getConfig();
 
@@ -117,7 +118,8 @@ export const secretRotationDbFn = async ({
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
       ssl,
-      pool: { min: 0, max: 1 }
+      pool: { min: 0, max: 1 },
+      options
     }
   });
   const data = await db.raw(query, variables);
@@ -153,6 +155,14 @@ export const getDbSetQuery = (db: TDbProviderClients, variables: { username: str
       variables: [variables.username]
     };
   }
+
+  if (db === TDbProviderClients.MsSqlServer) {
+    return {
+      query: `ALTER LOGIN ?? WITH PASSWORD = '${variables.password}'`,
+      variables: [variables.username]
+    };
+  }
+
   // add more based on client
   return {
     query: `ALTER USER ?? IDENTIFIED BY '${variables.password}'`,

@@ -165,6 +165,7 @@
             "documentation/platform/secret-rotation/sendgrid",
             "documentation/platform/secret-rotation/postgres",
             "documentation/platform/secret-rotation/mysql",
+            "documentation/platform/secret-rotation/mssql",
             "documentation/platform/secret-rotation/aws-iam"
           ]
         },
