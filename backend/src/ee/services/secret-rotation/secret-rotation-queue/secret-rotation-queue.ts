@@ -94,7 +94,9 @@ export const secretRotationQueueFactory = ({
           // on prod it this will be in days, in development this will be second
           every: appCfg.NODE_ENV === "development" ? secondsToMillis(interval) : daysToMillisecond(interval),
           immediately: true
-        }
+        },
+        removeOnComplete: true,
+        removeOnFail: true
       }
     );
   };
@@ -173,14 +175,13 @@ export const secretRotationQueueFactory = ({
         newCredential.internal.rotated_password = alphaNumericNanoId(32);
         const { admin_username: username, admin_password: password, host, database, port, ca } = newCredential.inputs;
 
-        const options = (
+        const options =
           provider.template.client === TDbProviderClients.MsSqlServer
-            ? {
+            ? ({
                 encrypt: true,
                 cryptoCredentialsDetails: ca ? { ca } : {}
-              }
-            : {}
-        ) as Record<string, unknown>;
+              } as Record<string, unknown>)
+            : undefined;
 
         const dbFunctionArg = {
           username,
