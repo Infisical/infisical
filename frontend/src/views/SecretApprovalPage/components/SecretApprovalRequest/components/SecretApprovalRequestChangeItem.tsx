@@ -96,7 +96,7 @@ export const SecretApprovalRequestChangeItem = ({
                   <SecretInput isReadOnly value={secretVersion?.secretValue} />
                 </Td>
                 <Td>{secretVersion?.secretComment}</Td>
-                <Td>
+                <Td className="flex flex-wrap gap-2">
                   {secretVersion?.tags?.map(({ slug, id: tagId, color }) => (
                     <Tag
                       className="flex w-min items-center space-x-2"
@@ -118,7 +118,7 @@ export const SecretApprovalRequestChangeItem = ({
                   <SecretInput isReadOnly value={newVersion?.secretValue} />
                 </Td>
                 <Td>{newVersion?.secretComment}</Td>
-                <Td>
+                <Td className="flex flex-wrap gap-2">
                   {newVersion?.tags?.map(({ slug, id: tagId, color }) => (
                     <Tag
                       className="flex w-min items-center space-x-2"
