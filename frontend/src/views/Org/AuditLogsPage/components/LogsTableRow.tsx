@@ -11,6 +11,10 @@ type Props = {
 
 export const LogsTableRow = ({ auditLog, isOrgAuditLogs, showActorColumn }: Props) => {
   const renderActor = (actor: Actor) => {
+    if (!actor) {
+      return <Td />;
+    }
+
     switch (actor.type) {
       case ActorType.USER:
         return (
