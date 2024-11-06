@@ -21,7 +21,7 @@ infisical:
       pullPolicy: IfNotPresent
 
   serviceAccount:
-    # -- Creates a new service account if true, with necessary permissions for this chart
+    # -- Creates a new service account if true, with necessary permissions for this chart. If false and `serviceAccount.name` is not defined, the chart will attempt to use the Default service account
     create: true
     # -- Custom annotations for the auto-created service account
     annotations: {}
