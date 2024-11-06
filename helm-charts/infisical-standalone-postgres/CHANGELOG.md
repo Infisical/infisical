@@ -1,3 +1,13 @@
+## 1.4.0 (November 06, 2024)
+
+Changes:
+* Chart is now fully documented 
+* New fields introduced: `infisical.databaseSchemaMigrationJob.image` and `infisical.serviceAccount`
+
+Features:
+
+* Added support for auto creating service account with required permissions via `infisical.serviceAccount.create`
+
 ## 1.3.0 (October 28, 2024)
 
 Changes:

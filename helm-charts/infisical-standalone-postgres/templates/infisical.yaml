@@ -34,10 +34,11 @@ spec:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
     {{- end }}
     {{- if $infisicalValues.autoDatabaseSchemaMigration }}
+      serviceAccountName: {{ include "infisical.serviceAccountName" . }}
       initContainers:
       - name: "migration-init"
-        image: {{ $infisicalValues.databaseSchemaMigrationInitContainer.image }}
-        imagePullPolicy: {{ $infisicalValues.databaseSchemaMigrationInitContainer.imagePullPolicy }}
+        image: "{{ $infisicalValues.databaseSchemaMigrationJob.image.repository }}:{{ $infisicalValues.databaseSchemaMigrationJob.image.tag }}"
+        imagePullPolicy: {{ $infisicalValues.databaseSchemaMigrationJob.image.pullPolicy }}
         args: 
         - "job"
         - "{{ .Release.Name }}-schema-migration-{{ .Release.Revision }}"
