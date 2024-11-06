@@ -190,7 +190,11 @@ export const CreateSecretForm = ({
     e.preventDefault();
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
-    const { key, value } = getKeyValue(pastedContent, delimitters);
+    let { key, value } = getKeyValue(pastedContent, delimitters);
+
+    if (currentWorkspace?.autoCapitalization) {
+      key = key.toUpperCase();
+    }
 
     setValue("key", key);
     setValue("value", value);
