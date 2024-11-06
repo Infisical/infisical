@@ -88,7 +88,7 @@ export const LogsSection = ({
         refetchInterval={refetchInterval}
         remappedHeaders={remappedHeaders}
         isOrgAuditLogs={isOrgAuditLogs}
-        showActorColumn={!!showActorColumn && !isOrgAuditLogs}
+        showActorColumn={!!showActorColumn}
         filter={{
           eventMetadata: presets?.eventMetadata,
           projectId,
