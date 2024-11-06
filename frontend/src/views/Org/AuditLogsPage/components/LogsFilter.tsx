@@ -1,11 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useEffect, useState } from "react";
 import { Control, Controller, UseFormReset, UseFormSetValue, UseFormWatch } from "react-hook-form";
-import {
-  faCheckCircle,
-  faChevronDown,
-  faFilterCircleXmark
-} from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faCheckCircle, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -20,7 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import { useGetAuditLogActorFilterOpts } from "@app/hooks/api";
 import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
@@ -60,11 +56,15 @@ export const LogsFilter = ({
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
   const { currentWorkspace, workspaces } = useWorkspace();
+  const { currentOrg } = useOrganization();
+
+  const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
+
   const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?.id ?? "");
 
   useEffect(() => {
-    if (workspaces.length) {
-      setValue("projectId", workspaces[0].id);
+    if (workspacesInOrg.length) {
+      setValue("projectId", workspacesInOrg[0].id);
     }
   }, [workspaces]);
 
@@ -130,7 +130,7 @@ export const LogsFilter = ({
                       : selectedEventTypes?.length === 0
                       ? "All events"
                       : `${selectedEventTypes?.length} events selected`}
-                    <FontAwesomeIcon icon={faChevronDown} className="ml-2 text-xs" />
+                    <FontAwesomeIcon icon={faCaretDown} className="ml-2 text-xs" />
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-hidden">
@@ -221,10 +221,7 @@ export const LogsFilter = ({
                   if (e === "all") onChange(undefined);
                   else onChange(e);
                 }}
-                className={twMerge(
-                  "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
-                  value === undefined && "text-mineshaft-400"
-                )}
+                className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
               >
                 <SelectItem value="all" key="all">
                   All sources
@@ -239,7 +236,7 @@ export const LogsFilter = ({
           )}
         />
 
-        {isOrgAuditLogs && workspaces.length > 0 && (
+        {isOrgAuditLogs && workspacesInOrg.length > 0 && (
           <Controller
             control={control}
             name="projectId"
@@ -255,11 +252,11 @@ export const LogsFilter = ({
                   {...field}
                   onValueChange={(e) => onChange(e)}
                   className={twMerge(
-                    "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
+                    "w-full border border-mineshaft-500 bg-mineshaft-700 ",
                     value === undefined && "text-mineshaft-400"
                   )}
                 >
-                  {workspaces.map((project) => (
+                  {workspacesInOrg.map((project) => (
                     <SelectItem value={String(project.id || "")} key={project.id}>
                       {project.name}
                     </SelectItem>
@@ -277,10 +274,7 @@ export const LogsFilter = ({
               <FormControl label="Start date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
-                  onChange={(date) => {
-                    onChange(date);
-                    setIsStartDatePickerOpen(false);
-                  }}
+                  onChange={onChange}
                   popUpProps={{
                     open: isStartDatePickerOpen,
                     onOpenChange: setIsStartDatePickerOpen
@@ -299,11 +293,7 @@ export const LogsFilter = ({
               <FormControl label="End date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
-                  onChange={(pickedDate) => {
-                    pickedDate?.setHours(23, 59, 59, 999); // we choose the end of today not the start of it (going off of aws cloud watch)
-                    onChange(pickedDate);
-                    setIsEndDatePickerOpen(false);
-                  }}
+                  onChange={onChange}
                   popUpProps={{
                     open: isEndDatePickerOpen,
                     onOpenChange: setIsEndDatePickerOpen
