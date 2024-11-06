@@ -1,277 +1,339 @@
-import grapheneLib from "graphene-pk11";
+import pkcs11js from "pkcs11js";
 
-import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { Lock } from "@app/lib/red-lock";
 
-import { HsmModule, RequiredMechanisms } from "./hsm-types";
+import { HsmKeyType, HsmModule } from "./hsm-types";
 
 type THsmServiceFactoryDep = {
   hsmModule: HsmModule;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
 };
-
-const HSM_SESSION_WAIT_KEY = "wait_till_hsm_session_ready";
-
-const USER_ALREADY_LOGGED_IN_ERROR = "CKR_USER_ALREADY_LOGGED_IN";
-const WRAPPED_KEY_LENGTH = 32 + 8; // AES-256 key + padding
 
 export type THsmServiceFactory = ReturnType<typeof hsmServiceFactory>;
 
 type SyncOrAsync<T> = T | Promise<T>;
-type SessionCallback<T> = (session: grapheneLib.Session) => SyncOrAsync<T>;
+type SessionCallback<T> = (session: pkcs11js.Handle) => SyncOrAsync<T>;
 
 // eslint-disable-next-line no-empty-pattern
-export const hsmServiceFactory = ({ hsmModule: { module, graphene }, keyStore }: THsmServiceFactoryDep) => {
+export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsmServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  // Constants for buffer structure
-  const IV_LENGTH = 12;
-  const TAG_LENGTH = 16;
+  // Constants for buffer structures
+  const IV_LENGTH = 16; // Luna HSM typically expects 16-byte IV for cbc
+  const BLOCK_SIZE = 16;
+  const HMAC_SIZE = 32;
 
   const $withSession = async <T>(callbackWithSession: SessionCallback<T>): Promise<T> => {
     const RETRY_INTERVAL = 300; // 300ms between attempts
     const MAX_TIMEOUT = 30_000; // 30 seconds maximum total time
 
-    let session: grapheneLib.Session | null = null;
-    let lock: Lock | null = null;
+    let sessionHandle: pkcs11js.Handle | null = null;
 
     const removeSession = () => {
-      if (session) {
-        session.logout();
-        session.close();
-        session = null;
+      if (sessionHandle !== null) {
+        try {
+          pkcs11.C_Logout(sessionHandle);
+          pkcs11.C_CloseSession(sessionHandle);
+          logger.info("HSM: Terminated session successfully");
+        } catch (error) {
+          logger.error("Error during session cleanup:", error);
+        } finally {
+          sessionHandle = null;
+        }
       }
     };
 
     try {
-      if (!module) {
+      if (!pkcs11 || !isInitialized) {
         throw new Error("PKCS#11 module is not initialized");
       }
 
-      // Create new session
-      const slot = module.getSlots(appCfg.HSM_SLOT);
-      // eslint-disable-next-line no-bitwise
-      if (!(slot.flags & graphene.SlotFlag.TOKEN_PRESENT)) {
-        throw new Error("Slot is not initialized");
+      // Get slot list
+      let slots: pkcs11js.Handle[];
+      try {
+        slots = pkcs11.C_GetSlotList(false); // false to get all slots
+      } catch (error) {
+        throw new Error(`Failed to get slot list: ${(error as Error)?.message}`);
       }
 
-      lock = await keyStore.acquireLock(["HSM_SESSION_LOCK"], 10_000, { retryCount: 3 }).catch(() => null);
-
-      if (!lock) {
-        await keyStore.waitTillReady({
-          key: HSM_SESSION_WAIT_KEY,
-          keyCheckCb: (val) => val === "true",
-          waitingCb: () => logger.info("HSM Lock: Waiting for session to be available...")
-        });
+      if (slots.length === 0) {
+        throw new Error("No slots available");
       }
+
+      if (appCfg.HSM_SLOT >= slots.length) {
+        throw new Error(`HSM slot ${appCfg.HSM_SLOT} not found or not initialized`);
+      }
+
+      const slotId = slots[appCfg.HSM_SLOT];
 
       const startTime = Date.now();
       while (Date.now() - startTime < MAX_TIMEOUT) {
         try {
+          // Open session
           // eslint-disable-next-line no-bitwise
-          session = slot.open(graphene.SessionFlag.RW_SESSION | graphene.SessionFlag.SERIAL_SESSION);
-          session.login(appCfg.HSM_PIN!);
-          // session.login("4311");
-          break;
-        } catch (error) {
-          if ((error as Error)?.message !== USER_ALREADY_LOGGED_IN_ERROR) {
-            throw error;
+          sessionHandle = pkcs11.C_OpenSession(slotId, pkcs11js.CKF_SERIAL_SESSION | pkcs11js.CKF_RW_SESSION);
+
+          // Login
+          try {
+            pkcs11.C_Login(sessionHandle, pkcs11js.CKU_USER, appCfg.HSM_PIN);
+            logger.info("HSM: Successfully authenticated");
+            break;
+          } catch (error) {
+            if (error instanceof pkcs11js.Pkcs11Error) {
+              // Handle specific error cases
+              if (error.code === pkcs11js.CKR_PIN_INCORRECT) {
+                logger.error(error, `Incorrect PIN detected for HSM slot ${appCfg.HSM_SLOT}`);
+                throw new Error("Incorrect HSM Pin detected. Please check the HSM configuration.");
+              }
+
+              if (error.code === pkcs11js.CKR_USER_ALREADY_LOGGED_IN) {
+                logger.warn("HSM session already logged in");
+              }
+            }
+            throw error; // Re-throw other errors
           }
-          logger.warn("HSM session already logged in");
+        } catch (error) {
+          logger.warn(`HSM: Session creation failed. Retrying... Error: ${(error as Error)?.message}`);
+
+          if (sessionHandle !== null) {
+            try {
+              pkcs11.C_CloseSession(sessionHandle);
+            } catch (closeError) {
+              logger.error("Error closing failed session:", closeError);
+            }
+            sessionHandle = null;
+          }
+
+          // Wait before retrying
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => {
+            setTimeout(resolve, RETRY_INTERVAL);
+          });
+        }
+      }
+
+      if (sessionHandle === null) {
+        throw new Error("Failed to open session after maximum retries");
+      }
+
+      // Execute callback with session handle
+      const result = await callbackWithSession(sessionHandle);
+      removeSession();
+      return result;
+    } catch (error) {
+      logger.error("Error in HSM session handling:", error);
+      throw error;
+    } finally {
+      // Ensure cleanup
+      removeSession();
+    }
+  };
+
+  const $findKey = (sessionHandle: pkcs11js.Handle, type: HsmKeyType) => {
+    const label = type === HsmKeyType.HMAC ? `${appCfg.HSM_KEY_LABEL}_HMAC` : appCfg.HSM_KEY_LABEL;
+    const keyType = type === HsmKeyType.HMAC ? pkcs11js.CKK_GENERIC_SECRET : pkcs11js.CKK_AES;
+
+    const template = [
+      { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
+      { type: pkcs11js.CKA_KEY_TYPE, value: keyType },
+      { type: pkcs11js.CKA_LABEL, value: label }
+    ];
+
+    try {
+      // Initialize search
+      pkcs11.C_FindObjectsInit(sessionHandle, template);
+
+      try {
+        // Find first matching object
+        const handles = pkcs11.C_FindObjects(sessionHandle, 1);
+
+        if (handles.length === 0) {
+          throw new Error("Failed to find master key");
         }
 
-        logger.warn(`HSM: No session available. Waiting for session to be available... [retry=${RETRY_INTERVAL}ms]`);
-
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => {
-          setTimeout(resolve, RETRY_INTERVAL);
-        });
+        return handles[0]; // Return the key handle
+      } finally {
+        // Always finalize the search operation
+        pkcs11.C_FindObjectsFinal(sessionHandle);
       }
-
-      if (!session) {
-        throw new Error("Failed to open session");
-      }
-
-      // Execute the callback and await its result (works for both sync and async)
-      const result = await callbackWithSession(session);
-
-      if (session) {
-        removeSession();
-        await keyStore.setItemWithExpiry(HSM_SESSION_WAIT_KEY, 10, "true");
-      }
-
-      return result;
-    } finally {
-      // Clean up session if it was created
-      try {
-        removeSession();
-      } catch (error) {
-        logger.error(error, "Error cleaning up HSM session:");
-      }
-
-      await lock?.release();
+    } catch (error) {
+      logger.error("Error finding master key:", error);
+      return null;
     }
   };
 
-  const $findMasterKey = (session: grapheneLib.Session) => {
-    // Find the master key (root key)
-    const template = {
-      class: graphene.ObjectClass.SECRET_KEY,
-      keyType: graphene.KeyType.AES,
-      label: appCfg.HSM_KEY_LABEL
-    } as grapheneLib.ITemplate;
-
-    const key = session.find(template).items(0);
-
-    if (!key) {
-      throw new Error("Failed to find master key");
-    }
-
-    return key;
-  };
-
-  const $generateAndWrapKey = (session: grapheneLib.Session) => {
-    const masterKey = $findMasterKey(session);
-
-    // Generate a new session key for encryption
-    const sessionKey = session.generateKey(graphene.KeyGenMechanism.AES, {
-      class: graphene.ObjectClass.SECRET_KEY,
-      keyType: graphene.KeyType.AES,
-      token: false, // Session-only key
-      sensitive: true,
-      extractable: true, // Must be true to allow wrapping
-      encrypt: true,
-      decrypt: true,
-      valueLen: 32 // 256-bit key
-    } as grapheneLib.ITemplate);
-
-    // Wrap the session key with master key
-    const wrappingMech = { name: "AES_KEY_WRAP", params: null };
-    const wrappedKey = session.wrapKey(
-      wrappingMech,
-      new graphene.Key(masterKey).toType(),
-      new graphene.Key(sessionKey).toType()
-    );
-
-    return { wrappedKey, sessionKey };
-  };
-
-  const $unwrapKey = (session: grapheneLib.Session, wrappedKey: Buffer) => {
-    const masterKey = $findMasterKey(session);
-
-    // Absolute minimal template - let HSM set most attributes
-    const unwrapTemplate = {
-      class: graphene.ObjectClass.SECRET_KEY,
-      keyType: graphene.KeyType.AES
-    } as grapheneLib.ITemplate;
-
-    const unwrappingMech = {
-      name: "AES_KEY_WRAP",
-      params: null
-    } as grapheneLib.MechanismType;
-
-    return session.unwrapKey(unwrappingMech, new graphene.Key(masterKey).toType(), wrappedKey, unwrapTemplate);
-  };
-
-  const $keyExists = (session: grapheneLib.Session): boolean => {
+  const $keyExists = (session: pkcs11js.Handle, type: HsmKeyType): boolean => {
     try {
-      const key = $findMasterKey(session);
+      const key = $findKey(session, type);
       // items(0) will throw an error if no items are found
       // Return true only if we got a valid object with handle
-      return key && typeof key.handle !== "undefined";
+      return !!key && key.length > 0;
     } catch (error) {
       // If items(0) throws, it means no key was found
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-      if ((error as any).message?.includes("CKR_OBJECT_HANDLE_INVALID")) {
-        return false;
-      }
       logger.error(error, "Error checking for HSM key presence");
+
+      if (error instanceof pkcs11js.Pkcs11Error) {
+        if (error.code === pkcs11js.CKR_OBJECT_HANDLE_INVALID) {
+          return false;
+        }
+      }
+
       return false;
     }
   };
 
   const encrypt: {
-    (data: Buffer, providedSession: grapheneLib.Session): Promise<Buffer>;
+    (data: Buffer, providedSession: pkcs11js.Handle): Promise<Buffer>;
     (data: Buffer): Promise<Buffer>;
-  } = async (data: Buffer, providedSession?: grapheneLib.Session) => {
-    if (!module) {
+  } = async (data: Buffer, providedSession?: pkcs11js.Handle) => {
+    if (!pkcs11 || !isInitialized) {
       throw new Error("PKCS#11 module is not initialized");
     }
 
-    const $performEncryption = (s: grapheneLib.Session) => {
-      // Generate IV for encryption
-      const iv = s.generateRandom(IV_LENGTH);
+    const $performEncryption = (sessionHandle: pkcs11js.Handle) => {
+      try {
+        const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
+        if (!aesKey) {
+          throw new Error("AES key not found");
+        }
 
-      // Generate and wrap a new session key
-      const { wrappedKey, sessionKey } = $generateAndWrapKey(s);
+        const hmacKey = $findKey(sessionHandle, HsmKeyType.HMAC);
+        if (!hmacKey) {
+          throw new Error("HMAC key not found");
+        }
 
-      const alg = {
-        name: appCfg.HSM_MECHANISM,
-        params: new graphene.AesGcm240Params(iv)
-      } as grapheneLib.IAlgorithm;
+        const iv = Buffer.alloc(IV_LENGTH);
+        pkcs11.C_GenerateRandom(sessionHandle, iv);
 
-      const cipher = s.createCipher(alg, new graphene.Key(sessionKey).toType());
+        const encryptMechanism = {
+          mechanism: pkcs11js.CKM_AES_CBC_PAD,
+          parameter: iv
+        };
 
-      // Calculate the output buffer size based on input length
-      // GCM adds a 16-byte auth tag, so we need input length + 16
-      const outputBuffer = Buffer.alloc(data.length + TAG_LENGTH);
-      const encryptedData = cipher.once(data, outputBuffer);
+        pkcs11.C_EncryptInit(sessionHandle, encryptMechanism, aesKey);
 
-      // Format: [Wrapped Key (40)][IV (16)][Encrypted Data + Tag]
-      return Buffer.concat([wrappedKey, iv, encryptedData]);
+        // Calculate max buffer size (input length + potential full block of padding)
+        const maxEncryptedLength = Math.ceil(data.length / BLOCK_SIZE) * BLOCK_SIZE + BLOCK_SIZE;
+        const tempBuffer = Buffer.alloc(maxEncryptedLength);
+
+        // First call to get the actual length
+        const encryptedLength = pkcs11.C_Encrypt(sessionHandle, data, tempBuffer);
+
+        // Create a copy of the encrypted data using the actual length
+        const encryptedData = Buffer.from(tempBuffer.slice(0, encryptedLength.length || 16));
+
+        // Initialize HMAC
+        const hmacMechanism = {
+          mechanism: pkcs11js.CKM_SHA256_HMAC
+        };
+
+        pkcs11.C_SignInit(sessionHandle, hmacMechanism, hmacKey);
+
+        // Sign the IV and encrypted data
+        pkcs11.C_SignUpdate(sessionHandle, iv);
+        pkcs11.C_SignUpdate(sessionHandle, encryptedData);
+
+        // Get the HMAC
+        const hmac = Buffer.alloc(HMAC_SIZE);
+        pkcs11.C_SignFinal(sessionHandle, hmac);
+
+        // Combine encrypted data and HMAC [Encrypted Data | HMAC]
+        const finalBuffer = Buffer.alloc(encryptedData.length + hmac.length);
+        encryptedData.copy(finalBuffer);
+        hmac.copy(finalBuffer, encryptedData.length);
+
+        return Buffer.concat([iv, finalBuffer]);
+      } catch (error) {
+        logger.error("Encryption error:", error);
+        throw new Error(`Encryption failed: ${(error as Error)?.message}`);
+      }
     };
 
     if (providedSession) {
       return $performEncryption(providedSession);
     }
 
-    const encrypted = await $withSession($performEncryption);
-
-    return encrypted;
+    const result = await $withSession($performEncryption);
+    return result;
   };
 
   const decrypt: {
-    (encryptedBlob: Buffer, providedSession: grapheneLib.Session): Promise<Buffer>;
+    (encryptedBlob: Buffer, providedSession: pkcs11js.Handle): Promise<Buffer>;
     (encryptedBlob: Buffer): Promise<Buffer>;
-  } = async (encryptedBlob: Buffer, providedSession?: grapheneLib.Session) => {
-    if (!module) {
+  } = async (encryptedBlob: Buffer, providedSession?: pkcs11js.Handle) => {
+    if (!isInitialized) {
       throw new Error("HSM service not initialized");
     }
 
-    const $performDecryption = (s: grapheneLib.Session) => {
-      const wrappedKey = encryptedBlob.subarray(0, WRAPPED_KEY_LENGTH);
-      const iv = encryptedBlob.subarray(WRAPPED_KEY_LENGTH, WRAPPED_KEY_LENGTH + IV_LENGTH);
-      const ciphertext = encryptedBlob.subarray(WRAPPED_KEY_LENGTH + IV_LENGTH);
+    const $performDecryption = (sessionHandle: pkcs11js.Handle) => {
+      try {
+        // structure is: [IV (16 bytes) | Encrypted Data (N bytes) | HMAC (32 bytes)]
+        const iv = encryptedBlob.subarray(0, IV_LENGTH);
+        const encryptedDataWithHmac = encryptedBlob.subarray(IV_LENGTH);
 
-      // Unwrap the session key
-      const sessionKey = $unwrapKey(s, wrappedKey);
+        // Split encrypted data and HMAC
+        const hmac = encryptedDataWithHmac.subarray(-HMAC_SIZE); // Last 32 bytes are HMAC
 
-      const algo = {
-        name: appCfg.HSM_MECHANISM,
-        params: new graphene.AesGcm240Params(iv)
-      };
+        const encryptedData = encryptedDataWithHmac.slice(0, -HMAC_SIZE); // Everything except last 32 bytes
 
-      const decipher = s.createDecipher(algo, new graphene.Key(sessionKey).toType());
-      const outputBuffer = Buffer.alloc(ciphertext.length);
+        // Find the keys
+        const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
+        if (!aesKey) {
+          throw new Error("AES key not found");
+        }
 
-      // Extract wrapped key, IV, and ciphertext
-      return decipher.once(ciphertext, outputBuffer);
+        const hmacKey = $findKey(sessionHandle, HsmKeyType.HMAC);
+        if (!hmacKey) {
+          throw new Error("HMAC key not found");
+        }
+
+        // Verify HMAC first
+        const hmacMechanism = {
+          mechanism: pkcs11js.CKM_SHA256_HMAC
+        };
+
+        pkcs11.C_VerifyInit(sessionHandle, hmacMechanism, hmacKey);
+        pkcs11.C_VerifyUpdate(sessionHandle, iv);
+        pkcs11.C_VerifyUpdate(sessionHandle, encryptedData);
+
+        try {
+          pkcs11.C_VerifyFinal(sessionHandle, hmac);
+        } catch (error) {
+          throw new Error("Decryption failed"); // Generic error for failed verification
+        }
+
+        // Only decrypt if verification passed
+        const decryptMechanism = {
+          mechanism: pkcs11js.CKM_AES_CBC_PAD,
+          parameter: iv
+        };
+
+        pkcs11.C_DecryptInit(sessionHandle, decryptMechanism, aesKey);
+
+        const tempBuffer = Buffer.alloc(encryptedData.length);
+        const decryptedData = pkcs11.C_Decrypt(sessionHandle, encryptedData, tempBuffer);
+
+        // Create a new buffer from the decrypted data
+        return Buffer.from(decryptedData);
+      } catch (error) {
+        logger.error("Decryption error:", error);
+        throw new Error(`Decryption failed: ${(error as Error)?.message}`);
+      }
     };
 
     if (providedSession) {
       return $performDecryption(providedSession);
     }
-    const decrypted = await $withSession($performDecryption);
 
-    return decrypted;
+    const result = await $withSession($performDecryption);
+    return result;
   };
 
   // We test the core functionality of the PKCS#11 module that we are using throughout Infisical. This is to ensure that the user doesn't configure a faulty or unsupported HSM device.
-  const $testPkcs11Module = async (session: grapheneLib.Session) => {
+  const $testPkcs11Module = async (session: pkcs11js.Handle) => {
     try {
-      if (!module) {
+      if (!isInitialized) {
         throw new Error("HSM service not initialized");
       }
 
@@ -279,11 +341,15 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene }, keyStore }:
         throw new Error("Session not initialized");
       }
 
-      const randomData = session.generateRandom(256);
-      const encryptedData = await encrypt(Buffer.from(randomData), session);
+      const randomData = pkcs11.C_GenerateRandom(session, Buffer.alloc(500));
+
+      const encryptedData = await encrypt(randomData, session);
       const decryptedData = await decrypt(encryptedData, session);
 
-      if (Buffer.from(randomData).toString("hex") !== Buffer.from(decryptedData).toString("hex")) {
+      const randomDataHex = randomData.toString("hex");
+      const decryptedDataHex = decryptedData.toString("hex");
+
+      if (randomDataHex !== decryptedDataHex && Buffer.compare(randomData, decryptedData)) {
         throw new Error("Decrypted data does not match original data");
       }
 
@@ -295,7 +361,7 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene }, keyStore }:
   };
 
   const isActive = async () => {
-    if (!module || !appCfg.isHsmConfigured) {
+    if (!isInitialized || !appCfg.isHsmConfigured) {
       return false;
     }
 
@@ -304,62 +370,94 @@ export const hsmServiceFactory = ({ hsmModule: { module, graphene }, keyStore }:
     try {
       pkcs11TestPassed = await $withSession($testPkcs11Module);
     } catch (err) {
-      logger.error(err, "isActive: Error testing PKCS#11 module");
+      logger.error(err, "HSM: Error testing PKCS#11 module");
     }
 
-    return appCfg.isHsmConfigured && module !== null && pkcs11TestPassed;
+    return appCfg.isHsmConfigured && isInitialized && pkcs11TestPassed;
   };
 
   const startService = async () => {
-    if (!appCfg.isHsmConfigured || !module) return;
+    if (!appCfg.isHsmConfigured || !pkcs11 || !isInitialized) return;
 
     try {
-      await $withSession(async (session) => {
+      await $withSession(async (sessionHandle) => {
         // Check if master key exists, create if not
-        if (!$keyExists(session)) {
-          // Generate 256-bit AES master key with persistent storage
-          session.generateKey(graphene.KeyGenMechanism.AES, {
-            class: graphene.ObjectClass.SECRET_KEY,
-            token: true,
-            valueLen: 256 / 8,
-            keyType: graphene.KeyType.AES,
-            label: appCfg.HSM_KEY_LABEL,
-            derive: true, // Enable key derivation
-            extractable: false,
-            sensitive: true,
-            private: true
-          });
+
+        const genericAttributes = [
+          { type: pkcs11js.CKA_TOKEN, value: true }, // Persistent storage
+          { type: pkcs11js.CKA_EXTRACTABLE, value: false }, // Cannot be extracted
+          { type: pkcs11js.CKA_SENSITIVE, value: true }, // Sensitive value
+          { type: pkcs11js.CKA_PRIVATE, value: true } // Requires authentication
+        ];
+
+        if (!$keyExists(sessionHandle, HsmKeyType.AES)) {
+          // Template for generating 256-bit AES master key
+          const keyTemplate = [
+            { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
+            { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES },
+            { type: pkcs11js.CKA_VALUE_LEN, value: 256 / 8 },
+            { type: pkcs11js.CKA_LABEL, value: appCfg.HSM_KEY_LABEL! },
+            { type: pkcs11js.CKA_ENCRYPT, value: true }, // Allow encryption
+            { type: pkcs11js.CKA_DECRYPT, value: true }, // Allow decryption
+            ...genericAttributes
+          ];
+
+          // Generate the key
+          pkcs11.C_GenerateKey(
+            sessionHandle,
+            {
+              mechanism: pkcs11js.CKM_AES_KEY_GEN
+            },
+            keyTemplate
+          );
+
           logger.info(`Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
         }
 
-        // Verify HSM supports required mechanisms
-        const mechs = session.slot.getMechanisms();
-        const mechNames: string[] = [];
+        // Check if HMAC key exists, create if not
+        if (!$keyExists(sessionHandle, HsmKeyType.HMAC)) {
+          const hmacKeyTemplate = [
+            { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
+            { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_GENERIC_SECRET },
+            { type: pkcs11js.CKA_VALUE_LEN, value: 256 / 8 }, // 256-bit key
+            { type: pkcs11js.CKA_LABEL, value: `${appCfg.HSM_KEY_LABEL!}_HMAC` },
+            { type: pkcs11js.CKA_SIGN, value: true }, // Allow signing
+            { type: pkcs11js.CKA_VERIFY, value: true }, // Allow verification
+            ...genericAttributes
+          ];
 
-        // eslint-disable-next-line no-plusplus
-        for (let i = 0; i < mechs.length; i++) {
-          mechNames.push(mechs.items(i).name);
+          // Generate the HMAC key
+          pkcs11.C_GenerateKey(
+            sessionHandle,
+            {
+              mechanism: pkcs11js.CKM_GENERIC_SECRET_KEY_GEN
+            },
+            hmacKeyTemplate
+          );
+
+          logger.info(`HMAC key created successfully with label: ${appCfg.HSM_KEY_LABEL}_HMAC`);
         }
 
-        const hasAesGcm = mechNames.includes(RequiredMechanisms.AesGcm);
-        const hasAesKeyWrap = mechNames.includes(RequiredMechanisms.AesKeyWrap);
+        // Get slot info to check supported mechanisms
+        const slotId = pkcs11.C_GetSessionInfo(sessionHandle).slotID;
+        const mechanisms = pkcs11.C_GetMechanismList(slotId);
 
-        if (!hasAesGcm) {
-          throw new Error(`Required mechanism ${RequiredMechanisms.AesGcm} not supported by HSM`);
+        // Check for AES CBC PAD support
+        const hasAesCbc = mechanisms.includes(pkcs11js.CKM_AES_CBC_PAD);
+
+        if (!hasAesCbc) {
+          throw new Error(`Required mechanism CKM_AEC_CBC_PAD not supported by HSM`);
         }
-        if (!hasAesKeyWrap) {
-          throw new Error(`Required mechanism ${RequiredMechanisms.AesKeyWrap} not supported by HSM`);
-        }
 
-        const testPassed = await $testPkcs11Module(session);
+        // Run test encryption/decryption
+        const testPassed = await $testPkcs11Module(sessionHandle);
 
-        // Run a test to verify module is working
         if (!testPassed) {
           throw new Error("PKCS#11 module test failed. Please ensure that the HSM is correctly configured.");
         }
       });
     } catch (error) {
-      logger.error(error, "Error initializing HSM service");
+      logger.error("Error initializing HSM service:", error);
       throw error;
     }
   };

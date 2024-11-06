@@ -1,11 +1,11 @@
-import * as grapheneLib from "graphene-pk11";
+import pkcs11js from "pkcs11js";
 
 export type HsmModule = {
-  module: grapheneLib.Module | null;
-  graphene: typeof grapheneLib;
+  pkcs11: pkcs11js.PKCS11;
+  isInitialized: boolean;
 };
 
-export enum RequiredMechanisms {
-  AesGcm = "AES_GCM",
-  AesKeyWrap = "AES_KEY_WRAP"
+export enum HsmKeyType {
+  AES = "AES",
+  HMAC = "hmac"
 }

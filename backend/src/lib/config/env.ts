@@ -166,35 +166,10 @@ const envSchema = z
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
 
     // HSM
-    HSM_LIB_PATH: zpStr(
-      z
-        .string()
-        .optional()
-        .transform((val) => {
-          if (process.env.NODE_ENV === "development") return "/usr/local/lib/softhsm/libsofthsm2.so";
-          return val;
-        })
-    ),
-    HSM_PIN: zpStr(
-      z
-        .string()
-        .optional()
-        .transform((val) => {
-          if (process.env.NODE_ENV === "development") return "1234";
-          return val;
-        })
-    ),
-    HSM_KEY_LABEL: zpStr(
-      z
-        .string()
-        .optional()
-        .transform((val) => {
-          if (process.env.NODE_ENV === "development") return "auth-app";
-          return val;
-        })
-    ),
-    HSM_SLOT: z.coerce.number().optional().default(0),
-    HSM_MECHANISM: zpStr(z.string().optional().default("AES_GCM"))
+    HSM_LIB_PATH: zpStr(z.string().optional()),
+    HSM_PIN: zpStr(z.string().optional()),
+    HSM_KEY_LABEL: zpStr(z.string().optional()),
+    HSM_SLOT: z.coerce.number().optional().default(0)
   })
   // To ensure that basic encryption is always possible.
   .refine(
@@ -218,11 +193,7 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
     isHsmConfigured:
-      Boolean(data.HSM_LIB_PATH) &&
-      Boolean(data.HSM_PIN) &&
-      Boolean(data.HSM_KEY_LABEL) &&
-      Boolean(data.HSM_MECHANISM) &&
-      data.HSM_SLOT !== undefined,
+      Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
 
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
