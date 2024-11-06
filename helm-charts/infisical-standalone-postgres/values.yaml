@@ -1,81 +1,139 @@
+# -- Overrides the default release name
 nameOverride: ""
+
+# -- Overrides the full name of the release, affecting resource names
 fullnameOverride: ""
 
 infisical:
-  enabled: true
-  name: infisical
+  enabled: true # -- Enable Infisical chart deployment
+  name: infisical # -- Sets the name of the deployment within this chart
+
+  # -- Automatically migrates new database schema when deploying
   autoDatabaseSchemaMigration: true
-  databaseSchemaMigrationInitContainer:
-      image: "ghcr.io/groundnuty/k8s-wait-for:no-root-v2.0"
-      imagePullPolicy: IfNotPresent
 
   databaseSchemaMigrationJob:
-    serviceAccountName: default
-       
+    image:
+      # -- Image repository for migration wait job
+      repository: ghcr.io/groundnuty/k8s-wait-for
+      # -- Image tag version
+      tag: no-root-v2.0
+      # -- Pulls image only if not present on the node
+      pullPolicy: IfNotPresent
+
+  serviceAccount:
+    # -- Creates a new service account if true, with necessary permissions for this chart
+    create: true
+    # -- Custom annotations for the auto-created service account
+    annotations: {}
+    # -- Optional custom service account name, if existing service account is used
+    name: null
+
+  # -- Override for the full name of Infisical resources in this deployment
   fullnameOverride: ""
+  # -- Custom annotations for Infisical pods
   podAnnotations: {}
+  # -- Custom annotations for Infisical deployment
   deploymentAnnotations: {}
+  # -- Number of pod replicas for high availability
   replicaCount: 2
 
   image:
+    # -- Image repository for the Infisical service
     repository: infisical/infisical
-    tag: "v0.46.3-postgres"
+    # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
+    tag: "v0.93.1-postgres"
+    # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
+    # -- Secret references for pulling the image, if needed
     imagePullSecrets: []
 
+  # -- Node affinity settings for pod placement
   affinity: {}
+  # -- Kubernetes Secret reference containing Infisical root credentials
   kubeSecretRef: "infisical-secrets"
 
   service:
+    # -- Custom annotations for Infisical service
     annotations: {}
+    # -- Service type, can be changed based on exposure needs (e.g., LoadBalancer)
     type: ClusterIP
+    # -- Optional node port for service when using NodePort type
     nodePort: ""
 
   resources:
     limits:
+      # -- Memory limit for Infisical container
       memory: 600Mi
     requests:
+      # -- CPU request for Infisical container
       cpu: 350m
 
 ingress:
+  # -- Enable or disable ingress configuration
   enabled: true
+  # -- Hostname for ingress access, e.g., app.example.com
   hostName: ""
+  # -- Specifies the ingress class, useful for multi-ingress setups
   ingressClassName: nginx
+
   nginx:
+    # -- Enable NGINX-specific settings, if using NGINX ingress controller
     enabled: true
+
+  # -- Custom annotations for ingress resource
   annotations: {}
+  # -- TLS settings for HTTPS access
   tls:
     []
+    # -- TLS secret name for HTTPS
     # - secretName: letsencrypt-prod
+    # -- Domain name to associate with the TLS certificate
     #   hosts:
     #     - some.domain.com
 
 postgresql:
-  # -- When enabled, this will start up a in cluster Postgres
+  # -- Enables an in-cluster PostgreSQL deployment. To achieve HA for Postgres, we recommend deploying https://github.com/zalando/postgres-operator instead.
   enabled: true
+  # -- PostgreSQL resource name
   name: "postgresql"
+  # -- Full name override for PostgreSQL resources
   fullnameOverride: "postgresql"
+
   auth:
+    # -- Database username for PostgreSQL
     username: infisical
+    # -- Password for PostgreSQL database access
     password: root
+    # -- Database name for Infisical
     database: infisicalDB
+
   useExistingPostgresSecret:
-    # -- When this is enabled, postgresql.enabled needs to be false
+    # -- Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string
     enabled: false
-    # -- The name from where to get the existing postgresql connection string
     existingConnectionStringSecret:
-      # -- The name of the secret that contains the postgres connection string
+      # -- Kubernetes secret name containing the PostgreSQL connection string
       name: ""
-      # -- Secret key name that contains the postgres connection string
+      # -- Key name in the Kubernetes secret that holds the connection string
       key: ""
 
 redis:
+  # -- Enables an in-cluster Redis deployment
   enabled: true
+  # -- Redis resource name
   name: "redis"
+  # -- Full name override for Redis resources
   fullnameOverride: "redis"
+
   cluster:
+    # -- Clustered Redis deployment
     enabled: false
+  
+  # -- Requires a password for Redis authentication
   usePassword: true
+
   auth:
+    # -- Redis password
     password: "mysecretpassword"
+
+  # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
