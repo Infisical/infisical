@@ -100,6 +100,12 @@ type Filter = {
   [key in RowType]: boolean;
 };
 
+type FilterState = {
+    [RowType.Folder]: boolean;
+    [RowType.DynamicSecret]: boolean;
+    [RowType.Secret]: boolean;
+  }
+
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: true,
   [RowType.DynamicSecret]: true,
@@ -174,7 +180,7 @@ export const SecretOverviewPage = () => {
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
-  const userAvailableEnvs = currentWorkspace?.environments || [];
+  const userAvailableEnvs: { id: string; name: string; slug: string }[] = currentWorkspace?.environments || [];
 
   const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
 
@@ -186,13 +192,13 @@ export const SecretOverviewPage = () => {
     useGetImportedSecretsAllEnvs({
       projectId: workspaceId,
       path: secretPath,
-      environments: userAvailableEnvs.map(({ slug }) => slug)
+      environments: userAvailableEnvs.map((env: { slug: string }) => env.slug)
     });
 
   const { isLoading: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
       projectId: workspaceId,
-      environments: visibleEnvs.map((env) => env.slug),
+      environments: visibleEnvs.map((env: { slug: any; }) => env.slug),
       secretPath,
       orderDirection,
       orderBy,
@@ -249,7 +255,7 @@ export const SecretOverviewPage = () => {
   ] as const);
 
   const handleFolderCreate = async (folderName: string) => {
-    const promises = userAvailableEnvs.map((env) => {
+    const promises = userAvailableEnvs.map((env: { slug: any; }) => {
       const environment = env.slug;
       return createFolder({
         name: folderName,
@@ -260,7 +266,7 @@ export const SecretOverviewPage = () => {
     });
 
     const results = await Promise.allSettled(promises);
-    const isFoldersAdded = results.some((result) => result.status === "fulfilled");
+    const isFoldersAdded = results.some((result: { status: string; }) => result.status === "fulfilled");
 
     if (isFoldersAdded) {
       handlePopUpClose("addFolder");
@@ -280,7 +286,7 @@ export const SecretOverviewPage = () => {
     const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
 
     const updatedFolders: TUpdateFolderBatchDTO["folders"] = [];
-    userAvailableEnvs.forEach((env) => {
+    userAvailableEnvs.forEach((env: { slug: any; }) => {
       if (
         permission.can(
           ProjectPermissionActions.Edit,
@@ -377,10 +383,10 @@ export const SecretOverviewPage = () => {
   };
 
   const handleEnvSelect = (envId: string) => {
-    if (visibleEnvs.map((env) => env.id).includes(envId)) {
-      setVisibleEnvs(visibleEnvs.filter((env) => env.id !== envId));
+    if (visibleEnvs.map((env: { id: any; }) => env.id).includes(envId)) {
+      setVisibleEnvs(visibleEnvs.filter((env: { id: string; }) => env.id !== envId));
     } else {
-      setVisibleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
+      setVisibleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env: { id: string; }) => env.id === envId)));
     }
   };
 
@@ -461,7 +467,7 @@ export const SecretOverviewPage = () => {
 
   const handleFolderClick = (path: string) => {
     // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
+    setFilterHistory((prev: Map<string, { filter: Filter; searchFilter: string }>) => {
       const curr = new Map(prev);
       curr.set(secretPath, { filter, searchFilter });
       return curr;
@@ -505,7 +511,7 @@ export const SecretOverviewPage = () => {
     }
 
     const query: Record<string, string> = { ...router.query, env: slug, searchFilter };
-    const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
+    const envIndex = visibleEnvs.findIndex((el: { slug: string; }) => slug === el.slug);
     if (envIndex !== -1) {
       router.push({
         pathname: "/project/[id]/secrets/[env]",
@@ -514,9 +520,10 @@ export const SecretOverviewPage = () => {
     }
   };
 
+
   const handleToggleRowType = useCallback(
     (rowType: RowType) =>
-      setFilter((state) => {
+      setFilter((state: FilterState) => {
         return {
           ...state,
           [rowType]: !state[rowType]
@@ -530,15 +537,15 @@ export const SecretOverviewPage = () => {
 
     if (
       (!secrets?.length ||
-        secrets?.every((secret) => selectedEntries[EntryType.SECRET][secret.key])) &&
+        secrets?.every((secret: { key: string | number; }) => selectedEntries[EntryType.SECRET][secret.key])) &&
       (!folders?.length ||
-        folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name]))
+        folders?.every((folder: { name: string | number; }) => selectedEntries[EntryType.FOLDER][folder.name]))
     )
       return { isChecked: true, isIndeterminate: false };
 
     if (
-      secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
-      folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name])
+      secrets?.some((secret: { key: string | number; }) => selectedEntries[EntryType.SECRET][secret.key]) ||
+      folders?.some((folder: { name: string | number; }) => selectedEntries[EntryType.FOLDER][folder.name])
     )
       return { isChecked: true, isIndeterminate: true };
 
@@ -555,7 +562,7 @@ export const SecretOverviewPage = () => {
         delete newChecks[type][key];
       } else {
         newChecks[type][key] = {};
-        userAvailableEnvs.forEach((env) => {
+        userAvailableEnvs.forEach((env: { slug: string | number; }) => {
           const resource =
             type === EntryType.SECRET
               ? getSecretByKey(env.slug, key)
@@ -573,8 +580,8 @@ export const SecretOverviewPage = () => {
   const toggleSelectAllRows = () => {
     const newChecks = { ...selectedEntries };
 
-    userAvailableEnvs.forEach((env) => {
-      secrets?.forEach((secret) => {
+    userAvailableEnvs.forEach((env: { slug: string | number; }) => {
+      secrets?.forEach((secret: { key: string | number; }) => {
         if (allRowsSelectedOnPage.isChecked) {
           delete newChecks[EntryType.SECRET][secret.key];
         } else {
@@ -587,7 +594,7 @@ export const SecretOverviewPage = () => {
         }
       });
 
-      folders?.forEach((folder) => {
+      folders?.forEach((folder: { name: string | number; }) => {
         if (allRowsSelectedOnPage.isChecked) {
           delete newChecks[EntryType.FOLDER][folder.name];
         } else {
@@ -726,7 +733,7 @@ export const SecretOverviewPage = () => {
                     {userAvailableEnvs.map((availableEnv) => {
                       const { id: envId, name } = availableEnv;
 
-                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                      const isEnvSelected = visibleEnvs.map((env: { id: string; }) => env.id).includes(envId);
                       return (
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -818,7 +825,7 @@ export const SecretOverviewPage = () => {
                   </Button>
                   <DropdownMenu
                     open={popUp.misc.isOpen}
-                    onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
+                    onOpenChange={(isOpen: boolean | undefined) => handlePopUpToggle("misc", isOpen)}
                   >
                     <DropdownMenuTrigger asChild>
                       <IconButton
@@ -835,12 +842,12 @@ export const SecretOverviewPage = () => {
                           I={ProjectPermissionActions.Create}
                           a={ProjectPermissionSub.SecretFolders}
                         >
-                          {(isAllowed) => (
+                            {(isAllowed: boolean) => (
                             <Button
                               leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
                               onClick={() => {
-                                handlePopUpOpen("addFolder");
-                                handlePopUpClose("misc");
+                              handlePopUpOpen("addFolder");
+                              handlePopUpClose("misc");
                               }}
                               isDisabled={!isAllowed}
                               variant="outline_bg"
@@ -849,7 +856,7 @@ export const SecretOverviewPage = () => {
                             >
                               Add Folder
                             </Button>
-                          )}
+                            )}
                         </ProjectPermissionCan>
                       </div>
                     </DropdownMenuContent>
@@ -866,7 +873,7 @@ export const SecretOverviewPage = () => {
         />
         <div className="thin-scrollbar mt-4">
           <TableContainer
-            onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
+            onScroll={(e: { currentTarget: { scrollLeft: any; }; }) => setScrollOffset(e.currentTarget.scrollLeft)}
             className="thin-scrollbar"
           >
             <Table>
@@ -900,7 +907,7 @@ export const SecretOverviewPage = () => {
                         className="ml-2"
                         ariaLabel="sort"
                         onClick={() =>
-                          setOrderDirection((prev) =>
+                          setOrderDirection((prev: OrderByDirection) =>
                             prev === OrderByDirection.ASC
                               ? OrderByDirection.DESC
                               : OrderByDirection.ASC
@@ -913,7 +920,7 @@ export const SecretOverviewPage = () => {
                       </IconButton>
                     </div>
                   </Th>
-                  {visibleEnvs?.map(({ name, slug }, index) => {
+                  {visibleEnvs?.map(({ name, slug }: { name: string; slug: string }, index: number) => {
                     const envSecKeyCount = getEnvSecretKeyCount(slug);
                     const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
                     const missingKeyCount = secKeys.length - envSecKeyCount - importedSecKeyCount;
@@ -1017,7 +1024,7 @@ export const SecretOverviewPage = () => {
                 )}
                 {!isOverviewLoading && visibleEnvs.length > 0 && (
                   <>
-                    {folderNames.map((folderName, index) => (
+                    {folderNames.map((folderName: string, index: number) => (
                       <SecretOverviewFolderRow
                         folderName={folderName}
                         isFolderPresentInEnv={isFolderPresentInEnv}
@@ -1033,7 +1040,7 @@ export const SecretOverviewPage = () => {
                         }
                       />
                     ))}
-                    {dynamicSecretNames.map((dynamicSecretName, index) => (
+                    {dynamicSecretNames.map((dynamicSecretName: string, index: number) => (
                       <SecretOverviewDynamicSecretRow
                         dynamicSecretName={dynamicSecretName}
                         isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
@@ -1041,7 +1048,7 @@ export const SecretOverviewPage = () => {
                         key={`overview-${dynamicSecretName}-${index + 1}`}
                       />
                     ))}
-                    {secKeys.map((key, index) => (
+                    {secKeys.map((key: string, index: number) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
                         onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
@@ -1079,7 +1086,7 @@ export const SecretOverviewPage = () => {
                       style={{ height: "45px" }}
                     />
                   </Td>
-                  {visibleEnvs?.map(({ name, slug }) => (
+                  {visibleEnvs?.map(({ name, slug }: { name: string; slug: string }) => (
                     <Td key={`explore-${name}-btn`} className="border-0 border-mineshaft-600 p-0">
                       <div className="flex w-full items-center justify-center border-r border-t border-mineshaft-600 px-5 py-2">
                         <Button
@@ -1125,7 +1132,7 @@ export const SecretOverviewPage = () => {
       />
       <Modal
         isOpen={popUp.addFolder.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}
+        onOpenChange={(isOpen: boolean | undefined) => handlePopUpToggle("addFolder", isOpen)}
       >
         <ModalContent title="Create Folder">
           <FolderForm onCreateFolder={handleFolderCreate} />
@@ -1133,7 +1140,7 @@ export const SecretOverviewPage = () => {
       </Modal>
       <Modal
         isOpen={popUp.updateFolder.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("updateFolder", isOpen)}
+        onOpenChange={(isOpen: boolean | undefined) => handlePopUpToggle("updateFolder", isOpen)}
       >
         <ModalContent title="Edit Folder Name">
           <FolderForm
