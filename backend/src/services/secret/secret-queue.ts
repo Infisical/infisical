@@ -112,6 +112,8 @@ export type TGetSecrets = {
 };
 
 const MAX_SYNC_SECRET_DEPTH = 5;
+const SYNC_SECRET_DEBOUNCE_INTERVAL_MS = 3000;
+
 export const uniqueSecretQueueKey = (environment: string, secretPath: string) =>
   `secret-queue-dedupe-${environment}-${secretPath}`;
 
@@ -167,6 +169,39 @@ export const secretQueueFactory = ({
       },
       `reminder-${dto.secretId}`
     );
+  };
+
+  const $generateActor = async (actorId?: string, isManual?: boolean): Promise<Actor> => {
+    if (isManual && actorId) {
+      const user = await userDAL.findById(actorId);
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      return {
+        type: ActorType.USER,
+        metadata: {
+          email: user.email,
+          username: user.username,
+          userId: user.id
+        }
+      };
+    }
+
+    return {
+      type: ActorType.PLATFORM,
+      metadata: {}
+    };
+  };
+
+  const $getJobKey = (projectId: string, environmentSlug: string, secretPath: string) => {
+    // the idea here is a timestamp based id which will be constant in a 3s interval
+    const timestampId = Math.floor(Date.now() / SYNC_SECRET_DEBOUNCE_INTERVAL_MS);
+
+    return `secret-queue-sync_${projectId}_${environmentSlug}_${secretPath}_${timestampId}`
+      .replace("/", "-")
+      .replace(":", "-");
   };
 
   const addSecretReminder = async ({ oldSecret, newSecret, projectId }: TCreateSecretReminderDTO) => {
@@ -466,7 +501,7 @@ export const secretQueueFactory = ({
     dto: TGetSecrets & { isManual?: boolean; actorId?: string; deDupeQueue?: Record<string, boolean> }
   ) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
-      attempts: 3,
+      attempts: 5,
       delay: 1000,
       backoff: {
         type: "exponential",
@@ -479,10 +514,10 @@ export const secretQueueFactory = ({
 
   const replicateSecrets = async (dto: Omit<TSyncSecretsDTO, "deDupeQueue">) => {
     await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, dto, {
-      attempts: 3,
+      attempts: 5,
       backoff: {
         type: "exponential",
-        delay: 2000
+        delay: 3000
       },
       removeOnComplete: true,
       removeOnFail: true
@@ -499,6 +534,7 @@ export const secretQueueFactory = ({
     logger.info(
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
+
     const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
     if (
       !dto.excludeReplication
@@ -523,7 +559,8 @@ export const secretQueueFactory = ({
       {
         removeOnFail: true,
         removeOnComplete: true,
-        delay: 1000,
+        jobId: $getJobKey(dto.projectId, dto.environmentSlug, dto.secretPath),
+        delay: SYNC_SECRET_DEBOUNCE_INTERVAL_MS,
         attempts: 5,
         backoff: {
           type: "exponential",
@@ -532,7 +569,6 @@ export const secretQueueFactory = ({
       }
     );
   };
-
   const sendFailedIntegrationSyncEmails = async (payload: TFailedIntegrationSyncEmailsPayload) => {
     const appCfg = getConfig();
     if (!appCfg.isSmtpConfigured) return;
@@ -540,7 +576,6 @@ export const secretQueueFactory = ({
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.SendFailedIntegrationSyncEmails, payload, {
       jobId: `send-failed-integration-sync-emails-${payload.projectId}-${payload.secretPath}-${payload.environmentSlug}`,
       delay: 1_000 * 60, // 1 minute
-
       removeOnFail: true,
       removeOnComplete: true
     });
@@ -733,80 +768,51 @@ export const secretQueueFactory = ({
         );
       }
 
-      const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
-      const toBeSyncedIntegrations = integrations.filter(
-        // note: sync only the integrations sourced from secretPath
-        ({ secretPath: integrationSecPath, isActive }) => isActive && isSamePath(secretPath, integrationSecPath)
+      const lock = await keyStore.acquireLock(
+        [KeyStorePrefixes.SyncSecretIntegrationLock(projectId, environment, secretPath)],
+        60000,
+        {
+          retryCount: 10,
+          retryDelay: 3000,
+          retryJitter: 500
+        }
       );
 
       const integrationsFailedToSync: { integrationId: string; syncMessage?: string }[] = [];
-
-      if (!integrations.length) return;
-      logger.info(
-        `getIntegrationSecrets: secret integration sync started [jobId=${job.id}] [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
-      );
-
-      const lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.SyncSecretIntegrationLock(projectId, environment, secretPath)],
-        10000,
-        {
-          retryCount: 3,
-          retryDelay: 2000
-        }
-      );
       const lockAcquiredTime = new Date();
-
-      const lastRunSyncIntegrationTimestamp = await keyStore.getItem(
-        KeyStorePrefixes.SyncSecretIntegrationLastRunTimestamp(projectId, environment, secretPath)
-      );
-
-      // check whether the integration should wait or not
-      if (lastRunSyncIntegrationTimestamp) {
-        const INTEGRATION_INTERVAL = 2000;
-        const isStaleSyncIntegration = new Date(job.timestamp) < new Date(lastRunSyncIntegrationTimestamp);
-        if (isStaleSyncIntegration) {
-          logger.info(
-            `getIntegrationSecrets: secret integration sync stale [jobId=${job.id}] [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
-          );
-          return;
-        }
-
-        const timeDifferenceWithLastIntegration = getTimeDifferenceInSeconds(
-          lockAcquiredTime.toISOString(),
-          lastRunSyncIntegrationTimestamp
-        );
-        if (timeDifferenceWithLastIntegration < INTEGRATION_INTERVAL && timeDifferenceWithLastIntegration > 0)
-          await new Promise((resolve) => {
-            setTimeout(resolve, 2000 - timeDifferenceWithLastIntegration * 1000);
-          });
-      }
-
-      const generateActor = async (): Promise<Actor> => {
-        if (isManual && actorId) {
-          const user = await userDAL.findById(actorId);
-
-          if (!user) {
-            throw new Error("User not found");
-          }
-
-          return {
-            type: ActorType.USER,
-            metadata: {
-              email: user.email,
-              username: user.username,
-              userId: user.id
-            }
-          };
-        }
-
-        return {
-          type: ActorType.PLATFORM,
-          metadata: {}
-        };
-      };
 
       // akhilmhdh: this try catch is for lock release
       try {
+        const lastRunSyncIntegrationTimestamp = await keyStore.getItem(
+          KeyStorePrefixes.SyncSecretIntegrationLastRunTimestamp(projectId, environment, secretPath)
+        );
+
+        // check whether the integration should wait or not
+        if (lastRunSyncIntegrationTimestamp) {
+          const INTEGRATION_INTERVAL = 2000;
+
+          const timeDifferenceWithLastIntegration = getTimeDifferenceInSeconds(
+            lockAcquiredTime.toISOString(),
+            lastRunSyncIntegrationTimestamp
+          );
+
+          // give some time for integration to breath
+          if (timeDifferenceWithLastIntegration < INTEGRATION_INTERVAL)
+            await new Promise((resolve) => {
+              setTimeout(resolve, INTEGRATION_INTERVAL);
+            });
+        }
+
+        const integrations = await integrationDAL.findByProjectIdV2(projectId, environment); // note: returns array of integrations + integration auths in this environment
+        const toBeSyncedIntegrations = integrations.filter(
+          // note: sync only the integrations sourced from secretPath
+          ({ secretPath: integrationSecPath, isActive }) => isActive && isSamePath(secretPath, integrationSecPath)
+        );
+
+        if (!integrations.length) return;
+        logger.info(
+          `getIntegrationSecrets: secret integration sync started [jobId=${job.id}] [jobId=${job.id}] [projectId=${job.data.projectId}] [environment=${environment}]  [secretPath=${job.data.secretPath}] [depth=${depth}]`
+        );
         const secrets = shouldUseSecretV2Bridge
           ? await getIntegrationSecretsV2({
               environment,
@@ -892,7 +898,7 @@ export const secretQueueFactory = ({
 
             await auditLogService.createAuditLog({
               projectId,
-              actor: await generateActor(),
+              actor: await $generateActor(actorId, isManual),
               event: {
                 type: EventType.INTEGRATION_SYNCED,
                 metadata: {
@@ -931,7 +937,7 @@ export const secretQueueFactory = ({
 
             await auditLogService.createAuditLog({
               projectId,
-              actor: await generateActor(),
+              actor: await $generateActor(actorId, isManual),
               event: {
                 type: EventType.INTEGRATION_SYNCED,
                 metadata: {
