@@ -173,11 +173,11 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
           // eslint-disable-next-line no-continue
           if (!matchingAppEnv) continue;
 
-          const folderExists = infisicalImportData.folders.findIndex(
+          const folderExists = infisicalImportData.folders.some(
             (f) => f.name === subEnv.subName && f.parentFolderId === matchingAppEnv.id
           );
 
-          if (folderExists !== -1) {
+          if (!folderExists) {
             // 3. Create a folder in the matching app environment
             infisicalImportData.folders.push({
               name: subEnv.subName,
