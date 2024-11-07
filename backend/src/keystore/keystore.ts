@@ -29,7 +29,7 @@ export const KeyStorePrefixes = {
 };
 
 export const KeyStoreTtls = {
-  SetSyncSecretIntegrationLastRunTimestampInSeconds: 10,
+  SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120
 };
 

@@ -118,9 +118,9 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
         value: "stage-value"
       });
 
-      // wait for 5 second for  replication to finish
+      // wait for 10 second for  replication to finish
       await new Promise((resolve) => {
-        setTimeout(resolve, 5000); // time to breathe for db
+        setTimeout(resolve, 10000); // time to breathe for db
       });
 
       const secret = await getSecretByNameV2({
@@ -173,9 +173,9 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
         value: "prod-value"
       });
 
-      // wait for 5 second for  replication to finish
+      // wait for 10 second for  replication to finish
       await new Promise((resolve) => {
-        setTimeout(resolve, 5000); // time to breathe for db
+        setTimeout(resolve, 10000); // time to breathe for db
       });
 
       const secret = await getSecretByNameV2({
@@ -343,9 +343,9 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "prod-value"
       });
 
-      // wait for 5 second for  replication to finish
+      // wait for 10 second for  replication to finish
       await new Promise((resolve) => {
-        setTimeout(resolve, 5000); // time to breathe for db
+        setTimeout(resolve, 10000); // time to breathe for db
       });
 
       const secret = await getSecretByNameV2({
