@@ -92,6 +92,7 @@ services:
       - TELEMETRY_ENABLED=false
     volumes:
       - ./backend/src:/app/src
+      - "/etc/luna-docker:/usr/safenet/lunaclient"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
