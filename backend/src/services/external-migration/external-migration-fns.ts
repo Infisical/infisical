@@ -126,6 +126,8 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
     return findRootInheritedSecret(inheritedEnv.variables[secretName], secretName, envs);
   };
 
+  const targetIdToFolderIdsMap = new Map<string, string>();
+
   const processBranches = () => {
     for (const subEnv of parsedJson.subEnvironments) {
       const app = parsedJson.apps.find((a) => a.id === subEnv.envParentId);
@@ -135,12 +137,21 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
         // Handle regular app branches
         const branchEnvironment = infisicalImportData.environments.find((e) => e.id === subEnv.parentEnvironmentId);
 
-        infisicalImportData.folders.push({
-          name: subEnv.subName,
-          parentFolderId: subEnv.parentEnvironmentId,
-          environmentId: branchEnvironment!.id,
-          id: subEnv.id
-        });
+        // check if the folder already exists in the same parent environment with the same name
+
+        const folderExists = infisicalImportData.folders.some(
+          (f) => f.name === subEnv.subName && f.parentFolderId === subEnv.parentEnvironmentId
+        );
+
+        // No need to map to target ID's here, because we are not dealing with blocks
+        if (!folderExists) {
+          infisicalImportData.folders.push({
+            name: subEnv.subName,
+            parentFolderId: subEnv.parentEnvironmentId,
+            environmentId: branchEnvironment!.id,
+            id: subEnv.id
+          });
+        }
       }
 
       if (block) {
@@ -162,13 +173,22 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
           // eslint-disable-next-line no-continue
           if (!matchingAppEnv) continue;
 
-          // 3. Create a folder in the matching app environment
-          infisicalImportData.folders.push({
-            name: subEnv.subName,
-            parentFolderId: matchingAppEnv.id,
-            environmentId: matchingAppEnv.id,
-            id: `${subEnv.id}-${appId}` // Create unique ID for each app's copy of the branch
-          });
+          const folderExists = infisicalImportData.folders.some(
+            (f) => f.name === subEnv.subName && f.parentFolderId === matchingAppEnv.id
+          );
+
+          if (!folderExists) {
+            // 3. Create a folder in the matching app environment
+            infisicalImportData.folders.push({
+              name: subEnv.subName,
+              parentFolderId: matchingAppEnv.id,
+              environmentId: matchingAppEnv.id,
+              id: `${subEnv.id}-${appId}` // Create unique ID for each app's copy of the branch
+            });
+          } else {
+            // folder already exists, so lets map the old folder id to the new folder id
+            targetIdToFolderIdsMap.set(subEnv.id, `${subEnv.id}-${appId}`);
+          }
 
           // 4. Process secrets in the block branch for this app
           const branchSecrets = parsedJson.envs[subEnv.id]?.variables || {};
@@ -408,17 +428,18 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
 
     // Process each secret in this environment or branch
     for (const [secretName, secretData] of Object.entries(envData.variables)) {
-      const environmentId = subEnv ? subEnv.parentEnvironmentId : env;
       const indexOfExistingSecret = infisicalImportData.secrets.findIndex(
-        (s) => s.name === secretName && s.environmentId === environmentId
+        (s) =>
+          s.name === secretName &&
+          (s.environmentId === subEnv?.parentEnvironmentId || s.environmentId === env) &&
+          (s.folderId ? s.folderId === subEnv?.id : true) &&
+          (secretData.val ? s.value === secretData.val : true)
       );
 
       if (secretData.inheritsEnvironmentId) {
         const resolvedSecret = findRootInheritedSecret(secretData, secretName, parsedJson.envs);
-
         // Check if there's already a secret with this name in the environment, if there is, we should override it. Because if there's already one, we know its coming from a block.
         // Variables from the normal environment should take precedence over variables from the block.
-
         if (indexOfExistingSecret !== -1) {
           // if a existing secret is found, we should replace it directly
           const newSecret: (typeof infisicalImportData.secrets)[number] = {
@@ -456,12 +477,14 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
           continue;
         }
 
+        const folderId = targetIdToFolderIdsMap.get(subEnv?.id || "") || subEnv?.id;
+
         infisicalImportData.secrets.push({
           id: randomUUID(),
           name: secretName,
           environmentId: subEnv ? subEnv.parentEnvironmentId : env,
           value: secretData.val || "",
-          ...(subEnv && { folderId: subEnv.id }) // Add folderId if this is a branch secret
+          ...(folderId && { folderId })
         });
       }
     }
@@ -591,6 +614,7 @@ export const importDataIntoInfisicalFn = async ({
           secretKey: string;
           secretValue: string;
           folderId?: string;
+          isFromBlock?: boolean;
         }[]
       >();
 
@@ -599,6 +623,8 @@ export const importDataIntoInfisicalFn = async ({
 
         // Skip if we can't find either an environment or folder mapping for this secret
         if (!originalToNewEnvironmentId.get(secret.environmentId) && !originalToNewFolderId.get(targetId)) {
+          logger.info({ secret }, "[importDataIntoInfisicalFn]: Could not find environment or folder for secret");
+
           // eslint-disable-next-line no-continue
           continue;
         }
@@ -606,10 +632,22 @@ export const importDataIntoInfisicalFn = async ({
         if (!mappedToEnvironmentId.has(targetId)) {
           mappedToEnvironmentId.set(targetId, []);
         }
+
+        const alreadyHasSecret = mappedToEnvironmentId
+          .get(targetId)!
+          .find((el) => el.secretKey === secret.name && el.folderId === secret.folderId);
+
+        if (alreadyHasSecret && alreadyHasSecret.isFromBlock) {
+          // remove the existing secret if any
+          mappedToEnvironmentId
+            .get(targetId)!
+            .splice(mappedToEnvironmentId.get(targetId)!.indexOf(alreadyHasSecret), 1);
+        }
         mappedToEnvironmentId.get(targetId)!.push({
           secretKey: secret.name,
           secretValue: secret.value || "",
-          folderId: secret.folderId
+          folderId: secret.folderId,
+          isFromBlock: secret.appBlockOrderIndex !== undefined
         });
       }
 
