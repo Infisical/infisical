@@ -10,7 +10,7 @@ export const ProjectTemplateDefaultEnvironments = [
 export const DefaultProjectTemplateIdentifier = "default";
 
 export const getDefaultProjectTemplate = (orgId: string) => ({
-  id: "b11b49a9-09a9-4443-916a-4246f9ff2c69",
+  id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // random ID to appease zod
   name: DefaultProjectTemplateIdentifier,
   createdAt: new Date(),
   updatedAt: new Date(),
