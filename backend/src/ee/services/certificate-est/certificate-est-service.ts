@@ -171,7 +171,7 @@ export const certificateEstServiceFactory = ({
       });
     }
 
-    if (!estConfig.skipBootstrapCertValidation) {
+    if (!estConfig.disableBootstrapCertValidation) {
       const caCerts = estConfig.caChain
         .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
         ?.map((cert) => {

@@ -36,7 +36,7 @@ const schema = z.object({
   caChain: z.string().optional(),
   passphrase: z.string().optional(),
   isEnabled: z.boolean(),
-  skipBootstrapCertValidation: z.boolean().optional().default(false)
+  disableBootstrapCertValidation: z.boolean().optional().default(false)
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -65,26 +65,26 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
   const { mutateAsync: updateEstConfig } = useUpdateEstConfig();
   const [isPassphraseFocused, setIsPassphraseFocused] = useToggle(false);
 
-  const skipBootstrapCertValidation = watch("skipBootstrapCertValidation");
+  const disableBootstrapCertValidation = watch("disableBootstrapCertValidation");
 
   useEffect(() => {
-    if (skipBootstrapCertValidation) {
+    if (disableBootstrapCertValidation) {
       setValue("caChain", "");
     }
-  }, [skipBootstrapCertValidation]);
+  }, [disableBootstrapCertValidation]);
 
   useEffect(() => {
     if (data) {
       reset({
         caChain: data.caChain,
         isEnabled: data.isEnabled,
-        skipBootstrapCertValidation: data.skipBootstrapCertValidation
+        disableBootstrapCertValidation: data.disableBootstrapCertValidation
       });
     } else {
       reset({
         caChain: "",
         isEnabled: false,
-        skipBootstrapCertValidation: false
+        disableBootstrapCertValidation: false
       });
     }
   }, [data]);
@@ -97,7 +97,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           caChain,
           passphrase,
           isEnabled,
-          skipBootstrapCertValidation
+          disableBootstrapCertValidation
         });
       } else {
         if (!passphrase) {
@@ -110,7 +110,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           caChain,
           passphrase,
           isEnabled,
-          skipBootstrapCertValidation
+          disableBootstrapCertValidation
         });
       }
 
@@ -167,7 +167,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           )}
           <Controller
             control={control}
-            name="skipBootstrapCertValidation"
+            name="disableBootstrapCertValidation"
             render={({ field, fieldState: { error } }) => {
               return (
                 <FormControl isError={Boolean(error)} errorText={error?.message}>
@@ -176,27 +176,27 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
                     onCheckedChange={(value) => field.onChange(value)}
                     isChecked={field.value}
                   >
-                    <p className="ml-1 w-full">Skip Bootstrap Certificate Validation</p>
+                    <p className="ml-1 w-full">Disable Bootstrap Certificate Validation</p>
                   </Switch>
                 </FormControl>
               );
             }}
           />
-          {!skipBootstrapCertValidation && (
+          {!disableBootstrapCertValidation && (
             <Controller
               control={control}
               name="caChain"
-              disabled={skipBootstrapCertValidation}
+              disabled={disableBootstrapCertValidation}
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Certificate Authority Chain"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  isRequired={!skipBootstrapCertValidation}
+                  isRequired={!disableBootstrapCertValidation}
                 >
                   <TextArea
                     {...field}
-                    isDisabled={skipBootstrapCertValidation}
+                    isDisabled={disableBootstrapCertValidation}
                     className="min-h-[15rem] border-none bg-mineshaft-900 text-gray-400"
                     reSize="none"
                   />

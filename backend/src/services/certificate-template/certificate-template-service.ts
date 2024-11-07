@@ -236,7 +236,7 @@ export const certificateTemplateServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId,
-    skipBootstrapCertValidation
+    disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiEst) {
@@ -305,7 +305,7 @@ export const certificateTemplateServiceFactory = ({
       hashedPassphrase,
       encryptedCaChain,
       isEnabled,
-      skipBootstrapCertValidation
+      disableBootstrapCertValidation
     });
 
     return { ...estConfig, projectId: certTemplate.projectId };
@@ -320,7 +320,7 @@ export const certificateTemplateServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId,
-    skipBootstrapCertValidation
+    disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiEst) {
@@ -369,7 +369,7 @@ export const certificateTemplateServiceFactory = ({
 
     const updatedData: TCertificateTemplateEstConfigsUpdate = {
       isEnabled,
-      skipBootstrapCertValidation
+      disableBootstrapCertValidation
     };
 
     if (caChain) {
@@ -468,7 +468,7 @@ export const certificateTemplateServiceFactory = ({
       hashedPassphrase: estConfig.hashedPassphrase,
       projectId: certTemplate.projectId,
       orgId: certTemplate.orgId,
-      skipBootstrapCertValidation: estConfig.skipBootstrapCertValidation
+      disableBootstrapCertValidation: estConfig.disableBootstrapCertValidation
     };
   };
 

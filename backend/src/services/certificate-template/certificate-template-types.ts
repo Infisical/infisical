@@ -37,7 +37,7 @@ export type TCreateEstConfigurationDTO = {
   caChain?: string;
   passphrase: string;
   isEnabled: boolean;
-  skipBootstrapCertValidation: boolean;
+  disableBootstrapCertValidation: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateEstConfigurationDTO = {
@@ -45,7 +45,7 @@ export type TUpdateEstConfigurationDTO = {
   caChain?: string;
   passphrase?: string;
   isEnabled?: boolean;
-  skipBootstrapCertValidation?: boolean;
+  disableBootstrapCertValidation?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetEstConfigurationDTO =

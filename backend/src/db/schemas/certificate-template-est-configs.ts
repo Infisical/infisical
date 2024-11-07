@@ -17,7 +17,7 @@ export const CertificateTemplateEstConfigsSchema = z.object({
   isEnabled: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  skipBootstrapCertValidation: z.boolean().default(false)
+  disableBootstrapCertValidation: z.boolean().default(false)
 });
 
 export type TCertificateTemplateEstConfigs = z.infer<typeof CertificateTemplateEstConfigsSchema>;

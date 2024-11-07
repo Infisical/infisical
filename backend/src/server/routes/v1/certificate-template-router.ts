@@ -15,7 +15,7 @@ const sanitizedEstConfig = CertificateTemplateEstConfigsSchema.pick({
   id: true,
   certificateTemplateId: true,
   isEnabled: true,
-  skipBootstrapCertValidation: true
+  disableBootstrapCertValidation: true
 });
 
 export const registerCertificateTemplateRouter = async (server: FastifyZodProvider) => {
@@ -247,11 +247,11 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           caChain: z.string().trim().optional(),
           passphrase: z.string().min(1),
           isEnabled: z.boolean().default(true),
-          skipBootstrapCertValidation: z.boolean().default(false)
+          disableBootstrapCertValidation: z.boolean().default(false)
         })
         .refine(
-          ({ caChain, skipBootstrapCertValidation }) =>
-            skipBootstrapCertValidation || (!skipBootstrapCertValidation && caChain),
+          ({ caChain, disableBootstrapCertValidation }) =>
+            disableBootstrapCertValidation || (!disableBootstrapCertValidation && caChain),
           "CA chain is required"
         ),
       response: {
@@ -299,7 +299,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       body: z.object({
         caChain: z.string().trim().optional(),
         passphrase: z.string().min(1).optional(),
-        skipBootstrapCertValidation: z.boolean().optional(),
+        disableBootstrapCertValidation: z.boolean().optional(),
         isEnabled: z.boolean().optional()
       }),
       response: {

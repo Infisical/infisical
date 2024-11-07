@@ -3,16 +3,16 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasSkipBootstrapCertValidationCol = await knex.schema.hasColumn(
+  const hasDisableBootstrapCertValidationCol = await knex.schema.hasColumn(
     TableName.CertificateTemplateEstConfig,
-    "skipBootstrapCertValidation"
+    "disableBootstrapCertValidation"
   );
 
   const hasCaChainCol = await knex.schema.hasColumn(TableName.CertificateTemplateEstConfig, "encryptedCaChain");
 
   await knex.schema.alterTable(TableName.CertificateTemplateEstConfig, (t) => {
-    if (!hasSkipBootstrapCertValidationCol) {
-      t.boolean("skipBootstrapCertValidation").defaultTo(false).notNullable();
+    if (!hasDisableBootstrapCertValidationCol) {
+      t.boolean("disableBootstrapCertValidation").defaultTo(false).notNullable();
     }
 
     if (hasCaChainCol) {
@@ -22,16 +22,16 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasSkipBootstrapCertValidationCol = await knex.schema.hasColumn(
+  const hasDisableBootstrapCertValidationCol = await knex.schema.hasColumn(
     TableName.CertificateTemplateEstConfig,
-    "skipBootstrapCertValidation"
+    "disableBootstrapCertValidation"
   );
 
   const hasCaChainCol = await knex.schema.hasColumn(TableName.CertificateTemplateEstConfig, "encryptedCaChain");
 
   await knex.schema.alterTable(TableName.CertificateTemplateEstConfig, (t) => {
-    if (hasSkipBootstrapCertValidationCol) {
-      t.dropColumn("skipBootstrapCertValidation");
+    if (hasDisableBootstrapCertValidationCol) {
+      t.dropColumn("disableBootstrapCertValidation");
     }
 
     if (hasCaChainCol) {
