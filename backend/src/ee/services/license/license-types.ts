@@ -65,6 +65,7 @@ export type TFeatureSet = {
   };
   pkiEst: boolean;
   enforceMfa: boolean;
+  projectTemplates: false;
 };
 
 export type TOrgPlansTableDTO = {

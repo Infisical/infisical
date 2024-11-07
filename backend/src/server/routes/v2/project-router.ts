@@ -169,7 +169,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           })
           .optional()
           .describe(PROJECTS.CREATE.slug),
-        kmsKeyId: z.string().optional()
+        kmsKeyId: z.string().optional(),
+        templateId: z.string().uuid().optional().describe(PROJECTS.CREATE.templateId)
       }),
       response: {
         200: z.object({
@@ -186,7 +187,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         workspaceName: req.body.projectName,
         slug: req.body.slug,
-        kmsKeyId: req.body.kmsKeyId
+        kmsKeyId: req.body.kmsKeyId,
+        templateId: req.body.templateId
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -198,6 +200,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           ...req.auditLogInfo
         }
       });
+
+      if (req.body.templateId) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.APPLY_PROJECT_TEMPLATE,
+            metadata: {
+              templateId: req.body.templateId,
+              projectId: project.id
+            }
+          }
+        });
+      }
 
       return { project };
     }

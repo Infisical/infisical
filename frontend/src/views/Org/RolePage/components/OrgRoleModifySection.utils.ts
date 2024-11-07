@@ -48,7 +48,8 @@ export const formSchema = z.object({
       billing: generalPermissionSchema,
       identity: generalPermissionSchema,
       "organization-admin-console": adminConsolePermissionSchmea,
-      [OrgPermissionSubjects.Kms]: generalPermissionSchema
+      [OrgPermissionSubjects.Kms]: generalPermissionSchema,
+      [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema
     })
     .optional()
 });

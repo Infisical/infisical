@@ -68,7 +68,8 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "External KMS",
     formName: OrgPermissionSubjects.Kms
-  }
+  },
+  { title: "Project Templates", formName: OrgPermissionSubjects.ProjectTemplates }
 ] as const;
 
 type Props = {

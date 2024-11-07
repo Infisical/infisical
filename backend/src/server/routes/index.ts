@@ -43,6 +43,8 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
+import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
@@ -339,6 +341,8 @@ export const registerRoutes = async (
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
+
+  const projectTemplateDAL = projectTemplateDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -732,6 +736,12 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const projectTemplateService = projectTemplateServiceFactory({
+    licenseService,
+    permissionService,
+    projectTemplateDAL
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -758,7 +768,8 @@ export const registerRoutes = async (
     projectBotDAL,
     certificateTemplateDAL,
     projectSlackConfigDAL,
-    slackIntegrationDAL
+    slackIntegrationDAL,
+    projectTemplateService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1336,7 +1347,8 @@ export const registerRoutes = async (
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
     migration: migrationService,
-    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
+    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
+    projectTemplate: projectTemplateService
   });
 
   const cronJobs: CronJob[] = [];

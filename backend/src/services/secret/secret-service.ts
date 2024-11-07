@@ -27,7 +27,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { ProjectServiceActor } from "@app/lib/types";
+import { OrgServiceActor } from "@app/lib/types";
 import { TGetSecretsRawByFolderMappingsDTO } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 import { ActorType } from "../auth/auth-type";
@@ -2849,7 +2849,7 @@ export const secretServiceFactory = ({
 
   const getSecretsRawByFolderMappings = async (
     params: Omit<TGetSecretsRawByFolderMappingsDTO, "userId">,
-    actor: ProjectServiceActor
+    actor: OrgServiceActor
   ) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(params.projectId);
 

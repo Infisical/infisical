@@ -86,6 +86,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                           onValueChange={(val) => field.onChange(val === "true")}
                           containerClassName="w-full"
                           className="w-full"
+                          isDisabled={isDisabled}
                         >
                           <SelectItem value="false">Allow</SelectItem>
                           <SelectItem value="true">Forbid</SelectItem>

@@ -6,6 +6,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -94,7 +95,7 @@ type TProjectServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
   projectBotDAL: Pick<TProjectBotDALFactory, "create">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "insertMany">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -104,6 +105,7 @@ type TProjectServiceFactoryDep = {
     | "getProjectSecretManagerKmsKeyId"
     | "deleteInternalKms"
   >;
+  projectTemplateService: TProjectTemplateServiceFactory;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -134,7 +136,8 @@ export const projectServiceFactory = ({
   kmsService,
   projectBotDAL,
   projectSlackConfigDAL,
-  slackIntegrationDAL
+  slackIntegrationDAL,
+  projectTemplateService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -148,7 +151,8 @@ export const projectServiceFactory = ({
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
-    createDefaultEnvs = true
+    createDefaultEnvs = true,
+    templateId
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
 
@@ -183,6 +187,25 @@ export const projectServiceFactory = ({
         }
       }
 
+      let projectTemplate: Awaited<ReturnType<typeof projectTemplateService.findProjectTemplatesById>> | null = null;
+
+      if (templateId) {
+        if (!plan.projectTemplates)
+          throw new BadRequestError({
+            message:
+              "Failed to apply project template due to plan restriction. Upgrade plan to access project templates."
+          });
+
+        projectTemplate = await projectTemplateService.findProjectTemplatesById(templateId, {
+          id: actorId,
+          orgId: organization.id,
+          type: actor,
+          authMethod: actorAuthMethod
+        });
+
+        if (!projectTemplate) throw new NotFoundError({ message: `Project template with ID ${templateId} not found.` });
+      }
+
       const project = await projectDAL.create(
         {
           name: workspaceName,
@@ -210,7 +233,24 @@ export const projectServiceFactory = ({
 
       // set default environments and root folder for provided environments
       let envs: TProjectEnvironments[] = [];
-      if (createDefaultEnvs) {
+      if (projectTemplate) {
+        envs = await projectEnvDAL.insertMany(
+          projectTemplate.environments.map((env) => ({ ...env, projectId: project.id })),
+          tx
+        );
+        await folderDAL.insertMany(
+          envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
+          tx
+        );
+        await projectRoleDAL.insertMany(
+          projectTemplate.packedRoles.map((role) => ({
+            ...role,
+            permissions: JSON.stringify(role.permissions),
+            projectId: project.id
+          })),
+          tx
+        );
+      } else if (createDefaultEnvs) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
           tx
