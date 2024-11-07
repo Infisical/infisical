@@ -32,7 +32,7 @@ export type TCreateProjectDTO = {
   slug?: string;
   kmsKeyId?: string;
   createDefaultEnvs?: boolean;
-  templateId?: string;
+  template?: string;
   tx?: Knex;
 };
 

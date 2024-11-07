@@ -25,7 +25,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   projectTemplate: TProjectTemplate;
-  isDefault: boolean;
+  isInfisicalTemplate: boolean;
 };
 
 const formSchema = z.object({
@@ -39,7 +39,10 @@ const formSchema = z.object({
 
 type TFormSchema = z.infer<typeof formSchema>;
 
-export const ProjectTemplateEnvironmentsForm = ({ projectTemplate, isDefault }: Props) => {
+export const ProjectTemplateEnvironmentsForm = ({
+  projectTemplate,
+  isInfisicalTemplate
+}: Props) => {
   const {
     control,
     handleSubmit,
@@ -94,13 +97,13 @@ export const ProjectTemplateEnvironmentsForm = ({ projectTemplate, isDefault }: 
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <div>
           <h2 className="text-lg font-semibold">Project Environments</h2>
-          {!isDefault && (
+          {!isInfisicalTemplate && (
             <p className="text-sm text-mineshaft-400">
               Add, rename, remove and reorder environments for this project template
             </p>
           )}
         </div>
-        {!isDefault && (
+        {!isInfisicalTemplate && (
           <OrgPermissionCan
             I={OrgPermissionActions.Edit}
             a={OrgPermissionSubjects.ProjectTemplates}
@@ -129,7 +132,7 @@ export const ProjectTemplateEnvironmentsForm = ({ projectTemplate, isDefault }: 
             <Tr>
               <Th>Friendly Name</Th>
               <Th>Slug</Th>
-              {!isDefault && (
+              {!isInfisicalTemplate && (
                 <Th>
                   <div className="flex w-full justify-end normal-case">
                     <OrgPermissionCan
@@ -161,7 +164,7 @@ export const ProjectTemplateEnvironmentsForm = ({ projectTemplate, isDefault }: 
             {environments.map(({ id, name, slug }, pos) => (
               <Tr key={id}>
                 <Td>
-                  {isDefault ? (
+                  {isInfisicalTemplate ? (
                     name
                   ) : (
                     <OrgPermissionCan
@@ -187,7 +190,7 @@ export const ProjectTemplateEnvironmentsForm = ({ projectTemplate, isDefault }: 
                   )}
                 </Td>
                 <Td>
-                  {isDefault ? (
+                  {isInfisicalTemplate ? (
                     slug
                   ) : (
                     <OrgPermissionCan
@@ -212,7 +215,7 @@ export const ProjectTemplateEnvironmentsForm = ({ projectTemplate, isDefault }: 
                     </OrgPermissionCan>
                   )}
                 </Td>
-                {!isDefault && (
+                {!isInfisicalTemplate && (
                   <Td className="flex items-center justify-end">
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}

@@ -13,7 +13,6 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("environments").notNullable();
       t.uuid("orgId").notNullable().references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);
-      t.unique(["orgId", "name"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.ProjectTemplates);

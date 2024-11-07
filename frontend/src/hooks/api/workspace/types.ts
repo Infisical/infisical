@@ -57,7 +57,7 @@ export type TGetUpgradeProjectStatusDTO = {
 export type CreateWorkspaceDTO = {
   projectName: string;
   kmsKeyId?: string;
-  templateId?: string;
+  template?: string;
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };

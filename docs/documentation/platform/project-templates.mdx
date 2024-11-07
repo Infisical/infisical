@@ -105,7 +105,7 @@ In the following steps, we'll explore how to use a project template when creatin
         Your project will be provisioned with the configured template roles and environments.
     </Tab>
     <Tab title="API">
-        To use a project template, make an API request to the [Create Project](/api-reference/endpoints/workspaces/create-workspace) API endpoint with the specified template ID included.
+        To use a project template, make an API request to the [Create Project](/api-reference/endpoints/workspaces/create-workspace) API endpoint with the specified template name included.
 
         ### Sample request
 
@@ -115,7 +115,7 @@ In the following steps, we'll explore how to use a project template when creatin
         --header 'Content-Type: application/json' \
         --data '{
             "projectName": "My Project",
-            "templateId": "<template-id>",
+            "template": "<template-name>", // defaults to "default"
         }'
         ```
 

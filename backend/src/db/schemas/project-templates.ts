@@ -13,7 +13,7 @@ export const ProjectTemplatesSchema = z.object({
   description: z.string().nullable().optional(),
   roles: z.unknown(),
   environments: z.unknown(),
-  orgId: z.string().uuid().nullable().optional(),
+  orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -22,3 +22,7 @@ export type TCreateProjectTemplateDTO = {
 export type TUpdateProjectTemplateDTO = Partial<TCreateProjectTemplateDTO>;
 
 export type TUnpackedPermission = z.infer<typeof UnpackedPermissionSchema>;
+
+export enum InfisicalProjectTemplate {
+  Default = "default"
+}

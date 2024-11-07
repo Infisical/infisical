@@ -169,7 +169,7 @@ export const ProjectTemplateEditRoleForm = ({
                     label="Name"
                     className="mb-0 flex-1"
                   >
-                    <Input {...field} placeholder="Role name..." />
+                    <Input {...field} autoFocus placeholder="Role name..." />
                   </FormControl>
                 )}
               />

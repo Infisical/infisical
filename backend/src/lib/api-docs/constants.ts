@@ -392,7 +392,7 @@ export const PROJECTS = {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
     slug: "An optional slug for the project.",
-    templateId: "The ID of the project template, if specified, to apply to this project."
+    template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
     workspaceId: "The ID of the project to delete."

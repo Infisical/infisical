@@ -23,10 +23,10 @@ import { ProjectTemplateRolesSection } from "./ProjectTemplateRolesSection";
 type Props = {
   projectTemplate: TProjectTemplate;
   onBack: () => void;
-  isDefault: boolean;
+  isInfisicalTemplate: boolean;
 };
 
-export const EditProjectTemplate = ({ isDefault, projectTemplate, onBack }: Props) => {
+export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBack }: Props) => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeTemplate",
     "editDetails"
@@ -63,7 +63,7 @@ export const EditProjectTemplate = ({ isDefault, projectTemplate, onBack }: Prop
           <h3 className="text-xl font-semibold">{name}</h3>
           <h2 className="text-sm text-mineshaft-400">{description || "Project Template"}</h2>
         </div>
-        {!isDefault && (
+        {!isInfisicalTemplate && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton
@@ -117,9 +117,12 @@ export const EditProjectTemplate = ({ isDefault, projectTemplate, onBack }: Prop
           </DropdownMenu>
         )}
       </div>
-      <ProjectTemplateEnvironmentsForm isDefault={isDefault} projectTemplate={projectTemplate} />
+      <ProjectTemplateEnvironmentsForm
+        isInfisicalTemplate={isInfisicalTemplate}
+        projectTemplate={projectTemplate}
+      />
       <ProjectTemplateRolesSection
-        isDefaultTemplate={isDefault}
+        isInfisicalTemplate={isInfisicalTemplate}
         projectTemplate={projectTemplate}
       />
       <ProjectTemplateDetailsModal

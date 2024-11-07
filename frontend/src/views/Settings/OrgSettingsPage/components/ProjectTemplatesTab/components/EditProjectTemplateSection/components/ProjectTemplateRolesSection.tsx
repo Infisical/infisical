@@ -27,10 +27,10 @@ import { ProjectTemplateEditRoleForm } from "./ProjectTemplateEditRoleForm";
 
 type Props = {
   projectTemplate: TProjectTemplate;
-  isDefaultTemplate: boolean;
+  isInfisicalTemplate: boolean;
 };
 
-export const ProjectTemplateRolesSection = ({ projectTemplate, isDefaultTemplate }: Props) => {
+export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTemplate }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "removeRole",
     "editRole"
@@ -108,12 +108,12 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isDefaultTemplate
                 <div>
                   <h2 className="text-lg font-semibold">Project Roles</h2>
                   <p className="text-sm text-mineshaft-400">
-                    {isDefaultTemplate
+                    {isInfisicalTemplate
                       ? "Click a role to view the associated permissions"
                       : "Add, edit and remove roles for this project template"}
                   </p>
                 </div>
-                {!isDefaultTemplate && (
+                {!isInfisicalTemplate && (
                   <OrgPermissionCan
                     I={OrgPermissionActions.Edit}
                     a={OrgPermissionSubjects.ProjectTemplates}

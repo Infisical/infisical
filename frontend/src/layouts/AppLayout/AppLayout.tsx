@@ -79,10 +79,7 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
-import {
-  DefaultProjectTemplateIdentifier,
-  useListProjectTemplates
-} from "@app/hooks/api/projectTemplates";
+import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 import { Workspace } from "@app/hooks/api/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
@@ -130,7 +127,7 @@ const formSchema = yup.object({
     .max(64, "Too long, maximum length is 64 characters"),
   addMembers: yup.bool().required().label("Add Members"),
   kmsKeyId: yup.string().label("KMS Key ID"),
-  templateId: yup.string().label("Project Template ID")
+  template: yup.string().label("Project Template Name")
 });
 
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
@@ -288,12 +285,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
     enabled: canReadProjectTemplates && subscription?.projectTemplates
   });
 
-  const onCreateProject = async ({
-    name,
-    addMembers,
-    kmsKeyId,
-    templateId
-  }: TAddProjectFormData) => {
+  const onCreateProject = async ({ name, addMembers, kmsKeyId, template }: TAddProjectFormData) => {
     // type check
     if (!currentOrg) return;
     if (!user) return;
@@ -305,7 +297,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       } = await createWs.mutateAsync({
         projectName: name,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        templateId: templateId === DefaultProjectTemplateIdentifier ? undefined : templateId
+        template
       });
 
       if (addMembers) {
@@ -948,7 +940,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   />
                   <Controller
                     control={control}
-                    name="templateId"
+                    name="template"
                     render={({ field: { value, onChange } }) => (
                       <OrgPermissionCan
                         I={OrgPermissionActions.Read}
@@ -971,25 +963,24 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                           >
                             <Select
-                              defaultValue={DefaultProjectTemplateIdentifier}
-                              placeholder={DefaultProjectTemplateIdentifier}
+                              defaultValue={InfisicalProjectTemplate.Default}
+                              placeholder={InfisicalProjectTemplate.Default}
                               isDisabled={!isAllowed || !subscription?.projectTemplates}
                               value={value}
                               onValueChange={onChange}
                               className="w-44"
                             >
-                              <SelectItem value={DefaultProjectTemplateIdentifier}>
-                                {DefaultProjectTemplateIdentifier}
-                              </SelectItem>
-                              {projectTemplates
-                                .filter(
-                                  (template) => template.name !== DefaultProjectTemplateIdentifier
-                                )
-                                .map((template) => (
-                                  <SelectItem key={template.id} value={template.id}>
-                                    {template.name}
-                                  </SelectItem>
-                                ))}
+                              {projectTemplates.length
+                                ? projectTemplates.map((template) => (
+                                    <SelectItem key={template.id} value={template.name}>
+                                      {template.name}
+                                    </SelectItem>
+                                  ))
+                                : Object.values(InfisicalProjectTemplate).map((template) => (
+                                    <SelectItem key={template} value={template}>
+                                      {template}
+                                    </SelectItem>
+                                  ))}
                             </Select>
                           </FormControl>
                         )}

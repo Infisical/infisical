@@ -4,15 +4,15 @@ import { z } from "zod";
 import { ProjectMembershipRole, ProjectTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import {
-  DefaultProjectTemplateIdentifier,
-  ProjectTemplateDefaultEnvironments
-} from "@app/ee/services/project-template/project-template-constants";
+import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
+import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import { ProjectTemplates } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const MAX_JSON_SIZE_LIMIT_IN_BYTES = 1_048_576; // 1MB
 
 const SlugSchema = z
   .string()
@@ -57,6 +57,9 @@ const ProjectTemplateRolesSchema = z
   .superRefine((roles, ctx) => {
     if (!roles.length) return;
 
+    if (Buffer.byteLength(JSON.stringify(roles)) > MAX_JSON_SIZE_LIMIT_IN_BYTES)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Size limit exceeded" });
+
     if (new Set(roles.map((v) => v.slug)).size !== roles.length)
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Role slugs must be unique" });
 
@@ -81,6 +84,9 @@ const ProjectTemplateEnvironmentsSchema = z
   .array()
   .min(1)
   .superRefine((environments, ctx) => {
+    if (Buffer.byteLength(JSON.stringify(environments)) > MAX_JSON_SIZE_LIMIT_IN_BYTES)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Size limit exceeded" });
+
     if (new Set(environments.map((v) => v.name)).size !== environments.length)
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Environment names must be unique" });
 
@@ -116,7 +122,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const projectTemplates = await server.services.projectTemplate.listProjectTemplatesByOrg(req.permission);
 
-      const auditTemplates = projectTemplates.filter((template) => template.name !== DefaultProjectTemplateIdentifier);
+      const auditTemplates = projectTemplates.filter((template) => !isInfisicalProjectTemplate(template.name));
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -153,7 +159,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectTemplate = await server.services.projectTemplate.findProjectTemplatesById(
+      const projectTemplate = await server.services.projectTemplate.findProjectTemplateById(
         req.params.templateId,
         req.permission
       );
@@ -182,10 +188,10 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     schema: {
       description: "Create a project template.",
       body: z.object({
-        name: SlugSchema.refine((val) => val !== DefaultProjectTemplateIdentifier, {
-          message: `The project template name "${DefaultProjectTemplateIdentifier}" is reserved.`
+        name: SlugSchema.refine((val) => !isInfisicalProjectTemplate(val), {
+          message: `The requested project template name is reserved.`
         }).describe(ProjectTemplates.CREATE.name),
-        description: z.string().trim().optional().describe(ProjectTemplates.CREATE.description),
+        description: z.string().max(256).trim().optional().describe(ProjectTemplates.CREATE.description),
         roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
         environments: ProjectTemplateEnvironmentsSchema.default(ProjectTemplateDefaultEnvironments).describe(
           ProjectTemplates.CREATE.environments
@@ -224,12 +230,12 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       description: "Update a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.UPDATE.templateId) }),
       body: z.object({
-        name: SlugSchema.refine((val) => val !== DefaultProjectTemplateIdentifier, {
-          message: `The project template name "${DefaultProjectTemplateIdentifier}" is reserved.`
+        name: SlugSchema.refine((val) => !isInfisicalProjectTemplate(val), {
+          message: `The requested project template name is reserved.`
         })
           .optional()
           .describe(ProjectTemplates.UPDATE.name),
-        description: z.string().trim().optional().describe(ProjectTemplates.UPDATE.description),
+        description: z.string().max(256).trim().optional().describe(ProjectTemplates.UPDATE.description),
         roles: ProjectTemplateRolesSchema.optional().describe(ProjectTemplates.UPDATE.roles),
         environments: ProjectTemplateEnvironmentsSchema.optional().describe(ProjectTemplates.UPDATE.environments)
       }),

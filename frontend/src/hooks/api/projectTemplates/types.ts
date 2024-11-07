@@ -26,4 +26,6 @@ export type TDeleteProjectTemplateDTO = {
   templateId: string;
 };
 
-export const DefaultProjectTemplateIdentifier = "default";
+export enum InfisicalProjectTemplate {
+  Default = "default"
+}

@@ -209,20 +209,20 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
 export const createWorkspace = ({
   projectName,
   kmsKeyId,
-  templateId
+  template
 }: CreateWorkspaceDTO): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v2/workspace", { projectName, kmsKeyId, templateId });
+  return apiRequest.post("/api/v2/workspace", { projectName, kmsKeyId, template });
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ projectName, kmsKeyId, templateId }) =>
+    mutationFn: async ({ projectName, kmsKeyId, template }) =>
       createWorkspace({
         projectName,
         kmsKeyId,
-        templateId
+        template
       }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);

@@ -1663,7 +1663,7 @@ interface DeleteProjectTemplateEvent {
 interface ApplyProjectTemplateEvent {
   type: EventType.APPLY_PROJECT_TEMPLATE;
   metadata: {
-    templateId: string;
+    template: string;
     projectId: string;
   };
 }

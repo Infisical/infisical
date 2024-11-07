@@ -7,6 +7,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
+import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -152,7 +153,7 @@ export const projectServiceFactory = ({
     kmsKeyId,
     tx: trx,
     createDefaultEnvs = true,
-    templateId
+    template = InfisicalProjectTemplate.Default
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
 
@@ -187,23 +188,19 @@ export const projectServiceFactory = ({
         }
       }
 
-      let projectTemplate: Awaited<ReturnType<typeof projectTemplateService.findProjectTemplatesById>> | null = null;
+      let projectTemplate: Awaited<ReturnType<typeof projectTemplateService.findProjectTemplateByName>> | null = null;
 
-      if (templateId) {
-        if (!plan.projectTemplates)
-          throw new BadRequestError({
-            message:
-              "Failed to apply project template due to plan restriction. Upgrade plan to access project templates."
+      switch (template) {
+        case InfisicalProjectTemplate.Default:
+          projectTemplate = null;
+          break;
+        default:
+          projectTemplate = await projectTemplateService.findProjectTemplateByName(template, {
+            id: actorId,
+            orgId: organization.id,
+            type: actor,
+            authMethod: actorAuthMethod
           });
-
-        projectTemplate = await projectTemplateService.findProjectTemplatesById(templateId, {
-          id: actorId,
-          orgId: organization.id,
-          type: actor,
-          authMethod: actorAuthMethod
-        });
-
-        if (!projectTemplate) throw new NotFoundError({ message: `Project template with ID ${templateId} not found.` });
       }
 
       const project = await projectDAL.create(
