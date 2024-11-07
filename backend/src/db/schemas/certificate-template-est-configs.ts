@@ -12,11 +12,12 @@ import { TImmutableDBKeys } from "./models";
 export const CertificateTemplateEstConfigsSchema = z.object({
   id: z.string().uuid(),
   certificateTemplateId: z.string().uuid(),
-  encryptedCaChain: zodBuffer,
+  encryptedCaChain: zodBuffer.nullable().optional(),
   hashedPassphrase: z.string(),
   isEnabled: z.boolean(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  skipBootstrapCertValidation: z.boolean().default(false)
 });
 
 export type TCertificateTemplateEstConfigs = z.infer<typeof CertificateTemplateEstConfigsSchema>;

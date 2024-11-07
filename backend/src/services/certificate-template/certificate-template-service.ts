@@ -235,7 +235,8 @@ export const certificateTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    skipBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiEst) {
@@ -266,39 +267,45 @@ export const certificateTemplateServiceFactory = ({
 
     const appCfg = getConfig();
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: certTemplate.projectId,
-      projectDAL,
-      kmsService
-    });
+    let encryptedCaChain: Buffer | undefined;
+    if (caChain) {
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+        projectId: certTemplate.projectId,
+        projectDAL,
+        kmsService
+      });
 
-    // validate CA chain
-    const certificates = caChain
-      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-      ?.map((cert) => new x509.X509Certificate(cert));
+      // validate CA chain
+      const certificates = caChain
+        .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
+        ?.map((cert) => new x509.X509Certificate(cert));
 
-    if (!certificates) {
-      throw new BadRequestError({ message: "Failed to parse certificate chain" });
+      if (!certificates) {
+        throw new BadRequestError({ message: "Failed to parse certificate chain" });
+      }
+
+      if (!(await isCertChainValid(certificates))) {
+        throw new BadRequestError({ message: "Invalid certificate chain" });
+      }
+
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+        kmsId: certificateManagerKmsId
+      });
+
+      const { cipherTextBlob } = await kmsEncryptor({
+        plainText: Buffer.from(caChain)
+      });
+
+      encryptedCaChain = cipherTextBlob;
     }
-
-    if (!(await isCertChainValid(certificates))) {
-      throw new BadRequestError({ message: "Invalid certificate chain" });
-    }
-
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
-      kmsId: certificateManagerKmsId
-    });
-
-    const { cipherTextBlob: encryptedCaChain } = await kmsEncryptor({
-      plainText: Buffer.from(caChain)
-    });
 
     const hashedPassphrase = await bcrypt.hash(passphrase, appCfg.SALT_ROUNDS);
     const estConfig = await certificateTemplateEstConfigDAL.create({
       certificateTemplateId,
       hashedPassphrase,
       encryptedCaChain,
-      isEnabled
+      isEnabled,
+      skipBootstrapCertValidation
     });
 
     return { ...estConfig, projectId: certTemplate.projectId };
@@ -312,7 +319,8 @@ export const certificateTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    skipBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiEst) {
@@ -360,7 +368,8 @@ export const certificateTemplateServiceFactory = ({
     });
 
     const updatedData: TCertificateTemplateEstConfigsUpdate = {
-      isEnabled
+      isEnabled,
+      skipBootstrapCertValidation
     };
 
     if (caChain) {
@@ -442,18 +451,24 @@ export const certificateTemplateServiceFactory = ({
       kmsId: certificateManagerKmsId
     });
 
-    const decryptedCaChain = await kmsDecryptor({
-      cipherTextBlob: estConfig.encryptedCaChain
-    });
+    let decryptedCaChain = "";
+    if (estConfig.encryptedCaChain) {
+      decryptedCaChain = (
+        await kmsDecryptor({
+          cipherTextBlob: estConfig.encryptedCaChain
+        })
+      ).toString();
+    }
 
     return {
       certificateTemplateId,
       id: estConfig.id,
       isEnabled: estConfig.isEnabled,
-      caChain: decryptedCaChain.toString(),
+      caChain: decryptedCaChain,
       hashedPassphrase: estConfig.hashedPassphrase,
       projectId: certTemplate.projectId,
-      orgId: certTemplate.orgId
+      orgId: certTemplate.orgId,
+      skipBootstrapCertValidation: estConfig.skipBootstrapCertValidation
     };
   };
 
