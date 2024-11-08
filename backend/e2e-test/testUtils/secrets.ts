@@ -97,6 +97,7 @@ export const getSecretsV2 = async (dto: {
   environmentSlug: string;
   secretPath: string;
   authToken: string;
+  recursive?: boolean;
 }) => {
   const getSecretsResponse = await testServer.inject({
     method: "GET",
@@ -109,7 +110,8 @@ export const getSecretsV2 = async (dto: {
       environment: dto.environmentSlug,
       secretPath: dto.secretPath,
       expandSecretReferences: "true",
-      include_imports: "true"
+      include_imports: "true",
+      recursive: String(dto.recursive)
     }
   });
   expect(getSecretsResponse.statusCode).toBe(200);
