@@ -1116,13 +1116,23 @@ export const SecretOverviewPage = () => {
           )}
         </div>
       </div>
-      <CreateSecretForm
-        secretPath={secretPath}
+      <Modal
         isOpen={popUp.addSecretsInAllEnvs.isOpen}
-        getSecretByKey={getSecretByKey}
-        onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
-        onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
-      />
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
+      >
+        <ModalContent
+          className="max-h-[80vh]"
+          bodyClassName="overflow-visible"
+          title="Create Secrets"
+          subTitle="Create a secret across multiple environments"
+        >
+          <CreateSecretForm
+            secretPath={secretPath}
+            getSecretByKey={getSecretByKey}
+            onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
+          />
+        </ModalContent>
+      </Modal>
       <Modal
         isOpen={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}

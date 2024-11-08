@@ -9,7 +9,14 @@ import { twMerge } from "tailwind-merge";
 import NavHeader from "@app/components/navigation/NavHeader";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { Checkbox, ContentLoader, Pagination, Tooltip } from "@app/components/v2";
+import {
+  Checkbox,
+  ContentLoader,
+  Modal,
+  ModalContent,
+  Pagination,
+  Tooltip
+} from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -41,7 +48,10 @@ import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretListView, SecretNoAccessListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
 import {
+  PopUpNames,
   StoreProvider,
+  usePopUpAction,
+  usePopUpState,
   useSelectedSecretActions,
   useSelectedSecrets
 } from "./SecretMainPage.store";
@@ -122,6 +132,9 @@ const SecretMainPageContent = () => {
   const [filter, setFilter] = useState<Filter>(defaultFilterState);
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
   const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
+
+  const createSecretPopUp = usePopUpState(PopUpNames.CreateSecretForm);
+  const { togglePopUp } = usePopUpAction();
 
   useEffect(() => {
     if (
@@ -520,13 +533,24 @@ const SecretMainPageContent = () => {
               onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
             />
           )}
-          <CreateSecretForm
-            environment={environment}
-            workspaceId={workspaceId}
-            secretPath={secretPath}
-            autoCapitalize={currentWorkspace?.autoCapitalization}
-            isProtectedBranch={isProtectedBranch}
-          />
+          <Modal
+            isOpen={createSecretPopUp.isOpen}
+            onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
+          >
+            <ModalContent
+              title="Create Secret"
+              subTitle="Add a secret to this particular environment and folder"
+              bodyClassName="overflow-visible"
+            >
+              <CreateSecretForm
+                environment={environment}
+                workspaceId={workspaceId}
+                secretPath={secretPath}
+                autoCapitalize={currentWorkspace?.autoCapitalization}
+                isProtectedBranch={isProtectedBranch}
+              />
+            </ModalContent>
+          </Modal>
           <SecretDropzone
             secrets={secrets}
             environment={environment}

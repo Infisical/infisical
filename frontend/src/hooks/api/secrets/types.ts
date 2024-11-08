@@ -132,6 +132,7 @@ export type TCreateSecretsV3DTO = {
   workspaceId: string;
   environment: string;
   type: SecretType;
+  tagIds?: string[];
 };
 
 export type TUpdateSecretsV3DTO = {
