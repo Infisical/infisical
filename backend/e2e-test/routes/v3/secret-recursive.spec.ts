@@ -6,9 +6,10 @@ import { seedData1 } from "@app/db/seed-data";
 describe("Secret Recursive Testing", async () => {
   const projectId = seedData1.projectV3.id;
   const folderAndSecretNames = [
-    { name: "deep1", path: "/", expectedSecretCount: 3 },
-    { name: "deep2", path: "/deep1", expectedSecretCount: 2 },
-    { name: "deep3", path: "/deep1/deep2", expectedSecretCount: 1 }
+    { name: "deep1", path: "/", expectedSecretCount: 4 },
+    { name: "deep21", path: "/deep1", expectedSecretCount: 2 },
+    { name: "deep3", path: "/deep1/deep2", expectedSecretCount: 1 },
+    { name: "deep22", path: "/deep2", expectedSecretCount: 1 }
   ];
 
   beforeAll(async () => {
@@ -66,13 +67,16 @@ describe("Secret Recursive Testing", async () => {
     });
 
     expect(secrets.secrets.length).toEqual(expectedSecretCount);
-    expect(secrets.secrets).toEqual(
-      folderAndSecretNames.slice(-expectedSecretCount).map((el) =>
-        expect.objectContaining({
-          secretKey: el.name,
-          secretValue: el.name
-        })
-      )
+    expect(secrets.secrets.sort((a, b) => a.secretKey.localeCompare(b.secretKey))).toEqual(
+      folderAndSecretNames
+        .filter((el) => el.path.startsWith(path))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((el) =>
+          expect.objectContaining({
+            secretKey: el.name,
+            secretValue: el.name
+          })
+        )
     );
   });
 });
