@@ -1,21 +1,47 @@
-FROM --platform=linux/amd64 node:20-alpine
+FROM node:20-alpine
 
-# ? App setup
+# ? Setup a test SoftHSM module. In production a real HSM is used.
 
+ARG SOFTHSM2_VERSION=2.5.0
+
+ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
+    SOFTHSM2_SOURCES=/tmp/softhsm2
+
+# install build dependencies including python3
 RUN apk --update add \
+        alpine-sdk \
+        autoconf \
+        automake \
+        git \
+        libtool \
+        openssl-dev \
         python3 \
         make \
-        g++ \
-        gcompat \
-        libstdc++
+        g++
+
+# build and install SoftHSM2
+RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
+WORKDIR ${SOFTHSM2_SOURCES}
+
+RUN git checkout ${SOFTHSM2_VERSION} -b ${SOFTHSM2_VERSION} \
+    && sh autogen.sh \
+    && ./configure --prefix=/usr/local --disable-gost \
+    && make \
+    && make install
+
+WORKDIR /root
+RUN rm -fr ${SOFTHSM2_SOURCES}
+
+# install pkcs11-tool
+RUN apk --update add opensc
+
+RUN softhsm2-util --init-token --slot 0 --label "auth-app" --pin 1234 --so-pin 0000
+
+# ? App setup
 
 RUN apk add --no-cache bash curl && curl -1sLf \
   'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
   && apk add infisical=0.8.1 && apk add --no-cache git
-
-
-ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
-
 
 WORKDIR /app
 
