@@ -1,17 +1,9 @@
-import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton
-} from "@app/components/v2";
+import { Button, DeleteActionModal } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
@@ -58,63 +50,48 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between border-b border-bunker-400">
-        <div className="mb-4 flex flex-col">
+      <div className="mb-4 flex items-start justify-between border-b border-bunker-400 pb-4">
+        <div className=" flex flex-col">
           <h3 className="text-xl font-semibold">{name}</h3>
           <h2 className="text-sm text-mineshaft-400">{description || "Project Template"}</h2>
         </div>
         {!isInfisicalTemplate && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                colorSchema="secondary"
-                variant="plain"
-                size="lg"
-                ariaLabel="More options"
-                className="mr-2"
-              >
-                <FontAwesomeIcon icon={faEllipsis} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="p-1">
-              <OrgPermissionCan
-                I={OrgPermissionActions.Edit}
-                a={OrgPermissionSubjects.ProjectTemplates}
-              >
-                {(isAllowed) => (
-                  <DropdownMenuItem
-                    className={twMerge(
-                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                    )}
-                    onClick={() => handlePopUpOpen("editDetails")}
-                    disabled={!isAllowed}
-                  >
-                    Edit Details
-                  </DropdownMenuItem>
-                )}
-              </OrgPermissionCan>
-              <OrgPermissionCan
-                I={OrgPermissionActions.Delete}
-                a={OrgPermissionSubjects.ProjectTemplates}
-              >
-                {(isAllowed) => (
-                  <DropdownMenuItem
-                    className={twMerge(
-                      isAllowed
-                        ? "hover:!bg-red-500 hover:!text-white"
-                        : "pointer-events-none cursor-not-allowed opacity-50"
-                    )}
-                    onClick={() => {
-                      handlePopUpOpen("removeTemplate");
-                    }}
-                    disabled={!isAllowed}
-                  >
-                    Delete Template
-                  </DropdownMenuItem>
-                )}
-              </OrgPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex gap-2">
+            <OrgPermissionCan
+              I={OrgPermissionActions.Edit}
+              a={OrgPermissionSubjects.ProjectTemplates}
+            >
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed}
+                  leftIcon={<FontAwesomeIcon icon={faPencil} />}
+                  size="xs"
+                  colorSchema="secondary"
+                  onClick={() => handlePopUpOpen("editDetails")}
+                >
+                  Edit Details
+                </Button>
+              )}
+            </OrgPermissionCan>
+            <OrgPermissionCan
+              I={OrgPermissionActions.Delete}
+              a={OrgPermissionSubjects.ProjectTemplates}
+            >
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed}
+                  onClick={() => {
+                    handlePopUpOpen("removeTemplate");
+                  }}
+                  leftIcon={<FontAwesomeIcon icon={faTrash} />}
+                  size="xs"
+                  colorSchema="danger"
+                >
+                  Delete Template
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
         )}
       </div>
       <ProjectTemplateEnvironmentsForm

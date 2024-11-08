@@ -138,21 +138,19 @@ export const ProjectTemplateEnvironmentsForm = ({
                     <OrgPermissionCan
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
-                      renderTooltip
-                      allowedLabel="Add Environment"
                     >
                       {(isAllowed) => (
-                        <IconButton
+                        <Button
                           onClick={() => append({ name: "", slug: "" })}
-                          colorSchema="primary"
+                          colorSchema="secondary"
                           className="ml-auto"
-                          variant="outline_bg"
+                          variant="solid"
                           size="xs"
-                          ariaLabel="Add environment"
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
                           isDisabled={!isAllowed}
                         >
-                          <FontAwesomeIcon icon={faPlus} />
-                        </IconButton>
+                          Add Environment
+                        </Button>
                       )}
                     </OrgPermissionCan>
                   </div>
