@@ -1,12 +1,17 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { faCheckCircle, faCopy, faInfoCircle, faLockOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { decodeBase64 } from "tweetnacl-util";
-import { z } from "zod";
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import {
+  faCheckCircle,
+  faCopy,
+  faInfoCircle,
+  faLockOpen,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { decodeBase64 } from 'tweetnacl-util';
+import { z } from 'zod';
 
-import { createNotification } from "@app/components/notifications";
+import { createNotification } from '@app/components/notifications';
 import {
   Button,
   FormControl,
@@ -15,13 +20,16 @@ import {
   ModalContent,
   Switch,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
-import { TCmek, useCmekDecrypt } from "@app/hooks/api/cmeks";
+  Tooltip,
+} from '@app/components/v2';
+import { useTimedReset } from '@app/hooks';
+import {
+  TConsumerSecret,
+  useConsumerSecretDecrypt,
+} from '@app/hooks/api/consumerSecrets';
 
 const formSchema = z.object({
-  ciphertext: z.string()
+  ciphertext: z.string(),
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -29,44 +37,50 @@ export type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cmek: TCmek;
+  cmek: TConsumerSecret;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, 'cmek'>;
 
 const DecryptForm = ({ cmek }: FormProps) => {
-  const cmekDecrypt = useCmekDecrypt();
+  const cmekDecrypt = useConsumerSecretDecrypt();
   const [shouldDecode, setShouldDecode] = useState(false);
-  const [plaintext, setPlaintext] = useState("");
+  const [plaintext, setPlaintext] = useState('');
 
   const {
     handleSubmit,
     register,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting, errors },
   } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
   });
 
-  const [copyCiphertext, isCopyingCiphertext, setCopyCipherText] = useTimedReset<string>({
-    initialState: "Copy to Clipboard"
-  });
+  const [copyCiphertext, isCopyingCiphertext, setCopyCipherText] =
+    useTimedReset<string>({
+      initialState: 'Copy to Clipboard',
+    });
 
   const handleDecryptData = async (formData: FormData) => {
     try {
-      const data = await cmekDecrypt.mutateAsync({ ...formData, keyId: cmek.id });
+      const data = await cmekDecrypt.mutateAsync({
+        ...formData,
+        keyId: cmek.id,
+      });
       createNotification({
-        text: "Successfully decrypted data",
-        type: "success"
+        text: 'Successfully decrypted data',
+        type: 'success',
       });
 
       setPlaintext(
-        shouldDecode ? Buffer.from(decodeBase64(data.plaintext)).toString("utf8") : data.plaintext
+        shouldDecode
+          ? Buffer.from(decodeBase64(data.plaintext)).toString('utf8')
+          : data.plaintext,
       );
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to decrypt data",
-        type: "error"
+        text: 'Failed to decrypt data',
+        type: 'error',
       });
     }
   };
@@ -75,13 +89,15 @@ const DecryptForm = ({ cmek }: FormProps) => {
     const text = cmekDecrypt.data?.plaintext;
     if (!text) return;
 
-    setPlaintext(shouldDecode ? Buffer.from(decodeBase64(text)).toString("utf8") : text);
+    setPlaintext(
+      shouldDecode ? Buffer.from(decodeBase64(text)).toString('utf8') : text,
+    );
   }, [shouldDecode]);
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(plaintext ?? "");
+    navigator.clipboard.writeText(plaintext ?? '');
 
-    setCopyCipherText("Copied to Clipboard");
+    setCopyCipherText('Copied to Clipboard');
   };
 
   return (
@@ -101,7 +117,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
           isError={Boolean(errors.ciphertext)}
         >
           <TextArea
-            {...register("ciphertext")}
+            {...register('ciphertext')}
             className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
           />
         </FormControl>
@@ -112,14 +128,17 @@ const DecryptForm = ({ cmek }: FormProps) => {
         onCheckedChange={setShouldDecode}
         containerClassName="mb-6 ml-0.5 -mt-2.5"
       >
-        Decode Base64{" "}
+        Decode Base64{' '}
         <Tooltip content="Toggle this switch on if your data was originally plain text.">
-          <FontAwesomeIcon icon={faInfoCircle} className=" text-mineshaft-400" />
+          <FontAwesomeIcon
+            icon={faInfoCircle}
+            className=" text-mineshaft-400"
+          />
         </Tooltip>
       </Switch>
       <div className="flex items-center">
         <Button
-          className={`mr-4 ${plaintext ? "w-44" : ""}`}
+          className={`mr-4 ${plaintext ? 'w-44' : ''}`}
           size="sm"
           leftIcon={
             // eslint-disable-next-line no-nested-ternary
@@ -134,15 +153,15 @@ const DecryptForm = ({ cmek }: FormProps) => {
             )
           }
           onClick={plaintext ? handleCopyToClipboard : undefined}
-          type={plaintext ? "button" : "submit"}
+          type={plaintext ? 'button' : 'submit'}
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {plaintext ? copyCiphertext : "Decrypt"}
+          {plaintext ? copyCiphertext : 'Decrypt'}
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
-            {plaintext ? "Close" : "Cancel"}
+            {plaintext ? 'Close' : 'Cancel'}
           </Button>
         </ModalClose>
       </div>
@@ -150,13 +169,18 @@ const DecryptForm = ({ cmek }: FormProps) => {
   );
 };
 
-export const CmekDecryptModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+export const ConsumerSecretDecryptModal = ({
+  isOpen,
+  onOpenChange,
+  cmek,
+}: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         subTitle={
           <>
-            Decrypt ciphertext using <span className="font-bold">{cmek?.name}</span>. Returns Base64
+            Decrypt ciphertext using{' '}
+            <span className="font-bold">{cmek?.name}</span>. Returns Base64
             encoded plaintext.
           </>
         }

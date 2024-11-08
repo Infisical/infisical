@@ -1,1 +1,1 @@
-export * from "./CmekTable";
+export * from './ConsumerSecretTable';

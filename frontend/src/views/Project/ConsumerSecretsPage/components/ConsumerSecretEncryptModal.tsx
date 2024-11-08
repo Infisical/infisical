@@ -1,10 +1,15 @@
-import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle, faCopy, faInfoCircle, faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Controller, useForm } from 'react-hook-form';
+import {
+  faCheckCircle,
+  faCopy,
+  faInfoCircle,
+  faLock,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
-import { createNotification } from "@app/components/notifications";
+import { createNotification } from '@app/components/notifications';
 import {
   Button,
   FormControl,
@@ -13,14 +18,17 @@ import {
   ModalContent,
   Switch,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
-import { TCmek, useCmekEncrypt } from "@app/hooks/api/cmeks";
+  Tooltip,
+} from '@app/components/v2';
+import { useTimedReset } from '@app/hooks';
+import {
+  TConsumerSecret,
+  useConsumerSecretEncrypt,
+} from '@app/hooks/api/consumerSecrets';
 
 const formSchema = z.object({
   plaintext: z.string(),
-  isBase64Encoded: z.boolean()
+  isBase64Encoded: z.boolean(),
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -28,42 +36,43 @@ export type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cmek: TCmek;
+  cmek: TConsumerSecret;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, 'cmek'>;
 
 const EncryptForm = ({ cmek }: FormProps) => {
-  const cmekEncrypt = useCmekEncrypt();
+  const cmekEncrypt = useConsumerSecretEncrypt();
 
   const {
     handleSubmit,
     register,
     control,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting, errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      isBase64Encoded: false
-    }
+      isBase64Encoded: false,
+    },
   });
 
-  const [copyCiphertext, isCopyingCiphertext, setCopyCipherText] = useTimedReset<string>({
-    initialState: "Copy to Clipboard"
-  });
+  const [copyCiphertext, isCopyingCiphertext, setCopyCipherText] =
+    useTimedReset<string>({
+      initialState: 'Copy to Clipboard',
+    });
 
   const handleEncryptData = async (formData: FormData) => {
     try {
       await cmekEncrypt.mutateAsync({ ...formData, keyId: cmek.id });
       createNotification({
-        text: "Successfully encrypted data",
-        type: "success"
+        text: 'Successfully encrypted data',
+        type: 'success',
       });
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to encrypt data",
-        type: "error"
+        text: 'Failed to encrypt data',
+        type: 'error',
       });
     }
   };
@@ -71,9 +80,9 @@ const EncryptForm = ({ cmek }: FormProps) => {
   const ciphertext = cmekEncrypt.data?.ciphertext;
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(ciphertext ?? "");
+    navigator.clipboard.writeText(ciphertext ?? '');
 
-    setCopyCipherText("Copied to Clipboard");
+    setCopyCipherText('Copied to Clipboard');
   };
 
   return (
@@ -94,7 +103,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
             isError={Boolean(errors.plaintext)}
           >
             <TextArea
-              {...register("plaintext")}
+              {...register('plaintext')}
               className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
             />
           </FormControl>
@@ -108,9 +117,12 @@ const EncryptForm = ({ cmek }: FormProps) => {
                 onCheckedChange={onChange}
                 containerClassName="mb-6 ml-0.5 -mt-2.5"
               >
-                Data is Base64 encoded{" "}
+                Data is Base64 encoded{' '}
                 <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                  <FontAwesomeIcon icon={faInfoCircle} className=" text-mineshaft-400" />
+                  <FontAwesomeIcon
+                    icon={faInfoCircle}
+                    className=" text-mineshaft-400"
+                  />
                 </Tooltip>
               </Switch>
             )}
@@ -119,7 +131,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
       )}
       <div className="flex items-center">
         <Button
-          className={`mr-4 ${ciphertext ? "w-44" : ""}`}
+          className={`mr-4 ${ciphertext ? 'w-44' : ''}`}
           size="sm"
           leftIcon={
             // eslint-disable-next-line no-nested-ternary
@@ -134,15 +146,15 @@ const EncryptForm = ({ cmek }: FormProps) => {
             )
           }
           onClick={ciphertext ? handleCopyToClipboard : undefined}
-          type={ciphertext ? "button" : "submit"}
+          type={ciphertext ? 'button' : 'submit'}
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {ciphertext ? copyCiphertext : "Encrypt"}
+          {ciphertext ? copyCiphertext : 'Encrypt'}
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
-            {ciphertext ? "Close" : "Cancel"}
+            {ciphertext ? 'Close' : 'Cancel'}
           </Button>
         </ModalClose>
       </div>
@@ -150,15 +162,19 @@ const EncryptForm = ({ cmek }: FormProps) => {
   );
 };
 
-export const CmekEncryptModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+export const ConsumerSecretEncryptModal = ({
+  isOpen,
+  onOpenChange,
+  cmek,
+}: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Encrypt Data"
         subTitle={
           <>
-            Encrypt data using <span className="font-bold">{cmek?.name}</span>. Returns Base64
-            encoded ciphertext.
+            Encrypt data using <span className="font-bold">{cmek?.name}</span>.
+            Returns Base64 encoded ciphertext.
           </>
         }
       >

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from 'next/link';
 import {
   faArrowDown,
   faArrowUp,
@@ -15,13 +15,13 @@ import {
   faLockOpen,
   faMagnifyingGlass,
   faPlus,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { motion } from "framer-motion";
+  faTrash,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { motion } from 'framer-motion';
 
-import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { createNotification } from '@app/components/notifications';
+import { ProjectPermissionCan } from '@app/components/permissions';
 import {
   Badge,
   Button,
@@ -42,47 +42,57 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { BadgeProps } from "@app/components/v2/Badge/Badge";
+  Tr,
+} from '@app/components/v2';
+import { BadgeProps } from '@app/components/v2/Badge/Badge';
 import {
   ProjectPermissionActions,
-  ProjectPermissionCmekActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
-} from "@app/context";
-import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
-import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
-import { CmekOrderBy, TCmek } from "@app/hooks/api/cmeks/types";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
+  useWorkspace,
+} from '@app/context';
+import {
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useTimedReset,
+} from '@app/hooks';
+import {
+  useGetConsumerSecretsByProjectId,
+  useUpdateConsumerSecret,
+} from '@app/hooks/api/consumerSecrets';
+import {
+  ConsumerSecretOrderBy,
+  TConsumerSecret,
+} from '@app/hooks/api/consumerSecrets/types';
+import { OrderByDirection } from '@app/hooks/api/generic/types';
 
-import { CmekDecryptModal } from "./CmekDecryptModal";
-import { CmekEncryptModal } from "./CmekEncryptModal";
-import { CmekModal } from "./CmekModal";
-import { DeleteCmekModal } from "./DeleteCmekModal";
+import { ConsumerSecretDecryptModal } from './ConsumerSecretDecryptModal';
+import { ConsumerSecretEncryptModal } from './ConsumerSecretEncryptModal';
+import { ConsumerSecretModal } from './ConsumerSecretModal';
+import { DeleteConsumerSecretModal } from './DeleteConsumerSecretModal';
 
 const getStatusBadgeProps = (
-  isDisabled: boolean
-): { variant: BadgeProps["variant"]; label: string } => {
+  isDisabled: boolean,
+): { variant: BadgeProps['variant']; label: string } => {
   if (isDisabled) {
     return {
-      variant: "danger",
-      label: "Disabled"
+      variant: 'danger',
+      label: 'Disabled',
     };
   }
 
   return {
-    variant: "success",
-    label: "Active"
+    variant: 'success',
+    label: 'Active',
   };
 };
 
-export const CmekTable = () => {
+export const ConsumerSecretTable = () => {
   const { currentWorkspace } = useWorkspace();
   const { permission } = useProjectPermission();
 
-  const projectId = currentWorkspace?.id ?? "";
+  const projectId = currentWorkspace?.id ?? '';
 
   const {
     offset,
@@ -96,89 +106,75 @@ export const CmekTable = () => {
     setSearch,
     perPage,
     page,
-    setPerPage
-  } = usePagination(CmekOrderBy.Name);
+    setPerPage,
+  } = usePagination(ConsumerSecretOrderBy.Name);
 
-  const { data, isLoading, isFetching } = useGetCmeksByProjectId({
+  const { data, isLoading, isFetching } = useGetConsumerSecretsByProjectId({
     projectId,
     offset,
     limit,
     search: debouncedSearch,
     orderBy,
-    orderDirection
+    orderDirection,
   });
 
   const { keys = [], totalCount = 0 } = data ?? {};
   useResetPageHelper({
     totalCount,
     offset,
-    setPage
+    setPage,
   });
 
   const [, isCopyingCiphertext, setCopyCipherText] = useTimedReset<string>({
-    initialState: "",
-    delay: 1000
+    initialState: '',
+    delay: 1000,
   });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "upsertKey",
-    "deleteKey",
-    "encryptData",
-    "decryptData"
+    'upsertKey',
+    'deleteKey',
+    'encryptData',
+    'decryptData',
   ] as const);
 
   const handleSort = () => {
     setOrderDirection((prev) =>
-      prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
+      prev === OrderByDirection.ASC
+        ? OrderByDirection.DESC
+        : OrderByDirection.ASC,
     );
   };
 
-  const updateCmek = useUpdateCmek();
+  const updateConsumerSecret = useUpdateConsumerSecret();
 
-  const handleDisableCmek = async ({ id: keyId, isDisabled }: TCmek) => {
+  const handleDisableConsumerSecret = async ({
+    id: keyId,
+    isDisabled,
+  }: TConsumerSecret) => {
     try {
-      await updateCmek.mutateAsync({
+      await updateConsumerSecret.mutateAsync({
         keyId,
         projectId,
-        isDisabled: !isDisabled
+        isDisabled: !isDisabled,
       });
 
       createNotification({
-        text: `Key successfully ${isDisabled ? "enabled" : "disabled"}`,
-        type: "success"
+        text: `Key successfully ${isDisabled ? 'enabled' : 'disabled'}`,
+        type: 'success',
       });
     } catch (err) {
       console.error(err);
       const error = err as any;
       const text =
-        error?.response?.data?.message ?? `Failed to ${isDisabled ? "enable" : "disable"} key`;
+        error?.response?.data?.message ??
+        `Failed to ${isDisabled ? 'enable' : 'disable'} key`;
 
       createNotification({
         text,
-        type: "error"
+        type: 'error',
       });
     }
   };
-
-  const cannotEditKey = permission.cannot(
-    ProjectPermissionCmekActions.Edit,
-    ProjectPermissionSub.Cmek
-  );
-
-  const cannotDeleteKey = permission.cannot(
-    ProjectPermissionCmekActions.Delete,
-    ProjectPermissionSub.Cmek
-  );
-
-  const cannotEncryptData = permission.cannot(
-    ProjectPermissionCmekActions.Encrypt,
-    ProjectPermissionSub.Cmek
-  );
-
-  const cannotDecryptData = permission.cannot(
-    ProjectPermissionCmekActions.Decrypt,
-    ProjectPermissionSub.Cmek
-  );
 
   return (
     <motion.div
@@ -190,7 +186,9 @@ export const CmekTable = () => {
     >
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="whitespace-nowrap text-xl font-semibold text-mineshaft-100">Keys</p>
+          <p className="whitespace-nowrap text-xl font-semibold text-mineshaft-100">
+            Secret Notes
+          </p>
           {/* <div className="flex w-full justify-end pr-4">
             <Link href="https://infisical.com/docs/documentation/platform/kms">
               <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
@@ -202,27 +200,30 @@ export const CmekTable = () => {
               </span>
             </Link>
           </div> */}
-          <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Cmek}>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.Cmek}
+          >
             {(isAllowed) => (
               <Button
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("upsertKey", null)}
+                onClick={() => handlePopUpOpen('upsertKey', null)}
                 isDisabled={!isAllowed}
               >
-                Add Key
+                Add Secret Note
               </Button>
             )}
           </ProjectPermissionCan>
         </div>
-        <Input
+        {/* <Input
           containerClassName="mb-4"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search keys by name..."
-        />
+          placeholder="Search secret notes by name..."
+        /> */}
         <TableContainer>
           <Table>
             <THead>
@@ -237,24 +238,36 @@ export const CmekTable = () => {
                       onClick={handleSort}
                     >
                       <FontAwesomeIcon
-                        icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
+                        icon={
+                          orderDirection === OrderByDirection.DESC
+                            ? faArrowUp
+                            : faArrowDown
+                        }
                       />
                     </IconButton>
                   </div>
                 </Th>
-                <Th>Key ID</Th>
-                <Th>Algorithm</Th>
-                <Th>Status</Th>
-                <Th>Version</Th>
-                <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
+                <Th>Secret Note ID</Th>
+                <Th className="w-16">
+                  {isFetching ? <Spinner size="xs" /> : null}
+                </Th>
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} innerKey="project-keys" />}
+              {isLoading && (
+                <TableSkeleton columns={5} innerKey="project-keys" />
+              )}
               {!isLoading &&
                 keys.length > 0 &&
                 keys.map((cmek) => {
-                  const { name, id, version, description, encryptionAlgorithm, isDisabled } = cmek;
+                  const {
+                    name,
+                    id,
+                    version,
+                    description,
+                    encryptionAlgorithm,
+                    isDisabled,
+                  } = cmek;
                   const { variant, label } = getStatusBadgeProps(isDisabled);
 
                   return (
@@ -262,7 +275,7 @@ export const CmekTable = () => {
                       className="group h-10 hover:bg-mineshaft-700"
                       key={`st-v3-${id}`}
                       onMouseLeave={() => {
-                        setCopyCipherText("");
+                        setCopyCipherText('');
                       }}
                     >
                       <Td>
@@ -287,18 +300,15 @@ export const CmekTable = () => {
                             className="group/copy duration:0 invisible relative ml-3 group-hover:visible"
                             onClick={() => {
                               navigator.clipboard.writeText(id);
-                              setCopyCipherText("Copied");
+                              setCopyCipherText('Copied');
                             }}
                           >
-                            <FontAwesomeIcon icon={isCopyingCiphertext ? faCheck : faCopy} />
+                            <FontAwesomeIcon
+                              icon={isCopyingCiphertext ? faCheck : faCopy}
+                            />
                           </IconButton>
                         </div>
                       </Td>
-                      <Td className="uppercase">{encryptionAlgorithm}</Td>
-                      <Td>
-                        <Badge variant={variant}>{label}</Badge>
-                      </Td>
-                      <Td>{version}</Td>
                       <Td className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -312,94 +322,52 @@ export const CmekTable = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="min-w-[160px]">
-                            <Tooltip
-                              content={
-                                // eslint-disable-next-line no-nested-ternary
-                                cannotEncryptData
-                                  ? "Access Restricted"
-                                  : isDisabled
-                                  ? "Key Disabled"
-                                  : ""
-                              }
-                              position="left"
-                            >
+                            <Tooltip content={''} position="left">
                               <div>
                                 <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("encryptData", cmek)}
-                                  icon={<FontAwesomeIcon icon={faLock} />}
-                                  iconPos="left"
-                                  isDisabled={cannotEncryptData || isDisabled}
-                                >
-                                  Encrypt Data
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              content={
-                                // eslint-disable-next-line no-nested-ternary
-                                cannotDecryptData
-                                  ? "Access Restricted"
-                                  : isDisabled
-                                  ? "Key Disabled"
-                                  : ""
-                              }
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("decryptData", cmek)}
-                                  icon={<FontAwesomeIcon icon={faLockOpen} />}
-                                  iconPos="left"
-                                  isDisabled={cannotDecryptData || isDisabled}
-                                >
-                                  Decrypt Data
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              content={cannotEditKey ? "Access Restricted" : ""}
-                              position="left"
-                            >
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("upsertKey", cmek)}
+                                  onClick={() =>
+                                    handlePopUpOpen('upsertKey', cmek)
+                                  }
                                   icon={<FontAwesomeIcon icon={faEdit} />}
                                   iconPos="left"
-                                  isDisabled={cannotEditKey}
+                                  isDisabled={false}
                                 >
-                                  Edit Key
+                                  Edit Secret Note
                                 </DropdownMenuItem>
                               </div>
                             </Tooltip>
-                            <Tooltip
-                              content={cannotEditKey ? "Access Restricted" : ""}
-                              position="left"
-                            >
+                            <Tooltip content={''} position="left">
                               <div>
                                 <DropdownMenuItem
-                                  onClick={() => handleDisableCmek(cmek)}
+                                  onClick={() =>
+                                    handleDisableConsumerSecret(cmek)
+                                  }
                                   icon={
-                                    <FontAwesomeIcon icon={isDisabled ? faCheckCircle : faCancel} />
+                                    <FontAwesomeIcon
+                                      icon={
+                                        isDisabled ? faCheckCircle : faCancel
+                                      }
+                                    />
                                   }
                                   iconPos="left"
-                                  isDisabled={cannotEditKey}
+                                  isDisabled={false}
                                 >
-                                  {isDisabled ? "Enable" : "Disable"} Key
+                                  {isDisabled ? 'Enable' : 'Disable'} Secret
+                                  Note
                                 </DropdownMenuItem>
                               </div>
                             </Tooltip>
-                            <Tooltip
-                              content={cannotDeleteKey ? "Access Restricted" : ""}
-                              position="left"
-                            >
+                            <Tooltip content={''} position="left">
                               <div>
                                 <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("deleteKey", cmek)}
+                                  onClick={() =>
+                                    handlePopUpOpen('deleteKey', cmek)
+                                  }
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                   iconPos="left"
-                                  isDisabled={cannotDeleteKey}
+                                  isDisabled={false}
                                 >
-                                  Delete Key
+                                  Delete Secret Note
                                 </DropdownMenuItem>
                               </div>
                             </Tooltip>
@@ -424,32 +392,32 @@ export const CmekTable = () => {
             <EmptyState
               title={
                 debouncedSearch.trim().length > 0
-                  ? "No keys match search filter"
-                  : "No keys have been added to this project"
+                  ? 'No secret notes match search filter'
+                  : 'No secret notes have been added to this project'
               }
               icon={faKey}
             />
           )}
         </TableContainer>
-        <DeleteCmekModal
+        <DeleteConsumerSecretModal
           isOpen={popUp.deleteKey.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("deleteKey", isOpen)}
-          cmek={popUp.deleteKey.data as TCmek}
+          onOpenChange={(isOpen) => handlePopUpToggle('deleteKey', isOpen)}
+          cmek={popUp.deleteKey.data as TConsumerSecret}
         />
-        <CmekModal
+        <ConsumerSecretModal
           isOpen={popUp.upsertKey.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upsertKey", isOpen)}
-          cmek={popUp.upsertKey.data as TCmek | null}
+          onOpenChange={(isOpen) => handlePopUpToggle('upsertKey', isOpen)}
+          cmek={popUp.upsertKey.data as TConsumerSecret | null}
         />
-        <CmekEncryptModal
+        <ConsumerSecretEncryptModal
           isOpen={popUp.encryptData.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("encryptData", isOpen)}
-          cmek={popUp.encryptData.data as TCmek}
+          onOpenChange={(isOpen) => handlePopUpToggle('encryptData', isOpen)}
+          cmek={popUp.encryptData.data as TConsumerSecret}
         />
-        <CmekDecryptModal
+        <ConsumerSecretDecryptModal
           isOpen={popUp.decryptData.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("decryptData", isOpen)}
-          cmek={popUp.decryptData.data as TCmek}
+          onOpenChange={(isOpen) => handlePopUpToggle('decryptData', isOpen)}
+          cmek={popUp.decryptData.data as TConsumerSecret}
         />
       </div>
     </motion.div>

@@ -1,83 +1,63 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 
 import { apiRequest } from '@app/config/request';
+import {
+  ConsumerSecretOrderBy,
+  TListProjectConsumerSecretsDTO,
+  TProjectConsumerSecretsList,
+} from '@app/hooks/api/consumerSecrets/types';
+import { OrderByDirection } from '@app/hooks/api/generic/types';
 
-import { ConsumerSecrets, ConsumerSecretsListEntry } from './types';
-
-export const consumerSecretsKeys = {
-  getExternalConsumerSecretsList: (orgId: string) => [
-    'get-all-external-consumerSecrets',
-    { orgId },
-  ],
-  getExternalConsumerSecretsById: (id: string) => [
-    'get-external-consumerSecrets',
-    { id },
-  ],
-  getActiveProjectConsumerSecrets: (projectId: string) => [
-    'get-active-project-consumerSecrets',
-    { projectId },
-  ],
+export const consumerSecretKeys = {
+  all: ['consumerSecret'] as const,
+  lists: () => [...consumerSecretKeys.all, 'list'] as const,
+  getConsumerSecretsByProjectId: ({
+    projectId,
+    ...filters
+  }: TListProjectConsumerSecretsDTO) =>
+    [...consumerSecretKeys.lists(), projectId, filters] as const,
 };
 
-export const useGetExternalConsumerSecretsList = (
-  orgId: string,
-  { enabled }: { enabled?: boolean } = {},
+export const useGetConsumerSecretsByProjectId = (
+  {
+    projectId,
+    offset = 0,
+    limit = 100,
+    orderBy = ConsumerSecretOrderBy.Name,
+    orderDirection = OrderByDirection.ASC,
+    search = '',
+  }: TListProjectConsumerSecretsDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TProjectConsumerSecretsList,
+      unknown,
+      TProjectConsumerSecretsList,
+      ReturnType<typeof consumerSecretKeys.getConsumerSecretsByProjectId>
+    >,
+    'queryKey' | 'queryFn'
+  >,
 ) => {
   return useQuery({
-    queryKey: consumerSecretsKeys.getExternalConsumerSecretsList(orgId),
-    enabled,
+    queryKey: consumerSecretKeys.getConsumerSecretsByProjectId({
+      projectId,
+      offset,
+      limit,
+      orderBy,
+      orderDirection,
+      search,
+    }),
     queryFn: async () => {
-      const {
-        data: { externalConsumerSecretsList },
-      } = await apiRequest.get<{
-        externalConsumerSecretsList: ConsumerSecretsListEntry[];
-      }>('/api/v1/external-consumerSecrets');
-      return externalConsumerSecretsList;
-    },
-  });
-};
-
-export const useGetExternalConsumerSecretsById = (
-  consumerSecretsId: string,
-) => {
-  return useQuery({
-    queryKey:
-      consumerSecretsKeys.getExternalConsumerSecretsById(consumerSecretsId),
-    enabled: Boolean(consumerSecretsId),
-    queryFn: async () => {
-      const {
-        data: { externalConsumerSecrets },
-      } = await apiRequest.get<{ externalConsumerSecrets: ConsumerSecrets }>(
-        `/api/v1/external-consumerSecrets/${consumerSecretsId}`,
+      const { data } = await apiRequest.get<TProjectConsumerSecretsList>(
+        '/api/v1/kms/keys',
+        {
+          params: { projectId, offset, limit, search, orderBy, orderDirection },
+        },
       );
-      return externalConsumerSecrets;
+
+      return data;
     },
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
+    keepPreviousData: true,
+    ...options,
   });
-};
-
-export const useGetActiveProjectConsumerSecrets = (projectId: string) => {
-  return useQuery({
-    queryKey: consumerSecretsKeys.getActiveProjectConsumerSecrets(projectId),
-    enabled: Boolean(projectId),
-    queryFn: async () => {
-      const {
-        data: { secretManagerConsumerSecretsKey },
-      } = await apiRequest.get<{
-        secretManagerConsumerSecretsKey: {
-          id: string;
-          name: string;
-          isExternal: string;
-        };
-      }>(`/api/v1/workspace/${projectId}/consumerSecrets`);
-      return secretManagerConsumerSecretsKey;
-    },
-  });
-};
-
-export const fetchProjectConsumerSecretsBackup = async (projectId: string) => {
-  const { data } = await apiRequest.get<{
-    secretManager: string;
-  }>(`/api/v1/workspace/${projectId}/consumerSecrets/backup`);
-
-  return data;
 };
