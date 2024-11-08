@@ -17,7 +17,7 @@ import {
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -56,7 +56,7 @@ type TOidcConfigServiceFactoryDep = {
   orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
-  smtpService: Pick<TSmtpService, "sendMail">;
+  smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
 };
@@ -223,6 +223,7 @@ export const oidcConfigServiceFactory = ({
         let newUser: TUsers | undefined;
 
         if (serverCfg.trustOidcEmails) {
+          // we prioritize getting the most complete user to create the new alias under
           newUser = await userDAL.findOne(
             {
               email,
@@ -230,6 +231,16 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+
+          if (!newUser) {
+            // this fetches user entries created via invites
+            newUser = await userDAL.findOne(
+              {
+                username: email
+              },
+              tx
+            );
+          }
         }
 
         if (!newUser) {
@@ -332,14 +343,20 @@ export const oidcConfigServiceFactory = ({
         userId: user.id
       });
 
-      await smtpService.sendMail({
-        template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical confirmation code",
-        recipients: [user.email],
-        substitutions: {
-          code: token
-        }
-      });
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.EmailVerification,
+          subjectLine: "Infisical confirmation code",
+          recipients: [user.email],
+          substitutions: {
+            code: token
+          }
+        })
+        .catch((err: Error) => {
+          throw new OidcAuthError({
+            message: `Error with SMTP configuration - contact the Infisical instance admin. ${err.message}`
+          });
+        });
     }
 
     return { isUserCompleted, providerAuthToken };
@@ -395,6 +412,17 @@ export const oidcConfigServiceFactory = ({
         message: `Organization bot for organization with ID '${org.id}' not found`,
         name: "OrgBotNotFound"
       });
+
+    const serverCfg = await getServerCfg();
+    if (isActive && !serverCfg.trustOidcEmails) {
+      const isSmtpConnected = await smtpService.verify();
+      if (!isSmtpConnected) {
+        throw new BadRequestError({
+          message: "Cannot enable OIDC when there are issues with the instance's SMTP configuration"
+        });
+      }
+    }
+
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,

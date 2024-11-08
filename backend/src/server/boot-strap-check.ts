@@ -48,8 +48,8 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
     .then(async () => {
       console.info("SMTP successfully connected");
     })
-    .catch((err) => {
-      console.error(`SMTP - Failed to connect to ${appCfg.SMTP_HOST}:${appCfg.SMTP_PORT}`);
+    .catch((err: Error) => {
+      console.error(`SMTP - Failed to connect to ${appCfg.SMTP_HOST}:${appCfg.SMTP_PORT} - ${err.message}`);
       logger.error(err);
     });
 
