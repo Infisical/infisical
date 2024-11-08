@@ -221,7 +221,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         const encryptedLength = pkcs11.C_Encrypt(sessionHandle, data, tempBuffer);
 
         // Create a copy of the encrypted data using the actual length
-        const encryptedData = Buffer.from(tempBuffer.slice(0, encryptedLength.length || 16));
+        const encryptedData = Buffer.from(tempBuffer.subarray(0, encryptedLength.length || 16));
 
         // Initialize HMAC
         const hmacMechanism = {
@@ -275,7 +275,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         // Split encrypted data and HMAC
         const hmac = encryptedDataWithHmac.subarray(-HMAC_SIZE); // Last 32 bytes are HMAC
 
-        const encryptedData = encryptedDataWithHmac.slice(0, -HMAC_SIZE); // Everything except last 32 bytes
+        const encryptedData = encryptedDataWithHmac.subarray(0, -HMAC_SIZE); // Everything except last 32 bytes
 
         // Find the keys
         const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
@@ -300,6 +300,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         try {
           pkcs11.C_VerifyFinal(sessionHandle, hmac);
         } catch (error) {
+          logger.error(error, "HSM: HMAC verification failed");
           throw new Error("Decryption failed"); // Generic error for failed verification
         }
 
