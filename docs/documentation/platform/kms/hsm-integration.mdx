@@ -28,8 +28,13 @@ Enabling HSM encryption has a set of key benefits:
 1. **Root Key Wrapping**: The root KMS encryption key that is used to secure your Infisical instance will be encrypted using the HSM device rather than the standard software-protected key.
 2. **FIPS 140-2/3 Compliance**: Using an HSM device ensures that your Infisical instance is FIPS 140-2 or FIPS 140-3 compliant. For FIPS 140-3, ensure that your HSM is FIPS 140-3 validated.
 
+#### Caveats
+- **Performance**: Using an HSM device can have a performance impact on your Infisical instance. This is due to the additional latency introduced by the HSM device. This is however only noticeable when your instance(s) start up or when the encryption strategy is changed.
+- **Key Recovery**: If the HSM device is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most HSM providers offer recovery options, which you should consider when setting up an HSM device.
+
 ### Requirements
 - An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
+- If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
 - An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), or others.
 
 
@@ -86,7 +91,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
 </Steps>
 
 
-## Using HSM's with Docker
+## Using HSMs with Docker
 When using Docker, you need to mount the path containing the HSM client files. This section covers how to configure your Infisical instance to use an HSM with Docker.
 <Tabs>
   <Tab title="Thales Luna Cloud HSM">
@@ -121,7 +126,7 @@ When using Docker, you need to mount the path containing the HSM client files. T
         /bin
           /64
             ckdemo
-            CloudHSMlunacm
+            lunacm
             multitoken
             vtl
         ```
@@ -166,7 +171,6 @@ When using Docker, you need to mount the path containing the HSM client files. T
               # Update the paths to point to the mounted path if your folder structure is different from the one mentioned in the previous step.
               PluginModuleDir = /usr/safenet/lunaclient/plugins;
               MutexFolder = /usr/safenet/lunaclient/lock;
-              PluginModuleDir = /usr/safenet/lunaclient/plugins;
               PE1746Enabled = 1;
               ToolsDir = /usr/bin;
 
@@ -190,8 +194,6 @@ When using Docker, you need to mount the path containing the HSM client files. T
 
             REST = {
               AppLogLevel = error
-              ServerName = <REDACTED>;
-              ServerPort = 443;
               ServerName = <REDACTED>;
               ServerPort = 443;
               AuthTokenConfigURI = <REDACTED>;
