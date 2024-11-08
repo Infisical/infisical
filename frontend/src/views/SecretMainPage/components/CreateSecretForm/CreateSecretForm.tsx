@@ -141,7 +141,7 @@ export const CreateSecretForm = ({
               !canReadTags ? (
                 <div className="flex items-center space-x-2">
                   <FontAwesomeIcon icon={faTriangleExclamation} className="text-yellow-400" />
-                  <span>User lacks permission to read tags. Please grant access.</span>
+                  <span>You do not have permission to read tags.</span>
                 </div>
               ) : (
                 ""
@@ -150,7 +150,7 @@ export const CreateSecretForm = ({
           >
             <MultiSelect
               className="w-full"
-              placeholder="Choose tags to assign to secrets."
+              placeholder="Select tags to assign to secret..."
               isMulti
               name="tagIds"
               isDisabled={!canReadTags}

@@ -538,8 +538,9 @@ const SecretMainPageContent = () => {
             onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
           >
             <ModalContent
-              title="Create secret"
-              subTitle="Add a secret to the particular environment and folder"
+              title="Create Secret"
+              subTitle="Add a secret to this particular environment and folder"
+              bodyClassName="overflow-visible"
             >
               <CreateSecretForm
                 environment={environment}

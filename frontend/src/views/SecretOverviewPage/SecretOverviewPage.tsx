@@ -1121,9 +1121,10 @@ export const SecretOverviewPage = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
         <ModalContent
-          className="max-h-[80vh] overflow-y-auto"
-          title="Bulk Create & Update"
-          subTitle="Create & update a secret across many environments"
+          className="max-h-[80vh]"
+          bodyClassName="overflow-visible"
+          title="Create Secrets"
+          subTitle="Create a secret across multiple environments"
         >
           <CreateSecretForm
             secretPath={secretPath}
