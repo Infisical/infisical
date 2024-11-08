@@ -57,8 +57,8 @@ import {
   StoreProvider,
   useSelectedSecretActions,
   useSelectedSecrets,
-} from "./SecretMainPage.store";
-import { Filter, RowType } from "./SecretMainPage.types";
+} from "./ConsumerSecretMainPage.store";
+import { Filter, RowType } from "./ConsumerSecretMainPage.types";
 
 const LOADER_TEXT = [
   "Retrieving your encrypted secrets...",
@@ -602,7 +602,7 @@ const ConsumerSecretMainPageContent = () => {
   );
 };
 
-export const SecretMainPage = () => (
+export const ConsumerSecretMainPage = () => (
   <StoreProvider>
     <ConsumerSecretMainPageContent />
   </StoreProvider>

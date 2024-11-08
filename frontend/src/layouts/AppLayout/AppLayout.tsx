@@ -644,6 +644,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?.id}/consumer-secrets/overview`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath.includes(
+                              `/project/${currentWorkspace?.id}/consumer-secrets/`
+                            )}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            {`Consumer ${  t("nav.menu.secrets")}`}
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?.id}/certificates`} passHref>
                         <a>
                           <MenuItem
