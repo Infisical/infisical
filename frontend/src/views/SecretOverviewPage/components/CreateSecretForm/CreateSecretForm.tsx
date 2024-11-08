@@ -1,7 +1,7 @@
 import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,7 +37,7 @@ const typeSchema = z
     key: z.string().trim().min(1, "Key is required"),
     value: z.string().optional(),
     environments: z.record(z.boolean().optional()),
-    tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).min(1)
+    tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional()
   })
   .refine((data) => data.key !== undefined, {
     message: "Please enter secret name"
@@ -122,7 +122,7 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
             secretKey: key,
             secretValue: value || "",
             type: SecretType.Shared,
-            tagIds: tags.map((el) => el.value)
+            tagIds: tags?.map((el) => el.value)
           })),
           environment
         };
@@ -137,7 +137,7 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
           secretValue: value || "",
           secretComment: "",
           type: SecretType.Shared,
-          tagIds: tags.map((el) => el.value)
+          tagIds: tags?.map((el) => el.value)
         })),
         environment
       };
@@ -238,6 +238,16 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
             label="Tags"
             isError={Boolean(errors?.value)}
             errorText={errors?.value?.message}
+            helperText={
+              !canReadTags ? (
+                <div className="flex items-center space-x-2">
+                  <FontAwesomeIcon icon={faTriangleExclamation} className="text-yellow-400" />
+                  <span>User lacks permission to read tags. Please grant access.</span>
+                </div>
+              ) : (
+                ""
+              )
+            }
           >
             <MultiSelect
               className="w-full"

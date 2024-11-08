@@ -1,5 +1,7 @@
 import { ClipboardEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -16,7 +18,7 @@ import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 const typeSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
   value: z.string().optional(),
-  tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).min(1)
+  tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).optional()
 });
 
 type TFormSchema = z.infer<typeof typeSchema>;
@@ -64,7 +66,7 @@ export const CreateSecretForm = ({
         secretValue: value || "",
         secretComment: "",
         type: SecretType.Shared,
-        tagIds: tags.map((el) => el.value)
+        tagIds: tags?.map((el) => el.value)
       });
       closePopUp(PopUpNames.CreateSecretForm);
       reset();
@@ -135,6 +137,16 @@ export const CreateSecretForm = ({
             label="Tags"
             isError={Boolean(errors?.value)}
             errorText={errors?.value?.message}
+            helperText={
+              !canReadTags ? (
+                <div className="flex items-center space-x-2">
+                  <FontAwesomeIcon icon={faTriangleExclamation} className="text-yellow-400" />
+                  <span>User lacks permission to read tags. Please grant access.</span>
+                </div>
+              ) : (
+                ""
+              )
+            }
           >
             <MultiSelect
               className="w-full"
