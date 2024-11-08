@@ -240,6 +240,13 @@ export const oidcConfigServiceFactory = ({
               },
               tx
             );
+
+            if (newUser && !newUser.isEmailVerified) {
+              // we automatically mark it as email-verified because we've configured trust for OIDC emails
+              newUser = await userDAL.updateById(newUser.id, {
+                isEmailVerified: true
+              });
+            }
           }
         }
 
