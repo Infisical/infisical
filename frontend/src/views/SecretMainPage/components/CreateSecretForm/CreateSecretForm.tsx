@@ -4,17 +4,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, FormControl, Input, MultiSelect } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
-import { useCreateSecretV3 } from "@app/hooks/api";
+import { useCreateSecretV3, useGetWsTags } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
 
-import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
+import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
-  value: z.string().optional()
+  value: z.string().optional(),
+  tags: z.array(z.object({ label: z.string().trim(), value: z.string().trim() })).min(1)
 });
 
 type TFormSchema = z.infer<typeof typeSchema>;
@@ -43,12 +45,16 @@ export const CreateSecretForm = ({
     setValue,
     formState: { errors, isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
-  const { isOpen } = usePopUpState(PopUpNames.CreateSecretForm);
-  const { closePopUp, togglePopUp } = usePopUpAction();
+  const { closePopUp } = usePopUpAction();
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
+  const { permission } = useProjectPermission();
+  const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const { data: projectTags, isLoading: isTagsLoading } = useGetWsTags(
+    canReadTags ? workspaceId : ""
+  );
 
-  const handleFormSubmit = async ({ key, value }: TFormSchema) => {
+  const handleFormSubmit = async ({ key, value, tags }: TFormSchema) => {
     try {
       await createSecretV3({
         environment,
@@ -57,7 +63,8 @@ export const CreateSecretForm = ({
         secretKey: key,
         secretValue: value || "",
         secretComment: "",
-        type: SecretType.Shared
+        type: SecretType.Shared,
+        tagIds: tags.map((el) => el.value)
       });
       closePopUp(PopUpNames.CreateSecretForm);
       reset();
@@ -88,67 +95,80 @@ export const CreateSecretForm = ({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
-    >
-      <ModalContent
-        title="Create secret"
-        subTitle="Add a secret to the particular environment and folder"
+    <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+      <FormControl
+        label="Key"
+        isRequired
+        isError={Boolean(errors?.key)}
+        errorText={errors?.key?.message}
       >
-        <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+        <Input
+          {...register("key")}
+          placeholder="Type your secret name"
+          onPaste={handlePaste}
+          autoCapitalization={autoCapitalize}
+        />
+      </FormControl>
+      <Controller
+        control={control}
+        name="value"
+        render={({ field }) => (
           <FormControl
-            label="Key"
-            isRequired
-            isError={Boolean(errors?.key)}
-            errorText={errors?.key?.message}
+            label="Value"
+            isError={Boolean(errors?.value)}
+            errorText={errors?.value?.message}
           >
-            <Input
-              {...register("key")}
-              placeholder="Type your secret name"
-              onPaste={handlePaste}
-              autoCapitalization={autoCapitalize}
+            <InfisicalSecretInput
+              {...field}
+              environment={environment}
+              secretPath={secretPath}
+              containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
             />
           </FormControl>
-          <Controller
-            control={control}
-            name="value"
-            render={({ field }) => (
-              <FormControl
-                label="Value"
-                isError={Boolean(errors?.value)}
-                errorText={errors?.value?.message}
-              >
-                <InfisicalSecretInput
-                  {...field}
-                  environment={environment}
-                  secretPath={secretPath}
-                  containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
-                />
-              </FormControl>
-            )}
-          />
-          <div className="mt-7 flex items-center">
-            <Button
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              key="layout-create-project-submit"
-              className="mr-4"
-              type="submit"
-            >
-              Create Secret
-            </Button>
-            <Button
-              key="layout-cancel-create-project"
-              onClick={() => closePopUp(PopUpNames.CreateSecretForm)}
-              variant="plain"
-              colorSchema="secondary"
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </ModalContent>
-    </Modal>
+        )}
+      />
+      <Controller
+        control={control}
+        name="tags"
+        render={({ field }) => (
+          <FormControl
+            label="Tags"
+            isError={Boolean(errors?.value)}
+            errorText={errors?.value?.message}
+          >
+            <MultiSelect
+              className="w-full"
+              placeholder="Choose tags to assign to secrets."
+              isMulti
+              name="tagIds"
+              isDisabled={!canReadTags}
+              isLoading={isTagsLoading}
+              options={projectTags?.map((el) => ({ label: el.slug, value: el.id }))}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          </FormControl>
+        )}
+      />
+      <div className="mt-7 flex items-center">
+        <Button
+          isDisabled={isSubmitting}
+          isLoading={isSubmitting}
+          key="layout-create-project-submit"
+          className="mr-4"
+          type="submit"
+        >
+          Create Secret
+        </Button>
+        <Button
+          key="layout-cancel-create-project"
+          onClick={() => closePopUp(PopUpNames.CreateSecretForm)}
+          variant="plain"
+          colorSchema="secondary"
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 };

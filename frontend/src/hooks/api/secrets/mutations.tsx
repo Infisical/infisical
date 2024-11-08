@@ -31,7 +31,8 @@ export const useCreateSecretV3 = ({
       secretKey,
       secretValue,
       secretComment,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      tagIds
     }) => {
       const { data } = await apiRequest.post(`/api/v3/secrets/raw/${secretKey}`, {
         secretPath,
@@ -40,7 +41,8 @@ export const useCreateSecretV3 = ({
         workspaceId,
         secretValue,
         secretComment,
-        skipMultilineEncoding
+        skipMultilineEncoding,
+        tagIds
       });
       return data;
     },
