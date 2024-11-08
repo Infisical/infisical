@@ -7,10 +7,11 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ConsumerCredentialsSchema = z.object({
+export const ConsumerSecretsSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   org_id: z.string().uuid(),
+  project_id: z.string(),
   type: z.string(),
   name: z.string(),
   fields: z.unknown(),
@@ -18,6 +19,6 @@ export const ConsumerCredentialsSchema = z.object({
   updated_at: z.date().nullable().optional()
 });
 
-export type TConsumerCredentials = z.infer<typeof ConsumerCredentialsSchema>;
-export type TConsumerCredentialsInsert = Omit<z.input<typeof ConsumerCredentialsSchema>, TImmutableDBKeys>;
-export type TConsumerCredentialsUpdate = Partial<Omit<z.input<typeof ConsumerCredentialsSchema>, TImmutableDBKeys>>;
+export type TConsumerSecrets = z.infer<typeof ConsumerSecretsSchema>;
+export type TConsumerSecretsInsert = Omit<z.input<typeof ConsumerSecretsSchema>, TImmutableDBKeys>;
+export type TConsumerSecretsUpdate = Partial<Omit<z.input<typeof ConsumerSecretsSchema>, TImmutableDBKeys>>;

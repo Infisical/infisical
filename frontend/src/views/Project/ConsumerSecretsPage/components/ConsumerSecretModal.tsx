@@ -24,16 +24,8 @@ import {
 } from '@app/hooks/api/consumerSecrets';
 
 const formSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .toLowerCase()
-    .max(32)
-    .refine((v) => slugify(v) === v, {
-      message: 'Name must be in slug format',
-    }),
-  description: z.string().max(500).optional(),
-  encryptionAlgorithm: z.nativeEnum(EncryptionAlgorithm),
+  name: z.string().min(1).toLowerCase().max(32),
+  content: z.string().max(500).optional(),
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -41,19 +33,19 @@ export type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cmek?: TConsumerSecret | null;
+  consumerSecret?: TConsumerSecret | null;
 };
 
-type FormProps = Pick<Props, 'cmek'> & {
+type FormProps = Pick<Props, 'consumerSecret'> & {
   onComplete: () => void;
 };
 
-const ConsumerSecretForm = ({ onComplete, cmek }: FormProps) => {
+const ConsumerSecretForm = ({ onComplete, consumerSecret }: FormProps) => {
   const createConsumerSecret = useCreateConsumerSecret();
   const updateConsumerSecret = useUpdateConsumerSecret();
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id!;
-  const isUpdate = !!cmek;
+  const isUpdate = !!consumerSecret;
 
   const {
     control,
@@ -63,29 +55,23 @@ const ConsumerSecretForm = ({ onComplete, cmek }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: cmek?.name,
-      description: cmek?.description,
-      encryptionAlgorithm: EncryptionAlgorithm.AES_GCM_256,
+      name: consumerSecret?.name,
+      content: consumerSecret?.content,
     },
   });
 
-  const handleCreateConsumerSecret = async ({
-    encryptionAlgorithm,
-    name,
-    description,
-  }: FormData) => {
+  const handleCreateConsumerSecret = async ({ name, content }: FormData) => {
     const mutation = isUpdate
       ? updateConsumerSecret.mutateAsync({
-          keyId: cmek.id,
+          keyId: consumerSecret.id,
           projectId,
           name,
-          description,
+          content,
         })
       : createConsumerSecret.mutateAsync({
           projectId,
-          encryptionAlgorithm,
           name,
-          description,
+          content,
         });
 
     try {
@@ -115,12 +101,12 @@ const ConsumerSecretForm = ({ onComplete, cmek }: FormProps) => {
       </FormControl>
       <FormControl
         label="Content"
-        errorText={errors.description?.message}
-        isError={Boolean(errors.description?.message)}
+        errorText={errors.content?.message}
+        isError={Boolean(errors.content?.message)}
       >
         <TextArea
           className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
-          {...register('description')}
+          {...register('content')}
         />
       </FormControl>
       <div className="flex items-center">
@@ -143,13 +129,17 @@ const ConsumerSecretForm = ({ onComplete, cmek }: FormProps) => {
   );
 };
 
-export const ConsumerSecretModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+export const ConsumerSecretModal = ({
+  isOpen,
+  onOpenChange,
+  consumerSecret,
+}: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title={`${cmek ? 'Update' : 'Add'} Secret Note`}>
+      <ModalContent title={`${consumerSecret ? 'Update' : 'Add'} Secret Note`}>
         <ConsumerSecretForm
           onComplete={() => onOpenChange(false)}
-          cmek={cmek}
+          consumerSecret={consumerSecret}
         />
       </ModalContent>
     </Modal>

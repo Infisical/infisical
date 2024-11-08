@@ -6,7 +6,7 @@ import {
 } from '@app/hooks/api/consumerSecrets';
 
 type Props = {
-  cmek: TConsumerSecret;
+  consumerSecret: TConsumerSecret;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -14,13 +14,13 @@ type Props = {
 export const DeleteConsumerSecretModal = ({
   isOpen,
   onOpenChange,
-  cmek,
+  consumerSecret,
 }: Props) => {
   const deleteConsumerSecret = useDeleteConsumerSecret();
 
-  if (!cmek) return null;
+  if (!consumerSecret) return null;
 
-  const { id: keyId, projectId, name } = cmek;
+  const { id: keyId, projectId, name } = consumerSecret;
 
   const handleDeleteConsumerSecret = async () => {
     try {

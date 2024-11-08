@@ -3,13 +3,10 @@ import { OrderByDirection } from '@app/hooks/api/generic/types';
 export type TConsumerSecret = {
   id: string;
   name: string;
-  description?: string;
-  encryptionAlgorithm: EncryptionAlgorithm;
+  content?: string;
   projectId: string;
-  isDisabled: boolean;
   isReserved: boolean;
   orgId: string;
-  version: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,13 +14,10 @@ export type TConsumerSecret = {
 type ProjectRef = { projectId: string };
 type KeyRef = { keyId: string };
 
-export type TCreateConsumerSecret = Pick<
-  TConsumerSecret,
-  'name' | 'description' | 'encryptionAlgorithm'
-> &
+export type TCreateConsumerSecret = Pick<TConsumerSecret, 'name' | 'content'> &
   ProjectRef;
 export type TUpdateConsumerSecret = KeyRef &
-  Partial<Pick<TConsumerSecret, 'name' | 'description' | 'isDisabled'>> &
+  Partial<Pick<TConsumerSecret, 'name' | 'content'>> &
   ProjectRef;
 export type TDeleteConsumerSecret = KeyRef & ProjectRef;
 

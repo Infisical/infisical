@@ -37,13 +37,13 @@ export type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cmek: TConsumerSecret;
+  consumerSecret: TConsumerSecret;
 };
 
-type FormProps = Pick<Props, 'cmek'>;
+type FormProps = Pick<Props, 'consumerSecret'>;
 
-const DecryptForm = ({ cmek }: FormProps) => {
-  const cmekDecrypt = useConsumerSecretDecrypt();
+const DecryptForm = ({ consumerSecret }: FormProps) => {
+  const consumerSecretDecrypt = useConsumerSecretDecrypt();
   const [shouldDecode, setShouldDecode] = useState(false);
   const [plaintext, setPlaintext] = useState('');
 
@@ -62,9 +62,9 @@ const DecryptForm = ({ cmek }: FormProps) => {
 
   const handleDecryptData = async (formData: FormData) => {
     try {
-      const data = await cmekDecrypt.mutateAsync({
+      const data = await consumerSecretDecrypt.mutateAsync({
         ...formData,
-        keyId: cmek.id,
+        keyId: consumerSecret.id,
       });
       createNotification({
         text: 'Successfully decrypted data',
@@ -86,7 +86,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
   };
 
   useEffect(() => {
-    const text = cmekDecrypt.data?.plaintext;
+    const text = consumerSecretDecrypt.data?.plaintext;
     if (!text) return;
 
     setPlaintext(
@@ -172,7 +172,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
 export const ConsumerSecretDecryptModal = ({
   isOpen,
   onOpenChange,
-  cmek,
+  consumerSecret,
 }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -180,13 +180,13 @@ export const ConsumerSecretDecryptModal = ({
         subTitle={
           <>
             Decrypt ciphertext using{' '}
-            <span className="font-bold">{cmek?.name}</span>. Returns Base64
-            encoded plaintext.
+            <span className="font-bold">{consumerSecret?.name}</span>. Returns
+            Base64 encoded plaintext.
           </>
         }
         title="Decrypt Data"
       >
-        <DecryptForm cmek={cmek} />
+        <DecryptForm consumerSecret={consumerSecret} />
       </ModalContent>
     </Modal>
   );

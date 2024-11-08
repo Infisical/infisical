@@ -145,37 +145,6 @@ export const ConsumerSecretTable = () => {
     );
   };
 
-  const updateConsumerSecret = useUpdateConsumerSecret();
-
-  const handleDisableConsumerSecret = async ({
-    id: keyId,
-    isDisabled,
-  }: TConsumerSecret) => {
-    try {
-      await updateConsumerSecret.mutateAsync({
-        keyId,
-        projectId,
-        isDisabled: !isDisabled,
-      });
-
-      createNotification({
-        text: `Key successfully ${isDisabled ? 'enabled' : 'disabled'}`,
-        type: 'success',
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${isDisabled ? 'enable' : 'disable'} key`;
-
-      createNotification({
-        text,
-        type: 'error',
-      });
-    }
-  };
-
   return (
     <motion.div
       key="kms-keys-tab"
@@ -217,13 +186,6 @@ export const ConsumerSecretTable = () => {
             )}
           </ProjectPermissionCan>
         </div>
-        {/* <Input
-          containerClassName="mb-4"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search secret notes by name..."
-        /> */}
         <TableContainer>
           <Table>
             <THead>
@@ -259,16 +221,8 @@ export const ConsumerSecretTable = () => {
               )}
               {!isLoading &&
                 keys.length > 0 &&
-                keys.map((cmek) => {
-                  const {
-                    name,
-                    id,
-                    version,
-                    description,
-                    encryptionAlgorithm,
-                    isDisabled,
-                  } = cmek;
-                  const { variant, label } = getStatusBadgeProps(isDisabled);
+                keys.map((consumerSecret) => {
+                  const { name, id, content } = consumerSecret;
 
                   return (
                     <Tr
@@ -281,8 +235,8 @@ export const ConsumerSecretTable = () => {
                       <Td>
                         <div className="flex items-center gap-2 ">
                           {name}
-                          {description && (
-                            <Tooltip content={description}>
+                          {content && (
+                            <Tooltip content={content}>
                               <FontAwesomeIcon
                                 icon={faInfoCircle}
                                 className=" text-mineshaft-400"
@@ -326,7 +280,7 @@ export const ConsumerSecretTable = () => {
                               <div>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handlePopUpOpen('upsertKey', cmek)
+                                    handlePopUpOpen('upsertKey', consumerSecret)
                                   }
                                   icon={<FontAwesomeIcon icon={faEdit} />}
                                   iconPos="left"
@@ -340,28 +294,7 @@ export const ConsumerSecretTable = () => {
                               <div>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handleDisableConsumerSecret(cmek)
-                                  }
-                                  icon={
-                                    <FontAwesomeIcon
-                                      icon={
-                                        isDisabled ? faCheckCircle : faCancel
-                                      }
-                                    />
-                                  }
-                                  iconPos="left"
-                                  isDisabled={false}
-                                >
-                                  {isDisabled ? 'Enable' : 'Disable'} Secret
-                                  Note
-                                </DropdownMenuItem>
-                              </div>
-                            </Tooltip>
-                            <Tooltip content={''} position="left">
-                              <div>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handlePopUpOpen('deleteKey', cmek)
+                                    handlePopUpOpen('deleteKey', consumerSecret)
                                   }
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                   iconPos="left"
@@ -402,22 +335,22 @@ export const ConsumerSecretTable = () => {
         <DeleteConsumerSecretModal
           isOpen={popUp.deleteKey.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('deleteKey', isOpen)}
-          cmek={popUp.deleteKey.data as TConsumerSecret}
+          consumerSecret={popUp.deleteKey.data as TConsumerSecret}
         />
         <ConsumerSecretModal
           isOpen={popUp.upsertKey.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('upsertKey', isOpen)}
-          cmek={popUp.upsertKey.data as TConsumerSecret | null}
+          consumerSecret={popUp.upsertKey.data as TConsumerSecret | null}
         />
         <ConsumerSecretEncryptModal
           isOpen={popUp.encryptData.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('encryptData', isOpen)}
-          cmek={popUp.encryptData.data as TConsumerSecret}
+          consumerSecret={popUp.encryptData.data as TConsumerSecret}
         />
         <ConsumerSecretDecryptModal
           isOpen={popUp.decryptData.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('decryptData', isOpen)}
-          cmek={popUp.decryptData.data as TConsumerSecret}
+          consumerSecret={popUp.decryptData.data as TConsumerSecret}
         />
       </div>
     </motion.div>

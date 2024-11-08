@@ -32,16 +32,10 @@ export const useCreateConsumerSecret = () => {
 export const useUpdateConsumerSecret = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      keyId,
-      name,
-      description,
-      isDisabled,
-    }: TUpdateConsumerSecret) => {
+    mutationFn: async ({ keyId, name, content }: TUpdateConsumerSecret) => {
       const { data } = await apiRequest.patch(`/api/v1/kms/keys/${keyId}`, {
         name,
-        description,
-        isDisabled,
+        content,
       });
 
       return data;

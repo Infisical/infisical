@@ -36,13 +36,13 @@ export type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cmek: TConsumerSecret;
+  consumerSecret: TConsumerSecret;
 };
 
-type FormProps = Pick<Props, 'cmek'>;
+type FormProps = Pick<Props, 'consumerSecret'>;
 
-const EncryptForm = ({ cmek }: FormProps) => {
-  const cmekEncrypt = useConsumerSecretEncrypt();
+const EncryptForm = ({ consumerSecret }: FormProps) => {
+  const consumerSecretEncrypt = useConsumerSecretEncrypt();
 
   const {
     handleSubmit,
@@ -63,7 +63,10 @@ const EncryptForm = ({ cmek }: FormProps) => {
 
   const handleEncryptData = async (formData: FormData) => {
     try {
-      await cmekEncrypt.mutateAsync({ ...formData, keyId: cmek.id });
+      await consumerSecretEncrypt.mutateAsync({
+        ...formData,
+        keyId: consumerSecret.id,
+      });
       createNotification({
         text: 'Successfully encrypted data',
         type: 'success',
@@ -77,7 +80,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
     }
   };
 
-  const ciphertext = cmekEncrypt.data?.ciphertext;
+  const ciphertext = consumerSecretEncrypt.data?.ciphertext;
 
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(ciphertext ?? '');
@@ -92,7 +95,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
           <TextArea
             className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
             isDisabled
-            value={cmekEncrypt.data?.ciphertext}
+            value={consumerSecretEncrypt.data?.ciphertext}
           />
         </FormControl>
       ) : (
@@ -165,7 +168,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
 export const ConsumerSecretEncryptModal = ({
   isOpen,
   onOpenChange,
-  cmek,
+  consumerSecret,
 }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -173,12 +176,13 @@ export const ConsumerSecretEncryptModal = ({
         title="Encrypt Data"
         subTitle={
           <>
-            Encrypt data using <span className="font-bold">{cmek?.name}</span>.
-            Returns Base64 encoded ciphertext.
+            Encrypt data using{' '}
+            <span className="font-bold">{consumerSecret?.name}</span>. Returns
+            Base64 encoded ciphertext.
           </>
         }
       >
-        <EncryptForm cmek={cmek} />
+        <EncryptForm consumerSecret={consumerSecret} />
       </ModalContent>
     </Modal>
   );
