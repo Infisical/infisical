@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,9 +11,12 @@ import {
   faCircleInfo
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import queryString from "query-string";
+import z from "zod";
 
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
 import { IntegrationMappingBehavior } from "@app/hooks/api/integrations/types";
@@ -83,35 +87,67 @@ const mappingBehaviors = [
   }
 ];
 
+const schema = z
+  .object({
+    awsRegion: z.string().trim().min(1, { message: "AWS region is required" }),
+    secretPath: z.string().trim().min(1, { message: "Secret path is required" }),
+    sourceEnvironment: z.string().trim().min(1, { message: "Source environment is required" }),
+    secretPrefix: z.string().default(""),
+    secretName: z.string().trim().min(1).optional(),
+    mappingBehavior: z.nativeEnum(IntegrationMappingBehavior),
+    kmsKeyId: z.string().optional(),
+    shouldTag: z.boolean().optional(),
+    tags: z
+      .object({
+        key: z.string(),
+        value: z.string()
+      })
+      .array()
+  })
+  .refine(
+    (val) =>
+      val.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE ||
+      (val.mappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE &&
+        val.secretName &&
+        val.secretName !== ""),
+    {
+      message: "Secret name must be defined for many-to-one integrations",
+      path: ["secretName"]
+    }
+  );
+
+type TFormSchema = z.infer<typeof schema>;
+
 export default function AWSSecretManagerCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
+  const {
+    control,
+    setValue,
+    handleSubmit,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<TFormSchema>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      shouldTag: false,
+      secretPath: "/",
+      secretPrefix: "",
+      mappingBehavior: IntegrationMappingBehavior.MANY_TO_ONE,
+      tags: []
+    }
+  });
 
+  const shouldTagState = watch("shouldTag");
+  const selectedSourceEnvironment = watch("sourceEnvironment");
+  const selectedAWSRegion = watch("awsRegion");
+  const selectedMappingBehavior = watch("mappingBehavior");
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [selectedAWSRegion, setSelectedAWSRegion] = useState("");
-  const [selectedMappingBehavior, setSelectedMappingBehavior] = useState(
-    IntegrationMappingBehavior.MANY_TO_ONE
-  );
-  const [targetSecretName, setTargetSecretName] = useState("");
-  const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState("");
-  const [tagKey, setTagKey] = useState("");
-  const [tagValue, setTagValue] = useState("");
-  const [kmsKeyId, setKmsKeyId] = useState("");
-  const [secretPrefix, setSecretPrefix] = useState("");
-
-  // const [path, setPath] = useState('');
-  // const [pathErrorText, setPathErrorText] = useState('');
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [shouldTag, setShouldTag] = useState(false);
 
   const { data: integrationAuthAwsKmsKeys, isLoading: isIntegrationAuthAwsKmsKeysLoading } =
     useGetIntegrationAuthAwsKmsKeys({
@@ -121,63 +157,46 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
   useEffect(() => {
     if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
-      setSelectedAWSRegion(awsRegions[0].slug);
+      setValue("sourceEnvironment", workspace.environments[0].slug);
+      setValue("awsRegion", awsRegions[0].slug);
     }
   }, [workspace]);
 
-  //    const isValidAWSPath = (path: string) => {
-  //         const pattern = /^\/[\w./]+\/$/;
-  //         return pattern.test(path) && path.length <= 2048;
-  //     }
-
-  const handleButtonClick = async () => {
+  const handleButtonClick = async ({
+    secretName,
+    sourceEnvironment,
+    awsRegion,
+    secretPath,
+    shouldTag,
+    tags,
+    secretPrefix,
+    kmsKeyId,
+    mappingBehavior
+  }: TFormSchema) => {
     try {
-      if (!selectedMappingBehavior) {
-        return;
-      }
-
-      if (
-        selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE &&
-        targetSecretName.trim() === ""
-      ) {
-        setTargetSecretName("Secret name cannot be blank");
-        return;
-      }
-
       if (!integrationAuth?.id) return;
-
-      setIsLoading(true);
 
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: targetSecretName.trim(),
-        sourceEnvironment: selectedSourceEnvironment,
-        region: selectedAWSRegion,
+        app: secretName,
+        sourceEnvironment,
+        region: awsRegion,
         secretPath,
         metadata: {
           ...(shouldTag
             ? {
-                secretAWSTag: [
-                  {
-                    key: tagKey,
-                    value: tagValue
-                  }
-                ]
+                secretAWSTag: tags
               }
             : {}),
           ...(secretPrefix && { secretPrefix }),
           ...(kmsKeyId && { kmsKeyId }),
-          mappingBehavior: selectedMappingBehavior
+          mappingBehavior
         }
       });
-      setIsLoading(false);
-      setTargetSecretNameErrorText("");
 
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
-      setIsLoading(false);
       console.error(err);
     }
   };
@@ -191,226 +210,305 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         <title>Set Up AWS Secrets Manager Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Secrets Manager."
-        >
-          <div className="flex flex-row items-center">
-            <div className="inline flex items-center">
-              <Image
-                src="/images/integrations/Amazon Web Services.png"
-                height={35}
-                width={35}
-                alt="AWS logo"
-              />
-            </div>
-            <span className="ml-1.5">AWS Secrets Manager Integration </span>
-            <Link href="https://infisical.com/docs/integrations/cloud/aws-secret-manager" passHref>
-              <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="ml-1.5 mb-[0.07rem] text-xxs"
-                  />
-                </div>
-              </a>
-            </Link>
-          </div>
-        </CardTitle>
-        <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
-            </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <FormControl label="Project Environment">
-                <Select
-                  value={selectedSourceEnvironment}
-                  onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                  className="w-full border border-mineshaft-500"
-                >
-                  {workspace?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`flyio-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl label="Secrets Path">
-                <Input
-                  value={secretPath}
-                  onChange={(evt) => setSecretPath(evt.target.value)}
-                  placeholder="Provide a path, default is /"
+      <form onSubmit={handleSubmit(handleButtonClick)}>
+        <Card className="max-w-lg rounded-md border border-mineshaft-600">
+          <CardTitle
+            className="px-6 text-left text-xl"
+            subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Secrets Manager."
+          >
+            <div className="flex flex-row items-center">
+              <div className="flex items-center">
+                <Image
+                  src="/images/integrations/Amazon Web Services.png"
+                  height={35}
+                  width={35}
+                  alt="AWS logo"
                 />
-              </FormControl>
-              <FormControl label="AWS Region">
-                <Select
-                  value={selectedAWSRegion}
-                  onValueChange={(val) => {
-                    setSelectedAWSRegion(val);
-                    setKmsKeyId("");
-                  }}
-                  className="w-full border border-mineshaft-500"
-                >
-                  {awsRegions.map((awsRegion) => (
-                    <SelectItem
-                      value={awsRegion.slug}
-                      className="flex w-full justify-between"
-                      key={`aws-environment-${awsRegion.slug}`}
-                    >
-                      {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl label="Mapping Behavior">
-                <Select
-                  value={selectedMappingBehavior}
-                  onValueChange={(val) => {
-                    setSelectedMappingBehavior(val as IntegrationMappingBehavior);
-                  }}
-                  className="w-full border border-mineshaft-500 text-left"
-                >
-                  {mappingBehaviors.map((option) => (
-                    <SelectItem
-                      value={option.value}
-                      className="text-left"
-                      key={`aws-environment-${option.value}`}
-                    >
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE && (
-                <FormControl
-                  label="AWS SM Secret Name"
-                  errorText={targetSecretNameErrorText}
-                  isError={targetSecretNameErrorText !== "" ?? false}
-                >
-                  <Input
-                    placeholder={`${workspace.name
-                      .toLowerCase()
-                      .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
-                    value={targetSecretName}
-                    onChange={(e) => setTargetSecretName(e.target.value)}
-                  />
-                </FormControl>
-              )}
-            </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: -30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <div className="mt-2 ml-1">
-                <Switch
-                  id="tag-aws"
-                  onCheckedChange={() => setShouldTag(!shouldTag)}
-                  isChecked={shouldTag}
-                >
-                  Tag in AWS Secrets Manager
-                </Switch>
               </div>
-              {shouldTag && (
-                <div className="mt-4 flex justify-between">
-                  <FormControl label="Tag Key">
-                    <Input
-                      placeholder="managed-by"
-                      value={tagKey}
-                      onChange={(e) => setTagKey(e.target.value)}
+              <span className="ml-1.5">AWS Secrets Manager Integration </span>
+              <Link
+                href="https://infisical.com/docs/integrations/cloud/aws-secret-manager"
+                passHref
+              >
+                <a target="_blank" rel="noopener noreferrer">
+                  <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                    <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                    Docs
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
+                      className="ml-1.5 mb-[0.07rem] text-xxs"
                     />
-                  </FormControl>
-                  <FormControl label="Tag Value">
-                    <Input
-                      placeholder="infisical"
-                      value={tagValue}
-                      onChange={(e) => setTagValue(e.target.value)}
-                    />
-                  </FormControl>
-                </div>
-              )}
-
-              <FormControl label="Secret Prefix" className="mt-4">
-                <Input
-                  value={secretPrefix}
-                  onChange={(e) => setSecretPrefix(e.target.value)}
-                  placeholder="INFISICAL_"
-                />
-              </FormControl>
-
-              <FormControl label="Encryption Key" className="mt-4">
-                <Select
-                  value={kmsKeyId}
-                  onValueChange={(e) => {
-                    if (e === "no-keys") return;
-                    setKmsKeyId(e);
-                  }}
-                  className="w-full border border-mineshaft-500"
-                >
-                  {integrationAuthAwsKmsKeys?.length ? (
-                    integrationAuthAwsKmsKeys.map((key) => {
-                      return (
-                        <SelectItem
-                          value={key.id as string}
-                          key={`repo-id-${key.id}`}
-                          className="w-[28.4rem] text-sm"
-                        >
-                          {key.alias}
-                        </SelectItem>
-                      );
-                    })
-                  ) : (
-                    <SelectItem isDisabled value="no-keys" key="no-keys">
-                      No KMS keys available
-                    </SelectItem>
+                  </div>
+                </a>
+              </Link>
+            </div>
+          </CardTitle>
+          <Tabs defaultValue={TabSections.Connection} className="px-6">
+            <TabList>
+              <div className="flex w-full flex-row border-b border-mineshaft-600">
+                <Tab value={TabSections.Connection}>Connection</Tab>
+                <Tab value={TabSections.Options}>Options</Tab>
+              </div>
+            </TabList>
+            <TabPanel value={TabSections.Connection}>
+              <motion.div
+                key="panel-1"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
+                <Controller
+                  control={control}
+                  name="sourceEnvironment"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Project Environment"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        className="w-full border border-mineshaft-500"
+                        dropdownContainerClassName="max-w-full"
+                        value={field.value}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                        }}
+                      >
+                        {workspace?.environments.map((sourceEnvironment) => (
+                          <SelectItem
+                            value={sourceEnvironment.slug}
+                            key={`source-environment-${sourceEnvironment.slug}`}
+                          >
+                            {sourceEnvironment.name}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   )}
-                </Select>
-              </FormControl>
-            </motion.div>
-          </TabPanel>
-        </Tabs>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6"
-          isLoading={isLoading}
-        >
-          Create Integration
-        </Button>
-      </Card>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
-        <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+                />
+                <Controller
+                  control={control}
+                  name="secretPath"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Secrets Path"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <SecretPathInput {...field} />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="awsRegion"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS region"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full border border-mineshaft-500"
+                        dropdownContainerClassName="max-w-full"
+                      >
+                        {awsRegions.map((awsRegion) => (
+                          <SelectItem
+                            value={awsRegion.slug}
+                            className="flex w-full justify-between"
+                            key={`aws-environment-${awsRegion.slug}`}
+                          >
+                            {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="mappingBehavior"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Mapping Behavior"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full border border-mineshaft-500"
+                        dropdownContainerClassName="max-w-full"
+                      >
+                        {mappingBehaviors.map((option) => (
+                          <SelectItem
+                            value={option.value}
+                            className="text-left"
+                            key={`mapping-behavior-${option.value}`}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                {selectedMappingBehavior === IntegrationMappingBehavior.MANY_TO_ONE && (
+                  <Controller
+                    control={control}
+                    name="secretName"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS SM Secret Name"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Input
+                          placeholder={`${workspace.name
+                            .toLowerCase()
+                            .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
+                          {...field}
+                        />
+                      </FormControl>
+                    )}
+                  />
+                )}
+              </motion.div>
+            </TabPanel>
+            <TabPanel value={TabSections.Options}>
+              <motion.div
+                key="panel-1"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: -30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
+                <div className="mt-2 ml-1">
+                  <Controller
+                    control={control}
+                    name="shouldTag"
+                    render={({ field: { onChange, value } }) => (
+                      <Switch
+                        id="tag-aws"
+                        onCheckedChange={(isChecked) => onChange(isChecked)}
+                        isChecked={value}
+                      >
+                        Tag in AWS Secrets Manager
+                      </Switch>
+                    )}
+                  />
+                </div>
+                {shouldTagState && (
+                  <div className="mt-4 flex justify-between">
+                    <Controller
+                      control={control}
+                      name="tags.0.key"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Tag Key"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <Input placeholder="managed-by" {...field} />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="tags.0.value"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Tag Value"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <Input placeholder="infisical" {...field} />
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                )}
+
+                <Controller
+                  control={control}
+                  name="secretPrefix"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Secret Prefix"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="mt-4"
+                    >
+                      <Input placeholder="INFISICAL_" {...field} />
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="kmsKeyId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Encryption Key"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full border border-mineshaft-500"
+                        dropdownContainerClassName="max-w-full"
+                      >
+                        {integrationAuthAwsKmsKeys?.length ? (
+                          integrationAuthAwsKmsKeys.map((key) => {
+                            return (
+                              <SelectItem
+                                value={key.id as string}
+                                key={`repo-id-${key.id}`}
+                                className="w-[28.4rem] text-sm"
+                              >
+                                {key.alias}
+                              </SelectItem>
+                            );
+                          })
+                        ) : (
+                          <SelectItem isDisabled value="no-keys" key="no-keys">
+                            No KMS keys available
+                          </SelectItem>
+                        )}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </motion.div>
+            </TabPanel>
+          </Tabs>
+          <Button
+            color="mineshaft"
+            variant="outline_bg"
+            type="submit"
+            className="mb-6 mt-2 ml-auto mr-6"
+            isLoading={isSubmitting}
+          >
+            Create Integration
+          </Button>
+        </Card>
+        <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
+        <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+          <div className="flex flex-row items-center">
+            <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
+            <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+          </div>
+          <span className="mt-4 text-sm text-mineshaft-300">
+            After creating an integration, your secrets will start syncing immediately. This might
+            cause an unexpected override of current secrets in AWS Secrets Manager with secrets from
+            Infisical.
+          </span>
         </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
-          After creating an integration, your secrets will start syncing immediately. This might
-          cause an unexpected override of current secrets in AWS Secrets Manager with secrets from
-          Infisical.
-        </span>
-      </div>
+      </form>
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
