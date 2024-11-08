@@ -301,7 +301,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
           pkcs11.C_VerifyFinal(sessionHandle, hmac);
         } catch (error) {
           logger.error(error, "HSM: HMAC verification failed");
-          throw new Error("Decryption failed"); // Generic error for failed verification
+          throw new Error("HSM: Decryption failed"); // Generic error for failed verification
         }
 
         // Only decrypt if verification passed
@@ -318,8 +318,8 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         // Create a new buffer from the decrypted data
         return Buffer.from(decryptedData);
       } catch (error) {
-        logger.error("Decryption error:", error);
-        throw new Error(`Decryption failed: ${(error as Error)?.message}`);
+        logger.error(error, "HSM: Failed to perform decryption");
+        throw new Error("HSM: Decryption failed"); // Generic error for failed decryption, to avoid leaking details about why it failed (such as padding related errors)
       }
     };
 
