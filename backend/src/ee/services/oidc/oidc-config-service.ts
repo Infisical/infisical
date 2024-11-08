@@ -361,7 +361,7 @@ export const oidcConfigServiceFactory = ({
         })
         .catch((err: Error) => {
           throw new OidcAuthError({
-            message: `Error with SMTP configuration - contact the Infisical instance admin. ${err.message}`
+            message: `Error sending email confirmation code for user registration - contact the Infisical instance admin. ${err.message}`
           });
         });
     }
