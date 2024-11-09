@@ -163,12 +163,12 @@ export const registerSecretNotesRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId, ...dto } = req.query;
-      const { secrets, totalCount } =
+      const { notes, totalCount } =
         await server.services.secretNotes.listSecretNotesByProjectId({
           projectId,
           ...dto,
         });
-      return { notes: secrets, totalCount };
+      return { notes, totalCount };
     },
   });
 };

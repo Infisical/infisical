@@ -29,7 +29,6 @@ export const secretNotesDALFactory = (db: TDbClient) => {
   };
 
   const create = async (data: TConsumerSecretsInsert, tx?: Knex) => {
-    console.error('KIEM', data);
     try {
       const result = await (tx || db)(TableName.ConsumerSecrets)
         .insert(data)
