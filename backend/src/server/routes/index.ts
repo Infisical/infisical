@@ -215,6 +215,7 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { secretNotesServiceFactory } from "@app/services/secret-notes/secret-notes-service";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -1249,6 +1250,8 @@ export const registerRoutes = async (
     externalGroupOrgRoleMappingDAL
   });
 
+  const secretNotesService = secretNotesServiceFactory(db)
+
   await superAdminService.initServerCfg();
   //
   // setup the communication with license key server
@@ -1336,7 +1339,8 @@ export const registerRoutes = async (
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
     migration: migrationService,
-    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
+    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
+    secretNotes: secretNotesService
   });
 
   const cronJobs: CronJob[] = [];

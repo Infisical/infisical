@@ -1,59 +1,37 @@
 import { OrderByDirection } from '@app/hooks/api/generic/types';
 
-export type TConsumerSecret = {
+export type TSecretNote = {
   id: string;
   name: string;
-  content?: string;
+  content: string;
   projectId: string;
-  isReserved: boolean;
-  orgId: string;
   createdAt: string;
   updatedAt: string;
 };
 
 type ProjectRef = { projectId: string };
-type KeyRef = { keyId: string };
+type NoteRef = { noteId: string; projectId: string };
 
-export type TCreateConsumerSecret = Pick<TConsumerSecret, 'name' | 'content'> &
+export type TCreateSecretNote = Pick<TSecretNote, 'name' | 'content'> &
   ProjectRef;
-export type TUpdateConsumerSecret = KeyRef &
-  Partial<Pick<TConsumerSecret, 'name' | 'content'>> &
-  ProjectRef;
-export type TDeleteConsumerSecret = KeyRef & ProjectRef;
+export type TUpdateSecretNote = NoteRef &
+  Partial<Pick<TSecretNote, 'name' | 'content'>>;
+export type TDeleteSecretNote = NoteRef;
 
-export type TConsumerSecretEncrypt = KeyRef & {
-  plaintext: string;
-  isBase64Encoded?: boolean;
-};
-export type TConsumerSecretDecrypt = KeyRef & { ciphertext: string };
-
-export type TProjectConsumerSecretsList = {
-  keys: TConsumerSecret[];
+export type TProjectSecretNotesList = {
+  notes: TSecretNote[];
   totalCount: number;
 };
 
-export type TListProjectConsumerSecretsDTO = {
+export type TListProjectSecretNotesDTO = {
   projectId: string;
   offset?: number;
   limit?: number;
-  orderBy?: ConsumerSecretOrderBy;
+  orderBy?: SecretNoteOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
 };
 
-export type TConsumerSecretEncryptResponse = {
-  ciphertext: string;
-};
-
-export type TConsumerSecretDecryptResponse = {
-  plaintext: string;
-};
-
-export enum ConsumerSecretOrderBy {
+export enum SecretNoteOrderBy {
   Name = 'name',
-}
-
-export enum EncryptionAlgorithm {
-  AES_GCM_256 = 'aes-256-gcm',
-  AES_GCM_128 = 'aes-128-gcm',
 }

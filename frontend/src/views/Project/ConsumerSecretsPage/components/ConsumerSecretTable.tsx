@@ -1,26 +1,18 @@
-import Link from 'next/link';
 import {
   faArrowDown,
   faArrowUp,
-  faArrowUpRightFromSquare,
-  faCancel,
   faCheck,
-  faCheckCircle,
   faCopy,
   faEdit,
   faEllipsis,
   faInfoCircle,
   faKey,
-  faLock,
-  faLockOpen,
-  faMagnifyingGlass,
   faPlus,
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { motion } from 'framer-motion';
 
-import { createNotification } from '@app/components/notifications';
 import { ProjectPermissionCan } from '@app/components/permissions';
 import {
   Badge,
@@ -57,18 +49,9 @@ import {
   useResetPageHelper,
   useTimedReset,
 } from '@app/hooks';
-import {
-  useGetConsumerSecretsByProjectId,
-  useUpdateConsumerSecret,
-} from '@app/hooks/api/consumerSecrets';
-import {
-  ConsumerSecretOrderBy,
-  TConsumerSecret,
-} from '@app/hooks/api/consumerSecrets/types';
+import { useGetConsumerSecretsByProjectId } from '@app/hooks/api/consumerSecrets';
+import { TSecretNote } from '@app/hooks/api/consumerSecrets/types';
 import { OrderByDirection } from '@app/hooks/api/generic/types';
-
-import { ConsumerSecretDecryptModal } from './ConsumerSecretDecryptModal';
-import { ConsumerSecretEncryptModal } from './ConsumerSecretEncryptModal';
 import { ConsumerSecretModal } from './ConsumerSecretModal';
 import { DeleteConsumerSecretModal } from './DeleteConsumerSecretModal';
 
@@ -107,7 +90,7 @@ export const ConsumerSecretTable = () => {
     perPage,
     page,
     setPerPage,
-  } = usePagination(ConsumerSecretOrderBy.Name);
+  } = usePagination('name');
 
   const { data, isLoading, isFetching } = useGetConsumerSecretsByProjectId({
     projectId,
@@ -221,8 +204,8 @@ export const ConsumerSecretTable = () => {
               )}
               {!isLoading &&
                 keys.length > 0 &&
-                keys.map((consumerSecret) => {
-                  const { name, id, content } = consumerSecret;
+                keys.map((secretNote: any) => {
+                  const { name, id, content } = secretNote;
 
                   return (
                     <Tr
@@ -280,7 +263,7 @@ export const ConsumerSecretTable = () => {
                               <div>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handlePopUpOpen('upsertKey', consumerSecret)
+                                    handlePopUpOpen('upsertKey', secretNote)
                                   }
                                   icon={<FontAwesomeIcon icon={faEdit} />}
                                   iconPos="left"
@@ -294,7 +277,7 @@ export const ConsumerSecretTable = () => {
                               <div>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handlePopUpOpen('deleteKey', consumerSecret)
+                                    handlePopUpOpen('deleteKey', secretNote)
                                   }
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                   iconPos="left"
@@ -335,22 +318,12 @@ export const ConsumerSecretTable = () => {
         <DeleteConsumerSecretModal
           isOpen={popUp.deleteKey.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('deleteKey', isOpen)}
-          consumerSecret={popUp.deleteKey.data as TConsumerSecret}
+          secretNote={popUp.deleteKey.data as TSecretNote}
         />
         <ConsumerSecretModal
           isOpen={popUp.upsertKey.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('upsertKey', isOpen)}
-          consumerSecret={popUp.upsertKey.data as TConsumerSecret | null}
-        />
-        <ConsumerSecretEncryptModal
-          isOpen={popUp.encryptData.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle('encryptData', isOpen)}
-          consumerSecret={popUp.encryptData.data as TConsumerSecret}
-        />
-        <ConsumerSecretDecryptModal
-          isOpen={popUp.decryptData.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle('decryptData', isOpen)}
-          consumerSecret={popUp.decryptData.data as TConsumerSecret}
+          secretNote={popUp.upsertKey.data as TSecretNote | null}
         />
       </div>
     </motion.div>

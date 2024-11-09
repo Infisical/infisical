@@ -9,7 +9,7 @@ import { OrderByDirection } from '@app/lib/types';
 export const registerSecretNotesRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: 'POST',
-    url: '/notes',
+    url: '/secret-notes',
     config: {
       rateLimit: writeLimit,
     },
@@ -44,7 +44,7 @@ export const registerSecretNotesRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: 'PATCH',
-    url: '/notes/:noteId',
+    url: '/secret-notes/:noteId',
     config: {
       rateLimit: writeLimit,
     },
@@ -89,7 +89,7 @@ export const registerSecretNotesRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: 'DELETE',
-    url: '/notes/:noteId',
+    url: '/secret-notes/:noteId',
     config: {
       rateLimit: writeLimit,
     },
@@ -114,7 +114,7 @@ export const registerSecretNotesRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: 'GET',
-    url: '/notes',
+    url: '/secret-notes',
     config: {
       rateLimit: readLimit,
     },

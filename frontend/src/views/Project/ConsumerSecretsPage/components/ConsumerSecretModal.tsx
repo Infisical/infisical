@@ -1,6 +1,5 @@
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import slugify from '@sindresorhus/slugify';
 import { z } from 'zod';
 
 import { createNotification } from '@app/components/notifications';
@@ -11,16 +10,13 @@ import {
   Modal,
   ModalClose,
   ModalContent,
-  Select,
-  SelectItem,
   TextArea,
 } from '@app/components/v2';
 import { useWorkspace } from '@app/context';
 import {
-  EncryptionAlgorithm,
-  TConsumerSecret,
-  useCreateConsumerSecret,
-  useUpdateConsumerSecret,
+  TSecretNote,
+  useCreateSecretNote,
+  useUpdateSecretNote,
 } from '@app/hooks/api/consumerSecrets';
 
 const formSchema = z.object({
@@ -33,19 +29,19 @@ export type FormData = z.infer<typeof formSchema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  consumerSecret?: TConsumerSecret | null;
+  secretNote?: TSecretNote | null;
 };
 
-type FormProps = Pick<Props, 'consumerSecret'> & {
+type FormProps = Pick<Props, 'secretNote'> & {
   onComplete: () => void;
 };
 
-const ConsumerSecretForm = ({ onComplete, consumerSecret }: FormProps) => {
-  const createConsumerSecret = useCreateConsumerSecret();
-  const updateConsumerSecret = useUpdateConsumerSecret();
+const ConsumerSecretForm = ({ onComplete, secretNote }: FormProps) => {
+  const createConsumerSecret = useCreateSecretNote();
+  const updateConsumerSecret = useUpdateSecretNote();
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id!;
-  const isUpdate = !!consumerSecret;
+  const isUpdate = !!secretNote;
 
   const {
     control,
@@ -55,15 +51,17 @@ const ConsumerSecretForm = ({ onComplete, consumerSecret }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: consumerSecret?.name,
-      content: consumerSecret?.content,
+      name: secretNote?.name,
+      content: secretNote?.content,
     },
   });
 
   const handleCreateConsumerSecret = async ({ name, content }: FormData) => {
+    if (!content) return;
+
     const mutation = isUpdate
       ? updateConsumerSecret.mutateAsync({
-          keyId: consumerSecret.id,
+          noteId: secretNote.id,
           projectId,
           name,
           content,
@@ -132,14 +130,14 @@ const ConsumerSecretForm = ({ onComplete, consumerSecret }: FormProps) => {
 export const ConsumerSecretModal = ({
   isOpen,
   onOpenChange,
-  consumerSecret,
+  secretNote,
 }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title={`${consumerSecret ? 'Update' : 'Add'} Secret Note`}>
+      <ModalContent title={`${secretNote ? 'Update' : 'Add'} Secret Note`}>
         <ConsumerSecretForm
           onComplete={() => onOpenChange(false)}
-          consumerSecret={consumerSecret}
+          secretNote={secretNote}
         />
       </ModalContent>
     </Modal>

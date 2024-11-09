@@ -1,12 +1,12 @@
 import { createNotification } from '@app/components/notifications';
 import { DeleteActionModal } from '@app/components/v2';
 import {
-  TConsumerSecret,
-  useDeleteConsumerSecret,
+  TSecretNote,
+  useDeleteSecretNote,
 } from '@app/hooks/api/consumerSecrets';
 
 type Props = {
-  consumerSecret: TConsumerSecret;
+  secretNote: TSecretNote;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -14,18 +14,18 @@ type Props = {
 export const DeleteConsumerSecretModal = ({
   isOpen,
   onOpenChange,
-  consumerSecret,
+  secretNote,
 }: Props) => {
-  const deleteConsumerSecret = useDeleteConsumerSecret();
+  const deleteConsumerSecret = useDeleteSecretNote();
 
-  if (!consumerSecret) return null;
+  if (!secretNote) return null;
 
-  const { id: keyId, projectId, name } = consumerSecret;
+  const { id: noteId, projectId, name } = secretNote;
 
   const handleDeleteConsumerSecret = async () => {
     try {
       await deleteConsumerSecret.mutateAsync({
-        keyId,
+        noteId,
         projectId,
       });
 
