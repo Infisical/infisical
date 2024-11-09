@@ -6,6 +6,9 @@ description: "Learn more about integrating an HSM with Infisical KMS."
 <Note>
   Changing the encryption strategy for your instance is an Enterprise-only feature.
   This section is intended for users who have obtained an Enterprise license and are on-premise.
+
+
+  Please reach out to sales@infisical.com if you have any questions.
 </Note>
 
 ## Overview
@@ -69,7 +72,7 @@ For organizations that work with US government agencies, FIPS compliance is almo
         Configuring the HSM on Infisical requires setting a set of environment variables:
         - `HSM_LIB_PATH`: The path to the PKCS#11 library provided by the HSM provider. This usually comes in the form of a `.so` for Linux and MacOS, or a `.dll` file for Windows. For Docker, you need to mount the library path as a volume. Further instructions can be found below. If you are using Docker, make sure to set the HSM_LIB_PATH environment variable to the path where the library is mounted in the container.
         - `HSM_PIN`: The PKCS#11 PIN to use for authentication with the HSM device.
-        - `HSM_SLOT`: The slot number to use for the HSM device. This is typically `0` for most HSM devices.
+        - `HSM_SLOT`: The slot number to use for the HSM device. This is typically between `0` and `5` for most HSM devices.
         - `HSM_KEY_LABEL`: The label of the key to use for encryption. **Please note that if no key is found with the provided label, the HSM will create a new key with the provided label.**
 
         You can read more about the [default instance configurations](/self-hosting/configuration/envars) here.
