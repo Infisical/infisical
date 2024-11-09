@@ -49,8 +49,11 @@ import {
   useResetPageHelper,
   useTimedReset,
 } from '@app/hooks';
-import { useGetConsumerSecretsByProjectId } from '@app/hooks/api/consumerSecrets';
-import { TSecretNote } from '@app/hooks/api/consumerSecrets/types';
+import { useGetSecretNotesByProjectId } from '@app/hooks/api/consumerSecrets';
+import {
+  SecretNoteOrderBy,
+  TSecretNote,
+} from '@app/hooks/api/consumerSecrets/types';
 import { OrderByDirection } from '@app/hooks/api/generic/types';
 import { ConsumerSecretModal } from './ConsumerSecretModal';
 import { DeleteConsumerSecretModal } from './DeleteConsumerSecretModal';
@@ -92,16 +95,16 @@ export const ConsumerSecretTable = () => {
     setPerPage,
   } = usePagination('name');
 
-  const { data, isLoading, isFetching } = useGetConsumerSecretsByProjectId({
+  const { data, isLoading, isFetching } = useGetSecretNotesByProjectId({
     projectId,
     offset,
     limit,
     search: debouncedSearch,
-    orderBy,
+    orderBy: 'name' as SecretNoteOrderBy,
     orderDirection,
   });
 
-  const { keys = [], totalCount = 0 } = data ?? {};
+  const { notes = [], totalCount = 0 } = data ?? {};
   useResetPageHelper({
     totalCount,
     offset,
@@ -203,8 +206,8 @@ export const ConsumerSecretTable = () => {
                 <TableSkeleton columns={5} innerKey="project-keys" />
               )}
               {!isLoading &&
-                keys.length > 0 &&
-                keys.map((secretNote: any) => {
+                notes.length > 0 &&
+                notes.map((secretNote: any) => {
                   const { name, id, content } = secretNote;
 
                   return (
@@ -304,7 +307,7 @@ export const ConsumerSecretTable = () => {
               onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
             />
           )}
-          {!isLoading && keys.length === 0 && (
+          {!isLoading && notes.length === 0 && (
             <EmptyState
               title={
                 debouncedSearch.trim().length > 0

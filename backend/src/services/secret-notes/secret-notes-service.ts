@@ -1,6 +1,7 @@
 import { Knex } from 'knex';
 import { NotFoundError } from '@app/lib/errors';
 import { TDbClient } from '@app/db';
+import { TConsumerSecrets } from '@app/db/schemas/consumer-secrets';
 import {
   TCreateSecretNoteDTO,
   TUpdateSecretNoteByIdDTO,
@@ -13,14 +14,14 @@ export const secretNotesServiceFactory = (db: TDbClient) => {
 
   const createSecretNote = async (data: TCreateSecretNoteDTO, tx?: Knex) => {
     const secretNoteData = {
-      user_id: '',
       project_id: data.projectId,
       type: 'secret_note',
       name: data.name,
       fields: { content: data.content },
     };
 
-    return secretNotesDAL.create(secretNoteData, tx);
+    const secret = await secretNotesDAL.create(secretNoteData, tx);
+    return convertToSecretNote(secret);
   };
 
   const updateSecretNoteById = async (
@@ -34,11 +35,12 @@ export const secretNotesServiceFactory = (db: TDbClient) => {
         message: `Secret note with ID '${id}' not found`,
       });
     }
-    return secretNotesDAL.updateById(
+    const updatedSecret = await secretNotesDAL.updateById(
       id,
-      { ...data, fields: { content: data.content } },
+      { name: data.name, content: data.content },
       tx,
     );
+    return convertToSecretNote(updatedSecret);
   };
 
   const deleteSecretNoteById = async (id: string, tx?: Knex) => {
@@ -55,8 +57,26 @@ export const secretNotesServiceFactory = (db: TDbClient) => {
     options: TListSecretNotesByProjectIdDTO,
     tx?: Knex,
   ) => {
-    return secretNotesDAL.findByProjectId(options, tx);
+    const { secrets, totalCount } = await secretNotesDAL.findByProjectId(
+      options,
+      tx,
+    );
+
+    // Transform the secrets to extract content from fields
+    const notes = secrets.map(convertToSecretNote);
+
+    return { notes, totalCount };
   };
+
+  // Helper function to convert a consumer secret to a secret note
+  const convertToSecretNote = (secret: TConsumerSecrets) => ({
+    id: secret.id,
+    name: secret.name,
+    content: (secret.fields as { content: string }).content, // Extract content from fields
+    projectId: secret.project_id,
+    createdAt: secret.created_at,
+    updatedAt: secret.updated_at,
+  });
 
   return {
     createSecretNote,

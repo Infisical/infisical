@@ -2,9 +2,9 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 
 import { apiRequest } from '@app/config/request';
 import {
-  ConsumerSecretOrderBy,
-  TListProjectConsumerSecretsDTO,
-  TProjectConsumerSecretsList,
+  TProjectSecretNotesList,
+  TListProjectSecretNotesDTO,
+  SecretNoteOrderBy,
 } from '@app/hooks/api/consumerSecrets/types';
 import { OrderByDirection } from '@app/hooks/api/generic/types';
 
@@ -14,24 +14,24 @@ export const consumerSecretKeys = {
   getConsumerSecretsByProjectId: ({
     projectId,
     ...filters
-  }: TListProjectConsumerSecretsDTO) =>
+  }: TListProjectSecretNotesDTO) =>
     [...consumerSecretKeys.lists(), projectId, filters] as const,
 };
 
-export const useGetConsumerSecretsByProjectId = (
+export const useGetSecretNotesByProjectId = (
   {
     projectId,
     offset = 0,
     limit = 100,
-    orderBy = ConsumerSecretOrderBy.Name,
+    orderBy = SecretNoteOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
     search = '',
-  }: TListProjectConsumerSecretsDTO,
+  }: TListProjectSecretNotesDTO,
   options?: Omit<
     UseQueryOptions<
-      TProjectConsumerSecretsList,
+      TProjectSecretNotesList,
       unknown,
-      TProjectConsumerSecretsList,
+      TProjectSecretNotesList,
       ReturnType<typeof consumerSecretKeys.getConsumerSecretsByProjectId>
     >,
     'queryKey' | 'queryFn'
@@ -47,8 +47,8 @@ export const useGetConsumerSecretsByProjectId = (
       search,
     }),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TProjectConsumerSecretsList>(
-        '/api/v1/kms/keys',
+      const { data } = await apiRequest.get<TProjectSecretNotesList>(
+        '/api/v1/csms/secret-notes',
         {
           params: { projectId, offset, limit, search, orderBy, orderDirection },
         },

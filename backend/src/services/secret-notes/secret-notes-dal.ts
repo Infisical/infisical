@@ -43,13 +43,18 @@ export const secretNotesDALFactory = (db: TDbClient) => {
 
   const updateById = async (
     id: string,
-    data: Partial<TConsumerSecrets>,
+    data: { name?: string; content?: string },
     tx?: Knex,
   ) => {
     try {
       const result = await (tx || db)(TableName.ConsumerSecrets)
         .where({ id, type: 'secret_note' })
-        .update(data)
+        .update({
+          name: data.name,
+          fields: db.raw("jsonb_set(fields, '{content}', ?::jsonb)", [
+            JSON.stringify(data.content),
+          ]),
+        })
         .returning('*');
 
       return ConsumerSecretsSchema.parse(result[0]);
@@ -81,7 +86,7 @@ export const secretNotesDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const query = (tx || db.replicaNode())(TableName.ConsumerSecrets)
-        .where('projectId', projectId)
+        .where('project_id', projectId)
         .andWhere('type', 'secret_note')
         .where((qb) => {
           if (search) {
