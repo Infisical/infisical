@@ -3631,7 +3631,16 @@ const syncSecretsBitBucket = async ({
   const res: { [key: string]: BitbucketVariable } = {};
 
   let hasNextPage = true;
-  let variablesUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`;
+
+  let variablesUrl: string;
+
+  if (integration.targetServiceId) {
+    // scope: deployment environment
+    variablesUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/deployments_config/environments/${integration.targetServiceId}/variables`;
+  } else {
+    // scope: repository
+    variablesUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`;
+  }
 
   while (hasNextPage) {
     const { data }: { data: VariablesResponse } = await request.get(variablesUrl, {

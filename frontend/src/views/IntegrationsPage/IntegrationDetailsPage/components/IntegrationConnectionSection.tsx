@@ -53,6 +53,8 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         case "aws-parameter-store":
         case "rundeck":
           return "Path";
+        case "bitbucket":
+          return "Repository";
         case "github":
           if (["github-env", "github-repo"].includes(integration.scope!)) {
             return "Repository";
@@ -92,10 +94,18 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
   };
 
   const targetEnvironmentDetails = () => {
+    if (integration.integration === "bitbucket") {
+      return (
+        <div className="flex flex-col">
+          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Workspace" />
+          <div className="text-sm text-mineshaft-300">
+            {integration.targetEnvironment || integration.targetEnvironmentId}
+          </div>
+        </div>
+      );
+    }
     if (
-      ["vercel", "netlify", "railway", "gitlab", "teamcity", "bitbucket"].includes(
-        integration.integration
-      ) ||
+      ["vercel", "netlify", "railway", "gitlab", "teamcity"].includes(integration.integration) ||
       (integration.integration === "github" && integration.scope === "github-env")
     ) {
       return (
@@ -149,6 +159,18 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
           <div className="text-sm text-mineshaft-300">
             {integration?.metadata?.secretSuffix || "-"}
           </div>
+        </div>
+      );
+    }
+
+    if (integration.integration === "bitbucket" && integration.targetServiceId) {
+      return (
+        <div>
+          <FormLabel
+            className="text-sm font-semibold text-mineshaft-300"
+            label="Deployment Environment"
+          />
+          <div className="text-sm text-mineshaft-300">{integration.targetService}</div>
         </div>
       );
     }

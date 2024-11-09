@@ -893,6 +893,48 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "GET",
+    url: "/:integrationAuthId/bitbucket/environments",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        integrationAuthId: z.string().trim()
+      }),
+      querystring: z.object({
+        workspaceSlug: z.string().trim().min(1, { message: "Workspace slug required" }),
+        repoSlug: z.string().trim().min(1, { message: "Repo slug required" })
+      }),
+      response: {
+        200: z.object({
+          environments: z
+            .object({
+              name: z.string(),
+              slug: z.string(),
+              uuid: z.string(),
+              type: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const environments = await server.services.integrationAuth.getBitbucketEnvironments({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.integrationAuthId,
+        workspaceSlug: req.query.workspaceSlug,
+        repoSlug: req.query.repoSlug
+      });
+      return { environments };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:integrationAuthId/northflank/secret-groups",
     config: {
       rateLimit: readLimit

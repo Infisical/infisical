@@ -53,7 +53,7 @@ export const ConfiguredIntegrationItem = ({
             {integration.secretPath}
           </div>
         </div>
-        <div className="flex h-full items-center">
+        <div className="mt-3 flex h-full items-center">
           <FontAwesomeIcon icon={faArrowRight} className="mx-4 text-gray-400" />
         </div>
         <div className="ml-4 flex flex-col">
@@ -107,6 +107,7 @@ export const ConfiguredIntegrationItem = ({
               label={
                 (integration.integration === "qovery" && integration?.scope) ||
                 (integration.integration === "circleci" && "Project") ||
+                (integration.integration === "bitbucket" && "Repository") ||
                 (integration.integration === "aws-secret-manager" && "Secret") ||
                 (["aws-parameter-store", "rundeck"].includes(integration.integration) && "Path") ||
                 (integration?.integration === "terraform-cloud" && "Project") ||
@@ -133,7 +134,6 @@ export const ConfiguredIntegrationItem = ({
           integration.integration === "railway" ||
           integration.integration === "gitlab" ||
           integration.integration === "teamcity" ||
-          integration.integration === "bitbucket" ||
           (integration.integration === "github" && integration.scope === "github-env")) && (
           <div className="ml-4 flex flex-col">
             <FormLabel label="Target Environment" />
@@ -141,6 +141,24 @@ export const ConfiguredIntegrationItem = ({
               {integration.targetEnvironment || integration.targetEnvironmentId}
             </div>
           </div>
+        )}
+        {integration.integration === "bitbucket" && (
+          <>
+            {integration.targetServiceId && (
+              <div className="ml-2 flex flex-col">
+                <FormLabel label="Environment" />
+                <div className="min-w-[8rem] overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  {integration.targetService || integration.targetServiceId}
+                </div>
+              </div>
+            )}
+            <div className="ml-2 flex flex-col">
+              <FormLabel label="Workspace" />
+              <div className="overflow-clip text-ellipsis whitespace-nowrap rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                {integration.targetEnvironment || integration.targetEnvironmentId}
+              </div>
+            </div>
+          </>
         )}
         {integration.integration === "checkly" && integration.targetService && (
           <div className="ml-2">
