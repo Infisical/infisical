@@ -199,9 +199,11 @@ export type TDynamicSecretProvider =
         binddn: string;
         bindpass: string;
         ca?: string | undefined;
-        creationLdif: string;
-        revocationLdif: string;
+        credentialType: string;
+        creationLdif?: string;
+        revocationLdif?: string;
         rollbackLdif?: string;
+        rotationLdif?: string;
       };
     }
   | {
