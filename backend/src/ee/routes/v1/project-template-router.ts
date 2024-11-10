@@ -12,7 +12,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const MAX_JSON_SIZE_LIMIT_IN_BYTES = 1_048_576; // 1MB
+const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;
 
 const SlugSchema = z
   .string()
