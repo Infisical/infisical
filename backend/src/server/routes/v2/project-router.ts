@@ -489,4 +489,39 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { certificateTemplates };
     }
   });
+
+  /* Get a project ID by slug */
+  server.route({
+    method: "GET",
+    url: "/:slug/id",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        slug: slugSchema.describe("The slug of the project to get the ID for.")
+      }),
+      response: {
+        200: z.object({
+          id: z.string().describe("The ID of the project.")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.getAProject({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { id: project.id };
+    }
+  });
 };
