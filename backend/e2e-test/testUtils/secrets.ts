@@ -111,7 +111,7 @@ export const getSecretsV2 = async (dto: {
       secretPath: dto.secretPath,
       expandSecretReferences: "true",
       include_imports: "true",
-      recursive: String(dto.recursive)
+      recursive: String(dto.recursive || false)
     }
   });
   expect(getSecretsResponse.statusCode).toBe(200);

@@ -13,7 +13,7 @@ describe("Secret Recursive Testing", async () => {
   ];
 
   beforeAll(async () => {
-    let rootFolderId = "";
+    const rootFolderIds: string[] = [];
     for (const folder of folderAndSecretNames) {
       // eslint-disable-next-line no-await-in-loop
       const createdFolder = await createFolder({
@@ -25,7 +25,7 @@ describe("Secret Recursive Testing", async () => {
       });
 
       if (folder.path === "/") {
-        rootFolderId = createdFolder.id;
+        rootFolderIds.push(createdFolder.id);
       }
       // eslint-disable-next-line no-await-in-loop
       await createSecretV2({
@@ -39,13 +39,17 @@ describe("Secret Recursive Testing", async () => {
     }
 
     return async () => {
-      await deleteFolder({
-        authToken: jwtAuthToken,
-        secretPath: "/",
-        id: rootFolderId,
-        workspaceId: projectId,
-        environmentSlug: "prod"
-      });
+      await Promise.all(
+        rootFolderIds.map((id) =>
+          deleteFolder({
+            authToken: jwtAuthToken,
+            secretPath: "/",
+            id,
+            workspaceId: projectId,
+            environmentSlug: "prod"
+          })
+        )
+      );
 
       await deleteSecretV2({
         authToken: jwtAuthToken,
