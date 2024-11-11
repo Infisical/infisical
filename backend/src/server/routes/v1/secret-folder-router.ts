@@ -4,6 +4,7 @@ import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FOLDERS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
+import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -25,7 +26,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.CREATE.workspaceId),
         environment: z.string().trim().describe(FOLDERS.CREATE.environment),
-        name: z.string().trim().describe(FOLDERS.CREATE.name),
+        name: z
+          .string()
+          .trim()
+          .describe(FOLDERS.CREATE.name)
+          .refine((name) => isValidFolderName(name), {
+            message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+          }),
         path: z
           .string()
           .trim()
@@ -97,7 +104,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim().describe(FOLDERS.UPDATE.workspaceId),
         environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
-        name: z.string().trim().describe(FOLDERS.UPDATE.name),
+        name: z
+          .string()
+          .trim()
+          .describe(FOLDERS.UPDATE.name)
+          .refine((name) => isValidFolderName(name), {
+            message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+          }),
         path: z
           .string()
           .trim()
@@ -170,7 +183,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .object({
             id: z.string().describe(FOLDERS.UPDATE.folderId),
             environment: z.string().trim().describe(FOLDERS.UPDATE.environment),
-            name: z.string().trim().describe(FOLDERS.UPDATE.name),
+            name: z
+              .string()
+              .trim()
+              .describe(FOLDERS.UPDATE.name)
+              .refine((name) => isValidFolderName(name), {
+                message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+              }),
             path: z
               .string()
               .trim()

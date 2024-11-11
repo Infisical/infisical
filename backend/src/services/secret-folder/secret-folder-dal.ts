@@ -6,6 +6,7 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { groupBy, removeTrailingSlash } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { isValidSecretPath } from "@app/lib/validator";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { TFindFoldersDeepByParentIdsDTO } from "./secret-folder-types";
@@ -214,6 +215,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   const secretFolderOrm = ormify(db, TableName.SecretFolder);
 
   const findBySecretPath = async (projectId: string, environment: string, path: string, tx?: Knex) => {
+    const isValidPath = isValidSecretPath(path);
+    if (!isValidPath)
+      throw new BadRequestError({
+        message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
+      });
+
     try {
       const folder = await sqlFindFolderByPathQuery(
         tx || db.replicaNode(),
@@ -236,6 +243,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   // finds folders by path for multiple envs
   const findBySecretPathMultiEnv = async (projectId: string, environments: string[], path: string, tx?: Knex) => {
+    const isValidPath = isValidSecretPath(path);
+    if (!isValidPath)
+      throw new BadRequestError({
+        message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
+      });
+
     try {
       const pathDepth = removeTrailingSlash(path).split("/").filter(Boolean).length + 1;
 
@@ -267,6 +280,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   // even if its the original given /path1/path2
   // it will stop automatically at /path2
   const findClosestFolder = async (projectId: string, environment: string, path: string, tx?: Knex) => {
+    const isValidPath = isValidSecretPath(path);
+    if (!isValidPath)
+      throw new BadRequestError({
+        message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
+      });
+
     try {
       const folder = await sqlFindFolderByPathQuery(
         tx || db.replicaNode(),

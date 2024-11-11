@@ -10,9 +10,9 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
 
-const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
+const INTERPOLATION_SYNTAX_REG = /\${([a-zA-Z0-9-_.]+)}/g;
 // akhilmhdh: JS regex with global save state in .test
-const INTERPOLATION_SYNTAX_REG_NON_GLOBAL = /\${([^}]+)}/;
+const INTERPOLATION_SYNTAX_REG_NON_GLOBAL = /\${([a-zA-Z0-9-_.]+)}/;
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
