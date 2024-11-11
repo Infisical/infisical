@@ -444,7 +444,6 @@ export const expandSecretReferencesFactory = ({
       // eslint-disable-next-line no-continue
       if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
       const refs = value?.match(INTERPOLATION_SYNTAX_REG);
-      console.log("refs", refs);
 
       if (refs) {
         for (const interpolationSyntax of refs) {
