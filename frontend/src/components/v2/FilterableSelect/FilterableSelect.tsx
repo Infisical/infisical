@@ -7,11 +7,11 @@ import Select, {
   Props
 } from "react-select";
 import { faCheckCircle, faCircleXmark } from "@fortawesome/free-regular-svg-icons";
-import { faChevronDown, faX } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-const DropdownIndicator = (props: DropdownIndicatorProps) => {
+const DropdownIndicator = <T,>(props: DropdownIndicatorProps<T>) => {
   return (
     <components.DropdownIndicator {...props}>
       <FontAwesomeIcon icon={faChevronDown} size="xs" />
@@ -19,7 +19,7 @@ const DropdownIndicator = (props: DropdownIndicatorProps) => {
   );
 };
 
-const ClearIndicator = (props: ClearIndicatorProps) => {
+const ClearIndicator = <T,>(props: ClearIndicatorProps<T>) => {
   return (
     <components.ClearIndicator {...props}>
       <FontAwesomeIcon icon={faCircleXmark} />
@@ -30,12 +30,12 @@ const ClearIndicator = (props: ClearIndicatorProps) => {
 const MultiValueRemove = (props: MultiValueRemoveProps) => {
   return (
     <components.MultiValueRemove {...props}>
-      <FontAwesomeIcon icon={faX} size="xs" />
+      <FontAwesomeIcon icon={faXmark} size="xs" />
     </components.MultiValueRemove>
   );
 };
 
-const Option = ({ isSelected, children, ...props }: OptionProps) => {
+const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) => {
   return (
     <components.Option isSelected={isSelected} {...props}>
       {children}
@@ -46,10 +46,10 @@ const Option = ({ isSelected, children, ...props }: OptionProps) => {
   );
 };
 
-export const MultiSelect = (props: Props) => (
+export const FilterableSelect = <T,>({ isMulti, closeMenuOnSelect, ...props }: Props<T>) => (
   <Select
-    isMulti
-    closeMenuOnSelect={false}
+    isMulti={isMulti}
+    closeMenuOnSelect={closeMenuOnSelect ?? !isMulti}
     hideSelectedOptions={false}
     unstyled
     styles={{
@@ -75,11 +75,11 @@ export const MultiSelect = (props: Props) => (
       control: ({ isFocused }) =>
         twMerge(
           isFocused ? "border-primary-400/50" : "border-mineshaft-600 hover:border-gray-400",
-          "border w-full p-0.5 rounded-md font-inter bg-mineshaft-900 hover:cursor-pointer"
+          "border w-full p-0.5 rounded-md text-mineshaft-200 font-inter bg-mineshaft-900 hover:cursor-pointer"
         ),
       placeholder: () => "text-mineshaft-400 text-sm pl-1 py-0.5",
       input: () => "pl-1 py-0.5",
-      valueContainer: () => "p-1 max-h-[14rem] !overflow-y-scroll gap-1",
+      valueContainer: () => `p-1 max-h-[14rem] ${isMulti ? "!overflow-y-scroll" : ""} gap-1`,
       singleValue: () => "leading-7 ml-1",
       multiValue: () => "bg-mineshaft-600 rounded items-center py-0.5 px-2 gap-1.5",
       multiValueLabel: () => "leading-6 text-sm",
@@ -94,7 +94,7 @@ export const MultiSelect = (props: Props) => (
       option: ({ isFocused, isSelected }) =>
         twMerge(
           isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
-          isSelected && "text-mineshaft-400",
+          isSelected && "text-mineshaft-200",
           "hover:cursor-pointer text-xs px-3 py-2"
         ),
       noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"

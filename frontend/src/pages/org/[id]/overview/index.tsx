@@ -589,7 +589,7 @@ const OrganizationPage = () => {
   );
 
   const { data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: canReadProjectTemplates && subscription?.projectTemplates
+    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
   });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit

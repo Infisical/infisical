@@ -99,6 +99,12 @@ export type TIntegrationAuthBitbucketWorkspaceDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TIntegrationAuthBitbucketEnvironmentsDTO = {
+  workspaceSlug: string;
+  repoSlug: string;
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TIntegrationAuthNorthflankSecretGroupDTO = {
   id: string;
   appId: string;
@@ -146,6 +152,13 @@ export type TBitbucketWorkspace = {
   is_private: boolean;
   created_on: string;
   updated_on: string;
+};
+
+export type TBitbucketEnvironment = {
+  type: string;
+  uuid: string;
+  name: string;
+  slug: string;
 };
 
 export type TNorthflankSecretGroup = {

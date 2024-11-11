@@ -28,7 +28,7 @@ const integrationSlugNameMapping: Mapping = {
   "cloudflare-workers": "Cloudflare Workers",
   codefresh: "Codefresh",
   "digital-ocean-app-platform": "Digital Ocean App Platform",
-  bitbucket: "BitBucket",
+  bitbucket: "Bitbucket",
   "cloud-66": "Cloud 66",
   northflank: "Northflank",
   windmill: "Windmill",

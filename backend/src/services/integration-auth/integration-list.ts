@@ -334,7 +334,7 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "BitBucket",
+      name: "Bitbucket",
       slug: "bitbucket",
       image: "BitBucket.png",
       isAvailable: true,

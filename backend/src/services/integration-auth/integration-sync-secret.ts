@@ -3631,7 +3631,14 @@ const syncSecretsBitBucket = async ({
   const res: { [key: string]: BitbucketVariable } = {};
 
   let hasNextPage = true;
-  let variablesUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`;
+
+  const rootUrl = integration.targetServiceId
+    ? // scope: deployment environment
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/deployments_config/environments/${integration.targetServiceId}/variables`
+    : // scope: repository
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`;
+
+  let variablesUrl = rootUrl;
 
   while (hasNextPage) {
     const { data }: { data: VariablesResponse } = await request.get(variablesUrl, {
@@ -3658,7 +3665,7 @@ const syncSecretsBitBucket = async ({
     if (key in res) {
       // update existing secret
       await request.put(
-        `${variablesUrl}/${res[key].uuid}`,
+        `${rootUrl}/${res[key].uuid}`,
         {
           key,
           value: secrets[key].value,
@@ -3674,7 +3681,7 @@ const syncSecretsBitBucket = async ({
     } else {
       // create new secret
       await request.post(
-        variablesUrl,
+        rootUrl,
         {
           key,
           value: secrets[key].value,

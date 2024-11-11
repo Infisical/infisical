@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace";
 import {
   App,
+  BitBucketEnvironment,
   BitBucketWorkspace,
   ChecklyGroup,
   Environment,
@@ -94,6 +95,17 @@ const integrationAuthKeys = {
   }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const,
   getIntegrationAuthBitBucketWorkspaces: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthBitbucketWorkspaces"] as const,
+  getIntegrationAuthBitBucketEnvironments: (
+    integrationAuthId: string,
+    workspaceSlug: string,
+    repoSlug: string
+  ) =>
+    [
+      { integrationAuthId },
+      workspaceSlug,
+      repoSlug,
+      "integrationAuthBitbucketEnvironments"
+    ] as const,
   getIntegrationAuthNorthflankSecretGroups: ({
     integrationAuthId,
     appId
@@ -401,6 +413,25 @@ const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string
     `/api/v1/integration-auth/${integrationAuthId}/bitbucket/workspaces`
   );
   return workspaces;
+};
+
+const fetchIntegrationAuthBitBucketEnvironments = async (
+  integrationAuthId: string,
+  workspaceSlug: string,
+  repoSlug: string
+) => {
+  const {
+    data: { environments }
+  } = await apiRequest.get<{ environments: BitBucketEnvironment[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/bitbucket/environments`,
+    {
+      params: {
+        workspaceSlug,
+        repoSlug
+      }
+    }
+  );
+  return environments;
 };
 
 const fetchIntegrationAuthNorthflankSecretGroups = async ({
@@ -724,6 +755,30 @@ export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: stri
     queryKey: integrationAuthKeys.getIntegrationAuthBitBucketWorkspaces(integrationAuthId),
     queryFn: () => fetchIntegrationAuthBitBucketWorkspaces(integrationAuthId),
     enabled: true
+  });
+};
+
+export const useGetIntegrationAuthBitBucketEnvironments = (
+  {
+    integrationAuthId,
+    workspaceSlug,
+    repoSlug
+  }: {
+    integrationAuthId: string;
+    workspaceSlug: string;
+    repoSlug: string;
+  },
+  options?: UseQueryOptions<BitBucketEnvironment[]>
+) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthBitBucketEnvironments(
+      integrationAuthId,
+      workspaceSlug,
+      repoSlug
+    ),
+    queryFn: () =>
+      fetchIntegrationAuthBitBucketEnvironments(integrationAuthId, workspaceSlug, repoSlug),
+    ...options
   });
 };
 

@@ -282,7 +282,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   );
 
   const { data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: canReadProjectTemplates && subscription?.projectTemplates
+    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
   });
 
   const onCreateProject = async ({ name, addMembers, kmsKeyId, template }: TAddProjectFormData) => {

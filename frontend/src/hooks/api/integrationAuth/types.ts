@@ -79,6 +79,12 @@ export type BitBucketWorkspace = {
   slug: string;
 };
 
+export type BitBucketEnvironment = {
+  uuid: string;
+  name: string;
+  slug: string;
+};
+
 export type NorthflankSecretGroup = {
   name: string;
   groupId: string;

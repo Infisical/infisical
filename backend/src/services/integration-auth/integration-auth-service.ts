@@ -20,6 +20,7 @@ import { getApps } from "./integration-app-list";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import {
+  TBitbucketEnvironment,
   TBitbucketWorkspace,
   TChecklyGroups,
   TDeleteIntegrationAuthByIdDTO,
@@ -30,6 +31,7 @@ import {
   THerokuPipelineCoupling,
   TIntegrationAuthAppsDTO,
   TIntegrationAuthAwsKmsKeyDTO,
+  TIntegrationAuthBitbucketEnvironmentsDTO,
   TIntegrationAuthBitbucketWorkspaceDTO,
   TIntegrationAuthChecklyGroupsDTO,
   TIntegrationAuthGithubEnvsDTO,
@@ -1261,6 +1263,55 @@ export const integrationAuthServiceFactory = ({
     return workspaces;
   };
 
+  const getBitbucketEnvironments = async ({
+    workspaceSlug,
+    repoSlug,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id
+  }: TIntegrationAuthBitbucketEnvironmentsDTO) => {
+    const integrationAuth = await integrationAuthDAL.findById(id);
+    if (!integrationAuth) throw new NotFoundError({ message: `Integration auth with ID '${id}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      integrationAuth.projectId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
+    const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
+    const environments: TBitbucketEnvironment[] = [];
+    let hasNextPage = true;
+
+    let environmentsUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}/${repoSlug}/environments`;
+
+    while (hasNextPage) {
+      // eslint-disable-next-line
+      const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      });
+
+      if (data?.values.length > 0) {
+        environments.push(...data.values);
+      }
+
+      if (data.next) {
+        environmentsUrl = data.next;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    return environments;
+  };
+
   const getNorthFlankSecretGroups = async ({
     id,
     actor,
@@ -1499,6 +1550,7 @@ export const integrationAuthServiceFactory = ({
     getNorthFlankSecretGroups,
     getTeamcityBuildConfigs,
     getBitbucketWorkspaces,
+    getBitbucketEnvironments,
     getIntegrationAccessToken,
     duplicateIntegrationAuth
   };

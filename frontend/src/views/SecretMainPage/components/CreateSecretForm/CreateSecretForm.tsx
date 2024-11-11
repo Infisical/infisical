@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, MultiSelect } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
@@ -148,7 +148,7 @@ export const CreateSecretForm = ({
               )
             }
           >
-            <MultiSelect
+            <FilterableSelect
               className="w-full"
               placeholder="Select tags to assign to secret..."
               isMulti

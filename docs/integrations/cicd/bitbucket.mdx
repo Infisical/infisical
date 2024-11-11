@@ -3,29 +3,37 @@ title: "Bitbucket"
 description: "How to sync secrets from Infisical to Bitbucket"
 ---
 
+Infisical lets you sync secrets to Bitbucket at the repository-level and deployment environment-level.
+
+
 Prerequisites:
 
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
 <AccordionGroup>
   <Accordion title="Push secrets to Bitbucket from Infisical">
-    <Steps>
-      <Step title="Authorize Infisical for Bitbucket">
-        Navigate to your project's integrations tab in Infisical.
+      <Steps>
+          <Step title="Authorize Infisical for Bitbucket">
+              Navigate to your project's integrations tab in Infisical.
 
-        ![integrations](../../images/integrations.png)
+              ![integrations](/images/integrations.png)
 
-        Press on the Bitbucket tile and grant Infisical access to your Bitbucket account.
+              Press on the Bitbucket tile and grant Infisical access to your Bitbucket account.
 
-        ![integrations bitbucket authorization](../../images/integrations/bitbucket/integrations-bitbucket-auth.png)
+              ![integrations bitbucket authorization](/images/integrations/bitbucket/integrations-bitbucket.png)
+          </Step>
+          <Step title='Configure integration'>
+              Select which workspace, repository, and optionally, deployment environment, you'd like to sync your secrets
+              to.
+              ![integrations configure
+              bitbucket](/images/integrations/bitbucket/integrations-bitbucket-configuration.png)
 
-      </Step>
-      <Step title="Start integration">
-        Select which Infisical environment secrets you want to sync to which Bitbucket repo and press start integration to start syncing secrets to the repo.
+              Once created, your integration will begin syncing secrets to the configured repository or deployment
+              environment.
 
-        ![integrations bitbucket](../../images/integrations/bitbucket/integrations-bitbucket.png)
-      </Step>
-    </Steps>
+              ![integrations bitbucket](/images/integrations/bitbucket/integrations-bitbucket.png)
+          </Step>
+      </Steps>
 
   </Accordion>
   <Accordion title="Pull secrets in Bitbucket pipelines from Infisical">
@@ -36,7 +44,7 @@ Prerequisites:
       <Step title="Initialize Bitbucket variables">
       Create Bitbucket variables (can be either workspace, repository, or deployment-level) to store Machine Identity Client ID and Client Secret.
       
-      ![integrations bitbucket](../../images/integrations/bitbucket/integrations-bitbucket-env.png)
+      ![integrations bitbucket](/images/integrations/bitbucket/integrations-bitbucket-env.png)
       </Step>
       <Step title="Integrate Infisical secrets into the pipeline">
         Edit your Bitbucket pipeline YAML file to include the use of the Infisical CLI to fetch and inject secrets into any script or command within the pipeline.
