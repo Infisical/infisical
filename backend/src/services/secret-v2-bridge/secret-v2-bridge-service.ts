@@ -150,9 +150,9 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
 
-    if (referredSecrets.length !== references.length)
+    if (new Set(referredSecrets.map((sec) => sec.key)).size !== new Set(references.map((sec) => sec.secretKey)).size)
       throw new BadRequestError({
-        message: `Referenced secret not found. Found only ${diff(
+        message: `Referenced secret(s) not found: ${diff(
           references.map((el) => el.secretKey),
           referredSecrets.map((el) => el.key)
         ).join(",")}`
