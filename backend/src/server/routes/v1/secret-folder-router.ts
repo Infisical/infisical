@@ -5,7 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FOLDERS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
-import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -80,6 +80,50 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+      return { folder };
+    }
+  });
+
+  server.route({
+    url: "/:folderId/move",
+    method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Move folder to new path",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        folderId: z.string().describe(FOLDERS.MOVE.folderId)
+      }),
+      body: z.object({
+        projectId: z.string().trim().describe(FOLDERS.MOVE.projectId),
+        newPath: z
+          .string()
+          .trim()
+          .describe(FOLDERS.MOVE.newPath)
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+      }),
+
+      response: {
+        200: z.object({
+          folder: SecretFoldersSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const folder = await server.services.folder.moveFolder({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        folderId: req.params.folderId,
+        projectId: req.body.projectId,
+        newPath: req.body.newPath
+      });
+
       return { folder };
     }
   });

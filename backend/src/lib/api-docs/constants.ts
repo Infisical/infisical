@@ -582,6 +582,11 @@ export const FOLDERS = {
     projectSlug: "The slug of the project where the folder is located.",
     workspaceId: "The ID of the project where the folder is located."
   },
+  MOVE: {
+    projectId: "The ID of the project to move the folder from.",
+    folderId: "The ID of the folder to move.",
+    newPath: "The new path of the folder."
+  },
   DELETE: {
     folderIdOrName: "The ID or name of the folder to delete.",
     workspaceId: "The ID of the project to delete the folder from.",
