@@ -10,9 +10,9 @@ import {
   Button,
   Card,
   CardTitle,
+  FilterableSelect,
   FormControl,
   Input,
-  MultiSelect,
   Spinner
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
@@ -174,9 +174,7 @@ export default function BitBucketCreateIntegrationPage() {
               isError={Boolean(error)}
               label="Project Environment"
             >
-              <MultiSelect
-                closeMenuOnSelect
-                isMulti={false}
+              <FilterableSelect
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
@@ -210,9 +208,7 @@ export default function BitBucketCreateIntegrationPage() {
               isError={Boolean(error)}
               label="Bitbucket Workspace"
             >
-              <MultiSelect
-                closeMenuOnSelect
-                isMulti={false}
+              <FilterableSelect
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
@@ -231,9 +227,7 @@ export default function BitBucketCreateIntegrationPage() {
           name="targetRepo"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl errorText={error?.message} isError={Boolean(error)} label="Bitbucket Repo">
-              <MultiSelect
-                closeMenuOnSelect
-                isMulti={false}
+              <FilterableSelect
                 getOptionValue={(option) => option.appId!}
                 value={value}
                 getOptionLabel={(option) => option.name}
@@ -252,9 +246,7 @@ export default function BitBucketCreateIntegrationPage() {
           name="scope"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl errorText={error?.message} isError={Boolean(error)} label="Scope">
-              <MultiSelect
-                closeMenuOnSelect
-                isMulti={false}
+              <FilterableSelect
                 value={value}
                 getOptionValue={(option) => option.value}
                 getOptionLabel={(option) => option.label}
@@ -275,9 +267,7 @@ export default function BitBucketCreateIntegrationPage() {
                 isError={Boolean(error)}
                 label="Bitbucket Deployment Environment"
               >
-                <MultiSelect
-                  closeMenuOnSelect
-                  isMulti={false}
+                <FilterableSelect
                   getOptionValue={(option) => option.uuid}
                   value={value}
                   getOptionLabel={(option) => option.name}

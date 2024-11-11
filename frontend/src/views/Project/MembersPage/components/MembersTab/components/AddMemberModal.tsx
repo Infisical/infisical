@@ -15,10 +15,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FilterableSelect,
   FormControl,
   Modal,
-  ModalContent,
-  MultiSelect
+  ModalContent
 } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
@@ -153,7 +153,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     errorText={errors.orgMemberships?.[0]?.message}
                     label="Invite users to project"
                   >
-                    <MultiSelect
+                    <FilterableSelect
                       className="w-full"
                       placeholder="Add one or more users..."
                       isMulti

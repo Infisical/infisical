@@ -7,7 +7,7 @@ import Select, {
   Props
 } from "react-select";
 import { faCheckCircle, faCircleXmark } from "@fortawesome/free-regular-svg-icons";
-import { faChevronDown, faX } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -30,7 +30,7 @@ const ClearIndicator = <T,>(props: ClearIndicatorProps<T>) => {
 const MultiValueRemove = (props: MultiValueRemoveProps) => {
   return (
     <components.MultiValueRemove {...props}>
-      <FontAwesomeIcon icon={faX} size="xs" />
+      <FontAwesomeIcon icon={faXmark} size="xs" />
     </components.MultiValueRemove>
   );
 };
@@ -46,10 +46,10 @@ const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) => {
   );
 };
 
-export const MultiSelect = <T,>({ isMulti = true, ...props }: Props<T>) => (
+export const FilterableSelect = <T,>({ isMulti, closeMenuOnSelect, ...props }: Props<T>) => (
   <Select
     isMulti={isMulti}
-    closeMenuOnSelect={false}
+    closeMenuOnSelect={closeMenuOnSelect ?? !isMulti}
     hideSelectedOptions={false}
     unstyled
     styles={{

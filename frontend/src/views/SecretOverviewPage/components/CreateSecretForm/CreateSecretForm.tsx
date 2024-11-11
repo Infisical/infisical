@@ -10,10 +10,10 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
+  FilterableSelect,
   FormControl,
   FormLabel,
   Input,
-  MultiSelect,
   Tooltip
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
@@ -249,7 +249,7 @@ export const CreateSecretForm = ({ secretPath = "/", getSecretByKey, onClose }: 
               )
             }
           >
-            <MultiSelect
+            <FilterableSelect
               className="w-full"
               placeholder="Select tags to assign to secrets..."
               isMulti
