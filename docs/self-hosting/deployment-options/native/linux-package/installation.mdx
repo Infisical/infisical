@@ -1,0 +1,102 @@
+---
+title: "Installation"
+description: "Learn how to deploy Infisical using linux package."
+---
+
+Infisical can be deployed on Linux virtual machines without containers using our Linux packages. Currently, we support Linux systems running on AMD64 architecture (ARM coming soon).
+
+This standalone deployment uses a "Bring Your Own Database" (BYOD) approach, meaning you'll need to provide your own PostgreSQL and Redis databases for Infisical services. These databases are not included in the package.
+
+## Prerequisites
+
+Before beginning the installation, ensure you have:
+
+- A server running a linux-based operating system (Ubuntu, Debian) or RHEL-based system
+- A PostgreSQL database instance
+- A Redis database instance
+
+## Installation Steps
+
+<Steps>
+<Step title="Install the Infisical Package">
+Choose your operating system below to install Infisical:
+
+<Tabs>
+  <Tab title="Debian/Ubuntu">
+    First, add the Infisical repository:
+    ```bash
+    curl -1sLf \
+    'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.deb.sh' \
+    | sudo -E bash
+    ```
+
+    Then install Infisical:
+    ```bash
+    sudo apt-get update && sudo apt-get install -y infisical-core
+    ```
+
+    > **Note**: For production environments, we strongly recommend installing a specific version of the package to maintain consistency across reinstalls. View available versions at [Infisical Package Versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+
+  </Tab>
+
+  <Tab title="RedHat/CentOS/Amazon Linux">
+    First, add the Infisical repository:
+    ```bash
+    curl -1sLf \
+    'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.rpm.sh' \
+    | sudo -E bash
+    ```
+
+    Then install Infisical:
+    ```bash
+    sudo yum install infisical-core
+    ```
+
+    > **Note**: For production environments, we strongly recommend installing a specific version of the package to maintain consistency across reinstalls. View available versions at [Infisical Package Versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+
+  </Tab>
+</Tabs>
+
+To verify the installation, run:
+
+```bash
+infisical-ctl help
+```
+
+</Step>
+<Step title="Create the Configuration File">
+Create an `infisical.rb` file in the `/etc/infisical` directory. This file will contain your database connections and other configuration settings.
+
+<Accordion title="Example Configuration">
+```ruby
+# Important: Replace these values with secure keys in production
+infisical_core['ENCRYPTION_KEY'] = '6c1fe4e407b8911c104518103505b218'
+infisical_core['AUTH_SECRET'] = '5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE='
+
+# Database connection strings
+infisical_core['DB_CONNECTION_URI'] = 'postgres://infisical:infisical@localhost:5432/infisical'
+infisical_core['REDIS_URL'] = 'redis://localhost:6379'
+```
+</Accordion>
+
+For a complete list of configuration options, visit our [configuration variables documentation](/self-hosting/configuration/envars).
+
+</Step>
+<Step title="Start Infisical">
+1. Run the following command to start the Infisical server:
+   ```bash
+   infisical-ctl reconfigure
+   ```
+   By default, the server will run on port `8080`. You can modify this in the `infisical.rb` configuration file.
+
+2. Monitor your deployment:
+   - Check the application status:
+     ```bash
+     infisical-ctl status
+     ```
+   - View real-time logs:
+     ```bash
+     infisical-ctl tail
+     ```
+</Step>
+</Steps>
