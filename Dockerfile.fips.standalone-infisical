@@ -3,13 +3,9 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM  node:20-alpine AS base
+FROM node:20-slim AS base
 
 FROM base AS frontend-dependencies
-
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
 
 COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
@@ -46,8 +42,7 @@ RUN npm run build
 FROM base AS frontend-runner
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 non-root-user
+RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
 
 RUN mkdir -p /app/.next/cache/images && chown non-root-user:nodejs /app/.next/cache/images
 VOLUME /app/.next/cache/images
@@ -67,13 +62,19 @@ ENV NEXT_TELEMETRY_DISABLED 1
 ## BACKEND
 ##
 FROM base AS backend-build
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 non-root-user
+
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+
+RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
 
 WORKDIR /app
 
 # Required for pkcs11js
-RUN apk add --no-cache python3 make g++ 
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -86,10 +87,16 @@ RUN npm run build
 # Production stage
 FROM base AS backend-runner
 
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+
 WORKDIR /app
 
 # Required for pkcs11js
-RUN apk add --no-cache python3 make g++ 
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -100,13 +107,20 @@ RUN mkdir frontend-build
 
 # Production stage
 FROM base AS production
-RUN apk add --upgrade --no-cache ca-certificates
-RUN apk add --no-cache bash curl && curl -1sLf \
-  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
-  && apk add infisical=0.31.1 && apk add --no-cache git
 
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 non-root-user
+# Install necessary packages
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Infisical CLI
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical=0.31.1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
 
 # Give non-root-user permission to update SSL certs
 RUN chown -R non-root-user /etc/ssl/certs
@@ -119,13 +133,13 @@ RUN chmod u+rx /usr/sbin/update-ca-certificates
 ## set pre baked keys
 ARG POSTHOG_API_KEY
 ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
-  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
+    BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
 ARG INTERCOM_ID=intercom-id
 ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
-  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
+    BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
 ARG CAPTCHA_SITE_KEY
 ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY \
-  BAKED_NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
+    BAKED_NEXT_PUBLIC_CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
 WORKDIR / 
 
@@ -133,13 +147,14 @@ COPY --from=backend-runner /app /backend
 
 COPY --from=frontend-runner /app ./backend/frontend-build
 
-
 ENV PORT 8080
 ENV HOST=0.0.0.0
 ENV HTTPS_ENABLED false 
 ENV NODE_ENV production
 ENV STANDALONE_BUILD true 
 ENV STANDALONE_MODE true
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+
 WORKDIR /backend
 
 ENV TELEMETRY_ENABLED true

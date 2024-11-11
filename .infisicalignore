@@ -6,3 +6,4 @@ frontend/src/views/Project/MembersPage/components/MemberListTab/MemberRoleForm/S
 docs/self-hosting/configuration/envars.mdx:generic-api-key:106
 frontend/src/views/Project/MembersPage/components/MemberListTab/MemberRoleForm/SpecificPrivilegeSection.tsx:generic-api-key:451
 docs/mint.json:generic-api-key:651
+backend/src/ee/services/hsm/hsm-service.ts:generic-api-key:134

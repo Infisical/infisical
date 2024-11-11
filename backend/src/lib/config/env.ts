@@ -163,10 +163,22 @@ const envSchema = z
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
-    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true")
+    ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
+
+    // HSM
+    HSM_LIB_PATH: zpStr(z.string().optional()),
+    HSM_PIN: zpStr(z.string().optional()),
+    HSM_KEY_LABEL: zpStr(z.string().optional()),
+    HSM_SLOT: z.coerce.number().optional().default(0)
   })
+  // To ensure that basic encryption is always possible.
+  .refine(
+    (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
+    "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
+  )
   .transform((data) => ({
     ...data,
+
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
@@ -175,10 +187,14 @@ const envSchema = z
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
+
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    isHsmConfigured:
+      Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
+
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));

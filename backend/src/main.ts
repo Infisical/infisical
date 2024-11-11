@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import path from "path";
 
+import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig, IS_PACKAGED } from "./lib/config/env";
@@ -53,13 +55,17 @@ const run = async () => {
   const queue = queueServiceFactory(appCfg.REDIS_URL);
   const keyStore = keyStoreFactory(appCfg.REDIS_URL);
 
-  const server = await main({ db, auditLogDb, smtp, logger, queue, keyStore });
+  const hsmModule = initializeHsmModule();
+  hsmModule.initialize();
+
+  const server = await main({ db, auditLogDb, hsmModule: hsmModule.getModule(), smtp, logger, queue, keyStore });
   const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
     await db.destroy();
+    hsmModule.finalize();
     process.exit(0);
   });
 
@@ -67,6 +73,7 @@ const run = async () => {
   process.on("SIGTERM", async () => {
     await server.close();
     await db.destroy();
+    hsmModule.finalize();
     process.exit(0);
   });
 

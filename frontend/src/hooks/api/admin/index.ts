@@ -2,6 +2,12 @@ export {
   useAdminDeleteUser,
   useCreateAdminUser,
   useUpdateAdminSlackConfig,
-  useUpdateServerConfig
+  useUpdateServerConfig,
+  useUpdateServerEncryptionStrategy
 } from "./mutation";
-export { useAdminGetUsers, useGetAdminSlackConfig, useGetServerConfig } from "./queries";
+export {
+  useAdminGetUsers,
+  useGetAdminSlackConfig,
+  useGetServerConfig,
+  useGetServerRootKmsEncryptionDetails
+} from "./queries";

@@ -44,6 +44,7 @@ import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
+import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
@@ -184,6 +185,7 @@ declare module "fastify" {
       rateLimit: TRateLimitServiceFactory;
       userEngagement: TUserEngagementServiceFactory;
       externalKms: TExternalKmsServiceFactory;
+      hsm: THsmServiceFactory;
       orgAdmin: TOrgAdminServiceFactory;
       slack: TSlackServiceFactory;
       workflowIntegration: TWorkflowIntegrationServiceFactory;

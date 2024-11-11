@@ -136,8 +136,8 @@ type GetOrganizationsResponse struct {
 }
 
 type SelectOrganizationResponse struct {
-	Token string `json:"token"`
-	MfaEnabled bool `json:"isMfaEnabled"`
+	Token      string `json:"token"`
+	MfaEnabled bool   `json:"isMfaEnabled"`
 }
 
 type SelectOrganizationRequest struct {

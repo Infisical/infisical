@@ -14,6 +14,7 @@ import fastify from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
@@ -36,16 +37,19 @@ type TMain = {
   logger?: Logger;
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
+  hsmModule: HsmModule;
 };
 
 // Run the server!
-export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
+export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
+
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
-    connectionTimeout: 30 * 1000,
-    ignoreTrailingSlash: true
+    connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
+    ignoreTrailingSlash: true,
+    pluginTimeout: 40_000
   }).withTypeProvider<ZodTypeProvider>();
 
   server.setValidatorCompiler(validatorCompiler);
@@ -95,7 +99,7 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore }: TM
 
     await server.register(maintenanceMode);
 
-    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore });
+    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule });
 
     if (appCfg.isProductionMode) {
       await server.register(registerExternalNextjs, {

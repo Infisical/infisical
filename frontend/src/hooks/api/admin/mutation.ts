@@ -7,6 +7,7 @@ import { User } from "../users/types";
 import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   AdminSlackConfig,
+  RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
   TServerConfig,
   TUpdateAdminSlackConfigDTO
@@ -82,6 +83,18 @@ export const useUpdateAdminSlackConfig = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(adminQueryKeys.getAdminSlackConfig());
+    }
+  });
+};
+
+export const useUpdateServerEncryptionStrategy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (strategy: RootKeyEncryptionStrategy) => {
+      await apiRequest.patch("/api/v1/admin/encryption-strategies", { strategy });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(adminQueryKeys.getServerEncryptionStrategies());
     }
   });
 };

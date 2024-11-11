@@ -2,13 +2,14 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { KmsKeysSchema } from "@app/db/schemas";
+import { KmsKeysSchema, TKmsRootConfig } from "@app/db/schemas";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
 import {
   ExternalKmsAwsSchema,
   KmsProviders,
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { randomSecureBytes } from "@app/lib/crypto";
@@ -17,7 +18,7 @@ import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { getByteLengthForAlgorithm } from "@app/services/kms/kms-fns";
+import { getByteLengthForAlgorithm, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -27,6 +28,7 @@ import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
   KmsType,
+  RootKeyEncryptionStrategy,
   TDecryptWithKeyDTO,
   TDecryptWithKmsDTO,
   TEncryptionWithKeyDTO,
@@ -40,14 +42,13 @@ type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
-  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create">;
+  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
+  hsmService: THsmServiceFactory;
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
-
-const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
 const KMS_ROOT_CREATION_WAIT_KEY = "wait_till_ready_kms_root_key";
 const KMS_ROOT_CREATION_WAIT_TIME = 10;
@@ -63,7 +64,8 @@ export const kmsServiceFactory = ({
   keyStore,
   internalKmsDAL,
   orgDAL,
-  projectDAL
+  projectDAL,
+  hsmService
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY = Buffer.alloc(0);
 
@@ -610,6 +612,65 @@ export const kmsServiceFactory = ({
     }
   };
 
+  const $getBasicEncryptionKey = () => {
+    const appCfg = getConfig();
+
+    const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
+    const isBase64 = !appCfg.ENCRYPTION_KEY;
+    if (!encryptionKey)
+      throw new Error(
+        "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
+      );
+
+    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
+
+    return encryptionKeyBuffer;
+  };
+
+  const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
+    // case 1: root key is encrypted with HSM
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.HSM) {
+      const hsmIsActive = await hsmService.isActive();
+      if (!hsmIsActive) {
+        throw new Error("Unable to decrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
+      }
+
+      const decryptedKey = await hsmService.decrypt(kmsRootConfig.encryptedRootKey);
+      return decryptedKey;
+    }
+
+    // case 2: root key is encrypted with software encryption
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
+      const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+      const encryptionKeyBuffer = $getBasicEncryptionKey();
+
+      return cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
+    }
+
+    throw new Error(`Invalid root key encryption strategy: ${kmsRootConfig.encryptionStrategy}`);
+  };
+
+  const $encryptRootKey = async (plainKeyBuffer: Buffer, strategy: RootKeyEncryptionStrategy) => {
+    if (strategy === RootKeyEncryptionStrategy.HSM) {
+      const hsmIsActive = await hsmService.isActive();
+      if (!hsmIsActive) {
+        throw new Error("Unable to encrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
+      }
+      const encrypted = await hsmService.encrypt(plainKeyBuffer);
+      return encrypted;
+    }
+
+    if (strategy === RootKeyEncryptionStrategy.Software) {
+      const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+      const encryptionKeyBuffer = $getBasicEncryptionKey();
+
+      return cipher.encrypt(plainKeyBuffer, encryptionKeyBuffer);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    throw new Error(`Invalid root key encryption strategy: ${strategy}`);
+  };
+
   // by keeping the decrypted data key in inner scope
   // none of the entities outside can interact directly or expose the data key
   // NOTICE: If changing here update migrations/utils/kms
@@ -771,7 +832,6 @@ export const kmsServiceFactory = ({
         },
         tx
       );
-
       return kmsDAL.findByIdWithAssociatedKms(key.id, tx);
     });
 
@@ -794,14 +854,6 @@ export const kmsServiceFactory = ({
 
   // akhilmhdh: a copy of this is made in migrations/utils/kms
   const startService = async () => {
-    const appCfg = getConfig();
-    // This will switch to a seal process and HMS flow in future
-    const encryptionKey = appCfg.ENCRYPTION_KEY || appCfg.ROOT_ENCRYPTION_KEY;
-    // if root key its base64 encoded
-    const isBase64 = !appCfg.ENCRYPTION_KEY;
-    if (!encryptionKey) throw new Error("Root encryption key not found for KMS service.");
-    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
-
     const lock = await keyStore.acquireLock([`KMS_ROOT_CFG_LOCK`], 3000, { retryCount: 3 }).catch(() => null);
     if (!lock) {
       await keyStore.waitTillReady({
@@ -813,29 +865,67 @@ export const kmsServiceFactory = ({
 
     // check if KMS root key was already generated and saved in DB
     const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-    const cipher = symmetricCipherService(SymmetricEncryption.AES_GCM_256);
+
+    // case 1: a root key already exists in the DB
     if (kmsRootConfig) {
       if (lock) await lock.release();
-      logger.info("KMS: Encrypted ROOT Key found from DB. Decrypting.");
-      const decryptedRootKey = cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
-      // set the flag so that other instancen nodes can start
+      logger.info(`KMS: Encrypted ROOT Key found from DB. Decrypting. [strategy=${kmsRootConfig.encryptionStrategy}]`);
+
+      const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
+
+      // set the flag so that other instance nodes can start
       await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
       logger.info("KMS: Loading ROOT Key into Memory.");
       ROOT_ENCRYPTION_KEY = decryptedRootKey;
       return;
     }
 
-    logger.info("KMS: Generating ROOT Key");
+    // case 2: no config is found, so we create a new root key with basic encryption
+    logger.info("KMS: Generating new ROOT Key");
     const newRootKey = randomSecureBytes(32);
-    const encryptedRootKey = cipher.encrypt(newRootKey, encryptionKeyBuffer);
-    // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-    await kmsRootConfigDAL.create({ encryptedRootKey, id: KMS_ROOT_CONFIG_UUID });
+    const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Software).catch((err) => {
+      logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
+      throw err;
+    });
 
-    // set the flag so that other instancen nodes can start
+    await kmsRootConfigDAL.create({
+      // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+      id: KMS_ROOT_CONFIG_UUID,
+      encryptedRootKey,
+      encryptionStrategy: RootKeyEncryptionStrategy.Software
+    });
+
+    // set the flag so that other instance nodes can start
     await keyStore.setItemWithExpiry(KMS_ROOT_CREATION_WAIT_KEY, KMS_ROOT_CREATION_WAIT_TIME, "true");
     logger.info("KMS: Saved and loaded ROOT Key into memory");
     if (lock) await lock.release();
     ROOT_ENCRYPTION_KEY = newRootKey;
+  };
+
+  const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+    if (!kmsRootConfig) {
+      throw new NotFoundError({ message: "KMS root config not found" });
+    }
+
+    if (kmsRootConfig.encryptionStrategy === strategy) {
+      return;
+    }
+
+    const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
+    const encryptedRootKey = await $encryptRootKey(decryptedRootKey, strategy);
+
+    if (!encryptedRootKey) {
+      logger.error("KMS: Failed to re-encrypt ROOT Key with selected strategy");
+      throw new Error("Failed to re-encrypt ROOT Key with selected strategy");
+    }
+
+    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
+      encryptedRootKey,
+      encryptionStrategy: strategy
+    });
+
+    ROOT_ENCRYPTION_KEY = decryptedRootKey;
   };
 
   return {
@@ -849,6 +939,7 @@ export const kmsServiceFactory = ({
     encryptWithRootKey,
     decryptWithRootKey,
     getOrgKmsKeyId,
+    updateEncryptionStrategy,
     getProjectSecretManagerKmsKeyId,
     updateProjectSecretManagerKmsKey,
     getProjectKeyBackup,

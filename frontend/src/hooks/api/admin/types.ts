@@ -54,3 +54,15 @@ export type AdminSlackConfig = {
   clientId: string;
   clientSecret: string;
 };
+
+export type TGetServerRootKmsEncryptionDetails = {
+  strategies: {
+    strategy: RootKeyEncryptionStrategy;
+    enabled: boolean;
+  }[];
+};
+
+export enum RootKeyEncryptionStrategy {
+  Software = "SOFTWARE",
+  HSM = "HSM"
+}
