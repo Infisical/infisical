@@ -144,7 +144,7 @@ export const AdminDashboardPage = () => {
             <TabList>
               <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
-                {!!serverRootKmsDetails && <Tab value={TabSections.Encryption}>Encryption</Tab>}
+                <Tab value={TabSections.Encryption}>Encryption</Tab>
                 <Tab value={TabSections.Auth}>Authentication</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                 <Tab value={TabSections.Integrations}>Integrations</Tab>
@@ -329,11 +329,9 @@ export const AdminDashboardPage = () => {
                 </Button>
               </form>
             </TabPanel>
-            {!!serverRootKmsDetails && (
-              <TabPanel value={TabSections.Encryption}>
-                <EncryptionPanel rootKmsDetails={serverRootKmsDetails} />
-              </TabPanel>
-            )}
+            <TabPanel value={TabSections.Encryption}>
+              <EncryptionPanel rootKmsDetails={serverRootKmsDetails} />
+            </TabPanel>
             <TabPanel value={TabSections.Auth}>
               <AuthPanel />
             </TabPanel>

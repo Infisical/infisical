@@ -208,7 +208,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           strategies: z
             .object({
               strategy: z.nativeEnum(RootKeyEncryptionStrategy),
-              name: z.string(),
               enabled: z.boolean()
             })
             .array()

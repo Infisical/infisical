@@ -27,8 +27,8 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
   const HMAC_KEY_SIZE = 256;
 
   const $withSession = async <T>(callbackWithSession: SessionCallback<T>): Promise<T> => {
-    const RETRY_INTERVAL = 300; // 300ms between attempts
-    const MAX_TIMEOUT = 30_000; // 30 seconds maximum total time
+    const RETRY_INTERVAL = 200; // 200ms between attempts
+    const MAX_TIMEOUT = 90_000; // 90 seconds maximum total time
 
     let sessionHandle: pkcs11js.Handle | null = null;
 
@@ -39,7 +39,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
           pkcs11.C_CloseSession(sessionHandle);
           logger.info("HSM: Terminated session successfully");
         } catch (error) {
-          logger.error("Error during session cleanup:", error);
+          logger.error(error, "HSM: Failed to terminate session");
         } finally {
           sessionHandle = null;
         }
@@ -82,15 +82,15 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
             logger.info("HSM: Successfully authenticated");
             break;
           } catch (error) {
+            // Handle specific error cases
             if (error instanceof pkcs11js.Pkcs11Error) {
-              // Handle specific error cases
               if (error.code === pkcs11js.CKR_PIN_INCORRECT) {
-                logger.error(error, `Incorrect PIN detected for HSM slot ${appCfg.HSM_SLOT}`);
-                throw new Error("Incorrect HSM Pin detected. Please check the HSM configuration.");
+                // We throw instantly here to prevent further attempts, because if too many attempts are made, the HSM will potentially wipe all key material
+                logger.error(error, `HSM: Incorrect PIN detected for HSM slot ${appCfg.HSM_SLOT}`);
+                throw new Error("HSM: Incorrect HSM Pin detected. Please check the HSM configuration.");
               }
-
               if (error.code === pkcs11js.CKR_USER_ALREADY_LOGGED_IN) {
-                logger.warn("HSM session already logged in");
+                logger.warn("HSM: Session already logged in");
               }
             }
             throw error; // Re-throw other errors
@@ -102,7 +102,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
             try {
               pkcs11.C_CloseSession(sessionHandle);
             } catch (closeError) {
-              logger.error("Error closing failed session:", closeError);
+              logger.error(closeError, "HSM: Failed to close session");
             }
             sessionHandle = null;
           }
@@ -116,7 +116,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
       }
 
       if (sessionHandle === null) {
-        throw new Error("Failed to open session after maximum retries");
+        throw new Error("HSM: Failed to open session after maximum retries");
       }
 
       // Execute callback with session handle
@@ -124,7 +124,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
       removeSession();
       return result;
     } catch (error) {
-      logger.error("Error in HSM session handling:", error);
+      logger.error(error, "HSM: Failed to open session");
       throw error;
     } finally {
       // Ensure cleanup
@@ -160,7 +160,6 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         pkcs11.C_FindObjectsFinal(sessionHandle);
       }
     } catch (error) {
-      logger.error("Error finding master key:", error);
       return null;
     }
   };
@@ -174,7 +173,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
     } catch (error) {
       // If items(0) throws, it means no key was found
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-      logger.error(error, "Error checking for HSM key presence");
+      logger.error(error, "HSM: Failed while checking for HSM key presence");
 
       if (error instanceof pkcs11js.Pkcs11Error) {
         if (error.code === pkcs11js.CKR_OBJECT_HANDLE_INVALID) {
@@ -198,12 +197,12 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
       try {
         const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
         if (!aesKey) {
-          throw new Error("AES key not found");
+          throw new Error("HSM: Encryption failed, AES key not found");
         }
 
         const hmacKey = $findKey(sessionHandle, HsmKeyType.HMAC);
         if (!hmacKey) {
-          throw new Error("HMAC key not found");
+          throw new Error("HSM: Encryption failed, HMAC key not found");
         }
 
         const iv = Buffer.alloc(IV_LENGTH);
@@ -244,8 +243,8 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
 
         return Buffer.concat([iv, finalBuffer]);
       } catch (error) {
-        logger.error("Encryption error:", error);
-        throw new Error(`Encryption failed: ${(error as Error)?.message}`);
+        logger.error(error, "HSM: Failed to perform encryption");
+        throw new Error(`HSM: Encryption failed: ${(error as Error)?.message}`);
       }
     };
 
@@ -261,8 +260,8 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
     (encryptedBlob: Buffer, providedSession: pkcs11js.Handle): Promise<Buffer>;
     (encryptedBlob: Buffer): Promise<Buffer>;
   } = async (encryptedBlob: Buffer, providedSession?: pkcs11js.Handle) => {
-    if (!isInitialized) {
-      throw new Error("HSM service not initialized");
+    if (!pkcs11 || !isInitialized) {
+      throw new Error("PKCS#11 module is not initialized");
     }
 
     const $performDecryption = (sessionHandle: pkcs11js.Handle) => {
@@ -279,12 +278,12 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         // Find the keys
         const aesKey = $findKey(sessionHandle, HsmKeyType.AES);
         if (!aesKey) {
-          throw new Error("AES key not found");
+          throw new Error("HSM: Decryption failed, AES key not found");
         }
 
         const hmacKey = $findKey(sessionHandle, HsmKeyType.HMAC);
         if (!hmacKey) {
-          throw new Error("HMAC key not found");
+          throw new Error("HSM: Decryption failed, HMAC key not found");
         }
 
         // Verify HMAC first
@@ -333,12 +332,12 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
   // We test the core functionality of the PKCS#11 module that we are using throughout Infisical. This is to ensure that the user doesn't configure a faulty or unsupported HSM device.
   const $testPkcs11Module = async (session: pkcs11js.Handle) => {
     try {
-      if (!isInitialized) {
-        throw new Error("HSM service not initialized");
+      if (!pkcs11 || !isInitialized) {
+        throw new Error("PKCS#11 module is not initialized");
       }
 
       if (!session) {
-        throw new Error("Session not initialized");
+        throw new Error("HSM: Attempted to run test without a valid session");
       }
 
       const randomData = pkcs11.C_GenerateRandom(session, Buffer.alloc(500));
@@ -350,12 +349,12 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
       const decryptedDataHex = decryptedData.toString("hex");
 
       if (randomDataHex !== decryptedDataHex && Buffer.compare(randomData, decryptedData)) {
-        throw new Error("Decrypted data does not match original data");
+        throw new Error("HSM: Startup test failed. Decrypted data does not match original data");
       }
 
       return true;
     } catch (error) {
-      logger.error(error, "Error testing PKCS#11 module");
+      logger.error(error, "HSM: Error testing PKCS#11 module");
       return false;
     }
   };
@@ -411,7 +410,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
             keyTemplate
           );
 
-          logger.info(`Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
+          logger.info(`HSM: Master key created successfully with label: ${appCfg.HSM_KEY_LABEL}`);
         }
 
         // Check if HMAC key exists, create if not
@@ -435,7 +434,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
             hmacKeyTemplate
           );
 
-          logger.info(`HMAC key created successfully with label: ${appCfg.HSM_KEY_LABEL}_HMAC`);
+          logger.info(`HSM: HMAC key created successfully with label: ${appCfg.HSM_KEY_LABEL}_HMAC`);
         }
 
         // Get slot info to check supported mechanisms
@@ -457,7 +456,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 } }: THsm
         }
       });
     } catch (error) {
-      logger.error("Error initializing HSM service:", error);
+      logger.error(error, "HSM: Error initializing HSM service:");
       throw error;
     }
   };

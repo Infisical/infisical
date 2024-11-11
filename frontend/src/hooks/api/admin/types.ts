@@ -59,7 +59,6 @@ export type TGetServerRootKmsEncryptionDetails = {
   strategies: {
     strategy: RootKeyEncryptionStrategy;
     enabled: boolean;
-    name: string;
   }[];
 };
 

@@ -17,10 +17,15 @@ const formSchema = z.object({
   encryptionStrategy: z.nativeEnum(RootKeyEncryptionStrategy)
 });
 
+const strategies: Record<RootKeyEncryptionStrategy, string> = {
+  [RootKeyEncryptionStrategy.Software]: "Software-based Encryption",
+  [RootKeyEncryptionStrategy.HSM]: "Hardware Security Module (HSM)"
+};
+
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
-  rootKmsDetails: TGetServerRootKmsEncryptionDetails;
+  rootKmsDetails?: TGetServerRootKmsEncryptionDetails;
 };
 
 export const EncryptionPanel = ({ rootKmsDetails }: Props) => {
@@ -84,27 +89,33 @@ export const EncryptionPanel = ({ rootKmsDetails }: Props) => {
             supported on Enterprise plans.
           </div>
 
-          <Controller
-            control={control}
-            name="encryptionStrategy"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl className="max-w-sm" errorText={error?.message} isError={Boolean(error)}>
-                <Select
-                  className="w-full bg-mineshaft-700"
-                  dropdownContainerClassName="bg-mineshaft-800"
-                  defaultValue={field.value}
-                  onValueChange={(e) => onChange(e)}
-                  {...field}
+          {!!rootKmsDetails && (
+            <Controller
+              control={control}
+              name="encryptionStrategy"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  className="max-w-sm"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
                 >
-                  {rootKmsDetails.strategies?.map((strategy) => (
-                    <SelectItem key={strategy.strategy} value={strategy.strategy}>
-                      {strategy.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
+                  <Select
+                    className="w-full bg-mineshaft-700"
+                    dropdownContainerClassName="bg-mineshaft-800"
+                    defaultValue={field.value}
+                    onValueChange={(e) => onChange(e)}
+                    {...field}
+                  >
+                    {rootKmsDetails.strategies?.map((strategy) => (
+                      <SelectItem key={strategy.strategy} value={strategy.strategy}>
+                        {strategies[strategy.strategy]}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
         </div>
 
         <Button

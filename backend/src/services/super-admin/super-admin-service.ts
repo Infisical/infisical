@@ -303,13 +303,12 @@ export const superAdminServiceFactory = ({
     }
 
     const selectedStrategy = kmsRootCfg.encryptionStrategy;
-    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy; name: string }[] = [];
+    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy }[] = [];
 
     if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
       const basicStrategy = RootKeyEncryptionStrategy.Software;
 
       enabledStrategies.push({
-        name: "Software-based Encryption",
         enabled: selectedStrategy === basicStrategy,
         strategy: basicStrategy
       });
@@ -318,7 +317,6 @@ export const superAdminServiceFactory = ({
       const hsmStrategy = RootKeyEncryptionStrategy.HSM;
 
       enabledStrategies.push({
-        name: "Hardware Security Module (HSM)",
         enabled: selectedStrategy === hsmStrategy,
         strategy: hsmStrategy
       });

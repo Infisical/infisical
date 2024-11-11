@@ -3,7 +3,7 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM --platform=linux/amd64 node:20-slim AS base
+FROM node:20-slim AS base
 
 FROM base AS frontend-dependencies
 WORKDIR /app
@@ -14,7 +14,7 @@ COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
 RUN npm ci --only-production --ignore-scripts
 
 # Rebuild the source code only when needed
-FROM --platform=linux/amd64 base AS frontend-builder
+FROM base AS frontend-builder
 WORKDIR /app
 
 # Copy dependencies
@@ -39,7 +39,7 @@ ENV NEXT_PUBLIC_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 RUN npm run build
 
 # Production image
-FROM --platform=linux/amd64 base AS frontend-runner
+FROM base AS frontend-runner
 WORKDIR /app
 
 RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
@@ -61,7 +61,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 ##
 ## BACKEND
 ##
-FROM --platform=linux/amd64 base AS backend-build
+FROM base AS backend-build
 
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 
@@ -85,7 +85,7 @@ RUN npm i -D tsconfig-paths
 RUN npm run build
 
 # Production stage
-FROM --platform=linux/amd64 base AS backend-runner
+FROM base AS backend-runner
 
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 
@@ -106,7 +106,7 @@ COPY --from=backend-build /app .
 RUN mkdir frontend-build
 
 # Production stage
-FROM --platform=linux/amd64 base AS production
+FROM base AS production
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \

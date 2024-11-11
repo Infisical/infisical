@@ -43,10 +43,11 @@ type TMain = {
 // Run the server!
 export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore }: TMain) => {
   const appCfg = getConfig();
+
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     trustProxy: true,
-    connectionTimeout: 30 * 1000,
+    connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
     ignoreTrailingSlash: true,
     pluginTimeout: 40_000
   }).withTypeProvider<ZodTypeProvider>();
