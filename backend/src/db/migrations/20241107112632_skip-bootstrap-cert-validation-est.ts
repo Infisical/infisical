@@ -27,15 +27,9 @@ export async function down(knex: Knex): Promise<void> {
     "disableBootstrapCertValidation"
   );
 
-  const hasCaChainCol = await knex.schema.hasColumn(TableName.CertificateTemplateEstConfig, "encryptedCaChain");
-
   await knex.schema.alterTable(TableName.CertificateTemplateEstConfig, (t) => {
     if (hasDisableBootstrapCertValidationCol) {
       t.dropColumn("disableBootstrapCertValidation");
-    }
-
-    if (hasCaChainCol) {
-      t.binary("encryptedCaChain").notNullable().alter();
     }
   });
 }
