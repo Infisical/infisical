@@ -33,9 +33,10 @@ type Props = {
 
 const schema = z.object({
   method: z.nativeEnum(EnrollmentMethod),
-  caChain: z.string(),
+  caChain: z.string().optional(),
   passphrase: z.string().optional(),
-  isEnabled: z.boolean()
+  isEnabled: z.boolean(),
+  disableBootstrapCertValidation: z.boolean().optional().default(false)
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -53,6 +54,8 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
     handleSubmit,
     reset,
     setError,
+    watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema)
@@ -62,16 +65,26 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
   const { mutateAsync: updateEstConfig } = useUpdateEstConfig();
   const [isPassphraseFocused, setIsPassphraseFocused] = useToggle(false);
 
+  const disableBootstrapCertValidation = watch("disableBootstrapCertValidation");
+
+  useEffect(() => {
+    if (disableBootstrapCertValidation) {
+      setValue("caChain", "");
+    }
+  }, [disableBootstrapCertValidation]);
+
   useEffect(() => {
     if (data) {
       reset({
         caChain: data.caChain,
-        isEnabled: data.isEnabled
+        isEnabled: data.isEnabled,
+        disableBootstrapCertValidation: data.disableBootstrapCertValidation
       });
     } else {
       reset({
         caChain: "",
-        isEnabled: false
+        isEnabled: false,
+        disableBootstrapCertValidation: false
       });
     }
   }, [data]);
@@ -83,7 +96,8 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           certificateTemplateId,
           caChain,
           passphrase,
-          isEnabled
+          isEnabled,
+          disableBootstrapCertValidation
         });
       } else {
         if (!passphrase) {
@@ -95,7 +109,8 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           certificateTemplateId,
           caChain,
           passphrase,
-          isEnabled
+          isEnabled,
+          disableBootstrapCertValidation
         });
       }
 
@@ -152,22 +167,43 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
           )}
           <Controller
             control={control}
-            name="caChain"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Certificate Authority Chain"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <TextArea
-                  {...field}
-                  className="min-h-[15rem] border-none bg-mineshaft-900 text-gray-400"
-                  reSize="none"
-                />
-              </FormControl>
-            )}
+            name="disableBootstrapCertValidation"
+            render={({ field, fieldState: { error } }) => {
+              return (
+                <FormControl isError={Boolean(error)} errorText={error?.message}>
+                  <Switch
+                    id="skip-bootstrap-cert-validation"
+                    onCheckedChange={(value) => field.onChange(value)}
+                    isChecked={field.value}
+                  >
+                    <p className="ml-1 w-full">Disable Bootstrap Certificate Validation</p>
+                  </Switch>
+                </FormControl>
+              );
+            }}
           />
+          {!disableBootstrapCertValidation && (
+            <Controller
+              control={control}
+              name="caChain"
+              disabled={disableBootstrapCertValidation}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Certificate Authority Chain"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  isRequired={!disableBootstrapCertValidation}
+                >
+                  <TextArea
+                    {...field}
+                    isDisabled={disableBootstrapCertValidation}
+                    className="min-h-[15rem] border-none bg-mineshaft-900 text-gray-400"
+                    reSize="none"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
           <Controller
             control={control}
             name="passphrase"

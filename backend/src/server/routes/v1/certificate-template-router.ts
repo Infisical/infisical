@@ -14,7 +14,8 @@ import { validateTemplateRegexField } from "@app/services/certificate-template/c
 const sanitizedEstConfig = CertificateTemplateEstConfigsSchema.pick({
   id: true,
   certificateTemplateId: true,
-  isEnabled: true
+  isEnabled: true,
+  disableBootstrapCertValidation: true
 });
 
 export const registerCertificateTemplateRouter = async (server: FastifyZodProvider) => {
@@ -241,11 +242,18 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       params: z.object({
         certificateTemplateId: z.string().trim()
       }),
-      body: z.object({
-        caChain: z.string().trim().min(1),
-        passphrase: z.string().min(1),
-        isEnabled: z.boolean().default(true)
-      }),
+      body: z
+        .object({
+          caChain: z.string().trim().optional(),
+          passphrase: z.string().min(1),
+          isEnabled: z.boolean().default(true),
+          disableBootstrapCertValidation: z.boolean().default(false)
+        })
+        .refine(
+          ({ caChain, disableBootstrapCertValidation }) =>
+            disableBootstrapCertValidation || (!disableBootstrapCertValidation && caChain),
+          "CA chain is required"
+        ),
       response: {
         200: sanitizedEstConfig
       }
@@ -289,8 +297,9 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         certificateTemplateId: z.string().trim()
       }),
       body: z.object({
-        caChain: z.string().trim().min(1).optional(),
+        caChain: z.string().trim().optional(),
         passphrase: z.string().min(1).optional(),
+        disableBootstrapCertValidation: z.boolean().optional(),
         isEnabled: z.boolean().optional()
       }),
       response: {

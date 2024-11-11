@@ -171,27 +171,29 @@ export const certificateEstServiceFactory = ({
       });
     }
 
-    const caCerts = estConfig.caChain
-      .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
-      ?.map((cert) => {
-        return new x509.X509Certificate(cert);
-      });
+    if (!estConfig.disableBootstrapCertValidation) {
+      const caCerts = estConfig.caChain
+        .match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g)
+        ?.map((cert) => {
+          return new x509.X509Certificate(cert);
+        });
 
-    if (!caCerts) {
-      throw new BadRequestError({ message: "Failed to parse certificate chain" });
-    }
+      if (!caCerts) {
+        throw new BadRequestError({ message: "Failed to parse certificate chain" });
+      }
 
-    const leafCertificate = decodeURIComponent(sslClientCert).match(
-      /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
-    )?.[0];
+      const leafCertificate = decodeURIComponent(sslClientCert).match(
+        /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
+      )?.[0];
 
-    if (!leafCertificate) {
-      throw new BadRequestError({ message: "Missing client certificate" });
-    }
+      if (!leafCertificate) {
+        throw new BadRequestError({ message: "Missing client certificate" });
+      }
 
-    const certObj = new x509.X509Certificate(leafCertificate);
-    if (!(await isCertChainValid([certObj, ...caCerts]))) {
-      throw new BadRequestError({ message: "Invalid certificate chain" });
+      const certObj = new x509.X509Certificate(leafCertificate);
+      if (!(await isCertChainValid([certObj, ...caCerts]))) {
+        throw new BadRequestError({ message: "Invalid certificate chain" });
+      }
     }
 
     const { certificate } = await certificateAuthorityService.signCertFromCa({
